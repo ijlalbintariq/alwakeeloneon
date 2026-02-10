@@ -1,4 +1,3 @@
-
 import { db } from "./db";
 import {
   threads, messages, documents,
@@ -9,23 +8,20 @@ import {
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // Threads
-  createThread(thread: InsertThread): Promise<Thread>;
+  createThread(thread: InsertThread & { userId: string }): Promise<Thread>;
   getThreads(userId: string): Promise<Thread[]>;
   getThread(id: number): Promise<Thread | undefined>;
   deleteThread(id: number): Promise<void>;
 
-  // Messages
   createMessage(message: InsertMessage): Promise<Message>;
   getMessages(threadId: number): Promise<Message[]>;
 
-  // Documents
-  createDocument(doc: InsertDocument): Promise<Document>;
+  createDocument(doc: InsertDocument & { userId: string }): Promise<Document>;
   getDocuments(userId: string): Promise<Document[]>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async createThread(insertThread: InsertThread): Promise<Thread> {
+  async createThread(insertThread: InsertThread & { userId: string }): Promise<Thread> {
     const [thread] = await db.insert(threads).values(insertThread).returning();
     return thread;
   }
@@ -59,7 +55,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(messages.createdAt);
   }
 
-  async createDocument(insertDoc: InsertDocument): Promise<Document> {
+  async createDocument(insertDoc: InsertDocument & { userId: string }): Promise<Document> {
     const [doc] = await db.insert(documents).values(insertDoc).returning();
     return doc;
   }

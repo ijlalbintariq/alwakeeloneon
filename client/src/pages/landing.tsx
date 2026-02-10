@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Scale, Shield, Clock, ArrowRight, Gavel } from "lucide-react";
@@ -7,11 +8,13 @@ export default function LandingPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
-  if (isLoading) return null;
-  if (user) {
-    setLocation("/dashboard");
-    return null;
-  }
+  useEffect(() => {
+    if (!isLoading && user) {
+      setLocation("/dashboard");
+    }
+  }, [user, isLoading, setLocation]);
+
+  if (isLoading || user) return null;
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans">

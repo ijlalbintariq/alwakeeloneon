@@ -32,9 +32,9 @@ export const documents = pgTable("documents", {
 });
 
 // Schemas
-export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
-export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, summary: true });
+export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, summary: true, userId: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
