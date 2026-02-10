@@ -2,7 +2,7 @@
 
 ## Overview
 
-Al Wakeel is an AI-powered legal assistant web application. It provides a chat-based interface where authenticated users can consult with an AI legal advisor, manage conversation threads, and upload/manage legal documents. The AI generates responses using OpenAI (via Replit AI Integrations) and is themed around Pakistani legal expertise. The project follows a monorepo structure with a React frontend, Express backend, and PostgreSQL database.
+Al Wakeelo is an AI-powered legal assistant web application. It provides a chat-based interface where authenticated users can consult with an AI legal advisor, manage conversation threads, and upload/manage legal documents. The AI generates responses using Google Gemini (gemini-2.5-flash for general use, gemini-2.5-pro for complex legal briefs) via the @google/genai SDK. The app is themed around Pakistani legal expertise with an exclusive dark slate theme. The project follows a monorepo structure with a React frontend, Express backend, and PostgreSQL database.
 
 ## User Preferences
 
@@ -29,7 +29,7 @@ The project uses a three-directory monorepo pattern:
 - **Framework**: Express.js with TypeScript, run via `tsx` in development
 - **Build**: Custom build script (`script/build.ts`) using esbuild for server and Vite for client. Production output goes to `dist/`
 - **API Pattern**: RESTful JSON API under `/api/*`. Route definitions are shared between client and server via `shared/routes.ts` with Zod validation
-- **AI Integration**: OpenAI client configured with `AI_INTEGRATIONS_OPENAI_API_KEY` and `AI_INTEGRATIONS_OPENAI_BASE_URL` environment variables (Replit AI Integrations). The AI has a legal assistant system prompt ("Al Wakeel")
+- **AI Integration**: Google Gemini via `@google/genai` SDK, configured with `GOOGLE_API_KEY` environment variable. Uses `gemini-2.5-flash` for general chat/search and `gemini-2.5-pro` for complex legal briefs. The AI has a legal assistant system prompt ("Al Wakeelo")
 - **Dev Server**: Vite dev server is integrated as middleware in development mode (via `server/vite.ts`). In production, static files are served from `dist/public`
 
 ### Database
@@ -61,24 +61,23 @@ The `server/replit_integrations/` directory contains pre-built integration modul
 - **`batch/`** — Batch processing utilities with rate limiting and retries
 
 ### Attached Assets
-The `attached_assets/` directory contains reference files from a previous version of the application (a Google AI Studio app using Gemini). These serve as design inspiration and feature references but are NOT the active codebase. The current implementation uses OpenAI instead of Gemini.
+The `attached_assets/` directory contains reference files from a previous version of the application. These serve as design inspiration and feature references.
 
 ## External Dependencies
 
 ### Required Environment Variables
 - `DATABASE_URL` — PostgreSQL connection string (provisioned by Replit)
 - `SESSION_SECRET` — Secret for session encryption
-- `AI_INTEGRATIONS_OPENAI_API_KEY` — OpenAI API key (via Replit AI Integrations)
-- `AI_INTEGRATIONS_OPENAI_BASE_URL` — OpenAI base URL (via Replit AI Integrations)
+- `GOOGLE_API_KEY` — Google Gemini API key (user-provided)
 - `REPL_ID` — Replit environment identifier (set automatically)
 - `ISSUER_URL` — OIDC issuer URL for Replit Auth (defaults to `https://replit.com/oidc`)
 
 ### Key NPM Dependencies
-- **Server**: express, drizzle-orm, pg, passport, openid-client, express-session, connect-pg-simple, openai, zod
+- **Server**: express, drizzle-orm, pg, passport, openid-client, express-session, connect-pg-simple, @google/genai, zod
 - **Client**: react, wouter, @tanstack/react-query, shadcn/ui (Radix primitives), tailwindcss, date-fns, react-hook-form, @hookform/resolvers
 - **Build**: vite, esbuild, tsx, typescript, drizzle-kit
 
 ### Third-Party Services
 - **Replit Auth** — Authentication via OpenID Connect
-- **Replit AI Integrations** — OpenAI-compatible API for chat completions, image generation, and audio processing
+- **Google Gemini** — AI language model for legal chat, search, and document generation
 - **PostgreSQL** — Primary data store (provisioned by Replit)
