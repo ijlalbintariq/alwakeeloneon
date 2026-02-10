@@ -1,11 +1,15 @@
 import { db } from "./db";
 import {
-  threads, messages, documents,
+  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
-  type Document, type InsertDocument
+  type Document, type InsertDocument,
+  type Bookmark, type InsertBookmark,
+  type SearchHistory, type InsertSearchHistory,
+  type Statute,
+  type CaseLaw
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, or, ilike } from "drizzle-orm";
 
 export interface IStorage {
   createThread(thread: InsertThread & { userId: string }): Promise<Thread>;
@@ -18,6 +22,20 @@ export interface IStorage {
 
   createDocument(doc: InsertDocument & { userId: string }): Promise<Document>;
   getDocuments(userId: string): Promise<Document[]>;
+  deleteDocument(id: number): Promise<void>;
+
+  createBookmark(bookmark: InsertBookmark & { userId: string }): Promise<Bookmark>;
+  getBookmarks(userId: string): Promise<Bookmark[]>;
+  deleteBookmark(id: number): Promise<void>;
+
+  addSearchHistory(entry: InsertSearchHistory & { userId: string }): Promise<SearchHistory>;
+  getSearchHistory(userId: string): Promise<SearchHistory[]>;
+
+  searchStatutes(query: string): Promise<Statute[]>;
+  getAllStatutes(): Promise<Statute[]>;
+
+  searchCaseLaw(query: string): Promise<CaseLaw[]>;
+  getAllCaseLaw(): Promise<CaseLaw[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -65,6 +83,74 @@ export class DatabaseStorage implements IStorage {
       .from(documents)
       .where(eq(documents.userId, userId))
       .orderBy(desc(documents.createdAt));
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    await db.delete(documents).where(eq(documents.id, id));
+  }
+
+  async createBookmark(insertBookmark: InsertBookmark & { userId: string }): Promise<Bookmark> {
+    const [bookmark] = await db.insert(bookmarks).values(insertBookmark).returning();
+    return bookmark;
+  }
+
+  async getBookmarks(userId: string): Promise<Bookmark[]> {
+    return await db.select()
+      .from(bookmarks)
+      .where(eq(bookmarks.userId, userId))
+      .orderBy(desc(bookmarks.createdAt));
+  }
+
+  async deleteBookmark(id: number): Promise<void> {
+    await db.delete(bookmarks).where(eq(bookmarks.id, id));
+  }
+
+  async addSearchHistory(entry: InsertSearchHistory & { userId: string }): Promise<SearchHistory> {
+    const [record] = await db.insert(searchHistory).values(entry).returning();
+    return record;
+  }
+
+  async getSearchHistory(userId: string): Promise<SearchHistory[]> {
+    return await db.select()
+      .from(searchHistory)
+      .where(eq(searchHistory.userId, userId))
+      .orderBy(desc(searchHistory.createdAt));
+  }
+
+  async searchStatutes(query: string): Promise<Statute[]> {
+    const pattern = `%${query}%`;
+    return await db.select()
+      .from(statutes)
+      .where(
+        or(
+          ilike(statutes.shortTitle, pattern),
+          ilike(statutes.section, pattern),
+          ilike(statutes.description, pattern),
+          ilike(statutes.punishment, pattern)
+        )
+      );
+  }
+
+  async getAllStatutes(): Promise<Statute[]> {
+    return await db.select().from(statutes);
+  }
+
+  async searchCaseLaw(query: string): Promise<CaseLaw[]> {
+    const pattern = `%${query}%`;
+    return await db.select()
+      .from(caseLaw)
+      .where(
+        or(
+          ilike(caseLaw.citation, pattern),
+          ilike(caseLaw.court, pattern),
+          ilike(caseLaw.title, pattern),
+          ilike(caseLaw.summary, pattern)
+        )
+      );
+  }
+
+  async getAllCaseLaw(): Promise<CaseLaw[]> {
+    return await db.select().from(caseLaw);
   }
 }
 

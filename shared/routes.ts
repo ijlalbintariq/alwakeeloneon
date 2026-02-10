@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import { insertThreadSchema, insertMessageSchema, insertDocumentSchema, threads, messages, documents } from './schema';
+import { insertThreadSchema, insertMessageSchema, insertDocumentSchema, insertBookmarkSchema, insertSearchHistorySchema, threads, messages, documents } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -70,7 +70,7 @@ export const api = {
         message: z.string(),
       }),
       responses: {
-        201: z.custom<typeof messages.$inferSelect>(), // The assistant response
+        201: z.custom<typeof messages.$inferSelect>(),
         404: errorSchemas.notFound,
         401: errorSchemas.unauthorized,
       },
@@ -94,7 +94,71 @@ export const api = {
         401: errorSchemas.unauthorized,
       },
     },
-  }
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/documents/:id' as const,
+    },
+  },
+  bookmarks: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/bookmarks' as const,
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/bookmarks' as const,
+      input: insertBookmarkSchema.omit({ userId: true }),
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/bookmarks/:id' as const,
+    },
+  },
+  searchHistory: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/search-history' as const,
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/search-history' as const,
+      input: insertSearchHistorySchema.omit({ userId: true }),
+    },
+  },
+  statutes: {
+    search: {
+      method: 'GET' as const,
+      path: '/api/statutes/search' as const,
+    },
+  },
+  caseLaw: {
+    search: {
+      method: 'GET' as const,
+      path: '/api/case-law/search' as const,
+    },
+  },
+  ai: {
+    chat: {
+      method: 'POST' as const,
+      path: '/api/ai/chat' as const,
+    },
+    searchJudgments: {
+      method: 'POST' as const,
+      path: '/api/ai/search-judgments' as const,
+    },
+    searchStatutes: {
+      method: 'POST' as const,
+      path: '/api/ai/search-statutes' as const,
+    },
+    summarize: {
+      method: 'POST' as const,
+      path: '/api/ai/summarize' as const,
+    },
+    brief: {
+      method: 'POST' as const,
+      path: '/api/ai/brief' as const,
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {

@@ -1,97 +1,114 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700;1,900&family=Inter:wght@300;400;500;600;700;800;900&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Slate/Blue Professional Palette */
-  --background: 220 20% 98%;
-  --foreground: 222 47% 11%;
-  
-  /* Trustworthy Blue */
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
-  
-  /* Gold/Bronze Accent for Legal Feel */
-  --accent: 35 90% 50%;
-  --accent-foreground: 210 40% 98%;
+  --background: 222 47% 6%;
+  --foreground: 210 40% 92%;
 
-  --secondary: 215 25% 95%;
-  --secondary-foreground: 222 47% 11%;
-  
-  --muted: 215 20% 92%;
-  --muted-foreground: 215 16% 47%;
-  
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  
-  --destructive: 0 84% 60%;
+  --primary: 38 92% 50%;
+  --primary-foreground: 222 47% 6%;
+
+  --accent: 38 92% 50%;
+  --accent-foreground: 222 47% 6%;
+
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 92%;
+
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 55%;
+
+  --card: 215 42% 15%;
+  --card-foreground: 210 40% 92%;
+
+  --popover: 215 42% 15%;
+  --popover-foreground: 210 40% 92%;
+
+  --destructive: 0 63% 45%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 221 83% 53%;
-  
-  --radius: 0.5rem;
+  --border: 217 33% 20%;
+  --input: 217 33% 20%;
+  --ring: 38 92% 50%;
+
+  --radius: 1.5rem;
+
+  --chart-1: 38 92% 50%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 217 91% 60%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
+
+  --sidebar: 215 42% 15%;
+  --sidebar-foreground: 210 40% 92%;
+  --sidebar-border: 217 33% 20%;
+  --sidebar-ring: 38 92% 50%;
+  --sidebar-primary: 38 92% 50%;
+  --sidebar-primary-foreground: 222 47% 6%;
+  --sidebar-accent: 217 33% 22%;
+  --sidebar-accent-foreground: 210 40% 92%;
 
   --font-sans: 'Inter', sans-serif;
-  --font-heading: 'Libre Baskerville', serif;
-}
-
-.dark {
-  --background: 222 47% 11%;
-  --foreground: 210 40% 98%;
-  
-  --primary: 217 91% 60%;
-  --primary-foreground: 222 47% 11%;
-  
-  --secondary: 217 19% 27%;
-  --secondary-foreground: 210 40% 98%;
-  
-  --muted: 217 19% 27%;
-  --muted-foreground: 215 20% 65%;
-  
-  --accent: 35 90% 50%;
-  --accent-foreground: 222 47% 11%;
-  
-  --card: 222 47% 13%;
-  --card-foreground: 210 40% 98%;
-  
-  --popover: 222 47% 11%;
-  --popover-foreground: 210 40% 98%;
-  
-  --destructive: 0 63% 31%;
-  --destructive-foreground: 210 40% 98%;
-
-  --border: 217 19% 27%;
-  --input: 217 19% 27%;
-  --ring: 217 91% 60%;
+  --font-heading: 'Playfair Display', serif;
+  --font-serif: 'Playfair Display', serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground antialiased font-sans;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading tracking-tight;
+    font-family: 'Playfair Display', serif;
+    @apply tracking-tight;
   }
 }
 
-/* Custom Scrollbar for Chat */
 .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Glassmorphism utility */
-.glass-panel {
-  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl dark:bg-black/40 dark:border-white/10;
+.legal-draft-font {
+  font-family: 'Gentium Book Plus', serif;
+  font-size: 14px;
+  line-height: 1.9;
+  color: hsl(210 40% 80%);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in-from-bottom-4 {
+  from { transform: translateY(1rem); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes zoom-in-95 {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.slide-in-from-bottom-4 {
+  animation: slide-in-from-bottom-4 0.4s ease-out;
+}
+
+.zoom-in-95 {
+  animation: zoom-in-95 0.7s ease-out;
 }

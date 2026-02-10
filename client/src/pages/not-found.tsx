@@ -1,29 +1,21 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { Scale } from "lucide-react";
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-lg border-border/50">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-destructive" />
-            <h1 className="text-2xl font-bold text-foreground">404 Page Not Found</h1>
-          </div>
-
-          <p className="mt-4 text-sm text-muted-foreground">
-            Objection! The page you are looking for has been dismissed or moved to another jurisdiction.
-          </p>
-
-          <div className="mt-8">
-             <Link href="/">
-               <Button className="w-full">Return to Safety</Button>
-             </Link>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#0f172a] p-6">
+      <div className="text-center space-y-6">
+        <Scale size={48} className="mx-auto text-amber-500/30" />
+        <h1 className="text-4xl font-bold text-white italic" style={{ fontFamily: "'Playfair Display', serif" }}>
+          404 - Case Dismissed
+        </h1>
+        <p className="text-slate-500 text-sm">The page you seek has been struck from the docket.</p>
+        <Link href="/dashboard">
+          <button className="px-8 py-4 bg-amber-500 text-slate-950 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-400 transition-all shadow-xl">
+            Return to Chambers
+          </button>
+        </Link>
+      </div>
     </div>
   );
 }

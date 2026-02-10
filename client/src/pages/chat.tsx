@@ -1,266 +1,187 @@
-import { useState, useEffect, useRef } from "react";
-import { useThreads, useThread, useCreateThread, useSendMessage, useDeleteThread } from "@/hooks/use-threads";
-import { useLocation, useRoute } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Send, 
-  Bot, 
-  User as UserIcon, 
-  Plus, 
-  MessageSquare, 
-  MoreVertical, 
-  Trash2,
-  Loader2,
-  AlertTriangle
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { format } from "date-fns";
+import { useState, useRef, useEffect } from "react";
+import { Scale, Send, Trash2, Bookmark, Loader2, AlertCircle } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
 
-// Component for the chat interface
+interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
 export default function ChatPage() {
-  const [match, params] = useRoute("/chat/:id");
-  const threadId = match && params?.id ? parseInt(params.id) : null;
-  const [, setLocation] = useLocation();
+  return <ChatModule type="al-wakeelo" title="Al Wakeelo Engine" />;
+}
 
-  const { data: threads, isLoading: threadsLoading } = useThreads();
-  const { data: threadData, isLoading: threadLoading } = useThread(threadId);
-  
-  const createThread = useCreateThread();
-  const sendMessage = useSendMessage();
-  const deleteThread = useDeleteThread();
+export function ChatModule({ type, title, initialMessage }: { type: string; title?: string; initialMessage?: string }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState(initialMessage || "");
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [threadData?.messages, threadLoading]);
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, isLoading]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  useEffect(() => {
+    if (initialMessage) {
+      handleSend(initialMessage);
+    }
+  }, []);
 
-    const messageContent = input;
-    setInput(""); // Optimistic clear
-
-    if (!threadId) {
-      // Create new thread
-      createThread.mutate({ firstMessage: messageContent }, {
-        onSuccess: (newThread) => {
-          setLocation(`/chat/${newThread.id}`);
-        }
+  const bookmarkMutation = useMutation({
+    mutationFn: async (msg: ChatMessage) => {
+      await apiRequest("POST", "/api/bookmarks", {
+        title: msg.content.substring(0, 50),
+        content: msg.content,
+        type: type === "al-wakeelo" ? "al-wakeelo" : type === "contract-drafting" ? "contract" : "draft",
+        category: title || type,
       });
-    } else {
-      // Send to existing thread
-      sendMessage.mutate({ threadId, message: messageContent });
-    }
-  };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bookmarks"] });
+    },
+  });
 
-  const handleDeleteThread = (id: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent navigation
-    if (confirm("Are you sure you want to delete this conversation?")) {
-      deleteThread.mutate(id, {
-        onSuccess: () => {
-          if (threadId === id) setLocation("/chat");
-        }
+  const handleSend = async (overrideInput?: string) => {
+    const text = overrideInput || input;
+    if (!text.trim() || isLoading) return;
+    setApiError(null);
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: "user", content: text };
+    const updated = [...messages, userMsg];
+    setMessages(updated);
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      const res = await apiRequest("POST", "/api/ai/chat", {
+        messages: updated.map((m) => ({ role: m.role, content: m.content })),
+        type,
       });
+      const data = await res.json();
+      setMessages([
+        ...updated,
+        { id: (Date.now() + 1).toString(), role: "assistant", content: data.content },
+      ]);
+
+      await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
+    } catch (err: any) {
+      setMessages([
+        ...updated,
+        { id: (Date.now() + 1).toString(), role: "assistant", content: "Error: Communication with chambers disrupted. Please try again." },
+      ]);
+      setApiError(err?.message || "Communication disruption.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+  const handleClear = () => {
+    setMessages([]);
+    setApiError(null);
   };
-
-  const isPending = createThread.isPending || sendMessage.isPending;
 
   return (
-    <div className="h-[calc(100vh-64px)] md:h-screen flex bg-background">
-      {/* Sidebar - History */}
-      <div className="w-80 border-r bg-card flex flex-col hidden md:flex">
-        <div className="p-4 border-b">
-          <Button 
-            className="w-full justify-start gap-2 border-dashed border-2 bg-transparent hover:bg-accent/5 text-foreground hover:border-accent" 
-            variant="outline"
-            onClick={() => setLocation("/chat")}
-          >
-            <Plus className="h-4 w-4" /> New Consultation
-          </Button>
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-[#1e293b] border border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl relative fade-in">
+      <div className="p-5 bg-[#0f172a]/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between z-20">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+            <Scale size={20} />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white capitalize">{title || type.replace("-", " ")} Session</h3>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${apiError ? "bg-red-500" : "bg-emerald-500"}`} />
+              <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">
+                {apiError ? "Engine Throttled" : "Counsel Engine Active"}
+              </p>
+            </div>
+          </div>
         </div>
-        
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {threadsLoading ? (
-            <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-          ) : (
-            threads?.map(thread => (
-              <div 
-                key={thread.id}
-                onClick={() => setLocation(`/chat/${thread.id}`)}
-                className={cn(
-                  "group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors text-sm",
-                  threadId === thread.id 
-                    ? "bg-primary/10 text-primary font-medium" 
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <MessageSquare className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{thread.title}</span>
-                </div>
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
-                      <MoreVertical className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem 
-                      className="text-destructive focus:text-destructive"
-                      onClick={(e) => handleDeleteThread(thread.id, e as any)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ))
-          )}
-        </div>
+        <button
+          onClick={handleClear}
+          data-testid="button-clear-chat"
+          className="px-4 py-2 hover:bg-red-500/10 rounded-xl text-slate-500 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
+        >
+          <Trash2 size={14} /> Reset
+        </button>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background/50">
-        {/* Chat Header */}
-        <div className="h-16 border-b flex items-center px-6 justify-between bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-          <div>
-            <h2 className="font-heading font-semibold text-lg">
-              {threadData ? threadData.thread.title : "New Consultation"}
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              {threadData ? `Started ${format(new Date(threadData.thread.createdAt!), 'MMM d, h:mm a')}` : "AI Legal Assistant"}
+      <div ref={scrollRef} className="flex-1 p-6 md:p-10 overflow-y-auto space-y-6 scrollbar-hide">
+        {messages.length === 0 && (
+          <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
+            <Scale size={48} className="text-slate-700" />
+            <p className="text-slate-600 italic text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
+              "Main hoon Al Wakeelo -- not just your lawyer, your strategy partner in justice."
             </p>
+            <p className="text-[9px] text-slate-700 uppercase tracking-widest font-black">Type your query below to begin</p>
           </div>
-          
-          <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800">
-            <AlertTriangle className="h-3 w-3" />
-            <span>Informational purposes only. Not legal advice.</span>
-          </div>
-        </div>
+        )}
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
-          {!threadId ? (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-50 p-8">
-              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-                <Bot className="h-10 w-10 text-primary" />
-              </div>
-              <h3 className="font-heading text-2xl font-bold mb-2">How can I help you today?</h3>
-              <p className="max-w-md">I can assist with legal research, document drafting, and explaining complex legal terms.</p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 w-full max-w-2xl">
-                {["Draft a Non-Disclosure Agreement", "Explain intellectual property rights", "What are the tenant rights in Dubai?", "Summarize a rental contract"].map(suggestion => (
-                  <Button 
-                    key={suggestion} 
-                    variant="outline" 
-                    className="h-auto py-3 px-4 text-left justify-start text-sm font-normal whitespace-normal"
-                    onClick={() => setInput(suggestion)}
-                  >
-                    "{suggestion}"
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ) : threadLoading ? (
-             <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-             </div>
-          ) : (
-            threadData?.messages.map((msg) => (
-              <div 
-                key={msg.id} 
-                className={cn(
-                  "flex gap-4 max-w-3xl mx-auto",
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                )}
-              >
-                {msg.role === "assistant" && (
-                  <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 mt-1">
-                    <Bot className="h-5 w-5 text-primary-foreground" />
-                  </div>
-                )}
-                
-                <div 
-                  className={cn(
-                    "rounded-2xl px-5 py-3 shadow-sm text-sm md:text-base leading-relaxed whitespace-pre-wrap max-w-[85%]",
-                    msg.role === "user" 
-                      ? "bg-primary text-primary-foreground rounded-tr-sm" 
-                      : "bg-card border border-border rounded-tl-sm text-foreground"
-                  )}
-                >
-                  {msg.content}
-                </div>
-
-                {msg.role === "user" && (
-                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-1">
-                    <UserIcon className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-          
-          {isPending && (
-            <div className="flex gap-4 max-w-3xl mx-auto justify-start">
-               <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 mt-1">
-                 <Bot className="h-5 w-5 text-primary-foreground" />
-               </div>
-               <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm flex items-center gap-2">
-                 <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }}/>
-                 <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }}/>
-                 <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }}/>
-               </div>
-            </div>
-          )}
-          
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input Area */}
-        <div className="p-4 bg-background border-t">
-          <div className="max-w-3xl mx-auto relative flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask a legal question..."
-              className="pr-12 py-6 rounded-full shadow-sm border-muted-foreground/20 focus-visible:ring-primary/20"
-              disabled={isPending}
-            />
-            <Button 
-              size="icon" 
-              className={cn(
-                "absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full transition-all",
-                input.trim() ? "bg-primary" : "bg-muted text-muted-foreground hover:bg-muted"
-              )}
-              onClick={handleSend}
-              disabled={!input.trim() || isPending}
+        {messages.map((m) => (
+          <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} slide-in-from-bottom-4`}>
+            <div
+              className={`max-w-[85%] p-6 md:p-8 rounded-[2rem] shadow-xl relative group ${
+                m.role === "user"
+                  ? "bg-amber-500 text-slate-950 font-bold rounded-tr-lg"
+                  : "bg-[#0f172a] border border-slate-700 text-slate-200 rounded-tl-lg"
+              }`}
             >
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
+              {m.role === "assistant" && (
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => bookmarkMutation.mutate(m)}
+                    className="p-2 rounded-xl border border-slate-700 text-slate-400 hover:text-amber-500 transition-colors"
+                    data-testid="button-bookmark"
+                    title="Save to Bookmarks"
+                  >
+                    <Bookmark size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-          <p className="text-center text-[10px] text-muted-foreground mt-2">
-            AI can make mistakes. Please verify important legal information.
-          </p>
+        ))}
+
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-[#0f172a] p-5 rounded-2xl border border-slate-800 flex items-center gap-3">
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" />
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "75ms" }} />
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest ml-2">Reasoning Protocol...</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {apiError && (
+        <div className="px-6 py-2 bg-red-500/10 border-t border-red-500/20 flex items-center gap-3">
+          <AlertCircle size={14} className="text-red-500" />
+          <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">{apiError}</span>
+        </div>
+      )}
+
+      <div className="p-4 md:p-6 bg-[#0f172a]/50 border-t border-slate-800">
+        <div className="flex gap-3 bg-[#1e293b] border border-slate-700 p-2 rounded-[2rem] shadow-2xl">
+          <input
+            className="flex-1 bg-transparent border-none px-4 py-3 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-600"
+            placeholder="Consult Al Wakeelo..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            data-testid="input-chat"
+          />
+          <button
+            onClick={() => handleSend()}
+            disabled={isLoading}
+            data-testid="button-send"
+            className="p-4 bg-amber-500 text-slate-950 rounded-xl hover:bg-amber-400 shadow-xl shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
+          >
+            <Send size={18} />
+          </button>
         </div>
       </div>
     </div>
