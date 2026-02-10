@@ -67,6 +67,14 @@ export const caseLaw = pgTable("case_law", {
   keywords: text("keywords").array().notNull(),
 });
 
+export const githubKnowledge = pgTable("github_knowledge", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  syncedAt: timestamp("synced_at").defaultNow(),
+});
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
@@ -75,6 +83,7 @@ export const insertBookmarkSchema = createInsertSchema(bookmarks).omit({ id: tru
 export const insertSearchHistorySchema = createInsertSchema(searchHistory).omit({ id: true, createdAt: true });
 export const insertStatuteSchema = createInsertSchema(statutes).omit({ id: true });
 export const insertCaseLawSchema = createInsertSchema(caseLaw).omit({ id: true });
+export const insertGithubKnowledgeSchema = createInsertSchema(githubKnowledge).omit({ id: true, syncedAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -91,6 +100,8 @@ export type Statute = typeof statutes.$inferSelect;
 export type InsertStatute = z.infer<typeof insertStatuteSchema>;
 export type CaseLaw = typeof caseLaw.$inferSelect;
 export type InsertCaseLaw = z.infer<typeof insertCaseLawSchema>;
+export type GithubKnowledge = typeof githubKnowledge.$inferSelect;
+export type InsertGithubKnowledge = z.infer<typeof insertGithubKnowledgeSchema>;
 
 // API Types
 export type CreateThreadRequest = {

@@ -29,7 +29,8 @@ The project uses a three-directory monorepo pattern:
 - **Framework**: Express.js with TypeScript, run via `tsx` in development
 - **Build**: Custom build script (`script/build.ts`) using esbuild for server and Vite for client. Production output goes to `dist/`
 - **API Pattern**: RESTful JSON API under `/api/*`. Route definitions are shared between client and server via `shared/routes.ts` with Zod validation
-- **AI Integration**: Google Gemini via `@google/genai` SDK, configured with `GOOGLE_API_KEY` environment variable. Uses `gemini-3-flash-preview` for general chat/search and `gemini-3-pro-preview` for complex legal briefs. The AI has a legal assistant system prompt ("Al Wakeelo")
+- **AI Integration**: Google Gemini via `@google/genai` SDK, configured with `GOOGLE_API_KEY` environment variable. Uses `gemini-3-flash-preview` for general chat/search and `gemini-3-pro-preview` for complex legal briefs. The AI has a legal assistant system prompt ("Al Wakeelo"). Knowledge is gathered from a 3-tier priority system: (1) Internal Knowledge Vault (statutes/case law DB), (2) GitHub Legal Library (synced from github.com/ijlalbintariq/law), (3) Gemini AI general knowledge
+- **GitHub Knowledge Sync**: `server/github-sync.ts` fetches .txt legal documents from the GitHub repo at startup and stores them in the `github_knowledge` table. The `gatherKnowledgeContext()` function in routes.ts searches all tiers and injects relevant content into AI prompts transparently
 - **Dev Server**: Vite dev server is integrated as middleware in development mode (via `server/vite.ts`). In production, static files are served from `dist/public`
 
 ### Database
@@ -42,6 +43,7 @@ The project uses a three-directory monorepo pattern:
   - `threads` — Chat conversation threads (belongs to user)
   - `messages` — Chat messages within threads (role: user/assistant/system)
   - `documents` — Uploaded legal documents with optional AI summaries
+  - `github_knowledge` — Synced legal documents from GitHub repository (auto-populated on startup)
   - `conversations` / `messages` (in `shared/models/chat.ts`) — Alternate chat model used by Replit integrations
 - **Migrations**: Use `npm run db:push` (drizzle-kit push) to sync schema to database. Migration files output to `./migrations/`
 

@@ -7,6 +7,7 @@ import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { GoogleGenAI } from "@google/genai";
 import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw } from "@shared/schema";
 import { db } from "./db";
+import { syncGithubKnowledge } from "./github-sync";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
@@ -48,6 +49,48 @@ CONSTRAINTS:
 
 function getUserId(req: any): string | null {
   return req.user?.claims?.sub || null;
+}
+
+async function gatherKnowledgeContext(query: string): Promise<string> {
+  const contextParts: string[] = [];
+
+  try {
+    const internalStatutes = await storage.searchStatutes(query);
+    const internalCaseLaw = await storage.searchCaseLaw(query);
+
+    if (internalStatutes.length > 0) {
+      contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
+      for (const s of internalStatutes.slice(0, 5)) {
+        contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
+      }
+    }
+
+    if (internalCaseLaw.length > 0) {
+      contextParts.push("=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===");
+      for (const c of internalCaseLaw.slice(0, 5)) {
+        contextParts.push(`- ${c.citation} (${c.court}): ${c.title} — ${c.summary}`);
+      }
+    }
+  } catch (err) {
+    console.error("[Knowledge] Error searching internal vault:", err);
+  }
+
+  try {
+    const githubDocs = await storage.searchGithubKnowledge(query, 3);
+    if (githubDocs.length > 0) {
+      contextParts.push("=== CHAMBERS LEGAL LIBRARY (CURATED SOURCES) ===");
+      for (const doc of githubDocs) {
+        const excerpt = doc.content.length > 3000 ? doc.content.substring(0, 3000) + "..." : doc.content;
+        contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
+      }
+    }
+  } catch (err) {
+    console.error("[Knowledge] Error searching GitHub knowledge:", err);
+  }
+
+  if (contextParts.length === 0) return "";
+
+  return `\n\nREFERENCE MATERIALS (Use these as primary sources when answering. Prioritize this curated knowledge over general knowledge. Do NOT mention these sources or how you found them — present the information as your own expert analysis):\n\n${contextParts.join("\n\n")}`;
 }
 
 async function seedLegalData() {
@@ -123,6 +166,8 @@ export async function registerRoutes(
         content: firstMessage,
       });
 
+      const knowledgeContext = await gatherKnowledgeContext(firstMessage);
+
       const completion = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
@@ -130,7 +175,7 @@ export async function registerRoutes(
         ],
         config: {
           maxOutputTokens: 8192,
-          systemInstruction: LEGAL_SYSTEM_PROMPT,
+          systemInstruction: LEGAL_SYSTEM_PROMPT + knowledgeContext,
         },
       });
 
@@ -205,12 +250,14 @@ export async function registerRoutes(
         parts: [{ text: m.content }],
       }));
 
+      const knowledgeContext = await gatherKnowledgeContext(message);
+
       const completion = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: geminiContents,
         config: {
           maxOutputTokens: 8192,
-          systemInstruction: LEGAL_SYSTEM_PROMPT,
+          systemInstruction: LEGAL_SYSTEM_PROMPT + knowledgeContext,
         },
       });
 
@@ -377,12 +424,15 @@ export async function registerRoutes(
           parts: [{ text: m.content }],
         }));
 
+      const lastUserMessage = userMessages.filter(m => m.role === "user").pop();
+      const knowledgeContext = lastUserMessage ? await gatherKnowledgeContext(lastUserMessage.content) : "";
+
       const completion = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: geminiContents,
         config: {
           maxOutputTokens: 8192,
-          systemInstruction: systemPrompt,
+          systemInstruction: systemPrompt + knowledgeContext,
         },
       });
 
@@ -400,13 +450,15 @@ export async function registerRoutes(
     try {
       const { query } = req.body as { query: string };
 
+      const knowledgeContext = await gatherKnowledgeContext(query);
+
       const completion = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [{ role: "user", parts: [{ text: query }] }],
         config: {
           maxOutputTokens: 8192,
           responseMimeType: "application/json",
-          systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results.`,
+          systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results.${knowledgeContext}`,
         },
       });
 
@@ -430,13 +482,15 @@ export async function registerRoutes(
     try {
       const { query } = req.body as { query: string };
 
+      const knowledgeContext = await gatherKnowledgeContext(query);
+
       const completion = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [{ role: "user", parts: [{ text: query }] }],
         config: {
           maxOutputTokens: 8192,
           responseMimeType: "application/json",
-          systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc.`,
+          systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc.${knowledgeContext}`,
         },
       });
 
@@ -460,6 +514,8 @@ export async function registerRoutes(
     try {
       const { query, findings } = req.body as { query: string; findings: any[] };
 
+      const knowledgeContext = await gatherKnowledgeContext(query);
+
       const completion = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
@@ -467,7 +523,7 @@ export async function registerRoutes(
         ],
         config: {
           maxOutputTokens: 8192,
-          systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.`,
+          systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`,
         },
       });
 
@@ -485,6 +541,8 @@ export async function registerRoutes(
     try {
       const { shortTitle, section, description } = req.body as { shortTitle: string; section: string; description: string };
 
+      const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
+
       const completion = await ai.models.generateContent({
         model: "gemini-3-pro-preview",
         contents: [
@@ -492,7 +550,7 @@ export async function registerRoutes(
         ],
         config: {
           maxOutputTokens: 8192,
-          systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.`,
+          systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`,
         },
       });
 
@@ -515,6 +573,8 @@ export async function registerRoutes(
   });
 
   await seedLegalData();
+
+  syncGithubKnowledge().catch(err => console.error("[GitHub Sync] Background sync failed:", err));
 
   return httpServer;
 }
