@@ -77,12 +77,16 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
           <div className="p-4 border-t border-border/50">
             <div className="flex items-center gap-3 px-4 py-3 mb-2">
-              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                {user.username?.[0]?.toUpperCase() || "U"}
-              </div>
+              {user.profileImageUrl ? (
+                <img src={user.profileImageUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                  {user.firstName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user.displayName || user.username}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email || "User"}</p>
+                <p className="text-sm font-medium truncate">{[user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "User"}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email || ""}</p>
               </div>
             </div>
             <Button 

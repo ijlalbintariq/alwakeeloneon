@@ -1,0 +1,8 @@
+{
+  "name": " Al Wakeelo - Your Digital Lawyer",
+  "description": "A Saul Goodman-inspired AI legal assistant for Pakistan, providing sharp, street-smart legal guidance and document drafting.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
