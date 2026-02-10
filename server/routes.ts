@@ -4,14 +4,11 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw } from "@shared/schema";
 import { db } from "./db";
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
 const LEGAL_SYSTEM_PROMPT = `You are Al Wakeelo — "Your Digital Lawyer, Always on Duty".
 You are the digital manifestation of a high-stakes, street-smart Pakistani advocate, inspired by the tactical brilliance and silver-tongued wit of Saul Goodman.
@@ -126,16 +123,18 @@ export async function registerRoutes(
         content: firstMessage,
       });
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
-          { role: "system", content: LEGAL_SYSTEM_PROMPT },
-          { role: "user", content: firstMessage },
+      const completion = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          { role: "user", parts: [{ text: firstMessage }] },
         ],
-        max_completion_tokens: 4096,
+        config: {
+          maxOutputTokens: 8192,
+          systemInstruction: LEGAL_SYSTEM_PROMPT,
+        },
       });
 
-      const aiResponse = completion.choices[0].message.content || "I apologize, I could not generate a response.";
+      const aiResponse = completion.text || "I apologize, I could not generate a response.";
 
       await storage.createMessage({
         threadId: thread.id,
@@ -201,21 +200,21 @@ export async function registerRoutes(
       });
 
       const history = await storage.getMessages(threadId);
-      const openAiMessages = [
-        { role: "system" as const, content: LEGAL_SYSTEM_PROMPT },
-        ...history.map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
-      ];
+      const geminiContents = history.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: openAiMessages,
-        max_completion_tokens: 4096,
+      const completion = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: geminiContents,
+        config: {
+          maxOutputTokens: 8192,
+          systemInstruction: LEGAL_SYSTEM_PROMPT,
+        },
       });
 
-      const aiResponse = completion.choices[0].message.content || "I apologize, I could not generate a response.";
+      const aiResponse = completion.text || "I apologize, I could not generate a response.";
 
       const savedAiMessage = await storage.createMessage({
         threadId,
@@ -366,19 +365,28 @@ export async function registerRoutes(
         systemPrompt += `\n\nADDITIONAL INSTRUCTION: You are now in legal drafting mode. Draft professional, airtight legal documents with precise clauses, proper legal formatting, and comprehensive coverage of all contingencies. Use Pakistani legal conventions and terminology.`;
       }
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...userMessages.map((m) => ({
-            role: m.role as "user" | "assistant" | "system",
-            content: m.content,
-          })),
-        ],
-        max_completion_tokens: 4096,
+      const systemMessages = userMessages.filter((m) => m.role === "system");
+      if (systemMessages.length > 0) {
+        systemPrompt += "\n\n" + systemMessages.map((m) => m.content).join("\n");
+      }
+
+      const geminiContents = userMessages
+        .filter((m) => m.role !== "system")
+        .map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        }));
+
+      const completion = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: geminiContents,
+        config: {
+          maxOutputTokens: 8192,
+          systemInstruction: systemPrompt,
+        },
       });
 
-      const content = completion.choices[0].message.content || "I apologize, I could not generate a response.";
+      const content = completion.text || "I apologize, I could not generate a response.";
       res.json({ content });
     } catch (err) {
       console.error("Error in AI chat:", err);
@@ -392,21 +400,23 @@ export async function registerRoutes(
     try {
       const { query } = req.body as { query: string };
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
-          {
-            role: "system",
-            content: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results.`,
-          },
-          { role: "user", content: query },
-        ],
-        max_completion_tokens: 4096,
-        response_format: { type: "json_object" },
+      const completion = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{ role: "user", parts: [{ text: query }] }],
+        config: {
+          maxOutputTokens: 8192,
+          responseMimeType: "application/json",
+          systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results.`,
+        },
       });
 
-      const responseText = completion.choices[0].message.content || '{"judgments":[]}';
-      const parsed = JSON.parse(responseText);
+      const responseText = completion.text || '{"judgments":[]}';
+      let parsed;
+      try {
+        parsed = JSON.parse(responseText);
+      } catch {
+        parsed = { judgments: [] };
+      }
       res.json(parsed.judgments || []);
     } catch (err) {
       console.error("Error searching judgments:", err);
@@ -420,21 +430,23 @@ export async function registerRoutes(
     try {
       const { query } = req.body as { query: string };
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
-          {
-            role: "system",
-            content: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc.`,
-          },
-          { role: "user", content: query },
-        ],
-        max_completion_tokens: 4096,
-        response_format: { type: "json_object" },
+      const completion = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{ role: "user", parts: [{ text: query }] }],
+        config: {
+          maxOutputTokens: 8192,
+          responseMimeType: "application/json",
+          systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc.`,
+        },
       });
 
-      const responseText = completion.choices[0].message.content || '{"statutes":[]}';
-      const parsed = JSON.parse(responseText);
+      const responseText = completion.text || '{"statutes":[]}';
+      let parsed;
+      try {
+        parsed = JSON.parse(responseText);
+      } catch {
+        parsed = { statutes: [] };
+      }
       res.json(parsed.statutes || []);
     } catch (err) {
       console.error("Error searching statutes via AI:", err);
@@ -448,22 +460,18 @@ export async function registerRoutes(
     try {
       const { query, findings } = req.body as { query: string; findings: any[] };
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
-          {
-            role: "system",
-            content: `${LEGAL_SYSTEM_PROMPT}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.`,
-          },
-          {
-            role: "user",
-            content: `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.`,
-          },
+      const completion = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          { role: "user", parts: [{ text: `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.` }] },
         ],
-        max_completion_tokens: 4096,
+        config: {
+          maxOutputTokens: 8192,
+          systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.`,
+        },
       });
 
-      const summary = completion.choices[0].message.content || "Unable to generate summary.";
+      const summary = completion.text || "Unable to generate summary.";
       res.json({ summary });
     } catch (err) {
       console.error("Error summarizing:", err);
@@ -477,22 +485,18 @@ export async function registerRoutes(
     try {
       const { shortTitle, section, description } = req.body as { shortTitle: string; section: string; description: string };
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4.1",
-        messages: [
-          {
-            role: "system",
-            content: `${LEGAL_SYSTEM_PROMPT}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.`,
-          },
-          {
-            role: "user",
-            content: `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}`,
-          },
+      const completion = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        contents: [
+          { role: "user", parts: [{ text: `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}` }] },
         ],
-        max_completion_tokens: 4096,
+        config: {
+          maxOutputTokens: 8192,
+          systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.`,
+        },
       });
 
-      const brief = completion.choices[0].message.content || "Unable to generate brief.";
+      const brief = completion.text || "Unable to generate brief.";
       res.json({ brief });
     } catch (err) {
       console.error("Error generating brief:", err);
