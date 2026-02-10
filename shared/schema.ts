@@ -67,6 +67,16 @@ export const caseLaw = pgTable("case_law", {
   keywords: text("keywords").array().notNull(),
 });
 
+export const queryCache = pgTable("query_cache", {
+  id: serial("id").primaryKey(),
+  endpoint: text("endpoint").notNull(),
+  queryHash: text("query_hash").notNull(),
+  queryText: text("query_text").notNull(),
+  response: text("response").notNull(),
+  hitCount: integer("hit_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const githubKnowledge = pgTable("github_knowledge", {
   id: serial("id").primaryKey(),
   filename: text("filename").notNull(),
@@ -83,6 +93,7 @@ export const insertBookmarkSchema = createInsertSchema(bookmarks).omit({ id: tru
 export const insertSearchHistorySchema = createInsertSchema(searchHistory).omit({ id: true, createdAt: true });
 export const insertStatuteSchema = createInsertSchema(statutes).omit({ id: true });
 export const insertCaseLawSchema = createInsertSchema(caseLaw).omit({ id: true });
+export const insertQueryCacheSchema = createInsertSchema(queryCache).omit({ id: true, createdAt: true, hitCount: true });
 export const insertGithubKnowledgeSchema = createInsertSchema(githubKnowledge).omit({ id: true, syncedAt: true });
 
 // Types
@@ -100,6 +111,8 @@ export type Statute = typeof statutes.$inferSelect;
 export type InsertStatute = z.infer<typeof insertStatuteSchema>;
 export type CaseLaw = typeof caseLaw.$inferSelect;
 export type InsertCaseLaw = z.infer<typeof insertCaseLawSchema>;
+export type QueryCache = typeof queryCache.$inferSelect;
+export type InsertQueryCache = z.infer<typeof insertQueryCacheSchema>;
 export type GithubKnowledge = typeof githubKnowledge.$inferSelect;
 export type InsertGithubKnowledge = z.infer<typeof insertGithubKnowledgeSchema>;
 

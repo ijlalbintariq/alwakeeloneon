@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge,
+  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -8,9 +8,10 @@ import {
   type SearchHistory, type InsertSearchHistory,
   type Statute,
   type CaseLaw,
-  type GithubKnowledge, type InsertGithubKnowledge
+  type GithubKnowledge, type InsertGithubKnowledge,
+  type QueryCache, type InsertQueryCache
 } from "@shared/schema";
-import { eq, desc, or, ilike, sql } from "drizzle-orm";
+import { eq, desc, or, ilike, sql, and, lt } from "drizzle-orm";
 
 export interface IStorage {
   createThread(thread: InsertThread & { userId: string }): Promise<Thread>;
@@ -41,6 +42,11 @@ export interface IStorage {
   getGithubKnowledgeCount(): Promise<number>;
   upsertGithubKnowledge(items: InsertGithubKnowledge[]): Promise<void>;
   searchGithubKnowledge(query: string, limit?: number): Promise<GithubKnowledge[]>;
+
+  getCachedResponse(endpoint: string, queryHash: string): Promise<QueryCache | undefined>;
+  setCachedResponse(entry: InsertQueryCache): Promise<QueryCache>;
+  incrementCacheHit(id: number): Promise<void>;
+  cleanExpiredCache(maxAgeDays?: number): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -191,6 +197,36 @@ export class DatabaseStorage implements IStorage {
       .from(githubKnowledge)
       .where(or(...conditions))
       .limit(limit);
+  }
+
+  async getCachedResponse(endpoint: string, queryHash: string): Promise<QueryCache | undefined> {
+    const [cached] = await db.select()
+      .from(queryCache)
+      .where(and(eq(queryCache.endpoint, endpoint), eq(queryCache.queryHash, queryHash)))
+      .orderBy(desc(queryCache.createdAt))
+      .limit(1);
+    return cached;
+  }
+
+  async setCachedResponse(entry: InsertQueryCache): Promise<QueryCache> {
+    await db.delete(queryCache)
+      .where(and(eq(queryCache.endpoint, entry.endpoint), eq(queryCache.queryHash, entry.queryHash)));
+    const [cached] = await db.insert(queryCache).values(entry).returning();
+    return cached;
+  }
+
+  async incrementCacheHit(id: number): Promise<void> {
+    await db.update(queryCache)
+      .set({ hitCount: sql`${queryCache.hitCount} + 1` })
+      .where(eq(queryCache.id, id));
+  }
+
+  async cleanExpiredCache(maxAgeDays: number = 7): Promise<number> {
+    const cutoff = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000);
+    const deleted = await db.delete(queryCache)
+      .where(lt(queryCache.createdAt, cutoff))
+      .returning();
+    return deleted.length;
   }
 }
 

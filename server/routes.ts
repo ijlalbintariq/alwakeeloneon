@@ -8,6 +8,7 @@ import { GoogleGenAI } from "@google/genai";
 import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw } from "@shared/schema";
 import { db } from "./db";
 import { syncGithubKnowledge } from "./github-sync";
+import crypto from "crypto";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
@@ -49,6 +50,57 @@ CONSTRAINTS:
 
 function getUserId(req: any): string | null {
   return req.user?.claims?.sub || null;
+}
+
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function normalizeQuery(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function hashQuery(endpoint: string, queryText: string): string {
+  return crypto.createHash("sha256").update(`${endpoint}:${queryText}`).digest("hex");
+}
+
+function isCacheFresh(createdAt: Date | null): boolean {
+  if (!createdAt) return false;
+  return Date.now() - createdAt.getTime() < CACHE_TTL_MS;
+}
+
+async function getCachedOrCall(
+  endpoint: string,
+  rawQuery: string,
+  apiFn: () => Promise<string>
+): Promise<{ content: string; fromCache: boolean }> {
+  const normalized = normalizeQuery(rawQuery);
+  const hash = hashQuery(endpoint, normalized);
+
+  try {
+    const cached = await storage.getCachedResponse(endpoint, hash);
+    if (cached && isCacheFresh(cached.createdAt)) {
+      await storage.incrementCacheHit(cached.id).catch(() => {});
+      console.log(`[Cache] HIT for ${endpoint} (hits: ${(cached.hitCount || 0) + 1})`);
+      return { content: cached.response, fromCache: true };
+    }
+  } catch (err) {
+    console.error("[Cache] Error reading cache:", err);
+  }
+
+  const content = await apiFn();
+
+  try {
+    await storage.setCachedResponse({
+      endpoint,
+      queryHash: hash,
+      queryText: rawQuery.slice(0, 500),
+      response: content,
+    });
+    console.log(`[Cache] STORED for ${endpoint}`);
+  } catch (err) {
+    console.error("[Cache] Error storing cache:", err);
+  }
+
+  return { content, fromCache: false };
 }
 
 async function gatherKnowledgeContext(query: string): Promise<string> {
@@ -450,19 +502,20 @@ export async function registerRoutes(
     try {
       const { query } = req.body as { query: string };
 
-      const knowledgeContext = await gatherKnowledgeContext(query);
-
-      const completion = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ role: "user", parts: [{ text: query }] }],
-        config: {
-          maxOutputTokens: 8192,
-          responseMimeType: "application/json",
-          systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results.${knowledgeContext}`,
-        },
+      const { content: responseText } = await getCachedOrCall("searchJudgments", query, async () => {
+        const knowledgeContext = await gatherKnowledgeContext(query);
+        const completion = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [{ role: "user", parts: [{ text: query }] }],
+          config: {
+            maxOutputTokens: 8192,
+            responseMimeType: "application/json",
+            systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results.${knowledgeContext}`,
+          },
+        });
+        return completion.text || '{"judgments":[]}';
       });
 
-      const responseText = completion.text || '{"judgments":[]}';
       let parsed;
       try {
         parsed = JSON.parse(responseText);
@@ -482,19 +535,20 @@ export async function registerRoutes(
     try {
       const { query } = req.body as { query: string };
 
-      const knowledgeContext = await gatherKnowledgeContext(query);
-
-      const completion = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ role: "user", parts: [{ text: query }] }],
-        config: {
-          maxOutputTokens: 8192,
-          responseMimeType: "application/json",
-          systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc.${knowledgeContext}`,
-        },
+      const { content: responseText } = await getCachedOrCall("searchStatutes", query, async () => {
+        const knowledgeContext = await gatherKnowledgeContext(query);
+        const completion = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [{ role: "user", parts: [{ text: query }] }],
+          config: {
+            maxOutputTokens: 8192,
+            responseMimeType: "application/json",
+            systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc.${knowledgeContext}`,
+          },
+        });
+        return completion.text || '{"statutes":[]}';
       });
 
-      const responseText = completion.text || '{"statutes":[]}';
       let parsed;
       try {
         parsed = JSON.parse(responseText);
@@ -513,21 +567,23 @@ export async function registerRoutes(
     if (!userId) return res.sendStatus(401);
     try {
       const { query, findings } = req.body as { query: string; findings: any[] };
+      const cacheKey = `${query}::${JSON.stringify(findings)}`;
 
-      const knowledgeContext = await gatherKnowledgeContext(query);
-
-      const completion = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          { role: "user", parts: [{ text: `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.` }] },
-        ],
-        config: {
-          maxOutputTokens: 8192,
-          systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`,
-        },
+      const { content: summary } = await getCachedOrCall("summarize", cacheKey, async () => {
+        const knowledgeContext = await gatherKnowledgeContext(query);
+        const completion = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [
+            { role: "user", parts: [{ text: `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.` }] },
+          ],
+          config: {
+            maxOutputTokens: 8192,
+            systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`,
+          },
+        });
+        return completion.text || "Unable to generate summary.";
       });
 
-      const summary = completion.text || "Unable to generate summary.";
       res.json({ summary });
     } catch (err) {
       console.error("Error summarizing:", err);
@@ -540,21 +596,23 @@ export async function registerRoutes(
     if (!userId) return res.sendStatus(401);
     try {
       const { shortTitle, section, description } = req.body as { shortTitle: string; section: string; description: string };
+      const cacheKey = `${shortTitle}::${section}::${description}`;
 
-      const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
-
-      const completion = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
-        contents: [
-          { role: "user", parts: [{ text: `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}` }] },
-        ],
-        config: {
-          maxOutputTokens: 8192,
-          systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`,
-        },
+      const { content: brief } = await getCachedOrCall("brief", cacheKey, async () => {
+        const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
+        const completion = await ai.models.generateContent({
+          model: "gemini-3-pro-preview",
+          contents: [
+            { role: "user", parts: [{ text: `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}` }] },
+          ],
+          config: {
+            maxOutputTokens: 8192,
+            systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`,
+          },
+        });
+        return completion.text || "Unable to generate brief.";
       });
 
-      const brief = completion.text || "Unable to generate brief.";
       res.json({ brief });
     } catch (err) {
       console.error("Error generating brief:", err);
@@ -575,6 +633,16 @@ export async function registerRoutes(
   await seedLegalData();
 
   syncGithubKnowledge().catch(err => console.error("[GitHub Sync] Background sync failed:", err));
+
+  storage.cleanExpiredCache(7).then(count => {
+    if (count > 0) console.log(`[Cache] Cleaned ${count} expired entries`);
+  }).catch(() => {});
+
+  setInterval(() => {
+    storage.cleanExpiredCache(7).then(count => {
+      if (count > 0) console.log(`[Cache] Cleaned ${count} expired entries`);
+    }).catch(() => {});
+  }, 24 * 60 * 60 * 1000);
 
   return httpServer;
 }
