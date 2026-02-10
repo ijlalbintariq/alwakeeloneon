@@ -124,7 +124,7 @@ export async function registerRoutes(
       });
 
       const completion = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: [
           { role: "user", parts: [{ text: firstMessage }] },
         ],
@@ -206,7 +206,7 @@ export async function registerRoutes(
       }));
 
       const completion = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: geminiContents,
         config: {
           maxOutputTokens: 8192,
@@ -378,7 +378,7 @@ export async function registerRoutes(
         }));
 
       const completion = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: geminiContents,
         config: {
           maxOutputTokens: 8192,
@@ -401,7 +401,7 @@ export async function registerRoutes(
       const { query } = req.body as { query: string };
 
       const completion = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: [{ role: "user", parts: [{ text: query }] }],
         config: {
           maxOutputTokens: 8192,
@@ -431,7 +431,7 @@ export async function registerRoutes(
       const { query } = req.body as { query: string };
 
       const completion = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: [{ role: "user", parts: [{ text: query }] }],
         config: {
           maxOutputTokens: 8192,
@@ -461,7 +461,7 @@ export async function registerRoutes(
       const { query, findings } = req.body as { query: string; findings: any[] };
 
       const completion = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: [
           { role: "user", parts: [{ text: `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.` }] },
         ],
@@ -486,7 +486,7 @@ export async function registerRoutes(
       const { shortTitle, section, description } = req.body as { shortTitle: string; section: string; description: string };
 
       const completion = await ai.models.generateContent({
-        model: "gemini-2.5-pro",
+        model: "gemini-3-pro-preview",
         contents: [
           { role: "user", parts: [{ text: `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}` }] },
         ],

@@ -29,7 +29,7 @@ The project uses a three-directory monorepo pattern:
 - **Framework**: Express.js with TypeScript, run via `tsx` in development
 - **Build**: Custom build script (`script/build.ts`) using esbuild for server and Vite for client. Production output goes to `dist/`
 - **API Pattern**: RESTful JSON API under `/api/*`. Route definitions are shared between client and server via `shared/routes.ts` with Zod validation
-- **AI Integration**: Google Gemini via `@google/genai` SDK, configured with `GOOGLE_API_KEY` environment variable. Uses `gemini-2.5-flash` for general chat/search and `gemini-2.5-pro` for complex legal briefs. The AI has a legal assistant system prompt ("Al Wakeelo")
+- **AI Integration**: Google Gemini via `@google/genai` SDK, configured with `GOOGLE_API_KEY` environment variable. Uses `gemini-3-flash-preview` for general chat/search and `gemini-3-pro-preview` for complex legal briefs. The AI has a legal assistant system prompt ("Al Wakeelo")
 - **Dev Server**: Vite dev server is integrated as middleware in development mode (via `server/vite.ts`). In production, static files are served from `dist/public`
 
 ### Database
