@@ -3,6 +3,7 @@ import { pgTable, text, serial, integer, boolean, timestamp, varchar } from "dri
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
+import { sql } from "drizzle-orm";
 
 export * from "./models/auth";
 
@@ -31,10 +32,49 @@ export const documents = pgTable("documents", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const bookmarks = pgTable("bookmarks", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  type: text("type", { enum: ["al-wakeelo", "draft", "contract"] }).notNull(),
+  category: text("category").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const searchHistory = pgTable("search_history", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: text("type", { enum: ["judgment", "statute", "chat", "draft", "contract"] }).notNull(),
+  query: text("query").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const statutes = pgTable("statutes", {
+  id: serial("id").primaryKey(),
+  shortTitle: text("short_title").notNull(),
+  section: text("section").notNull(),
+  description: text("description").notNull(),
+  punishment: text("punishment").notNull(),
+});
+
+export const caseLaw = pgTable("case_law", {
+  id: serial("id").primaryKey(),
+  citation: text("citation").notNull(),
+  court: text("court").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  keywords: text("keywords").array().notNull(),
+});
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, summary: true, userId: true });
+export const insertBookmarkSchema = createInsertSchema(bookmarks).omit({ id: true, createdAt: true });
+export const insertSearchHistorySchema = createInsertSchema(searchHistory).omit({ id: true, createdAt: true });
+export const insertStatuteSchema = createInsertSchema(statutes).omit({ id: true });
+export const insertCaseLawSchema = createInsertSchema(caseLaw).omit({ id: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -43,6 +83,14 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Document = typeof documents.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type Bookmark = typeof bookmarks.$inferSelect;
+export type InsertBookmark = z.infer<typeof insertBookmarkSchema>;
+export type SearchHistory = typeof searchHistory.$inferSelect;
+export type InsertSearchHistory = z.infer<typeof insertSearchHistorySchema>;
+export type Statute = typeof statutes.$inferSelect;
+export type InsertStatute = z.infer<typeof insertStatuteSchema>;
+export type CaseLaw = typeof caseLaw.$inferSelect;
+export type InsertCaseLaw = z.infer<typeof insertCaseLawSchema>;
 
 // API Types
 export type CreateThreadRequest = {
