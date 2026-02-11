@@ -907,6 +907,43 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/users", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const { email, password, firstName, lastName, subscriptionTier, isAdmin: makeAdmin } = req.body;
+      if (!email || !password || !firstName || !lastName) {
+        return res.status(400).json({ message: "Email, password, first name, and last name are required" });
+      }
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
+      }
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const existing = await authStorage.getUserByEmail(email);
+      if (existing) {
+        return res.status(409).json({ message: "A user with this email already exists" });
+      }
+      const bcrypt = await import("bcryptjs");
+      const passwordHash = await bcrypt.hash(password, 12);
+      const user = await authStorage.upsertUser({
+        email,
+        firstName,
+        lastName,
+        passwordHash,
+        authProvider: "email",
+      });
+      if (subscriptionTier && ["free", "pro", "enterprise"].includes(subscriptionTier)) {
+        await storage.updateUserTier(user.id, subscriptionTier);
+      }
+      if (makeAdmin === true) {
+        await storage.updateUserAdminStatus(user.id, true);
+      }
+      res.status(201).json({ message: "User created successfully", user });
+    } catch (err) {
+      console.error("Error creating user:", err);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
   app.delete("/api/admin/users/:id", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {

@@ -5,7 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Redirect } from "wouter";
 import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
-  UserCheck, UserX, Loader2, FileText, AlertTriangle
+  UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -260,6 +260,42 @@ function UsersSection() {
   const { data: allUsers, isLoading } = useQuery<User[]>({ queryKey: ["/api/admin/users"] });
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newTier, setNewTier] = useState("free");
+  const [newIsAdmin, setNewIsAdmin] = useState(false);
+
+  const addUserMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/users", {
+        email: newEmail,
+        password: newPassword,
+        firstName: newFirstName,
+        lastName: newLastName,
+        subscriptionTier: newTier,
+        isAdmin: newIsAdmin,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setShowAddForm(false);
+      setNewEmail("");
+      setNewPassword("");
+      setNewFirstName("");
+      setNewLastName("");
+      setNewTier("free");
+      setNewIsAdmin(false);
+      toast({ title: "User created successfully" });
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || "Failed to create user", variant: "destructive" });
+    },
+  });
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, data }: { userId: string; data: Record<string, any> }) => {
@@ -302,12 +338,95 @@ function UsersSection() {
 
   return (
     <div className="space-y-4" data-testid="users-section">
-      <div className="flex items-center gap-3 mb-4">
-        <Users size={16} className="text-amber-500" />
-        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-          {allUsers?.length || 0} Registered Users
-        </span>
+      <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
+        <div className="flex items-center gap-3">
+          <Users size={16} className="text-amber-500" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            {allUsers?.length || 0} Registered Users
+          </span>
+        </div>
+        <Button
+          variant={showAddForm ? "ghost" : "default"}
+          className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-slate-400" : "bg-amber-500 text-slate-950"}`}
+          onClick={() => setShowAddForm(!showAddForm)}
+          data-testid="button-toggle-add-user"
+        >
+          <Plus size={14} />
+          <span>{showAddForm ? "Cancel" : "Add User"}</span>
+        </Button>
       </div>
+
+      {showAddForm && (
+        <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]" data-testid="add-user-form">
+          <CardContent className="p-6 space-y-4">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 block">
+              Create New User
+            </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                placeholder="First name"
+                value={newFirstName}
+                onChange={(e) => setNewFirstName(e.target.value)}
+                className="bg-slate-800 border-slate-700 rounded-xl text-sm"
+                data-testid="input-new-firstname"
+              />
+              <Input
+                placeholder="Last name"
+                value={newLastName}
+                onChange={(e) => setNewLastName(e.target.value)}
+                className="bg-slate-800 border-slate-700 rounded-xl text-sm"
+                data-testid="input-new-lastname"
+              />
+            </div>
+            <Input
+              placeholder="Email address"
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              className="bg-slate-800 border-slate-700 rounded-xl text-sm"
+              data-testid="input-new-email"
+            />
+            <Input
+              placeholder="Password (min 8 characters)"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="bg-slate-800 border-slate-700 rounded-xl text-sm"
+              data-testid="input-new-password"
+            />
+            <div className="flex items-center gap-4 flex-wrap">
+              <Select value={newTier} onValueChange={setNewTier}>
+                <SelectTrigger className="w-40 bg-slate-800 border-slate-700 rounded-xl text-xs" data-testid="select-new-tier">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="pro">Pro</SelectItem>
+                  <SelectItem value="enterprise">Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="ghost"
+                className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${newIsAdmin ? "text-amber-400" : "text-slate-500"}`}
+                onClick={() => setNewIsAdmin(!newIsAdmin)}
+                data-testid="button-new-admin-toggle"
+              >
+                {newIsAdmin ? <UserCheck size={14} /> : <UserX size={14} />}
+                <span>{newIsAdmin ? "Admin" : "Regular User"}</span>
+              </Button>
+            </div>
+            <Button
+              onClick={() => addUserMutation.mutate()}
+              disabled={addUserMutation.isPending || !newEmail || !newPassword || !newFirstName || !newLastName}
+              className="bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+              data-testid="button-create-user"
+            >
+              {addUserMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+              <span>{addUserMutation.isPending ? "Creating..." : "Create User"}</span>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-3">
         {allUsers?.map((u) => (
