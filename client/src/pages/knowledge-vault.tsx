@@ -15,23 +15,9 @@ export default function KnowledgeVaultPage() {
   const { data: documents, isLoading } = useQuery<Doc[]>({ queryKey: ["/api/documents"] });
   const [previewDoc, setPreviewDoc] = useState<Doc | null>(null);
   const [statusMsg, setStatusMsg] = useState("");
-  const [newTitle, setNewTitle] = useState("");
-  const [newContent, setNewContent] = useState("");
   const [isAdding, setIsAdding] = useState(false);
-
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("POST", "/api/documents", { title: newTitle, content: newContent });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
-      setNewTitle("");
-      setNewContent("");
-      setIsAdding(false);
-      setStatusMsg("Document added to vault.");
-      setTimeout(() => setStatusMsg(""), 3000);
-    },
-  });
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -54,6 +40,38 @@ export default function KnowledgeVaultPage() {
     URL.revokeObjectURL(url);
   };
 
+  async function handleUpload() {
+    if (selectedFiles.length === 0) {
+      setStatusMsg("Please select files to upload.");
+      setTimeout(() => setStatusMsg(""), 3000);
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      for (const file of selectedFiles) {
+        const text = await file.text();
+        await apiRequest("POST", "/api/documents", {
+          title: file.name.replace(/\.[^/.]+$/, ""),
+          content: text,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      setSelectedFiles([]);
+      setIsAdding(false);
+      const fileInput = document.querySelector('[data-testid="input-vault-files"]') as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+      setStatusMsg(`${selectedFiles.length} document${selectedFiles.length !== 1 ? "s" : ""} added to vault.`);
+      setTimeout(() => setStatusMsg(""), 3000);
+    } catch {
+      setStatusMsg("Upload failed. Please try again.");
+      setTimeout(() => setStatusMsg(""), 3000);
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   return (
     <div className="space-y-10 fade-in" data-testid="knowledge-vault-page">
       {previewDoc && (
@@ -68,8 +86,8 @@ export default function KnowledgeVaultPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => handleDownload(previewDoc.content || "", previewDoc.title)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-all"><Download size={20} /></button>
-                <button onClick={() => setPreviewDoc(null)} className="p-2 hover:bg-red-500/10 rounded-xl text-slate-400 hover:text-red-500 transition-all"><X size={24} /></button>
+                <button onClick={() => handleDownload(previewDoc.content || "", previewDoc.title)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-all" data-testid="button-download-doc"><Download size={20} /></button>
+                <button onClick={() => setPreviewDoc(null)} className="p-2 hover:bg-red-500/10 rounded-xl text-slate-400 hover:text-red-500 transition-all" data-testid="button-close-preview"><X size={24} /></button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-8 md:p-12 bg-white/5 scrollbar-hide">
@@ -93,35 +111,35 @@ export default function KnowledgeVaultPage() {
           data-testid="button-add-document"
           className="px-6 py-3 bg-amber-500 text-slate-950 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-400 transition-all shadow-xl flex items-center gap-2"
         >
-          <Upload size={14} /> Add Document
+          <Upload size={14} /> {isAdding ? "Cancel" : "Upload Files"}
         </button>
       </div>
 
       {isAdding && (
         <div className="bg-[#1e293b] border border-slate-800 rounded-[2.5rem] p-8 shadow-xl space-y-4 fade-in">
-          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">New Vault Entry</h4>
+          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">Upload Files to Vault</h4>
+          <p className="text-xs text-slate-400">Select one or more .txt, .json, or .csv files. Each file will be added as a separate vault entry.</p>
           <input
-            className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-6 py-4 text-sm text-white focus:ring-2 focus:ring-amber-500/50 transition-all outline-none"
-            placeholder="Document Title"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            data-testid="input-doc-title"
+            type="file"
+            accept=".txt,.json,.csv"
+            multiple
+            onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
+            className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-6 py-4 text-sm text-white focus:ring-2 focus:ring-amber-500/50 transition-all outline-none file:text-slate-400 file:mr-4 file:bg-transparent file:border-0"
+            data-testid="input-vault-files"
           />
-          <textarea
-            className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-6 py-4 text-sm text-white focus:ring-2 focus:ring-amber-500/50 transition-all outline-none min-h-[200px] resize-none"
-            placeholder="Document Content"
-            value={newContent}
-            onChange={(e) => setNewContent(e.target.value)}
-            data-testid="input-doc-content"
-          />
+          {selectedFiles.length > 0 && (
+            <p className="text-[10px] text-amber-400 font-bold">
+              {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""} selected: {selectedFiles.map(f => f.name).join(", ")}
+            </p>
+          )}
           <button
-            onClick={() => createMutation.mutate()}
-            disabled={!newTitle.trim() || createMutation.isPending}
-            data-testid="button-save-document"
+            onClick={handleUpload}
+            disabled={selectedFiles.length === 0 || isUploading}
+            data-testid="button-upload-files"
             className="px-6 py-3 bg-amber-500 text-slate-950 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-400 transition-all disabled:opacity-50 flex items-center gap-2"
           >
-            {createMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-            Index to Registry
+            {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+            {isUploading ? "Uploading..." : `Upload ${selectedFiles.length || ""} File${selectedFiles.length !== 1 ? "s" : ""}`}
           </button>
         </div>
       )}
@@ -156,7 +174,7 @@ export default function KnowledgeVaultPage() {
                 <td className="p-6 md:p-8 text-[10px] font-black uppercase tracking-widest text-emerald-500 hidden md:table-cell">Live in Vault</td>
                 <td className="p-6 md:p-8">
                   <div className="flex items-center justify-end gap-2">
-                    <button onClick={() => setPreviewDoc(doc)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-all"><Eye size={16} /></button>
+                    <button onClick={() => setPreviewDoc(doc)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-all" data-testid={`button-preview-doc-${doc.id}`}><Eye size={16} /></button>
                     <button onClick={() => deleteMutation.mutate(doc.id)} className="p-2 hover:bg-red-500/10 rounded-xl text-slate-500 hover:text-red-500 transition-all" data-testid={`button-delete-doc-${doc.id}`}><Trash2 size={16} /></button>
                   </div>
                 </td>
