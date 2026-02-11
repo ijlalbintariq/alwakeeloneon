@@ -993,46 +993,68 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/knowledge", upload.single("file"), async (req, res) => {
+  app.post("/api/admin/knowledge", upload.array("files", 50), async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const userId = getUserId(req)!;
-      const file = req.file;
+      const files = req.files as Express.Multer.File[] | undefined;
       const { title, category } = req.body;
 
-      if (!file && !req.body.content) {
-        return res.status(400).json({ message: "File or content is required" });
+      if ((!files || files.length === 0) && !req.body.content) {
+        return res.status(400).json({ message: "File(s) or content is required" });
       }
 
-      if (file && !file.originalname.endsWith(".txt") && !file.originalname.endsWith(".pdf")) {
-        return res.status(400).json({ message: "Only .txt and .pdf files are supported" });
-      }
+      const allowedExts = [".txt", ".json", ".csv", ".pdf"];
+      const results: any[] = [];
+      const errors: string[] = [];
 
-      let content = "";
-      let filename = "manual-entry.txt";
+      if (files && files.length > 0) {
+        for (const file of files) {
+          const ext = file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase();
+          if (!allowedExts.includes(ext)) {
+            errors.push(`${file.originalname}: unsupported format (use .txt, .json, .csv, or .pdf)`);
+            continue;
+          }
 
-      if (file) {
-        if (file.originalname.endsWith(".pdf")) {
-          const pdfData = await pdfParse(file.buffer);
-          content = pdfData.text;
-        } else {
-          content = file.buffer.toString("utf-8");
+          let content = "";
+          if (ext === ".pdf") {
+            const pdfData = await pdfParse(file.buffer);
+            content = pdfData.text;
+          } else {
+            content = file.buffer.toString("utf-8");
+          }
+
+          const docTitle = title && files.length === 1
+            ? title
+            : file.originalname.replace(/\.[^/.]+$/, "");
+
+          const doc = await storage.addAdminKnowledge({
+            title: docTitle,
+            filename: file.originalname,
+            content,
+            category: category || "general",
+            uploadedBy: userId,
+          });
+          results.push(doc);
         }
-        filename = file.originalname;
       } else {
-        content = req.body.content;
-        filename = title ? `${title.toLowerCase().replace(/\s+/g, "-")}.txt` : "manual-entry.txt";
+        const content = req.body.content;
+        const filename = title ? `${title.toLowerCase().replace(/\s+/g, "-")}.txt` : "manual-entry.txt";
+        const doc = await storage.addAdminKnowledge({
+          title: title || "Manual Entry",
+          filename,
+          content,
+          category: category || "general",
+          uploadedBy: userId,
+        });
+        results.push(doc);
       }
 
-      const doc = await storage.addAdminKnowledge({
-        title: title || filename.replace(/\.[^/.]+$/, ""),
-        filename,
-        content,
-        category: category || "general",
-        uploadedBy: userId,
+      res.status(201).json({
+        uploaded: results.length,
+        errors: errors.length > 0 ? errors : undefined,
+        documents: results,
       });
-
-      res.status(201).json(doc);
     } catch (err) {
       console.error("Error uploading knowledge:", err);
       res.status(500).json({ message: "Failed to upload knowledge" });

@@ -531,10 +531,9 @@ function KnowledgeSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: docs, isLoading } = useQuery<AdminKnowledgeDoc[]>({ queryKey: ["/api/admin/knowledge"] });
-  const [uploadTitle, setUploadTitle] = useState("");
   const [uploadCategory, setUploadCategory] = useState("general");
   const [uploadContent, setUploadContent] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
   const deleteMutation = useMutation({
@@ -551,24 +550,22 @@ function KnowledgeSection() {
   });
 
   async function handleUpload() {
-    if (!uploadTitle.trim()) {
-      toast({ title: "Title is required", variant: "destructive" });
-      return;
-    }
-    if (!selectedFile && !uploadContent.trim()) {
-      toast({ title: "Provide a file or content", variant: "destructive" });
+    if (selectedFiles.length === 0 && !uploadContent.trim()) {
+      toast({ title: "Select files or paste content", variant: "destructive" });
       return;
     }
 
     setIsUploading(true);
     try {
       const formData = new FormData();
-      formData.append("title", uploadTitle.trim());
       formData.append("category", uploadCategory);
-      if (selectedFile) {
-        formData.append("file", selectedFile);
+      if (selectedFiles.length > 0) {
+        for (const file of selectedFiles) {
+          formData.append("files", file);
+        }
       } else {
         formData.append("content", uploadContent.trim());
+        formData.append("title", "Manual Entry");
       }
 
       const res = await fetch("/api/admin/knowledge", {
@@ -578,12 +575,19 @@ function KnowledgeSection() {
       });
 
       if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
 
       queryClient.invalidateQueries({ queryKey: ["/api/admin/knowledge"] });
-      setUploadTitle("");
       setUploadContent("");
-      setSelectedFile(null);
-      toast({ title: "Document added to vault" });
+      setSelectedFiles([]);
+      const fileInput = document.querySelector('[data-testid="input-knowledge-files"]') as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+
+      let msg = `${data.uploaded} document${data.uploaded !== 1 ? "s" : ""} added to vault`;
+      if (data.errors?.length) {
+        msg += ` (${data.errors.length} skipped)`;
+      }
+      toast({ title: msg });
     } catch {
       toast({ title: "Upload failed", variant: "destructive" });
     } finally {
@@ -597,18 +601,10 @@ function KnowledgeSection() {
         <CardHeader className="flex flex-row items-center gap-3 pb-2">
           <Upload size={16} className="text-amber-500" />
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-            Upload to Knowledge Vault
+            Mass Upload to Knowledge Vault
           </span>
         </CardHeader>
         <CardContent className="space-y-4 pt-2">
-          <Input
-            placeholder="Document title"
-            value={uploadTitle}
-            onChange={(e) => setUploadTitle(e.target.value)}
-            className="bg-slate-800 border-slate-700 rounded-xl text-sm"
-            data-testid="input-knowledge-title"
-          />
-
           <Select value={uploadCategory} onValueChange={setUploadCategory}>
             <SelectTrigger className="bg-slate-800 border-slate-700 rounded-xl text-xs" data-testid="select-knowledge-category">
               <SelectValue />
@@ -624,18 +620,24 @@ function KnowledgeSection() {
 
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block">
-              Upload File (.txt or .pdf, up to 10MB)
+              Select Files (.txt, .json, .csv, .pdf — select multiple)
             </label>
             <Input
               type="file"
-              accept=".txt,.pdf"
-              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+              accept=".txt,.json,.csv,.pdf"
+              multiple
+              onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
               className="bg-slate-800 border-slate-700 rounded-xl text-xs file:text-slate-400 file:mr-4"
-              data-testid="input-knowledge-file"
+              data-testid="input-knowledge-files"
             />
+            {selectedFiles.length > 0 && (
+              <p className="text-[10px] text-amber-400 font-bold">
+                {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""} selected
+              </p>
+            )}
           </div>
 
-          {!selectedFile && (
+          {selectedFiles.length === 0 && (
             <Textarea
               placeholder="Or paste document content here..."
               value={uploadContent}
@@ -652,7 +654,7 @@ function KnowledgeSection() {
             data-testid="button-upload-knowledge"
           >
             {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
-            <span>{isUploading ? "Uploading..." : "Add to Vault"}</span>
+            <span>{isUploading ? "Uploading..." : selectedFiles.length > 1 ? `Upload ${selectedFiles.length} Files` : "Add to Vault"}</span>
           </Button>
         </CardContent>
       </Card>
