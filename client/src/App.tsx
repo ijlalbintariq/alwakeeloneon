@@ -18,6 +18,7 @@ import BookmarksPage from "@/pages/bookmarks";
 import HistoryPage from "@/pages/history";
 import KnowledgeVaultPage from "@/pages/knowledge-vault";
 import AdminPanelPage from "@/pages/admin-panel";
+import AdminSetupPage from "@/pages/admin-setup";
 import UserPanelPage from "@/pages/user-panel";
 import NotFound from "@/pages/not-found";
 import { AppShell } from "@/components/app-shell";
@@ -51,6 +52,10 @@ function Router({ onReady }: { onReady?: () => void }) {
 
   if (!user) {
     return <LandingPage />;
+  }
+
+  if (location === "/admin-setup") {
+    return <AdminSetupPage />;
   }
 
   return (

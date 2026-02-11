@@ -835,6 +835,33 @@ export async function registerRoutes(
     return true;
   }
 
+  app.get("/api/admin/check", async (_req, res) => {
+    try {
+      const hasAdmin = await storage.hasAnyAdmin();
+      res.json({ hasAdmin });
+    } catch (err) {
+      console.error("Error checking admin status:", err);
+      res.status(500).json({ message: "Failed to check admin status" });
+    }
+  });
+
+  app.post("/api/admin/setup", async (req, res) => {
+    try {
+      const hasAdmin = await storage.hasAnyAdmin();
+      if (hasAdmin) {
+        return res.status(403).json({ message: "An admin already exists. Use the admin panel to manage admins." });
+      }
+      const userId = getUserId(req);
+      if (!userId) return res.sendStatus(401);
+      const updated = await storage.updateUserAdminStatus(userId, true);
+      if (!updated) return res.status(404).json({ message: "User not found" });
+      res.json({ message: "You are now the admin", user: updated });
+    } catch (err) {
+      console.error("Error in admin setup:", err);
+      res.status(500).json({ message: "Failed to set up admin" });
+    }
+  });
+
   app.get("/api/admin/users", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
@@ -849,6 +876,7 @@ export async function registerRoutes(
   app.patch("/api/admin/users/:id", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      const currentUserId = getUserId(req);
       const targetId = req.params.id;
       const { subscriptionTier, isAdmin: adminFlag } = req.body;
 
@@ -858,6 +886,9 @@ export async function registerRoutes(
       }
       if (adminFlag !== undefined && typeof adminFlag !== "boolean") {
         return res.status(400).json({ message: "isAdmin must be a boolean" });
+      }
+      if (adminFlag === false && targetId === currentUserId) {
+        return res.status(400).json({ message: "You cannot remove your own admin access" });
       }
 
       let updated;

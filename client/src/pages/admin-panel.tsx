@@ -254,6 +254,7 @@ function StatsSection() {
 }
 
 function UsersSection() {
+  const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: allUsers, isLoading } = useQuery<User[]>({ queryKey: ["/api/admin/users"] });
@@ -335,6 +336,8 @@ function UsersSection() {
                   size="icon"
                   variant="ghost"
                   onClick={() => updateUserMutation.mutate({ userId: u.id, data: { isAdmin: !u.isAdmin } })}
+                  disabled={u.isAdmin && u.id === currentUser?.id}
+                  title={u.isAdmin && u.id === currentUser?.id ? "You cannot remove your own admin access" : u.isAdmin ? "Remove admin access" : "Grant admin access"}
                   data-testid={`button-toggle-admin-${u.id}`}
                   className={u.isAdmin ? "text-amber-400" : "text-slate-500"}
                 >

@@ -61,6 +61,7 @@ export interface IStorage {
   updateUserTier(userId: string, tier: string): Promise<User | undefined>;
   updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<User | undefined>;
   isUserAdmin(userId: string): Promise<boolean>;
+  hasAnyAdmin(): Promise<boolean>;
   getSystemStats(): Promise<{ totalUsers: number; totalThreads: number; totalMessages: number; totalDocuments: number; totalKnowledge: number; totalCacheEntries: number; totalUsageThisMonth: number }>;
   getUserProfile(userId: string): Promise<User | undefined>;
   updateUserProfile(userId: string, data: { firstName?: string; lastName?: string }): Promise<User | undefined>;
@@ -349,6 +350,13 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.id, userId));
     return user?.isAdmin || false;
+  }
+
+  async hasAnyAdmin(): Promise<boolean> {
+    const [result] = await db.select({ total: count() })
+      .from(users)
+      .where(eq(users.isAdmin, true));
+    return (result?.total || 0) > 0;
   }
 
   async getSystemStats() {
