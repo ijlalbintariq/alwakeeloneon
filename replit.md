@@ -23,7 +23,7 @@ The project uses a three-directory monorepo pattern:
 - **UI Components**: shadcn/ui (new-york style) built on Radix UI primitives with Tailwind CSS
 - **Styling**: Tailwind CSS with CSS variables for theming (light/dark mode support). Fonts: "Libre Baskerville" for headings, "Inter" for body text
 - **Key Pages**: Landing (`/`), Dashboard (`/dashboard`), Chat (`/chat`, `/chat/:id`), Documents (`/documents`), Admin Panel (`/admin`, admin-only), User Settings (`/settings`)
-- **Auth Hook**: `useAuth()` queries `/api/auth/user` — if 401, user is not authenticated. Login redirects to `/api/login` (Replit Auth flow)
+- **Auth Hook**: `useAuth()` queries `/api/auth/user` — if 401, user is not authenticated. Login redirects to `/auth` page (standalone email/password + optional Google OAuth)
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript, run via `tsx` in development
@@ -76,15 +76,19 @@ The project uses a three-directory monorepo pattern:
 - **Install**: Users can "Add to Home Screen" on mobile browsers for native-like experience
 
 ### Authentication
-- **Method**: Replit Auth (OpenID Connect)
+- **Method**: Standalone email/password authentication with optional Google OAuth
 - **Session Store**: PostgreSQL-backed sessions via `connect-pg-simple`
-- **Flow**: Login via `/api/login`, logout via `/api/logout`, user info via `/api/auth/user`
-- **Middleware**: `isAuthenticated` middleware protects API routes; returns 401 for unauthenticated requests
-- **Important**: The `sessions` and `users` tables are mandatory for Replit Auth — never drop them
+- **Registration**: POST `/api/auth/register` with email, password, firstName, lastName. Passwords hashed with bcrypt (12 rounds)
+- **Login**: POST `/api/auth/login` with email, password. Returns user data and creates session
+- **Google OAuth**: GET `/api/auth/google` redirects to Google, callback at `/api/auth/google/callback`. Requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` env vars (optional — app works without them)
+- **Logout**: POST `/api/auth/logout` destroys session
+- **User Info**: GET `/api/auth/user` returns authenticated user (401 if not logged in)
+- **Middleware**: `isAuthenticated` middleware checks `req.session.userId`; returns 401 for unauthenticated requests
+- **Important**: The `sessions` and `users` tables are mandatory — never drop them
 
 ### Replit Integrations
-The `server/replit_integrations/` directory contains pre-built integration modules:
-- **`auth/`** — Replit Auth setup (OIDC, passport, session management)
+The `server/replit_integrations/` directory contains integration modules:
+- **`auth/`** — Standalone auth setup (email/password + Google OAuth, session management)
 - **`chat/`** — Generic chat storage and routes using the conversations/messages model
 - **`audio/`** — Voice chat with speech-to-text, text-to-speech, and audio streaming
 - **`image/`** — Image generation via `gpt-image-1`
@@ -99,8 +103,8 @@ The `attached_assets/` directory contains reference files from a previous versio
 - `DATABASE_URL` — PostgreSQL connection string (provisioned by Replit)
 - `SESSION_SECRET` — Secret for session encryption
 - `GOOGLE_API_KEY` — Google Gemini API key (user-provided)
-- `REPL_ID` — Replit environment identifier (set automatically)
-- `ISSUER_URL` — OIDC issuer URL for Replit Auth (defaults to `https://replit.com/oidc`)
+- `GOOGLE_CLIENT_ID` — Google OAuth client ID (optional, for Google login)
+- `GOOGLE_CLIENT_SECRET` — Google OAuth client secret (optional, for Google login)
 
 ### Key NPM Dependencies
 - **Server**: express, drizzle-orm, pg, passport, openid-client, express-session, connect-pg-simple, @google/genai, zod
@@ -108,6 +112,6 @@ The `attached_assets/` directory contains reference files from a previous versio
 - **Build**: vite, esbuild, tsx, typescript, drizzle-kit
 
 ### Third-Party Services
-- **Replit Auth** — Authentication via OpenID Connect
 - **Google Gemini** — AI language model for legal chat, search, and document generation
 - **PostgreSQL** — Primary data store (provisioned by Replit)
+- **Google OAuth** — Optional social login (requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)

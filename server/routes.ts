@@ -108,7 +108,7 @@ RESPONSE LENGTH POLICY:
 - Only elaborate when the user explicitly asks for more detail.`;
 
 function getUserId(req: any): string | null {
-  return req.user?.claims?.sub || null;
+  return req.session?.userId || null;
 }
 
 async function checkUsageLimit(userId: string, feature: string, res: any): Promise<boolean> {

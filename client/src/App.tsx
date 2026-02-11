@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 
 import LandingPage from "@/pages/landing";
+import AuthPage from "@/pages/auth";
 import DashboardPage from "@/pages/dashboard";
 import JudgmentSearchPage from "@/pages/judgment-search";
 import StatuteSearchPage from "@/pages/statute-search";
@@ -26,7 +27,7 @@ import { AppShell } from "@/components/app-shell";
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
-  if (!user) return <Redirect to="/" />;
+  if (!user) return <Redirect to="/auth" />;
   return <Component />;
 }
 
@@ -46,12 +47,17 @@ function Router({ onReady }: { onReady?: () => void }) {
     return null;
   }
 
-  if (!user && location !== "/") {
-    return <Redirect to="/" />;
+  if (location === "/" && !user) {
+    return <LandingPage />;
+  }
+
+  if (location === "/auth") {
+    if (user) return <Redirect to="/dashboard" />;
+    return <AuthPage />;
   }
 
   if (!user) {
-    return <LandingPage />;
+    return <Redirect to="/auth" />;
   }
 
   if (location === "/admin-setup") {

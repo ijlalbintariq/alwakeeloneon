@@ -1,6 +1,9 @@
-import { Scale } from "lucide-react";
+import { Scale, ArrowRight } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function LandingPage() {
+  const [, navigate] = useLocation();
+
   return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 relative overflow-hidden">
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/5 rounded-full blur-[120px]" />
@@ -30,15 +33,16 @@ export default function LandingPage() {
           </div>
 
           <button
-            onClick={() => { window.location.href = "/api/login"; }}
+            onClick={() => navigate("/auth")}
             data-testid="button-login"
             className="w-full bg-amber-500 text-slate-950 font-black uppercase tracking-widest text-xs py-5 rounded-2xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/10"
           >
             Enter the Chambers
+            <ArrowRight size={14} />
           </button>
 
           <p className="text-[9px] text-center text-slate-600 uppercase tracking-widest font-black mt-4">
-            Secured via Replit Authentication Protocol
+            Secured Authentication Protocol
           </p>
         </div>
       </div>
