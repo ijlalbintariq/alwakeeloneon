@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -26,19 +27,20 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return <Component />;
 }
 
-function Router() {
+function Router({ onReady }: { onReady?: () => void }) {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
+  const readyFired = useRef(false);
+
+  useEffect(() => {
+    if (!isLoading && !readyFired.current) {
+      readyFired.current = true;
+      onReady?.();
+    }
+  }, [isLoading, onReady]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" />
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Loading Chambers...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!user && location !== "/") {
@@ -69,11 +71,11 @@ function Router() {
   );
 }
 
-function App() {
+function App({ onReady }: { onReady?: () => void }) {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router />
+        <Router onReady={onReady} />
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
