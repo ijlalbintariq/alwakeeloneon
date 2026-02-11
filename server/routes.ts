@@ -1209,6 +1209,53 @@ export async function registerRoutes(
     }
   });
 
+  // ====== STATUTE TABLE OF CONTENTS (AI) ======
+  app.post("/api/statute-documents/:id/toc", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const allowed = await checkUsageLimit(userId, "chat", res);
+      if (!allowed) return;
+
+      const id = Number(req.params.id);
+      const doc = await storage.getStatuteDocument(id);
+      if (!doc) return res.status(404).json({ message: "Document not found" });
+
+      const contentExcerpt = doc.content.slice(0, 30000);
+      const tocPrompt = `Analyze this legal document and extract its structure as a JSON array of chapters/sections/parts. Each item should have: "title" (the chapter or section name), and optionally "children" (an array of sub-sections with the same format). Only include major structural divisions (Parts, Chapters, Schedules, Articles groupings). Return ONLY valid JSON, no markdown, no explanation.\n\nDocument Title: ${doc.title}\n\nDocument Content:\n${contentExcerpt}`;
+
+      const model = "gemini-3-flash-preview";
+      const { content, fromCache } = await getCachedOrCall("toc-extract", `toc-${id}`, async () => {
+        const completion = await ai.models.generateContent({
+          model,
+          contents: [{ role: "user", parts: [{ text: tocPrompt }] }],
+          config: {
+            maxOutputTokens: 2048,
+            systemInstruction: "You are a document structure analyzer. Extract the table of contents from legal documents. Return ONLY valid JSON array. No markdown code blocks, no explanation text.",
+          },
+        });
+        return completion.text || "[]";
+      });
+
+      if (!fromCache) {
+        await logUsageCost(userId, "chat", model, tocPrompt, content);
+      }
+
+      let toc: any[] = [];
+      try {
+        const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        toc = JSON.parse(cleaned);
+      } catch {
+        toc = [];
+      }
+
+      res.json({ toc });
+    } catch (err) {
+      console.error("Error extracting TOC:", err);
+      res.status(500).json({ message: "Failed to extract table of contents" });
+    }
+  });
+
   // ====== USER PROFILE ROUTES ======
   app.get("/api/profile", async (req, res) => {
     const userId = getUserId(req);
