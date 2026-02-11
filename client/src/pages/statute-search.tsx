@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, Loader2, ExternalLink, AlertCircle, Book, Library, ChevronRight, Scale, FileSearch, Download, X } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const COMMON_STATUTES = [
   {
@@ -93,7 +93,9 @@ export default function StatuteSearchPage() {
         setIsSummarizing(false);
       }
     } catch (e: any) {
-      setSearchError("AI research feed unavailable.");
+      const isLimit = e?.message?.includes("429");
+      setSearchError(isLimit ? "Monthly query limit reached. Upgrade your plan for more searches." : "AI research feed unavailable.");
+      if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
     }
     setIsExternalLoading(false);
 
@@ -112,8 +114,10 @@ export default function StatuteSearchPage() {
       });
       const data = await res.json();
       setBriefContent(data.brief || "Brief generation failed.");
-    } catch {
-      setBriefContent("Strategic brief generation failed. Please retry later.");
+    } catch (e: any) {
+      const isLimit = e?.message?.includes("429");
+      setBriefContent(isLimit ? "Monthly query limit reached. Upgrade your plan to generate briefs." : "Strategic brief generation failed. Please retry later.");
+      if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
     }
     setIsBriefing(false);
   };

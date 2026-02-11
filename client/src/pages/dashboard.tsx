@@ -1,7 +1,19 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Scale, Gavel, Book, FileText, Sparkles, Bookmark, History, FileBadge, Zap } from "lucide-react";
+import { Scale, Gavel, Book, FileText, Sparkles, Bookmark, History, FileBadge, Zap, TrendingUp, AlertTriangle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { TIER_LIMITS } from "@shared/schema";
+
+type UsageData = {
+  tier: string;
+  tierLabel: string;
+  tierDescription: string;
+  monthlyLimit: number;
+  used: number;
+  remaining: number;
+  percentage: number;
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -9,6 +21,7 @@ export default function DashboardPage() {
   const { data: history } = useQuery<any[]>({ queryKey: ["/api/search-history"] });
   const { data: documents } = useQuery<any[]>({ queryKey: ["/api/documents"] });
   const { data: threads } = useQuery<any[]>({ queryKey: ["/api/threads"] });
+  const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
 
   const stats = [
     { label: "Active Sessions", value: threads?.length || 0, icon: Scale, color: "text-amber-500" },
@@ -25,6 +38,9 @@ export default function DashboardPage() {
     { label: "Contract Drafting", icon: Sparkles, href: "/contract-drafting", desc: "Generate contracts" },
     { label: "Case Documents", icon: FileBadge, href: "/case-documents", desc: "Browse case files" },
   ];
+
+  const isNearLimit = usage && usage.percentage >= 80;
+  const isAtLimit = usage && usage.percentage >= 100;
 
   return (
     <div className="space-y-10 fade-in" data-testid="dashboard-page">
@@ -44,6 +60,68 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {usage && (
+        <div className={`p-8 rounded-[2.5rem] border shadow-xl ${isAtLimit ? "bg-red-950/30 border-red-800/50" : isNearLimit ? "bg-amber-950/30 border-amber-800/50" : "bg-[#1e293b] border-slate-800"}`} data-testid="usage-panel">
+          <div className="flex items-center gap-4 mb-6">
+            {isAtLimit ? (
+              <AlertTriangle size={18} className="text-red-400" />
+            ) : (
+              <TrendingUp size={18} className="text-amber-500" />
+            )}
+            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-amber-500">
+              Monthly Usage — {usage.tierLabel} Plan
+            </h3>
+            <div className="flex-1 h-px bg-slate-800" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+            <div className="md:col-span-2 space-y-4">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-3xl font-black text-white" data-testid="text-usage-count">
+                    {usage.used}
+                    <span className="text-lg text-slate-500 font-medium"> / {usage.monthlyLimit === 999999 ? "Unlimited" : usage.monthlyLimit}</span>
+                  </p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-1">
+                    AI Queries This Month
+                  </p>
+                </div>
+                <p className="text-sm font-bold text-slate-400" data-testid="text-usage-remaining">
+                  {usage.remaining === 999999 ? "Unlimited" : usage.remaining} remaining
+                </p>
+              </div>
+              <Progress
+                value={usage.monthlyLimit === 999999 ? 0 : usage.percentage}
+                className="h-3 bg-slate-800 rounded-full"
+                data-testid="progress-usage"
+              />
+            </div>
+
+            <div className="flex flex-col items-center gap-3 p-6 bg-slate-800/50 rounded-2xl">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Current Plan</p>
+              <p className="text-xl font-black text-amber-500" data-testid="text-tier-label">{usage.tierLabel}</p>
+              <p className="text-[10px] text-slate-400 text-center">{usage.tierDescription}</p>
+            </div>
+          </div>
+
+          {isAtLimit && (
+            <div className="mt-6 p-4 bg-red-900/30 border border-red-800/30 rounded-xl" data-testid="alert-limit-reached">
+              <p className="text-sm text-red-300 font-medium">
+                You have reached your monthly query limit. Upgrade your plan to continue using AI features.
+              </p>
+            </div>
+          )}
+
+          {isNearLimit && !isAtLimit && (
+            <div className="mt-6 p-4 bg-amber-900/30 border border-amber-800/30 rounded-xl" data-testid="alert-near-limit">
+              <p className="text-sm text-amber-300 font-medium">
+                You are approaching your monthly query limit ({usage.remaining} queries remaining). Consider upgrading your plan.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((stat) => {

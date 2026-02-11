@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, Loader2, ExternalLink, AlertCircle, Gavel } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface CaseLawResult {
   citation: string;
@@ -40,7 +40,9 @@ export default function JudgmentSearchPage() {
       const items = Array.isArray(ext) ? ext : (ext.judgments || ext.results || []);
       setExternalResults(items.map((r: any) => ({ ...r, source: "external" })));
     } catch (e: any) {
-      setSearchError("AI research feed unavailable.");
+      const isLimit = e?.message?.includes("429");
+      setSearchError(isLimit ? "Monthly query limit reached. Upgrade your plan for more searches." : "AI research feed unavailable.");
+      if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
     }
     setIsExternalLoading(false);
 

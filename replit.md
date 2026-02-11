@@ -38,14 +38,33 @@ The project uses a three-directory monorepo pattern:
 - **ORM**: Drizzle ORM with `drizzle-zod` for schema-to-validation integration
 - **Schema Location**: `shared/schema.ts` (main schema) and `shared/models/` (model-specific files)
 - **Key Tables**:
-  - `users` — User profiles (varchar ID, email, name, profile image)
+  - `users` — User profiles (varchar ID, email, name, profile image, subscriptionTier: free/pro/enterprise)
   - `sessions` — Session storage for Replit Auth (mandatory, do not drop)
   - `threads` — Chat conversation threads (belongs to user)
   - `messages` — Chat messages within threads (role: user/assistant/system)
   - `documents` — Uploaded legal documents with optional AI summaries
   - `github_knowledge` — Synced legal documents from GitHub repository (auto-populated on startup)
+  - `query_cache` — Cached AI responses with 7-day TTL (endpoint, queryHash, response, hitCount)
+  - `usage_tracking` — Per-user AI query usage tracking (userId, feature, createdAt)
   - `conversations` / `messages` (in `shared/models/chat.ts`) — Alternate chat model used by Replit integrations
 - **Migrations**: Use `npm run db:push` (drizzle-kit push) to sync schema to database. Migration files output to `./migrations/`
+
+### Usage Limits & Tier System
+- **Tiers**: Free (10 queries/month), Pro (500 queries/month), Enterprise (unlimited)
+- **Tracking**: Every AI endpoint call logs to `usage_tracking` table. Monthly counts reset automatically
+- **Enforcement**: `checkUsageLimit()` function runs before every AI endpoint. Returns 429 with tier info when limit reached
+- **Frontend**: Dashboard shows usage progress bar, remaining queries, and upgrade prompts at 80%/100% thresholds
+- **API**: GET `/api/usage` returns current tier, used count, remaining, and percentage
+
+### Query Cache System
+- **TTL**: 7 days. Normalized query text hashed with SHA-256
+- **Cached endpoints**: searchJudgments, searchStatutes, summarize, brief (NOT chat conversations)
+- **Auto-cleanup**: Expired entries removed on startup + daily interval
+
+### PWA (Progressive Web App)
+- **Manifest**: `client/public/manifest.json` with app name, icons, theme color
+- **Service Worker**: `client/public/sw.js` with network-first strategy for pages, cache fallback for offline
+- **Install**: Users can "Add to Home Screen" on mobile browsers for native-like experience
 
 ### Authentication
 - **Method**: Replit Auth (OpenID Connect)

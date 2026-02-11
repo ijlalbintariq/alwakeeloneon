@@ -67,11 +67,18 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
       await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
     } catch (err: any) {
+      const isLimitError = err?.message?.includes("429");
+      const limitMsg = isLimitError
+        ? "Monthly query limit reached. Upgrade your plan to continue using Al Wakeelo."
+        : "Communication with chambers disrupted. Please try again.";
       setMessages([
         ...updated,
-        { id: (Date.now() + 1).toString(), role: "assistant", content: "Error: Communication with chambers disrupted. Please try again." },
+        { id: (Date.now() + 1).toString(), role: "assistant", content: limitMsg },
       ]);
-      setApiError(err?.message || "Communication disruption.");
+      setApiError(isLimitError ? "Query limit reached" : (err?.message || "Communication disruption."));
+      if (isLimitError) {
+        queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
+      }
     } finally {
       setIsLoading(false);
     }
