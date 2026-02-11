@@ -129,31 +129,78 @@ export default function StatuteSearchPage() {
     setIsTocLoading(false);
   }, []);
 
+  function highlightElement(el: HTMLElement) {
+    el.classList.add("bg-amber-500/20", "ring-1", "ring-amber-500/40", "rounded");
+    setTimeout(() => el.classList.remove("bg-amber-500/20", "ring-1", "ring-amber-500/40", "rounded"), 3000);
+  }
+
   function scrollToSection(title: string) {
     if (!contentRef.current) return;
+
+    const scrollContainer = contentRef.current.closest(".overflow-y-auto");
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+    const tocNorm = normalize(title);
+
     const sectionId = "section-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
     const el = contentRef.current.querySelector(`[id="${sectionId}"]`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
-      (el as HTMLElement).classList.add("bg-amber-500/10");
-      setTimeout(() => (el as HTMLElement).classList.remove("bg-amber-500/10"), 2500);
+      highlightElement(el as HTMLElement);
       return;
     }
-    const normalized = title.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
-    const allEls = Array.from(contentRef.current.querySelectorAll("[data-section-heading]"));
-    for (const heading of allEls) {
-      const headingText = (heading.textContent || "").toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
-      if (headingText.includes(normalized) || normalized.includes(headingText)) {
+
+    const allHeadings = Array.from(contentRef.current.querySelectorAll("[data-section-heading]"));
+    for (const heading of allHeadings) {
+      const headingAttr = normalize((heading as HTMLElement).getAttribute("data-section-heading") || "");
+      const headingText = normalize(heading.textContent || "");
+      if (headingAttr.includes(tocNorm) || tocNorm.includes(headingAttr) ||
+          headingText.includes(tocNorm) || tocNorm.includes(headingText)) {
         heading.scrollIntoView({ behavior: "smooth", block: "start" });
-        (heading as HTMLElement).classList.add("bg-amber-500/10");
-        setTimeout(() => (heading as HTMLElement).classList.remove("bg-amber-500/10"), 2500);
+        highlightElement(heading as HTMLElement);
+        return;
+      }
+    }
+
+    const tocWords = tocNorm.split(" ").filter(w => w.length > 1);
+    if (tocWords.length >= 2) {
+      let bestMatch: HTMLElement | null = null;
+      let bestScore = 0;
+      for (const heading of allHeadings) {
+        const txt = normalize(heading.textContent || "");
+        const score = tocWords.filter(w => txt.includes(w)).length;
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = heading as HTMLElement;
+        }
+      }
+      if (bestMatch && bestScore >= Math.min(2, tocWords.length)) {
+        bestMatch.scrollIntoView({ behavior: "smooth", block: "start" });
+        highlightElement(bestMatch);
+        return;
+      }
+    }
+
+    const allElements = Array.from(contentRef.current.querySelectorAll("p, h2, h3"));
+    for (const el of allElements) {
+      const txt = normalize(el.textContent || "");
+      if (txt.includes(tocNorm)) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        highlightElement(el as HTMLElement);
         return;
       }
     }
   }
 
+  function preprocessContent(content: string): string {
+    const headingBreakPattern = /(?<!\n)\s*((?:PART|CHAPTER|SCHEDULE|TITLE|PREAMBLE|ANNEX|AMENDMENT)\s+[IVXLCDM0-9]+[\.\s\u2013\u2014–—:-]*[A-Z])/g;
+    let processed = content.replace(headingBreakPattern, "\n$1");
+    processed = processed.replace(/(?<!\n)(Page\s+\d+\s+of\s+\d+)/gi, "\n");
+    return processed;
+  }
+
   function renderDocContent(content: string) {
-    const lines = content.split("\n");
+    const processed = preprocessContent(content);
+    const lines = processed.split("\n");
     const headingPatterns = /^\s*(PART|CHAPTER|SCHEDULE|ARTICLE|SECTION|TITLE|PREAMBLE|INTRODUCTORY|ANNEX|AMENDMENT)\b/i;
     const subHeadingPatterns = /^\s*\d+[\.\)]\s+[A-Z]/;
 
@@ -170,7 +217,7 @@ export default function StatuteSearchPage() {
           <h2
             key={idx}
             id={sectionId}
-            data-section-heading="true"
+            data-section-heading={trimmed}
             className="text-xl font-bold text-white mt-10 mb-4 pt-4 transition-colors duration-500"
             style={{ fontFamily: "'Libre Baskerville', serif" }}
           >
@@ -185,7 +232,7 @@ export default function StatuteSearchPage() {
           <h3
             key={idx}
             id={sectionId}
-            data-section-heading="true"
+            data-section-heading={trimmed}
             className="text-base font-semibold text-slate-200 mt-6 mb-2 transition-colors duration-500"
           >
             {trimmed}
@@ -194,7 +241,7 @@ export default function StatuteSearchPage() {
       }
 
       return (
-        <p key={idx} className="text-slate-300 mb-1">
+        <p key={idx} className="text-slate-300 mb-1" data-line-idx={idx}>
           {trimmed}
         </p>
       );
