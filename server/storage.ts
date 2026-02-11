@@ -58,6 +58,7 @@ export interface IStorage {
   getCostAnalytics(): Promise<{ byFeature: Array<{ feature: string; totalQueries: number; totalInputTokens: number; totalOutputTokens: number; totalCost: string }>; totalCost: string; totalTokens: number }>;
 
   getAllUsers(): Promise<User[]>;
+  deleteUser(userId: string): Promise<void>;
   updateUserTier(userId: string, tier: string): Promise<User | undefined>;
   updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<User | undefined>;
   isUserAdmin(userId: string): Promise<boolean>;
@@ -327,6 +328,23 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    const userThreads = await db.select({ id: threads.id }).from(threads).where(eq(threads.userId, userId));
+    const threadIds = userThreads.map(t => t.id);
+    if (threadIds.length > 0) {
+      for (const tid of threadIds) {
+        await db.delete(messages).where(eq(messages.threadId, tid));
+      }
+      await db.delete(threads).where(eq(threads.userId, userId));
+    }
+    await db.delete(documents).where(eq(documents.userId, userId));
+    await db.delete(bookmarks).where(eq(bookmarks.userId, userId));
+    await db.delete(searchHistory).where(eq(searchHistory.userId, userId));
+    await db.delete(usageTracking).where(eq(usageTracking.userId, userId));
+    await db.update(adminKnowledge).set({ uploadedBy: null }).where(eq(adminKnowledge.uploadedBy, userId));
+    await db.delete(users).where(eq(users.id, userId));
   }
 
   async updateUserTier(userId: string, tier: string): Promise<User | undefined> {

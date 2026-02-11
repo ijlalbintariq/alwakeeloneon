@@ -259,6 +259,8 @@ function UsersSection() {
   const queryClient = useQueryClient();
   const { data: allUsers, isLoading } = useQuery<User[]>({ queryKey: ["/api/admin/users"] });
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, data }: { userId: string; data: Record<string, any> }) => {
       const res = await apiRequest("PATCH", `/api/admin/users/${userId}`, data);
@@ -271,6 +273,22 @@ function UsersSection() {
     },
     onError: () => {
       toast({ title: "Failed to update user", variant: "destructive" });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/users/${userId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setConfirmDeleteId(null);
+      toast({ title: "User removed successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to remove user", variant: "destructive" });
     },
   });
 
@@ -343,6 +361,44 @@ function UsersSection() {
                 >
                   {u.isAdmin ? <UserCheck size={16} /> : <UserX size={16} />}
                 </Button>
+
+                {u.id !== currentUser?.id && (
+                  confirmDeleteId === u.id ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 text-[10px] uppercase tracking-widest font-black"
+                        onClick={() => deleteUserMutation.mutate(u.id)}
+                        disabled={deleteUserMutation.isPending}
+                        data-testid={`button-confirm-delete-${u.id}`}
+                      >
+                        {deleteUserMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <AlertTriangle size={14} />}
+                        <span>Confirm</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-slate-500 text-[10px] uppercase tracking-widest font-black"
+                        onClick={() => setConfirmDeleteId(null)}
+                        data-testid={`button-cancel-delete-${u.id}`}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-slate-500"
+                      onClick={() => setConfirmDeleteId(u.id)}
+                      title="Remove user"
+                      data-testid={`button-delete-user-${u.id}`}
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  )
+                )}
               </div>
             </CardContent>
           </Card>

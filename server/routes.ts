@@ -907,6 +907,22 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/admin/users/:id", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const currentUserId = getUserId(req);
+      const targetId = req.params.id;
+      if (targetId === currentUserId) {
+        return res.status(400).json({ message: "You cannot delete your own account" });
+      }
+      await storage.deleteUser(targetId);
+      res.json({ message: "User deleted successfully" });
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   app.get("/api/admin/stats", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
