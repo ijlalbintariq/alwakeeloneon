@@ -10,7 +10,6 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -532,7 +531,6 @@ function KnowledgeSection() {
   const queryClient = useQueryClient();
   const { data: docs, isLoading } = useQuery<AdminKnowledgeDoc[]>({ queryKey: ["/api/admin/knowledge"] });
   const [uploadCategory, setUploadCategory] = useState("general");
-  const [uploadContent, setUploadContent] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -550,8 +548,8 @@ function KnowledgeSection() {
   });
 
   async function handleUpload() {
-    if (selectedFiles.length === 0 && !uploadContent.trim()) {
-      toast({ title: "Select files or paste content", variant: "destructive" });
+    if (selectedFiles.length === 0) {
+      toast({ title: "Please select files to upload", variant: "destructive" });
       return;
     }
 
@@ -559,13 +557,8 @@ function KnowledgeSection() {
     try {
       const formData = new FormData();
       formData.append("category", uploadCategory);
-      if (selectedFiles.length > 0) {
-        for (const file of selectedFiles) {
-          formData.append("files", file);
-        }
-      } else {
-        formData.append("content", uploadContent.trim());
-        formData.append("title", "Manual Entry");
+      for (const file of selectedFiles) {
+        formData.append("files", file);
       }
 
       const res = await fetch("/api/admin/knowledge", {
@@ -578,7 +571,6 @@ function KnowledgeSection() {
       const data = await res.json();
 
       queryClient.invalidateQueries({ queryKey: ["/api/admin/knowledge"] });
-      setUploadContent("");
       setSelectedFiles([]);
       const fileInput = document.querySelector('[data-testid="input-knowledge-files"]') as HTMLInputElement;
       if (fileInput) fileInput.value = "";
@@ -636,16 +628,6 @@ function KnowledgeSection() {
               </p>
             )}
           </div>
-
-          {selectedFiles.length === 0 && (
-            <Textarea
-              placeholder="Or paste document content here..."
-              value={uploadContent}
-              onChange={(e) => setUploadContent(e.target.value)}
-              className="bg-slate-800 border-slate-700 rounded-xl text-sm min-h-[120px]"
-              data-testid="input-knowledge-content"
-            />
-          )}
 
           <Button
             onClick={handleUpload}
