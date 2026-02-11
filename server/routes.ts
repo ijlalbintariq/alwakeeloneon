@@ -118,6 +118,11 @@ async function checkUsageLimit(userId: string, feature: string, res: any): Promi
       return false;
     }
 
+    const isAdmin = await storage.isUserAdmin(userId);
+    if (isAdmin) {
+      return true;
+    }
+
     const tier = await storage.getUserTier(userId);
     const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
     const usedThisMonth = await storage.getMonthlyUsageCount(userId);
@@ -132,7 +137,6 @@ async function checkUsageLimit(userId: string, feature: string, res: any): Promi
       return false;
     }
 
-    await storage.logUsage(userId, feature);
     return true;
   } catch (err) {
     console.error("[Usage] Error checking usage:", err);
