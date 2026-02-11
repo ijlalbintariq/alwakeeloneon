@@ -825,7 +825,7 @@ export async function registerRoutes(
   });
 
   // ====== ADMIN ROUTES ======
-  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
   async function isAdmin(req: any, res: any): Promise<boolean> {
     const userId = getUserId(req);
@@ -993,7 +993,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/knowledge", upload.array("files", 50), async (req, res) => {
+  app.post("/api/admin/knowledge", upload.array("files", 500), async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const userId = getUserId(req)!;
