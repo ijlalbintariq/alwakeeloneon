@@ -52,8 +52,10 @@ export interface IStorage {
   cleanExpiredCache(maxAgeDays?: number): Promise<number>;
 
   logUsage(userId: string, feature: string): Promise<UsageTracking>;
+  logUsageCost(userId: string, feature: string, inputTokens: number, outputTokens: number, estimatedCost: number): Promise<void>;
   getMonthlyUsageCount(userId: string): Promise<number>;
   getUserTier(userId: string): Promise<string>;
+  getCostAnalytics(): Promise<{ byFeature: Array<{ feature: string; totalQueries: number; totalInputTokens: number; totalOutputTokens: number; totalCost: string }>; totalCost: string; totalTokens: number }>;
 
   getAllUsers(): Promise<User[]>;
   updateUserTier(userId: string, tier: string): Promise<User | undefined>;
@@ -254,6 +256,53 @@ export class DatabaseStorage implements IStorage {
       .values({ userId, feature } as any)
       .returning();
     return entry;
+  }
+
+  async logUsageCost(userId: string, feature: string, inputTokens: number, outputTokens: number, estimatedCost: number): Promise<void> {
+    await db.update(usageTracking)
+      .set({
+        inputTokens,
+        outputTokens,
+        estimatedCost: estimatedCost.toFixed(6),
+      })
+      .where(
+        and(
+          eq(usageTracking.userId, userId),
+          eq(usageTracking.feature, feature as any),
+          sql`${usageTracking.inputTokens} = 0`
+        )
+      );
+  }
+
+  async getCostAnalytics(): Promise<{ byFeature: Array<{ feature: string; totalQueries: number; totalInputTokens: number; totalOutputTokens: number; totalCost: string }>; totalCost: string; totalTokens: number }> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const byFeature = await db.select({
+      feature: usageTracking.feature,
+      totalQueries: count(),
+      totalInputTokens: sql<number>`COALESCE(SUM(${usageTracking.inputTokens}), 0)`,
+      totalOutputTokens: sql<number>`COALESCE(SUM(${usageTracking.outputTokens}), 0)`,
+      totalCost: sql<string>`COALESCE(SUM(CAST(${usageTracking.estimatedCost} AS DECIMAL)), 0)`,
+    })
+      .from(usageTracking)
+      .where(gte(usageTracking.createdAt, startOfMonth))
+      .groupBy(usageTracking.feature);
+
+    const totalCost = byFeature.reduce((sum, f) => sum + parseFloat(String(f.totalCost) || "0"), 0);
+    const totalTokens = byFeature.reduce((sum, f) => sum + (Number(f.totalInputTokens) || 0) + (Number(f.totalOutputTokens) || 0), 0);
+
+    return {
+      byFeature: byFeature.map(f => ({
+        feature: f.feature,
+        totalQueries: f.totalQueries,
+        totalInputTokens: Number(f.totalInputTokens) || 0,
+        totalOutputTokens: Number(f.totalOutputTokens) || 0,
+        totalCost: parseFloat(String(f.totalCost) || "0").toFixed(4),
+      })),
+      totalCost: totalCost.toFixed(4),
+      totalTokens,
+    };
   }
 
   async getMonthlyUsageCount(userId: string): Promise<number> {

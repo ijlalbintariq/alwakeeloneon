@@ -46,21 +46,29 @@ The project uses a three-directory monorepo pattern:
   - `github_knowledge` — Synced legal documents from GitHub repository (auto-populated on startup)
   - `admin_knowledge` — Admin-uploaded legal documents for AI knowledge (title, filename, content, category, uploadedBy)
   - `query_cache` — Cached AI responses with 7-day TTL (endpoint, queryHash, response, hitCount)
-  - `usage_tracking` — Per-user AI query usage tracking (userId, feature, createdAt)
+  - `usage_tracking` — Per-user AI query usage tracking (userId, feature, inputTokens, outputTokens, estimatedCost, createdAt)
   - `conversations` / `messages` (in `shared/models/chat.ts`) — Alternate chat model used by Replit integrations
 - **Migrations**: Use `npm run db:push` (drizzle-kit push) to sync schema to database. Migration files output to `./migrations/`
 
 ### Usage Limits & Tier System
 - **Tiers**: Free (10 queries/month), Pro (500 queries/month), Enterprise (unlimited)
-- **Tracking**: Every AI endpoint call logs to `usage_tracking` table. Monthly counts reset automatically
-- **Enforcement**: `checkUsageLimit()` function runs before every AI endpoint. Returns 429 with tier info when limit reached
+- **Tracking**: Every AI endpoint call logs to `usage_tracking` table with estimated token counts and cost. Monthly counts reset automatically
+- **Cost Analytics**: GET `/api/admin/cost-analytics` returns per-feature breakdown of queries, tokens, and estimated costs (admin only). Displayed in admin panel Analytics tab
+- **Enforcement**: `checkUsageLimit()` function runs before every AI endpoint. Returns 429 with tier info when limit reached. Includes per-user 2-second rate limiting to prevent rapid-fire queries
 - **Frontend**: Dashboard shows usage progress bar, remaining queries, and upgrade prompts at 80%/100% thresholds
 - **API**: GET `/api/usage` returns current tier, used count, remaining, and percentage
 
 ### Query Cache System
 - **TTL**: 7 days. Normalized query text hashed with SHA-256
-- **Cached endpoints**: searchJudgments, searchStatutes, summarize, brief (NOT chat conversations)
+- **Cached endpoints**: searchJudgments, searchStatutes, summarize, brief, chat (first messages), ai-chat (standalone chat)
 - **Auto-cleanup**: Expired entries removed on startup + daily interval
+
+### Cost Optimization System
+- **Knowledge context limits**: Excerpts capped at 1,500 chars (down from 3,000), max 2 sources per tier, 3 statutes/case law results
+- **Response length limits**: Per-endpoint maxOutputTokens (chat: 4096, search: 2048, summarize: 3072, brief: 6144). System prompt includes concise response instructions
+- **Chat caching**: First messages in threads and standalone AI chat are cached, follow-up conversation messages are not cached (context-dependent)
+- **Rate limiting**: Per-user 2-second cooldown between AI requests (in-memory Map with auto-cleanup)
+- **Cost tracking**: Each AI call estimates input/output tokens and cost, stored in usage_tracking table. Admin panel shows per-feature cost breakdown with progress bars
 
 ### PWA (Progressive Web App)
 - **Manifest**: `client/public/manifest.json` with app name, icons, theme color

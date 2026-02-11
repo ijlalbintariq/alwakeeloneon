@@ -42,6 +42,18 @@ type AdminKnowledgeDoc = {
   createdAt: string;
 };
 
+type CostAnalytics = {
+  byFeature: Array<{
+    feature: string;
+    totalQueries: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: string;
+  }>;
+  totalCost: string;
+  totalTokens: number;
+};
+
 export default function AdminPanelPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -92,8 +104,20 @@ export default function AdminPanelPage() {
   );
 }
 
+const FEATURE_LABELS: Record<string, string> = {
+  chat: "Chat",
+  "search-judgments": "Judgment Search",
+  "search-statutes": "Statute Search",
+  summarize: "Summarize",
+  brief: "Legal Brief",
+  draft: "Draft",
+  contract: "Contract",
+  "contract-drafting": "Contract Draft",
+};
+
 function StatsSection() {
   const { data: stats, isLoading } = useQuery<SystemStats>({ queryKey: ["/api/admin/stats"] });
+  const { data: costData, isLoading: costLoading } = useQuery<CostAnalytics>({ queryKey: ["/api/admin/cost-analytics"] });
 
   if (isLoading) {
     return (
@@ -114,22 +138,117 @@ function StatsSection() {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="stats-grid">
-      {statItems.map((item) => (
-        <Card key={item.label} className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <item.icon size={16} className={item.color} />
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-                {item.label}
-              </span>
+    <div className="space-y-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="stats-grid">
+        {statItems.map((item) => (
+          <Card key={item.label} className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <item.icon size={16} className={item.color} />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                  {item.label}
+                </span>
+              </div>
+              <p className="text-3xl font-bold text-white tracking-tight" data-testid={`stat-${item.label.toLowerCase().replace(/\s+/g, "-")}`}>
+                {item.value.toLocaleString()}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div data-testid="cost-analytics-section">
+        <div className="flex items-center gap-3 mb-4">
+          <BarChart3 size={16} className="text-amber-500" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            Cost Analytics (This Month)
+          </span>
+        </div>
+
+        {costLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="animate-spin text-amber-500" size={20} />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+                <CardContent className="p-6">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-2">
+                    Est. Total Cost
+                  </span>
+                  <p className="text-2xl font-bold text-emerald-400" data-testid="text-total-cost">
+                    ${costData?.totalCost || "0.0000"}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+                <CardContent className="p-6">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-2">
+                    Total Tokens
+                  </span>
+                  <p className="text-2xl font-bold text-blue-400" data-testid="text-total-tokens">
+                    {(costData?.totalTokens || 0).toLocaleString()}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+                <CardContent className="p-6">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-2">
+                    Active Features
+                  </span>
+                  <p className="text-2xl font-bold text-purple-400">
+                    {costData?.byFeature?.length || 0}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
-            <p className="text-3xl font-bold text-white tracking-tight" data-testid={`stat-${item.label.toLowerCase().replace(/\s+/g, "-")}`}>
-              {item.value.toLocaleString()}
-            </p>
-          </CardContent>
-        </Card>
-      ))}
+
+            {costData?.byFeature && costData.byFeature.length > 0 && (
+              <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+                <CardContent className="p-6">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-4">
+                    Cost Breakdown by Feature
+                  </span>
+                  <div className="space-y-3">
+                    {costData.byFeature.map((f) => {
+                      const costPercent = costData.totalCost !== "0.0000"
+                        ? Math.round((parseFloat(f.totalCost) / parseFloat(costData.totalCost)) * 100)
+                        : 0;
+                      return (
+                        <div key={f.feature} className="space-y-1" data-testid={`cost-feature-${f.feature}`}>
+                          <div className="flex items-center justify-between gap-4 flex-wrap">
+                            <span className="text-xs font-bold text-slate-300">
+                              {FEATURE_LABELS[f.feature] || f.feature}
+                            </span>
+                            <div className="flex items-center gap-4 flex-wrap">
+                              <span className="text-[10px] text-slate-500">
+                                {f.totalQueries} queries
+                              </span>
+                              <span className="text-[10px] text-slate-500">
+                                {(f.totalInputTokens + f.totalOutputTokens).toLocaleString()} tokens
+                              </span>
+                              <span className="text-xs font-bold text-emerald-400">
+                                ${f.totalCost}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5">
+                            <div
+                              className="bg-amber-500 h-1.5 rounded-full transition-all"
+                              style={{ width: `${Math.max(costPercent, 2)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

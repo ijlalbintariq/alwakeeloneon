@@ -16,6 +16,54 @@ const pdfParse = require("pdf-parse");
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
+const TOKEN_LIMITS = {
+  chat: 4096,
+  "search-judgments": 2048,
+  "search-statutes": 2048,
+  summarize: 3072,
+  brief: 6144,
+  draft: 4096,
+  "contract-drafting": 4096,
+};
+
+const COST_PER_1K_TOKENS: Record<string, { input: number; output: number }> = {
+  "gemini-3-flash-preview": { input: 0.00015, output: 0.0006 },
+  "gemini-3-pro-preview": { input: 0.00125, output: 0.005 },
+};
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+function estimateCost(model: string, inputText: string, outputText: string): number {
+  const rates = COST_PER_1K_TOKENS[model] || COST_PER_1K_TOKENS["gemini-3-flash-preview"];
+  const inputTokens = estimateTokens(inputText);
+  const outputTokens = estimateTokens(outputText);
+  return (inputTokens / 1000) * rates.input + (outputTokens / 1000) * rates.output;
+}
+
+const userLastRequest = new Map<string, number>();
+const RATE_LIMIT_MS = 2000;
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const last = userLastRequest.get(userId);
+  if (last && now - last < RATE_LIMIT_MS) {
+    return false;
+  }
+  userLastRequest.set(userId, now);
+  return true;
+}
+
+setInterval(() => {
+  const cutoff = Date.now() - 60000;
+  const keysToDelete: string[] = [];
+  userLastRequest.forEach((val, key) => {
+    if (val < cutoff) keysToDelete.push(key);
+  });
+  keysToDelete.forEach(key => userLastRequest.delete(key));
+}, 60000);
+
 const LEGAL_SYSTEM_PROMPT = `You are Al Wakeelo — "Your Digital Lawyer, Always on Duty".
 You are the digital manifestation of a high-stakes, street-smart Pakistani advocate, inspired by the tactical brilliance and silver-tongued wit of Saul Goodman.
 
@@ -50,7 +98,14 @@ INTERACTION STRUCTURE:
 
 CONSTRAINTS:
 - NO EMOJIS.
-- Authoritative, structured, and legally profound.`;
+- Authoritative, structured, and legally profound.
+
+RESPONSE LENGTH POLICY:
+- Keep responses concise and to the point. Provide high-density, actionable legal analysis.
+- For simple questions: 2-4 paragraphs maximum.
+- For complex analysis: use structured sections but keep each section brief.
+- Avoid repetition, filler, or restating the question. Every sentence must add value.
+- Only elaborate when the user explicitly asks for more detail.`;
 
 function getUserId(req: any): string | null {
   return req.user?.claims?.sub || null;
@@ -58,6 +113,11 @@ function getUserId(req: any): string | null {
 
 async function checkUsageLimit(userId: string, feature: string, res: any): Promise<boolean> {
   try {
+    if (!checkRateLimit(userId)) {
+      res.status(429).json({ message: "Too many requests. Please wait a moment before trying again." });
+      return false;
+    }
+
     const tier = await storage.getUserTier(userId);
     const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
     const usedThisMonth = await storage.getMonthlyUsageCount(userId);
@@ -77,6 +137,17 @@ async function checkUsageLimit(userId: string, feature: string, res: any): Promi
   } catch (err) {
     console.error("[Usage] Error checking usage:", err);
     return true;
+  }
+}
+
+async function logUsageCost(userId: string, feature: string, model: string, inputText: string, outputText: string) {
+  try {
+    const inputTokens = estimateTokens(inputText);
+    const outputTokens = estimateTokens(outputText);
+    const cost = estimateCost(model, inputText, outputText);
+    await storage.logUsageCost(userId, feature, inputTokens, outputTokens, cost);
+  } catch (err) {
+    console.error("[Cost] Error logging cost:", err);
   }
 }
 
@@ -131,6 +202,11 @@ async function getCachedOrCall(
   return { content, fromCache: false };
 }
 
+const KNOWLEDGE_EXCERPT_LIMIT = 1500;
+const KNOWLEDGE_SOURCES_PER_TIER = 2;
+const KNOWLEDGE_STATUTES_LIMIT = 3;
+const KNOWLEDGE_CASELAW_LIMIT = 3;
+
 async function gatherKnowledgeContext(query: string): Promise<string> {
   const contextParts: string[] = [];
 
@@ -140,14 +216,14 @@ async function gatherKnowledgeContext(query: string): Promise<string> {
 
     if (internalStatutes.length > 0) {
       contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
-      for (const s of internalStatutes.slice(0, 5)) {
+      for (const s of internalStatutes.slice(0, KNOWLEDGE_STATUTES_LIMIT)) {
         contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
       }
     }
 
     if (internalCaseLaw.length > 0) {
       contextParts.push("=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===");
-      for (const c of internalCaseLaw.slice(0, 5)) {
+      for (const c of internalCaseLaw.slice(0, KNOWLEDGE_CASELAW_LIMIT)) {
         contextParts.push(`- ${c.citation} (${c.court}): ${c.title} — ${c.summary}`);
       }
     }
@@ -156,11 +232,11 @@ async function gatherKnowledgeContext(query: string): Promise<string> {
   }
 
   try {
-    const githubDocs = await storage.searchGithubKnowledge(query, 3);
+    const githubDocs = await storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER);
     if (githubDocs.length > 0) {
       contextParts.push("=== CHAMBERS LEGAL LIBRARY (CURATED SOURCES) ===");
       for (const doc of githubDocs) {
-        const excerpt = doc.content.length > 3000 ? doc.content.substring(0, 3000) + "..." : doc.content;
+        const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
         contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
       }
     }
@@ -169,11 +245,11 @@ async function gatherKnowledgeContext(query: string): Promise<string> {
   }
 
   try {
-    const adminDocs = await storage.searchAdminKnowledge(query, 3);
+    const adminDocs = await storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER);
     if (adminDocs.length > 0) {
       contextParts.push("=== CHAMBERS KNOWLEDGE VAULT (ADMIN UPLOADED) ===");
       for (const doc of adminDocs) {
-        const excerpt = doc.content.length > 3000 ? doc.content.substring(0, 3000) + "..." : doc.content;
+        const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
         contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
       }
     }
@@ -263,19 +339,26 @@ export async function registerRoutes(
       });
 
       const knowledgeContext = await gatherKnowledgeContext(firstMessage);
+      const model = "gemini-3-flash-preview";
+      const systemPromptFull = LEGAL_SYSTEM_PROMPT + knowledgeContext;
 
-      const completion = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          { role: "user", parts: [{ text: firstMessage }] },
-        ],
-        config: {
-          maxOutputTokens: 8192,
-          systemInstruction: LEGAL_SYSTEM_PROMPT + knowledgeContext,
-        },
+      const { content: aiResponse, fromCache } = await getCachedOrCall("chat", firstMessage, async () => {
+        const completion = await ai.models.generateContent({
+          model,
+          contents: [
+            { role: "user", parts: [{ text: firstMessage }] },
+          ],
+          config: {
+            maxOutputTokens: TOKEN_LIMITS.chat,
+            systemInstruction: systemPromptFull,
+          },
+        });
+        return completion.text || "I apologize, I could not generate a response.";
       });
 
-      const aiResponse = completion.text || "I apologize, I could not generate a response.";
+      if (!fromCache) {
+        await logUsageCost(userId, "chat", model, systemPromptFull + firstMessage, aiResponse);
+      }
 
       await storage.createMessage({
         threadId: thread.id,
@@ -350,17 +433,21 @@ export async function registerRoutes(
       }));
 
       const knowledgeContext = await gatherKnowledgeContext(message);
+      const model = "gemini-3-flash-preview";
+      const systemPromptFull = LEGAL_SYSTEM_PROMPT + knowledgeContext;
 
       const completion = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model,
         contents: geminiContents,
         config: {
-          maxOutputTokens: 8192,
-          systemInstruction: LEGAL_SYSTEM_PROMPT + knowledgeContext,
+          maxOutputTokens: TOKEN_LIMITS.chat,
+          systemInstruction: systemPromptFull,
         },
       });
 
       const aiResponse = completion.text || "I apologize, I could not generate a response.";
+      const inputText = systemPromptFull + history.map(m => m.content).join(" ");
+      await logUsageCost(userId, "chat", model, inputText, aiResponse);
 
       const savedAiMessage = await storage.createMessage({
         threadId,
@@ -553,17 +640,29 @@ export async function registerRoutes(
 
       const lastUserMessage = userMessages.filter(m => m.role === "user").pop();
       const knowledgeContext = lastUserMessage ? await gatherKnowledgeContext(lastUserMessage.content) : "";
+      const model = "gemini-3-flash-preview";
+      const featureKey = (type === "draft" || type === "contract-drafting") ? type : "chat";
+      const tokenLimit = TOKEN_LIMITS[featureKey as keyof typeof TOKEN_LIMITS] || TOKEN_LIMITS.chat;
+      const systemPromptFull = systemPrompt + knowledgeContext;
 
-      const completion = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: geminiContents,
-        config: {
-          maxOutputTokens: 8192,
-          systemInstruction: systemPrompt + knowledgeContext,
-        },
+      const cacheKey = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
+      const { content, fromCache } = await getCachedOrCall("ai-chat", cacheKey, async () => {
+        const completion = await ai.models.generateContent({
+          model,
+          contents: geminiContents,
+          config: {
+            maxOutputTokens: tokenLimit,
+            systemInstruction: systemPromptFull,
+          },
+        });
+        return completion.text || "I apologize, I could not generate a response.";
       });
 
-      const content = completion.text || "I apologize, I could not generate a response.";
+      if (!fromCache) {
+        const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
+        await logUsageCost(userId, featureKey, model, inputText, content);
+      }
+
       res.json({ content });
     } catch (err) {
       console.error("Error in AI chat:", err);
@@ -580,18 +679,22 @@ export async function registerRoutes(
 
       const { query } = req.body as { query: string };
 
-      const { content: responseText } = await getCachedOrCall("searchJudgments", query, async () => {
+      const model = "gemini-3-flash-preview";
+      const { content: responseText, fromCache } = await getCachedOrCall("searchJudgments", query, async () => {
         const knowledgeContext = await gatherKnowledgeContext(query);
+        const sysInstruction = `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results.${knowledgeContext}`;
         const completion = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model,
           contents: [{ role: "user", parts: [{ text: query }] }],
           config: {
-            maxOutputTokens: 8192,
+            maxOutputTokens: TOKEN_LIMITS["search-judgments"],
             responseMimeType: "application/json",
-            systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results.${knowledgeContext}`,
+            systemInstruction: sysInstruction,
           },
         });
-        return completion.text || '{"judgments":[]}';
+        const result = completion.text || '{"judgments":[]}';
+        await logUsageCost(userId, "search-judgments", model, sysInstruction + query, result);
+        return result;
       });
 
       let parsed;
@@ -616,18 +719,22 @@ export async function registerRoutes(
 
       const { query } = req.body as { query: string };
 
-      const { content: responseText } = await getCachedOrCall("searchStatutes", query, async () => {
+      const model = "gemini-3-flash-preview";
+      const { content: responseText, fromCache } = await getCachedOrCall("searchStatutes", query, async () => {
         const knowledgeContext = await gatherKnowledgeContext(query);
+        const sysInstruction = `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc.${knowledgeContext}`;
         const completion = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model,
           contents: [{ role: "user", parts: [{ text: query }] }],
           config: {
-            maxOutputTokens: 8192,
+            maxOutputTokens: TOKEN_LIMITS["search-statutes"],
             responseMimeType: "application/json",
-            systemInstruction: `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc.${knowledgeContext}`,
+            systemInstruction: sysInstruction,
           },
         });
-        return completion.text || '{"statutes":[]}';
+        const result = completion.text || '{"statutes":[]}';
+        await logUsageCost(userId, "search-statutes", model, sysInstruction + query, result);
+        return result;
       });
 
       let parsed;
@@ -653,19 +760,24 @@ export async function registerRoutes(
       const { query, findings } = req.body as { query: string; findings: any[] };
       const cacheKey = `${query}::${JSON.stringify(findings)}`;
 
-      const { content: summary } = await getCachedOrCall("summarize", cacheKey, async () => {
+      const model = "gemini-3-flash-preview";
+      const { content: summary, fromCache } = await getCachedOrCall("summarize", cacheKey, async () => {
         const knowledgeContext = await gatherKnowledgeContext(query);
+        const sysInstruction = `${LEGAL_SYSTEM_PROMPT}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`;
+        const userInput = `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.`;
         const completion = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model,
           contents: [
-            { role: "user", parts: [{ text: `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.` }] },
+            { role: "user", parts: [{ text: userInput }] },
           ],
           config: {
-            maxOutputTokens: 8192,
-            systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`,
+            maxOutputTokens: TOKEN_LIMITS.summarize,
+            systemInstruction: sysInstruction,
           },
         });
-        return completion.text || "Unable to generate summary.";
+        const result = completion.text || "Unable to generate summary.";
+        await logUsageCost(userId, "summarize", model, sysInstruction + userInput, result);
+        return result;
       });
 
       res.json({ summary });
@@ -685,19 +797,24 @@ export async function registerRoutes(
       const { shortTitle, section, description } = req.body as { shortTitle: string; section: string; description: string };
       const cacheKey = `${shortTitle}::${section}::${description}`;
 
-      const { content: brief } = await getCachedOrCall("brief", cacheKey, async () => {
+      const briefModel = "gemini-3-pro-preview";
+      const { content: brief, fromCache } = await getCachedOrCall("brief", cacheKey, async () => {
         const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
+        const sysInstruction = `${LEGAL_SYSTEM_PROMPT}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;
+        const userInput = `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}`;
         const completion = await ai.models.generateContent({
-          model: "gemini-3-pro-preview",
+          model: briefModel,
           contents: [
-            { role: "user", parts: [{ text: `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}` }] },
+            { role: "user", parts: [{ text: userInput }] },
           ],
           config: {
-            maxOutputTokens: 8192,
-            systemInstruction: `${LEGAL_SYSTEM_PROMPT}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`,
+            maxOutputTokens: TOKEN_LIMITS.brief,
+            systemInstruction: sysInstruction,
           },
         });
-        return completion.text || "Unable to generate brief.";
+        const result = completion.text || "Unable to generate brief.";
+        await logUsageCost(userId, "brief", briefModel, sysInstruction + userInput, result);
+        return result;
       });
 
       res.json({ brief });
@@ -767,6 +884,17 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error fetching stats:", err);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.get("/api/admin/cost-analytics", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const analytics = await storage.getCostAnalytics();
+      res.json(analytics);
+    } catch (err) {
+      console.error("Error fetching cost analytics:", err);
+      res.status(500).json({ message: "Failed to fetch cost analytics" });
     }
   });
 

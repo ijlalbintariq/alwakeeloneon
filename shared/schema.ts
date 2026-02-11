@@ -80,7 +80,10 @@ export const queryCache = pgTable("query_cache", {
 export const usageTracking = pgTable("usage_tracking", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  feature: text("feature", { enum: ["chat", "search-judgments", "search-statutes", "summarize", "brief", "draft", "contract"] }).notNull(),
+  feature: text("feature", { enum: ["chat", "search-judgments", "search-statutes", "summarize", "brief", "draft", "contract", "contract-drafting"] }).notNull(),
+  inputTokens: integer("input_tokens").default(0),
+  outputTokens: integer("output_tokens").default(0),
+  estimatedCost: text("estimated_cost").default("0"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
