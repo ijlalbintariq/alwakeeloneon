@@ -10,9 +10,7 @@ import { db } from "./db";
 import { syncGithubKnowledge } from "./github-sync";
 import crypto from "crypto";
 import multer from "multer";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse");
+import { extractText } from "unpdf";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
@@ -1048,15 +1046,13 @@ export async function registerRoutes(
           let content = "";
           if (ext === ".pdf") {
             try {
-              const pdfData = await pdfParse(file.buffer);
-              content = (pdfData.text || "").trim();
+              const uint8 = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength);
+              const pdfResult = await extractText(uint8, { mergePages: true });
+              content = (pdfResult.text || "").trim();
+              console.log(`[Knowledge Upload] Extracted ${content.length} chars from ${file.originalname}`);
             } catch (pdfErr: any) {
               console.error(`[Knowledge Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
               content = "";
-            }
-            if (!content) {
-              const rawText = file.buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").trim();
-              if (rawText.length > 100) content = rawText;
             }
             if (!content) {
               errors.push(`${file.originalname}: could not extract text (may be scanned/image PDF)`);
@@ -1143,23 +1139,13 @@ export async function registerRoutes(
 
         if (ext === "pdf") {
           try {
-            const parsed = await pdfParse(file.buffer);
-            content = (parsed.text || "").trim();
+            const uint8 = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength);
+            const pdfResult = await extractText(uint8, { mergePages: true });
+            content = (pdfResult.text || "").trim();
+            console.log(`[Statute Upload] Extracted ${content.length} chars from ${file.originalname}`);
           } catch (pdfErr: any) {
             console.error(`[Statute Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
             content = "";
-          }
-          if (!content) {
-            const rawText = file.buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").trim();
-            if (rawText.length > 100) {
-              content = rawText;
-            }
-          }
-          if (!content) {
-            const rawLatin = file.buffer.toString("latin1").replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").trim();
-            if (rawLatin.length > 100) {
-              content = rawLatin;
-            }
           }
           if (!content) {
             content = `[Could not extract text from "${file.originalname}". The file may be a scanned image PDF or an unsupported format. Please upload a text-based PDF or a .txt file instead.]`;
