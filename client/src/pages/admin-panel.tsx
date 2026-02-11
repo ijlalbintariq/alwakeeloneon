@@ -712,7 +712,6 @@ function StatuteDocumentsSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: docs, isLoading } = useQuery<StatuteDoc[]>({ queryKey: ["/api/admin/statute-documents"] });
-  const [uploadCategory, setUploadCategory] = useState("general");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -738,7 +737,6 @@ function StatuteDocumentsSection() {
     setIsUploading(true);
     try {
       const formData = new FormData();
-      formData.append("category", uploadCategory);
       for (const file of selectedFiles) {
         formData.append("files", file);
       }
@@ -778,23 +776,6 @@ function StatuteDocumentsSection() {
           <p className="text-xs text-slate-400">
             Upload full statute documents that users can search and read in the PDF viewer. Supports .txt, .pdf, .json, .csv files (up to 500 files, 50 MB each).
           </p>
-
-          <Select value={uploadCategory} onValueChange={setUploadCategory}>
-            <SelectTrigger className="bg-slate-800 border-slate-700 rounded-xl text-xs" data-testid="select-statute-doc-category">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="general">General</SelectItem>
-              <SelectItem value="constitution">Constitution</SelectItem>
-              <SelectItem value="criminal">Criminal Law</SelectItem>
-              <SelectItem value="civil">Civil Law</SelectItem>
-              <SelectItem value="family">Family Law</SelectItem>
-              <SelectItem value="commercial">Commercial Law</SelectItem>
-              <SelectItem value="tax">Tax Law</SelectItem>
-              <SelectItem value="labour">Labour Law</SelectItem>
-              <SelectItem value="environmental">Environmental Law</SelectItem>
-            </SelectContent>
-          </Select>
 
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block">
