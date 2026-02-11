@@ -1047,8 +1047,21 @@ export async function registerRoutes(
 
           let content = "";
           if (ext === ".pdf") {
-            const pdfData = await pdfParse(file.buffer);
-            content = pdfData.text;
+            try {
+              const pdfData = await pdfParse(file.buffer);
+              content = (pdfData.text || "").trim();
+            } catch (pdfErr: any) {
+              console.error(`[Knowledge Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
+              content = "";
+            }
+            if (!content) {
+              const rawText = file.buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").trim();
+              if (rawText.length > 100) content = rawText;
+            }
+            if (!content) {
+              errors.push(`${file.originalname}: could not extract text (may be scanned/image PDF)`);
+              continue;
+            }
           } else {
             content = file.buffer.toString("utf-8");
           }
@@ -1131,10 +1144,28 @@ export async function registerRoutes(
         if (ext === "pdf") {
           try {
             const parsed = await pdfParse(file.buffer);
-            content = parsed.text || "";
-          } catch {
-            content = "[PDF parsing failed]";
+            content = (parsed.text || "").trim();
+          } catch (pdfErr: any) {
+            console.error(`[Statute Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
+            content = "";
           }
+          if (!content) {
+            const rawText = file.buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").trim();
+            if (rawText.length > 100) {
+              content = rawText;
+            }
+          }
+          if (!content) {
+            const rawLatin = file.buffer.toString("latin1").replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").trim();
+            if (rawLatin.length > 100) {
+              content = rawLatin;
+            }
+          }
+          if (!content) {
+            content = `[Could not extract text from "${file.originalname}". The file may be a scanned image PDF or an unsupported format. Please upload a text-based PDF or a .txt file instead.]`;
+          }
+        } else if (ext === "doc" || ext === "docx") {
+          content = `[.${ext} files are not supported. Please convert "${file.originalname}" to PDF or .txt format and re-upload.]`;
         } else {
           content = file.buffer.toString("utf-8");
         }
