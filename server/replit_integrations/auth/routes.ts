@@ -4,6 +4,7 @@ import { isAuthenticated } from "./replitAuth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
+import { sendPasswordResetEmail } from "../../email";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -231,7 +232,7 @@ export function registerAuthRoutes(app: Express): void {
       const user = await authStorage.getUserByEmail(parsed.data.email);
 
       if (!user || user.authProvider !== "email") {
-        return res.json({ message: "If an account with that email exists, a reset link has been generated." });
+        return res.json({ message: "If an account with that email exists, a password reset link has been sent." });
       }
 
       const token = crypto.randomBytes(32).toString("hex");
@@ -240,9 +241,17 @@ export function registerAuthRoutes(app: Express): void {
       await authStorage.createPasswordResetToken(user.id, token, expiresAt);
 
       const resetUrl = `${req.protocol}://${req.get("host")}/reset-password?token=${token}`;
-      console.log(`[Password Reset] Reset link for ${parsed.data.email}: ${resetUrl}`);
 
-      res.json({ message: "If an account with that email exists, a reset link has been generated.", resetUrl });
+      const emailSent = await sendPasswordResetEmail(parsed.data.email, resetUrl, user.firstName);
+
+      if (emailSent) {
+        res.json({ message: "A password reset link has been sent to your email address." });
+      } else {
+        res.json({
+          message: "If an account with that email exists, a password reset link has been sent.",
+          resetUrl,
+        });
+      }
     } catch (error) {
       console.error("Forgot password error:", error);
       res.status(500).json({ message: "Something went wrong. Please try again." });

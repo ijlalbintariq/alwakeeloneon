@@ -59,9 +59,13 @@ export default function ForgotPasswordPage() {
             <div className="w-14 h-14 bg-emerald-500/10 rounded-full mx-auto flex items-center justify-center">
               <CheckCircle size={28} className="text-emerald-400" />
             </div>
-            <h2 className="text-lg font-semibold text-white">Check Your Email</h2>
+            <h2 className="text-lg font-semibold text-white">
+              {resetUrl ? "Reset Link Ready" : "Check Your Email"}
+            </h2>
             <p className="text-sm text-slate-400 leading-relaxed">
-              If an account with that email exists, we've generated a password reset link. Check your email or use the link below.
+              {resetUrl
+                ? "Your password reset link has been generated. Click the button below to set a new password."
+                : "If an account with that email exists, we've sent a password reset link to your inbox. Please check your email."}
             </p>
 
             {resetUrl && (
