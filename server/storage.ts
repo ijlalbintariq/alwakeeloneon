@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache,
+  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -9,9 +9,11 @@ import {
   type Statute,
   type CaseLaw,
   type GithubKnowledge, type InsertGithubKnowledge,
-  type QueryCache, type InsertQueryCache
+  type QueryCache, type InsertQueryCache,
+  type UsageTracking
 } from "@shared/schema";
-import { eq, desc, or, ilike, sql, and, lt } from "drizzle-orm";
+import { users } from "@shared/models/auth";
+import { eq, desc, or, ilike, sql, and, lt, gte, count } from "drizzle-orm";
 
 export interface IStorage {
   createThread(thread: InsertThread & { userId: string }): Promise<Thread>;
@@ -47,6 +49,10 @@ export interface IStorage {
   setCachedResponse(entry: InsertQueryCache): Promise<QueryCache>;
   incrementCacheHit(id: number): Promise<void>;
   cleanExpiredCache(maxAgeDays?: number): Promise<number>;
+
+  logUsage(userId: string, feature: string): Promise<UsageTracking>;
+  getMonthlyUsageCount(userId: string): Promise<number>;
+  getUserTier(userId: string): Promise<string>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -227,6 +233,32 @@ export class DatabaseStorage implements IStorage {
       .where(lt(queryCache.createdAt, cutoff))
       .returning();
     return deleted.length;
+  }
+
+  async logUsage(userId: string, feature: string): Promise<UsageTracking> {
+    const [entry] = await db.insert(usageTracking)
+      .values({ userId, feature } as any)
+      .returning();
+    return entry;
+  }
+
+  async getMonthlyUsageCount(userId: string): Promise<number> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [result] = await db.select({ total: count() })
+      .from(usageTracking)
+      .where(and(
+        eq(usageTracking.userId, userId),
+        gte(usageTracking.createdAt, startOfMonth)
+      ));
+    return result?.total || 0;
+  }
+
+  async getUserTier(userId: string): Promise<string> {
+    const [user] = await db.select({ tier: users.subscriptionTier })
+      .from(users)
+      .where(eq(users.id, userId));
+    return user?.tier || "free";
   }
 }
 

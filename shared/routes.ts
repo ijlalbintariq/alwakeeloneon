@@ -137,6 +137,12 @@ export const api = {
       path: '/api/case-law/search' as const,
     },
   },
+  usage: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/usage' as const,
+    },
+  },
   ai: {
     chat: {
       method: 'POST' as const,

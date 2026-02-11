@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { GoogleGenAI } from "@google/genai";
-import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw } from "@shared/schema";
+import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, TIER_LIMITS } from "@shared/schema";
 import { db } from "./db";
 import { syncGithubKnowledge } from "./github-sync";
 import crypto from "crypto";
@@ -50,6 +50,30 @@ CONSTRAINTS:
 
 function getUserId(req: any): string | null {
   return req.user?.claims?.sub || null;
+}
+
+async function checkUsageLimit(userId: string, feature: string, res: any): Promise<boolean> {
+  try {
+    const tier = await storage.getUserTier(userId);
+    const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
+    const usedThisMonth = await storage.getMonthlyUsageCount(userId);
+
+    if (usedThisMonth >= limits.monthlyQueries) {
+      res.status(429).json({
+        message: `Monthly query limit reached (${limits.monthlyQueries} queries on ${limits.label} plan). Upgrade your plan for more queries.`,
+        limit: limits.monthlyQueries,
+        used: usedThisMonth,
+        tier,
+      });
+      return false;
+    }
+
+    await storage.logUsage(userId, feature);
+    return true;
+  } catch (err) {
+    console.error("[Usage] Error checking usage:", err);
+    return true;
+  }
 }
 
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -205,6 +229,9 @@ export async function registerRoutes(
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
+      const allowed = await checkUsageLimit(userId, "chat", res);
+      if (!allowed) return;
+
       const { title, firstMessage } = api.threads.create.input.parse(req.body);
 
       const thread = await storage.createThread({
@@ -288,6 +315,9 @@ export async function registerRoutes(
     }
 
     try {
+      const allowed = await checkUsageLimit(userId, "chat", res);
+      if (!allowed) return;
+
       const { message } = api.messages.create.input.parse(req.body);
 
       await storage.createMessage({
@@ -453,10 +483,38 @@ export async function registerRoutes(
     }
   });
 
+  app.get(api.usage.get.path, async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const tier = await storage.getUserTier(userId);
+      const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
+      const used = await storage.getMonthlyUsageCount(userId);
+      const remaining = Math.max(0, limits.monthlyQueries - used);
+      const percentage = Math.min(100, Math.round((used / limits.monthlyQueries) * 100));
+
+      res.json({
+        tier,
+        tierLabel: limits.label,
+        tierDescription: limits.description,
+        monthlyLimit: limits.monthlyQueries,
+        used,
+        remaining,
+        percentage,
+      });
+    } catch (err) {
+      console.error("Error fetching usage:", err);
+      res.status(500).json({ message: "Failed to fetch usage data" });
+    }
+  });
+
   app.post(api.ai.chat.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
+      const allowed = await checkUsageLimit(userId, "chat", res);
+      if (!allowed) return;
+
       const { messages: userMessages, type } = req.body as { messages: Array<{ role: string; content: string }>; type: string };
 
       let systemPrompt = LEGAL_SYSTEM_PROMPT;
@@ -500,6 +558,9 @@ export async function registerRoutes(
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
+      const allowed = await checkUsageLimit(userId, "search-judgments", res);
+      if (!allowed) return;
+
       const { query } = req.body as { query: string };
 
       const { content: responseText } = await getCachedOrCall("searchJudgments", query, async () => {
@@ -533,6 +594,9 @@ export async function registerRoutes(
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
+      const allowed = await checkUsageLimit(userId, "search-statutes", res);
+      if (!allowed) return;
+
       const { query } = req.body as { query: string };
 
       const { content: responseText } = await getCachedOrCall("searchStatutes", query, async () => {
@@ -566,6 +630,9 @@ export async function registerRoutes(
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
+      const allowed = await checkUsageLimit(userId, "summarize", res);
+      if (!allowed) return;
+
       const { query, findings } = req.body as { query: string; findings: any[] };
       const cacheKey = `${query}::${JSON.stringify(findings)}`;
 
@@ -595,6 +662,9 @@ export async function registerRoutes(
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
+      const allowed = await checkUsageLimit(userId, "brief", res);
+      if (!allowed) return;
+
       const { shortTitle, section, description } = req.body as { shortTitle: string; section: string; description: string };
       const cacheKey = `${shortTitle}::${section}::${description}`;
 
