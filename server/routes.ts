@@ -1207,8 +1207,8 @@ export async function registerRoutes(
       const doc = await storage.getStatuteDocument(id);
       if (!doc) return res.status(404).json({ message: "Document not found" });
 
-      const contentExcerpt = doc.content.slice(0, 30000);
-      const tocPrompt = `Analyze this legal document and extract its structure as a JSON array of chapters/sections/parts. Each item should have: "title" (the chapter or section name), and optionally "children" (an array of sub-sections with the same format). Only include major structural divisions (Parts, Chapters, Schedules, Articles groupings). Return ONLY valid JSON, no markdown, no explanation.\n\nDocument Title: ${doc.title}\n\nDocument Content:\n${contentExcerpt}`;
+      const contentExcerpt = doc.content.slice(0, 50000);
+      const tocPrompt = `Analyze this legal document and extract its hierarchical table of contents as a JSON array. Each item has: "title" (short name like "PART I - INTRODUCTORY" or "Chapter 1 - Fundamental Rights"), and optionally "children" (sub-sections). Only include major structural divisions: Parts, Chapters, Schedules, Articles groupings. Use SHORT titles (max 60 chars each). Do NOT include individual article numbers. Return ONLY a valid JSON array - no markdown, no code blocks, no explanation.\n\nDocument Title: ${doc.title}\n\nDocument Content:\n${contentExcerpt}`;
 
       const model = "gemini-3-flash-preview";
       const { content, fromCache } = await getCachedOrCall("toc-extract", `toc-${id}`, async () => {
@@ -1216,8 +1216,8 @@ export async function registerRoutes(
           model,
           contents: [{ role: "user", parts: [{ text: tocPrompt }] }],
           config: {
-            maxOutputTokens: 2048,
-            systemInstruction: "You are a document structure analyzer. Extract the table of contents from legal documents. Return ONLY valid JSON array. No markdown code blocks, no explanation text.",
+            maxOutputTokens: 8192,
+            systemInstruction: "You are a document structure analyzer. Extract the table of contents from legal documents. Return ONLY a valid JSON array. No markdown code blocks, no explanation text. Keep titles concise (max 60 chars). Ensure the JSON is complete and properly closed.",
           },
         });
         return completion.text || "[]";
@@ -1229,8 +1229,27 @@ export async function registerRoutes(
 
       let toc: any[] = [];
       try {
-        const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-        toc = JSON.parse(cleaned);
+        let cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        try {
+          toc = JSON.parse(cleaned);
+        } catch {
+          const openBrackets = (cleaned.match(/\[/g) || []).length;
+          const closeBrackets = (cleaned.match(/\]/g) || []).length;
+          const openBraces = (cleaned.match(/\{/g) || []).length;
+          const closeBraces = (cleaned.match(/\}/g) || []).length;
+          let fixed = cleaned.replace(/,\s*([}\]])/g, "$1");
+          const lastValid = Math.max(fixed.lastIndexOf("}"), fixed.lastIndexOf("]"));
+          if (lastValid > 0) fixed = fixed.slice(0, lastValid + 1);
+          for (let i = 0; i < openBraces - closeBraces; i++) fixed += "}";
+          for (let i = 0; i < openBrackets - closeBrackets; i++) fixed += "]";
+          try {
+            toc = JSON.parse(fixed);
+            console.log(`[TOC] Recovered truncated JSON (${toc.length} items)`);
+          } catch {
+            console.error("[TOC] Could not parse AI response, raw:", content.slice(0, 200));
+            toc = [];
+          }
+        }
       } catch {
         toc = [];
       }
