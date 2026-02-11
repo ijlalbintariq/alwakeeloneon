@@ -732,6 +732,14 @@ export async function registerRoutes(
       const targetId = req.params.id;
       const { subscriptionTier, isAdmin: adminFlag } = req.body;
 
+      const validTiers = ["free", "pro", "enterprise"];
+      if (subscriptionTier !== undefined && !validTiers.includes(subscriptionTier)) {
+        return res.status(400).json({ message: "Invalid subscription tier" });
+      }
+      if (adminFlag !== undefined && typeof adminFlag !== "boolean") {
+        return res.status(400).json({ message: "isAdmin must be a boolean" });
+      }
+
       let updated;
       if (subscriptionTier !== undefined) {
         updated = await storage.updateUserTier(targetId, subscriptionTier);
@@ -779,6 +787,10 @@ export async function registerRoutes(
 
       if (!file && !req.body.content) {
         return res.status(400).json({ message: "File or content is required" });
+      }
+
+      if (file && !file.originalname.endsWith(".txt")) {
+        return res.status(400).json({ message: "Only .txt files are supported" });
       }
 
       let content = "";

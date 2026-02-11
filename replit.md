@@ -22,7 +22,7 @@ The project uses a three-directory monorepo pattern:
 - **State Management**: TanStack React Query for server state; no global client state library
 - **UI Components**: shadcn/ui (new-york style) built on Radix UI primitives with Tailwind CSS
 - **Styling**: Tailwind CSS with CSS variables for theming (light/dark mode support). Fonts: "Libre Baskerville" for headings, "Inter" for body text
-- **Key Pages**: Landing (`/`), Dashboard (`/dashboard`), Chat (`/chat`, `/chat/:id`), Documents (`/documents`)
+- **Key Pages**: Landing (`/`), Dashboard (`/dashboard`), Chat (`/chat`, `/chat/:id`), Documents (`/documents`), Admin Panel (`/admin`, admin-only), User Settings (`/settings`)
 - **Auth Hook**: `useAuth()` queries `/api/auth/user` — if 401, user is not authenticated. Login redirects to `/api/login` (Replit Auth flow)
 
 ### Backend Architecture
@@ -44,6 +44,7 @@ The project uses a three-directory monorepo pattern:
   - `messages` — Chat messages within threads (role: user/assistant/system)
   - `documents` — Uploaded legal documents with optional AI summaries
   - `github_knowledge` — Synced legal documents from GitHub repository (auto-populated on startup)
+  - `admin_knowledge` — Admin-uploaded legal documents for AI knowledge (title, filename, content, category, uploadedBy)
   - `query_cache` — Cached AI responses with 7-day TTL (endpoint, queryHash, response, hitCount)
   - `usage_tracking` — Per-user AI query usage tracking (userId, feature, createdAt)
   - `conversations` / `messages` (in `shared/models/chat.ts`) — Alternate chat model used by Replit integrations

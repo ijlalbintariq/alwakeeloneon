@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
   History, FileBadge, Sparkles, Database, LogOut,
-  User as UserIcon
+  User as UserIcon, Shield, Settings
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -87,6 +87,40 @@ function AppSidebar() {
 
       <SidebarFooter className="border-t border-slate-800/50 p-4">
         <SidebarMenu>
+          {user?.isAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/admin"}
+                data-testid="nav-admin"
+                className={cn(
+                  "rounded-xl py-3 transition-all",
+                  location === "/admin" && "bg-amber-500 text-slate-950 font-black data-[active=true]:bg-amber-500 data-[active=true]:text-slate-950"
+                )}
+              >
+                <Link href="/admin">
+                  <Shield size={18} className={location === "/admin" ? "text-slate-950" : "text-slate-500"} />
+                  <span className="text-[10px] uppercase tracking-widest">Admin Panel</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={location === "/settings"}
+              data-testid="nav-settings"
+              className={cn(
+                "rounded-xl py-3 transition-all",
+                location === "/settings" && "bg-amber-500 text-slate-950 font-black data-[active=true]:bg-amber-500 data-[active=true]:text-slate-950"
+              )}
+            >
+              <Link href="/settings">
+                <Settings size={18} className={location === "/settings" ? "text-slate-950" : "text-slate-500"} />
+                <span className="text-[10px] uppercase tracking-widest">Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => logout()}

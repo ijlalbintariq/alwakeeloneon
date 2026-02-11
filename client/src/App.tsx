@@ -17,6 +17,8 @@ import CaseDocumentsPage from "@/pages/case-documents";
 import BookmarksPage from "@/pages/bookmarks";
 import HistoryPage from "@/pages/history";
 import KnowledgeVaultPage from "@/pages/knowledge-vault";
+import AdminPanelPage from "@/pages/admin-panel";
+import UserPanelPage from "@/pages/user-panel";
 import NotFound from "@/pages/not-found";
 import { AppShell } from "@/components/app-shell";
 
@@ -65,6 +67,8 @@ function Router({ onReady }: { onReady?: () => void }) {
         <Route path="/bookmarks" component={BookmarksPage} />
         <Route path="/history" component={HistoryPage} />
         <Route path="/knowledge-vault" component={KnowledgeVaultPage} />
+        <Route path="/admin" component={AdminPanelPage} />
+        <Route path="/settings" component={UserPanelPage} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>
