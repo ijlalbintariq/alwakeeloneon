@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge,
+  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -11,7 +11,8 @@ import {
   type GithubKnowledge, type InsertGithubKnowledge,
   type QueryCache, type InsertQueryCache,
   type UsageTracking,
-  type AdminKnowledge, type InsertAdminKnowledge
+  type AdminKnowledge, type InsertAdminKnowledge,
+  type StatuteDocument, type InsertStatuteDocument
 } from "@shared/schema";
 import { users, type User } from "@shared/models/auth";
 import { eq, desc, or, ilike, sql, and, lt, gte, count } from "drizzle-orm";
@@ -71,6 +72,12 @@ export interface IStorage {
   getAllAdminKnowledge(): Promise<AdminKnowledge[]>;
   deleteAdminKnowledge(id: number): Promise<void>;
   searchAdminKnowledge(query: string, limit?: number): Promise<AdminKnowledge[]>;
+
+  addStatuteDocument(entry: InsertStatuteDocument): Promise<StatuteDocument>;
+  getAllStatuteDocuments(): Promise<StatuteDocument[]>;
+  getStatuteDocument(id: number): Promise<StatuteDocument | undefined>;
+  deleteStatuteDocument(id: number): Promise<void>;
+  searchStatuteDocuments(query: string, limit?: number): Promise<StatuteDocument[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -443,6 +450,43 @@ export class DatabaseStorage implements IStorage {
     return await db.select()
       .from(adminKnowledge)
       .where(or(...conditions))
+      .limit(limit);
+  }
+
+  async addStatuteDocument(entry: InsertStatuteDocument): Promise<StatuteDocument> {
+    const [doc] = await db.insert(statuteDocuments).values(entry).returning();
+    return doc;
+  }
+
+  async getAllStatuteDocuments(): Promise<StatuteDocument[]> {
+    return await db.select().from(statuteDocuments).orderBy(desc(statuteDocuments.createdAt));
+  }
+
+  async getStatuteDocument(id: number): Promise<StatuteDocument | undefined> {
+    const [doc] = await db.select().from(statuteDocuments).where(eq(statuteDocuments.id, id));
+    return doc;
+  }
+
+  async deleteStatuteDocument(id: number): Promise<void> {
+    await db.delete(statuteDocuments).where(eq(statuteDocuments.id, id));
+  }
+
+  async searchStatuteDocuments(query: string, limit: number = 20): Promise<StatuteDocument[]> {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+
+    return await db.select({
+      id: statuteDocuments.id,
+      title: statuteDocuments.title,
+      filename: statuteDocuments.filename,
+      content: statuteDocuments.content,
+      category: statuteDocuments.category,
+      uploadedBy: statuteDocuments.uploadedBy,
+      createdAt: statuteDocuments.createdAt,
+    })
+      .from(statuteDocuments)
+      .where(ilike(statuteDocuments.title, `%${trimmed}%`))
+      .orderBy(statuteDocuments.title)
       .limit(limit);
   }
 }

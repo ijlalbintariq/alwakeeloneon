@@ -1,220 +1,411 @@
-import { useState } from "react";
-import { Search, Loader2, ExternalLink, AlertCircle, Book, Library, ChevronRight, Scale, FileSearch, Download, X } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState, useEffect, useRef } from "react";
+import { Search, Loader2, X, Send, Book, ChevronRight, FileText, MessageSquare, ArrowLeft } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+
+type StatuteDocResult = {
+  id: number;
+  title: string;
+  category: string;
+  filename: string;
+};
+
+type StatuteDocFull = {
+  id: number;
+  title: string;
+  filename: string;
+  content: string;
+  category: string;
+  createdAt: string;
+};
+
+type AiMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
 
 const COMMON_STATUTES = [
   {
     category: "The Fundamental Ground Rules",
     description: "The supreme law of the land.",
     items: [
-      { label: "Constitution of Pakistan, 1973", query: "Constitution of the Islamic Republic of Pakistan 1973", detail: "Articles 8-28 (Fundamental Rights) and Article 199 (Writ Jurisdiction)." },
+      { label: "Constitution of Pakistan, 1973", query: "Constitution", detail: "Articles 8-28 (Fundamental Rights) and Article 199 (Writ Jurisdiction)." },
     ],
   },
   {
     category: "Criminal Law",
     description: "Definitions of crimes and procedure.",
     items: [
-      { label: "Pakistan Penal Code (PPC), 1860", query: "Pakistan Penal Code 1860", detail: "Defines crimes from simple scuffle to 489-F cheque dishonour." },
-      { label: "Code of Criminal Procedure (CrPC), 1898", query: "Code of Criminal Procedure 1898 Pakistan", detail: "FIRs, arrests, and Bail (Sections 497/498)." },
-      { label: "PECA, 2016", query: "Prevention of Electronic Crimes Act 2016 Pakistan", detail: "Cybercrime and digital forensics." },
+      { label: "Pakistan Penal Code (PPC), 1860", query: "Pakistan Penal Code", detail: "Defines crimes from simple scuffle to 489-F cheque dishonour." },
+      { label: "Code of Criminal Procedure (CrPC), 1898", query: "Criminal Procedure", detail: "FIRs, arrests, and Bail (Sections 497/498)." },
+      { label: "PECA, 2016", query: "Electronic Crimes", detail: "Cybercrime and digital forensics." },
     ],
   },
   {
     category: "Civil & Property Law",
     description: "Filing suits, injunctions, and property movement.",
     items: [
-      { label: "Code of Civil Procedure (CPC), 1908", query: "Code of Civil Procedure 1908 Pakistan", detail: "Suits, injunctions (stay orders), and appeals." },
-      { label: "The Contract Act, 1872", query: "The Contract Act 1872 Pakistan", detail: "The foundation of every deal and partnership." },
-      { label: "Transfer of Property Act, 1882", query: "The Transfer of Property Act 1882 Pakistan", detail: "Rules on land and property transfers." },
+      { label: "Code of Civil Procedure (CPC), 1908", query: "Civil Procedure", detail: "Suits, injunctions (stay orders), and appeals." },
+      { label: "The Contract Act, 1872", query: "Contract Act", detail: "The foundation of every deal and partnership." },
+      { label: "Transfer of Property Act, 1882", query: "Transfer of Property", detail: "Rules on land and property transfers." },
     ],
   },
   {
     category: "Family & Personal Law",
     description: "Marriage, divorce, custody, and inheritance.",
     items: [
-      { label: "Family Courts Act, 1964", query: "West Pakistan Family Courts Act 1964", detail: "Khula, maintenance, and dower." },
-      { label: "Guardians and Wards Act, 1890", query: "Guardians and Wards Act 1890 Pakistan", detail: "Custody of minors." },
+      { label: "Family Courts Act, 1964", query: "Family Courts", detail: "Khula, maintenance, and dower." },
+      { label: "Guardians and Wards Act, 1890", query: "Guardians and Wards", detail: "Custody of minors." },
     ],
   },
 ];
 
-interface StatuteResult {
-  shortTitle: string;
-  section: string;
-  description: string;
-  punishment: string;
-  uri?: string;
-  source?: string;
-}
-
 export default function StatuteSearchPage() {
   const [query, setQuery] = useState("");
-  const [localResults, setLocalResults] = useState<StatuteResult[]>([]);
-  const [externalResults, setExternalResults] = useState<StatuteResult[]>([]);
-  const [searchSummary, setSearchSummary] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isExternalLoading, setIsExternalLoading] = useState(false);
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [selectedBrief, setSelectedBrief] = useState<StatuteResult | null>(null);
-  const [briefContent, setBriefContent] = useState("");
-  const [isBriefing, setIsBriefing] = useState(false);
+  const [suggestions, setSuggestions] = useState<StatuteDocResult[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<StatuteDocFull | null>(null);
+  const [isLoadingDoc, setIsLoadingDoc] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<AiMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const handleSearch = async (overrideQuery?: string) => {
-    const q = (overrideQuery || query).trim();
-    if (!q) return;
-    setIsLoading(true);
-    setSearchError(null);
-    setExternalResults([]);
-    setSearchSummary("");
-
-    try {
-      const localRes = await fetch(`/api/statutes/search?q=${encodeURIComponent(q)}`);
-      const local = await localRes.json();
-      setLocalResults(local.map((r: any) => ({ ...r, source: "internal" })));
-    } catch { setLocalResults([]); }
-    setIsLoading(false);
-
-    setIsExternalLoading(true);
-    try {
-      const extRes = await apiRequest("POST", "/api/ai/search-statutes", { query: q });
-      const ext = await extRes.json();
-      const raw = Array.isArray(ext) ? ext : (ext.statutes || ext.results || []);
-      const results = raw.map((r: any) => ({ ...r, source: "external" }));
-      setExternalResults(results);
-
-      if (results.length > 0) {
-        setIsSummarizing(true);
-        try {
-          const sumRes = await apiRequest("POST", "/api/ai/summarize", { query: q, findings: results.slice(0, 5) });
-          const sumData = await sumRes.json();
-          setSearchSummary(sumData.summary || "");
-        } catch {}
-        setIsSummarizing(false);
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
       }
-    } catch (e: any) {
-      const isLimit = e?.message?.includes("429");
-      setSearchError(isLimit ? "Monthly query limit reached. Upgrade your plan for more searches." : "AI research feed unavailable.");
-      if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
     }
-    setIsExternalLoading(false);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    await apiRequest("POST", "/api/search-history", { type: "statute", query: q }).catch(() => {});
-  };
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages]);
 
-  const handleBrief = async (statute: StatuteResult) => {
-    setSelectedBrief(statute);
-    setBriefContent("");
-    setIsBriefing(true);
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/statute-documents/search?q=${encodeURIComponent(value.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data);
+          setShowDropdown(data.length > 0);
+        }
+      } catch {}
+      setIsSearching(false);
+    }, 300);
+  }
+
+  async function handleSelectStatute(doc: StatuteDocResult) {
+    setShowDropdown(false);
+    setQuery(doc.title);
+    setIsLoadingDoc(true);
+    setChatMessages([]);
+    setShowChat(false);
+
     try {
-      const res = await apiRequest("POST", "/api/ai/brief", {
-        shortTitle: statute.shortTitle,
-        section: statute.section,
-        description: statute.description,
-      });
+      const res = await fetch(`/api/statute-documents/${doc.id}`);
+      if (res.ok) {
+        const full = await res.json();
+        setSelectedDoc(full);
+      }
+    } catch {}
+    setIsLoadingDoc(false);
+  }
+
+  async function handleQuickSearch(searchQuery: string) {
+    setQuery(searchQuery);
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/statute-documents/search?q=${encodeURIComponent(searchQuery)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSuggestions(data);
+        setShowDropdown(data.length > 0);
+      }
+    } catch {}
+    setIsSearching(false);
+  }
+
+  async function handleChatSend() {
+    if (!chatInput.trim() || !selectedDoc || isChatLoading) return;
+
+    const userMsg = chatInput.trim();
+    setChatInput("");
+    setChatMessages(prev => [...prev, { role: "user", content: userMsg }]);
+    setIsChatLoading(true);
+
+    try {
+      const systemContext = `I am currently reading the following statute document:\n\nTitle: ${selectedDoc.title}\nCategory: ${selectedDoc.category}\n\nDocument Content (excerpt):\n${selectedDoc.content.slice(0, 4000)}`;
+
+      const aiMessages = [
+        { role: "system", content: systemContext },
+        ...chatMessages.map(m => ({ role: m.role, content: m.content })),
+        { role: "user", content: userMsg },
+      ];
+
+      const res = await apiRequest("POST", "/api/ai/chat", { messages: aiMessages, type: "chat" });
       const data = await res.json();
-      setBriefContent(data.brief || "Brief generation failed.");
-    } catch (e: any) {
-      const isLimit = e?.message?.includes("429");
-      setBriefContent(isLimit ? "Monthly query limit reached. Upgrade your plan to generate briefs." : "Strategic brief generation failed. Please retry later.");
-      if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
+      setChatMessages(prev => [...prev, { role: "assistant", content: data.content || "I couldn't generate a response. Please try again." }]);
+    } catch {
+      setChatMessages(prev => [...prev, { role: "assistant", content: "Failed to get a response. Please try again." }]);
     }
-    setIsBriefing(false);
-  };
+    setIsChatLoading(false);
+  }
 
-  const allResults = [...localResults, ...externalResults];
+  function handleBackToSearch() {
+    setSelectedDoc(null);
+    setShowChat(false);
+    setChatMessages([]);
+  }
 
-  return (
-    <div className="space-y-10 fade-in pb-20" data-testid="statute-search-page">
-      {selectedBrief && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-[#0f172a]/95 backdrop-blur-md fade-in">
-          <div className="bg-[#1e293b] border border-slate-700 w-full max-w-4xl h-[85vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-6 border-b border-slate-800 bg-[#0f172a]/50 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl"><FileSearch size={24} /></div>
-                <div>
-                  <h3 className="text-xl font-bold text-white uppercase tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    {selectedBrief.shortTitle} Section {selectedBrief.section}
-                  </h3>
-                  <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mt-1">Strategic Chambers Briefing</p>
+  if (selectedDoc) {
+    return (
+      <div className="h-full flex flex-col fade-in" data-testid="statute-viewer">
+        <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-[#0f172a]">
+          <div className="flex items-center gap-3">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleBackToSearch}
+              className="text-slate-400"
+              data-testid="button-back-to-search"
+            >
+              <ArrowLeft size={18} />
+            </Button>
+            <div>
+              <h2 className="text-lg font-bold text-white truncate max-w-[40vw]" style={{ fontFamily: "'Playfair Display', serif" }}>
+                {selectedDoc.title}
+              </h2>
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500">
+                {selectedDoc.category} — {selectedDoc.filename}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant={showChat ? "default" : "ghost"}
+            className={`rounded-xl text-[10px] uppercase tracking-widest font-black gap-2 ${showChat ? "bg-amber-500 text-slate-950" : "text-slate-400"}`}
+            onClick={() => setShowChat(!showChat)}
+            data-testid="button-toggle-chat"
+          >
+            <MessageSquare size={14} />
+            <span>Ask AI</span>
+          </Button>
+        </div>
+
+        <div className="flex-1 flex overflow-hidden">
+          <div className={`flex-1 overflow-y-auto transition-all ${showChat ? "w-[60%]" : "w-full"}`}>
+            <div className="max-w-4xl mx-auto p-8 md:p-12">
+              <div className="bg-[#1e293b] border border-slate-800 rounded-[2rem] p-8 md:p-12 shadow-2xl">
+                <div className="flex items-center gap-3 mb-8 pb-6 border-b border-slate-700">
+                  <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl">
+                    <FileText size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+                      {selectedDoc.title}
+                    </h3>
+                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 mt-1">
+                      Official Document Viewer
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap text-slate-300 leading-relaxed"
+                  style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", lineHeight: "1.8" }}
+                  data-testid="document-content"
+                >
+                  {selectedDoc.content}
+                </div>
+
+                <div className="mt-10 pt-6 border-t border-slate-700 flex items-center justify-between">
+                  <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600">
+                    Al Wakeelo Digital Chambers
+                  </p>
+                  <p className="text-[8px] text-slate-600">
+                    {new Date(selectedDoc.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedBrief(null)} className="p-3 hover:bg-red-500/10 rounded-xl text-slate-400 hover:text-red-500 transition-all">
-                <X size={24} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-8 md:p-12 bg-white/5 scrollbar-hide">
-              {isBriefing ? (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                  <Loader2 size={48} className="animate-spin text-blue-500" />
-                  <p className="text-sm font-black uppercase tracking-widest text-slate-500 animate-pulse">Drafting Strategic Analysis...</p>
-                </div>
-              ) : (
-                <div className="max-w-2xl mx-auto legal-draft-font whitespace-pre-wrap">{briefContent}</div>
-              )}
-            </div>
-            <div className="p-6 border-t border-slate-800 bg-[#0f172a]/50 flex justify-between items-center">
-              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600">Al Wakeelo Digital Chambers</p>
-              {!isBriefing && briefContent && (
-                <button
-                  onClick={() => {
-                    const blob = new Blob([briefContent], { type: "text/plain" });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `brief-${selectedBrief.shortTitle}-${selectedBrief.section}.txt`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all"
-                >
-                  <Download size={14} /> Export Brief
-                </button>
-              )}
             </div>
           </div>
-        </div>
-      )}
 
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div>
-          <h2 className="text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Statute Registry
-          </h2>
-          <p className="text-slate-500 mt-2 font-medium">Verified Chambers Vaults & Grounded Pakistani Statutory Search.</p>
-        </div>
-        <div className="flex flex-col gap-2 w-full lg:w-[35rem]">
-          <div className="flex gap-3 bg-[#1e293b] p-3 rounded-[2.5rem] border border-slate-800 shadow-2xl">
-            <input
-              className="flex-1 bg-transparent border-none px-6 py-3 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-600"
-              placeholder="Search statutes, sections, legal provisions..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              data-testid="input-statute-search"
-            />
-            <button onClick={() => handleSearch()} disabled={isLoading} data-testid="button-statute-search" className="p-4 bg-amber-500 text-slate-950 rounded-[2rem] hover:bg-amber-400 transition-all shadow-xl active:scale-95">
-              {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Search size={20} />}
-            </button>
-          </div>
-          {searchError && (
-            <div className="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
-              <AlertCircle size={14} className="text-red-500" />
-              <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">{searchError}</span>
+          {showChat && (
+            <div className="w-[40%] border-l border-slate-800 bg-[#0f172a] flex flex-col fade-in" data-testid="statute-chat-sidebar">
+              <div className="p-4 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <MessageSquare size={14} className="text-amber-500" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                    Ask about this statute
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {chatMessages.length === 0 && (
+                  <div className="text-center py-12">
+                    <MessageSquare size={32} className="text-slate-700 mx-auto mb-3" />
+                    <p className="text-sm text-slate-500">Ask any question about this statute</p>
+                    <p className="text-xs text-slate-600 mt-2">The AI will answer based on the document you're reading</p>
+                  </div>
+                )}
+
+                {chatMessages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm ${
+                        msg.role === "user"
+                          ? "bg-amber-500 text-slate-950 rounded-br-lg"
+                          : "bg-[#1e293b] text-slate-300 border border-slate-800 rounded-bl-lg"
+                      }`}
+                      data-testid={`chat-message-${idx}`}
+                    >
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                    </div>
+                  </div>
+                ))}
+
+                {isChatLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-[#1e293b] border border-slate-800 rounded-2xl rounded-bl-lg px-4 py-3">
+                      <Loader2 size={16} className="animate-spin text-amber-500" />
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              <div className="p-4 border-t border-slate-800">
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 bg-[#1e293b] border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                    placeholder="Ask about this statute..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleChatSend()}
+                    data-testid="input-statute-chat"
+                  />
+                  <Button
+                    size="icon"
+                    onClick={handleChatSend}
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="bg-amber-500 text-slate-950 rounded-xl"
+                    data-testid="button-send-statute-chat"
+                  >
+                    <Send size={16} />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-10 fade-in pb-20" data-testid="statute-search-page">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div>
+          <h2 className="text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+            Search Statutes Instantly!
+          </h2>
+          <p className="text-slate-500 mt-2 font-medium">Search, read & consult AI on Pakistani statutes.</p>
+        </div>
+      </div>
+
+      <div className="relative w-full max-w-2xl mx-auto" ref={searchRef}>
+        <div className="flex gap-3 bg-[#1e293b] p-3 rounded-[2.5rem] border border-slate-800 shadow-2xl">
+          <div className="flex items-center px-4">
+            <Search size={18} className="text-slate-500" />
+          </div>
+          <input
+            className="flex-1 bg-transparent border-none py-3 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-600"
+            placeholder="Search statutes, acts, ordinances..."
+            value={query}
+            onChange={(e) => handleQueryChange(e.target.value)}
+            onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+            data-testid="input-statute-search"
+          />
+          {query && (
+            <button
+              onClick={() => { setQuery(""); setSuggestions([]); setShowDropdown(false); }}
+              className="p-2 text-slate-500 hover:text-white transition-colors"
+              data-testid="button-clear-search"
+            >
+              <X size={16} />
+            </button>
+          )}
+          {isSearching && <Loader2 size={18} className="text-amber-500 animate-spin self-center mr-2" />}
+          <button
+            onClick={() => handleQuickSearch(query)}
+            className="p-4 bg-amber-500 text-slate-950 rounded-[2rem] hover:bg-amber-400 transition-all shadow-xl active:scale-95"
+            data-testid="button-statute-search"
+          >
+            <Search size={20} />
+          </button>
+        </div>
+
+        {showDropdown && suggestions.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-[#1e293b] border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[400px] overflow-y-auto" data-testid="search-dropdown">
+            {suggestions.map((doc) => (
+              <button
+                key={doc.id}
+                className="w-full text-left px-6 py-4 hover:bg-slate-700/50 transition-colors border-b border-slate-800 last:border-b-0 flex items-center gap-4"
+                onClick={() => handleSelectStatute(doc)}
+                data-testid={`dropdown-item-${doc.id}`}
+              >
+                <FileText size={16} className="text-slate-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{doc.title}</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">{doc.category}</p>
+                </div>
+                <ChevronRight size={14} className="text-slate-600 flex-shrink-0 ml-auto" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {isLoadingDoc && (
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 size={40} className="animate-spin text-amber-500 mb-4" />
+          <p className="text-sm text-slate-500 font-medium">Loading statute document...</p>
+        </div>
+      )}
 
       <div className="bg-[#1e293b] border border-slate-800 rounded-[3rem] p-8 md:p-10 shadow-2xl space-y-8 overflow-hidden relative">
         <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none scale-150"><Book size={200} /></div>
         <div className="flex items-center gap-4 relative z-10">
-          <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl"><Library size={24} /></div>
+          <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl"><Book size={24} /></div>
           <div>
             <h4 className="text-lg font-bold text-white tracking-tight uppercase italic" style={{ fontFamily: "'Playfair Display', serif" }}>
               Pakistani Legal Pillars: Quick Access
             </h4>
-            <p className="text-[9px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">Direct statutory references.</p>
+            <p className="text-[9px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">Direct statutory references — tap to search.</p>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
@@ -228,7 +419,7 @@ export default function StatuteSearchPage() {
                 {cat.items.map((stat, i) => (
                   <button
                     key={i}
-                    onClick={() => { setQuery(stat.query); handleSearch(stat.query); }}
+                    onClick={() => handleQuickSearch(stat.query)}
                     className="w-full text-left p-4 bg-[#0f172a] border border-slate-800 rounded-2xl transition-all hover:border-amber-500/50 group"
                     data-testid={`statute-quick-${idx}-${i}`}
                   >
@@ -244,57 +435,6 @@ export default function StatuteSearchPage() {
           ))}
         </div>
       </div>
-
-      {(searchSummary || isSummarizing) && (
-        <div className="p-8 md:p-10 bg-amber-500/5 border border-amber-500/30 rounded-[3rem] shadow-xl">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="p-2.5 bg-amber-500 text-slate-950 rounded-xl"><Scale size={20} /></div>
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-500">Advocate's Take: Chambers Brief</h3>
-            {isSummarizing && <Loader2 size={16} className="animate-spin ml-auto text-amber-500" />}
-          </div>
-          <div className="legal-draft-font italic text-xl leading-relaxed text-slate-200">
-            {isSummarizing ? "Synthesizing statutory data for chambers..." : searchSummary}
-          </div>
-        </div>
-      )}
-
-      {allResults.length > 0 && (
-        <div className="space-y-8">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-slate-800" />
-            <h3 className="text-[11px] font-black uppercase text-slate-600 tracking-[0.5em] flex items-center gap-4">
-              Joint Intelligence Docket ({allResults.length})
-              {isExternalLoading && <Loader2 size={14} className="animate-spin text-amber-500" />}
-            </h3>
-            <div className="flex-1 h-px bg-slate-800" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {allResults.map((item, idx) => (
-              <div key={idx} className={`p-8 md:p-10 rounded-[3rem] shadow-2xl transition-all relative border ${item.source === "external" ? "bg-[#1e293b]/80 border-blue-500/10 hover:border-blue-500/30" : "bg-[#1e293b] border-slate-800 hover:border-amber-500/30"}`} data-testid={`statute-result-${idx}`}>
-                <div className="flex flex-wrap gap-3 mb-6">
-                  <span className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border ${item.source === "external" ? "bg-blue-500/10 border-blue-500/20 text-blue-400" : "bg-amber-500/10 border-amber-500/20 text-amber-500"}`}>
-                    {item.source === "external" ? "Research Feed" : "Internal Registry"}
-                  </span>
-                  <span className="px-3 py-1 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 text-[9px] font-black uppercase tracking-widest">{item.shortTitle}</span>
-                </div>
-                <h4 className="text-xl font-bold text-white mb-4 leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>{item.description}</h4>
-                <p className="text-xs leading-relaxed mb-8 text-slate-500 line-clamp-4">{item.punishment}</p>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <button onClick={() => handleBrief(item)} className="flex-1 bg-blue-600/10 text-blue-400 text-[10px] font-black uppercase tracking-widest py-4 rounded-2xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2">
-                    <FileSearch size={16} /> Read Brief
-                  </button>
-                  {item.uri && (
-                    <a href={item.uri} target="_blank" rel="noopener noreferrer" className="flex-1 bg-emerald-600/10 text-emerald-400 text-[10px] font-black uppercase tracking-widest py-4 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all text-center flex items-center justify-center gap-2">
-                      <ExternalLink size={16} /> Official Portal
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

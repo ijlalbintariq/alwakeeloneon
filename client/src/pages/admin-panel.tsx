@@ -57,7 +57,7 @@ export default function AdminPanelPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "statute-docs">("stats");
 
   if (!user?.isAdmin) {
     return <Redirect to="/dashboard" />;
@@ -82,6 +82,7 @@ export default function AdminPanelPage() {
           { id: "stats" as const, label: "Analytics", icon: BarChart3 },
           { id: "users" as const, label: "Users", icon: Users },
           { id: "knowledge" as const, label: "Knowledge Vault", icon: Database },
+          { id: "statute-docs" as const, label: "Statute Library", icon: FileText },
         ].map((tab) => (
           <Button
             key={tab.id}
@@ -99,6 +100,7 @@ export default function AdminPanelPage() {
       {activeTab === "stats" && <StatsSection />}
       {activeTab === "users" && <UsersSection />}
       {activeTab === "knowledge" && <KnowledgeSection />}
+      {activeTab === "statute-docs" && <StatuteDocumentsSection />}
     </div>
   );
 }
@@ -686,6 +688,190 @@ function KnowledgeSection() {
                   className="text-slate-500"
                   onClick={() => deleteMutation.mutate(doc.id)}
                   data-testid={`button-delete-knowledge-${doc.id}`}
+                >
+                  <Trash2 size={14} />
+                </Button>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+type StatuteDoc = {
+  id: number;
+  title: string;
+  filename: string;
+  category: string;
+  createdAt: string;
+};
+
+function StatuteDocumentsSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: docs, isLoading } = useQuery<StatuteDoc[]>({ queryKey: ["/api/admin/statute-documents"] });
+  const [uploadCategory, setUploadCategory] = useState("general");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/admin/statute-documents/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/statute-documents"] });
+      toast({ title: "Statute document removed" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete", variant: "destructive" });
+    },
+  });
+
+  async function handleUpload() {
+    if (selectedFiles.length === 0) {
+      toast({ title: "Please select files to upload", variant: "destructive" });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("category", uploadCategory);
+      for (const file of selectedFiles) {
+        formData.append("files", file);
+      }
+
+      const res = await fetch("/api/admin/statute-documents", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/statute-documents"] });
+      setSelectedFiles([]);
+      const fileInput = document.querySelector('[data-testid="input-statute-doc-files"]') as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+
+      toast({ title: `${data.count} statute document${data.count !== 1 ? "s" : ""} uploaded` });
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-8" data-testid="statute-docs-section">
+      <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+        <CardHeader className="flex flex-row items-center gap-3 pb-2">
+          <Upload size={16} className="text-amber-500" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            Upload Statute Documents
+          </span>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-2">
+          <p className="text-xs text-slate-400">
+            Upload full statute documents that users can search and read in the PDF viewer. Supports .txt, .pdf, .json, .csv files (up to 500 files, 50 MB each).
+          </p>
+
+          <Select value={uploadCategory} onValueChange={setUploadCategory}>
+            <SelectTrigger className="bg-slate-800 border-slate-700 rounded-xl text-xs" data-testid="select-statute-doc-category">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="general">General</SelectItem>
+              <SelectItem value="constitution">Constitution</SelectItem>
+              <SelectItem value="criminal">Criminal Law</SelectItem>
+              <SelectItem value="civil">Civil Law</SelectItem>
+              <SelectItem value="family">Family Law</SelectItem>
+              <SelectItem value="commercial">Commercial Law</SelectItem>
+              <SelectItem value="tax">Tax Law</SelectItem>
+              <SelectItem value="labour">Labour Law</SelectItem>
+              <SelectItem value="environmental">Environmental Law</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="space-y-2">
+            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block">
+              Select Files (.txt, .json, .csv, .pdf)
+            </label>
+            <Input
+              type="file"
+              accept=".txt,.json,.csv,.pdf"
+              multiple
+              onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
+              className="bg-slate-800 border-slate-700 rounded-xl text-xs file:text-slate-400 file:mr-4"
+              data-testid="input-statute-doc-files"
+            />
+            {selectedFiles.length > 0 && (
+              <p className="text-[10px] text-amber-400 font-bold">
+                {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""} selected
+              </p>
+            )}
+          </div>
+
+          <Button
+            onClick={handleUpload}
+            disabled={isUploading}
+            className="bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+            data-testid="button-upload-statute-docs"
+          >
+            {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+            <span>{isUploading ? "Uploading..." : selectedFiles.length > 1 ? `Upload ${selectedFiles.length} Files` : "Upload Statute"}</span>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <FileText size={16} className="text-amber-500" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            Statute Library ({docs?.length || 0})
+          </span>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="animate-spin text-amber-500" size={24} />
+          </div>
+        ) : docs?.length === 0 ? (
+          <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+            <CardContent className="p-12 text-center">
+              <FileText size={32} className="text-slate-700 mx-auto mb-3" />
+              <p className="text-sm text-slate-500">No statute documents uploaded yet</p>
+            </CardContent>
+          </Card>
+        ) : (
+          docs?.map((doc) => (
+            <Card key={doc.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`statute-doc-${doc.id}`}>
+              <CardContent className="p-5 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <FileText size={18} className="text-slate-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{doc.title}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className="bg-slate-800 text-slate-400 border-slate-700 rounded-lg text-[8px]">
+                        {doc.category}
+                      </Badge>
+                      <span className="text-[9px] text-slate-600">{doc.filename}</span>
+                      <span className="text-[9px] text-slate-600">
+                        {new Date(doc.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-slate-500"
+                  onClick={() => deleteMutation.mutate(doc.id)}
+                  data-testid={`button-delete-statute-doc-${doc.id}`}
                 >
                   <Trash2 size={14} />
                 </Button>

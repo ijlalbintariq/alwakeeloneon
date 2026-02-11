@@ -576,6 +576,31 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/statute-documents/search", async (req, res) => {
+    try {
+      const query = (req.query.q as string) || "";
+      if (!query) return res.json([]);
+      const results = await storage.searchStatuteDocuments(query);
+      res.json(results.map(r => ({ id: r.id, title: r.title, category: r.category, filename: r.filename })));
+    } catch (err) {
+      console.error("Error searching statute documents:", err);
+      res.status(500).json({ message: "Failed to search statute documents" });
+    }
+  });
+
+  app.get("/api/statute-documents/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid document ID" });
+      const doc = await storage.getStatuteDocument(id);
+      if (!doc) return res.status(404).json({ message: "Document not found" });
+      res.json(doc);
+    } catch (err) {
+      console.error("Error fetching statute document:", err);
+      res.status(500).json({ message: "Failed to fetch statute document" });
+    }
+  });
+
   app.get(api.caseLaw.search.path, async (req, res) => {
     try {
       const query = (req.query.q as string) || "";
@@ -1074,6 +1099,82 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error deleting knowledge:", err);
       res.status(500).json({ message: "Failed to delete knowledge" });
+    }
+  });
+
+  // ====== ADMIN STATUTE DOCUMENTS ======
+  app.get("/api/admin/statute-documents", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const docs = await storage.getAllStatuteDocuments();
+      res.json(docs);
+    } catch (err) {
+      console.error("Error fetching statute documents:", err);
+      res.status(500).json({ message: "Failed to fetch statute documents" });
+    }
+  });
+
+  app.post("/api/admin/statute-documents", upload.array("files", 500), async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const userId = getUserId(req)!;
+      const files = req.files as Express.Multer.File[] | undefined;
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const results = [];
+      for (const file of files) {
+        let content = "";
+        const ext = file.originalname.split(".").pop()?.toLowerCase();
+
+        if (ext === "pdf") {
+          try {
+            const parsed = await pdfParse(file.buffer);
+            content = parsed.text || "";
+          } catch {
+            content = "[PDF parsing failed]";
+          }
+        } else {
+          content = file.buffer.toString("utf-8");
+        }
+
+        if (!content.trim()) continue;
+
+        const title = file.originalname
+          .replace(/\.[^.]+$/, "")
+          .replace(/[-_]+/g, " ")
+          .replace(/\b\w/g, (c: string) => c.toUpperCase())
+          .trim();
+
+        const category = (req.body.category as string) || "general";
+
+        const doc = await storage.addStatuteDocument({
+          title,
+          filename: file.originalname,
+          content,
+          category,
+          uploadedBy: userId,
+        });
+        results.push(doc);
+      }
+
+      res.json({ message: `${results.length} statute document(s) uploaded successfully`, count: results.length });
+    } catch (err) {
+      console.error("Error uploading statute documents:", err);
+      res.status(500).json({ message: "Failed to upload statute documents" });
+    }
+  });
+
+  app.delete("/api/admin/statute-documents/:id", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const id = Number(req.params.id);
+      await storage.deleteStatuteDocument(id);
+      res.sendStatus(204);
+    } catch (err) {
+      console.error("Error deleting statute document:", err);
+      res.status(500).json({ message: "Failed to delete statute document" });
     }
   });
 
