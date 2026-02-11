@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking,
+  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -10,9 +10,10 @@ import {
   type CaseLaw,
   type GithubKnowledge, type InsertGithubKnowledge,
   type QueryCache, type InsertQueryCache,
-  type UsageTracking
+  type UsageTracking,
+  type AdminKnowledge, type InsertAdminKnowledge
 } from "@shared/schema";
-import { users } from "@shared/models/auth";
+import { users, type User } from "@shared/models/auth";
 import { eq, desc, or, ilike, sql, and, lt, gte, count } from "drizzle-orm";
 
 export interface IStorage {
@@ -53,6 +54,19 @@ export interface IStorage {
   logUsage(userId: string, feature: string): Promise<UsageTracking>;
   getMonthlyUsageCount(userId: string): Promise<number>;
   getUserTier(userId: string): Promise<string>;
+
+  getAllUsers(): Promise<User[]>;
+  updateUserTier(userId: string, tier: string): Promise<User | undefined>;
+  updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<User | undefined>;
+  isUserAdmin(userId: string): Promise<boolean>;
+  getSystemStats(): Promise<{ totalUsers: number; totalThreads: number; totalMessages: number; totalDocuments: number; totalKnowledge: number; totalCacheEntries: number; totalUsageThisMonth: number }>;
+  getUserProfile(userId: string): Promise<User | undefined>;
+  updateUserProfile(userId: string, data: { firstName?: string; lastName?: string }): Promise<User | undefined>;
+
+  addAdminKnowledge(entry: InsertAdminKnowledge): Promise<AdminKnowledge>;
+  getAllAdminKnowledge(): Promise<AdminKnowledge[]>;
+  deleteAdminKnowledge(id: number): Promise<void>;
+  searchAdminKnowledge(query: string, limit?: number): Promise<AdminKnowledge[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -259,6 +273,102 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.id, userId));
     return user?.tier || "free";
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async updateUserTier(userId: string, tier: string): Promise<User | undefined> {
+    const [updated] = await db.update(users)
+      .set({ subscriptionTier: tier, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
+  }
+
+  async updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<User | undefined> {
+    const [updated] = await db.update(users)
+      .set({ isAdmin, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
+  }
+
+  async isUserAdmin(userId: string): Promise<boolean> {
+    const [user] = await db.select({ isAdmin: users.isAdmin })
+      .from(users)
+      .where(eq(users.id, userId));
+    return user?.isAdmin || false;
+  }
+
+  async getSystemStats() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [userCount] = await db.select({ total: count() }).from(users);
+    const [threadCount] = await db.select({ total: count() }).from(threads);
+    const [messageCount] = await db.select({ total: count() }).from(messages);
+    const [documentCount] = await db.select({ total: count() }).from(documents);
+    const githubCount = await this.getGithubKnowledgeCount();
+    const [adminKnowledgeCount] = await db.select({ total: count() }).from(adminKnowledge);
+    const [cacheCount] = await db.select({ total: count() }).from(queryCache);
+    const [usageCount] = await db.select({ total: count() })
+      .from(usageTracking)
+      .where(gte(usageTracking.createdAt, startOfMonth));
+
+    return {
+      totalUsers: userCount?.total || 0,
+      totalThreads: threadCount?.total || 0,
+      totalMessages: messageCount?.total || 0,
+      totalDocuments: documentCount?.total || 0,
+      totalKnowledge: githubCount + (adminKnowledgeCount?.total || 0),
+      totalCacheEntries: cacheCount?.total || 0,
+      totalUsageThisMonth: usageCount?.total || 0,
+    };
+  }
+
+  async getUserProfile(userId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    return user;
+  }
+
+  async updateUserProfile(userId: string, data: { firstName?: string; lastName?: string }): Promise<User | undefined> {
+    const [updated] = await db.update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
+  }
+
+  async addAdminKnowledge(entry: InsertAdminKnowledge): Promise<AdminKnowledge> {
+    const [doc] = await db.insert(adminKnowledge).values(entry).returning();
+    return doc;
+  }
+
+  async getAllAdminKnowledge(): Promise<AdminKnowledge[]> {
+    return await db.select().from(adminKnowledge).orderBy(desc(adminKnowledge.createdAt));
+  }
+
+  async deleteAdminKnowledge(id: number): Promise<void> {
+    await db.delete(adminKnowledge).where(eq(adminKnowledge.id, id));
+  }
+
+  async searchAdminKnowledge(query: string, limit: number = 5): Promise<AdminKnowledge[]> {
+    const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    if (words.length === 0) return [];
+
+    const conditions = words.map(word =>
+      or(
+        ilike(adminKnowledge.title, `%${word}%`),
+        ilike(adminKnowledge.content, `%${word}%`)
+      )
+    );
+
+    return await db.select()
+      .from(adminKnowledge)
+      .where(or(...conditions))
+      .limit(limit);
   }
 }
 

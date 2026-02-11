@@ -9,6 +9,7 @@ import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, TIE
 import { db } from "./db";
 import { syncGithubKnowledge } from "./github-sync";
 import crypto from "crypto";
+import multer from "multer";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
@@ -162,6 +163,19 @@ async function gatherKnowledgeContext(query: string): Promise<string> {
     }
   } catch (err) {
     console.error("[Knowledge] Error searching GitHub knowledge:", err);
+  }
+
+  try {
+    const adminDocs = await storage.searchAdminKnowledge(query, 3);
+    if (adminDocs.length > 0) {
+      contextParts.push("=== CHAMBERS KNOWLEDGE VAULT (ADMIN UPLOADED) ===");
+      for (const doc of adminDocs) {
+        const excerpt = doc.content.length > 3000 ? doc.content.substring(0, 3000) + "..." : doc.content;
+        contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
+      }
+    }
+  } catch (err) {
+    console.error("[Knowledge] Error searching admin knowledge:", err);
   }
 
   if (contextParts.length === 0) return "";
@@ -687,6 +701,149 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error generating brief:", err);
       res.status(500).json({ message: "Failed to generate brief" });
+    }
+  });
+
+  // ====== ADMIN ROUTES ======
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+  async function isAdmin(req: any, res: any): Promise<boolean> {
+    const userId = getUserId(req);
+    if (!userId) { res.sendStatus(401); return false; }
+    const admin = await storage.isUserAdmin(userId);
+    if (!admin) { res.status(403).json({ message: "Admin access required" }); return false; }
+    return true;
+  }
+
+  app.get("/api/admin/users", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const targetId = req.params.id;
+      const { subscriptionTier, isAdmin: adminFlag } = req.body;
+
+      let updated;
+      if (subscriptionTier !== undefined) {
+        updated = await storage.updateUserTier(targetId, subscriptionTier);
+      }
+      if (adminFlag !== undefined) {
+        updated = await storage.updateUserAdminStatus(targetId, adminFlag);
+      }
+
+      if (!updated) return res.status(404).json({ message: "User not found" });
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating user:", err);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.get("/api/admin/stats", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const stats = await storage.getSystemStats();
+      res.json(stats);
+    } catch (err) {
+      console.error("Error fetching stats:", err);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.get("/api/admin/knowledge", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const docs = await storage.getAllAdminKnowledge();
+      res.json(docs);
+    } catch (err) {
+      console.error("Error fetching knowledge:", err);
+      res.status(500).json({ message: "Failed to fetch knowledge" });
+    }
+  });
+
+  app.post("/api/admin/knowledge", upload.single("file"), async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const userId = getUserId(req)!;
+      const file = req.file;
+      const { title, category } = req.body;
+
+      if (!file && !req.body.content) {
+        return res.status(400).json({ message: "File or content is required" });
+      }
+
+      let content = "";
+      let filename = "manual-entry.txt";
+
+      if (file) {
+        content = file.buffer.toString("utf-8");
+        filename = file.originalname;
+      } else {
+        content = req.body.content;
+        filename = title ? `${title.toLowerCase().replace(/\s+/g, "-")}.txt` : "manual-entry.txt";
+      }
+
+      const doc = await storage.addAdminKnowledge({
+        title: title || filename.replace(/\.[^/.]+$/, ""),
+        filename,
+        content,
+        category: category || "general",
+        uploadedBy: userId,
+      });
+
+      res.status(201).json(doc);
+    } catch (err) {
+      console.error("Error uploading knowledge:", err);
+      res.status(500).json({ message: "Failed to upload knowledge" });
+    }
+  });
+
+  app.delete("/api/admin/knowledge/:id", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const id = Number(req.params.id);
+      await storage.deleteAdminKnowledge(id);
+      res.sendStatus(204);
+    } catch (err) {
+      console.error("Error deleting knowledge:", err);
+      res.status(500).json({ message: "Failed to delete knowledge" });
+    }
+  });
+
+  // ====== USER PROFILE ROUTES ======
+  app.get("/api/profile", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const profile = await storage.getUserProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      res.json(profile);
+    } catch (err) {
+      console.error("Error fetching profile:", err);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.patch("/api/profile", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { firstName, lastName } = req.body;
+      const updated = await storage.updateUserProfile(userId, { firstName, lastName });
+      if (!updated) return res.status(404).json({ message: "Profile not found" });
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating profile:", err);
+      res.status(500).json({ message: "Failed to update profile" });
     }
   });
 

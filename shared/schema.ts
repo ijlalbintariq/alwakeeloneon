@@ -92,6 +92,16 @@ export const githubKnowledge = pgTable("github_knowledge", {
   syncedAt: timestamp("synced_at").defaultNow(),
 });
 
+export const adminKnowledge = pgTable("admin_knowledge", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  filename: text("filename").notNull(),
+  content: text("content").notNull(),
+  category: text("category").default("general").notNull(),
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
@@ -103,6 +113,7 @@ export const insertCaseLawSchema = createInsertSchema(caseLaw).omit({ id: true }
 export const insertQueryCacheSchema = createInsertSchema(queryCache).omit({ id: true, createdAt: true, hitCount: true });
 export const insertUsageTrackingSchema = createInsertSchema(usageTracking).omit({ id: true, createdAt: true });
 export const insertGithubKnowledgeSchema = createInsertSchema(githubKnowledge).omit({ id: true, syncedAt: true });
+export const insertAdminKnowledgeSchema = createInsertSchema(adminKnowledge).omit({ id: true, createdAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -125,6 +136,8 @@ export type UsageTracking = typeof usageTracking.$inferSelect;
 export type InsertUsageTracking = z.infer<typeof insertUsageTrackingSchema>;
 export type GithubKnowledge = typeof githubKnowledge.$inferSelect;
 export type InsertGithubKnowledge = z.infer<typeof insertGithubKnowledgeSchema>;
+export type AdminKnowledge = typeof adminKnowledge.$inferSelect;
+export type InsertAdminKnowledge = z.infer<typeof insertAdminKnowledgeSchema>;
 
 export const TIER_LIMITS: Record<string, { monthlyQueries: number; label: string; description: string }> = {
   free: { monthlyQueries: 10, label: "Free", description: "10 AI queries/month" },
