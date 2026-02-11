@@ -10,6 +10,9 @@ import { db } from "./db";
 import { syncGithubKnowledge } from "./github-sync";
 import crypto from "crypto";
 import multer from "multer";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pdfParse = require("pdf-parse");
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
@@ -789,15 +792,20 @@ export async function registerRoutes(
         return res.status(400).json({ message: "File or content is required" });
       }
 
-      if (file && !file.originalname.endsWith(".txt")) {
-        return res.status(400).json({ message: "Only .txt files are supported" });
+      if (file && !file.originalname.endsWith(".txt") && !file.originalname.endsWith(".pdf")) {
+        return res.status(400).json({ message: "Only .txt and .pdf files are supported" });
       }
 
       let content = "";
       let filename = "manual-entry.txt";
 
       if (file) {
-        content = file.buffer.toString("utf-8");
+        if (file.originalname.endsWith(".pdf")) {
+          const pdfData = await pdfParse(file.buffer);
+          content = pdfData.text;
+        } else {
+          content = file.buffer.toString("utf-8");
+        }
         filename = file.originalname;
       } else {
         content = req.body.content;

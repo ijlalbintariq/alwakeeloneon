@@ -327,11 +327,11 @@ function KnowledgeSection() {
 
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block">
-              Upload File (.txt, up to 10MB)
+              Upload File (.txt or .pdf, up to 10MB)
             </label>
             <Input
               type="file"
-              accept=".txt"
+              accept=".txt,.pdf"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               className="bg-slate-800 border-slate-700 rounded-xl text-xs file:text-slate-400 file:mr-4"
               data-testid="input-knowledge-file"
