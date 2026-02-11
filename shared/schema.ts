@@ -77,6 +77,13 @@ export const queryCache = pgTable("query_cache", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const usageTracking = pgTable("usage_tracking", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  feature: text("feature", { enum: ["chat", "search-judgments", "search-statutes", "summarize", "brief", "draft", "contract"] }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const githubKnowledge = pgTable("github_knowledge", {
   id: serial("id").primaryKey(),
   filename: text("filename").notNull(),
@@ -94,6 +101,7 @@ export const insertSearchHistorySchema = createInsertSchema(searchHistory).omit(
 export const insertStatuteSchema = createInsertSchema(statutes).omit({ id: true });
 export const insertCaseLawSchema = createInsertSchema(caseLaw).omit({ id: true });
 export const insertQueryCacheSchema = createInsertSchema(queryCache).omit({ id: true, createdAt: true, hitCount: true });
+export const insertUsageTrackingSchema = createInsertSchema(usageTracking).omit({ id: true, createdAt: true });
 export const insertGithubKnowledgeSchema = createInsertSchema(githubKnowledge).omit({ id: true, syncedAt: true });
 
 // Types
@@ -113,8 +121,16 @@ export type CaseLaw = typeof caseLaw.$inferSelect;
 export type InsertCaseLaw = z.infer<typeof insertCaseLawSchema>;
 export type QueryCache = typeof queryCache.$inferSelect;
 export type InsertQueryCache = z.infer<typeof insertQueryCacheSchema>;
+export type UsageTracking = typeof usageTracking.$inferSelect;
+export type InsertUsageTracking = z.infer<typeof insertUsageTrackingSchema>;
 export type GithubKnowledge = typeof githubKnowledge.$inferSelect;
 export type InsertGithubKnowledge = z.infer<typeof insertGithubKnowledgeSchema>;
+
+export const TIER_LIMITS: Record<string, { monthlyQueries: number; label: string; description: string }> = {
+  free: { monthlyQueries: 10, label: "Free", description: "10 AI queries/month" },
+  pro: { monthlyQueries: 500, label: "Pro", description: "500 AI queries/month" },
+  enterprise: { monthlyQueries: 999999, label: "Enterprise", description: "Unlimited AI queries" },
+};
 
 // API Types
 export type CreateThreadRequest = {
