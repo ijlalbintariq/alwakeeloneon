@@ -21,6 +21,8 @@ import KnowledgeVaultPage from "@/pages/knowledge-vault";
 import AdminPanelPage from "@/pages/admin-panel";
 import AdminSetupPage from "@/pages/admin-setup";
 import UserPanelPage from "@/pages/user-panel";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import NotFound from "@/pages/not-found";
 import { AppShell } from "@/components/app-shell";
 
@@ -54,6 +56,16 @@ function Router({ onReady }: { onReady?: () => void }) {
   if (location === "/auth") {
     if (user) return <Redirect to="/dashboard" />;
     return <AuthPage />;
+  }
+
+  if (location === "/forgot-password") {
+    if (user) return <Redirect to="/dashboard" />;
+    return <ForgotPasswordPage />;
+  }
+
+  if (location.startsWith("/reset-password")) {
+    if (user) return <Redirect to="/dashboard" />;
+    return <ResetPasswordPage />;
   }
 
   if (!user) {

@@ -219,4 +219,60 @@ export function registerAuthRoutes(app: Express): void {
   app.get("/api/auth/google/status", (_req, res) => {
     res.json({ available: !!process.env.GOOGLE_CLIENT_ID });
   });
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const schema = z.object({ email: z.string().email() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Please provide a valid email address" });
+      }
+
+      const user = await authStorage.getUserByEmail(parsed.data.email);
+
+      if (!user || user.authProvider !== "email") {
+        return res.json({ message: "If an account with that email exists, a reset link has been generated." });
+      }
+
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+      await authStorage.createPasswordResetToken(user.id, token, expiresAt);
+
+      const resetUrl = `${req.protocol}://${req.get("host")}/reset-password?token=${token}`;
+      console.log(`[Password Reset] Reset link for ${parsed.data.email}: ${resetUrl}`);
+
+      res.json({ message: "If an account with that email exists, a reset link has been generated.", resetUrl });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const schema = z.object({
+        token: z.string().min(1),
+        password: z.string().min(8, "Password must be at least 8 characters"),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0].message });
+      }
+
+      const resetToken = await authStorage.getValidResetToken(parsed.data.token);
+      if (!resetToken) {
+        return res.status(400).json({ message: "This reset link has expired or is invalid. Please request a new one." });
+      }
+
+      const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+      await authStorage.updateUserPassword(resetToken.userId, passwordHash);
+      await authStorage.markResetTokenUsed(resetToken.id);
+
+      res.json({ message: "Password has been reset successfully. You can now sign in." });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
 }

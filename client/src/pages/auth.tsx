@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Scale, Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -177,6 +177,18 @@ export default function AuthPage() {
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
+
+          {mode === "login" && (
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                data-testid="link-forgot-password"
+                className="text-xs text-slate-500 hover:text-amber-400 transition-colors"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+          )}
 
           <button
             type="submit"
