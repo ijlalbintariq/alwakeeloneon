@@ -95,6 +95,16 @@ export const githubKnowledge = pgTable("github_knowledge", {
   syncedAt: timestamp("synced_at").defaultNow(),
 });
 
+export const statuteDocuments = pgTable("statute_documents", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  filename: text("filename").notNull(),
+  content: text("content").notNull(),
+  category: text("category").default("general").notNull(),
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const adminKnowledge = pgTable("admin_knowledge", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -116,6 +126,7 @@ export const insertCaseLawSchema = createInsertSchema(caseLaw).omit({ id: true }
 export const insertQueryCacheSchema = createInsertSchema(queryCache).omit({ id: true, createdAt: true, hitCount: true });
 export const insertUsageTrackingSchema = createInsertSchema(usageTracking).omit({ id: true, createdAt: true });
 export const insertGithubKnowledgeSchema = createInsertSchema(githubKnowledge).omit({ id: true, syncedAt: true });
+export const insertStatuteDocumentSchema = createInsertSchema(statuteDocuments).omit({ id: true, createdAt: true });
 export const insertAdminKnowledgeSchema = createInsertSchema(adminKnowledge).omit({ id: true, createdAt: true });
 
 // Types
@@ -139,6 +150,8 @@ export type UsageTracking = typeof usageTracking.$inferSelect;
 export type InsertUsageTracking = z.infer<typeof insertUsageTrackingSchema>;
 export type GithubKnowledge = typeof githubKnowledge.$inferSelect;
 export type InsertGithubKnowledge = z.infer<typeof insertGithubKnowledgeSchema>;
+export type StatuteDocument = typeof statuteDocuments.$inferSelect;
+export type InsertStatuteDocument = z.infer<typeof insertStatuteDocumentSchema>;
 export type AdminKnowledge = typeof adminKnowledge.$inferSelect;
 export type InsertAdminKnowledge = z.infer<typeof insertAdminKnowledgeSchema>;
 
