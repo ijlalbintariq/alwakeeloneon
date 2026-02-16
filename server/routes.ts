@@ -771,24 +771,42 @@ export async function registerRoutes(
       const systemPromptFull = systemPrompt + knowledgeContext;
 
       const cacheKey = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
+      let usedModel = model;
       const { content, fromCache } = await getCachedOrCall("ai-chat", cacheKey, async () => {
-        const completion = await ai.models.generateContent({
-          model,
-          contents: geminiContents,
-          config: {
-            maxOutputTokens: tokenLimit,
-            systemInstruction: systemPromptFull,
-          },
-        });
-        return completion.text || "I apologize, I could not generate a response.";
+        try {
+          const completion = await ai.models.generateContent({
+            model: usedModel,
+            contents: geminiContents,
+            config: {
+              maxOutputTokens: tokenLimit,
+              systemInstruction: systemPromptFull,
+            },
+          });
+          return completion.text || "I apologize, I could not generate a response.";
+        } catch (turboErr: any) {
+          if (canUseTurbo && (turboErr?.status === 429 || turboErr?.message?.includes("quota") || turboErr?.message?.includes("rate"))) {
+            console.log("[AI Chat] Pro model quota exceeded, falling back to flash model");
+            usedModel = "gemini-3-flash-preview";
+            const fallback = await ai.models.generateContent({
+              model: usedModel,
+              contents: geminiContents,
+              config: {
+                maxOutputTokens: tokenLimit,
+                systemInstruction: systemPromptFull,
+              },
+            });
+            return fallback.text || "I apologize, I could not generate a response.";
+          }
+          throw turboErr;
+        }
       });
 
       if (!fromCache) {
         const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
-        await logUsageCost(userId, featureKey, model, inputText, content);
+        await logUsageCost(userId, featureKey, usedModel, inputText, content);
       }
 
-      res.json({ content });
+      res.json({ content, model: usedModel });
     } catch (err) {
       console.error("Error in AI chat:", err);
       res.status(500).json({ message: "Failed to process AI chat" });
@@ -1112,24 +1130,45 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const { shortTitle, section, description } = req.body as { shortTitle: string; section: string; description: string };
       const cacheKey = `${shortTitle}::${section}::${description}`;
 
-      const briefModel = "gemini-3-pro-preview";
+      let briefModel = "gemini-3-pro-preview";
       const { content: brief, fromCache } = await getCachedOrCall("brief", cacheKey, async () => {
         const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;
         const userInput = `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}`;
-        const completion = await ai.models.generateContent({
-          model: briefModel,
-          contents: [
-            { role: "user", parts: [{ text: userInput }] },
-          ],
-          config: {
-            maxOutputTokens: TOKEN_LIMITS.brief,
-            systemInstruction: sysInstruction,
-          },
-        });
-        const result = completion.text || "Unable to generate brief.";
-        await logUsageCost(userId, "brief", briefModel, sysInstruction + userInput, result);
-        return result;
+        try {
+          const completion = await ai.models.generateContent({
+            model: briefModel,
+            contents: [
+              { role: "user", parts: [{ text: userInput }] },
+            ],
+            config: {
+              maxOutputTokens: TOKEN_LIMITS.brief,
+              systemInstruction: sysInstruction,
+            },
+          });
+          const result = completion.text || "Unable to generate brief.";
+          await logUsageCost(userId, "brief", briefModel, sysInstruction + userInput, result);
+          return result;
+        } catch (proErr: any) {
+          if (proErr?.status === 429 || proErr?.message?.includes("quota") || proErr?.message?.includes("rate")) {
+            console.log("[Brief] Pro model quota exceeded, falling back to flash model");
+            briefModel = "gemini-3-flash-preview";
+            const fallback = await ai.models.generateContent({
+              model: briefModel,
+              contents: [
+                { role: "user", parts: [{ text: userInput }] },
+              ],
+              config: {
+                maxOutputTokens: TOKEN_LIMITS.brief,
+                systemInstruction: sysInstruction,
+              },
+            });
+            const result = fallback.text || "Unable to generate brief.";
+            await logUsageCost(userId, "brief", briefModel, sysInstruction + userInput, result);
+            return result;
+          }
+          throw proErr;
+        }
       });
 
       res.json({ brief });
