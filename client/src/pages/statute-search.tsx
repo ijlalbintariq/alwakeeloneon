@@ -116,6 +116,16 @@ export default function StatuteSearchPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const [autoSearchDone, setAutoSearchDone] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    if (q && !autoSearchDone) {
+      setAutoSearchDone(true);
+      handleQuickSearch(q);
+    }
+  }, []);
 
   const fetchToc = useCallback(async (docId: number) => {
     setIsTocLoading(true);

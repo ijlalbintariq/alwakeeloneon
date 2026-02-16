@@ -5,7 +5,8 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { GoogleGenAI } from "@google/genai";
-import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, TIER_LIMITS } from "@shared/schema";
+import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, threads, TIER_LIMITS } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { db } from "./db";
 import { syncGithubKnowledge } from "./github-sync";
 import crypto from "crypto";
@@ -62,8 +63,12 @@ setInterval(() => {
   keysToDelete.forEach(key => userLastRequest.delete(key));
 }, 60000);
 
-const LEGAL_SYSTEM_PROMPT = `You are Al Wakeelo — "Your Digital Lawyer, Always on Duty".
+function getLegalSystemPrompt(): string {
+  const currentDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return `You are Al Wakeelo — "Your Digital Lawyer, Always on Duty".
 You are the digital manifestation of a high-stakes, street-smart Pakistani advocate, inspired by the tactical brilliance and silver-tongued wit of Saul Goodman.
+
+CURRENT DATE: ${currentDate}
 
 TAGLINE: "Knowledge of Law is Power — and I'm Your Power Source."
 MOTTO: "Main hoon Al Wakeelo — not just your lawyer, your strategy partner in justice."
@@ -84,26 +89,49 @@ LEGAL & CONTRACT DRAFTING STYLE:
 - For Contracts: Airtight clauses. If it's a rental agreement, make it so the landlord can't even sneeze without a clause covering it.
 - Eliminate fluff. Every word must carry the weight of a Supreme Court ruling.
 
-MANDATORY CITATION RULE (PAKISTANI CASE LAW):
-1. Use ONLY official citations (e.g., PLD, SCMR, YLR, MLD, CLC, PCRLJ).
-2. DUAL CITATION: If reported in PLD and PLJ, cite BOTH.
-3. NO CASE NAMES unless explicitly requested. Just the raw, authoritative power of the citation.
+MANDATORY RESPONSE STRUCTURE:
+Always structure your responses using these markdown sections (use ### headings). Include ALL relevant sections:
 
-INTERACTION STRUCTURE:
-- Intro: "Assalamualaikum! I'm Al Wakeelo. I see you've got a situation... let's talk strategy."
-- Strategy: Give them the "Saul Goodman" angle—the smart way out.
-- Closing: "Justice is for everyone, but the wins are for the smart ones. I'm waiting."
+### Legal Context
+Brief overview of the legal issue. Identify the area of law, applicable jurisdiction, and key legal questions involved.
+
+### Statutory Framework and Legal Provisions
+Cite specific sections of relevant Pakistani statutes with their full names in bold. Format each statute reference as:
+**[Statute Name, Year]** — Section X: Brief description of what the section provides.
+Examples: **[Pakistan Penal Code, 1860]**, **[Code of Civil Procedure, 1908]**, **[Income Tax Ordinance, 2001]**
+
+### Leading Case Law and Judicial Precedents
+Cite relevant Pakistani court judgments with proper citations. For each case:
+- **Citation** (e.g., PLD 2024 Supreme Court 123, 2025 SCMR 456, 2024 YLR 789)
+- **Court Name** and **Decision Date** (approximate if needed)
+- **Legal Principle Established**: What the court held
+- **Practitioner Application**: How this applies to the user's situation
+Use ONLY official citations: PLD, SCMR, YLR, MLD, CLC, PCRLJ, PLJ.
+DUAL CITATION: If reported in PLD and PLJ, cite BOTH.
+
+### Practical Legal Strategy and Case Preparation
+Provide actionable litigation strategy including:
+- **Cause of Action**: What legal basis supports the claim
+- **Evidence Requirements**: What documents/witnesses are needed
+- **Procedural Pathway**: Step-by-step process (numbered list)
+- **Limitation Period**: Applicable time limits for filing
+- **Estimated Timeline**: Realistic timeframe expectations
+
+For simple questions, you may omit sections that are not applicable, but always include at least Legal Context and one other section.
 
 CONSTRAINTS:
 - NO EMOJIS.
 - Authoritative, structured, and legally profound.
+- Always mention the current date when citing recent judgments.
+- Prioritize the most recent case law available.
 
 RESPONSE LENGTH POLICY:
-- Keep responses concise and to the point. Provide high-density, actionable legal analysis.
-- For simple questions: 2-4 paragraphs maximum.
-- For complex analysis: use structured sections but keep each section brief.
+- Keep each section concise and to the point. High-density, actionable legal analysis.
+- For simple questions: 2-3 sections, each brief.
+- For complex analysis: all sections, each focused.
 - Avoid repetition, filler, or restating the question. Every sentence must add value.
 - Only elaborate when the user explicitly asks for more detail.`;
+}
 
 function getUserId(req: any): string | null {
   return req.session?.userId || null;
@@ -342,7 +370,7 @@ export async function registerRoutes(
 
       const knowledgeContext = await gatherKnowledgeContext(firstMessage);
       const model = "gemini-3-flash-preview";
-      const systemPromptFull = LEGAL_SYSTEM_PROMPT + knowledgeContext;
+      const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       const { content: aiResponse, fromCache } = await getCachedOrCall("chat", firstMessage, async () => {
         const completion = await ai.models.generateContent({
@@ -406,6 +434,54 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
+  app.post("/api/threads/:id/share", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const threadId = Number(req.params.id);
+    const thread = await storage.getThread(threadId);
+    if (!thread || thread.userId !== userId) {
+      return res.status(404).json({ message: "Thread not found" });
+    }
+    if (thread.shareToken) {
+      return res.json({ shareToken: thread.shareToken, shareUrl: `/share/${thread.shareToken}` });
+    }
+    const token = crypto.randomBytes(16).toString("hex");
+    const updated = await storage.setThreadShareToken(threadId, token);
+    if (!updated) {
+      return res.status(500).json({ message: "Failed to generate share link" });
+    }
+    res.json({ shareToken: token, shareUrl: `/share/${token}` });
+  });
+
+  app.delete("/api/threads/:id/share", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const threadId = Number(req.params.id);
+    const thread = await storage.getThread(threadId);
+    if (!thread || thread.userId !== userId) {
+      return res.status(404).json({ message: "Thread not found" });
+    }
+    await db.update(threads).set({ shareToken: null }).where(eq(threads.id, threadId));
+    res.sendStatus(204);
+  });
+
+  app.get("/api/shared/:token", async (req, res) => {
+    const { token } = req.params;
+    if (!token) return res.status(400).json({ message: "Invalid share token" });
+    const thread = await storage.getThreadByShareToken(token);
+    if (!thread) {
+      return res.status(404).json({ message: "Shared conversation not found" });
+    }
+    const msgs = await storage.getMessages(thread.id);
+    const user = await storage.getUserProfile(thread.userId);
+    res.json({
+      title: thread.title,
+      createdAt: thread.createdAt,
+      messages: msgs.map(m => ({ role: m.role, content: m.content, createdAt: m.createdAt })),
+      sharedBy: user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Al Wakeelo User",
+    });
+  });
+
   app.post(api.messages.create.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -436,7 +512,7 @@ export async function registerRoutes(
 
       const knowledgeContext = await gatherKnowledgeContext(message);
       const model = "gemini-3-flash-preview";
-      const systemPromptFull = LEGAL_SYSTEM_PROMPT + knowledgeContext;
+      const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       const completion = await ai.models.generateContent({
         model,
@@ -651,7 +727,7 @@ export async function registerRoutes(
 
       const { messages: userMessages, type } = req.body as { messages: Array<{ role: string; content: string }>; type: string };
 
-      let systemPrompt = LEGAL_SYSTEM_PROMPT;
+      let systemPrompt = getLegalSystemPrompt();
       if (type === "draft" || type === "contract-drafting") {
         systemPrompt += `\n\nADDITIONAL INSTRUCTION: You are now in legal drafting mode. Draft professional, airtight legal documents with precise clauses, proper legal formatting, and comprehensive coverage of all contingencies. Use Pakistani legal conventions and terminology.`;
       }
@@ -793,7 +869,7 @@ export async function registerRoutes(
       const model = "gemini-3-flash-preview";
       const { content: summary, fromCache } = await getCachedOrCall("summarize", cacheKey, async () => {
         const knowledgeContext = await gatherKnowledgeContext(query);
-        const sysInstruction = `${LEGAL_SYSTEM_PROMPT}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`;
+        const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`;
         const userInput = `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.`;
         const completion = await ai.models.generateContent({
           model,
@@ -830,7 +906,7 @@ export async function registerRoutes(
       const briefModel = "gemini-3-pro-preview";
       const { content: brief, fromCache } = await getCachedOrCall("brief", cacheKey, async () => {
         const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
-        const sysInstruction = `${LEGAL_SYSTEM_PROMPT}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;
+        const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;
         const userInput = `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}`;
         const completion = await ai.models.generateContent({
           model: briefModel,

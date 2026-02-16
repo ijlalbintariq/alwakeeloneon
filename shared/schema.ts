@@ -9,8 +9,9 @@ export * from "./models/auth";
 
 export const threads = pgTable("threads", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id).notNull(), // Changed to varchar to match auth users
+  userId: varchar("user_id").references(() => users.id).notNull(),
   title: text("title").notNull(),
+  shareToken: varchar("share_token", { length: 64 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

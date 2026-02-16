@@ -23,6 +23,7 @@ import AdminSetupPage from "@/pages/admin-setup";
 import UserPanelPage from "@/pages/user-panel";
 import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
+import SharedConversationPage from "@/pages/shared-conversation";
 import NotFound from "@/pages/not-found";
 import { AppShell } from "@/components/app-shell";
 
@@ -66,6 +67,10 @@ function Router({ onReady }: { onReady?: () => void }) {
   if (location.startsWith("/reset-password")) {
     if (user) return <Redirect to="/dashboard" />;
     return <ResetPasswordPage />;
+  }
+
+  if (location.startsWith("/share/")) {
+    return <SharedConversationPage />;
   }
 
   if (!user) {

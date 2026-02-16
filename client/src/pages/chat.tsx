@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Scale, Send, Trash2, Bookmark, Loader2, AlertCircle } from "lucide-react";
+import { Scale, Send, Trash2, Bookmark, Loader2, AlertCircle, Share2, Check, Copy } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
+import { LegalMarkdown } from "@/components/legal-markdown";
 
 interface ChatMessage {
   id: string;
@@ -84,9 +85,78 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     }
   };
 
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [sharedThreadId, setSharedThreadId] = useState<number | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+
   const handleClear = () => {
     setMessages([]);
     setApiError(null);
+    setShareUrl(null);
+    setSharedThreadId(null);
+    setShareError(null);
+  };
+
+  const handleShare = async () => {
+    if (messages.length < 2) return;
+    setIsSharing(true);
+    setShareError(null);
+    try {
+      let threadId = sharedThreadId;
+
+      if (!threadId) {
+        const firstUserMsg = messages.find(m => m.role === "user");
+        if (!firstUserMsg) throw new Error("No user message found");
+        const threadRes = await apiRequest("POST", "/api/threads", {
+          title: firstUserMsg.content.substring(0, 80) || "Al Wakeelo Conversation",
+          firstMessage: firstUserMsg.content,
+        });
+        const thread = await threadRes.json();
+        threadId = thread.id;
+        setSharedThreadId(threadId);
+
+        for (let i = 0; i < messages.length; i++) {
+          const m = messages[i];
+          if (i === 0 && m.role === "user") continue;
+          if (i === 1 && m.role === "assistant") continue;
+          try {
+            await apiRequest("POST", `/api/threads/${threadId}/messages`, { message: m.content });
+          } catch {
+            // continue best-effort
+          }
+        }
+      }
+
+      const shareRes = await apiRequest("POST", `/api/threads/${threadId}/share`);
+      const shareData = await shareRes.json();
+      const fullUrl = `${window.location.origin}${shareData.shareUrl}`;
+      setShareUrl(fullUrl);
+      try {
+        await navigator.clipboard.writeText(fullUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+      } catch {
+        // clipboard may fail in some contexts
+      }
+    } catch (err) {
+      console.error("Share error:", err);
+      setShareError("Failed to create share link. Please try again.");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleCopyShareUrl = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch {
+      // fallback - select text
+    }
   };
 
   return (
@@ -106,13 +176,37 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           </div>
         </div>
-        <button
-          onClick={handleClear}
-          data-testid="button-clear-chat"
-          className="px-4 py-2 hover:bg-red-500/10 rounded-xl text-slate-500 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
-        >
-          <Trash2 size={14} /> Reset
-        </button>
+        <div className="flex items-center gap-2">
+          {messages.length >= 2 && (
+            <button
+              onClick={shareUrl ? handleCopyShareUrl : handleShare}
+              disabled={isSharing}
+              data-testid="button-share-chat"
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
+                shareUrl
+                  ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                  : "hover:bg-amber-500/10 text-slate-500 hover:text-amber-400"
+              }`}
+            >
+              {isSharing ? (
+                <><Loader2 size={14} className="animate-spin" /> Sharing...</>
+              ) : copied ? (
+                <><Check size={14} /> Link Copied</>
+              ) : shareUrl ? (
+                <><Copy size={14} /> Copy Link</>
+              ) : (
+                <><Share2 size={14} /> Share</>
+              )}
+            </button>
+          )}
+          <button
+            onClick={handleClear}
+            data-testid="button-clear-chat"
+            className="px-4 py-2 hover:bg-red-500/10 rounded-xl text-slate-500 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
+          >
+            <Trash2 size={14} /> Reset
+          </button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 p-6 md:p-10 overflow-y-auto space-y-6 scrollbar-hide">
@@ -135,7 +229,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   : "bg-[#0f172a] border border-slate-700 text-slate-200 rounded-tl-lg"
               }`}
             >
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
+              {m.role === "assistant" ? (
+                <LegalMarkdown content={m.content} />
+              ) : (
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
+              )}
               {m.role === "assistant" && (
                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button

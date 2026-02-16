@@ -22,6 +22,8 @@ export interface IStorage {
   getThreads(userId: string): Promise<Thread[]>;
   getThread(id: number): Promise<Thread | undefined>;
   deleteThread(id: number): Promise<void>;
+  setThreadShareToken(id: number, token: string): Promise<Thread | undefined>;
+  getThreadByShareToken(token: string): Promise<Thread | undefined>;
 
   createMessage(message: InsertMessage): Promise<Message>;
   getMessages(threadId: number): Promise<Message[]>;
@@ -101,6 +103,16 @@ export class DatabaseStorage implements IStorage {
   async deleteThread(id: number): Promise<void> {
     await db.delete(messages).where(eq(messages.threadId, id));
     await db.delete(threads).where(eq(threads.id, id));
+  }
+
+  async setThreadShareToken(id: number, token: string): Promise<Thread | undefined> {
+    const [thread] = await db.update(threads).set({ shareToken: token }).where(eq(threads.id, id)).returning();
+    return thread;
+  }
+
+  async getThreadByShareToken(token: string): Promise<Thread | undefined> {
+    const [thread] = await db.select().from(threads).where(eq(threads.shareToken, token));
+    return thread;
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {

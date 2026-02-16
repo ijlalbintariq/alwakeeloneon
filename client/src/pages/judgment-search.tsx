@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Loader2, ExternalLink, AlertCircle, Gavel } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -14,11 +14,53 @@ interface CaseLawResult {
 
 export default function JudgmentSearchPage() {
   const [query, setQuery] = useState("");
+  const [autoSearchDone, setAutoSearchDone] = useState(false);
   const [localResults, setLocalResults] = useState<CaseLawResult[]>([]);
   const [externalResults, setExternalResults] = useState<CaseLawResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isExternalLoading, setIsExternalLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    if (q && !autoSearchDone) {
+      setQuery(q);
+      setAutoSearchDone(true);
+      setTimeout(() => {
+        handleSearchWithQuery(q);
+      }, 100);
+    }
+  }, []);
+
+  const handleSearchWithQuery = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+    setIsLoading(true);
+    setSearchError(null);
+    setExternalResults([]);
+
+    try {
+      const localRes = await fetch(`/api/case-law/search?q=${encodeURIComponent(searchQuery)}`);
+      const local = await localRes.json();
+      setLocalResults(local.map((r: any) => ({ ...r, source: "internal" })));
+    } catch { setLocalResults([]); }
+    setIsLoading(false);
+
+    setIsExternalLoading(true);
+    try {
+      const extRes = await apiRequest("POST", "/api/ai/search-judgments", { query: searchQuery });
+      const ext = await extRes.json();
+      const items = Array.isArray(ext) ? ext : (ext.judgments || ext.results || []);
+      setExternalResults(items.map((r: any) => ({ ...r, source: "external" })));
+    } catch (e: any) {
+      const isLimit = e?.message?.includes("429");
+      setSearchError(isLimit ? "Monthly query limit reached. Upgrade your plan for more searches." : "AI research feed unavailable.");
+      if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
+    }
+    setIsExternalLoading(false);
+
+    await apiRequest("POST", "/api/search-history", { type: "judgment", query: searchQuery }).catch(() => {});
+  };
 
   const handleSearch = async () => {
     if (!query.trim()) return;
