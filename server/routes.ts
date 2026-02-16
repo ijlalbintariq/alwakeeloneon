@@ -476,6 +476,9 @@ export async function registerRoutes(
     if (!userId) return res.sendStatus(401);
     try {
       const input = api.documents.create.input.parse(req.body);
+      if (input.content) {
+        input.content = stripNullBytes(input.content);
+      }
       const doc = await storage.createDocument({
         ...input,
         userId,
@@ -852,7 +855,11 @@ export async function registerRoutes(
   });
 
   // ====== ADMIN ROUTES ======
-  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
+
+  function stripNullBytes(text: string): string {
+    return text.replace(/\x00/g, "");
+  }
 
   async function isAdmin(req: any, res: any): Promise<boolean> {
     const userId = getUserId(req);
@@ -1048,7 +1055,7 @@ export async function registerRoutes(
             try {
               const uint8 = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength);
               const pdfResult = await extractText(uint8, { mergePages: true });
-              content = (pdfResult.text || "").trim();
+              content = stripNullBytes((pdfResult.text || "").trim());
               console.log(`[Knowledge Upload] Extracted ${content.length} chars from ${file.originalname}`);
             } catch (pdfErr: any) {
               console.error(`[Knowledge Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
@@ -1059,7 +1066,7 @@ export async function registerRoutes(
               continue;
             }
           } else {
-            content = file.buffer.toString("utf-8");
+            content = stripNullBytes(file.buffer.toString("utf-8"));
           }
 
           const docTitle = title && files.length === 1
@@ -1141,7 +1148,7 @@ export async function registerRoutes(
           try {
             const uint8 = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength);
             const pdfResult = await extractText(uint8, { mergePages: true });
-            content = (pdfResult.text || "").trim();
+            content = stripNullBytes((pdfResult.text || "").trim());
             console.log(`[Statute Upload] Extracted ${content.length} chars from ${file.originalname}`);
           } catch (pdfErr: any) {
             console.error(`[Statute Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
@@ -1153,7 +1160,7 @@ export async function registerRoutes(
         } else if (ext === "doc" || ext === "docx") {
           content = `[.${ext} files are not supported. Please convert "${file.originalname}" to PDF or .txt format and re-upload.]`;
         } else {
-          content = file.buffer.toString("utf-8");
+          content = stripNullBytes(file.buffer.toString("utf-8"));
         }
 
         if (!content.trim()) continue;

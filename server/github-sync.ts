@@ -96,7 +96,7 @@ export async function syncGithubKnowledge(): Promise<void> {
           return {
             filename: file.path,
             title: deriveTitle(file.path),
-            content,
+            content: content.replace(/\x00/g, ""),
           };
         })
       );
