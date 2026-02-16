@@ -835,6 +835,105 @@ export async function registerRoutes(
     }
   });
 
+  app.post(api.ai.judgmentSummary.path, async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const allowed = await checkUsageLimit(userId, "summarize", res);
+      if (!allowed) return;
+
+      const { citation, title, court, summary: briefSummary } = req.body as {
+        citation: string;
+        title: string;
+        court?: string;
+        summary?: string;
+      };
+
+      if (!citation && !title) {
+        return res.status(400).json({ message: "Citation or title is required" });
+      }
+
+      const searchTerm = citation || title;
+      const knowledgeContext = await gatherKnowledgeContext(searchTerm);
+
+      let fullText = "";
+      try {
+        const ghResults = await storage.searchGithubKnowledge(searchTerm);
+        if (ghResults.length > 0) {
+          fullText = ghResults[0].content;
+        }
+        if (!fullText) {
+          const adminResults = await storage.searchAdminKnowledge(searchTerm);
+          if (adminResults.length > 0) {
+            fullText = adminResults[0].content;
+          }
+        }
+      } catch {}
+
+      const model = "gemini-3-flash-preview";
+      const cacheKey = `judgment-summary::${searchTerm}`;
+      const { content: aiSummary, fromCache } = await getCachedOrCall("judgment-summary", cacheKey, async () => {
+        const contextInfo = briefSummary ? `\nBrief Summary: ${briefSummary}` : "";
+        const courtInfo = court ? `\nCourt: ${court}` : "";
+        const fullTextInfo = fullText ? `\n\nFull Judgment Text (from Knowledge Vault):\n${fullText.substring(0, 8000)}` : "";
+
+        const sysInstruction = `${getLegalSystemPrompt()}
+
+You are providing a comprehensive analysis of a Pakistani court judgment. Generate a detailed, structured summary covering:
+
+### Case Overview
+- Full citation, court, bench composition (if known), date of judgment
+
+### Facts of the Case
+- Background facts, parties involved, dispute timeline
+
+### Legal Issues
+- Key legal questions before the court
+
+### Arguments
+- Plaintiff/Petitioner's arguments
+- Defendant/Respondent's arguments
+
+### Court's Analysis & Reasoning
+- How the court analyzed each issue, statutory provisions applied, precedents relied upon
+
+### Judgment & Order
+- Final decision, relief granted, any directions
+
+### Key Legal Principles Established
+- Ratio decidendi, obiter dicta, significance for future cases
+
+### Practical Implications
+- How this judgment affects legal practice, what practitioners should note
+
+Be thorough, authoritative, and cite specific sections of law and related judgments where applicable.${knowledgeContext}`;
+
+        const userInput = `Provide a comprehensive analysis of this judgment:\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}${fullTextInfo}`;
+
+        const completion = await ai.models.generateContent({
+          model,
+          contents: [{ role: "user", parts: [{ text: userInput }] }],
+          config: {
+            maxOutputTokens: 6144,
+            systemInstruction: sysInstruction,
+          },
+        });
+        const result = completion.text || "Unable to generate judgment summary.";
+        await logUsageCost(userId, "judgment-summary", model, sysInstruction + userInput, result);
+        return result;
+      });
+
+      res.json({
+        summary: aiSummary,
+        fullText: fullText || null,
+        source: fullText ? "knowledge_vault" : null,
+      });
+    } catch (err) {
+      console.error("Error generating judgment summary:", err);
+      res.status(500).json({ message: "Failed to generate judgment summary" });
+    }
+  });
+
   app.post(api.ai.searchStatutes.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);

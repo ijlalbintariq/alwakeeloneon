@@ -164,6 +164,10 @@ export const api = {
       method: 'POST' as const,
       path: '/api/ai/brief' as const,
     },
+    judgmentSummary: {
+      method: 'POST' as const,
+      path: '/api/ai/judgment-summary' as const,
+    },
   },
 };
 
