@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Loader2, ExternalLink, AlertCircle, Gavel, Sparkles, ChevronDown, ChevronUp, FileText, X, BookOpen } from "lucide-react";
+import { Search, Loader2, ExternalLink, AlertCircle, Gavel, Sparkles, ChevronDown, ChevronUp, FileText, X, BookOpen, ShieldCheck, ShieldAlert } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { LegalMarkdown } from "@/components/legal-markdown";
 
@@ -17,6 +17,7 @@ interface JudgmentSummaryData {
   summary: string;
   fullText: string | null;
   source: string | null;
+  verified: boolean;
 }
 
 export default function JudgmentSearchPage() {
@@ -134,6 +135,7 @@ export default function JudgmentSearchPage() {
             : "Failed to generate summary. Please try again.",
           fullText: null,
           source: null,
+          verified: false,
         }
       }));
       if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
@@ -271,14 +273,23 @@ export default function JudgmentSearchPage() {
                       </div>
                     ) : summaries[idx] && (
                       <div className="p-8 md:p-10 space-y-8">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div className="flex flex-wrap items-center gap-3">
                             <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
                               <Sparkles size={14} className="text-purple-400" />
                             </div>
                             <h5 className="text-[11px] font-black uppercase tracking-widest text-purple-400">
                               AI Judgment Analysis
                             </h5>
+                            {summaries[idx].verified ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" data-testid={`badge-verified-${idx}`}>
+                                <ShieldCheck size={12} /> Verified Source
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 text-amber-400" data-testid={`badge-ai-only-${idx}`}>
+                                <ShieldAlert size={12} /> AI General Knowledge
+                              </span>
+                            )}
                           </div>
                           <button
                             onClick={() => setExpandedSummary(null)}

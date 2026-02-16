@@ -858,69 +858,147 @@ export async function registerRoutes(
 
       let fullText = "";
       try {
+        const normalize = (s: string) => s.replace(/[^a-z0-9]/gi, "").toLowerCase();
+        const citationNorm = citation ? normalize(citation) : "";
+        const stopWords = new Set(["the", "and", "for", "with", "from", "this", "that", "case", "state", "versus", "pakistan", "government", "court", "high", "supreme", "lahore", "karachi", "islamabad", "peshawar", "quetta"]);
+        const titleWords = title.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3 && !stopWords.has(w));
+
+        const validateMatch = (_content: string, docTitle: string): boolean => {
+          const docTitleNorm = normalize(docTitle);
+          if (citationNorm.length >= 6 && docTitleNorm.includes(citationNorm)) {
+            return true;
+          }
+          const citationParts = citation ? citation.match(/\b(PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ)\s*\d{4}/i) : null;
+          if (citationParts) {
+            const reportPattern = normalize(citationParts[0]);
+            if (docTitleNorm.includes(reportPattern)) {
+              return true;
+            }
+          }
+          if (titleWords.length >= 3) {
+            const docTitleLower = docTitle.toLowerCase();
+            const matchCount = titleWords.filter((w: string) => docTitleLower.includes(w)).length;
+            return matchCount >= Math.ceil(titleWords.length * 0.8);
+          }
+          return false;
+        };
+
         const ghResults = await storage.searchGithubKnowledge(searchTerm);
-        if (ghResults.length > 0) {
-          fullText = ghResults[0].content;
+        for (const doc of ghResults) {
+          if (validateMatch(doc.content, doc.title)) {
+            fullText = doc.content;
+            break;
+          }
         }
         if (!fullText) {
           const adminResults = await storage.searchAdminKnowledge(searchTerm);
-          if (adminResults.length > 0) {
-            fullText = adminResults[0].content;
+          for (const doc of adminResults) {
+            if (validateMatch(doc.content, doc.title)) {
+              fullText = doc.content;
+              break;
+            }
           }
         }
       } catch {}
 
+      const hasSourceText = !!fullText;
       const model = "gemini-3-flash-preview";
-      const cacheKey = `judgment-summary::${searchTerm}`;
+      const uniqueKey = `${citation}::${title}::${court || ""}`;
+      const cacheKey = `judgment-summary-v3::${uniqueKey}`;
       const { content: aiSummary, fromCache } = await getCachedOrCall("judgment-summary", cacheKey, async () => {
         const contextInfo = briefSummary ? `\nBrief Summary: ${briefSummary}` : "";
         const courtInfo = court ? `\nCourt: ${court}` : "";
-        const fullTextInfo = fullText ? `\n\nFull Judgment Text (from Knowledge Vault):\n${fullText.substring(0, 8000)}` : "";
 
-        const sysInstruction = `You are Al Wakeelo, a Pakistani legal research assistant. Today's date is ${new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}.
+        let sysInstruction: string;
+        let userInput: string;
 
-CRITICAL INSTRUCTION: You must analyze ONLY the specific judgment identified below. Do NOT merge, combine, or confuse this judgment with any other case. Every detail you provide must pertain exclusively to this one judgment. If you do not have reliable information about a specific section, state "Information not available from the provided data" rather than guessing or substituting details from other cases.
+        if (hasSourceText) {
+          sysInstruction = `You are Al Wakeelo, a Pakistani legal research assistant. Today's date is ${new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}.
 
-Provide a detailed, structured analysis of THIS SPECIFIC JUDGMENT using the following format:
+You have been provided with the ACTUAL FULL TEXT of a Pakistani court judgment from our verified Knowledge Vault. Your task is to analyze THIS SPECIFIC JUDGMENT based EXCLUSIVELY on the text provided below.
+
+CRITICAL RULES:
+- Base your entire analysis ONLY on the judgment text provided below
+- Do NOT invent, assume, or fabricate ANY details not present in the text
+- Do NOT confuse this case with any other case
+- If something is not mentioned in the provided text, say "Not mentioned in the judgment text"
+
+Provide a detailed analysis using this structure:
 
 ### Case Overview
-- Exact citation, court name, bench composition (if known), date of judgment
+- Citation, court, bench composition, date (ONLY from the text)
 
 ### Facts of the Case
-- Background facts specific to this case, parties involved, chronology of events
+- Facts as stated in the judgment text
 
 ### Legal Issues
-- Specific legal questions that were before the court in this case
+- Issues as framed by the court in the text
 
 ### Arguments Presented
-- Petitioner/Plaintiff's specific arguments in this case
-- Respondent/Defendant's specific arguments in this case
+- Arguments as recorded in the judgment
 
 ### Court's Analysis & Reasoning
-- How the court analyzed each issue in this specific case
-- Statutory provisions the court applied
-- Precedents the court relied upon in its reasoning
+- The court's actual reasoning from the text, statutory provisions applied, precedents cited BY the court
 
 ### Judgment & Order
-- The exact decision/order passed by the court
-- Relief granted or denied, any specific directions
+- The actual order/decision as stated in the text
 
-### Key Legal Principles Established
-- Ratio decidendi of this specific judgment
-- How this judgment contributes to Pakistani jurisprudence
+### Key Legal Principles
+- Ratio decidendi as established in this judgment
 
 ### Practical Implications
-- How this specific judgment affects legal practice
-- What practitioners should note from this ruling
+- What practitioners should note from this specific ruling
 
-CONSTRAINTS:
-- NO EMOJIS
-- Do NOT reference or discuss any other judgment unless the court itself cited it in its reasoning
-- Every fact, argument, and analysis point must be specific to THIS judgment only
-- If full judgment text is provided below, base your analysis primarily on that text
-- Be honest about what you know vs what you are inferring${knowledgeContext}`;
+NO EMOJIS. Be precise. Only state what the judgment text actually says.`;
 
-        const userInput = `Analyze ONLY this specific judgment — do not mix information from any other case:\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}${fullTextInfo}`;
+          userInput = `Analyze this judgment based EXCLUSIVELY on the full text provided:\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}\n\n===== FULL JUDGMENT TEXT (VERIFIED SOURCE) =====\n${fullText!.substring(0, 10000)}\n===== END OF JUDGMENT TEXT =====`;
+        } else {
+          sysInstruction = `You are Al Wakeelo, a Pakistani legal research assistant. Today's date is ${new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}.
+
+IMPORTANT: You do NOT have the actual text of this judgment. You only have the citation and title. You must be COMPLETELY HONEST about this limitation.
+
+YOUR TASK: Provide a legal context analysis around the TOPIC of this judgment. Do NOT fabricate or invent specific case facts, parties, arguments, or court reasoning that you do not actually know.
+
+WHAT YOU MUST DO:
+1. Start with a clear disclaimer that this is a general legal analysis based on the topic/citation, NOT an analysis of the actual judgment text
+2. Explain the relevant area of Pakistani law that this judgment relates to
+3. Discuss the applicable statutory provisions
+4. Mention well-known landmark judgments in this area of law (only ones you are confident about)
+5. Explain general legal principles that courts typically apply in such matters
+
+WHAT YOU MUST NOT DO:
+- Do NOT invent specific facts of this case
+- Do NOT fabricate party names, dates, or arguments
+- Do NOT make up what the court held or ordered
+- Do NOT pretend you have read this judgment
+- Do NOT mix in details from unrelated cases or different areas of law (e.g., do NOT reference family law cases when analyzing criminal law matters, do NOT reference murder cases when analyzing civil matters)
+- STAY STRICTLY within the relevant area of law indicated by the citation and title
+
+Use this structure:
+
+### Disclaimer
+- State clearly: "Full judgment text is not available in our Knowledge Vault. The following is a general legal analysis of the topic area this judgment relates to, based on established Pakistani law."
+
+### Relevant Area of Law
+- Identify the specific area of Pakistani law (criminal, civil, constitutional, family, etc.)
+- Explain the legal framework applicable to this specific topic ONLY
+
+### Applicable Statutory Provisions
+- List the specific statutes and sections relevant to THIS topic only
+- Brief explanation of each provision
+
+### Established Legal Principles
+- General principles Pakistani courts have established in THIS specific area of law
+- Only cite landmark cases you are genuinely confident about and that are directly relevant to this topic
+
+### General Legal Position
+- What is the settled legal position on this topic in Pakistani law
+- Any notable developments or trends
+
+NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference unrelated areas of law.`;
+
+          userInput = `Provide a general legal analysis around the TOPIC of this judgment. Remember: you do NOT have the actual judgment text, so do NOT fabricate case-specific details. Stay strictly within the relevant area of law.\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}`;
+        }
 
         const completion = await ai.models.generateContent({
           model,
@@ -938,7 +1016,8 @@ CONSTRAINTS:
       res.json({
         summary: aiSummary,
         fullText: fullText || null,
-        source: fullText ? "knowledge_vault" : null,
+        source: hasSourceText ? "knowledge_vault" : null,
+        verified: hasSourceText,
       });
     } catch (err) {
       console.error("Error generating judgment summary:", err);
