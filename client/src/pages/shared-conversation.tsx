@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { Scale, Loader2, ArrowLeft, Calendar } from "lucide-react";
 import { LegalMarkdown } from "@/components/legal-markdown";
+import { parseReferences, ReferenceCards } from "@/components/reference-cards";
 
 interface SharedMessage {
   role: "user" | "assistant";
@@ -109,23 +110,30 @@ export default function SharedConversationPage() {
         </div>
 
         <div className="p-6 md:p-10 space-y-6" data-testid="shared-messages-container">
-          {conversation.messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[85%] p-6 md:p-8 rounded-[2rem] shadow-xl ${
-                  m.role === "user"
-                    ? "bg-amber-500 text-slate-950 font-bold rounded-tr-lg"
-                    : "bg-[#1e293b] border border-slate-700 text-slate-200 rounded-tl-lg"
-                }`}
-              >
-                {m.role === "assistant" ? (
-                  <LegalMarkdown content={m.content} />
-                ) : (
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
-                )}
+          {conversation.messages.map((m, i) => {
+            const parsed = m.role === "assistant" ? parseReferences(m.content) : null;
+            const displayContent = parsed ? parsed.cleanContent : m.content;
+            return (
+              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[85%] p-6 md:p-8 rounded-[2rem] shadow-xl ${
+                    m.role === "user"
+                      ? "bg-amber-500 text-slate-950 font-bold rounded-tr-lg"
+                      : "bg-[#1e293b] border border-slate-700 text-slate-200 rounded-tl-lg"
+                  }`}
+                >
+                  {m.role === "assistant" ? (
+                    <>
+                      <LegalMarkdown content={displayContent} />
+                      {parsed?.references && <ReferenceCards references={parsed.references} />}
+                    </>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="border-t border-slate-800 p-6 text-center space-y-4">

@@ -119,6 +119,22 @@ Provide actionable litigation strategy including:
 
 For simple questions, you may omit sections that are not applicable, but always include at least Legal Context and one other section.
 
+STRUCTURED REFERENCES (MANDATORY):
+At the VERY END of every response, you MUST include a structured references block in the following exact format. This block will be parsed by the system to create clickable reference cards for the user.
+
+\`\`\`references
+{"laws":[{"name":"Full Statute Name, Year","section":"Section X","description":"One-sentence description of what this law/section provides"}],"judgments":[{"citation":"PLD 2024 Supreme Court 123","court":"Supreme Court of Pakistan","description":"One-sentence summary of the legal principle established"}]}
+\`\`\`
+
+Rules for the references block:
+- Include ALL statutes and judgments you referenced in your response
+- Each law must have name, section (can be empty string if general reference), and description
+- Each judgment must have citation, court, and description
+- Use proper JSON format inside the code block
+- Include 1-5 most relevant laws and 1-5 most relevant judgments
+- If no relevant laws or judgments, use empty arrays: {"laws":[],"judgments":[]}
+- This block MUST be the last thing in every response, after all other content
+
 CONSTRAINTS:
 - NO EMOJIS.
 - Authoritative, structured, and legally profound.
@@ -725,7 +741,10 @@ export async function registerRoutes(
       const allowed = await checkUsageLimit(userId, "chat", res);
       if (!allowed) return;
 
-      const { messages: userMessages, type } = req.body as { messages: Array<{ role: string; content: string }>; type: string };
+      const { messages: userMessages, type, turbo } = req.body as { messages: Array<{ role: string; content: string }>; type: string; turbo?: boolean };
+
+      const userTier = await storage.getUserTier(userId);
+      const canUseTurbo = turbo && (userTier === "pro" || userTier === "enterprise");
 
       let systemPrompt = getLegalSystemPrompt();
       if (type === "draft" || type === "contract-drafting") {
@@ -746,7 +765,7 @@ export async function registerRoutes(
 
       const lastUserMessage = userMessages.filter(m => m.role === "user").pop();
       const knowledgeContext = lastUserMessage ? await gatherKnowledgeContext(lastUserMessage.content) : "";
-      const model = "gemini-3-flash-preview";
+      const model = canUseTurbo ? "gemini-3-pro-preview" : "gemini-3-flash-preview";
       const featureKey = (type === "draft" || type === "contract-drafting") ? type : "chat";
       const tokenLimit = TOKEN_LIMITS[featureKey as keyof typeof TOKEN_LIMITS] || TOKEN_LIMITS.chat;
       const systemPromptFull = systemPrompt + knowledgeContext;

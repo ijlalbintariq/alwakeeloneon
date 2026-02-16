@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
-import { Scale, Send, Trash2, Bookmark, Loader2, AlertCircle, Share2, Check, Copy } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Scale, Send, Trash2, Bookmark, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
+import { parseReferences, ReferenceCards } from "@/components/reference-cards";
 
 interface ChatMessage {
   id: string;
@@ -14,12 +15,24 @@ export default function ChatPage() {
   return <ChatModule type="al-wakeelo" title="Al Wakeelo Engine" />;
 }
 
+interface UsageData {
+  tier: string;
+  used: number;
+  remaining: number;
+  percentage: number;
+  monthlyLimit: number;
+}
+
 export function ChatModule({ type, title, initialMessage }: { type: string; title?: string; initialMessage?: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState(initialMessage || "");
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [turboMode, setTurboMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
+  const canUseTurbo = usage?.tier === "pro" || usage?.tier === "enterprise";
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -59,6 +72,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       const res = await apiRequest("POST", "/api/ai/chat", {
         messages: updated.map((m) => ({ role: m.role, content: m.content })),
         type,
+        turbo: turboMode && canUseTurbo,
       });
       const data = await res.json();
       setMessages([
@@ -67,6 +81,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       ]);
 
       await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
     } catch (err: any) {
       const isLimitError = err?.message?.includes("429");
       const limitMsg = isLimitError
@@ -220,35 +235,42 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         )}
 
-        {messages.map((m) => (
-          <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} slide-in-from-bottom-4`}>
-            <div
-              className={`max-w-[85%] p-6 md:p-8 rounded-[2rem] shadow-xl relative group ${
-                m.role === "user"
-                  ? "bg-amber-500 text-slate-950 font-bold rounded-tr-lg"
-                  : "bg-[#0f172a] border border-slate-700 text-slate-200 rounded-tl-lg"
-              }`}
-            >
-              {m.role === "assistant" ? (
-                <LegalMarkdown content={m.content} />
-              ) : (
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
-              )}
-              {m.role === "assistant" && (
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => bookmarkMutation.mutate(m)}
-                    className="p-2 rounded-xl border border-slate-700 text-slate-400 hover:text-amber-500 transition-colors"
-                    data-testid="button-bookmark"
-                    title="Save to Bookmarks"
-                  >
-                    <Bookmark size={14} />
-                  </button>
-                </div>
-              )}
+        {messages.map((m) => {
+          const parsed = m.role === "assistant" ? parseReferences(m.content) : null;
+          const displayContent = parsed ? parsed.cleanContent : m.content;
+          return (
+            <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} slide-in-from-bottom-4`}>
+              <div
+                className={`max-w-[85%] p-6 md:p-8 rounded-[2rem] shadow-xl relative group ${
+                  m.role === "user"
+                    ? "bg-amber-500 text-slate-950 font-bold rounded-tr-lg"
+                    : "bg-[#0f172a] border border-slate-700 text-slate-200 rounded-tl-lg"
+                }`}
+              >
+                {m.role === "assistant" ? (
+                  <>
+                    <LegalMarkdown content={displayContent} />
+                    {parsed?.references && <ReferenceCards references={parsed.references} />}
+                  </>
+                ) : (
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                )}
+                {m.role === "assistant" && (
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => bookmarkMutation.mutate(m)}
+                      className="p-2 rounded-xl border border-slate-700 text-slate-400 hover:text-amber-500 transition-colors"
+                      data-testid="button-bookmark"
+                      title="Save to Bookmarks"
+                    >
+                      <Bookmark size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {isLoading && (
           <div className="flex justify-start">
@@ -269,7 +291,66 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         </div>
       )}
 
+      {usage && usage.percentage >= 80 && usage.percentage < 100 && (
+        <div className="px-6 py-2.5 bg-amber-500/10 border-t border-amber-500/20 flex items-center justify-between gap-3" data-testid="banner-usage-warning">
+          <div className="flex items-center gap-2">
+            <Crown size={14} className="text-amber-500" />
+            <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
+              {usage.remaining} queries remaining this month
+            </span>
+          </div>
+          <a href="/settings" className="flex items-center gap-1 text-[10px] font-black text-amber-500 uppercase tracking-widest hover:text-amber-400 transition-colors" data-testid="link-upgrade-warning">
+            Upgrade <ArrowUpRight size={10} />
+          </a>
+        </div>
+      )}
+
+      {usage && usage.percentage >= 100 && (
+        <div className="px-6 py-3 bg-red-500/10 border-t border-red-500/20 flex items-center justify-between gap-3" data-testid="banner-usage-limit">
+          <div className="flex items-center gap-2">
+            <Lock size={14} className="text-red-500" />
+            <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">
+              Monthly limit reached ({usage.used}/{usage.monthlyLimit} queries)
+            </span>
+          </div>
+          <a href="/settings" className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-slate-950 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-colors" data-testid="link-upgrade-limit">
+            Upgrade Now <ArrowUpRight size={10} />
+          </a>
+        </div>
+      )}
+
       <div className="p-4 md:p-6 bg-[#0f172a]/50 border-t border-slate-800">
+        <div className="flex items-center gap-2 mb-2 px-2">
+          <button
+            onClick={() => canUseTurbo && setTurboMode(!turboMode)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+              turboMode && canUseTurbo
+                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                : canUseTurbo
+                  ? "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"
+                  : "text-slate-600 cursor-not-allowed"
+            }`}
+            data-testid="button-turbo-toggle"
+            title={canUseTurbo ? (turboMode ? "Turbo Mode: ON (Pro Model)" : "Turbo Mode: OFF (Standard Model)") : "Upgrade to Pro to unlock Turbo"}
+          >
+            {canUseTurbo ? (
+              <Zap size={12} className={turboMode ? "text-purple-400" : ""} />
+            ) : (
+              <Lock size={10} />
+            )}
+            {turboMode && canUseTurbo ? "Turbo" : "Standard"}
+          </button>
+          {!canUseTurbo && (
+            <span className="text-[9px] text-slate-600 tracking-wide" data-testid="text-turbo-locked">
+              Upgrade to Pro for Turbo mode
+            </span>
+          )}
+          {turboMode && canUseTurbo && (
+            <span className="text-[9px] text-purple-400/70 tracking-wide" data-testid="text-turbo-active">
+              Using advanced AI model for deeper analysis
+            </span>
+          )}
+        </div>
         <div className="flex gap-3 bg-[#1e293b] border border-slate-700 p-2 rounded-[2rem] shadow-2xl">
           <input
             className="flex-1 bg-transparent border-none px-4 py-3 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-600"
