@@ -877,38 +877,50 @@ export async function registerRoutes(
         const courtInfo = court ? `\nCourt: ${court}` : "";
         const fullTextInfo = fullText ? `\n\nFull Judgment Text (from Knowledge Vault):\n${fullText.substring(0, 8000)}` : "";
 
-        const sysInstruction = `${getLegalSystemPrompt()}
+        const sysInstruction = `You are Al Wakeelo, a Pakistani legal research assistant. Today's date is ${new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}.
 
-You are providing a comprehensive analysis of a Pakistani court judgment. Generate a detailed, structured summary covering:
+CRITICAL INSTRUCTION: You must analyze ONLY the specific judgment identified below. Do NOT merge, combine, or confuse this judgment with any other case. Every detail you provide must pertain exclusively to this one judgment. If you do not have reliable information about a specific section, state "Information not available from the provided data" rather than guessing or substituting details from other cases.
+
+Provide a detailed, structured analysis of THIS SPECIFIC JUDGMENT using the following format:
 
 ### Case Overview
-- Full citation, court, bench composition (if known), date of judgment
+- Exact citation, court name, bench composition (if known), date of judgment
 
 ### Facts of the Case
-- Background facts, parties involved, dispute timeline
+- Background facts specific to this case, parties involved, chronology of events
 
 ### Legal Issues
-- Key legal questions before the court
+- Specific legal questions that were before the court in this case
 
-### Arguments
-- Plaintiff/Petitioner's arguments
-- Defendant/Respondent's arguments
+### Arguments Presented
+- Petitioner/Plaintiff's specific arguments in this case
+- Respondent/Defendant's specific arguments in this case
 
 ### Court's Analysis & Reasoning
-- How the court analyzed each issue, statutory provisions applied, precedents relied upon
+- How the court analyzed each issue in this specific case
+- Statutory provisions the court applied
+- Precedents the court relied upon in its reasoning
 
 ### Judgment & Order
-- Final decision, relief granted, any directions
+- The exact decision/order passed by the court
+- Relief granted or denied, any specific directions
 
 ### Key Legal Principles Established
-- Ratio decidendi, obiter dicta, significance for future cases
+- Ratio decidendi of this specific judgment
+- How this judgment contributes to Pakistani jurisprudence
 
 ### Practical Implications
-- How this judgment affects legal practice, what practitioners should note
+- How this specific judgment affects legal practice
+- What practitioners should note from this ruling
 
-Be thorough, authoritative, and cite specific sections of law and related judgments where applicable.${knowledgeContext}`;
+CONSTRAINTS:
+- NO EMOJIS
+- Do NOT reference or discuss any other judgment unless the court itself cited it in its reasoning
+- Every fact, argument, and analysis point must be specific to THIS judgment only
+- If full judgment text is provided below, base your analysis primarily on that text
+- Be honest about what you know vs what you are inferring${knowledgeContext}`;
 
-        const userInput = `Provide a comprehensive analysis of this judgment:\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}${fullTextInfo}`;
+        const userInput = `Analyze ONLY this specific judgment — do not mix information from any other case:\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}${fullTextInfo}`;
 
         const completion = await ai.models.generateContent({
           model,
