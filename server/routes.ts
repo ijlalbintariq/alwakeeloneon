@@ -1648,8 +1648,8 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       } else if (ext === "txt" || ext === "text") {
         content = stripNullBytes(file.buffer.toString("utf-8").trim());
       } else if (ext === "json") {
+        const rawJson = file.buffer.toString("utf-8").trim();
         try {
-          const rawJson = file.buffer.toString("utf-8").trim();
           const parsed = JSON.parse(rawJson);
           const entries = Array.isArray(parsed) ? parsed : (parsed.cases || parsed.entries || parsed.data || [parsed]);
           if (Array.isArray(entries) && entries.length > 0 && entries[0].citation) {
@@ -1668,7 +1668,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
           }
           content = JSON.stringify(parsed, null, 1);
         } catch {
-          return res.status(400).json({ message: "Invalid JSON file. Please check the file format." });
+          content = stripNullBytes(rawJson);
         }
       } else if (ext === "csv") {
         const rawCsv = file.buffer.toString("utf-8").trim();
@@ -1734,15 +1734,35 @@ Respond with ONLY valid JSON in this exact format (no markdown, no explanation):
 
 If no cases can be identified, respond with: {"cases":[]}`;
 
-      const completion = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
-        contents: [{ role: "user", parts: [{ text: textForAI }] }],
-        config: {
-          maxOutputTokens: 16384,
-          systemInstruction: extractionPrompt,
-          temperature: 0.1,
-        },
-      });
+      let completion;
+      let usedModel = "gemini-3-pro-preview";
+      try {
+        completion = await ai.models.generateContent({
+          model: "gemini-3-pro-preview",
+          contents: [{ role: "user", parts: [{ text: textForAI }] }],
+          config: {
+            maxOutputTokens: 16384,
+            systemInstruction: extractionPrompt,
+            temperature: 0.1,
+          },
+        });
+      } catch (proErr: any) {
+        if (proErr?.status === 429 || proErr?.message?.includes("RESOURCE_EXHAUSTED")) {
+          console.log("[Case Law Extract] Pro model rate-limited, falling back to Flash...");
+          usedModel = "gemini-3-flash-preview";
+          completion = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: [{ role: "user", parts: [{ text: textForAI }] }],
+            config: {
+              maxOutputTokens: 16384,
+              systemInstruction: extractionPrompt,
+              temperature: 0.1,
+            },
+          });
+        } else {
+          throw proErr;
+        }
+      }
 
       const responseText = (completion.text || "").trim();
       let jsonText = responseText;

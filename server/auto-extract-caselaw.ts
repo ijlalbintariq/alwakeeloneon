@@ -83,15 +83,33 @@ async function extractAndSave(text: string, source: string): Promise<void> {
   try {
     const textForAI = text.length > MAX_CHARS ? text.substring(0, MAX_CHARS) : text;
 
-    const completion = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: [{ role: "user", parts: [{ text: textForAI }] }],
-      config: {
-        maxOutputTokens: 16384,
-        systemInstruction: EXTRACTION_PROMPT,
-        temperature: 0.1,
-      },
-    });
+    let completion;
+    try {
+      completion = await ai.models.generateContent({
+        model: "gemini-3-pro-preview",
+        contents: [{ role: "user", parts: [{ text: textForAI }] }],
+        config: {
+          maxOutputTokens: 16384,
+          systemInstruction: EXTRACTION_PROMPT,
+          temperature: 0.1,
+        },
+      });
+    } catch (proErr: any) {
+      if (proErr?.status === 429 || proErr?.message?.includes("RESOURCE_EXHAUSTED")) {
+        console.log(`[Auto-Extract] Pro model rate-limited, using Flash for: ${source}`);
+        completion = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [{ role: "user", parts: [{ text: textForAI }] }],
+          config: {
+            maxOutputTokens: 16384,
+            systemInstruction: EXTRACTION_PROMPT,
+            temperature: 0.1,
+          },
+        });
+      } else {
+        throw proErr;
+      }
+    }
 
     const responseText = (completion.text || "").trim();
     let jsonText = responseText;
