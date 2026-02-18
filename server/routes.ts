@@ -1651,20 +1651,25 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         const rawJson = file.buffer.toString("utf-8").trim();
         try {
           const parsed = JSON.parse(rawJson);
-          const entries = Array.isArray(parsed) ? parsed : (parsed.cases || parsed.entries || parsed.data || [parsed]);
-          if (Array.isArray(entries) && entries.length > 0 && entries[0].citation) {
-            return res.json({
-              extracted: entries.length,
-              truncated: false,
-              originalLength: rawJson.length,
-              cases: entries.filter((c: any) => c.citation && c.title).map((c: any) => ({
-                citation: String(c.citation || ""),
-                court: String(c.court || ""),
-                title: String(c.title || ""),
-                summary: String(c.summary || ""),
-                keywords: Array.isArray(c.keywords) ? c.keywords : (typeof c.keywords === "string" ? c.keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : []),
-              })),
-            });
+          const entries = Array.isArray(parsed) ? parsed : (parsed.cases || parsed.entries || parsed.data || parsed.judgments || parsed.results || [parsed]);
+          const getCitation = (c: any) => c.citation || c.case_citation || c.ref || c.reference || c.case_no || c.case_number || "";
+          const getTitle = (c: any) => c.title || c.case_title || c.case_name || c.name || c.parties || "";
+          if (Array.isArray(entries) && entries.length > 0 && (getCitation(entries[0]) || getTitle(entries[0]))) {
+            const mapped = entries.filter((c: any) => getCitation(c) || getTitle(c)).map((c: any) => ({
+              citation: String(getCitation(c)),
+              court: String(c.court || c.court_name || c.forum || ""),
+              title: String(getTitle(c)),
+              summary: String(c.summary || c.description || c.abstract || c.holding || c.head_note || c.headnote || ""),
+              keywords: Array.isArray(c.keywords) ? c.keywords : (typeof c.keywords === "string" ? c.keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : (Array.isArray(c.tags) ? c.tags : [])),
+            }));
+            if (mapped.length > 0) {
+              return res.json({
+                extracted: mapped.length,
+                truncated: false,
+                originalLength: rawJson.length,
+                cases: mapped,
+              });
+            }
           }
           content = JSON.stringify(parsed, null, 1);
         } catch {
@@ -1705,7 +1710,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         return res.status(400).json({ message: "Supported formats: PDF, TXT, JSON, CSV" });
       }
 
-      if (!content || content.length < 50) {
+      if (!content || content.length < 10) {
         return res.status(400).json({ message: "Document appears empty or too short to extract case law from." });
       }
 
