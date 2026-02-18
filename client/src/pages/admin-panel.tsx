@@ -791,6 +791,38 @@ function CaseLawSection() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
+      const ext = file.name.split(".").pop()?.toLowerCase();
+
+      if (ext === "json") {
+        try {
+          let jsonData = JSON.parse(text);
+          if (!Array.isArray(jsonData)) {
+            if (jsonData.entries && Array.isArray(jsonData.entries)) jsonData = jsonData.entries;
+            else if (jsonData.caseLaw && Array.isArray(jsonData.caseLaw)) jsonData = jsonData.caseLaw;
+            else if (jsonData.cases && Array.isArray(jsonData.cases)) jsonData = jsonData.cases;
+            else if (jsonData.data && Array.isArray(jsonData.data)) jsonData = jsonData.data;
+            else { toast({ title: "JSON must contain an array of case law entries", variant: "destructive" }); return; }
+          }
+          const parsed: typeof bulkPreview = [];
+          for (const item of jsonData) {
+            if (item.citation && item.title) {
+              parsed.push({
+                citation: String(item.citation || "").trim(),
+                court: String(item.court || "").trim(),
+                title: String(item.title || "").trim(),
+                summary: String(item.summary || item.description || "").trim(),
+                keywords: Array.isArray(item.keywords) ? item.keywords.join(", ") : String(item.keywords || ""),
+              });
+            }
+          }
+          if (parsed.length === 0) { toast({ title: "No valid entries found. Each entry needs at least citation and title.", variant: "destructive" }); return; }
+          setBulkPreview(parsed);
+        } catch {
+          toast({ title: "Invalid JSON file", variant: "destructive" });
+        }
+        return;
+      }
+
       const lines = text.split("\n").filter(l => l.trim());
       const parsed: typeof bulkPreview = [];
       const startIdx = lines[0]?.toLowerCase().includes("citation") ? 1 : 0;
@@ -935,12 +967,13 @@ function CaseLawSection() {
               </Button>
             </div>
             <p className="text-xs text-slate-400">
-              Upload a CSV file with columns: <span className="text-amber-400 font-bold">Citation, Court, Title, Summary, Keywords</span> (one row per case).
-              Keywords should be comma-separated within quotes.
+              Upload a <span className="text-amber-400 font-bold">CSV</span> or <span className="text-amber-400 font-bold">JSON</span> file.
+              CSV columns: Citation, Court, Title, Summary, Keywords.
+              JSON: an array of objects with citation, court, title, summary, keywords fields.
             </p>
             <Input
               type="file"
-              accept=".csv,.txt"
+              accept=".csv,.txt,.json"
               onChange={handleFileUpload}
               className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
               data-testid="input-bulk-csv-file"
