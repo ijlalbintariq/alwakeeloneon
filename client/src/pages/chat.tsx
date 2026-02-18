@@ -109,8 +109,16 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             buffer = lines.pop() || "";
             for (const line of lines) {
               if (line.startsWith("data: ")) {
+                const jsonStr = line.slice(6).trim();
+                if (!jsonStr) continue;
                 try {
-                  const parsed = JSON.parse(line.slice(6));
+                  const parsed = JSON.parse(jsonStr);
+                  if (parsed.error) {
+                    throw { message: parsed.error, isLimit: false };
+                  }
+                  if (parsed.done) {
+                    break;
+                  }
                   if (parsed.text) {
                     accumulated += parsed.text;
                     const current = accumulated;
@@ -121,9 +129,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       }
                       return prev;
                     });
-                  }
-                  if (parsed.error) {
-                    throw { message: parsed.error, isLimit: false };
                   }
                 } catch (e: any) {
                   if (e?.isLimit !== undefined) throw e;

@@ -760,7 +760,8 @@ export async function registerRoutes(
       const tokenLimit = TOKEN_LIMITS[featureKey as keyof typeof TOKEN_LIMITS] || TOKEN_LIMITS.chat;
       const systemPromptFull = systemPrompt + knowledgeContext;
 
-      const cacheKey = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
+      const cacheRaw = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
+      const cacheKey = `${cacheRaw}::type=${featureKey}::turbo=${!!canUseTurbo}`;
       const normalized = normalizeQuery(cacheKey);
       const hash = hashQuery("ai-chat", normalized);
 
