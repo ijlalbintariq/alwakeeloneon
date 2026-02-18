@@ -27,6 +27,18 @@ export default function AuthPage() {
     },
   });
 
+  const handleGoogleLogin = () => {
+    if (!googleStatus?.available) {
+      toast({
+        title: "Google sign-in unavailable",
+        description: "Google sign-in is not configured yet. Please use email and password.",
+        variant: "destructive",
+      });
+      return;
+    }
+    window.location.href = "/api/auth/google";
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const error = params.get("error");
@@ -207,24 +219,21 @@ export default function AuthPage() {
           </button>
         </form>
 
-        {googleStatus?.available && (
-          <>
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-slate-700" />
-              <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black">or</span>
-              <div className="flex-1 h-px bg-slate-700" />
-            </div>
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-slate-700" />
+          <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black">or</span>
+          <div className="flex-1 h-px bg-slate-700" />
+        </div>
 
-            <a
-              href="/api/auth/google"
-              data-testid="button-google-login"
-              className="w-full bg-[#0f172a] border border-slate-700 text-slate-300 font-semibold text-xs py-3.5 rounded-2xl hover:bg-slate-800 hover:border-slate-600 transition-all flex items-center justify-center gap-3"
-            >
-              <SiGoogle size={16} />
-              Continue with Google
-            </a>
-          </>
-        )}
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          data-testid="button-google-login"
+          className="w-full bg-[#0f172a] border border-slate-700 text-slate-300 font-semibold text-xs py-3.5 rounded-2xl hover:bg-slate-800 hover:border-slate-600 transition-all flex items-center justify-center gap-3"
+        >
+          <SiGoogle size={16} />
+          Continue with Google
+        </button>
 
         <div className="mt-6 text-center">
           <button

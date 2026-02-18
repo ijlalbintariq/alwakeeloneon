@@ -153,7 +153,7 @@ export function registerAuthRoutes(app: Express): void {
       const savedState = (req.session as any).oauthState;
 
       if (!code || !state || state !== savedState) {
-        return res.redirect("/?error=invalid_state");
+        return res.redirect("/auth?error=google_auth_failed");
       }
 
       delete (req.session as any).oauthState;
@@ -176,7 +176,7 @@ export function registerAuthRoutes(app: Express): void {
 
       if (!tokenRes.ok) {
         console.error("Google token exchange failed:", await tokenRes.text());
-        return res.redirect("/?error=token_exchange_failed");
+        return res.redirect("/auth?error=google_auth_failed");
       }
 
       const tokens = await tokenRes.json();
@@ -186,7 +186,7 @@ export function registerAuthRoutes(app: Express): void {
       });
 
       if (!userInfoRes.ok) {
-        return res.redirect("/?error=userinfo_failed");
+        return res.redirect("/auth?error=google_auth_failed");
       }
 
       const googleUser = await userInfoRes.json();
@@ -195,7 +195,7 @@ export function registerAuthRoutes(app: Express): void {
 
       if (user) {
         if (user.authProvider === "email") {
-          return res.redirect("/?error=email_account_exists");
+          return res.redirect("/auth?error=email_account_exists");
         }
       } else {
         user = await authStorage.upsertUser({
@@ -213,7 +213,7 @@ export function registerAuthRoutes(app: Express): void {
       });
     } catch (error) {
       console.error("Google OAuth error:", error);
-      res.redirect("/?error=google_auth_failed");
+      res.redirect("/auth?error=google_auth_failed");
     }
   });
 
