@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { queueAutoExtraction } from "./auto-extract-caselaw";
 
 const GITHUB_REPO = "ijlalbintariq/law";
 const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_REPO}`;
@@ -104,6 +105,11 @@ export async function syncGithubKnowledge(): Promise<void> {
       const validItems = items.filter((item): item is NonNullable<typeof item> => item !== null);
       if (validItems.length > 0) {
         await storage.upsertGithubKnowledge(validItems);
+        for (const item of validItems) {
+          if (item.content.length > 200) {
+            queueAutoExtraction(item.content, `github:${item.filename}`);
+          }
+        }
       }
 
       console.log(`[GitHub Sync] Progress: ${Math.min(i + batchSize, files.length)}/${files.length} files processed.`);

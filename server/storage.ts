@@ -44,12 +44,14 @@ export interface IStorage {
 
   searchCaseLaw(query: string): Promise<CaseLaw[]>;
   getAllCaseLaw(): Promise<CaseLaw[]>;
+  getCaseLawCitations(): Promise<string[]>;
   createCaseLaw(entry: InsertCaseLaw): Promise<CaseLaw>;
   updateCaseLaw(id: number, entry: Partial<InsertCaseLaw>): Promise<CaseLaw | undefined>;
   deleteCaseLaw(id: number): Promise<void>;
   bulkCreateCaseLaw(entries: InsertCaseLaw[]): Promise<CaseLaw[]>;
 
   getGithubKnowledgeCount(): Promise<number>;
+  getAllGithubKnowledge(): Promise<GithubKnowledge[]>;
   upsertGithubKnowledge(items: InsertGithubKnowledge[]): Promise<void>;
   searchGithubKnowledge(query: string, limit?: number): Promise<GithubKnowledge[]>;
 
@@ -211,6 +213,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(caseLaw);
   }
 
+  async getCaseLawCitations(): Promise<string[]> {
+    const rows = await db.select({ citation: caseLaw.citation }).from(caseLaw);
+    return rows.map(r => r.citation.toLowerCase().trim());
+  }
+
   async createCaseLaw(entry: InsertCaseLaw): Promise<CaseLaw> {
     const [created] = await db.insert(caseLaw).values(entry).returning();
     return created;
@@ -233,6 +240,10 @@ export class DatabaseStorage implements IStorage {
   async getGithubKnowledgeCount(): Promise<number> {
     const result = await db.select({ count: sql<number>`count(*)` }).from(githubKnowledge);
     return Number(result[0].count);
+  }
+
+  async getAllGithubKnowledge(): Promise<GithubKnowledge[]> {
+    return await db.select().from(githubKnowledge);
   }
 
   async upsertGithubKnowledge(items: InsertGithubKnowledge[]): Promise<void> {

@@ -6,7 +6,7 @@ import { Redirect } from "wouter";
 import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
   UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus,
-  Scale, Pencil, X, Check, FileUp
+  Scale, Pencil, X, Check, FileUp, Search
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -722,6 +722,7 @@ function CaseLawSection() {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [extractedCases, setExtractedCases] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }>>([]);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isAutoScanning, setIsAutoScanning] = useState(false);
   const [formData, setFormData] = useState({ citation: "", court: "", title: "", summary: "", keywords: "" });
 
   const createMutation = useMutation({
@@ -911,7 +912,30 @@ function CaseLawSection() {
             Case Law Database ({caseLawEntries?.length || 0})
           </span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="ghost"
+            className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            onClick={async () => {
+              setIsAutoScanning(true);
+              try {
+                const res = await apiRequest("POST", "/api/admin/case-law/auto-extract");
+                const data = await res.json();
+                toast({ title: data.message || "Auto-extraction started" });
+                setTimeout(() => queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] }), 15000);
+                setTimeout(() => queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] }), 45000);
+              } catch {
+                toast({ title: "Failed to start auto-extraction", variant: "destructive" });
+              } finally {
+                setIsAutoScanning(false);
+              }
+            }}
+            disabled={isAutoScanning}
+            data-testid="button-auto-scan"
+          >
+            {isAutoScanning ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} />}
+            <span>Scan All Sources</span>
+          </Button>
           <Button
             variant="ghost"
             className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"

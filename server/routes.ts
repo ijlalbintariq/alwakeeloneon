@@ -9,6 +9,7 @@ import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, thr
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import { syncGithubKnowledge } from "./github-sync";
+import { queueAutoExtraction } from "./auto-extract-caselaw";
 import crypto from "crypto";
 import multer from "multer";
 import { extractText } from "unpdf";
@@ -1481,6 +1482,9 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
             uploadedBy: userId,
           });
           results.push(doc);
+          if (content.length > 200) {
+            queueAutoExtraction(content, `admin-knowledge:${file.originalname}`);
+          }
         }
       } else {
         const content = req.body.content;
@@ -1493,6 +1497,9 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
           uploadedBy: userId,
         });
         results.push(doc);
+        if (content.length > 200) {
+          queueAutoExtraction(content, `admin-knowledge:${filename}`);
+        }
       }
 
       res.status(201).json({
@@ -1603,6 +1610,18 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
     } catch (err) {
       console.error("Error bulk creating case law:", err);
       res.status(500).json({ message: "Failed to bulk create case law" });
+    }
+  });
+
+  app.post("/api/admin/case-law/auto-extract", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const { extractFromAllExistingSources } = await import("./auto-extract-caselaw");
+      extractFromAllExistingSources();
+      res.json({ message: "Auto-extraction started in the background. New case law entries will appear shortly." });
+    } catch (err) {
+      console.error("Error starting auto-extraction:", err);
+      res.status(500).json({ message: "Failed to start auto-extraction" });
     }
   });
 
@@ -1821,6 +1840,9 @@ If no cases can be identified, respond with: {"cases":[]}`;
           uploadedBy: userId,
         });
         results.push(doc);
+        if (content.length > 200) {
+          queueAutoExtraction(content, `statute:${file.originalname}`);
+        }
       }
 
       res.json({ message: `${results.length} statute document(s) uploaded successfully`, count: results.length });
