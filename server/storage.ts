@@ -7,7 +7,7 @@ import {
   type Bookmark, type InsertBookmark,
   type SearchHistory, type InsertSearchHistory,
   type Statute,
-  type CaseLaw,
+  type CaseLaw, type InsertCaseLaw,
   type GithubKnowledge, type InsertGithubKnowledge,
   type QueryCache, type InsertQueryCache,
   type UsageTracking,
@@ -44,6 +44,10 @@ export interface IStorage {
 
   searchCaseLaw(query: string): Promise<CaseLaw[]>;
   getAllCaseLaw(): Promise<CaseLaw[]>;
+  createCaseLaw(entry: InsertCaseLaw): Promise<CaseLaw>;
+  updateCaseLaw(id: number, entry: Partial<InsertCaseLaw>): Promise<CaseLaw | undefined>;
+  deleteCaseLaw(id: number): Promise<void>;
+  bulkCreateCaseLaw(entries: InsertCaseLaw[]): Promise<CaseLaw[]>;
 
   getGithubKnowledgeCount(): Promise<number>;
   upsertGithubKnowledge(items: InsertGithubKnowledge[]): Promise<void>;
@@ -205,6 +209,25 @@ export class DatabaseStorage implements IStorage {
 
   async getAllCaseLaw(): Promise<CaseLaw[]> {
     return await db.select().from(caseLaw);
+  }
+
+  async createCaseLaw(entry: InsertCaseLaw): Promise<CaseLaw> {
+    const [created] = await db.insert(caseLaw).values(entry).returning();
+    return created;
+  }
+
+  async updateCaseLaw(id: number, entry: Partial<InsertCaseLaw>): Promise<CaseLaw | undefined> {
+    const [updated] = await db.update(caseLaw).set(entry).where(eq(caseLaw.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCaseLaw(id: number): Promise<void> {
+    await db.delete(caseLaw).where(eq(caseLaw.id, id));
+  }
+
+  async bulkCreateCaseLaw(entries: InsertCaseLaw[]): Promise<CaseLaw[]> {
+    if (entries.length === 0) return [];
+    return await db.insert(caseLaw).values(entries).returning();
   }
 
   async getGithubKnowledgeCount(): Promise<number> {

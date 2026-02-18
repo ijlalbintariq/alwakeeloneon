@@ -1518,6 +1518,94 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
     }
   });
 
+  // ====== ADMIN CASE LAW MANAGEMENT ======
+  app.get("/api/admin/case-law", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const all = await storage.getAllCaseLaw();
+      res.json(all);
+    } catch (err) {
+      console.error("Error fetching case law:", err);
+      res.status(500).json({ message: "Failed to fetch case law" });
+    }
+  });
+
+  app.post("/api/admin/case-law", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const { citation, court, title, summary, keywords } = req.body;
+      if (!citation || !court || !title || !summary) {
+        return res.status(400).json({ message: "Citation, court, title, and summary are required" });
+      }
+      const keywordsArr = Array.isArray(keywords) ? keywords : (typeof keywords === "string" ? keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : []);
+      const created = await storage.createCaseLaw({ citation, court, title, summary, keywords: keywordsArr });
+      res.status(201).json(created);
+    } catch (err) {
+      console.error("Error creating case law:", err);
+      res.status(500).json({ message: "Failed to create case law" });
+    }
+  });
+
+  app.put("/api/admin/case-law/:id", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const id = Number(req.params.id);
+      const { citation, court, title, summary, keywords } = req.body;
+      const updateData: any = {};
+      if (citation !== undefined) updateData.citation = citation;
+      if (court !== undefined) updateData.court = court;
+      if (title !== undefined) updateData.title = title;
+      if (summary !== undefined) updateData.summary = summary;
+      if (keywords !== undefined) {
+        updateData.keywords = Array.isArray(keywords) ? keywords : keywords.split(",").map((k: string) => k.trim()).filter(Boolean);
+      }
+      const updated = await storage.updateCaseLaw(id, updateData);
+      if (!updated) return res.status(404).json({ message: "Case law not found" });
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating case law:", err);
+      res.status(500).json({ message: "Failed to update case law" });
+    }
+  });
+
+  app.delete("/api/admin/case-law/:id", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const id = Number(req.params.id);
+      await storage.deleteCaseLaw(id);
+      res.sendStatus(204);
+    } catch (err) {
+      console.error("Error deleting case law:", err);
+      res.status(500).json({ message: "Failed to delete case law" });
+    }
+  });
+
+  app.post("/api/admin/case-law/bulk", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const { entries } = req.body as { entries: Array<{ citation: string; court: string; title: string; summary: string; keywords: string | string[] }> };
+      if (!Array.isArray(entries) || entries.length === 0) {
+        return res.status(400).json({ message: "Entries array is required" });
+      }
+      const errors: string[] = [];
+      const valid: Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }> = [];
+      for (let i = 0; i < entries.length; i++) {
+        const e = entries[i];
+        if (!e.citation || !e.court || !e.title || !e.summary) {
+          errors.push(`Row ${i + 1}: Missing required fields (citation, court, title, summary)`);
+          continue;
+        }
+        const kw = Array.isArray(e.keywords) ? e.keywords : (typeof e.keywords === "string" ? e.keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : []);
+        valid.push({ citation: e.citation.trim(), court: e.court.trim(), title: e.title.trim(), summary: e.summary.trim(), keywords: kw });
+      }
+      const created = valid.length > 0 ? await storage.bulkCreateCaseLaw(valid) : [];
+      res.status(201).json({ inserted: created.length, errors, entries: created });
+    } catch (err) {
+      console.error("Error bulk creating case law:", err);
+      res.status(500).json({ message: "Failed to bulk create case law" });
+    }
+  });
+
   // ====== ADMIN STATUTE DOCUMENTS ======
   app.get("/api/admin/statute-documents", async (req, res) => {
     if (!(await isAdmin(req, res))) return;

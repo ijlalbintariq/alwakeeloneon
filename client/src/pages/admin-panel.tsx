@@ -5,7 +5,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { Redirect } from "wouter";
 import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
-  UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus
+  UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus,
+  Scale, Pencil, X, Check, FileUp
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@shared/models/auth";
 
 type SystemStats = {
@@ -57,7 +59,7 @@ export default function AdminPanelPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "statute-docs">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs">("stats");
 
   if (!user?.isAdmin) {
     return <Redirect to="/dashboard" />;
@@ -82,6 +84,7 @@ export default function AdminPanelPage() {
           { id: "stats" as const, label: "Analytics", icon: BarChart3 },
           { id: "users" as const, label: "Users", icon: Users },
           { id: "knowledge" as const, label: "Knowledge Vault", icon: Database },
+          { id: "case-law" as const, label: "Case Law", icon: Scale },
           { id: "statute-docs" as const, label: "Statute Library", icon: FileText },
         ].map((tab) => (
           <Button
@@ -100,6 +103,7 @@ export default function AdminPanelPage() {
       {activeTab === "stats" && <StatsSection />}
       {activeTab === "users" && <UsersSection />}
       {activeTab === "knowledge" && <KnowledgeSection />}
+      {activeTab === "case-law" && <CaseLawSection />}
       {activeTab === "statute-docs" && <StatuteDocumentsSection />}
     </div>
   );
@@ -698,6 +702,355 @@ function KnowledgeSection() {
       </div>
     </div>
   );
+}
+
+type CaseLawEntry = {
+  id: number;
+  citation: string;
+  court: string;
+  title: string;
+  summary: string;
+  keywords: string[];
+};
+
+function CaseLawSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: caseLawEntries, isLoading } = useQuery<CaseLawEntry[]>({ queryKey: ["/api/admin/case-law"] });
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [bulkPreview, setBulkPreview] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string }>>([]);
+  const [formData, setFormData] = useState({ citation: "", court: "", title: "", summary: "", keywords: "" });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      await apiRequest("POST", "/api/admin/case-law", {
+        ...data,
+        keywords: data.keywords.split(",").map(k => k.trim()).filter(Boolean),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
+      toast({ title: "Case law entry added" });
+      setFormData({ citation: "", court: "", title: "", summary: "", keywords: "" });
+      setShowAddForm(false);
+    },
+    onError: () => toast({ title: "Failed to add case law", variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: typeof formData }) => {
+      await apiRequest("PUT", `/api/admin/case-law/${id}`, {
+        ...data,
+        keywords: data.keywords.split(",").map(k => k.trim()).filter(Boolean),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
+      toast({ title: "Case law entry updated" });
+      setEditingId(null);
+      setFormData({ citation: "", court: "", title: "", summary: "", keywords: "" });
+    },
+    onError: () => toast({ title: "Failed to update case law", variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/admin/case-law/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
+      toast({ title: "Case law entry removed" });
+    },
+    onError: () => toast({ title: "Failed to delete case law", variant: "destructive" }),
+  });
+
+  const bulkMutation = useMutation({
+    mutationFn: async (entries: typeof bulkPreview) => {
+      const res = await apiRequest("POST", "/api/admin/case-law/bulk", {
+        entries: entries.map(e => ({
+          ...e,
+          keywords: e.keywords.split(",").map(k => k.trim()).filter(Boolean),
+        })),
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
+      toast({ title: `${data.inserted} case law entries uploaded${data.errors?.length ? `, ${data.errors.length} skipped` : ""}` });
+      setBulkPreview([]);
+      setShowBulkUpload(false);
+    },
+    onError: () => toast({ title: "Failed to bulk upload case law", variant: "destructive" }),
+  });
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split("\n").filter(l => l.trim());
+      const parsed: typeof bulkPreview = [];
+      const startIdx = lines[0]?.toLowerCase().includes("citation") ? 1 : 0;
+      for (let i = startIdx; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        if (cols.length >= 4) {
+          parsed.push({
+            citation: cols[0].trim(),
+            court: cols[1].trim(),
+            title: cols[2].trim(),
+            summary: cols[3].trim(),
+            keywords: cols[4]?.trim() || "",
+          });
+        }
+      }
+      setBulkPreview(parsed);
+    };
+    reader.readAsText(file);
+  };
+
+  const startEdit = (entry: CaseLawEntry) => {
+    setEditingId(entry.id);
+    setFormData({
+      citation: entry.citation,
+      court: entry.court,
+      title: entry.title,
+      summary: entry.summary,
+      keywords: entry.keywords.join(", "),
+    });
+    setShowAddForm(false);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setFormData({ citation: "", court: "", title: "", summary: "", keywords: "" });
+  };
+
+  const CaseLawForm = ({ isEdit }: { isEdit: boolean }) => (
+    <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">
+            {isEdit ? "Edit Case Law" : "Add Case Law Entry"}
+          </span>
+          <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => isEdit ? cancelEdit() : setShowAddForm(false)} data-testid="button-cancel-form">
+            <X size={14} />
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Input
+            placeholder="Citation (e.g. PLD 2024 SC 123)"
+            value={formData.citation}
+            onChange={(e) => setFormData(prev => ({ ...prev, citation: e.target.value }))}
+            className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
+            data-testid="input-caselaw-citation"
+          />
+          <Input
+            placeholder="Court (e.g. Supreme Court of Pakistan)"
+            value={formData.court}
+            onChange={(e) => setFormData(prev => ({ ...prev, court: e.target.value }))}
+            className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
+            data-testid="input-caselaw-court"
+          />
+        </div>
+        <Input
+          placeholder="Title (e.g. State vs Ahmed - Property Dispute)"
+          value={formData.title}
+          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+          className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
+          data-testid="input-caselaw-title"
+        />
+        <Textarea
+          placeholder="Summary of the case and legal principle established"
+          value={formData.summary}
+          onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
+          className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm resize-none"
+          rows={3}
+          data-testid="input-caselaw-summary"
+        />
+        <Input
+          placeholder="Keywords (comma-separated, e.g. bail, cheque, fraud)"
+          value={formData.keywords}
+          onChange={(e) => setFormData(prev => ({ ...prev, keywords: e.target.value }))}
+          className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
+          data-testid="input-caselaw-keywords"
+        />
+        <Button
+          onClick={() => isEdit && editingId ? updateMutation.mutate({ id: editingId, data: formData }) : createMutation.mutate(formData)}
+          disabled={!formData.citation || !formData.court || !formData.title || !formData.summary || createMutation.isPending || updateMutation.isPending}
+          className="bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+          data-testid="button-save-caselaw"
+        >
+          {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+          <span>{isEdit ? "Update Entry" : "Add Entry"}</span>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <Scale size={16} className="text-amber-500" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            Case Law Database ({caseLawEntries?.length || 0})
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            onClick={() => { setShowBulkUpload(!showBulkUpload); setShowAddForm(false); cancelEdit(); }}
+            data-testid="button-toggle-bulk-upload"
+          >
+            <FileUp size={14} />
+            <span>Bulk CSV Upload</span>
+          </Button>
+          <Button
+            className="bg-amber-500 text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            onClick={() => { setShowAddForm(!showAddForm); setShowBulkUpload(false); cancelEdit(); }}
+            data-testid="button-add-caselaw"
+          >
+            <Plus size={14} />
+            <span>Add Entry</span>
+          </Button>
+        </div>
+      </div>
+
+      {showAddForm && !editingId && <CaseLawForm isEdit={false} />}
+      {editingId && <CaseLawForm isEdit={true} />}
+
+      {showBulkUpload && (
+        <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">
+                Bulk CSV Upload
+              </span>
+              <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => { setShowBulkUpload(false); setBulkPreview([]); }} data-testid="button-cancel-bulk">
+                <X size={14} />
+              </Button>
+            </div>
+            <p className="text-xs text-slate-400">
+              Upload a CSV file with columns: <span className="text-amber-400 font-bold">Citation, Court, Title, Summary, Keywords</span> (one row per case).
+              Keywords should be comma-separated within quotes.
+            </p>
+            <Input
+              type="file"
+              accept=".csv,.txt"
+              onChange={handleFileUpload}
+              className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
+              data-testid="input-bulk-csv-file"
+            />
+            {bulkPreview.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-xs text-slate-300 font-bold">{bulkPreview.length} entries parsed</span>
+                  <Button
+                    onClick={() => bulkMutation.mutate(bulkPreview)}
+                    disabled={bulkMutation.isPending}
+                    className="bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                    data-testid="button-confirm-bulk-upload"
+                  >
+                    {bulkMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                    <span>Upload {bulkPreview.length} Entries</span>
+                  </Button>
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {bulkPreview.slice(0, 10).map((entry, idx) => (
+                    <Card key={idx} className="bg-slate-900 border-slate-700 rounded-xl" data-testid={`bulk-preview-${idx}`}>
+                      <CardContent className="p-3">
+                        <p className="text-xs font-bold text-white">{entry.citation}</p>
+                        <p className="text-[10px] text-slate-400">{entry.court} — {entry.title}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{entry.summary}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {bulkPreview.length > 10 && (
+                    <p className="text-[10px] text-slate-500 text-center">...and {bulkPreview.length - 10} more</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="animate-spin text-amber-500" size={24} />
+        </div>
+      ) : caseLawEntries?.length === 0 ? (
+        <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+          <CardContent className="p-12 text-center">
+            <Scale size={32} className="text-slate-700 mx-auto mb-3" />
+            <p className="text-sm text-slate-500">No case law entries yet. Add individual entries or upload a CSV file.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {caseLawEntries?.map((entry) => (
+            <Card key={entry.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`caselaw-entry-${entry.id}`}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-white">{entry.citation}</p>
+                    <p className="text-xs text-amber-400 mt-1">{entry.court}</p>
+                    <p className="text-xs text-slate-300 mt-1">{entry.title}</p>
+                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{entry.summary}</p>
+                    {entry.keywords.length > 0 && (
+                      <div className="flex gap-1 mt-2 flex-wrap">
+                        {entry.keywords.map((kw, i) => (
+                          <Badge key={i} className="bg-slate-800 text-slate-400 border-slate-700 rounded-lg text-[8px]">
+                            {kw}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => startEdit(entry)} data-testid={`button-edit-caselaw-${entry.id}`}>
+                      <Pencil size={14} />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => deleteMutation.mutate(entry.id)} data-testid={`button-delete-caselaw-${entry.id}`}>
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === "," && !inQuotes) {
+      result.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current);
+  return result;
 }
 
 type StatuteDoc = {
