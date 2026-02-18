@@ -722,6 +722,7 @@ function CaseLawSection() {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [extractedCases, setExtractedCases] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }>>([]);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractProgress, setExtractProgress] = useState({ current: 0, total: 0, currentFile: "" });
   const [isAutoScanning, setIsAutoScanning] = useState(false);
   const [formData, setFormData] = useState({ citation: "", court: "", title: "", summary: "", keywords: "" });
 
@@ -783,41 +784,53 @@ function CaseLawSection() {
   });
 
   const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
     setIsExtracting(true);
     setExtractedCases([]);
-    try {
-      const formDataUpload = new FormData();
-      formDataUpload.append("file", file);
-      const res = await fetch("/api/admin/case-law/extract", {
-        method: "POST",
-        credentials: "include",
-        body: formDataUpload,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: "Upload failed" }));
-        toast({ title: err.message || "Failed to extract case law", variant: "destructive" });
-        return;
-      }
-      const data = await res.json();
-      if (data.cases && data.cases.length > 0) {
-        const validCases = data.cases.filter((c: any) => c.citation && c.title);
-        const dropped = data.cases.length - validCases.length;
-        if (validCases.length > 0) {
-          setExtractedCases(validCases);
-          toast({ title: `AI extracted ${validCases.length} cases from your document${dropped > 0 ? ` (${dropped} incomplete entries skipped)` : ""}${data.truncated ? " — document was truncated due to size" : ""}` });
-        } else {
-          toast({ title: "AI found entries but none had complete citation and title", variant: "destructive" });
+    setExtractProgress({ current: 0, total: files.length, currentFile: "" });
+
+    const allCases: Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }> = [];
+    const failedFiles: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setExtractProgress({ current: i + 1, total: files.length, currentFile: file.name });
+      try {
+        const formDataUpload = new FormData();
+        formDataUpload.append("file", file);
+        const res = await fetch("/api/admin/case-law/extract", {
+          method: "POST",
+          credentials: "include",
+          body: formDataUpload,
+        });
+        if (!res.ok) {
+          failedFiles.push(file.name);
+          continue;
         }
-      } else {
-        toast({ title: "No case law entries could be identified in this document", variant: "destructive" });
+        const data = await res.json();
+        if (data.cases && data.cases.length > 0) {
+          const validCases = data.cases.filter((c: any) => c.citation && c.title);
+          allCases.push(...validCases);
+        }
+      } catch {
+        failedFiles.push(file.name);
       }
-    } catch {
-      toast({ title: "Failed to process document", variant: "destructive" });
-    } finally {
-      setIsExtracting(false);
     }
+
+    if (allCases.length > 0) {
+      setExtractedCases(allCases);
+      let msg = `Extracted ${allCases.length} cases from ${files.length - failedFiles.length} file${files.length - failedFiles.length !== 1 ? "s" : ""}`;
+      if (failedFiles.length > 0) msg += ` (${failedFiles.length} file${failedFiles.length !== 1 ? "s" : ""} failed)`;
+      toast({ title: msg });
+    } else {
+      toast({ title: failedFiles.length > 0 ? `Failed to process ${failedFiles.length} file(s)` : "No case law entries could be identified in the uploaded documents", variant: "destructive" });
+    }
+
+    setIsExtracting(false);
+    setExtractProgress({ current: 0, total: 0, currentFile: "" });
+    const input = e.target;
+    if (input) input.value = "";
   };
 
   const removeExtractedCase = (index: number) => {
@@ -971,13 +984,14 @@ function CaseLawSection() {
               </Button>
             </div>
             <p className="text-xs text-slate-400">
-              Upload your <span className="text-amber-400 font-bold">PDF</span>, <span className="text-amber-400 font-bold">TXT</span>, <span className="text-amber-400 font-bold">JSON</span>, or <span className="text-amber-400 font-bold">CSV</span> document containing combined case law.
-              The AI will automatically read through your document and extract individual cases with citations, court names, summaries, and keywords.
+              Upload one or multiple <span className="text-amber-400 font-bold">PDF</span>, <span className="text-amber-400 font-bold">TXT</span>, <span className="text-amber-400 font-bold">JSON</span>, or <span className="text-amber-400 font-bold">CSV</span> files containing case law.
+              Select multiple files at once for batch processing. The AI will extract individual cases with citations, court names, summaries, and keywords.
               JSON and CSV files with proper columns are imported instantly without AI processing.
             </p>
             <Input
               type="file"
               accept=".pdf,.txt,.json,.csv"
+              multiple
               onChange={handleDocumentUpload}
               disabled={isExtracting}
               className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
@@ -987,8 +1001,24 @@ function CaseLawSection() {
               <div className="flex items-center gap-3 py-8 justify-center">
                 <Loader2 className="animate-spin text-amber-500" size={24} />
                 <div>
-                  <p className="text-sm font-bold text-white">AI is reading your document...</p>
-                  <p className="text-[10px] text-slate-400">Extracting citations, summaries, and keywords. This may take a minute for large documents.</p>
+                  <p className="text-sm font-bold text-white">
+                    {extractProgress.total > 1
+                      ? `Processing file ${extractProgress.current} of ${extractProgress.total}...`
+                      : "AI is reading your document..."}
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    {extractProgress.currentFile && extractProgress.total > 1
+                      ? extractProgress.currentFile
+                      : "Extracting citations, summaries, and keywords. This may take a minute for large documents."}
+                  </p>
+                  {extractProgress.total > 1 && (
+                    <div className="mt-2 w-full bg-slate-800 rounded-full h-1.5">
+                      <div
+                        className="bg-amber-500 h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: `${(extractProgress.current / extractProgress.total) * 100}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}

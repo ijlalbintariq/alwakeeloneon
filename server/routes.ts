@@ -1598,12 +1598,12 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const valid: Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }> = [];
       for (let i = 0; i < entries.length; i++) {
         const e = entries[i];
-        if (!e.citation || !e.court || !e.title || !e.summary) {
-          errors.push(`Row ${i + 1}: Missing required fields (citation, court, title, summary)`);
+        if (!e.citation || !e.title) {
+          errors.push(`Row ${i + 1}: Missing required fields (citation and title)`);
           continue;
         }
         const kw = Array.isArray(e.keywords) ? e.keywords : (typeof e.keywords === "string" ? e.keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : []);
-        valid.push({ citation: e.citation.trim(), court: e.court.trim(), title: e.title.trim(), summary: e.summary.trim(), keywords: kw });
+        valid.push({ citation: e.citation.trim(), court: (e.court || "").trim(), title: e.title.trim(), summary: (e.summary || "").trim(), keywords: kw });
       }
       const created = valid.length > 0 ? await storage.bulkCreateCaseLaw(valid) : [];
       res.status(201).json({ inserted: created.length, errors, entries: created });
