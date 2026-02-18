@@ -1606,6 +1606,104 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
     }
   });
 
+  app.post("/api/admin/case-law/extract", upload.single("file"), async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const ext = file.originalname.split(".").pop()?.toLowerCase();
+      let content = "";
+
+      if (ext === "pdf") {
+        try {
+          const uint8 = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength);
+          const pdfResult = await extractText(uint8, { mergePages: true });
+          content = stripNullBytes((pdfResult.text || "").trim());
+        } catch (pdfErr: any) {
+          console.error("[Case Law Extract] PDF parse error:", pdfErr?.message);
+          return res.status(400).json({ message: "Failed to parse PDF file. Try uploading as TXT instead." });
+        }
+      } else if (ext === "txt" || ext === "text") {
+        content = stripNullBytes(file.buffer.toString("utf-8").trim());
+      } else {
+        return res.status(400).json({ message: "Supported formats: PDF, TXT" });
+      }
+
+      if (!content || content.length < 50) {
+        return res.status(400).json({ message: "Document appears empty or too short to extract case law from." });
+      }
+
+      const maxChars = 120000;
+      const truncated = content.length > maxChars;
+      const textForAI = truncated ? content.substring(0, maxChars) : content;
+
+      const extractionPrompt = `You are a Pakistani legal research expert. Analyze the following legal document text and extract ALL individual court cases/judgments found in it.
+
+For EACH case you find, extract:
+1. citation - The official case citation (e.g., "PLD 2024 Supreme Court 123", "2023 SCMR 456", "2024 YLR 789"). Use official law report abbreviations: PLD, SCMR, YLR, MLD, CLC, PCRLJ, PLJ.
+2. court - The court name (e.g., "Supreme Court of Pakistan", "Lahore High Court", "Sindh High Court")
+3. title - The case title/name (e.g., "State vs Muhammad Ahmed", "Sughran Bibi vs Government of Punjab")
+4. summary - A concise 1-3 sentence summary of the legal principle established or the key holding
+5. keywords - An array of 3-8 relevant legal keywords
+
+CRITICAL RULES:
+- Extract EVERY distinct case/judgment you can identify in the text
+- If you cannot determine a field with certainty, use your best professional judgment based on context
+- For citations, use the exact format found in the text
+- Do NOT invent or fabricate cases — only extract what is actually present in the document
+- If the document contains commentary or analysis alongside cases, focus on extracting the actual cases referenced
+
+Respond with ONLY valid JSON in this exact format (no markdown, no explanation):
+{"cases":[{"citation":"...","court":"...","title":"...","summary":"...","keywords":["..."]}]}
+
+If no cases can be identified, respond with: {"cases":[]}`;
+
+      const completion = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ role: "user", parts: [{ text: textForAI }] }],
+        config: {
+          maxOutputTokens: 8192,
+          systemInstruction: extractionPrompt,
+          temperature: 0.1,
+        },
+      });
+
+      const responseText = (completion.text || "").trim();
+      let jsonText = responseText;
+      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[1].trim();
+      }
+
+      let parsed: { cases: Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }> };
+      try {
+        parsed = JSON.parse(jsonText);
+      } catch {
+        console.error("[Case Law Extract] Failed to parse AI response:", responseText.substring(0, 500));
+        return res.status(500).json({ message: "AI could not extract structured case law from this document. Try a clearer or shorter document." });
+      }
+
+      if (!parsed.cases || !Array.isArray(parsed.cases)) {
+        return res.status(500).json({ message: "AI response was not in the expected format. Please try again." });
+      }
+
+      const validCases = parsed.cases.filter(c => c.citation && c.title);
+
+      res.json({
+        extracted: validCases.length,
+        truncated,
+        originalLength: content.length,
+        cases: validCases,
+      });
+    } catch (err) {
+      console.error("Error extracting case law:", err);
+      res.status(500).json({ message: "Failed to extract case law from document" });
+    }
+  });
+
   // ====== ADMIN STATUTE DOCUMENTS ======
   app.get("/api/admin/statute-documents", async (req, res) => {
     if (!(await isAdmin(req, res))) return;

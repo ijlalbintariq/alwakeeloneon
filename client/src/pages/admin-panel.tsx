@@ -720,7 +720,8 @@ function CaseLawSection() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
-  const [bulkPreview, setBulkPreview] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string }>>([]);
+  const [extractedCases, setExtractedCases] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }>>([]);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [formData, setFormData] = useState({ citation: "", court: "", title: "", summary: "", keywords: "" });
 
   const createMutation = useMutation({
@@ -766,81 +767,60 @@ function CaseLawSection() {
     onError: () => toast({ title: "Failed to delete case law", variant: "destructive" }),
   });
 
-  const bulkMutation = useMutation({
-    mutationFn: async (entries: typeof bulkPreview) => {
-      const res = await apiRequest("POST", "/api/admin/case-law/bulk", {
-        entries: entries.map(e => ({
-          ...e,
-          keywords: e.keywords.split(",").map(k => k.trim()).filter(Boolean),
-        })),
-      });
+  const saveBulkMutation = useMutation({
+    mutationFn: async (entries: typeof extractedCases) => {
+      const res = await apiRequest("POST", "/api/admin/case-law/bulk", { entries });
       return res.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
-      toast({ title: `${data.inserted} case law entries uploaded${data.errors?.length ? `, ${data.errors.length} skipped` : ""}` });
-      setBulkPreview([]);
+      toast({ title: `${data.inserted} case law entries saved to database${data.errors?.length ? `, ${data.errors.length} skipped` : ""}` });
+      setExtractedCases([]);
       setShowBulkUpload(false);
     },
-    onError: () => toast({ title: "Failed to bulk upload case law", variant: "destructive" }),
+    onError: () => toast({ title: "Failed to save case law entries", variant: "destructive" }),
   });
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const ext = file.name.split(".").pop()?.toLowerCase();
-
-      if (ext === "json") {
-        try {
-          let jsonData = JSON.parse(text);
-          if (!Array.isArray(jsonData)) {
-            if (jsonData.entries && Array.isArray(jsonData.entries)) jsonData = jsonData.entries;
-            else if (jsonData.caseLaw && Array.isArray(jsonData.caseLaw)) jsonData = jsonData.caseLaw;
-            else if (jsonData.cases && Array.isArray(jsonData.cases)) jsonData = jsonData.cases;
-            else if (jsonData.data && Array.isArray(jsonData.data)) jsonData = jsonData.data;
-            else { toast({ title: "JSON must contain an array of case law entries", variant: "destructive" }); return; }
-          }
-          const parsed: typeof bulkPreview = [];
-          for (const item of jsonData) {
-            if (item.citation && item.title) {
-              parsed.push({
-                citation: String(item.citation || "").trim(),
-                court: String(item.court || "").trim(),
-                title: String(item.title || "").trim(),
-                summary: String(item.summary || item.description || "").trim(),
-                keywords: Array.isArray(item.keywords) ? item.keywords.join(", ") : String(item.keywords || ""),
-              });
-            }
-          }
-          if (parsed.length === 0) { toast({ title: "No valid entries found. Each entry needs at least citation and title.", variant: "destructive" }); return; }
-          setBulkPreview(parsed);
-        } catch {
-          toast({ title: "Invalid JSON file", variant: "destructive" });
-        }
+    setIsExtracting(true);
+    setExtractedCases([]);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+      const res = await fetch("/api/admin/case-law/extract", {
+        method: "POST",
+        credentials: "include",
+        body: formDataUpload,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Upload failed" }));
+        toast({ title: err.message || "Failed to extract case law", variant: "destructive" });
         return;
       }
-
-      const lines = text.split("\n").filter(l => l.trim());
-      const parsed: typeof bulkPreview = [];
-      const startIdx = lines[0]?.toLowerCase().includes("citation") ? 1 : 0;
-      for (let i = startIdx; i < lines.length; i++) {
-        const cols = parseCSVLine(lines[i]);
-        if (cols.length >= 4) {
-          parsed.push({
-            citation: cols[0].trim(),
-            court: cols[1].trim(),
-            title: cols[2].trim(),
-            summary: cols[3].trim(),
-            keywords: cols[4]?.trim() || "",
-          });
+      const data = await res.json();
+      if (data.cases && data.cases.length > 0) {
+        const validCases = data.cases.filter((c: any) => c.citation && c.title);
+        const dropped = data.cases.length - validCases.length;
+        if (validCases.length > 0) {
+          setExtractedCases(validCases);
+          toast({ title: `AI extracted ${validCases.length} cases from your document${dropped > 0 ? ` (${dropped} incomplete entries skipped)` : ""}${data.truncated ? " — document was truncated due to size" : ""}` });
+        } else {
+          toast({ title: "AI found entries but none had complete citation and title", variant: "destructive" });
         }
+      } else {
+        toast({ title: "No case law entries could be identified in this document", variant: "destructive" });
       }
-      setBulkPreview(parsed);
-    };
-    reader.readAsText(file);
+    } catch {
+      toast({ title: "Failed to process document", variant: "destructive" });
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const removeExtractedCase = (index: number) => {
+    setExtractedCases(prev => prev.filter((_, i) => i !== index));
   };
 
   const startEdit = (entry: CaseLawEntry) => {
@@ -935,11 +915,11 @@ function CaseLawSection() {
           <Button
             variant="ghost"
             className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
-            onClick={() => { setShowBulkUpload(!showBulkUpload); setShowAddForm(false); cancelEdit(); }}
+            onClick={() => { setShowBulkUpload(!showBulkUpload); setShowAddForm(false); cancelEdit(); setExtractedCases([]); }}
             data-testid="button-toggle-bulk-upload"
           >
             <FileUp size={14} />
-            <span>Bulk CSV Upload</span>
+            <span>Upload Document</span>
           </Button>
           <Button
             className="bg-amber-500 text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
@@ -960,51 +940,72 @@ function CaseLawSection() {
           <CardContent className="p-6 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">
-                Bulk CSV Upload
+                AI-Powered Case Law Extraction
               </span>
-              <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => { setShowBulkUpload(false); setBulkPreview([]); }} data-testid="button-cancel-bulk">
+              <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => { setShowBulkUpload(false); setExtractedCases([]); }} data-testid="button-cancel-bulk">
                 <X size={14} />
               </Button>
             </div>
             <p className="text-xs text-slate-400">
-              Upload a <span className="text-amber-400 font-bold">CSV</span> or <span className="text-amber-400 font-bold">JSON</span> file.
-              CSV columns: Citation, Court, Title, Summary, Keywords.
-              JSON: an array of objects with citation, court, title, summary, keywords fields.
+              Upload your <span className="text-amber-400 font-bold">PDF</span> or <span className="text-amber-400 font-bold">TXT</span> document containing combined case law.
+              The AI will automatically read through your document and extract individual cases with citations, court names, summaries, and keywords.
             </p>
             <Input
               type="file"
-              accept=".csv,.txt,.json"
-              onChange={handleFileUpload}
+              accept=".pdf,.txt"
+              onChange={handleDocumentUpload}
+              disabled={isExtracting}
               className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
-              data-testid="input-bulk-csv-file"
+              data-testid="input-bulk-document-file"
             />
-            {bulkPreview.length > 0 && (
+            {isExtracting && (
+              <div className="flex items-center gap-3 py-8 justify-center">
+                <Loader2 className="animate-spin text-amber-500" size={24} />
+                <div>
+                  <p className="text-sm font-bold text-white">AI is reading your document...</p>
+                  <p className="text-[10px] text-slate-400">Extracting citations, summaries, and keywords. This may take a minute for large documents.</p>
+                </div>
+              </div>
+            )}
+            {extractedCases.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-xs text-slate-300 font-bold">{bulkPreview.length} entries parsed</span>
+                  <span className="text-xs text-slate-300 font-bold">{extractedCases.length} cases extracted — review and save</span>
                   <Button
-                    onClick={() => bulkMutation.mutate(bulkPreview)}
-                    disabled={bulkMutation.isPending}
+                    onClick={() => saveBulkMutation.mutate(extractedCases)}
+                    disabled={saveBulkMutation.isPending}
                     className="bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
                     data-testid="button-confirm-bulk-upload"
                   >
-                    {bulkMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
-                    <span>Upload {bulkPreview.length} Entries</span>
+                    {saveBulkMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+                    <span>Save All {extractedCases.length} Cases</span>
                   </Button>
                 </div>
-                <div className="max-h-60 overflow-y-auto space-y-2">
-                  {bulkPreview.slice(0, 10).map((entry, idx) => (
-                    <Card key={idx} className="bg-slate-900 border-slate-700 rounded-xl" data-testid={`bulk-preview-${idx}`}>
+                <div className="max-h-96 overflow-y-auto space-y-2">
+                  {extractedCases.map((entry, idx) => (
+                    <Card key={idx} className="bg-slate-900 border-slate-700 rounded-xl" data-testid={`extracted-case-${idx}`}>
                       <CardContent className="p-3">
-                        <p className="text-xs font-bold text-white">{entry.citation}</p>
-                        <p className="text-[10px] text-slate-400">{entry.court} — {entry.title}</p>
-                        <p className="text-[10px] text-slate-500 truncate">{entry.summary}</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-white">{entry.citation}</p>
+                            <p className="text-[10px] text-amber-400">{entry.court}</p>
+                            <p className="text-[10px] text-slate-300 mt-1">{entry.title}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">{entry.summary}</p>
+                            {entry.keywords.length > 0 && (
+                              <div className="flex gap-1 mt-1 flex-wrap">
+                                {entry.keywords.map((kw, i) => (
+                                  <Badge key={i} className="bg-slate-800 text-slate-400 border-slate-700 rounded-lg text-[7px]">{kw}</Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <Button size="icon" variant="ghost" className="text-slate-600 flex-shrink-0" onClick={() => removeExtractedCase(idx)} data-testid={`button-remove-extracted-${idx}`}>
+                            <X size={12} />
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
-                  {bulkPreview.length > 10 && (
-                    <p className="text-[10px] text-slate-500 text-center">...and {bulkPreview.length - 10} more</p>
-                  )}
                 </div>
               </div>
             )}
@@ -1060,30 +1061,6 @@ function CaseLawSection() {
       )}
     </div>
   );
-}
-
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      result.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  result.push(current);
-  return result;
 }
 
 type StatuteDoc = {
