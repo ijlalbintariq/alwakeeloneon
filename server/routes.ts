@@ -256,51 +256,41 @@ const KNOWLEDGE_CASELAW_LIMIT = 3;
 async function gatherKnowledgeContext(query: string): Promise<string> {
   const contextParts: string[] = [];
 
-  try {
-    const internalStatutes = await storage.searchStatutes(query);
-    const internalCaseLaw = await storage.searchCaseLaw(query);
+  const [statutesResult, caseLawResult, githubResult, adminResult] = await Promise.allSettled([
+    storage.searchStatutes(query),
+    storage.searchCaseLaw(query),
+    storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
+    storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
+  ]);
 
-    if (internalStatutes.length > 0) {
-      contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
-      for (const s of internalStatutes.slice(0, KNOWLEDGE_STATUTES_LIMIT)) {
-        contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
-      }
+  if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
+    contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
+    for (const s of statutesResult.value.slice(0, KNOWLEDGE_STATUTES_LIMIT)) {
+      contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
     }
-
-    if (internalCaseLaw.length > 0) {
-      contextParts.push("=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===");
-      for (const c of internalCaseLaw.slice(0, KNOWLEDGE_CASELAW_LIMIT)) {
-        contextParts.push(`- ${c.citation} (${c.court}): ${c.title} — ${c.summary}`);
-      }
-    }
-  } catch (err) {
-    console.error("[Knowledge] Error searching internal vault:", err);
   }
 
-  try {
-    const githubDocs = await storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER);
-    if (githubDocs.length > 0) {
-      contextParts.push("=== CHAMBERS LEGAL LIBRARY (CURATED SOURCES) ===");
-      for (const doc of githubDocs) {
-        const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-        contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-      }
+  if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
+    contextParts.push("=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===");
+    for (const c of caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT)) {
+      contextParts.push(`- ${c.citation} (${c.court}): ${c.title} — ${c.summary}`);
     }
-  } catch (err) {
-    console.error("[Knowledge] Error searching GitHub knowledge:", err);
   }
 
-  try {
-    const adminDocs = await storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER);
-    if (adminDocs.length > 0) {
-      contextParts.push("=== CHAMBERS KNOWLEDGE VAULT (ADMIN UPLOADED) ===");
-      for (const doc of adminDocs) {
-        const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-        contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-      }
+  if (githubResult.status === "fulfilled" && githubResult.value.length > 0) {
+    contextParts.push("=== CHAMBERS LEGAL LIBRARY (CURATED SOURCES) ===");
+    for (const doc of githubResult.value) {
+      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
+      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
     }
-  } catch (err) {
-    console.error("[Knowledge] Error searching admin knowledge:", err);
+  }
+
+  if (adminResult.status === "fulfilled" && adminResult.value.length > 0) {
+    contextParts.push("=== CHAMBERS KNOWLEDGE VAULT (ADMIN UPLOADED) ===");
+    for (const doc of adminResult.value) {
+      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
+      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
+    }
   }
 
   if (contextParts.length === 0) return "";
@@ -741,7 +731,7 @@ export async function registerRoutes(
       const allowed = await checkUsageLimit(userId, "chat", res);
       if (!allowed) return;
 
-      const { messages: userMessages, type, turbo } = req.body as { messages: Array<{ role: string; content: string }>; type: string; turbo?: boolean };
+      const { messages: userMessages, type, turbo, stream: useStream } = req.body as { messages: Array<{ role: string; content: string }>; type: string; turbo?: boolean; stream?: boolean };
 
       const userTier = await storage.getUserTier(userId);
       const canUseTurbo = turbo && (userTier === "pro" || userTier === "enterprise");
@@ -765,16 +755,32 @@ export async function registerRoutes(
 
       const lastUserMessage = userMessages.filter(m => m.role === "user").pop();
       const knowledgeContext = lastUserMessage ? await gatherKnowledgeContext(lastUserMessage.content) : "";
-      const model = canUseTurbo ? "gemini-3-pro-preview" : "gemini-3-flash-preview";
+      let usedModel = canUseTurbo ? "gemini-3-pro-preview" : "gemini-3-flash-preview";
       const featureKey = (type === "draft" || type === "contract-drafting") ? type : "chat";
       const tokenLimit = TOKEN_LIMITS[featureKey as keyof typeof TOKEN_LIMITS] || TOKEN_LIMITS.chat;
       const systemPromptFull = systemPrompt + knowledgeContext;
 
       const cacheKey = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
-      let usedModel = model;
-      const { content, fromCache } = await getCachedOrCall("ai-chat", cacheKey, async () => {
+      const normalized = normalizeQuery(cacheKey);
+      const hash = hashQuery("ai-chat", normalized);
+
+      try {
+        const cached = await storage.getCachedResponse("ai-chat", hash);
+        if (cached && isCacheFresh(cached.createdAt)) {
+          await storage.incrementCacheHit(cached.id).catch(() => {});
+          return res.json({ content: cached.response, model: usedModel, fromCache: true });
+        }
+      } catch {}
+
+      if (useStream) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.flushHeaders();
+
+        let fullContent = "";
         try {
-          const completion = await ai.models.generateContent({
+          const streamResponse = await ai.models.generateContentStream({
             model: usedModel,
             contents: geminiContents,
             config: {
@@ -782,7 +788,70 @@ export async function registerRoutes(
               systemInstruction: systemPromptFull,
             },
           });
-          return completion.text || "I apologize, I could not generate a response.";
+
+          for await (const chunk of streamResponse) {
+            const text = chunk.text || "";
+            if (text) {
+              fullContent += text;
+              res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            }
+          }
+        } catch (turboErr: any) {
+          if (canUseTurbo && (turboErr?.status === 429 || turboErr?.message?.includes("quota") || turboErr?.message?.includes("rate"))) {
+            console.log("[AI Chat] Pro model quota exceeded, falling back to flash model (stream)");
+            usedModel = "gemini-3-flash-preview";
+            fullContent = "";
+            const fallbackStream = await ai.models.generateContentStream({
+              model: usedModel,
+              contents: geminiContents,
+              config: {
+                maxOutputTokens: tokenLimit,
+                systemInstruction: systemPromptFull,
+              },
+            });
+            for await (const chunk of fallbackStream) {
+              const text = chunk.text || "";
+              if (text) {
+                fullContent += text;
+                res.write(`data: ${JSON.stringify({ text })}\n\n`);
+              }
+            }
+          } else {
+            res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
+            res.end();
+            return;
+          }
+        }
+
+        res.write(`data: ${JSON.stringify({ done: true, model: usedModel })}\n\n`);
+        res.end();
+
+        if (fullContent) {
+          const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
+          await logUsageCost(userId, featureKey, usedModel, inputText, fullContent);
+          try {
+            await storage.setCachedResponse({
+              endpoint: "ai-chat",
+              queryHash: hash,
+              queryText: cacheKey.slice(0, 500),
+              response: fullContent,
+            });
+          } catch {}
+        }
+        return;
+      }
+
+      const completion = await (async () => {
+        try {
+          const result = await ai.models.generateContent({
+            model: usedModel,
+            contents: geminiContents,
+            config: {
+              maxOutputTokens: tokenLimit,
+              systemInstruction: systemPromptFull,
+            },
+          });
+          return result.text || "I apologize, I could not generate a response.";
         } catch (turboErr: any) {
           if (canUseTurbo && (turboErr?.status === 429 || turboErr?.message?.includes("quota") || turboErr?.message?.includes("rate"))) {
             console.log("[AI Chat] Pro model quota exceeded, falling back to flash model");
@@ -799,14 +868,20 @@ export async function registerRoutes(
           }
           throw turboErr;
         }
-      });
+      })();
 
-      if (!fromCache) {
-        const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
-        await logUsageCost(userId, featureKey, usedModel, inputText, content);
-      }
+      const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
+      await logUsageCost(userId, featureKey, usedModel, inputText, completion);
+      try {
+        await storage.setCachedResponse({
+          endpoint: "ai-chat",
+          queryHash: hash,
+          queryText: cacheKey.slice(0, 500),
+          response: completion,
+        });
+      } catch {}
 
-      res.json({ content, model: usedModel });
+      res.json({ content: completion, model: usedModel });
     } catch (err) {
       console.error("Error in AI chat:", err);
       res.status(500).json({ message: "Failed to process AI chat" });

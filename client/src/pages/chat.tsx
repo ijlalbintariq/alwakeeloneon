@@ -68,29 +68,89 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     setInput("");
     setIsLoading(true);
 
+    const assistantId = (Date.now() + 1).toString();
+
     try {
-      const res = await apiRequest("POST", "/api/ai/chat", {
-        messages: updated.map((m) => ({ role: m.role, content: m.content })),
-        type,
-        turbo: turboMode && canUseTurbo,
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          messages: updated.map((m) => ({ role: m.role, content: m.content })),
+          type,
+          turbo: turboMode && canUseTurbo,
+          stream: true,
+        }),
       });
-      const data = await res.json();
-      setMessages([
-        ...updated,
-        { id: (Date.now() + 1).toString(), role: "assistant", content: data.content },
-      ]);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        const isLimitError = response.status === 429;
+        throw { message: `${response.status}: ${errText}`, isLimit: isLimitError };
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await response.json();
+        setMessages([...updated, { id: assistantId, role: "assistant", content: data.content }]);
+      } else {
+        setMessages([...updated, { id: assistantId, role: "assistant", content: "" }]);
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = "";
+
+        if (reader) {
+          let buffer = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                try {
+                  const parsed = JSON.parse(line.slice(6));
+                  if (parsed.text) {
+                    accumulated += parsed.text;
+                    const current = accumulated;
+                    setMessages(prev => {
+                      const last = prev[prev.length - 1];
+                      if (last && last.id === assistantId) {
+                        return [...prev.slice(0, -1), { ...last, content: current }];
+                      }
+                      return prev;
+                    });
+                  }
+                  if (parsed.error) {
+                    throw { message: parsed.error, isLimit: false };
+                  }
+                } catch (e: any) {
+                  if (e?.isLimit !== undefined) throw e;
+                }
+              }
+            }
+          }
+        }
+      }
 
       await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
       queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
     } catch (err: any) {
-      const isLimitError = err?.message?.includes("429");
+      const isLimitError = err?.isLimit || err?.message?.includes("429");
       const limitMsg = isLimitError
         ? "Monthly query limit reached. Upgrade your plan to continue using Al Wakeelo."
         : "Communication with chambers disrupted. Please try again.";
-      setMessages([
-        ...updated,
-        { id: (Date.now() + 1).toString(), role: "assistant", content: limitMsg },
-      ]);
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last && last.id === assistantId && !last.content) {
+          return [...prev.slice(0, -1), { id: assistantId, role: "assistant", content: limitMsg }];
+        }
+        if (!prev.find(m => m.id === assistantId)) {
+          return [...prev, { id: assistantId, role: "assistant", content: limitMsg }];
+        }
+        return prev;
+      });
       setApiError(isLimitError ? "Query limit reached" : (err?.message || "Communication disruption."));
       if (isLimitError) {
         queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
