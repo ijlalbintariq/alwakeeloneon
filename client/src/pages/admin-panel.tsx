@@ -947,12 +947,13 @@ function CaseLawSection() {
               </Button>
             </div>
             <p className="text-xs text-slate-400">
-              Upload your <span className="text-amber-400 font-bold">PDF</span> or <span className="text-amber-400 font-bold">TXT</span> document containing combined case law.
+              Upload your <span className="text-amber-400 font-bold">PDF</span>, <span className="text-amber-400 font-bold">TXT</span>, <span className="text-amber-400 font-bold">JSON</span>, or <span className="text-amber-400 font-bold">CSV</span> document containing combined case law.
               The AI will automatically read through your document and extract individual cases with citations, court names, summaries, and keywords.
+              JSON and CSV files with proper columns are imported instantly without AI processing.
             </p>
             <Input
               type="file"
-              accept=".pdf,.txt"
+              accept=".pdf,.txt,.json,.csv"
               onChange={handleDocumentUpload}
               disabled={isExtracting}
               className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"

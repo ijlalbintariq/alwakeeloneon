@@ -1628,15 +1628,69 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         }
       } else if (ext === "txt" || ext === "text") {
         content = stripNullBytes(file.buffer.toString("utf-8").trim());
+      } else if (ext === "json") {
+        try {
+          const rawJson = file.buffer.toString("utf-8").trim();
+          const parsed = JSON.parse(rawJson);
+          const entries = Array.isArray(parsed) ? parsed : (parsed.cases || parsed.entries || parsed.data || [parsed]);
+          if (Array.isArray(entries) && entries.length > 0 && entries[0].citation) {
+            return res.json({
+              extracted: entries.length,
+              truncated: false,
+              originalLength: rawJson.length,
+              cases: entries.filter((c: any) => c.citation && c.title).map((c: any) => ({
+                citation: String(c.citation || ""),
+                court: String(c.court || ""),
+                title: String(c.title || ""),
+                summary: String(c.summary || ""),
+                keywords: Array.isArray(c.keywords) ? c.keywords : (typeof c.keywords === "string" ? c.keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : []),
+              })),
+            });
+          }
+          content = JSON.stringify(parsed, null, 1);
+        } catch {
+          return res.status(400).json({ message: "Invalid JSON file. Please check the file format." });
+        }
+      } else if (ext === "csv") {
+        const rawCsv = file.buffer.toString("utf-8").trim();
+        const lines = rawCsv.split(/\r?\n/);
+        if (lines.length > 1) {
+          const header = lines[0].toLowerCase();
+          if (header.includes("citation") && header.includes("title")) {
+            const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^"|"$/g, ""));
+            const citIdx = headers.indexOf("citation");
+            const courtIdx = headers.indexOf("court");
+            const titleIdx = headers.indexOf("title");
+            const sumIdx = headers.indexOf("summary");
+            const kwIdx = headers.indexOf("keywords");
+            const entries = [];
+            for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+              if (cols[citIdx] && cols[titleIdx]) {
+                entries.push({
+                  citation: cols[citIdx] || "",
+                  court: courtIdx >= 0 ? cols[courtIdx] || "" : "",
+                  title: cols[titleIdx] || "",
+                  summary: sumIdx >= 0 ? cols[sumIdx] || "" : "",
+                  keywords: kwIdx >= 0 && cols[kwIdx] ? cols[kwIdx].split(";").map((k: string) => k.trim()).filter(Boolean) : [],
+                });
+              }
+            }
+            if (entries.length > 0) {
+              return res.json({ extracted: entries.length, truncated: false, originalLength: rawCsv.length, cases: entries });
+            }
+          }
+        }
+        content = rawCsv;
       } else {
-        return res.status(400).json({ message: "Supported formats: PDF, TXT" });
+        return res.status(400).json({ message: "Supported formats: PDF, TXT, JSON, CSV" });
       }
 
       if (!content || content.length < 50) {
         return res.status(400).json({ message: "Document appears empty or too short to extract case law from." });
       }
 
-      const maxChars = 120000;
+      const maxChars = 200000;
       const truncated = content.length > maxChars;
       const textForAI = truncated ? content.substring(0, maxChars) : content;
 
@@ -1662,10 +1716,10 @@ Respond with ONLY valid JSON in this exact format (no markdown, no explanation):
 If no cases can be identified, respond with: {"cases":[]}`;
 
       const completion = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3-pro-preview",
         contents: [{ role: "user", parts: [{ text: textForAI }] }],
         config: {
-          maxOutputTokens: 8192,
+          maxOutputTokens: 16384,
           systemInstruction: extractionPrompt,
           temperature: 0.1,
         },
