@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Scale, Send, Trash2, Bookmark, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { parseReferences, ReferenceCards } from "@/components/reference-cards";
+import { useChatSession } from "@/hooks/use-chat-session";
 
 interface ChatMessage {
   id: string;
@@ -24,15 +25,11 @@ interface UsageData {
 }
 
 export function ChatModule({ type, title, initialMessage }: { type: string; title?: string; initialMessage?: string }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState(initialMessage || "");
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [turboMode, setTurboMode] = useState(false);
+  const { messages, input, setInput, isLoading, apiError, turboMode, setTurboMode, send, clear, canUseTurbo } = useChatSession();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
-  const canUseTurbo = usage?.tier === "pro" || usage?.tier === "enterprise";
+  // canUseTurbo provided by global session; usage is used for banners
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -40,9 +37,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
   useEffect(() => {
     if (initialMessage) {
-      handleSend(initialMessage);
+      send(initialMessage, { type });
     }
-  }, []);
+  }, [initialMessage, send, type]);
 
   const bookmarkMutation = useMutation({
     mutationFn: async (msg: ChatMessage) => {
@@ -61,108 +58,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const handleSend = async (overrideInput?: string) => {
     const text = overrideInput || input;
     if (!text.trim() || isLoading) return;
-    setApiError(null);
-    const userMsg: ChatMessage = { id: Date.now().toString(), role: "user", content: text };
-    const updated = [...messages, userMsg];
-    setMessages(updated);
-    setInput("");
-    setIsLoading(true);
-
-    const assistantId = (Date.now() + 1).toString();
-
-    try {
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          messages: updated.map((m) => ({ role: m.role, content: m.content })),
-          type,
-          turbo: turboMode && canUseTurbo,
-          stream: true,
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        const isLimitError = response.status === 429;
-        throw { message: `${response.status}: ${errText}`, isLimit: isLimitError };
-      }
-
-      const contentType = response.headers.get("content-type") || "";
-      if (contentType.includes("application/json")) {
-        const data = await response.json();
-        setMessages([...updated, { id: assistantId, role: "assistant", content: data.content }]);
-      } else {
-        setMessages([...updated, { id: assistantId, role: "assistant", content: "" }]);
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let accumulated = "";
-
-        if (reader) {
-          let buffer = "";
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || "";
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const jsonStr = line.slice(6).trim();
-                if (!jsonStr) continue;
-                try {
-                  const parsed = JSON.parse(jsonStr);
-                  if (parsed.error) {
-                    throw { message: parsed.error, isLimit: false };
-                  }
-                  if (parsed.done) {
-                    break;
-                  }
-                  if (parsed.text) {
-                    accumulated += parsed.text;
-                    const current = accumulated;
-                    setMessages(prev => {
-                      const last = prev[prev.length - 1];
-                      if (last && last.id === assistantId) {
-                        return [...prev.slice(0, -1), { ...last, content: current }];
-                      }
-                      return prev;
-                    });
-                  }
-                } catch (e: any) {
-                  if (e?.isLimit !== undefined) throw e;
-                }
-              }
-            }
-          }
-        }
-      }
-
-      await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
-      queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
-    } catch (err: any) {
-      const isLimitError = err?.isLimit || err?.message?.includes("429");
-      const limitMsg = isLimitError
-        ? "Monthly query limit reached. Upgrade your plan to continue using Al Wakeelo."
-        : "Communication with chambers disrupted. Please try again.";
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last && last.id === assistantId && !last.content) {
-          return [...prev.slice(0, -1), { id: assistantId, role: "assistant", content: limitMsg }];
-        }
-        if (!prev.find(m => m.id === assistantId)) {
-          return [...prev, { id: assistantId, role: "assistant", content: limitMsg }];
-        }
-        return prev;
-      });
-      setApiError(isLimitError ? "Query limit reached" : (err?.message || "Communication disruption."));
-      if (isLimitError) {
-        queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
+    await send(text, { type });
+    queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
   };
 
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -172,8 +70,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const [shareError, setShareError] = useState<string | null>(null);
 
   const handleClear = () => {
-    setMessages([]);
-    setApiError(null);
+    clear();
     setShareUrl(null);
     setSharedThreadId(null);
     setShareError(null);
