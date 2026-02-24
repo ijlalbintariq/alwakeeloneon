@@ -1,24 +1,33 @@
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
+import MemoryStore from "memorystore";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000;
   const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
+  const memStoreFactory = MemoryStore(session);
+  const canUsePg = !!process.env.DATABASE_URL && !!process.env.SESSION_SECRET;
+  const sessionStore = canUsePg
+    ? new pgStore({
+        conString: process.env.DATABASE_URL,
+        createTableIfMissing: false,
+        ttl: sessionTtl,
+        tableName: "sessions",
+      })
+    : new memStoreFactory({
+        checkPeriod: sessionTtl,
+      });
+  const isProd = process.env.NODE_ENV === "production";
+  const secret = process.env.SESSION_SECRET || (!isProd ? "development-secret" : "");
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isProd,
       maxAge: sessionTtl,
       sameSite: "lax",
     },
