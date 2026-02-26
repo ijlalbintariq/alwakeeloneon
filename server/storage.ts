@@ -247,16 +247,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertGithubKnowledge(items: InsertGithubKnowledge[]): Promise<void> {
-    for (const item of items) {
-      const existing = await db.select().from(githubKnowledge).where(eq(githubKnowledge.filename, item.filename));
-      if (existing.length > 0) {
-        await db.update(githubKnowledge)
-          .set({ content: item.content, title: item.title, syncedAt: new Date() })
-          .where(eq(githubKnowledge.filename, item.filename));
-      } else {
-        await db.insert(githubKnowledge).values(item);
-      }
-    }
+    if (items.length === 0) return;
+    
+    // Batch insert with onConflictDoUpdate for better performance and reliability
+    await db.insert(githubKnowledge)
+      .values(items)
+      .onConflictDoUpdate({
+        target: githubKnowledge.filename,
+        set: {
+          content: sql`EXCLUDED.content`,
+          title: sql`EXCLUDED.title`,
+          syncedAt: new Date()
+        }
+      });
   }
 
   async searchGithubKnowledge(query: string, limit: number = 5): Promise<GithubKnowledge[]> {

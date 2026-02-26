@@ -116,6 +116,20 @@ export const adminKnowledge = pgTable("admin_knowledge", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const voiceConversations = pgTable("voice_conversations", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const voiceMessages = pgTable("voice_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").references(() => voiceConversations.id).notNull(),
+  role: text("role", { enum: ["user", "assistant"] }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
@@ -129,6 +143,8 @@ export const insertUsageTrackingSchema = createInsertSchema(usageTracking).omit(
 export const insertGithubKnowledgeSchema = createInsertSchema(githubKnowledge).omit({ id: true, syncedAt: true });
 export const insertStatuteDocumentSchema = createInsertSchema(statuteDocuments).omit({ id: true, createdAt: true });
 export const insertAdminKnowledgeSchema = createInsertSchema(adminKnowledge).omit({ id: true, createdAt: true });
+export const insertVoiceConversationSchema = createInsertSchema(voiceConversations).omit({ id: true, createdAt: true });
+export const insertVoiceMessageSchema = createInsertSchema(voiceMessages).omit({ id: true, createdAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -155,6 +171,8 @@ export type StatuteDocument = typeof statuteDocuments.$inferSelect;
 export type InsertStatuteDocument = z.infer<typeof insertStatuteDocumentSchema>;
 export type AdminKnowledge = typeof adminKnowledge.$inferSelect;
 export type InsertAdminKnowledge = z.infer<typeof insertAdminKnowledgeSchema>;
+export type VoiceConversation = typeof voiceConversations.$inferSelect;
+export type VoiceMessage = typeof voiceMessages.$inferSelect;
 
 export const TIER_LIMITS: Record<string, { monthlyQueries: number; label: string; description: string }> = {
   free: { monthlyQueries: 10, label: "Free", description: "10 AI queries/month" },

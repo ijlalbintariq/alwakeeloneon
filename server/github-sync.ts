@@ -98,6 +98,7 @@ export async function syncGithubKnowledge(): Promise<void> {
             filename: file.path,
             title: deriveTitle(file.path),
             content: content.replace(/\x00/g, ""),
+            syncedAt: new Date(),
           };
         })
       );
