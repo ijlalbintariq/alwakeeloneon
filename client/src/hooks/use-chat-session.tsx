@@ -165,7 +165,11 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
     send,
   }), [messages, input, isLoading, apiError, turboMode, canUseTurbo]);
 
-  return <ChatSessionContext.Provider value={value}>{children}</ChatSessionContext.Provider>;
+  return (
+    <ChatSessionContext.Provider value={value}>
+      {children}
+    </ChatSessionContext.Provider>
+  );
 }
 
 export function useChatSession() {
