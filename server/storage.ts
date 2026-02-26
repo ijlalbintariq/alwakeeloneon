@@ -215,7 +215,7 @@ export class DatabaseStorage implements IStorage {
 
   async getCaseLawCitations(): Promise<string[]> {
     const rows = await db.select({ citation: caseLaw.citation }).from(caseLaw);
-    return rows.map(r => r.citation.toLowerCase().trim());
+    return rows.map((r: { citation: string }) => r.citation.toLowerCase().trim());
   }
 
   async createCaseLaw(entry: InsertCaseLaw): Promise<CaseLaw> {
@@ -347,11 +347,11 @@ export class DatabaseStorage implements IStorage {
       .where(gte(usageTracking.createdAt, startOfMonth))
       .groupBy(usageTracking.feature);
 
-    const totalCost = byFeature.reduce((sum, f) => sum + parseFloat(String(f.totalCost) || "0"), 0);
-    const totalTokens = byFeature.reduce((sum, f) => sum + (Number(f.totalInputTokens) || 0) + (Number(f.totalOutputTokens) || 0), 0);
+    const totalCost = byFeature.reduce((sum: number, f: any) => sum + parseFloat(String(f.totalCost) || "0"), 0);
+    const totalTokens = byFeature.reduce((sum: number, f: any) => sum + (Number(f.totalInputTokens) || 0) + (Number(f.totalOutputTokens) || 0), 0);
 
     return {
-      byFeature: byFeature.map(f => ({
+      byFeature: byFeature.map((f: any) => ({
         feature: f.feature,
         totalQueries: f.totalQueries,
         totalInputTokens: Number(f.totalInputTokens) || 0,
@@ -388,7 +388,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(userId: string): Promise<void> {
     const userThreads = await db.select({ id: threads.id }).from(threads).where(eq(threads.userId, userId));
-    const threadIds = userThreads.map(t => t.id);
+    const threadIds = userThreads.map((t: { id: number }) => t.id);
     if (threadIds.length > 0) {
       for (const tid of threadIds) {
         await db.delete(messages).where(eq(messages.threadId, tid));
