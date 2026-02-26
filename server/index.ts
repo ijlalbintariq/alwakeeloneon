@@ -5,6 +5,18 @@ import { createServer } from "http";
 import 'dotenv/config';
 import { registerOfflineTranscriptionRoutes } from "./audio-local";
 
+const PROXY_VARS = ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"];
+for (const key of PROXY_VARS) {
+  const val = process.env[key];
+  if (val && (/^base$/i.test(val) || !/^https?:\/\//i.test(val))) {
+    delete process.env[key];
+  }
+}
+const NO_PROXY_LIST = ["localhost", "127.0.0.1", "::1", ".render.internal", "api.github.com", "raw.githubusercontent.com", "github.com"];
+const currentNoProxy = process.env.NO_PROXY || process.env.no_proxy || "";
+const merged = new Set(currentNoProxy.split(",").map(s => s.trim()).filter(Boolean).concat(NO_PROXY_LIST));
+process.env.NO_PROXY = Array.from(merged).join(",");
+
 const app = express();
 const httpServer = createServer(app);
 
