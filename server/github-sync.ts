@@ -5,7 +5,7 @@ import { URL } from "node:url";
 
 const GITHUB_REPO = "ijlalbintariq/law";
 const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_REPO}`;
-const GH_TOKEN = process.env.GITHUB_TOKEN;
+const GH_TOKEN = undefined;
 
 function ghHeaders(extra?: Record<string, string>) {
   const headers: Record<string, string> = {
@@ -13,7 +13,6 @@ function ghHeaders(extra?: Record<string, string>) {
     "User-Agent": "AlWakeelo-LegalBot",
     ...(extra || {}),
   };
-  if (GH_TOKEN) headers.Authorization = `token ${GH_TOKEN}`;
   return headers;
 }
 
