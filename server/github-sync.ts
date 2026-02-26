@@ -3,6 +3,27 @@ import { queueAutoExtraction } from "./auto-extract-caselaw";
 
 const GITHUB_REPO = "ijlalbintariq/law";
 const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_REPO}`;
+const GH_TOKEN = process.env.GITHUB_TOKEN;
+
+function ghHeaders(extra?: Record<string, string>) {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+    "User-Agent": "AlWakeelo-LegalBot",
+    ...(extra || {}),
+  };
+  if (GH_TOKEN) headers.Authorization = `token ${GH_TOKEN}`;
+  return headers;
+}
+
+const pv = (v?: string) => !!v && (/^base$/i.test(v) || !/^https?:\/\//i.test(v));
+["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"].forEach((n) => {
+  const val = process.env[n];
+  if (pv(val)) delete process.env[n];
+});
+const noProxyHosts = ["localhost", "127.0.0.1", "::1", ".render.internal", "api.github.com", "raw.githubusercontent.com", "github.com"];
+const existingNoProxy = process.env.NO_PROXY || process.env.no_proxy || "";
+const list = new Set(existingNoProxy.split(",").map((s) => s.trim()).filter(Boolean).concat(noProxyHosts));
+process.env.NO_PROXY = Array.from(list).join(",");
 
 interface GithubItem {
   name: string;
@@ -26,9 +47,7 @@ async function fetchDirectoryContents(path: string = ""): Promise<GithubItem[]> 
     ? `${GITHUB_API_BASE}/contents/${encodeURIComponent(path)}`
     : `${GITHUB_API_BASE}/contents`;
 
-  const res = await fetch(url, {
-    headers: { "Accept": "application/vnd.github.v3+json", "User-Agent": "AlWakeelo-LegalBot" },
-  });
+  const res = await fetch(url, { headers: ghHeaders() });
   if (!res.ok) {
     console.error(`[GitHub Sync] API error for path "${path}": ${res.status} ${res.statusText}`);
     return [];
@@ -55,9 +74,7 @@ async function fetchAllFilesRecursively(path: string = ""): Promise<GithubItem[]
 async function fetchFileContent(file: GithubItem): Promise<string | null> {
   if (!file.download_url) return null;
   try {
-    const res = await fetch(file.download_url, {
-      headers: { "User-Agent": "AlWakeelo-LegalBot" },
-    });
+    const res = await fetch(file.download_url, { headers: ghHeaders() });
     if (!res.ok) return null;
     return await res.text();
   } catch (err) {
