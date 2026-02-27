@@ -72,6 +72,7 @@ app.use((req, res, next) => {
   });
   app.get("/health/db", async (_req, res) => {
     const rawUrl = process.env.DATABASE_URL;
+    const pgHost = (process.env.PGHOST || "").trim() || null;
     let host: string | null = null;
     let configured = false;
 
@@ -89,6 +90,7 @@ app.use((req, res, next) => {
         ok: false,
         configured,
         host,
+        pgHost,
         reason: "Database pool is not initialized.",
       });
     }
@@ -99,12 +101,14 @@ app.use((req, res, next) => {
         ok: true,
         configured,
         host,
+        pgHost,
       });
     } catch (err: any) {
       return res.status(503).json({
         ok: false,
         configured,
         host,
+        pgHost,
         reason: err?.message || "Database connectivity check failed.",
       });
     }
