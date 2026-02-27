@@ -2,15 +2,20 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import MemoryStore from "memorystore";
+import { validateDatabaseUrl } from "../../env-config";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000;
   const pgStore = connectPg(session);
   const memStoreFactory = MemoryStore(session);
-  const canUsePg = !!process.env.DATABASE_URL && !!process.env.SESSION_SECRET;
+  const validatedDatabaseUrl = validateDatabaseUrl(process.env.DATABASE_URL);
+  const canUsePg = validatedDatabaseUrl.ok && !!validatedDatabaseUrl.value && !!process.env.SESSION_SECRET;
+  if (!validatedDatabaseUrl.ok) {
+    console.error(`[Session] Falling back to memory store. ${validatedDatabaseUrl.reason}`);
+  }
   const sessionStore = canUsePg
     ? new pgStore({
-        conString: process.env.DATABASE_URL,
+        conString: validatedDatabaseUrl.value,
         createTableIfMissing: false,
         ttl: sessionTtl,
         tableName: "sessions",
