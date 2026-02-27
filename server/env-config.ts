@@ -35,3 +35,15 @@ export function validateDatabaseUrl(raw: string | undefined): {
   return { ok: true, value };
 }
 
+export function validatePgHost(raw: string | undefined): {
+  ok: boolean;
+  reason?: string;
+} {
+  if (!raw) return { ok: true };
+  const host = raw.trim();
+  if (!host) return { ok: true };
+  if (/^base$/i.test(host)) {
+    return { ok: false, reason: 'PGHOST is "base" (placeholder), not a real database host.' };
+  }
+  return { ok: true };
+}
