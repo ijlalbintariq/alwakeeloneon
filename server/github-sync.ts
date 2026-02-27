@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import "./proxy-env";
 import { queueAutoExtraction } from "./auto-extract-caselaw";
 import https from "node:https";
 import { URL } from "node:url";
@@ -15,16 +16,6 @@ function ghHeaders(extra?: Record<string, string>) {
   };
   return headers;
 }
-
-const pv = (v?: string) => !!v && (/^base$/i.test(v) || !/^https?:\/\//i.test(v));
-["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"].forEach((n) => {
-  const val = process.env[n];
-  if (pv(val)) delete process.env[n];
-});
-const noProxyHosts = ["localhost", "127.0.0.1", "::1", ".render.internal", "api.github.com", "raw.githubusercontent.com", "github.com"];
-const existingNoProxy = process.env.NO_PROXY || process.env.no_proxy || "";
-const list = new Set(existingNoProxy.split(",").map((s) => s.trim()).filter(Boolean).concat(noProxyHosts));
-process.env.NO_PROXY = Array.from(list).join(",");
 
 function httpsGet(urlStr: string, headers: Record<string, string>, redirects = 3): Promise<{ status: number; body: string; statusText: string }> {
   return new Promise((resolve, reject) => {

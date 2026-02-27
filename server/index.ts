@@ -1,21 +1,11 @@
+import "dotenv/config";
+import "./proxy-env";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import 'dotenv/config';
 import { registerOfflineTranscriptionRoutes } from "./audio-local";
-
-const PROXY_VARS = ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"];
-for (const key of PROXY_VARS) {
-  const val = process.env[key];
-  if (val && (/^base$/i.test(val) || !/^https?:\/\//i.test(val))) {
-    delete process.env[key];
-  }
-}
-const NO_PROXY_LIST = ["localhost", "127.0.0.1", "::1", ".render.internal", "api.github.com", "raw.githubusercontent.com", "github.com"];
-const currentNoProxy = process.env.NO_PROXY || process.env.no_proxy || "";
-const merged = new Set(currentNoProxy.split(",").map(s => s.trim()).filter(Boolean).concat(NO_PROXY_LIST));
-process.env.NO_PROXY = Array.from(merged).join(",");
+import { pool } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -79,6 +69,45 @@ app.use((req, res, next) => {
   registerOfflineTranscriptionRoutes(app);
   app.get("/health", (_req, res) => {
     res.json({ ok: true });
+  });
+  app.get("/health/db", async (_req, res) => {
+    const rawUrl = process.env.DATABASE_URL;
+    let host: string | null = null;
+    let configured = false;
+
+    if (rawUrl && rawUrl.trim()) {
+      configured = true;
+      try {
+        host = new URL(rawUrl).hostname || null;
+      } catch {
+        host = null;
+      }
+    }
+
+    if (!pool) {
+      return res.status(503).json({
+        ok: false,
+        configured,
+        host,
+        reason: "Database pool is not initialized.",
+      });
+    }
+
+    try {
+      await pool.query("select 1");
+      return res.json({
+        ok: true,
+        configured,
+        host,
+      });
+    } catch (err: any) {
+      return res.status(503).json({
+        ok: false,
+        configured,
+        host,
+        reason: err?.message || "Database connectivity check failed.",
+      });
+    }
   });
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
