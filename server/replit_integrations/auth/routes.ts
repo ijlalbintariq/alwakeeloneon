@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
 import { sendPasswordResetEmail } from "../../email";
+import { dbAvailable, dbUnavailableReason } from "../../db";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -54,6 +55,9 @@ export function registerAuthRoutes(app: Express): void {
       });
     } catch (error) {
       console.error("Registration error:", error);
+      if (!dbAvailable) {
+        return res.status(503).json({ message: "Database unavailable", code: "DB_UNAVAILABLE", reason: dbUnavailableReason });
+      }
       res.status(500).json({ message: "Registration failed" });
     }
   });
@@ -92,6 +96,9 @@ export function registerAuthRoutes(app: Express): void {
       });
     } catch (error) {
       console.error("Login error:", error);
+      if (!dbAvailable) {
+        return res.status(503).json({ message: "Database unavailable", code: "DB_UNAVAILABLE", reason: dbUnavailableReason });
+      }
       res.status(500).json({ message: "Login failed" });
     }
   });

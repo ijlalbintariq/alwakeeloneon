@@ -7,13 +7,15 @@ import { validateDatabaseUrl, validatePgHost } from "./env-config";
 const { Pool } = pg;
 const validatedDatabaseUrl = validateDatabaseUrl(process.env.DATABASE_URL);
 const validatedPgHost = validatePgHost(process.env.PGHOST);
-
-if (!validatedDatabaseUrl.ok || !validatedPgHost.ok) {
-  const reasons = [validatedDatabaseUrl.reason, validatedPgHost.reason].filter(Boolean).join(" ");
-  console.error(`[Config] Database configuration invalid. ${reasons}`);
-}
-
 const canInitPool = validatedDatabaseUrl.ok && validatedPgHost.ok;
+const reasons = [validatedDatabaseUrl.reason, validatedPgHost.reason].filter(Boolean);
+
+export const dbAvailable = canInitPool && !!validatedDatabaseUrl.value;
+export const dbUnavailableReason = dbAvailable ? null : (reasons.join(" ") || "Database configuration is missing.");
+
+if (!dbAvailable) {
+  console.error(`[Config] Database configuration invalid. ${dbUnavailableReason}`);
+}
 
 export const pool = (canInitPool && validatedDatabaseUrl.value
   ? new Pool({ connectionString: validatedDatabaseUrl.value })
