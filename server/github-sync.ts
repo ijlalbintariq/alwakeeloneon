@@ -1,54 +1,10 @@
 import { storage } from "./storage";
-import "./proxy-env";
 import { queueAutoExtraction } from "./auto-extract-caselaw";
-import https from "node:https";
-import { URL } from "node:url";
+import { extractText } from "unpdf";
 
 const GITHUB_REPO = "ijlalbintariq/law";
 const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_REPO}`;
-const GH_TOKEN = undefined;
-
-function ghHeaders(extra?: Record<string, string>) {
-  const headers: Record<string, string> = {
-    Accept: "application/vnd.github.v3+json",
-    "User-Agent": "AlWakeelo-LegalBot",
-    ...(extra || {}),
-  };
-  return headers;
-}
-
-function httpsGet(urlStr: string, headers: Record<string, string>, redirects = 3): Promise<{ status: number; body: string; statusText: string }> {
-  return new Promise((resolve, reject) => {
-    const u = new URL(urlStr);
-    const req = https.request(
-      {
-        protocol: u.protocol,
-        hostname: u.hostname,
-        port: u.port || (u.protocol === "https:" ? 443 : 80),
-        path: u.pathname + u.search,
-        method: "GET",
-        headers,
-        timeout: 20000,
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        const code = res.statusCode || 0;
-        const msg = res.statusMessage || "";
-        const loc = res.headers.location;
-        if ((code === 301 || code === 302 || code === 303 || code === 307 || code === 308) && loc && redirects > 0) {
-          const nextUrl = new URL(loc, urlStr).toString();
-          res.resume();
-          httpsGet(nextUrl, headers, redirects - 1).then(resolve).catch(reject);
-          return;
-        }
-        res.on("data", (d) => chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d)));
-        res.on("end", () => resolve({ status: code, statusText: msg, body: Buffer.concat(chunks).toString("utf8") }));
-      }
-    );
-    req.on("error", reject);
-    req.end();
-  });
-}
+const SUPPORTED_EXTENSIONS = [".txt", ".json", ".csv", ".pdf"];
 
 interface GithubItem {
   name: string;
@@ -72,16 +28,14 @@ async function fetchDirectoryContents(path: string = ""): Promise<GithubItem[]> 
     ? `${GITHUB_API_BASE}/contents/${encodeURIComponent(path)}`
     : `${GITHUB_API_BASE}/contents`;
 
-  const res = await httpsGet(url, ghHeaders());
-  if (res.status < 200 || res.status >= 300) {
+  const res = await fetch(url, {
+    headers: { "Accept": "application/vnd.github.v3+json", "User-Agent": "AlWakeelo-LegalBot" },
+  });
+  if (!res.ok) {
     console.error(`[GitHub Sync] API error for path "${path}": ${res.status} ${res.statusText}`);
     return [];
   }
-  try {
-    return JSON.parse(res.body);
-  } catch {
-    return [];
-  }
+  return await res.json();
 }
 
 async function fetchAllFilesRecursively(path: string = ""): Promise<GithubItem[]> {
@@ -90,7 +44,10 @@ async function fetchAllFilesRecursively(path: string = ""): Promise<GithubItem[]
 
   for (const item of items) {
     if (item.type === "file" && item.download_url) {
-      allFiles.push(item);
+      const ext = "." + (item.name.split(".").pop() || "").toLowerCase();
+      if (SUPPORTED_EXTENSIONS.includes(ext)) {
+        allFiles.push(item);
+      }
     } else if (item.type === "dir") {
       const subFiles = await fetchAllFilesRecursively(item.path);
       allFiles.push(...subFiles);
@@ -103,9 +60,25 @@ async function fetchAllFilesRecursively(path: string = ""): Promise<GithubItem[]
 async function fetchFileContent(file: GithubItem): Promise<string | null> {
   if (!file.download_url) return null;
   try {
-    const res = await httpsGet(file.download_url, ghHeaders());
-    if (res.status < 200 || res.status >= 300) return null;
-    return res.body;
+    const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
+    const res = await fetch(file.download_url, {
+      headers: { "User-Agent": "AlWakeelo-LegalBot" },
+    });
+    if (!res.ok) return null;
+
+    if (ext === ".pdf") {
+      const buffer = await res.arrayBuffer();
+      const uint8 = new Uint8Array(buffer);
+      const pdfResult = await extractText(uint8, { mergePages: true });
+      const text = (pdfResult.text || "").trim();
+      if (!text) {
+        console.warn(`[GitHub Sync] PDF has no extractable text: ${file.path}`);
+        return null;
+      }
+      return text;
+    }
+
+    return await res.text();
   } catch (err) {
     console.error(`[GitHub Sync] Failed to fetch ${file.path}:`, err);
     return null;
@@ -144,7 +117,6 @@ export async function syncGithubKnowledge(): Promise<void> {
             filename: file.path,
             title: deriveTitle(file.path),
             content: content.replace(/\x00/g, ""),
-            syncedAt: new Date(),
           };
         })
       );

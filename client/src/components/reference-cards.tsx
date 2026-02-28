@@ -1,5 +1,7 @@
-import { BookOpen, Gavel, ChevronRight } from "lucide-react";
-import { useLocation } from "wouter";
+import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { BookOpen, Gavel, ChevronRight, X, Loader2, Scale, List, FileText, ExternalLink } from "lucide-react";
+import { DocumentViewer } from "./document-viewer";
 
 interface LawReference {
   name: string;
@@ -16,6 +18,51 @@ interface JudgmentReference {
 interface ParsedReferences {
   laws: LawReference[];
   judgments: JudgmentReference[];
+}
+
+interface StatuteLookupResult {
+  found: boolean;
+  statutes?: Array<{ shortTitle: string; section: string; description: string; punishment: string }>;
+  documents?: Array<{ id: number; title: string; content: string; category: string }>;
+  knowledgeVault?: Array<{ title: string; content: string }>;
+}
+
+interface TocEntry {
+  id: string;
+  text: string;
+  level: number;
+}
+
+function parseToc(content: string): TocEntry[] {
+  const entries: TocEntry[] = [];
+  const lines = content.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    let match: RegExpMatchArray | null;
+
+    match = line.match(/^(CHAPTER|PART|TITLE|SCHEDULE)\s+[IVXLCDM\d]+/i);
+    if (match) {
+      entries.push({ id: `toc-${i}`, text: line.substring(0, 80), level: 1 });
+      continue;
+    }
+
+    match = line.match(/^(Section|Article|Sec\.?|Art\.?)\s+\d+/i);
+    if (match) {
+      entries.push({ id: `toc-${i}`, text: line.substring(0, 80), level: 2 });
+      continue;
+    }
+
+    match = line.match(/^\d+[\.\)]\s+[A-Z]/);
+    if (match && line.length > 10 && line.length < 120) {
+      entries.push({ id: `toc-${i}`, text: line.substring(0, 80), level: 3 });
+      continue;
+    }
+
+    if (/^[A-Z][A-Z\s]{5,}$/.test(line) && line.length < 80) {
+      entries.push({ id: `toc-${i}`, text: line, level: 1 });
+    }
+  }
+  return entries;
 }
 
 export function parseReferences(content: string): { cleanContent: string; references: ParsedReferences | null } {
@@ -44,68 +91,481 @@ export function parseReferences(content: string): { cleanContent: string; refere
   }
 }
 
-export function ReferenceCards({ references }: { references: ParsedReferences }) {
-  const [, navigate] = useLocation();
+function LawDetailPopup({ law, onClose }: { law: LawReference; onClose: () => void }) {
+  const [lookupData, setLookupData] = useState<StatuteLookupResult | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [showToc, setShowToc] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchLaw = async () => {
+      try {
+        const params = new URLSearchParams({ name: law.name, section: law.section });
+        const res = await fetch(`/api/statute-lookup?${params}`, { credentials: "include" });
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          setLookupData(data);
+        } else {
+          setLoadError(true);
+        }
+      } catch {
+        if (!cancelled) setLoadError(true);
+      }
+      if (!cancelled) setIsLoading(false);
+    };
+    fetchLaw();
+    return () => { cancelled = true; };
+  }, [law.name, law.section]);
+
+  const tocEntries = useMemo(() => {
+    if (!lookupData) return [];
+    const allContent: string[] = [];
+    lookupData.documents?.forEach(d => allContent.push(d.content));
+    lookupData.knowledgeVault?.forEach(g => allContent.push(g.content));
+    return parseToc(allContent.join("\n"));
+  }, [lookupData]);
+
+  const scrollToSection = (text: string) => {
+    const container = document.getElementById("law-detail-content");
+    if (!container) return;
+    const allText = container.innerText;
+    const idx = allText.indexOf(text.substring(0, 30));
+    if (idx === -1) return;
+
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let charCount = 0;
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text | null)) {
+      charCount += node.textContent?.length || 0;
+      if (charCount >= idx) {
+        const el = node.parentElement;
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          el.classList.add("bg-amber-500/20");
+          setTimeout(() => el.classList.remove("bg-amber-500/20"), 2000);
+        }
+        break;
+      }
+    }
+  };
+
+  const hasToc = tocEntries.length > 0;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="relative bg-[#1e293b] border border-slate-700 rounded-2xl shadow-2xl w-full max-h-[85vh] flex"
+        style={{ maxWidth: hasToc && showToc ? "56rem" : "42rem" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {hasToc && showToc && (
+          <div className="w-64 flex-shrink-0 border-r border-slate-700 overflow-y-auto bg-[#0f172a] rounded-l-2xl">
+            <div className="sticky top-0 bg-[#0f172a] border-b border-slate-700 p-3 z-10">
+              <div className="flex items-center gap-2">
+                <List size={14} className="text-amber-500" />
+                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Table of Contents</span>
+              </div>
+            </div>
+            <div className="p-2 space-y-0.5">
+              {tocEntries.map((entry, i) => (
+                <button
+                  key={i}
+                  onClick={() => scrollToSection(entry.text)}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-slate-800 transition-colors truncate"
+                  style={{ paddingLeft: `${(entry.level - 1) * 12 + 8}px` }}
+                >
+                  <span className={entry.level === 1 ? "text-amber-400 font-semibold" : entry.level === 2 ? "text-slate-300" : "text-slate-500"}>
+                    {entry.text}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="sticky top-0 bg-[#1e293b] border-b border-slate-700 p-4 flex items-center justify-between rounded-t-2xl z-10">
+            <div className="flex items-center gap-2">
+              <Scale size={16} className="text-amber-500" />
+              <h3 className="text-sm font-bold text-white">Law Reference</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              {hasToc && (
+                <button
+                  onClick={() => setShowToc(!showToc)}
+                  className={`p-1.5 rounded-lg transition-colors ${showToc ? "bg-amber-500/20 text-amber-400" : "hover:bg-slate-700 text-slate-400 hover:text-white"}`}
+                  title="Toggle Table of Contents"
+                >
+                  <List size={16} />
+                </button>
+              )}
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+          <div id="law-detail-content" className="p-5 space-y-4 overflow-y-auto flex-1">
+            <div>
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Statute / Act</p>
+              <p className="text-lg font-bold text-white">{law.name}</p>
+            </div>
+            {law.section && (
+              <div>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Section</p>
+                <p className="text-sm text-amber-500 font-semibold">{law.section}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">AI Summary</p>
+              <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{law.description}</p>
+            </div>
+
+            {isLoading && (
+              <div className="flex items-center justify-center py-6 gap-3">
+                <Loader2 size={18} className="animate-spin text-amber-500" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Loading from Knowledge Vault...</p>
+              </div>
+            )}
+
+            {!isLoading && lookupData?.found && (
+              <div className="border-t border-slate-700 pt-4 space-y-4">
+                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Knowledge Vault Match</p>
+
+                {lookupData.statutes && lookupData.statutes.map((s, i) => (
+                  <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[9px] font-black uppercase text-amber-500">
+                        {s.shortTitle}
+                      </span>
+                      <span className="text-[10px] text-slate-400">Section {s.section}</span>
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed">{s.description}</p>
+                    {s.punishment && (
+                      <p className="text-xs text-slate-400">
+                        <span className="text-amber-500/70 font-semibold">Punishment/Remedy: </span>{s.punishment}
+                      </p>
+                    )}
+                  </div>
+                ))}
+
+                {lookupData.documents && lookupData.documents.map((d, i) => (
+                  <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
+                    <p className="text-sm font-bold text-white">{d.title}</p>
+                    <span className="inline-block px-2 py-0.5 bg-slate-700 rounded text-[9px] text-slate-400 uppercase">{d.category}</span>
+                    <div className="max-h-[300px] overflow-y-auto mt-2">
+                      <pre className="whitespace-pre-wrap text-xs leading-relaxed text-slate-400 font-mono">{d.content}</pre>
+                    </div>
+                  </div>
+                ))}
+
+                {lookupData.knowledgeVault && lookupData.knowledgeVault.map((g, i) => (
+                  <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
+                    <p className="text-sm font-bold text-white">{g.title}</p>
+                    <div className="max-h-[300px] overflow-y-auto mt-2">
+                      <pre className="whitespace-pre-wrap text-xs leading-relaxed text-slate-400 font-mono">{g.content}</pre>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!isLoading && !loadError && lookupData && !lookupData.found && (
+              <div className="border-t border-slate-700 pt-4">
+                <p className="text-xs text-slate-500 italic">No additional details found in the Knowledge Vault for this provision. The AI summary above is based on the response context.</p>
+              </div>
+            )}
+
+            {loadError && (
+              <div className="border-t border-slate-700 pt-4">
+                <p className="text-xs text-red-400/70 italic">Could not load additional details. The AI summary above is still available.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function ReferencePopup({ onClose, children, title }: { onClose: () => void; children: React.ReactNode; title: string }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="relative bg-[#1e293b] border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-[#1e293b] border-b border-slate-700 p-4 flex items-center justify-between rounded-t-2xl z-10">
+          <h3 className="text-sm font-bold text-white">{title}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+interface CaseLawLookup {
+  found: boolean;
+  id?: number;
+  citation?: string;
+  court?: string;
+  title?: string;
+  summary?: string;
+  hasSource?: boolean;
+  sourceType?: string;
+  sourceFilename?: string;
+}
+
+interface SourceDocument {
+  found: boolean;
+  title?: string;
+  content?: string;
+  filename?: string;
+  sourceType?: string;
+  citation?: string;
+  message?: string;
+}
+
+function JudgmentDetailPopup({ judgment, onClose }: { judgment: JudgmentReference; onClose: () => void }) {
+  const [lookupData, setLookupData] = useState<CaseLawLookup | null>(null);
+  const [sourceDoc, setSourceDoc] = useState<SourceDocument | null>(null);
+  const [isLoadingLookup, setIsLoadingLookup] = useState(true);
+  const [isLoadingSource, setIsLoadingSource] = useState(false);
+  const [showDocViewer, setShowDocViewer] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchLookup = async () => {
+      try {
+        const params = new URLSearchParams({ citation: judgment.citation });
+        const res = await fetch(`/api/case-law/lookup?${params}`, { credentials: "include" });
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          setLookupData(data);
+        }
+      } catch {}
+      if (!cancelled) setIsLoadingLookup(false);
+    };
+    fetchLookup();
+    return () => { cancelled = true; };
+  }, [judgment.citation]);
+
+  const handleViewSource = async () => {
+    if (!lookupData?.id || !lookupData.hasSource) return;
+    setIsLoadingSource(true);
+    try {
+      const res = await fetch(`/api/case-law/${lookupData.id}/source`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setSourceDoc(data);
+        if (data.found) {
+          setShowDocViewer(true);
+        }
+      }
+    } catch {}
+    setIsLoadingSource(false);
+  };
+
+  const sourceLabel = lookupData?.sourceType === "github" ? "Legal Library" :
+    lookupData?.sourceType === "admin" ? "Knowledge Vault" :
+    lookupData?.sourceType === "statute" ? "Statute Library" :
+    lookupData?.sourceType === "user" ? "User Documents" : "Source";
 
   return (
-    <div className="mt-4 pt-4 border-t border-slate-700/50 space-y-3" data-testid="reference-cards-container">
-      {references.laws.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <BookOpen size={13} className="text-amber-500" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/80" data-testid="text-relevant-laws-label">Relevant Laws</span>
-            <ChevronRight size={12} className="text-slate-600" />
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {references.laws.map((law, i) => (
-              <button
-                key={i}
-                onClick={() => navigate(`/statute-search?q=${encodeURIComponent(law.name)}`)}
-                className="flex-shrink-0 bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 text-left max-w-[260px] transition-all hover-elevate active-elevate-2 overflow-visible"
-                data-testid={`card-law-${i}`}
-              >
-                <p className="text-xs font-bold text-white truncate" data-testid={`text-law-name-${i}`}>
-                  {law.name}
-                </p>
-                {law.section && (
-                  <p className="text-[10px] text-amber-500/70 font-semibold mt-0.5" data-testid={`text-law-section-${i}`}>{law.section}</p>
-                )}
-                <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed" data-testid={`text-law-description-${i}`}>
-                  {law.description}
-                </p>
+    <>
+      {createPortal(
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          style={{ zIndex: 9999 }}
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+          <div
+            className="bg-[#1e293b] border border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-[#1e293b] border-b border-slate-700 p-4 flex items-center justify-between rounded-t-2xl z-10">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Gavel size={14} className="text-amber-500" />
+                Judgment Reference
+              </h3>
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+                <X size={16} />
               </button>
-            ))}
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Citation</p>
+                <p className="text-lg font-bold text-white">{judgment.citation}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Court</p>
+                <p className="text-sm text-amber-500 font-semibold">{judgment.court}</p>
+              </div>
+
+              {lookupData?.found && lookupData.title && (
+                <div>
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Case Title</p>
+                  <p className="text-sm text-white font-semibold">{lookupData.title}</p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Summary</p>
+                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                  {lookupData?.found && lookupData.summary && lookupData.summary.length > judgment.description.length
+                    ? lookupData.summary
+                    : judgment.description}
+                </p>
+              </div>
+
+              {isLoadingLookup && (
+                <div className="flex items-center gap-2 text-slate-500 text-xs">
+                  <Loader2 size={12} className="animate-spin" />
+                  Checking knowledge base...
+                </div>
+              )}
+
+              {lookupData?.found && lookupData.hasSource && (
+                <button
+                  onClick={handleViewSource}
+                  disabled={isLoadingSource}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 text-sm font-semibold hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+                >
+                  {isLoadingSource ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <FileText size={16} />
+                  )}
+                  {isLoadingSource ? "Loading Document..." : "Open Case Law Document"}
+                  <span className="text-[10px] text-amber-500/60 ml-1">({sourceLabel})</span>
+                </button>
+              )}
+
+              {lookupData?.found && !lookupData.hasSource && !isLoadingLookup && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-lg text-[11px] text-slate-500">
+                  <FileText size={12} />
+                  Found in database (no linked source document)
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {references.judgments.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Gavel size={13} className="text-amber-500" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/80" data-testid="text-relevant-judgments-label">Relevant Judgments</span>
-            <ChevronRight size={12} className="text-slate-600" />
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {references.judgments.map((judgment, i) => (
-              <button
-                key={i}
-                onClick={() => navigate(`/judgment-search?q=${encodeURIComponent(judgment.citation)}`)}
-                className="flex-shrink-0 bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 text-left max-w-[260px] transition-all hover-elevate active-elevate-2 overflow-visible"
-                data-testid={`card-judgment-${i}`}
-              >
-                <p className="text-xs font-bold text-white truncate" data-testid={`text-judgment-citation-${i}`}>
-                  {judgment.citation}
-                </p>
-                <p className="text-[10px] text-amber-500/70 font-semibold mt-0.5" data-testid={`text-judgment-court-${i}`}>{judgment.court}</p>
-                <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed" data-testid={`text-judgment-description-${i}`}>
-                  {judgment.description}
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
+      {showDocViewer && sourceDoc?.found && sourceDoc.content && (
+        <DocumentViewer
+          title={sourceDoc.title || judgment.citation}
+          filename={sourceDoc.filename}
+          content={sourceDoc.content}
+          sourceLabel={sourceLabel}
+          onClose={() => setShowDocViewer(false)}
+        />
       )}
-    </div>
+    </>
+  );
+}
+
+export function ReferenceCards({ references }: { references: ParsedReferences }) {
+  const [selectedLaw, setSelectedLaw] = useState<LawReference | null>(null);
+  const [selectedJudgment, setSelectedJudgment] = useState<JudgmentReference | null>(null);
+
+  return (
+    <>
+      <div className="mt-4 pt-4 border-t border-slate-700/50 space-y-3" data-testid="reference-cards-container">
+        {references.laws.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen size={13} className="text-amber-500" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/80" data-testid="text-relevant-laws-label">Relevant Laws</span>
+              <ChevronRight size={12} className="text-slate-600" />
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {references.laws.map((law, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedLaw(law);
+                  }}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                  }}
+                  className="flex-shrink-0 bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 text-left max-w-[260px] transition-all hover:bg-slate-700/50 hover:border-amber-500/30 active:scale-[0.98] cursor-pointer select-none"
+                  style={{ touchAction: "manipulation" }}
+                  data-testid={`card-law-${i}`}
+                >
+                  <p className="text-xs font-bold text-white truncate" data-testid={`text-law-name-${i}`}>
+                    {law.name}
+                  </p>
+                  {law.section && (
+                    <p className="text-[10px] text-amber-500/70 font-semibold mt-0.5" data-testid={`text-law-section-${i}`}>{law.section}</p>
+                  )}
+                  <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed" data-testid={`text-law-description-${i}`}>
+                    {law.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {references.judgments.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Gavel size={13} className="text-amber-500" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/80" data-testid="text-relevant-judgments-label">Relevant Judgments</span>
+              <ChevronRight size={12} className="text-slate-600" />
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {references.judgments.map((judgment, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedJudgment(judgment);
+                  }}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                  }}
+                  className="flex-shrink-0 bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 text-left max-w-[260px] transition-all hover:bg-slate-700/50 hover:border-amber-500/30 active:scale-[0.98] cursor-pointer select-none"
+                  style={{ touchAction: "manipulation" }}
+                  data-testid={`card-judgment-${i}`}
+                >
+                  <p className="text-xs font-bold text-white truncate" data-testid={`text-judgment-citation-${i}`}>
+                    {judgment.citation}
+                  </p>
+                  <p className="text-[10px] text-amber-500/70 font-semibold mt-0.5" data-testid={`text-judgment-court-${i}`}>{judgment.court}</p>
+                  <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed" data-testid={`text-judgment-description-${i}`}>
+                    {judgment.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {selectedLaw && (
+        <LawDetailPopup law={selectedLaw} onClose={() => setSelectedLaw(null)} />
+      )}
+
+      {selectedJudgment && (
+        <JudgmentDetailPopup judgment={selectedJudgment} onClose={() => setSelectedJudgment(null)} />
+      )}
+    </>
   );
 }

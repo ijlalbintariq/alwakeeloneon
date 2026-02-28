@@ -104,7 +104,7 @@ export default function KnowledgeVaultPage() {
           <h2 className="text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
             Knowledge Vault
           </h2>
-          <p className="text-slate-500 mt-2 font-medium">Manage the global intelligence registry for Al Wakeelo Counsel Engine.</p>
+          <p className="text-slate-500 mt-2 font-medium">Manage the Intelligence Registry of Your Own Al Wakeelo Counsel Engine.</p>
         </div>
         <button
           onClick={() => setIsAdding(!isAdding)}
@@ -118,10 +118,10 @@ export default function KnowledgeVaultPage() {
       {isAdding && (
         <div className="bg-[#1e293b] border border-slate-800 rounded-[2.5rem] p-8 shadow-xl space-y-4 fade-in">
           <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">Upload Files to Vault</h4>
-          <p className="text-xs text-slate-400">Select one or more .txt, .json, or .csv files. Each file will be added as a separate vault entry.</p>
+          <p className="text-xs text-slate-400">Select one or more .txt, .json, .csv, .pdf, or .docx files. Each file will be added as a separate vault entry.</p>
           <input
             type="file"
-            accept=".txt,.json,.csv"
+            accept=".txt,.json,.csv,.pdf,.doc,.docx"
             multiple
             onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
             className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-6 py-4 text-sm text-white focus:ring-2 focus:ring-amber-500/50 transition-all outline-none file:text-slate-400 file:mr-4 file:bg-transparent file:border-0"

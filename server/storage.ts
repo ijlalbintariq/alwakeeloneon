@@ -1,6 +1,7 @@
 import { db } from "./db";
 import {
-  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments,
+  threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments, savedJudgments,
+  organizations, orgMembers, orgInvites, orgKnowledge,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -12,7 +13,12 @@ import {
   type QueryCache, type InsertQueryCache,
   type UsageTracking,
   type AdminKnowledge, type InsertAdminKnowledge,
-  type StatuteDocument, type InsertStatuteDocument
+  type StatuteDocument, type InsertStatuteDocument,
+  type SavedJudgment, type InsertSavedJudgment,
+  type Organization, type InsertOrganization,
+  type OrgMember, type InsertOrgMember,
+  type OrgInvite, type InsertOrgInvite,
+  type OrgKnowledge, type InsertOrgKnowledge
 } from "@shared/schema";
 import { users, type User } from "@shared/models/auth";
 import { eq, desc, or, ilike, sql, and, lt, gte, count } from "drizzle-orm";
@@ -30,6 +36,7 @@ export interface IStorage {
 
   createDocument(doc: InsertDocument & { userId: string }): Promise<Document>;
   getDocuments(userId: string): Promise<Document[]>;
+  getAllDocuments(): Promise<Document[]>;
   deleteDocument(id: number): Promise<void>;
 
   createBookmark(bookmark: InsertBookmark & { userId: string }): Promise<Bookmark>;
@@ -39,15 +46,18 @@ export interface IStorage {
   addSearchHistory(entry: InsertSearchHistory & { userId: string }): Promise<SearchHistory>;
   getSearchHistory(userId: string): Promise<SearchHistory[]>;
 
-  searchStatutes(query: string): Promise<Statute[]>;
+  searchStatutes(query: string, limit?: number): Promise<Statute[]>;
   getAllStatutes(): Promise<Statute[]>;
 
-  searchCaseLaw(query: string): Promise<CaseLaw[]>;
+  searchCaseLaw(query: string, limit?: number): Promise<CaseLaw[]>;
   getAllCaseLaw(): Promise<CaseLaw[]>;
+  getCaseLawById(id: number): Promise<CaseLaw | undefined>;
+  getCaseLawByCitation(citation: string): Promise<CaseLaw | undefined>;
   getCaseLawCitations(): Promise<string[]>;
   createCaseLaw(entry: InsertCaseLaw): Promise<CaseLaw>;
   updateCaseLaw(id: number, entry: Partial<InsertCaseLaw>): Promise<CaseLaw | undefined>;
   deleteCaseLaw(id: number): Promise<void>;
+  deleteAllCaseLaw(): Promise<number>;
   bulkCreateCaseLaw(entries: InsertCaseLaw[]): Promise<CaseLaw[]>;
 
   getGithubKnowledgeCount(): Promise<number>;
@@ -79,13 +89,38 @@ export interface IStorage {
   addAdminKnowledge(entry: InsertAdminKnowledge): Promise<AdminKnowledge>;
   getAllAdminKnowledge(): Promise<AdminKnowledge[]>;
   deleteAdminKnowledge(id: number): Promise<void>;
+  deleteAllAdminKnowledge(): Promise<number>;
   searchAdminKnowledge(query: string, limit?: number): Promise<AdminKnowledge[]>;
+
+  getSavedJudgments(userId: string): Promise<SavedJudgment[]>;
+  saveJudgment(entry: InsertSavedJudgment): Promise<SavedJudgment>;
+  deleteSavedJudgment(id: number, userId: string): Promise<void>;
 
   addStatuteDocument(entry: InsertStatuteDocument): Promise<StatuteDocument>;
   getAllStatuteDocuments(): Promise<StatuteDocument[]>;
   getStatuteDocument(id: number): Promise<StatuteDocument | undefined>;
   deleteStatuteDocument(id: number): Promise<void>;
+  deleteAllStatuteDocuments(): Promise<number>;
   searchStatuteDocuments(query: string, limit?: number): Promise<StatuteDocument[]>;
+
+  createOrganization(org: InsertOrganization): Promise<Organization>;
+  getOrganization(id: number): Promise<Organization | undefined>;
+  getUserOrganization(userId: string): Promise<Organization | undefined>;
+  addOrgMember(member: InsertOrgMember): Promise<OrgMember>;
+  getOrgMembers(orgId: number): Promise<(OrgMember & { email: string | null; firstName: string | null; lastName: string | null })[]>;
+  removeOrgMember(orgId: number, userId: string): Promise<void>;
+  isOrgMember(orgId: number, userId: string): Promise<boolean>;
+  createOrgInvite(invite: InsertOrgInvite): Promise<OrgInvite>;
+  getOrgInvites(orgId: number): Promise<OrgInvite[]>;
+  getPendingInvitesForUser(email: string): Promise<(OrgInvite & { orgName: string })[]>;
+  acceptOrgInvite(inviteId: number, userId: string): Promise<void>;
+  declineOrgInvite(inviteId: number): Promise<void>;
+  deleteOrganization(id: number): Promise<void>;
+
+  addOrgKnowledge(entry: InsertOrgKnowledge): Promise<OrgKnowledge>;
+  getOrgKnowledge(orgId: number): Promise<OrgKnowledge[]>;
+  deleteOrgKnowledge(id: number): Promise<void>;
+  searchOrgKnowledge(orgId: number, query: string, limit?: number): Promise<OrgKnowledge[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -145,6 +180,10 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(documents.createdAt));
   }
 
+  async getAllDocuments(): Promise<Document[]> {
+    return await db.select().from(documents);
+  }
+
   async deleteDocument(id: number): Promise<void> {
     await db.delete(documents).where(eq(documents.id, id));
   }
@@ -177,7 +216,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(searchHistory.createdAt));
   }
 
-  async searchStatutes(query: string): Promise<Statute[]> {
+  async searchStatutes(query: string, limit: number = 10): Promise<Statute[]> {
     const pattern = `%${query}%`;
     return await db.select()
       .from(statutes)
@@ -188,14 +227,15 @@ export class DatabaseStorage implements IStorage {
           ilike(statutes.description, pattern),
           ilike(statutes.punishment, pattern)
         )
-      );
+      )
+      .limit(limit);
   }
 
   async getAllStatutes(): Promise<Statute[]> {
     return await db.select().from(statutes);
   }
 
-  async searchCaseLaw(query: string): Promise<CaseLaw[]> {
+  async searchCaseLaw(query: string, limit: number = 10): Promise<CaseLaw[]> {
     const pattern = `%${query}%`;
     return await db.select()
       .from(caseLaw)
@@ -206,11 +246,22 @@ export class DatabaseStorage implements IStorage {
           ilike(caseLaw.title, pattern),
           ilike(caseLaw.summary, pattern)
         )
-      );
+      )
+      .limit(limit);
   }
 
   async getAllCaseLaw(): Promise<CaseLaw[]> {
     return await db.select().from(caseLaw);
+  }
+
+  async getCaseLawById(id: number): Promise<CaseLaw | undefined> {
+    const [row] = await db.select().from(caseLaw).where(eq(caseLaw.id, id));
+    return row;
+  }
+
+  async getCaseLawByCitation(citation: string): Promise<CaseLaw | undefined> {
+    const [row] = await db.select().from(caseLaw).where(ilike(caseLaw.citation, `%${citation}%`)).limit(1);
+    return row;
   }
 
   async getCaseLawCitations(): Promise<string[]> {
@@ -232,9 +283,23 @@ export class DatabaseStorage implements IStorage {
     await db.delete(caseLaw).where(eq(caseLaw.id, id));
   }
 
+  async deleteAllCaseLaw(): Promise<number> {
+    const all = await db.select({ id: caseLaw.id }).from(caseLaw);
+    if (all.length === 0) return 0;
+    await db.delete(caseLaw);
+    return all.length;
+  }
+
   async bulkCreateCaseLaw(entries: InsertCaseLaw[]): Promise<CaseLaw[]> {
     if (entries.length === 0) return [];
-    return await db.insert(caseLaw).values(entries).returning();
+    const BATCH_SIZE = 500;
+    const results: CaseLaw[] = [];
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      const batch = entries.slice(i, i + BATCH_SIZE);
+      const inserted = await db.insert(caseLaw).values(batch).returning();
+      results.push(...inserted);
+    }
+    return results;
   }
 
   async getGithubKnowledgeCount(): Promise<number> {
@@ -247,19 +312,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertGithubKnowledge(items: InsertGithubKnowledge[]): Promise<void> {
-    if (items.length === 0) return;
-    
-    // Batch insert with onConflictDoUpdate for better performance and reliability
-    await db.insert(githubKnowledge)
-      .values(items)
-      .onConflictDoUpdate({
-        target: githubKnowledge.filename,
-        set: {
-          content: sql`EXCLUDED.content`,
-          title: sql`EXCLUDED.title`,
-          syncedAt: new Date()
-        }
-      });
+    for (const item of items) {
+      const existing = await db.select().from(githubKnowledge).where(eq(githubKnowledge.filename, item.filename));
+      if (existing.length > 0) {
+        await db.update(githubKnowledge)
+          .set({ content: item.content, title: item.title, syncedAt: new Date() })
+          .where(eq(githubKnowledge.filename, item.filename));
+      } else {
+        await db.insert(githubKnowledge).values(item);
+      }
+    }
   }
 
   async searchGithubKnowledge(query: string, limit: number = 5): Promise<GithubKnowledge[]> {
@@ -317,19 +379,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async logUsageCost(userId: string, feature: string, inputTokens: number, outputTokens: number, estimatedCost: number): Promise<void> {
-    await db.update(usageTracking)
-      .set({
-        inputTokens,
-        outputTokens,
-        estimatedCost: estimatedCost.toFixed(6),
-      })
-      .where(
-        and(
-          eq(usageTracking.userId, userId),
-          eq(usageTracking.feature, feature as any),
-          sql`${usageTracking.inputTokens} = 0`
-        )
-      );
+    await db.insert(usageTracking).values({
+      userId,
+      feature: feature as any,
+      inputTokens,
+      outputTokens,
+      estimatedCost: estimatedCost.toFixed(6),
+    });
   }
 
   async getCostAnalytics(): Promise<{ byFeature: Array<{ feature: string; totalQueries: number; totalInputTokens: number; totalOutputTokens: number; totalCost: string }>; totalCost: string; totalTokens: number }> {
@@ -485,6 +541,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(adminKnowledge).where(eq(adminKnowledge.id, id));
   }
 
+  async deleteAllAdminKnowledge(): Promise<number> {
+    const all = await db.select({ id: adminKnowledge.id }).from(adminKnowledge);
+    if (all.length === 0) return 0;
+    await db.delete(adminKnowledge);
+    return all.length;
+  }
+
   async searchAdminKnowledge(query: string, limit: number = 5): Promise<AdminKnowledge[]> {
     const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     if (words.length === 0) return [];
@@ -500,6 +563,22 @@ export class DatabaseStorage implements IStorage {
       .from(adminKnowledge)
       .where(or(...conditions))
       .limit(limit);
+  }
+
+  async getSavedJudgments(userId: string): Promise<SavedJudgment[]> {
+    return await db.select()
+      .from(savedJudgments)
+      .where(eq(savedJudgments.userId, userId))
+      .orderBy(desc(savedJudgments.createdAt));
+  }
+
+  async saveJudgment(entry: InsertSavedJudgment): Promise<SavedJudgment> {
+    const [saved] = await db.insert(savedJudgments).values(entry).returning();
+    return saved;
+  }
+
+  async deleteSavedJudgment(id: number, userId: string): Promise<void> {
+    await db.delete(savedJudgments).where(and(eq(savedJudgments.id, id), eq(savedJudgments.userId, userId)));
   }
 
   async addStatuteDocument(entry: InsertStatuteDocument): Promise<StatuteDocument> {
@@ -520,6 +599,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(statuteDocuments).where(eq(statuteDocuments.id, id));
   }
 
+  async deleteAllStatuteDocuments(): Promise<number> {
+    const all = await db.select({ id: statuteDocuments.id }).from(statuteDocuments);
+    if (all.length === 0) return 0;
+    await db.delete(statuteDocuments);
+    return all.length;
+  }
+
   async searchStatuteDocuments(query: string, limit: number = 20): Promise<StatuteDocument[]> {
     const trimmed = query.trim();
     if (!trimmed) return [];
@@ -538,6 +624,154 @@ export class DatabaseStorage implements IStorage {
       .orderBy(statuteDocuments.title)
       .limit(limit);
   }
+
+  async createOrganization(org: InsertOrganization): Promise<Organization> {
+    const [created] = await db.insert(organizations).values(org).returning();
+    await db.insert(orgMembers).values({ orgId: created.id, userId: org.ownerId, role: "owner" });
+    return created;
+  }
+
+  async getOrganization(id: number): Promise<Organization | undefined> {
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
+    return org;
+  }
+
+  async getUserOrganization(userId: string): Promise<Organization | undefined> {
+    const membership = await db.select({ orgId: orgMembers.orgId })
+      .from(orgMembers)
+      .where(eq(orgMembers.userId, userId))
+      .limit(1);
+    if (membership.length === 0) return undefined;
+    return this.getOrganization(membership[0].orgId);
+  }
+
+  async addOrgMember(member: InsertOrgMember): Promise<OrgMember> {
+    const [created] = await db.insert(orgMembers).values(member).returning();
+    return created;
+  }
+
+  async getOrgMembers(orgId: number): Promise<(OrgMember & { email: string | null; firstName: string | null; lastName: string | null })[]> {
+    const rows = await db.select({
+      id: orgMembers.id,
+      orgId: orgMembers.orgId,
+      userId: orgMembers.userId,
+      role: orgMembers.role,
+      joinedAt: orgMembers.joinedAt,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+    })
+      .from(orgMembers)
+      .innerJoin(users, eq(orgMembers.userId, users.id))
+      .where(eq(orgMembers.orgId, orgId));
+    return rows;
+  }
+
+  async removeOrgMember(orgId: number, userId: string): Promise<void> {
+    await db.delete(orgMembers).where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, userId)));
+  }
+
+  async isOrgMember(orgId: number, userId: string): Promise<boolean> {
+    const [row] = await db.select({ id: orgMembers.id })
+      .from(orgMembers)
+      .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, userId)));
+    return !!row;
+  }
+
+  async createOrgInvite(invite: InsertOrgInvite): Promise<OrgInvite> {
+    const [created] = await db.insert(orgInvites).values(invite).returning();
+    return created;
+  }
+
+  async getOrgInvites(orgId: number): Promise<OrgInvite[]> {
+    return await db.select().from(orgInvites)
+      .where(eq(orgInvites.orgId, orgId))
+      .orderBy(desc(orgInvites.createdAt));
+  }
+
+  async getPendingInvitesForUser(email: string): Promise<(OrgInvite & { orgName: string })[]> {
+    const rows = await db.select({
+      id: orgInvites.id,
+      orgId: orgInvites.orgId,
+      email: orgInvites.email,
+      invitedBy: orgInvites.invitedBy,
+      status: orgInvites.status,
+      createdAt: orgInvites.createdAt,
+      orgName: organizations.name,
+    })
+      .from(orgInvites)
+      .innerJoin(organizations, eq(orgInvites.orgId, organizations.id))
+      .where(and(eq(orgInvites.email, email.toLowerCase()), eq(orgInvites.status, "pending")));
+    return rows;
+  }
+
+  async acceptOrgInvite(inviteId: number, userId: string): Promise<void> {
+    const [invite] = await db.select().from(orgInvites).where(eq(orgInvites.id, inviteId));
+    if (!invite) return;
+    await db.update(orgInvites).set({ status: "accepted" }).where(eq(orgInvites.id, inviteId));
+    const existing = await this.isOrgMember(invite.orgId, userId);
+    if (!existing) {
+      await db.insert(orgMembers).values({ orgId: invite.orgId, userId, role: "member" });
+    }
+  }
+
+  async declineOrgInvite(inviteId: number): Promise<void> {
+    await db.update(orgInvites).set({ status: "declined" }).where(eq(orgInvites.id, inviteId));
+  }
+
+  async deleteOrganization(id: number): Promise<void> {
+    await db.delete(orgKnowledge).where(eq(orgKnowledge.orgId, id));
+    await db.delete(orgInvites).where(eq(orgInvites.orgId, id));
+    await db.delete(orgMembers).where(eq(orgMembers.orgId, id));
+    await db.delete(organizations).where(eq(organizations.id, id));
+  }
+
+  async addOrgKnowledge(entry: InsertOrgKnowledge): Promise<OrgKnowledge> {
+    const [doc] = await db.insert(orgKnowledge).values(entry).returning();
+    return doc;
+  }
+
+  async getOrgKnowledge(orgId: number): Promise<OrgKnowledge[]> {
+    return await db.select().from(orgKnowledge)
+      .where(eq(orgKnowledge.orgId, orgId))
+      .orderBy(desc(orgKnowledge.createdAt));
+  }
+
+  async deleteOrgKnowledge(id: number): Promise<void> {
+    await db.delete(orgKnowledge).where(eq(orgKnowledge.id, id));
+  }
+
+  async searchOrgKnowledge(orgId: number, query: string, limit: number = 5): Promise<OrgKnowledge[]> {
+    const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    if (words.length === 0) return [];
+
+    const conditions = words.map(word =>
+      or(
+        ilike(orgKnowledge.title, `%${word}%`),
+        ilike(orgKnowledge.content, `%${word}%`)
+      )
+    );
+
+    return await db.select()
+      .from(orgKnowledge)
+      .where(and(eq(orgKnowledge.orgId, orgId), or(...conditions)))
+      .limit(limit);
+  }
 }
 
 export const storage = new DatabaseStorage();
+
+export async function ensureSearchIndexes(): Promise<void> {
+  try {
+    await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_case_law_citation_trgm ON case_law USING gin (citation gin_trgm_ops)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_case_law_title_trgm ON case_law USING gin (title gin_trgm_ops)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_case_law_court_trgm ON case_law USING gin (court gin_trgm_ops)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_title_trgm ON github_knowledge USING gin (title gin_trgm_ops)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_statutes_short_title_trgm ON statutes USING gin (short_title gin_trgm_ops)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_statutes_description_trgm ON statutes USING gin (description gin_trgm_ops)`);
+    console.log("Search indexes verified/created.");
+  } catch (err: any) {
+    console.warn("Could not create search indexes:", err?.message || err);
+  }
+}

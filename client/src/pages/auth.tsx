@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Scale, Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
 import { useLocation, Link } from "wouter";
@@ -8,6 +8,20 @@ import { useToast } from "@/hooks/use-toast";
 
 type AuthMode = "login" | "register";
 
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
+}
+
 export default function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -15,11 +29,13 @@ export default function AuthPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const googleButtonRef = useRef<HTMLDivElement>(null);
 
-  const { data: googleStatus } = useQuery<{ available: boolean }>({
+  const { data: googleStatus } = useQuery<{ available: boolean; clientId: string }>({
     queryKey: ["/api/auth/google/status"],
     queryFn: async () => {
       const res = await fetch("/api/auth/google/status");
@@ -27,38 +43,68 @@ export default function AuthPage() {
     },
   });
 
-  const handleGoogleLogin = () => {
-    if (!googleStatus?.available) {
-      toast({
-        title: "Google sign-in unavailable",
-        description: "Google sign-in is not configured yet. Please use email and password.",
-        variant: "destructive",
+  const handleGoogleCredential = useCallback(async (response: any) => {
+    setGoogleLoading(true);
+    try {
+      const res = await fetch("/api/auth/google/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ credential: response.credential }),
       });
-      return;
-    }
-    window.location.href = "/api/auth/google";
-  };
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const error = params.get("error");
-    if (error === "email_account_exists") {
-      toast({
-        title: "Account exists",
-        description: "An account with this email already exists. Please sign in with your email and password.",
-        variant: "destructive",
-      });
-    } else if (error === "google_auth_failed") {
+      const data = await res.json();
+      if (!res.ok) {
+        toast({
+          title: "Google sign-in failed",
+          description: data.message || "Something went wrong",
+          variant: "destructive",
+        });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      navigate("/");
+    } catch {
       toast({
         title: "Google sign-in failed",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setGoogleLoading(false);
     }
-    if (error) {
-      window.history.replaceState({}, "", "/auth");
-    }
-  }, [toast]);
+  }, [queryClient, navigate, toast]);
+
+  useEffect(() => {
+    if (!googleStatus?.available || !googleStatus?.clientId) return;
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google && googleButtonRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: googleStatus.clientId,
+          callback: handleGoogleCredential,
+          auto_select: false,
+        });
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          type: "standard",
+          theme: "filled_black",
+          size: "large",
+          text: "continue_with",
+          shape: "pill",
+          width: "100%",
+        });
+      }
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existingScript) existingScript.remove();
+    };
+  }, [googleStatus, handleGoogleCredential]);
 
   const loginMutation = useMutation({
     mutationFn: async () => {
@@ -219,21 +265,28 @@ export default function AuthPage() {
           </button>
         </form>
 
-        <div className="flex items-center gap-3 my-5">
-          <div className="flex-1 h-px bg-slate-700" />
-          <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black">or</span>
-          <div className="flex-1 h-px bg-slate-700" />
-        </div>
+        {googleStatus?.available && (
+          <>
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px bg-slate-700" />
+              <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black">or</span>
+              <div className="flex-1 h-px bg-slate-700" />
+            </div>
 
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          data-testid="button-google-login"
-          className="w-full bg-[#0f172a] border border-slate-700 text-slate-300 font-semibold text-xs py-3.5 rounded-2xl hover:bg-slate-800 hover:border-slate-600 transition-all flex items-center justify-center gap-3"
-        >
-          <SiGoogle size={16} />
-          Continue with Google
-        </button>
+            {googleLoading ? (
+              <div className="w-full bg-[#0f172a] border border-slate-700 text-slate-300 font-semibold text-xs py-3.5 rounded-2xl flex items-center justify-center gap-3">
+                <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
+                Signing in with Google...
+              </div>
+            ) : (
+              <div
+                ref={googleButtonRef}
+                className="flex justify-center [&>div]:w-full"
+                data-testid="google-signin-button"
+              />
+            )}
+          </>
+        )}
 
         <div className="mt-6 text-center">
           <button
