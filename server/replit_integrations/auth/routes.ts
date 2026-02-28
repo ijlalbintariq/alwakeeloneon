@@ -129,103 +129,68 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  app.get("/api/auth/google", (req, res) => {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      return res.status(503).json({ message: "Google login is not configured" });
-    }
-
-    const state = crypto.randomBytes(32).toString("hex");
-    (req.session as any).oauthState = state;
-
-    const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: "code",
-      scope: "openid email profile",
-      state,
-      access_type: "offline",
-      prompt: "select_account",
-    });
-
-    req.session.save(() => {
-      res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
-    });
-  });
-
-  app.get("/api/auth/google/callback", async (req, res) => {
+  app.post("/api/auth/google/token", async (req, res) => {
     try {
-      const { code, state } = req.query;
-      const savedState = (req.session as any).oauthState;
-
-      if (!code || !state || state !== savedState) {
-        return res.redirect("/auth?error=google_auth_failed");
+      const { credential } = req.body;
+      if (!credential) {
+        return res.status(400).json({ message: "No credential provided" });
       }
-
-      delete (req.session as any).oauthState;
 
       const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-      const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
-
-      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          code: code as string,
-          client_id: clientId!,
-          client_secret: clientSecret!,
-          redirect_uri: redirectUri,
-          grant_type: "authorization_code",
-        }),
-      });
-
-      if (!tokenRes.ok) {
-        console.error("Google token exchange failed:", await tokenRes.text());
-        return res.redirect("/auth?error=google_auth_failed");
+      if (!clientId) {
+        return res.status(503).json({ message: "Google sign-in is not configured" });
       }
 
-      const tokens = await tokenRes.json();
-
-      const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
-      });
-
-      if (!userInfoRes.ok) {
-        return res.redirect("/auth?error=google_auth_failed");
+      const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+      if (!verifyRes.ok) {
+        return res.status(401).json({ message: "Invalid Google token" });
       }
 
-      const googleUser = await userInfoRes.json();
+      const payload = await verifyRes.json();
 
-      let user = await authStorage.getUserByEmail(googleUser.email);
+      if (payload.aud !== clientId) {
+        return res.status(401).json({ message: "Token audience mismatch" });
+      }
+
+      const email = payload.email;
+      const firstName = payload.given_name || payload.name?.split(" ")[0] || "";
+      const lastName = payload.family_name || payload.name?.split(" ").slice(1).join(" ") || "";
+      const profileImageUrl = payload.picture || null;
+
+      let user = await authStorage.getUserByEmail(email);
 
       if (user) {
         if (user.authProvider === "email") {
-          return res.redirect("/auth?error=email_account_exists");
+          return res.status(409).json({ message: "An account with this email already exists using email/password. Please sign in with your email and password." });
         }
       } else {
         user = await authStorage.upsertUser({
-          email: googleUser.email,
-          firstName: googleUser.given_name || googleUser.name?.split(" ")[0] || "",
-          lastName: googleUser.family_name || googleUser.name?.split(" ").slice(1).join(" ") || "",
-          profileImageUrl: googleUser.picture || null,
+          email,
+          firstName,
+          lastName,
+          profileImageUrl,
           authProvider: "google",
         });
       }
 
       (req.session as any).userId = user.id;
-      req.session.save(() => {
-        res.redirect("/");
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        const { passwordHash: _, ...safeUser } = user!;
+        res.json(safeUser);
       });
     } catch (error) {
-      console.error("Google OAuth error:", error);
-      res.redirect("/auth?error=google_auth_failed");
+      console.error("Google token auth error:", error);
+      res.status(500).json({ message: "Google sign-in failed" });
     }
   });
 
   app.get("/api/auth/google/status", (_req, res) => {
-    res.json({ available: !!process.env.GOOGLE_CLIENT_ID });
+    const clientId = process.env.GOOGLE_CLIENT_ID || "";
+    res.json({ available: !!clientId, clientId });
   });
 
   app.post("/api/auth/forgot-password", async (req, res) => {

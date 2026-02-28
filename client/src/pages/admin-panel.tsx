@@ -6,7 +6,7 @@ import { Redirect } from "wouter";
 import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
   UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus,
-  Scale, Pencil, X, Check, FileUp, Search
+  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -539,6 +539,7 @@ function KnowledgeSection() {
   const [uploadCategory, setUploadCategory] = useState("general");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -553,6 +554,24 @@ function KnowledgeSection() {
     },
   });
 
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/admin/knowledge");
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/knowledge"] });
+      toast({ title: `${data.deleted} document${data.deleted !== 1 ? "s" : ""} deleted` });
+      setShowDeleteAllConfirm(false);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete all documents", variant: "destructive" });
+      setShowDeleteAllConfirm(false);
+    },
+  });
+
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, uploaded: 0, errors: 0 });
+
   async function handleUpload() {
     if (selectedFiles.length === 0) {
       toast({ title: "Please select files to upload", variant: "destructive" });
@@ -560,36 +579,68 @@ function KnowledgeSection() {
     }
 
     setIsUploading(true);
+    const BATCH_SIZE = 25;
+    const totalFiles = selectedFiles.length;
+    let totalUploaded = 0;
+    let totalErrors = 0;
+    const allErrors: string[] = [];
+
+    setUploadProgress({ current: 0, total: totalFiles, uploaded: 0, errors: 0 });
+
     try {
-      const formData = new FormData();
-      formData.append("category", uploadCategory);
-      for (const file of selectedFiles) {
-        formData.append("files", file);
+      for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
+        const batch = selectedFiles.slice(i, i + BATCH_SIZE);
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        setUploadProgress({ current: i + batch.length, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
+
+        const formData = new FormData();
+        formData.append("category", uploadCategory);
+        for (const file of batch) {
+          formData.append("files", file);
+        }
+
+        try {
+          const res = await fetch("/api/admin/knowledge", {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({ message: "Upload failed" }));
+            totalErrors += batch.length;
+            allErrors.push(`Batch ${batchNum}: ${errData.message || "Upload failed"}`);
+            continue;
+          }
+
+          const data = await res.json();
+          totalUploaded += data.uploaded || 0;
+          if (data.errors?.length) {
+            totalErrors += data.errors.length;
+            allErrors.push(...data.errors);
+          }
+        } catch {
+          totalErrors += batch.length;
+          allErrors.push(`Batch ${batchNum}: Network error`);
+        }
       }
 
-      const res = await fetch("/api/admin/knowledge", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
-
+      setUploadProgress({ current: totalFiles, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/knowledge"] });
       setSelectedFiles([]);
       const fileInput = document.querySelector('[data-testid="input-knowledge-files"]') as HTMLInputElement;
       if (fileInput) fileInput.value = "";
 
-      let msg = `${data.uploaded} document${data.uploaded !== 1 ? "s" : ""} added to vault`;
-      if (data.errors?.length) {
-        msg += ` (${data.errors.length} skipped)`;
+      let msg = `${totalUploaded} document${totalUploaded !== 1 ? "s" : ""} added to vault`;
+      if (totalErrors > 0) {
+        msg += ` (${totalErrors} skipped)`;
       }
       toast({ title: msg });
     } catch {
       toast({ title: "Upload failed", variant: "destructive" });
     } finally {
       setIsUploading(false);
+      setUploadProgress({ current: 0, total: 0, uploaded: 0, errors: 0 });
     }
   }
 
@@ -618,11 +669,11 @@ function KnowledgeSection() {
 
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block">
-              Select Files (.txt, .json, .csv, .pdf — select multiple)
+              Select Files (.txt, .json, .csv, .pdf, .docx — select multiple)
             </label>
             <Input
               type="file"
-              accept=".txt,.json,.csv,.pdf"
+              accept=".txt,.json,.csv,.pdf,.doc,.docx"
               multiple
               onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
               className="bg-slate-800 border-slate-700 rounded-xl text-xs file:text-slate-400 file:mr-4"
@@ -634,6 +685,21 @@ function KnowledgeSection() {
               </p>
             )}
           </div>
+
+          {isUploading && uploadProgress.total > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-slate-400">Uploading {uploadProgress.current} of {uploadProgress.total} files...</span>
+                <span className="text-amber-400 font-bold">{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
+              </div>
+              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-amber-500 rounded-full transition-all duration-300" style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} />
+              </div>
+              {uploadProgress.uploaded > 0 && (
+                <p className="text-[9px] text-emerald-400">{uploadProgress.uploaded} uploaded{uploadProgress.errors > 0 ? `, ${uploadProgress.errors} failed` : ""}</p>
+              )}
+            </div>
+          )}
 
           <Button
             onClick={handleUpload}
@@ -648,11 +714,45 @@ function KnowledgeSection() {
       </Card>
 
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <Database size={16} className="text-amber-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-            Vault Documents ({docs?.length || 0})
-          </span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Database size={16} className="text-amber-500" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+              Vault Documents ({docs?.length || 0})
+            </span>
+          </div>
+          {(docs?.length || 0) > 0 && !showDeleteAllConfirm && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-[9px] font-bold uppercase tracking-widest gap-1.5"
+              onClick={() => setShowDeleteAllConfirm(true)}
+            >
+              <Trash2 size={12} /> Delete All
+            </Button>
+          )}
+          {showDeleteAllConfirm && (
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+              <AlertOctagon size={14} className="text-red-400 flex-shrink-0" />
+              <span className="text-[10px] text-red-300 font-bold">Delete all {docs?.length} documents?</span>
+              <Button
+                size="sm"
+                className="bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold h-7 px-3 rounded-lg"
+                onClick={() => deleteAllMutation.mutate()}
+                disabled={deleteAllMutation.isPending}
+              >
+                {deleteAllMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : "Confirm"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-slate-400 text-[9px] h-7 px-2 rounded-lg"
+                onClick={() => setShowDeleteAllConfirm(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -720,11 +820,12 @@ function CaseLawSection() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
-  const [extractedCases, setExtractedCases] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }>>([]);
+  const [extractedCases, setExtractedCases] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string[]; _sourceDocId?: number; _sourceFilename?: string }>>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractProgress, setExtractProgress] = useState({ current: 0, total: 0, currentFile: "" });
   const [isAutoScanning, setIsAutoScanning] = useState(false);
   const [formData, setFormData] = useState({ citation: "", court: "", title: "", summary: "", keywords: "" });
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -769,14 +870,50 @@ function CaseLawSection() {
     onError: () => toast({ title: "Failed to delete case law", variant: "destructive" }),
   });
 
-  const saveBulkMutation = useMutation({
-    mutationFn: async (entries: typeof extractedCases) => {
-      const res = await apiRequest("POST", "/api/admin/case-law/bulk", { entries });
+  const deleteAllCaseLawMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/admin/case-law");
       return res.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
-      toast({ title: `${data.inserted} case law entries saved to database${data.errors?.length ? `, ${data.errors.length} skipped` : ""}` });
+      toast({ title: `${data.deleted} case law entr${data.deleted !== 1 ? "ies" : "y"} deleted` });
+      setShowDeleteAllConfirm(false);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete all case law", variant: "destructive" });
+      setShowDeleteAllConfirm(false);
+    },
+  });
+
+  const saveBulkMutation = useMutation({
+    mutationFn: async (entries: typeof extractedCases) => {
+      const grouped = new Map<number | "none", typeof entries>();
+      for (const e of entries) {
+        const key = e._sourceDocId || "none";
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key)!.push(e);
+      }
+      let totalInserted = 0;
+      const allErrors: string[] = [];
+      for (const [key, group] of grouped) {
+        const body: any = { entries: group };
+        if (key !== "none") {
+          body.sourceDocId = key;
+          body.sourceFilename = group[0]._sourceFilename || "";
+        }
+        const res = await apiRequest("POST", "/api/admin/case-law/bulk", body);
+        const data = await res.json();
+        totalInserted += data.inserted || 0;
+        if (data.errors) allErrors.push(...data.errors);
+      }
+      return { inserted: totalInserted, errors: allErrors };
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
+      const hasSource = extractedCases.some(e => e._sourceDocId);
+      const docMsg = hasSource ? " (linked to source document)" : "";
+      toast({ title: `${data.inserted} case law entries saved to database${data.errors?.length ? `, ${data.errors.length} skipped` : ""}${docMsg}` });
       setExtractedCases([]);
       setShowBulkUpload(false);
     },
@@ -790,7 +927,7 @@ function CaseLawSection() {
     setExtractedCases([]);
     setExtractProgress({ current: 0, total: files.length, currentFile: "" });
 
-    const allCases: Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }> = [];
+    const allCases: typeof extractedCases = [];
     const failedFiles: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
@@ -810,7 +947,13 @@ function CaseLawSection() {
         }
         const data = await res.json();
         if (data.cases && data.cases.length > 0) {
-          const validCases = data.cases.filter((c: any) => c.citation && c.title);
+          const validCases = data.cases
+            .filter((c: any) => c.citation && c.title)
+            .map((c: any) => ({
+              ...c,
+              _sourceDocId: data.savedDocId || undefined,
+              _sourceFilename: data.savedFilename || file.name,
+            }));
           allCases.push(...validCases);
         }
       } catch {
@@ -984,13 +1127,13 @@ function CaseLawSection() {
               </Button>
             </div>
             <p className="text-xs text-slate-400">
-              Upload one or multiple <span className="text-amber-400 font-bold">PDF</span>, <span className="text-amber-400 font-bold">TXT</span>, <span className="text-amber-400 font-bold">JSON</span>, or <span className="text-amber-400 font-bold">CSV</span> files containing case law.
+              Upload one or multiple <span className="text-amber-400 font-bold">PDF</span>, <span className="text-amber-400 font-bold">DOC/DOCX</span>, <span className="text-amber-400 font-bold">TXT</span>, <span className="text-amber-400 font-bold">JSON</span>, or <span className="text-amber-400 font-bold">CSV</span> files containing case law.
               Select multiple files at once for batch processing. The AI will extract individual cases with citations, court names, summaries, and keywords.
               JSON and CSV files with proper columns are imported instantly without AI processing.
             </p>
             <Input
               type="file"
-              accept=".pdf,.txt,.json,.csv"
+              accept=".pdf,.doc,.docx,.txt,.json,.csv"
               multiple
               onChange={handleDocumentUpload}
               disabled={isExtracting}
@@ -1025,7 +1168,12 @@ function CaseLawSection() {
             {extractedCases.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-xs text-slate-300 font-bold">{extractedCases.length} cases extracted — review and save</span>
+                  <div>
+                    <span className="text-xs text-slate-300 font-bold">{extractedCases.length} cases extracted — review and save</span>
+                    {extractedCases.some(e => e._sourceDocId) && (
+                      <span className="block text-[10px] text-emerald-400 mt-0.5">Document saved to Knowledge Base — cases will be linked for document preview</span>
+                    )}
+                  </div>
                   <Button
                     onClick={() => saveBulkMutation.mutate(extractedCases)}
                     disabled={saveBulkMutation.isPending}
@@ -1067,6 +1215,47 @@ function CaseLawSection() {
           </CardContent>
         </Card>
       )}
+
+      <div className="flex items-center justify-between gap-3 mt-4">
+        <div className="flex items-center gap-3">
+          <Scale size={16} className="text-amber-500" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            Case Law Entries ({caseLawEntries?.length || 0})
+          </span>
+        </div>
+        {(caseLawEntries?.length || 0) > 0 && !showDeleteAllConfirm && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-[9px] font-bold uppercase tracking-widest gap-1.5"
+            onClick={() => setShowDeleteAllConfirm(true)}
+          >
+            <Trash2 size={12} /> Delete All
+          </Button>
+        )}
+        {showDeleteAllConfirm && (
+          <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+            <AlertOctagon size={14} className="text-red-400 flex-shrink-0" />
+            <span className="text-[10px] text-red-300 font-bold">Delete all {caseLawEntries?.length} entries?</span>
+            <Button
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold h-7 px-3 rounded-lg"
+              onClick={() => deleteAllCaseLawMutation.mutate()}
+              disabled={deleteAllCaseLawMutation.isPending}
+            >
+              {deleteAllCaseLawMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : "Confirm"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-slate-400 text-[9px] h-7 px-2 rounded-lg"
+              onClick={() => setShowDeleteAllConfirm(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -1132,6 +1321,7 @@ function StatuteDocumentsSection() {
   const { data: docs, isLoading } = useQuery<StatuteDoc[]>({ queryKey: ["/api/admin/statute-documents"] });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -1143,6 +1333,22 @@ function StatuteDocumentsSection() {
     },
     onError: () => {
       toast({ title: "Failed to delete", variant: "destructive" });
+    },
+  });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/admin/statute-documents");
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/statute-documents"] });
+      toast({ title: `${data.deleted} statute document${data.deleted !== 1 ? "s" : ""} deleted` });
+      setShowDeleteAllConfirm(false);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete all statute documents", variant: "destructive" });
+      setShowDeleteAllConfirm(false);
     },
   });
 
@@ -1227,11 +1433,45 @@ function StatuteDocumentsSection() {
       </Card>
 
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <FileText size={16} className="text-amber-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-            Statute Library ({docs?.length || 0})
-          </span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <FileText size={16} className="text-amber-500" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+              Statute Library ({docs?.length || 0})
+            </span>
+          </div>
+          {(docs?.length || 0) > 0 && !showDeleteAllConfirm && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-[9px] font-bold uppercase tracking-widest gap-1.5"
+              onClick={() => setShowDeleteAllConfirm(true)}
+            >
+              <Trash2 size={12} /> Delete All
+            </Button>
+          )}
+          {showDeleteAllConfirm && (
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+              <AlertOctagon size={14} className="text-red-400 flex-shrink-0" />
+              <span className="text-[10px] text-red-300 font-bold">Delete all {docs?.length} documents?</span>
+              <Button
+                size="sm"
+                className="bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold h-7 px-3 rounded-lg"
+                onClick={() => deleteAllMutation.mutate()}
+                disabled={deleteAllMutation.isPending}
+              >
+                {deleteAllMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : "Confirm"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-slate-400 text-[9px] h-7 px-2 rounded-lg"
+                onClick={() => setShowDeleteAllConfirm(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </div>
 
         {isLoading ? (

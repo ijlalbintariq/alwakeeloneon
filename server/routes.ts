@@ -4,18 +4,21 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { GoogleGenAI } from "@google/genai";
 import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, threads, TIER_LIMITS } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { db, dbAvailable } from "./db";
+import { requireDatabase } from "./middleware/db-guard";
 import { syncGithubKnowledge } from "./github-sync";
-import { queueAutoExtraction } from "./auto-extract-caselaw";
+import { queueAutoExtraction, nlpExtractCases } from "./auto-extract-caselaw";
 import crypto from "crypto";
 import multer from "multer";
 import { extractText } from "unpdf";
-import { requireDatabase } from "./middleware/db-guard";
+import mammoth from "mammoth";
+import { isApexAvailable, getApexModelsForTier, chatWithApex, type ApexModel } from "./apex-ai";
+import { chatWithOpenRouter, streamWithOpenRouter, isOpenRouterAvailable, getOpenRouterModelName } from "./openrouter";
+import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName } from "./groq-ai";
+import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, isDeepSeekAvailable, getDeepSeekModelName, getDeepSeekProModelName } from "./deepseek-ai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
 const TOKEN_LIMITS = {
   chat: 4096,
@@ -30,6 +33,7 @@ const TOKEN_LIMITS = {
 const COST_PER_1K_TOKENS: Record<string, { input: number; output: number }> = {
   "gemini-3-flash-preview": { input: 0.00015, output: 0.0006 },
   "gemini-3-pro-preview": { input: 0.00125, output: 0.005 },
+  "google/gemini-2.0-flash-001": { input: 0.0001, output: 0.0004 },
 };
 
 function estimateTokens(text: string): number {
@@ -41,6 +45,60 @@ function estimateCost(model: string, inputText: string, outputText: string): num
   const inputTokens = estimateTokens(inputText);
   const outputTokens = estimateTokens(outputText);
   return (inputTokens / 1000) * rates.input + (outputTokens / 1000) * rates.output;
+}
+
+function buildMessages(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>): Array<{ role: "system" | "user" | "assistant"; content: string }> {
+  return [
+    { role: "system", content: systemPrompt },
+    ...contents.map(c => ({
+      role: (c.role === "model" ? "assistant" : "user") as "user" | "assistant",
+      content: c.parts.map(p => p.text).join("\n"),
+    })),
+  ];
+}
+
+async function callStandardAI(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>, maxTokens: number): Promise<{ text: string; model: string }> {
+  const messages = buildMessages(systemPrompt, contents);
+  try {
+    const result = await chatWithGroq({ messages, maxTokens });
+    return { text: result.content, model: result.model };
+  } catch (groqErr) {
+    console.log("[Standard AI] Groq failed:", groqErr instanceof Error ? groqErr.message : groqErr);
+    if (isOpenRouterAvailable()) {
+      try {
+        console.log("[Standard AI] Trying OpenRouter fallback...");
+        const result = await chatWithOpenRouter({ messages, maxTokens });
+        return { text: result.content, model: result.model };
+      } catch (orErr) {
+        console.log("[Standard AI] OpenRouter also failed:", orErr instanceof Error ? orErr.message : orErr);
+      }
+    }
+    if (isDeepSeekAvailable()) {
+      console.log("[Standard AI] Trying DeepSeek fallback...");
+      const result = await chatWithDeepSeek({ messages, maxTokens });
+      return { text: result.content, model: result.model };
+    }
+    throw groqErr;
+  }
+}
+
+async function callTurboAI(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>, maxTokens: number): Promise<{ text: string; model: string }> {
+  const messages = buildMessages(systemPrompt, contents);
+  try {
+    const result = await chatWithDeepSeek({ messages, maxTokens });
+    return { text: result.content, model: result.model };
+  } catch (dsErr) {
+    if (isGroqAvailable()) {
+      console.log("[Turbo AI] DeepSeek failed, falling back to Groq:", dsErr instanceof Error ? dsErr.message : dsErr);
+      const result = await chatWithGroq({ messages, maxTokens });
+      return { text: result.content, model: result.model };
+    }
+    throw dsErr;
+  }
+}
+
+async function callStandardAISimple(systemPrompt: string, userText: string, maxTokens: number): Promise<{ text: string; model: string }> {
+  return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens);
 }
 
 const userLastRequest = new Map<string, number>();
@@ -64,6 +122,10 @@ setInterval(() => {
   });
   keysToDelete.forEach(key => userLastRequest.delete(key));
 }, 60000);
+
+function getAlWakeeloIdentity(): string {
+  return `You are Al Wakeelo — Pakistan's first AI-powered legal assistant, built by Al Wakeelo. Your tagline is "Your Digital Lawyer, Always on Duty." You are an expert in Pakistani law, specializing in the Constitution of Pakistan 1973, Pakistan Penal Code, Code of Civil Procedure, Code of Criminal Procedure, Family Laws, Contract Act, and all major Pakistani statutes and case law. You serve Pakistani lawyers, law students, and citizens seeking legal guidance. Always be authoritative, precise, and cite real Pakistani legal sources.`;
+}
 
 function getLegalSystemPrompt(): string {
   const currentDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
@@ -168,6 +230,10 @@ async function checkUsageLimit(userId: string, feature: string, res: any): Promi
     }
 
     const tier = await storage.getUserTier(userId);
+    if (tier === "enterprise") {
+      return true;
+    }
+
     const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
     const usedThisMonth = await storage.getMonthlyUsageCount(userId);
 
@@ -255,15 +321,20 @@ const KNOWLEDGE_SOURCES_PER_TIER = 2;
 const KNOWLEDGE_STATUTES_LIMIT = 3;
 const KNOWLEDGE_CASELAW_LIMIT = 3;
 
-async function gatherKnowledgeContext(query: string): Promise<string> {
+async function gatherKnowledgeContext(query: string, userId?: string): Promise<string> {
   const contextParts: string[] = [];
 
-  const [statutesResult, caseLawResult, githubResult, adminResult] = await Promise.allSettled([
-    storage.searchStatutes(query),
-    storage.searchCaseLaw(query),
+  const promises: Promise<any>[] = [
+    storage.searchStatutes(query, KNOWLEDGE_STATUTES_LIMIT),
+    storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT),
     storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
     storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
-  ]);
+  ];
+  if (userId) {
+    promises.push(storage.getDocuments(userId));
+  }
+
+  const [statutesResult, caseLawResult, githubResult, adminResult, userDocsResult] = await Promise.allSettled(promises);
 
   if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
     contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
@@ -293,6 +364,40 @@ async function gatherKnowledgeContext(query: string): Promise<string> {
       const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
       contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
     }
+  }
+
+  if (userDocsResult && userDocsResult.status === "fulfilled" && userDocsResult.value.length > 0) {
+    const queryLower = query.toLowerCase();
+    const relevant = userDocsResult.value
+      .filter((d: any) => d.content && (
+        d.title?.toLowerCase().includes(queryLower) ||
+        d.content.toLowerCase().includes(queryLower) ||
+        queryLower.split(/\s+/).some((w: string) => w.length > 3 && (d.title?.toLowerCase().includes(w) || d.content.toLowerCase().includes(w)))
+      ))
+      .slice(0, 2);
+    if (relevant.length > 0) {
+      contextParts.push("=== USER'S CASE DOCUMENTS ===");
+      for (const doc of relevant) {
+        const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
+        contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
+      }
+    }
+  }
+
+  if (userId) {
+    try {
+      const userOrg = await storage.getUserOrganization(userId);
+      if (userOrg) {
+        const orgDocs = await storage.searchOrgKnowledge(userOrg.id, query, 3);
+        if (orgDocs.length > 0) {
+          contextParts.push(`=== ORGANIZATION KNOWLEDGE BASE (${userOrg.name}) ===`);
+          for (const doc of orgDocs) {
+            const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
+            contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
+          }
+        }
+      }
+    } catch (e) {}
   }
 
   if (contextParts.length === 0) return "";
@@ -383,26 +488,18 @@ export async function registerRoutes(
         content: firstMessage,
       });
 
-      const knowledgeContext = await gatherKnowledgeContext(firstMessage);
-      const model = "gemini-3-flash-preview";
+      const knowledgeContext = await gatherKnowledgeContext(firstMessage, userId);
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
+      let usedModel = "";
       const { content: aiResponse, fromCache } = await getCachedOrCall("chat", firstMessage, async () => {
-        const completion = await ai.models.generateContent({
-          model,
-          contents: [
-            { role: "user", parts: [{ text: firstMessage }] },
-          ],
-          config: {
-            maxOutputTokens: TOKEN_LIMITS.chat,
-            systemInstruction: systemPromptFull,
-          },
-        });
-        return completion.text || "I apologize, I could not generate a response.";
+        const result = await callStandardAISimple(systemPromptFull, firstMessage, TOKEN_LIMITS.chat);
+        usedModel = result.model;
+        return result.text;
       });
 
       if (!fromCache) {
-        await logUsageCost(userId, "chat", model, systemPromptFull + firstMessage, aiResponse);
+        await logUsageCost(userId, "chat", usedModel || getOpenRouterModelName(), systemPromptFull + firstMessage, aiResponse);
       }
 
       await storage.createMessage({
@@ -447,6 +544,37 @@ export async function registerRoutes(
 
     await storage.deleteThread(threadId);
     res.sendStatus(204);
+  });
+
+  app.post("/api/threads/save-for-share", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { title, messages: msgs } = req.body as { title: string; messages: Array<{ role: string; content: string }> };
+      if (!Array.isArray(msgs) || msgs.length < 2) {
+        return res.status(400).json({ message: "At least 2 messages required" });
+      }
+      const validRoles = ["user", "assistant"];
+      const validMsgs = msgs.filter(m => validRoles.includes(m.role) && typeof m.content === "string" && m.content.length > 0);
+      if (validMsgs.length < 2) {
+        return res.status(400).json({ message: "Invalid message format" });
+      }
+      const thread = await storage.createThread({
+        userId,
+        title: title || msgs[0]?.content?.slice(0, 80) || "Al Wakeelo Conversation",
+      });
+      for (const m of validMsgs) {
+        await storage.createMessage({
+          threadId: thread.id,
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        });
+      }
+      res.status(201).json(thread);
+    } catch (err) {
+      console.error("Error saving thread for share:", err);
+      res.status(500).json({ message: "Failed to save conversation" });
+    }
   });
 
   app.post("/api/threads/:id/share", async (req, res) => {
@@ -525,22 +653,14 @@ export async function registerRoutes(
         parts: [{ text: m.content }],
       }));
 
-      const knowledgeContext = await gatherKnowledgeContext(message);
-      const model = "gemini-3-flash-preview";
+      const knowledgeContext = await gatherKnowledgeContext(message, userId);
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
-      const completion = await ai.models.generateContent({
-        model,
-        contents: geminiContents,
-        config: {
-          maxOutputTokens: TOKEN_LIMITS.chat,
-          systemInstruction: systemPromptFull,
-        },
-      });
+      const result = await callStandardAI(systemPromptFull, geminiContents, TOKEN_LIMITS.chat);
 
-      const aiResponse = completion.text || "I apologize, I could not generate a response.";
+      const aiResponse = result.text;
       const inputText = systemPromptFull + history.map(m => m.content).join(" ");
-      await logUsageCost(userId, "chat", model, inputText, aiResponse);
+      await logUsageCost(userId, "chat", result.model, inputText, aiResponse);
 
       const savedAiMessage = await storage.createMessage({
         threadId,
@@ -682,7 +802,7 @@ export async function registerRoutes(
 
   app.get("/api/statute-documents/:id", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       if (isNaN(id)) return res.status(400).json({ message: "Invalid document ID" });
       const doc = await storage.getStatuteDocument(id);
       if (!doc) return res.status(404).json({ message: "Document not found" });
@@ -705,6 +825,83 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error searching case law:", err);
       res.status(500).json({ message: "Failed to search case law" });
+    }
+  });
+
+  app.get("/api/case-law/lookup", async (req, res) => {
+    try {
+      const citation = (req.query.citation as string) || "";
+      if (!citation) return res.status(400).json({ message: "Citation required" });
+      const entry = await storage.getCaseLawByCitation(citation);
+      if (!entry) return res.json({ found: false });
+      res.json({
+        found: true,
+        id: entry.id,
+        citation: entry.citation,
+        court: entry.court,
+        title: entry.title,
+        summary: entry.summary,
+        hasSource: !!(entry.sourceDocId && entry.sourceType),
+        sourceType: entry.sourceType,
+        sourceFilename: entry.sourceFilename,
+      });
+    } catch (err) {
+      console.error("Error looking up case law:", err);
+      res.status(500).json({ message: "Failed to lookup case law" });
+    }
+  });
+
+  app.get("/api/case-law/:id/source", async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+
+      const entry = await storage.getCaseLawById(id);
+      if (!entry) return res.status(404).json({ found: false, message: "Case law entry not found" });
+      if (!entry.sourceDocId || !entry.sourceType) {
+        return res.json({ found: false, message: "No source document linked to this case law entry" });
+      }
+
+      let title = "";
+      let content = "";
+      let filename = "";
+
+      if (entry.sourceType === "github") {
+        const docs = await storage.getAllGithubKnowledge();
+        const doc = docs.find(d => d.id === entry.sourceDocId);
+        if (doc) { title = doc.title; content = doc.content; filename = doc.filename; }
+      } else if (entry.sourceType === "admin") {
+        const docs = await storage.getAllAdminKnowledge();
+        const doc = docs.find(d => d.id === entry.sourceDocId);
+        if (doc) { title = doc.title; content = doc.content; filename = doc.filename; }
+      } else if (entry.sourceType === "statute") {
+        const docs = await storage.getAllStatuteDocuments();
+        const doc = docs.find(d => d.id === entry.sourceDocId);
+        if (doc) { title = doc.title; content = doc.content; filename = doc.filename; }
+      } else if (entry.sourceType === "user") {
+        const userId = (req as any).session?.userId;
+        if (userId) {
+          const docs = await storage.getAllDocuments();
+          const doc = docs.find(d => d.id === entry.sourceDocId && d.userId === userId);
+          if (doc) { title = doc.title || ""; content = doc.content || ""; filename = doc.title || ""; }
+        }
+      }
+
+      if (!content) {
+        return res.json({ found: false, message: "Source document no longer available" });
+      }
+
+      res.json({
+        found: true,
+        title,
+        content,
+        filename,
+        sourceType: entry.sourceType,
+        citation: entry.citation,
+      });
+    } catch (err) {
+      console.error("Error fetching case law source:", err);
+      res.status(500).json({ message: "Failed to fetch source document" });
     }
   });
 
@@ -733,17 +930,86 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.ai.chat.path, async (req, res) => {
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+  app.post("/api/ai/transcribe", upload.single("audio"), async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const file = req.file;
+      if (!file) return res.status(400).json({ message: "No audio file provided" });
+
+      const allowedAudio = ["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a", "audio/webm", "audio/ogg", "audio/mp3"];
+      if (!allowedAudio.some(t => file.mimetype.startsWith("audio/") || allowedAudio.includes(file.mimetype))) {
+        return res.status(400).json({ message: "Unsupported audio format. Use MP3, WAV, M4A, or WebM." });
+      }
+
+      const base64Audio = file.buffer.toString("base64");
+      const result = await chatWithOpenRouter({
+        messages: [{
+          role: "user",
+          content: [
+            { type: "input_audio", input_audio: { data: base64Audio, format: file.mimetype.includes("wav") ? "wav" : "mp3" } },
+            { type: "text", text: "Transcribe this audio accurately. Return ONLY the transcription text, nothing else. If the audio is in Urdu or another language, transcribe it in that language." }
+          ] as any,
+        }],
+        maxTokens: 2048,
+      });
+
+      const transcription = result.content || "";
+      if (!transcription.trim()) {
+        return res.status(400).json({ message: "Could not transcribe audio. The audio may be too short or unclear." });
+      }
+
+      res.json({ transcription: transcription.trim() });
+    } catch (err) {
+      console.error("Error transcribing audio:", err);
+      res.status(500).json({ message: "Failed to transcribe audio" });
+    }
+  });
+
+  app.post(api.ai.chat.path, upload.array("attachments", 5), async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
       const allowed = await checkUsageLimit(userId, "chat", res);
       if (!allowed) return;
 
-      const { messages: userMessages, type, turbo, stream: useStream } = req.body as { messages: Array<{ role: string; content: string }>; type: string; turbo?: boolean; stream?: boolean };
+      let body = req.body;
+      if (typeof body.messages === "string") {
+        body = { ...body, messages: JSON.parse(body.messages) };
+      }
+      const { messages: userMessages, type } = body as { messages: Array<{ role: string; content: string }>; type: string };
+      const useStream = body.stream === true || body.stream === "true";
+      const turbo = body.turbo === true || body.turbo === "true";
+
+      const files = req.files as Express.Multer.File[] | undefined;
+      let attachmentContext = "";
+      const allowedMimes = ["text/plain", "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+      if (files && files.length > 0) {
+        const invalidFiles = files.filter(f => !allowedMimes.includes(f.mimetype));
+        if (invalidFiles.length > 0) {
+          return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, and DOCX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
+        }
+        for (const file of files) {
+          try {
+            if (file.mimetype === "text/plain") {
+              attachmentContext += `\n\n--- Attached File: ${file.originalname} ---\n${file.buffer.toString("utf-8")}\n--- End of File ---`;
+            } else if (file.mimetype === "application/pdf") {
+              const { text } = await extractText(new Uint8Array(file.buffer));
+              attachmentContext += `\n\n--- Attached PDF: ${file.originalname} ---\n${text}\n--- End of PDF ---`;
+            } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+              const result = await mammoth.extractRawText({ buffer: file.buffer });
+              attachmentContext += `\n\n--- Attached Document: ${file.originalname} ---\n${result.value}\n--- End of Document ---`;
+            }
+          } catch (fileErr) {
+            console.error(`Error extracting text from ${file.originalname}:`, fileErr);
+            attachmentContext += `\n\n--- Attached File: ${file.originalname} ---\n[Could not extract text from this file]\n--- End of File ---`;
+          }
+        }
+      }
 
       const userTier = await storage.getUserTier(userId);
-      const canUseTurbo = turbo && (userTier === "pro" || userTier === "enterprise");
 
       let systemPrompt = getLegalSystemPrompt();
       if (type === "draft" || type === "contract-drafting") {
@@ -763,8 +1029,12 @@ export async function registerRoutes(
         }));
 
       const lastUserMessage = userMessages.filter(m => m.role === "user").pop();
-      const knowledgeContext = lastUserMessage ? await gatherKnowledgeContext(lastUserMessage.content) : "";
-      let usedModel = canUseTurbo ? "gemini-3-pro-preview" : "gemini-3-flash-preview";
+      const knowledgeContext = lastUserMessage ? await gatherKnowledgeContext(lastUserMessage.content, userId) : "";
+      if (attachmentContext) {
+        systemPrompt += `\n\nATTACHED DOCUMENTS FROM USER:\nThe user has attached the following documents for your reference. Analyze them carefully and use them to inform your response.${attachmentContext}`;
+      }
+      const canUseTurbo = turbo && (userTier === "pro" || userTier === "enterprise") && isDeepSeekAvailable();
+      let usedModel = canUseTurbo ? getDeepSeekModelName() : getGroqModelName();
       const featureKey = (type === "draft" || type === "contract-drafting") ? type : "chat";
       const tokenLimit = TOKEN_LIMITS[featureKey as keyof typeof TOKEN_LIMITS] || TOKEN_LIMITS.chat;
       const systemPromptFull = systemPrompt + knowledgeContext;
@@ -790,43 +1060,57 @@ export async function registerRoutes(
 
         let fullContent = "";
         try {
-          const streamResponse = await ai.models.generateContentStream({
-            model: usedModel,
-            contents: geminiContents,
-            config: {
-              maxOutputTokens: tokenLimit,
-              systemInstruction: systemPromptFull,
-            },
-          });
-
-          for await (const chunk of streamResponse) {
-            const text = chunk.text || "";
-            if (text) {
+          const streamMessages = buildMessages(systemPromptFull, geminiContents);
+          if (canUseTurbo) {
+            usedModel = getDeepSeekModelName();
+            for await (const text of streamWithDeepSeek({ messages: streamMessages, maxTokens: tokenLimit })) {
+              fullContent += text;
+              res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            }
+          } else {
+            usedModel = getGroqModelName();
+            for await (const text of streamWithGroq({ messages: streamMessages, maxTokens: tokenLimit })) {
               fullContent += text;
               res.write(`data: ${JSON.stringify({ text })}\n\n`);
             }
           }
-        } catch (turboErr: any) {
-          if (canUseTurbo && (turboErr?.status === 429 || turboErr?.message?.includes("quota") || turboErr?.message?.includes("rate"))) {
-            console.log("[AI Chat] Pro model quota exceeded, falling back to flash model (stream)");
-            usedModel = "gemini-3-flash-preview";
-            fullContent = "";
-            const fallbackStream = await ai.models.generateContentStream({
-              model: usedModel,
-              contents: geminiContents,
-              config: {
-                maxOutputTokens: tokenLimit,
-                systemInstruction: systemPromptFull,
-              },
-            });
-            for await (const chunk of fallbackStream) {
-              const text = chunk.text || "";
-              if (text) {
+        } catch (streamErr: any) {
+          if (canUseTurbo && isGroqAvailable()) {
+            console.log("[AI Chat] DeepSeek stream failed, falling back to Groq:", streamErr?.message || streamErr);
+            try {
+              const fallbackMessages = buildMessages(systemPromptFull, geminiContents);
+              usedModel = getGroqModelName();
+              res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+              fullContent = "";
+              for await (const text of streamWithGroq({ messages: fallbackMessages, maxTokens: tokenLimit })) {
                 fullContent += text;
                 res.write(`data: ${JSON.stringify({ text })}\n\n`);
               }
+            } catch (groqFallbackErr: any) {
+              console.error("[AI Chat] Groq fallback also failed:", groqFallbackErr?.message || groqFallbackErr);
+              res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
+              res.end();
+              return;
+            }
+          } else if (!canUseTurbo && isOpenRouterAvailable()) {
+            console.log("[AI Chat] Groq stream failed, falling back to OpenRouter:", streamErr?.message || streamErr);
+            try {
+              const fallbackMessages = buildMessages(systemPromptFull, geminiContents);
+              usedModel = getOpenRouterModelName();
+              res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+              fullContent = "";
+              for await (const text of streamWithOpenRouter({ messages: fallbackMessages, maxTokens: tokenLimit })) {
+                fullContent += text;
+                res.write(`data: ${JSON.stringify({ text })}\n\n`);
+              }
+            } catch (orFallbackErr: any) {
+              console.error("[AI Chat] OpenRouter fallback also failed:", orFallbackErr?.message || orFallbackErr);
+              res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
+              res.end();
+              return;
             }
           } else {
+            console.error("[AI Chat] Stream error:", streamErr?.message || streamErr);
             res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
             res.end();
             return;
@@ -851,34 +1135,10 @@ export async function registerRoutes(
         return;
       }
 
-      const completion = await (async () => {
-        try {
-          const result = await ai.models.generateContent({
-            model: usedModel,
-            contents: geminiContents,
-            config: {
-              maxOutputTokens: tokenLimit,
-              systemInstruction: systemPromptFull,
-            },
-          });
-          return result.text || "I apologize, I could not generate a response.";
-        } catch (turboErr: any) {
-          if (canUseTurbo && (turboErr?.status === 429 || turboErr?.message?.includes("quota") || turboErr?.message?.includes("rate"))) {
-            console.log("[AI Chat] Pro model quota exceeded, falling back to flash model");
-            usedModel = "gemini-3-flash-preview";
-            const fallback = await ai.models.generateContent({
-              model: usedModel,
-              contents: geminiContents,
-              config: {
-                maxOutputTokens: tokenLimit,
-                systemInstruction: systemPromptFull,
-              },
-            });
-            return fallback.text || "I apologize, I could not generate a response.";
-          }
-          throw turboErr;
-        }
-      })();
+      const aiCall = canUseTurbo ? callTurboAI : callStandardAI;
+      const result = await aiCall(systemPromptFull, geminiContents, tokenLimit);
+      usedModel = result.model;
+      const completion = result.text;
 
       const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
       await logUsageCost(userId, featureKey, usedModel, inputText, completion);
@@ -907,22 +1167,14 @@ export async function registerRoutes(
 
       const { query } = req.body as { query: string };
 
-      const model = "gemini-3-flash-preview";
+      let usedModelJ = getOpenRouterModelName();
       const { content: responseText, fromCache } = await getCachedOrCall("searchJudgments", query, async () => {
         const knowledgeContext = await gatherKnowledgeContext(query);
-        const sysInstruction = `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results.${knowledgeContext}`;
-        const completion = await ai.models.generateContent({
-          model,
-          contents: [{ role: "user", parts: [{ text: query }] }],
-          config: {
-            maxOutputTokens: TOKEN_LIMITS["search-judgments"],
-            responseMimeType: "application/json",
-            systemInstruction: sysInstruction,
-          },
-        });
-        const result = completion.text || '{"judgments":[]}';
-        await logUsageCost(userId, "search-judgments", model, sysInstruction + query, result);
-        return result;
+        const sysInstruction = `${getAlWakeeloIdentity()}\n\nYou are in judgment search mode. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results. IMPORTANT: Return ONLY valid JSON, no markdown code blocks.${knowledgeContext}`;
+        const result = await callStandardAISimple(sysInstruction, query, TOKEN_LIMITS["search-judgments"]);
+        usedModelJ = result.model;
+        await logUsageCost(userId, "search-judgments", result.model, sysInstruction + query, result.text);
+        return result.text;
       });
 
       let parsed;
@@ -932,9 +1184,9 @@ export async function registerRoutes(
         parsed = { judgments: [] };
       }
       res.json(parsed.judgments || []);
-    } catch (err) {
-      console.error("Error searching judgments:", err);
-      res.status(500).json({ message: "Failed to search judgments" });
+    } catch (err: any) {
+      console.error("Error searching judgments:", err?.message || err, err?.stack);
+      res.status(500).json({ message: "Failed to search judgments", error: err?.message || "Unknown error" });
     }
   });
 
@@ -1005,7 +1257,6 @@ export async function registerRoutes(
       } catch {}
 
       const hasSourceText = !!fullText;
-      const model = "gemini-3-flash-preview";
       const uniqueKey = `${citation}::${title}::${court || ""}`;
       const cacheKey = `judgment-summary-v3::${uniqueKey}`;
       const { content: aiSummary, fromCache } = await getCachedOrCall("judgment-summary", cacheKey, async () => {
@@ -1103,17 +1354,9 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
           userInput = `Provide a general legal analysis around the TOPIC of this judgment. Remember: you do NOT have the actual judgment text, so do NOT fabricate case-specific details. Stay strictly within the relevant area of law.\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}`;
         }
 
-        const completion = await ai.models.generateContent({
-          model,
-          contents: [{ role: "user", parts: [{ text: userInput }] }],
-          config: {
-            maxOutputTokens: 6144,
-            systemInstruction: sysInstruction,
-          },
-        });
-        const result = completion.text || "Unable to generate judgment summary.";
-        await logUsageCost(userId, "judgment-summary", model, sysInstruction + userInput, result);
-        return result;
+        const aiResult = await callStandardAISimple(sysInstruction, userInput, 6144);
+        await logUsageCost(userId, "judgment-summary", aiResult.model, sysInstruction + userInput, aiResult.text);
+        return aiResult.text;
       });
 
       res.json({
@@ -1137,22 +1380,12 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
 
       const { query } = req.body as { query: string };
 
-      const model = "gemini-3-flash-preview";
       const { content: responseText, fromCache } = await getCachedOrCall("searchStatutes", query, async () => {
         const knowledgeContext = await gatherKnowledgeContext(query);
-        const sysInstruction = `You are a Pakistani legal research assistant. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc.${knowledgeContext}`;
-        const completion = await ai.models.generateContent({
-          model,
-          contents: [{ role: "user", parts: [{ text: query }] }],
-          config: {
-            maxOutputTokens: TOKEN_LIMITS["search-statutes"],
-            responseMimeType: "application/json",
-            systemInstruction: sysInstruction,
-          },
-        });
-        const result = completion.text || '{"statutes":[]}';
-        await logUsageCost(userId, "search-statutes", model, sysInstruction + query, result);
-        return result;
+        const sysInstruction = `${getAlWakeeloIdentity()}\n\nYou are in statute search mode. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc. IMPORTANT: Return ONLY valid JSON, no markdown code blocks.${knowledgeContext}`;
+        const result = await callStandardAISimple(sysInstruction, query, TOKEN_LIMITS["search-statutes"]);
+        await logUsageCost(userId, "search-statutes", result.model, sysInstruction + query, result.text);
+        return result.text;
       });
 
       let parsed;
@@ -1178,24 +1411,13 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const { query, findings } = req.body as { query: string; findings: any[] };
       const cacheKey = `${query}::${JSON.stringify(findings)}`;
 
-      const model = "gemini-3-flash-preview";
       const { content: summary, fromCache } = await getCachedOrCall("summarize", cacheKey, async () => {
         const knowledgeContext = await gatherKnowledgeContext(query);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`;
         const userInput = `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.`;
-        const completion = await ai.models.generateContent({
-          model,
-          contents: [
-            { role: "user", parts: [{ text: userInput }] },
-          ],
-          config: {
-            maxOutputTokens: TOKEN_LIMITS.summarize,
-            systemInstruction: sysInstruction,
-          },
-        });
-        const result = completion.text || "Unable to generate summary.";
-        await logUsageCost(userId, "summarize", model, sysInstruction + userInput, result);
-        return result;
+        const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.summarize);
+        await logUsageCost(userId, "summarize", result.model, sysInstruction + userInput, result.text);
+        return result.text;
       });
 
       res.json({ summary });
@@ -1215,45 +1437,15 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const { shortTitle, section, description } = req.body as { shortTitle: string; section: string; description: string };
       const cacheKey = `${shortTitle}::${section}::${description}`;
 
-      let briefModel = "gemini-3-pro-preview";
+      let briefModel = getOpenRouterModelName();
       const { content: brief, fromCache } = await getCachedOrCall("brief", cacheKey, async () => {
         const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;
         const userInput = `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}`;
-        try {
-          const completion = await ai.models.generateContent({
-            model: briefModel,
-            contents: [
-              { role: "user", parts: [{ text: userInput }] },
-            ],
-            config: {
-              maxOutputTokens: TOKEN_LIMITS.brief,
-              systemInstruction: sysInstruction,
-            },
-          });
-          const result = completion.text || "Unable to generate brief.";
-          await logUsageCost(userId, "brief", briefModel, sysInstruction + userInput, result);
-          return result;
-        } catch (proErr: any) {
-          if (proErr?.status === 429 || proErr?.message?.includes("quota") || proErr?.message?.includes("rate")) {
-            console.log("[Brief] Pro model quota exceeded, falling back to flash model");
-            briefModel = "gemini-3-flash-preview";
-            const fallback = await ai.models.generateContent({
-              model: briefModel,
-              contents: [
-                { role: "user", parts: [{ text: userInput }] },
-              ],
-              config: {
-                maxOutputTokens: TOKEN_LIMITS.brief,
-                systemInstruction: sysInstruction,
-              },
-            });
-            const result = fallback.text || "Unable to generate brief.";
-            await logUsageCost(userId, "brief", briefModel, sysInstruction + userInput, result);
-            return result;
-          }
-          throw proErr;
-        }
+        const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.brief);
+        briefModel = result.model;
+        await logUsageCost(userId, "brief", briefModel, sysInstruction + userInput, result.text);
+        return result.text;
       });
 
       res.json({ brief });
@@ -1264,7 +1456,6 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
   });
 
   // ====== ADMIN ROUTES ======
-  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 
   function stripNullBytes(text: string): string {
     return text.replace(/\x00/g, "");
@@ -1436,7 +1627,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
     }
   });
 
-  app.post("/api/admin/knowledge", upload.array("files", 500), async (req, res) => {
+  app.post("/api/admin/knowledge", upload.array("files", 1000), async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const userId = getUserId(req)!;
@@ -1447,7 +1638,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         return res.status(400).json({ message: "File(s) or content is required" });
       }
 
-      const allowedExts = [".txt", ".json", ".csv", ".pdf"];
+      const allowedExts = [".txt", ".json", ".csv", ".pdf", ".doc", ".docx"];
       const results: any[] = [];
       const errors: string[] = [];
 
@@ -1455,7 +1646,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         for (const file of files) {
           const ext = file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase();
           if (!allowedExts.includes(ext)) {
-            errors.push(`${file.originalname}: unsupported format (use .txt, .json, .csv, or .pdf)`);
+            errors.push(`${file.originalname}: unsupported format (use .txt, .json, .csv, .pdf, or .docx)`);
             continue;
           }
 
@@ -1472,6 +1663,19 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
             }
             if (!content) {
               errors.push(`${file.originalname}: could not extract text (may be scanned/image PDF)`);
+              continue;
+            }
+          } else if (ext === ".doc" || ext === ".docx") {
+            try {
+              const result = await mammoth.extractRawText({ buffer: file.buffer });
+              content = stripNullBytes((result.value || "").trim());
+              console.log(`[Knowledge Upload] Extracted ${content.length} chars from ${file.originalname}`);
+            } catch (docErr: any) {
+              console.error(`[Knowledge Upload] DOCX parse error for ${file.originalname}:`, docErr?.message || docErr);
+              content = "";
+            }
+            if (!content) {
+              errors.push(`${file.originalname}: could not extract text from document`);
               continue;
             }
           } else {
@@ -1491,7 +1695,11 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
           });
           results.push(doc);
           if (content.length > 200) {
-            queueAutoExtraction(content, `admin-knowledge:${file.originalname}`);
+            queueAutoExtraction(content, `admin-knowledge:${file.originalname}`, {
+              sourceDocId: doc.id,
+              sourceType: "admin",
+              sourceFilename: file.originalname,
+            });
           }
         }
       } else {
@@ -1506,7 +1714,11 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         });
         results.push(doc);
         if (content.length > 200) {
-          queueAutoExtraction(content, `admin-knowledge:${filename}`);
+          queueAutoExtraction(content, `admin-knowledge:${filename}`, {
+            sourceDocId: doc.id,
+            sourceType: "admin",
+            sourceFilename: filename,
+          });
         }
       }
 
@@ -1530,6 +1742,17 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
     } catch (err) {
       console.error("Error deleting knowledge:", err);
       res.status(500).json({ message: "Failed to delete knowledge" });
+    }
+  });
+
+  app.delete("/api/admin/knowledge", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const count = await storage.deleteAllAdminKnowledge();
+      res.json({ deleted: count });
+    } catch (err) {
+      console.error("Error deleting all knowledge:", err);
+      res.status(500).json({ message: "Failed to delete all knowledge documents" });
     }
   });
 
@@ -1595,15 +1818,30 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
     }
   });
 
+  app.delete("/api/admin/case-law", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const count = await storage.deleteAllCaseLaw();
+      res.json({ deleted: count });
+    } catch (err) {
+      console.error("Error deleting all case law:", err);
+      res.status(500).json({ message: "Failed to delete all case law" });
+    }
+  });
+
   app.post("/api/admin/case-law/bulk", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
-      const { entries } = req.body as { entries: Array<{ citation: string; court: string; title: string; summary: string; keywords: string | string[] }> };
+      const { entries, sourceDocId, sourceFilename } = req.body as {
+        entries: Array<{ citation: string; court: string; title: string; summary: string; keywords: string | string[] }>;
+        sourceDocId?: number;
+        sourceFilename?: string;
+      };
       if (!Array.isArray(entries) || entries.length === 0) {
         return res.status(400).json({ message: "Entries array is required" });
       }
       const errors: string[] = [];
-      const valid: Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }> = [];
+      const valid: Array<{ citation: string; court: string; title: string; summary: string; keywords: string[]; sourceDocId?: number; sourceType?: string; sourceFilename?: string }> = [];
       for (let i = 0; i < entries.length; i++) {
         const e = entries[i];
         if (!e.citation || !e.title) {
@@ -1611,10 +1849,16 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
           continue;
         }
         const kw = Array.isArray(e.keywords) ? e.keywords : (typeof e.keywords === "string" ? e.keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : []);
-        valid.push({ citation: e.citation.trim(), court: (e.court || "").trim(), title: e.title.trim(), summary: (e.summary || "").trim(), keywords: kw });
+        const entry: any = { citation: e.citation.trim(), court: (e.court || "").trim(), title: e.title.trim(), summary: (e.summary || "").trim(), keywords: kw };
+        if (sourceDocId) {
+          entry.sourceDocId = sourceDocId;
+          entry.sourceType = "admin";
+          entry.sourceFilename = sourceFilename || "";
+        }
+        valid.push(entry);
       }
       const created = valid.length > 0 ? await storage.bulkCreateCaseLaw(valid) : [];
-      res.status(201).json({ inserted: created.length, errors, entries: created });
+      res.status(201).json({ inserted: created.length, errors });
     } catch (err) {
       console.error("Error bulk creating case law:", err);
       res.status(500).json({ message: "Failed to bulk create case law" });
@@ -1653,6 +1897,17 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
           console.error("[Case Law Extract] PDF parse error:", pdfErr?.message);
           return res.status(400).json({ message: "Failed to parse PDF file. Try uploading as TXT instead." });
         }
+      } else if (ext === "doc" || ext === "docx") {
+        try {
+          const result = await mammoth.extractRawText({ buffer: file.buffer });
+          content = stripNullBytes((result.value || "").trim());
+        } catch (docErr: any) {
+          console.error("[Case Law Extract] Word doc parse error:", docErr?.message);
+          return res.status(400).json({ message: "Failed to parse Word document. Try uploading as TXT instead." });
+        }
+        if (!content) {
+          return res.status(400).json({ message: "Could not extract text from Word document." });
+        }
       } else if (ext === "txt" || ext === "text") {
         content = stripNullBytes(file.buffer.toString("utf-8").trim());
       } else if (ext === "json") {
@@ -1671,11 +1926,23 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
               keywords: Array.isArray(c.keywords) ? c.keywords : (typeof c.keywords === "string" ? c.keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : (Array.isArray(c.tags) ? c.tags : [])),
             }));
             if (mapped.length > 0) {
+              const uid = getUserId(req)!;
+              let jsonDocId: number | null = null;
+              try {
+                const docTitle = file.originalname.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
+                const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: rawJson, category: "case-law", uploadedBy: uid });
+                jsonDocId = savedDoc.id;
+                console.log(`[Case Law Extract] Saved JSON document as admin_knowledge id=${jsonDocId}`);
+              } catch (saveErr) {
+                console.error("[Case Law Extract] Failed to save JSON document:", saveErr);
+              }
               return res.json({
                 extracted: mapped.length,
                 truncated: false,
                 originalLength: rawJson.length,
                 cases: mapped,
+                savedDocId: jsonDocId,
+                savedFilename: file.originalname,
               });
             }
           }
@@ -1709,100 +1976,62 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
               }
             }
             if (entries.length > 0) {
-              return res.json({ extracted: entries.length, truncated: false, originalLength: rawCsv.length, cases: entries });
+              const uid = getUserId(req)!;
+              let csvDocId: number | null = null;
+              try {
+                const docTitle = file.originalname.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
+                const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: rawCsv, category: "case-law", uploadedBy: uid });
+                csvDocId = savedDoc.id;
+                console.log(`[Case Law Extract] Saved CSV document as admin_knowledge id=${csvDocId}`);
+              } catch (saveErr) {
+                console.error("[Case Law Extract] Failed to save CSV document:", saveErr);
+              }
+              return res.json({ extracted: entries.length, truncated: false, originalLength: rawCsv.length, cases: entries, savedDocId: csvDocId, savedFilename: file.originalname });
             }
           }
         }
         content = rawCsv;
       } else {
-        return res.status(400).json({ message: "Supported formats: PDF, TXT, JSON, CSV" });
+        return res.status(400).json({ message: "Supported formats: PDF, DOC, DOCX, TXT, JSON, CSV" });
       }
 
       if (!content || content.length < 10) {
         return res.status(400).json({ message: "Document appears empty or too short to extract case law from." });
       }
 
-      const maxChars = 200000;
-      const truncated = content.length > maxChars;
-      const textForAI = truncated ? content.substring(0, maxChars) : content;
-
-      const extractionPrompt = `You are a Pakistani legal research expert. Analyze the following legal document text and extract ALL individual court cases/judgments found in it.
-
-For EACH case you find, extract:
-1. citation - The official case citation (e.g., "PLD 2024 Supreme Court 123", "2023 SCMR 456", "2024 YLR 789"). Use official law report abbreviations: PLD, SCMR, YLR, MLD, CLC, PCRLJ, PLJ.
-2. court - The court name (e.g., "Supreme Court of Pakistan", "Lahore High Court", "Sindh High Court")
-3. title - The case title/name (e.g., "State vs Muhammad Ahmed", "Sughran Bibi vs Government of Punjab")
-4. summary - A concise 1-3 sentence summary of the legal principle established or the key holding
-5. keywords - An array of 3-8 relevant legal keywords
-
-CRITICAL RULES:
-- Extract EVERY distinct case/judgment you can identify in the text
-- If you cannot determine a field with certainty, use your best professional judgment based on context
-- For citations, use the exact format found in the text
-- Do NOT invent or fabricate cases — only extract what is actually present in the document
-- If the document contains commentary or analysis alongside cases, focus on extracting the actual cases referenced
-
-Respond with ONLY valid JSON in this exact format (no markdown, no explanation):
-{"cases":[{"citation":"...","court":"...","title":"...","summary":"...","keywords":["..."]}]}
-
-If no cases can be identified, respond with: {"cases":[]}`;
-
-      let completion;
-      let usedModel = "gemini-3-pro-preview";
+      const userId = getUserId(req)!;
+      let savedDocId: number | null = null;
+      let savedFilename = file.originalname;
       try {
-        completion = await ai.models.generateContent({
-          model: "gemini-3-pro-preview",
-          contents: [{ role: "user", parts: [{ text: textForAI }] }],
-          config: {
-            maxOutputTokens: 16384,
-            systemInstruction: extractionPrompt,
-            temperature: 0.1,
-          },
+        const docTitle = file.originalname.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
+        const savedDoc = await storage.addAdminKnowledge({
+          title: docTitle,
+          filename: file.originalname,
+          content,
+          category: "case-law",
+          uploadedBy: userId,
         });
-      } catch (proErr: any) {
-        if (proErr?.status === 429 || proErr?.message?.includes("RESOURCE_EXHAUSTED")) {
-          console.log("[Case Law Extract] Pro model rate-limited, falling back to Flash...");
-          usedModel = "gemini-3-flash-preview";
-          completion = await ai.models.generateContent({
-            model: "gemini-3-flash-preview",
-            contents: [{ role: "user", parts: [{ text: textForAI }] }],
-            config: {
-              maxOutputTokens: 16384,
-              systemInstruction: extractionPrompt,
-              temperature: 0.1,
-            },
-          });
-        } else {
-          throw proErr;
-        }
+        savedDocId = savedDoc.id;
+        console.log(`[Case Law Extract] Saved document as admin_knowledge id=${savedDocId}: "${docTitle}"`);
+        queueAutoExtraction(content, `admin-knowledge:${file.originalname}`, {
+          sourceDocId: savedDocId,
+          sourceType: "admin",
+          sourceFilename: file.originalname,
+        });
+      } catch (saveErr) {
+        console.error("[Case Law Extract] Failed to save document to knowledge base:", saveErr);
       }
 
-      const responseText = (completion.text || "").trim();
-      let jsonText = responseText;
-      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonText = jsonMatch[1].trim();
-      }
-
-      let parsed: { cases: Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }> };
-      try {
-        parsed = JSON.parse(jsonText);
-      } catch {
-        console.error("[Case Law Extract] Failed to parse AI response:", responseText.substring(0, 500));
-        return res.status(500).json({ message: "AI could not extract structured case law from this document. Try a clearer or shorter document." });
-      }
-
-      if (!parsed.cases || !Array.isArray(parsed.cases)) {
-        return res.status(500).json({ message: "AI response was not in the expected format. Please try again." });
-      }
-
-      const validCases = parsed.cases.filter(c => c.citation && c.title);
+      const extracted = nlpExtractCases(content);
+      const validCases = extracted.filter(c => c.citation && c.title);
 
       res.json({
         extracted: validCases.length,
-        truncated,
+        truncated: false,
         originalLength: content.length,
         cases: validCases,
+        savedDocId,
+        savedFilename,
       });
     } catch (err) {
       console.error("Error extracting case law:", err);
@@ -1874,7 +2103,11 @@ If no cases can be identified, respond with: {"cases":[]}`;
         });
         results.push(doc);
         if (content.length > 200) {
-          queueAutoExtraction(content, `statute:${file.originalname}`);
+          queueAutoExtraction(content, `statute:${file.originalname}`, {
+            sourceDocId: doc.id,
+            sourceType: "statute",
+            sourceFilename: file.originalname,
+          });
         }
       }
 
@@ -1897,6 +2130,17 @@ If no cases can be identified, respond with: {"cases":[]}`;
     }
   });
 
+  app.delete("/api/admin/statute-documents", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const count = await storage.deleteAllStatuteDocuments();
+      res.json({ deleted: count });
+    } catch (err) {
+      console.error("Error deleting all statute documents:", err);
+      res.status(500).json({ message: "Failed to delete all statute documents" });
+    }
+  });
+
   // ====== STATUTE TABLE OF CONTENTS (AI) ======
   app.post("/api/statute-documents/:id/toc", async (req, res) => {
     const userId = getUserId(req);
@@ -1912,21 +2156,16 @@ If no cases can be identified, respond with: {"cases":[]}`;
       const contentExcerpt = doc.content.slice(0, 50000);
       const tocPrompt = `Analyze this legal document and extract its hierarchical table of contents as a JSON array. Each item has: "title" (short name like "PART I - INTRODUCTORY" or "Chapter 1 - Fundamental Rights"), and optionally "children" (sub-sections). Only include major structural divisions: Parts, Chapters, Schedules, Articles groupings. Use SHORT titles (max 60 chars each). Do NOT include individual article numbers. Return ONLY a valid JSON array - no markdown, no code blocks, no explanation.\n\nDocument Title: ${doc.title}\n\nDocument Content:\n${contentExcerpt}`;
 
-      const model = "gemini-3-flash-preview";
+      let tocModel = getOpenRouterModelName();
       const { content, fromCache } = await getCachedOrCall("toc-extract", `toc-${id}`, async () => {
-        const completion = await ai.models.generateContent({
-          model,
-          contents: [{ role: "user", parts: [{ text: tocPrompt }] }],
-          config: {
-            maxOutputTokens: 8192,
-            systemInstruction: "You are a document structure analyzer. Extract the table of contents from legal documents. Return ONLY a valid JSON array. No markdown code blocks, no explanation text. Keep titles concise (max 60 chars). Ensure the JSON is complete and properly closed.",
-          },
-        });
-        return completion.text || "[]";
+        const tocSysPrompt = "You are a document structure analyzer. Extract the table of contents from legal documents. Return ONLY a valid JSON array. No markdown code blocks, no explanation text. Keep titles concise (max 60 chars). Ensure the JSON is complete and properly closed.";
+        const result = await callStandardAISimple(tocSysPrompt, tocPrompt, 8192);
+        tocModel = result.model;
+        return result.text;
       });
 
       if (!fromCache) {
-        await logUsageCost(userId, "chat", model, tocPrompt, content);
+        await logUsageCost(userId, "chat", tocModel, tocPrompt, content);
       }
 
       let toc: any[] = [];
@@ -2004,6 +2243,454 @@ If no cases can be identified, respond with: {"cases":[]}`;
   await seedLegalData();
 
   syncGithubKnowledge().catch(err => console.error("[GitHub Sync] Background sync failed:", err));
+
+  app.get("/api/saved-judgments", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const saved = await storage.getSavedJudgments(userId);
+      res.json(saved);
+    } catch (err) {
+      console.error("Error fetching saved judgments:", err);
+      res.status(500).json({ message: "Failed to fetch saved judgments" });
+    }
+  });
+
+  app.post("/api/saved-judgments", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { citation, court, title, summary, keywords, uri, source, aiAnalysis } = req.body;
+      if (!citation || !title || !summary) {
+        return res.status(400).json({ message: "Citation, title, and summary are required" });
+      }
+      const existing = await storage.getSavedJudgments(userId);
+      const alreadySaved = existing.find(j => j.citation === citation && j.title === title);
+      if (alreadySaved) {
+        return res.status(200).json(alreadySaved);
+      }
+      const saved = await storage.saveJudgment({
+        userId,
+        citation,
+        court: court || "",
+        title,
+        summary,
+        keywords: keywords || null,
+        uri: uri || null,
+        source: source || null,
+        aiAnalysis: aiAnalysis || null,
+      });
+      res.status(201).json(saved);
+    } catch (err) {
+      console.error("Error saving judgment:", err);
+      res.status(500).json({ message: "Failed to save judgment" });
+    }
+  });
+
+  app.delete("/api/saved-judgments/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      await storage.deleteSavedJudgment(Number(req.params.id), userId);
+      res.sendStatus(204);
+    } catch (err) {
+      console.error("Error deleting saved judgment:", err);
+      res.status(500).json({ message: "Failed to delete saved judgment" });
+    }
+  });
+
+  app.get("/api/statute-lookup", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const name = (req.query.name as string) || "";
+      const section = (req.query.section as string) || "";
+      const searchTerm = `${name} ${section}`.trim();
+      if (!searchTerm) return res.json({ found: false });
+
+      const statuteResults = await storage.searchStatutes(searchTerm, 5);
+      if (statuteResults.length > 0) {
+        return res.json({
+          found: true,
+          statutes: statuteResults.map(s => ({
+            shortTitle: s.shortTitle,
+            section: s.section,
+            description: s.description,
+            punishment: s.punishment,
+          })),
+        });
+      }
+
+      const docResults = await storage.searchStatuteDocuments(searchTerm, 3);
+      if (docResults.length > 0) {
+        return res.json({
+          found: true,
+          documents: docResults.map(d => ({
+            id: d.id,
+            title: d.title,
+            content: d.content.substring(0, 5000),
+            category: d.category,
+          })),
+        });
+      }
+
+      const ghResults = await storage.searchGithubKnowledge(searchTerm, 2);
+      if (ghResults.length > 0) {
+        return res.json({
+          found: true,
+          knowledgeVault: ghResults.map(g => ({
+            title: g.title,
+            content: g.content.substring(0, 5000),
+          })),
+        });
+      }
+
+      res.json({ found: false });
+    } catch (err) {
+      console.error("Error in statute lookup:", err);
+      res.status(500).json({ message: "Failed to look up statute" });
+    }
+  });
+
+  app.post("/api/ai/document-chat", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const allowed = await checkUsageLimit(userId, "chat", res);
+      if (!allowed) return;
+
+      const { documentType, documentTitle, documentContent, messages } = req.body as {
+        documentType: string;
+        documentTitle: string;
+        documentContent: string;
+        messages: Array<{ role: string; content: string }>;
+      };
+
+      if (!documentTitle || !messages || messages.length === 0) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const docLabel = documentType === "judgment" ? "court judgment" : "statute/legal document";
+      const systemPrompt = `You are Al Wakeelo, a Pakistani legal assistant AI. You are helping the user understand a specific ${docLabel}.
+
+Document Title: ${documentTitle}
+
+Document Content (excerpt):
+${(documentContent || "").slice(0, 6000)}
+
+Instructions:
+- Answer questions specifically about this document
+- Cite specific sections, articles, or clauses when relevant
+- Provide clear, professional legal analysis
+- If the user asks about something not covered in the document, mention that and provide general legal guidance
+- Use proper Pakistani legal terminology
+- Format responses with clear headings and bullet points when helpful`;
+
+      const chatHistory = messages.slice(-10).map(m => ({
+        role: m.role === "user" ? "user" as const : "model" as const,
+        parts: [{ text: m.content }],
+      }));
+
+      const result = await callStandardAI(systemPrompt, chatHistory, 4096);
+
+      const aiResponse = result.text;
+      const inputText = systemPrompt + messages.map(m => m.content).join("\n");
+      await logUsageCost(userId, "chat", result.model, inputText, aiResponse);
+
+      res.json({ content: aiResponse });
+    } catch (err: any) {
+      console.error("Error in document chat:", err);
+      if (err?.status === 429 || err?.message?.includes("429")) {
+        return res.status(429).json({ message: "Rate limit exceeded" });
+      }
+      res.status(500).json({ message: "Failed to generate response" });
+    }
+  });
+
+  // ========== APEX AI MODEL ROUTES ==========
+
+  app.get("/api/apex/models", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const tier = await storage.getUserTier(userId);
+    const available = isApexAvailable();
+    const models = available ? getApexModelsForTier(tier) : [];
+    res.json({ available, models, tier });
+  });
+
+  app.post("/api/apex/chat", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const tier = await storage.getUserTier(userId);
+
+    if (!isApexAvailable()) {
+      return res.status(503).json({ message: "Apex AI is not configured" });
+    }
+
+    const { model, message, threadId, systemContext } = req.body;
+    if (!model || !message) {
+      return res.status(400).json({ message: "Model and message are required" });
+    }
+
+    const allowedModels = getApexModelsForTier(tier);
+    if (!allowedModels.find(m => m.id === model)) {
+      return res.status(403).json({ message: `Your ${tier} plan does not include access to this model` });
+    }
+
+    const allowed = await checkUsageLimit(userId, "chat", res);
+    if (!allowed) return;
+
+    try {
+      let systemPrompt = getLegalSystemPrompt();
+      if (systemContext) {
+        systemPrompt += `\n\n${systemContext}`;
+      }
+
+      const knowledgeContext = await gatherKnowledgeContext(message, userId);
+      systemPrompt += knowledgeContext;
+
+      const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+        { role: "system", content: systemPrompt },
+      ];
+
+      if (threadId) {
+        const threadMessages = await storage.getMessages(threadId);
+        const recentMessages = threadMessages.slice(-10);
+        for (const tm of recentMessages) {
+          messages.push({ role: tm.role as "user" | "assistant", content: tm.content });
+        }
+      }
+
+      messages.push({ role: "user", content: message });
+
+      let responseContent: string;
+      let responseReasoning: string | undefined;
+      let responseModel: string;
+
+      try {
+        const result = await chatWithApex({
+          model: model as ApexModel,
+          messages,
+          maxTokens: model === "apex" ? 4096 : 8192,
+        });
+        responseContent = result.content;
+        responseReasoning = result.reasoning;
+        responseModel = result.model;
+      } catch (apexErr: any) {
+        if (isDeepSeekAvailable()) {
+          console.log("[Apex AI] Kimi failed, falling back to DeepSeek Pro:", apexErr?.message || apexErr);
+          const dsResult = await chatWithDeepSeekPro({ messages, maxTokens: 8192 });
+          responseContent = dsResult.content;
+          responseReasoning = undefined;
+          responseModel = "deepseek-reasoner";
+        } else {
+          throw apexErr;
+        }
+      }
+
+      const actualModel = responseModel.includes("deepseek") ? "deepseek-reasoner" : `apex-${model}`;
+      const inputText = messages.map(m => m.content).join("\n");
+      await logUsageCost(userId, "chat", actualModel, inputText, responseContent);
+
+      res.json({
+        content: responseContent,
+        reasoning: responseReasoning,
+        model: responseModel,
+      });
+    } catch (err: any) {
+      console.error("Error in Apex chat:", err);
+      if (err?.status === 429 || err?.message?.includes("429")) {
+        return res.status(429).json({ message: "Rate limit exceeded. Please try again shortly." });
+      }
+      res.status(500).json({ message: err.message || "Failed to generate response" });
+    }
+  });
+
+  // ========== ORGANIZATION / TEAM ROUTES ==========
+
+  app.get("/api/org", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const org = await storage.getUserOrganization(userId);
+    res.json(org || null);
+  });
+
+  app.post("/api/org", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const user = await storage.getUserProfile(userId);
+    if (!user || (user.subscriptionTier !== "pro" && user.subscriptionTier !== "enterprise" && !user.isAdmin)) {
+      return res.status(403).json({ message: "Only Pro and Enterprise users can create organizations" });
+    }
+    const existing = await storage.getUserOrganization(userId);
+    if (existing) return res.status(400).json({ message: "You already belong to an organization" });
+    const { name, description } = req.body;
+    if (!name || typeof name !== "string") return res.status(400).json({ message: "Organization name is required" });
+    const org = await storage.createOrganization({ name, description: description || null, ownerId: userId });
+    res.json(org);
+  });
+
+  app.delete("/api/org/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const orgId = parseInt(String(req.params.id));
+    const org = await storage.getOrganization(orgId);
+    if (!org || org.ownerId !== userId) return res.status(403).json({ message: "Only the organization owner can delete it" });
+    await storage.deleteOrganization(orgId);
+    res.json({ message: "Organization deleted" });
+  });
+
+  app.get("/api/org/:id/members", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const orgId = parseInt(String(req.params.id));
+    const isMember = await storage.isOrgMember(orgId, userId);
+    if (!isMember) return res.status(403).json({ message: "Not a member of this organization" });
+    const members = await storage.getOrgMembers(orgId);
+    res.json(members);
+  });
+
+  app.post("/api/org/:id/invite", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const orgId = parseInt(String(req.params.id));
+    const org = await storage.getOrganization(orgId);
+    if (!org) return res.status(404).json({ message: "Organization not found" });
+    if (org.ownerId !== userId) return res.status(403).json({ message: "Only the owner can invite members" });
+    const { email } = req.body;
+    if (!email || typeof email !== "string") return res.status(400).json({ message: "Email is required" });
+    const invite = await storage.createOrgInvite({ orgId, email: email.toLowerCase(), invitedBy: userId });
+    res.json(invite);
+  });
+
+  app.get("/api/org/:id/invites", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const orgId = parseInt(String(req.params.id));
+    const org = await storage.getOrganization(orgId);
+    if (!org || org.ownerId !== userId) return res.status(403).json({ message: "Only the owner can view invites" });
+    const invites = await storage.getOrgInvites(orgId);
+    res.json(invites);
+  });
+
+  app.delete("/api/org/:orgId/members/:memberId", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const orgId = parseInt(String(req.params.orgId));
+    const memberId = req.params.memberId;
+    const org = await storage.getOrganization(orgId);
+    if (!org || org.ownerId !== userId) return res.status(403).json({ message: "Only the owner can remove members" });
+    if (memberId === userId) return res.status(400).json({ message: "Cannot remove yourself as owner" });
+    await storage.removeOrgMember(orgId, memberId);
+    res.json({ message: "Member removed" });
+  });
+
+  app.get("/api/org/invites/pending", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const userProfile = await storage.getUserProfile(userId);
+    if (!userProfile) return res.status(401).json({ message: "Unauthorized" });
+    const invites = await storage.getPendingInvitesForUser(userProfile.email || "");
+    res.json(invites);
+  });
+
+  app.post("/api/org/invites/:id/accept", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const userProfile = await storage.getUserProfile(userId);
+    if (!userProfile) return res.status(401).json({ message: "Unauthorized" });
+    const inviteId = parseInt(String(req.params.id));
+    const pendingInvites = await storage.getPendingInvitesForUser(userProfile.email || "");
+    const invite = pendingInvites.find((i: any) => i.id === inviteId);
+    if (!invite) return res.status(403).json({ message: "This invite does not belong to you" });
+    const existingOrg = await storage.getUserOrganization(userId);
+    if (existingOrg) return res.status(400).json({ message: "You already belong to an organization" });
+    await storage.acceptOrgInvite(inviteId, userId);
+    res.json({ message: "Invite accepted" });
+  });
+
+  app.post("/api/org/invites/:id/decline", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const userProfile = await storage.getUserProfile(userId);
+    if (!userProfile) return res.status(401).json({ message: "Unauthorized" });
+    const inviteId = parseInt(String(req.params.id));
+    const pendingInvites = await storage.getPendingInvitesForUser(userProfile.email || "");
+    const invite = pendingInvites.find((i: any) => i.id === inviteId);
+    if (!invite) return res.status(403).json({ message: "This invite does not belong to you" });
+    await storage.declineOrgInvite(inviteId);
+    res.json({ message: "Invite declined" });
+  });
+
+  // ========== ORG KNOWLEDGE ROUTES ==========
+
+  app.get("/api/org/:id/knowledge", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const orgId = parseInt(String(req.params.id));
+    const isMember = await storage.isOrgMember(orgId, userId);
+    if (!isMember) return res.status(403).json({ message: "Not a member" });
+    const docs = await storage.getOrgKnowledge(orgId);
+    res.json(docs);
+  });
+
+  const orgKnowledgeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+  app.post("/api/org/:id/knowledge", orgKnowledgeUpload.single("file"), async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const orgId = parseInt(String(req.params.id));
+    const isMember = await storage.isOrgMember(orgId, userId);
+    if (!isMember) return res.status(403).json({ message: "Not a member" });
+
+    const file = req.file;
+    if (!file) return res.status(400).json({ message: "No file uploaded" });
+
+    let content = "";
+    const filename = file.originalname.toLowerCase();
+
+    try {
+      if (filename.endsWith(".txt")) {
+        content = file.buffer.toString("utf-8");
+      } else if (filename.endsWith(".pdf")) {
+        const { text } = await extractText(new Uint8Array(file.buffer));
+        content = Array.isArray(text) ? text.join("\n") : (text || "");
+      } else if (filename.endsWith(".docx")) {
+        const result = await mammoth.extractRawText({ buffer: file.buffer });
+        content = result.value;
+      } else {
+        return res.status(400).json({ message: "Unsupported file type. Use TXT, PDF, or DOCX." });
+      }
+    } catch (err: any) {
+      return res.status(500).json({ message: "Failed to extract text from file" });
+    }
+
+    const title = req.body.title || file.originalname;
+    const category = req.body.category || "general";
+
+    const doc = await storage.addOrgKnowledge({
+      orgId,
+      title,
+      filename: file.originalname,
+      content,
+      category,
+      uploadedBy: userId,
+    });
+
+    res.json(doc);
+  });
+
+  app.delete("/api/org/:orgId/knowledge/:docId", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const orgId = parseInt(String(req.params.orgId));
+    const docId = parseInt(req.params.docId);
+    const org = await storage.getOrganization(orgId);
+    if (!org) return res.status(404).json({ message: "Organization not found" });
+    if (org.ownerId !== userId) return res.status(403).json({ message: "Only the organization owner can delete knowledge documents" });
+    await storage.deleteOrgKnowledge(docId);
+    res.json({ message: "Knowledge document deleted" });
+  });
 
   storage.cleanExpiredCache(7).then(count => {
     if (count > 0) console.log(`[Cache] Cleaned ${count} expired entries`);

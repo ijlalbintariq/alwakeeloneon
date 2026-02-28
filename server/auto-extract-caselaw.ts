@@ -1,30 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
 import { storage } from "./storage";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
-
-const EXTRACTION_PROMPT = `You are a Pakistani legal research expert. Analyze the following legal document text and extract ALL individual court cases/judgments found in it.
-
-For EACH case you find, extract:
-1. citation - The official case citation (e.g., "PLD 2024 Supreme Court 123", "2023 SCMR 456", "2024 YLR 789"). Use official law report abbreviations: PLD, SCMR, YLR, MLD, CLC, PCRLJ, PLJ.
-2. court - The court name (e.g., "Supreme Court of Pakistan", "Lahore High Court", "Sindh High Court")
-3. title - The case title/name (e.g., "State vs Muhammad Ahmed", "Sughran Bibi vs Government of Punjab")
-4. summary - A concise 1-3 sentence summary of the legal principle established or the key holding
-5. keywords - An array of 3-8 relevant legal keywords
-
-CRITICAL RULES:
-- Extract EVERY distinct case/judgment you can identify in the text
-- If you cannot determine a field with certainty, use your best professional judgment based on context
-- For citations, use the exact format found in the text
-- Do NOT invent or fabricate cases — only extract what is actually present in the document
-- If the document contains commentary or analysis alongside cases, focus on extracting the actual cases referenced
-
-Respond with ONLY valid JSON in this exact format (no markdown, no explanation):
-{"cases":[{"citation":"...","court":"...","title":"...","summary":"...","keywords":["..."]}]}
-
-If no cases can be identified, respond with: {"cases":[]}`;
-
-const MAX_CHARS = 200000;
 const MAX_QUEUE_SIZE = 200;
 
 interface ExtractedCase {
@@ -35,10 +10,249 @@ interface ExtractedCase {
   keywords: string[];
 }
 
-let extractionQueue: Array<{ text: string; source: string }> = [];
+interface QueueItem {
+  text: string;
+  source: string;
+  sourceDocId?: number;
+  sourceType?: string;
+  sourceFilename?: string;
+}
+
+let extractionQueue: QueueItem[] = [];
 let isProcessing = false;
 const knownCitations = new Set<string>();
 let knownCitationsLoaded = false;
+
+const REPORT_ABBRS = "PLD|SCMR|YLR|MLD|CLC|PCRLJ|PCr\\.?LJ|PLJ|PLC|NLR|PSC|ALD|KLR|PTD|PTCL|PLS|GBLR|Tax";
+
+const COURT_NAMES = "Supreme\\s+Court|S\\.?C\\.?|Lah\\.?|Lahore|Sindh|Kar\\.?|Karachi|Pesh\\.?|Peshawar|Bal\\.?|Balochistan|Quetta|Islamabad|ISB|Federal\\s+Shariat|FSC|Rawalpindi|Multan|Bahawalpur|D\\.?B\\.?|F\\.?B\\.?|Tribunal|ATIR|Appellate\\s+Tribunal";
+
+const CITATION_PATTERNS: RegExp[] = [
+  new RegExp(`(?:${REPORT_ABBRS})\\s+\\d{4}\\s+(?:${COURT_NAMES})\\s+\\d+`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})\\s+\\d{4}\\s+\\d+`, "gi"),
+  new RegExp(`\\d{4}\\s+(?:${REPORT_ABBRS})\\s+\\d+`, "gi"),
+  new RegExp(`\\(\\d{4}\\)\\s+(?:${REPORT_ABBRS})\\s+\\d+`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})\\s*\\(\\d{4}\\)\\s+\\d+`, "gi"),
+];
+
+const COURT_MAP: Array<[RegExp, string]> = [
+  [/\bSupreme\s+Court\b|(?<!\w)S\.?C\.?(?!\w)/i, "Supreme Court of Pakistan"],
+  [/\bLah(?:ore)?\.?\b/i, "Lahore High Court"],
+  [/\bSindh\b|(?<!\w)Kar(?:achi)?\.?(?!\w)/i, "Sindh High Court"],
+  [/\bPesh(?:awar)?\.?\b/i, "Peshawar High Court"],
+  [/\bBal(?:ochistan)?\.?\b|(?<!\w)Quetta(?!\w)/i, "Balochistan High Court"],
+  [/\bIslamabad\b|(?<!\w)ISB(?!\w)/i, "Islamabad High Court"],
+  [/\bFederal\s+Shariat\b|(?<!\w)FSC(?!\w)/i, "Federal Shariat Court"],
+  [/\bRawalpindi\b/i, "Lahore High Court (Rawalpindi Bench)"],
+  [/\bMultan\b/i, "Lahore High Court (Multan Bench)"],
+  [/\bBahawalpur\b/i, "Lahore High Court (Bahawalpur Bench)"],
+  [/\bTribunal\b|(?<!\w)ATIR(?!\w)/i, "Appellate Tribunal"],
+];
+
+const REPORT_COURT_DEFAULT: Record<string, string> = {
+  "scmr": "Supreme Court of Pakistan",
+  "psc": "Supreme Court of Pakistan",
+  "ptd": "",
+  "ptcl": "",
+};
+
+const LEGAL_KEYWORDS_MAP: Record<string, string[]> = {
+  "murder": ["criminal law", "murder", "PPC"],
+  "bail": ["bail", "criminal procedure", "CrPC"],
+  "habeas corpus": ["habeas corpus", "fundamental rights", "constitutional law"],
+  "writ": ["writ petition", "constitutional law", "judicial review"],
+  "divorce": ["family law", "divorce", "khula"],
+  "maintenance": ["family law", "maintenance", "nafaqa"],
+  "custody": ["family law", "custody", "guardian"],
+  "property": ["property law", "land", "civil law"],
+  "contract": ["contract law", "agreement", "breach"],
+  "rent": ["tenancy", "rent", "landlord"],
+  "fraud": ["fraud", "criminal law", "cheating"],
+  "theft": ["theft", "criminal law", "PPC"],
+  "appeal": ["appeal", "appellate jurisdiction"],
+  "revision": ["revision", "revisional jurisdiction"],
+  "injunction": ["injunction", "civil procedure"],
+  "specific performance": ["specific performance", "contract"],
+  "declaration": ["declaration", "civil suit"],
+  "partition": ["partition", "property"],
+  "pre-emption": ["pre-emption", "property law"],
+  "election": ["election law", "disqualification"],
+  "tax": ["taxation", "income tax", "revenue"],
+  "customs": ["customs", "import", "export"],
+  "banking": ["banking law", "financial"],
+  "labour": ["labour law", "employment", "worker rights"],
+  "service": ["service law", "civil servant"],
+  "constitution": ["constitutional law", "fundamental rights"],
+  "terrorism": ["anti-terrorism", "ATA"],
+  "narcotics": ["narcotics", "CNSA", "drug offence"],
+  "qisas": ["qisas", "diyat", "Islamic criminal law"],
+  "diyat": ["diyat", "qisas", "blood money"],
+  "zina": ["zina", "hudood"],
+  "blasphemy": ["blasphemy", "PPC 295"],
+  "corruption": ["corruption", "NAB", "accountability"],
+  "contempt": ["contempt of court", "judicial authority"],
+  "execution": ["execution", "decree", "CPC"],
+  "limitation": ["limitation", "time-barred"],
+  "registration": ["registration", "Registration Act"],
+  "succession": ["succession", "inheritance", "Islamic law"],
+  "arbitration": ["arbitration", "dispute resolution"],
+  "insurance": ["insurance", "claim"],
+  "company": ["company law", "corporate"],
+  "negligence": ["negligence", "tort", "damages"],
+  "compensation": ["compensation", "damages"],
+  "acquittal": ["acquittal", "criminal law"],
+  "conviction": ["conviction", "criminal law"],
+  "fir": ["FIR", "criminal procedure", "police"],
+  "investigation": ["investigation", "criminal procedure"],
+  "witness": ["witness", "evidence", "QSO"],
+  "evidence": ["evidence", "QSO", "Qanun-e-Shahadat"],
+};
+
+function normalizeCitation(raw: string): string {
+  return raw
+    .replace(/\s+/g, " ")
+    .replace(/[()]/g, "")
+    .replace(/PCr\.?LJ/gi, "PCRLJ")
+    .trim();
+}
+
+function extractCitationsFromText(text: string): string[] {
+  const citationSet = new Set<string>();
+
+  for (const pattern of CITATION_PATTERNS) {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const normalized = normalizeCitation(match[0]);
+      if (normalized.length >= 8) {
+        citationSet.add(normalized);
+      }
+    }
+  }
+
+  return Array.from(citationSet);
+}
+
+function inferCourt(citation: string): string {
+  for (const [pattern, court] of COURT_MAP) {
+    if (pattern.test(citation)) {
+      return court;
+    }
+  }
+
+  const lower = citation.toLowerCase();
+  for (const [report, court] of Object.entries(REPORT_COURT_DEFAULT)) {
+    if (lower.includes(report) && court) {
+      return court;
+    }
+  }
+
+  return "";
+}
+
+function findTitleNearCitation(text: string, citation: string): string {
+  const idx = text.indexOf(citation);
+  const searchIdx = idx !== -1 ? idx : 0;
+
+  const searchStart = Math.max(0, searchIdx - 500);
+  const searchEnd = Math.min(text.length, searchIdx + citation.length + 500);
+  const context = text.substring(searchStart, searchEnd);
+
+  const titlePatterns = [
+    /(?:(?:Mst\.?|Dr\.?|Mr\.?|Mrs\.?|M\/s\.?|Govt\.?|Government|State|Federation|Province|Commissioner|Secretary|Chairman|Inspector|SHO|DSP|SSP|DPO|Advocate|Barrister)\s+)?([A-Z][\w.']+(?:\s+(?:and|&)\s+(?:others?|another|etc\.?))?(?:\s+[\w.']+)*)\s+(?:vs?\.?|versus|Vs?\.?|V\.?S\.?)\s+(?:(?:Mst\.?|Dr\.?|Mr\.?|Mrs\.?|M\/s\.?|Govt\.?|Government|State|Federation|Province|Commissioner|Secretary|Chairman|Inspector|SHO|DSP|SSP|DPO|Advocate|Barrister)\s+)?([A-Z][\w.']+(?:\s+(?:and|&)\s+(?:others?|another|etc\.?))?(?:\s+[\w.']+)*)/gi,
+    /([A-Z][\w\s.']+?)\s+(?:vs?\.?|versus)\s+([A-Z][\w\s.']+?)(?=\s*[,.\n(]|\s+\d{4}|\s+(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ))/gi,
+  ];
+
+  for (const pattern of titlePatterns) {
+    pattern.lastIndex = 0;
+    const match = pattern.exec(context);
+    if (match) {
+      const fullMatch = match[0].trim();
+      if (fullMatch.length > 5 && fullMatch.length < 250) {
+        return fullMatch
+          .replace(/\s+/g, " ")
+          .replace(/[,.]$/, "")
+          .trim();
+      }
+    }
+  }
+
+  return "";
+}
+
+function extractSummaryNearCitation(text: string, citation: string): string {
+  const idx = text.indexOf(citation);
+  if (idx === -1) return "";
+
+  const afterCitation = text.substring(idx + citation.length, idx + citation.length + 1000);
+
+  const cleaned = afterCitation.replace(/^\s*[,;:\-–—.)\]]+\s*/, "");
+
+  const sentenceEnders = /[.!?]\s+/;
+  const parts = cleaned.split(sentenceEnders);
+  const sentences = parts
+    .map(s => s.trim())
+    .filter(s => s.length > 15 && s.length < 500 && /[a-zA-Z]/.test(s));
+
+  if (sentences.length >= 2) {
+    return sentences.slice(0, 2).join(". ").trim() + ".";
+  } else if (sentences.length === 1) {
+    return sentences[0].trim() + ".";
+  }
+
+  return "";
+}
+
+function extractKeywords(text: string, citation: string): string[] {
+  const idx = text.indexOf(citation);
+  const contextStart = Math.max(0, (idx !== -1 ? idx : 0) - 500);
+  const contextEnd = Math.min(text.length, (idx !== -1 ? idx : 0) + citation.length + 500);
+  const context = text.substring(contextStart, contextEnd).toLowerCase();
+
+  const keywords = new Set<string>();
+
+  for (const [term, relatedKeywords] of Object.entries(LEGAL_KEYWORDS_MAP)) {
+    if (context.includes(term.toLowerCase())) {
+      for (const kw of relatedKeywords.slice(0, 2)) {
+        keywords.add(kw);
+      }
+    }
+  }
+
+  const reportMatch = citation.match(new RegExp(REPORT_ABBRS, "i"));
+  if (reportMatch) {
+    keywords.add(reportMatch[0].toUpperCase().replace(/\./g, ""));
+  }
+
+  if (keywords.size === 0) {
+    keywords.add("Pakistani law");
+    keywords.add("case law");
+  }
+
+  return Array.from(keywords).slice(0, 8);
+}
+
+export function nlpExtractCases(text: string): ExtractedCase[] {
+  const citations = extractCitationsFromText(text);
+  const cases: ExtractedCase[] = [];
+
+  for (const citation of citations) {
+    const court = inferCourt(citation);
+    const title = findTitleNearCitation(text, citation);
+    const summary = extractSummaryNearCitation(text, citation);
+    const keywords = extractKeywords(text, citation);
+
+    cases.push({
+      citation,
+      court,
+      title: title || `Case reported at ${citation}`,
+      summary: summary || `Case cited as ${citation}`,
+      keywords,
+    });
+  }
+
+  return cases;
+}
 
 async function loadKnownCitations(): Promise<void> {
   if (knownCitationsLoaded) return;
@@ -53,13 +267,13 @@ async function loadKnownCitations(): Promise<void> {
   }
 }
 
-export function queueAutoExtraction(text: string, source: string): void {
+export function queueAutoExtraction(text: string, source: string, opts?: { sourceDocId?: number; sourceType?: string; sourceFilename?: string }): void {
   if (!text || text.length < 100) return;
   if (extractionQueue.length >= MAX_QUEUE_SIZE) {
     console.log(`[Auto-Extract] Queue full (${MAX_QUEUE_SIZE}), skipping: ${source}`);
     return;
   }
-  extractionQueue.push({ text, source });
+  extractionQueue.push({ text, source, ...opts });
   if (!isProcessing) {
     processQueue();
   }
@@ -73,65 +287,22 @@ async function processQueue(): Promise<void> {
 
   while (extractionQueue.length > 0) {
     const item = extractionQueue.shift()!;
-    await extractAndSave(item.text, item.source);
+    await extractAndSave(item.text, item.source, item.sourceDocId, item.sourceType, item.sourceFilename);
   }
 
   isProcessing = false;
 }
 
-async function extractAndSave(text: string, source: string): Promise<void> {
+async function extractAndSave(text: string, source: string, sourceDocId?: number, sourceType?: string, sourceFilename?: string): Promise<void> {
   try {
-    const textForAI = text.length > MAX_CHARS ? text.substring(0, MAX_CHARS) : text;
+    const extracted = nlpExtractCases(text);
 
-    let completion;
-    try {
-      completion = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
-        contents: [{ role: "user", parts: [{ text: textForAI }] }],
-        config: {
-          maxOutputTokens: 16384,
-          systemInstruction: EXTRACTION_PROMPT,
-          temperature: 0.1,
-        },
-      });
-    } catch (proErr: any) {
-      if (proErr?.status === 429 || proErr?.message?.includes("RESOURCE_EXHAUSTED")) {
-        console.log(`[Auto-Extract] Pro model rate-limited, using Flash for: ${source}`);
-        completion = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: [{ role: "user", parts: [{ text: textForAI }] }],
-          config: {
-            maxOutputTokens: 16384,
-            systemInstruction: EXTRACTION_PROMPT,
-            temperature: 0.1,
-          },
-        });
-      } else {
-        throw proErr;
-      }
-    }
-
-    const responseText = (completion.text || "").trim();
-    let jsonText = responseText;
-    const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonText = jsonMatch[1].trim();
-    }
-
-    let parsed: { cases: ExtractedCase[] };
-    try {
-      parsed = JSON.parse(jsonText);
-    } catch {
-      console.log(`[Auto-Extract] Could not parse AI response for source: ${source}`);
-      return;
-    }
-
-    if (!parsed.cases || !Array.isArray(parsed.cases) || parsed.cases.length === 0) {
+    if (extracted.length === 0) {
       return;
     }
 
     const newCases: ExtractedCase[] = [];
-    for (const c of parsed.cases) {
+    for (const c of extracted) {
       if (!c.citation || !c.title) continue;
       const key = c.citation.toLowerCase().trim();
       if (knownCitations.has(key)) continue;
@@ -149,6 +320,9 @@ async function extractAndSave(text: string, source: string): Promise<void> {
       title: c.title.trim(),
       summary: (c.summary || "").trim(),
       keywords: Array.isArray(c.keywords) ? c.keywords : [],
+      sourceDocId: sourceDocId || null,
+      sourceType: sourceType || null,
+      sourceFilename: sourceFilename || null,
     }));
 
     await storage.bulkCreateCaseLaw(entries);
@@ -159,7 +333,7 @@ async function extractAndSave(text: string, source: string): Promise<void> {
 }
 
 export async function extractFromAllExistingSources(): Promise<void> {
-  console.log("[Auto-Extract] Scanning all knowledge sources for case law...");
+  console.log("[Auto-Extract] Scanning all knowledge sources for case law (NLP mode - no API cost)...");
 
   try {
     await loadKnownCitations();
@@ -168,7 +342,11 @@ export async function extractFromAllExistingSources(): Promise<void> {
     let githubQueued = 0;
     for (const doc of allGithubDocs) {
       if (doc.content && doc.content.length > 200) {
-        queueAutoExtraction(doc.content, `github:${doc.filename}`);
+        queueAutoExtraction(doc.content, `github:${doc.filename}`, {
+          sourceDocId: doc.id,
+          sourceType: "github",
+          sourceFilename: doc.filename,
+        });
         githubQueued++;
       }
     }
@@ -178,7 +356,11 @@ export async function extractFromAllExistingSources(): Promise<void> {
     let adminQueued = 0;
     for (const doc of adminDocs) {
       if (doc.content && doc.content.length > 200) {
-        queueAutoExtraction(doc.content, `admin:${doc.filename}`);
+        queueAutoExtraction(doc.content, `admin:${doc.filename}`, {
+          sourceDocId: doc.id,
+          sourceType: "admin",
+          sourceFilename: doc.filename,
+        });
         adminQueued++;
       }
     }
@@ -188,11 +370,29 @@ export async function extractFromAllExistingSources(): Promise<void> {
     let statuteQueued = 0;
     for (const doc of statuteDocs) {
       if (doc.content && doc.content.length > 200) {
-        queueAutoExtraction(doc.content, `statute:${doc.filename}`);
+        queueAutoExtraction(doc.content, `statute:${doc.filename}`, {
+          sourceDocId: doc.id,
+          sourceType: "statute",
+          sourceFilename: doc.filename,
+        });
         statuteQueued++;
       }
     }
     console.log(`[Auto-Extract] Queued ${statuteQueued} statute documents`);
+
+    const userDocs = await storage.getAllDocuments();
+    let userQueued = 0;
+    for (const doc of userDocs) {
+      if (doc.content && doc.content.length > 200) {
+        queueAutoExtraction(doc.content, `user:${doc.title}`, {
+          sourceDocId: doc.id,
+          sourceType: "user",
+          sourceFilename: doc.title || undefined,
+        });
+        userQueued++;
+      }
+    }
+    console.log(`[Auto-Extract] Queued ${userQueued} user Knowledge Vault documents`);
   } catch (err: any) {
     console.error("[Auto-Extract] Error scanning sources:", err?.message || err);
   }

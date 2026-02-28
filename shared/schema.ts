@@ -66,6 +66,9 @@ export const caseLaw = pgTable("case_law", {
   title: text("title").notNull(),
   summary: text("summary").notNull(),
   keywords: text("keywords").array().notNull(),
+  sourceDocId: integer("source_doc_id"),
+  sourceType: text("source_type"),
+  sourceFilename: text("source_filename"),
 });
 
 export const queryCache = pgTable("query_cache", {
@@ -106,8 +109,48 @@ export const statuteDocuments = pgTable("statute_documents", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const adminKnowledge = pgTable("admin_knowledge", {
+export const savedJudgments = pgTable("saved_judgments", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  citation: text("citation").notNull(),
+  court: text("court").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  keywords: text("keywords").array(),
+  uri: text("uri"),
+  source: text("source"),
+  aiAnalysis: text("ai_analysis"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const organizations = pgTable("organizations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  ownerId: varchar("owner_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const orgMembers = pgTable("org_members", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").references(() => organizations.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  role: text("role", { enum: ["owner", "admin", "member"] }).notNull().default("member"),
+  joinedAt: timestamp("joined_at").defaultNow(),
+});
+
+export const orgInvites = pgTable("org_invites", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").references(() => organizations.id).notNull(),
+  email: text("email").notNull(),
+  invitedBy: varchar("invited_by").references(() => users.id).notNull(),
+  status: text("status", { enum: ["pending", "accepted", "declined"] }).notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const orgKnowledge = pgTable("org_knowledge", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").references(() => organizations.id).notNull(),
   title: text("title").notNull(),
   filename: text("filename").notNull(),
   content: text("content").notNull(),
@@ -116,17 +159,13 @@ export const adminKnowledge = pgTable("admin_knowledge", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const voiceConversations = pgTable("voice_conversations", {
+export const adminKnowledge = pgTable("admin_knowledge", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const voiceMessages = pgTable("voice_messages", {
-  id: serial("id").primaryKey(),
-  conversationId: integer("conversation_id").references(() => voiceConversations.id).notNull(),
-  role: text("role", { enum: ["user", "assistant"] }).notNull(),
+  filename: text("filename").notNull(),
   content: text("content").notNull(),
+  category: text("category").default("general").notNull(),
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -142,9 +181,12 @@ export const insertQueryCacheSchema = createInsertSchema(queryCache).omit({ id: 
 export const insertUsageTrackingSchema = createInsertSchema(usageTracking).omit({ id: true, createdAt: true });
 export const insertGithubKnowledgeSchema = createInsertSchema(githubKnowledge).omit({ id: true, syncedAt: true });
 export const insertStatuteDocumentSchema = createInsertSchema(statuteDocuments).omit({ id: true, createdAt: true });
+export const insertSavedJudgmentSchema = createInsertSchema(savedJudgments).omit({ id: true, createdAt: true });
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
+export const insertOrgMemberSchema = createInsertSchema(orgMembers).omit({ id: true, joinedAt: true });
+export const insertOrgInviteSchema = createInsertSchema(orgInvites).omit({ id: true, createdAt: true, status: true });
+export const insertOrgKnowledgeSchema = createInsertSchema(orgKnowledge).omit({ id: true, createdAt: true });
 export const insertAdminKnowledgeSchema = createInsertSchema(adminKnowledge).omit({ id: true, createdAt: true });
-export const insertVoiceConversationSchema = createInsertSchema(voiceConversations).omit({ id: true, createdAt: true });
-export const insertVoiceMessageSchema = createInsertSchema(voiceMessages).omit({ id: true, createdAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -169,10 +211,18 @@ export type GithubKnowledge = typeof githubKnowledge.$inferSelect;
 export type InsertGithubKnowledge = z.infer<typeof insertGithubKnowledgeSchema>;
 export type StatuteDocument = typeof statuteDocuments.$inferSelect;
 export type InsertStatuteDocument = z.infer<typeof insertStatuteDocumentSchema>;
+export type SavedJudgment = typeof savedJudgments.$inferSelect;
+export type InsertSavedJudgment = z.infer<typeof insertSavedJudgmentSchema>;
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type OrgMember = typeof orgMembers.$inferSelect;
+export type InsertOrgMember = z.infer<typeof insertOrgMemberSchema>;
+export type OrgInvite = typeof orgInvites.$inferSelect;
+export type InsertOrgInvite = z.infer<typeof insertOrgInviteSchema>;
+export type OrgKnowledge = typeof orgKnowledge.$inferSelect;
+export type InsertOrgKnowledge = z.infer<typeof insertOrgKnowledgeSchema>;
 export type AdminKnowledge = typeof adminKnowledge.$inferSelect;
 export type InsertAdminKnowledge = z.infer<typeof insertAdminKnowledgeSchema>;
-export type VoiceConversation = typeof voiceConversations.$inferSelect;
-export type VoiceMessage = typeof voiceMessages.$inferSelect;
 
 export const TIER_LIMITS: Record<string, { monthlyQueries: number; label: string; description: string }> = {
   free: { monthlyQueries: 10, label: "Free", description: "10 AI queries/month" },

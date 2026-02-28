@@ -1,38 +1,24 @@
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
-import MemoryStore from "memorystore";
-import { validateDatabaseUrl } from "../../env-config";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000;
   const pgStore = connectPg(session);
-  const memStoreFactory = MemoryStore(session);
-  const validatedDatabaseUrl = validateDatabaseUrl(process.env.DATABASE_URL);
-  const canUsePg = validatedDatabaseUrl.ok && !!validatedDatabaseUrl.value && !!process.env.SESSION_SECRET;
-  if (!validatedDatabaseUrl.ok) {
-    console.error(`[Session] Falling back to memory store. ${validatedDatabaseUrl.reason}`);
-  }
-  const sessionStore = canUsePg
-    ? new pgStore({
-        conString: validatedDatabaseUrl.value,
-        createTableIfMissing: false,
-        ttl: sessionTtl,
-        tableName: "sessions",
-      })
-    : new memStoreFactory({
-        checkPeriod: sessionTtl,
-      });
-  const isProd = process.env.NODE_ENV === "production";
-  const secret = process.env.SESSION_SECRET || (!isProd ? "development-secret" : "");
+  const sessionStore = new pgStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: false,
+    ttl: sessionTtl,
+    tableName: "sessions",
+  });
   return session({
-    secret,
+    secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProd,
+      secure: true,
       maxAge: sessionTtl,
       sameSite: "lax",
     },

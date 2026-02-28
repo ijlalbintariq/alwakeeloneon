@@ -10,7 +10,9 @@ import LandingPage from "@/pages/landing";
 import AuthPage from "@/pages/auth";
 import DashboardPage from "@/pages/dashboard";
 import JudgmentSearchPage from "@/pages/judgment-search";
+import JudgmentViewPage from "@/pages/judgment-view";
 import StatuteSearchPage from "@/pages/statute-search";
+import StatuteViewPage from "@/pages/statute-view";
 import ChatPage from "@/pages/chat";
 import LegalDraftingPage from "@/pages/legal-drafting";
 import ContractDraftingPage from "@/pages/contract-drafting";
@@ -24,6 +26,10 @@ import UserPanelPage from "@/pages/user-panel";
 import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
 import SharedConversationPage from "@/pages/shared-conversation";
+import PrivacyPolicyPage from "@/pages/privacy";
+import TermsOfServicePage from "@/pages/terms";
+import OrganizationPage from "@/pages/organization";
+import InstallAppPage from "@/pages/install-app";
 import NotFound from "@/pages/not-found";
 import { AppShell } from "@/components/app-shell";
 
@@ -50,7 +56,7 @@ function Router({ onReady }: { onReady?: () => void }) {
     return null;
   }
 
-  if (location === "/" && !user) {
+  if (location === "/") {
     return <LandingPage />;
   }
 
@@ -73,6 +79,18 @@ function Router({ onReady }: { onReady?: () => void }) {
     return <SharedConversationPage />;
   }
 
+  if (location === "/privacy") {
+    return <PrivacyPolicyPage />;
+  }
+
+  if (location === "/terms") {
+    return <TermsOfServicePage />;
+  }
+
+  if (location === "/install") {
+    return <InstallAppPage />;
+  }
+
   if (!user) {
     return <Redirect to="/auth" />;
   }
@@ -84,10 +102,11 @@ function Router({ onReady }: { onReady?: () => void }) {
   return (
     <AppShell>
       <Switch>
-        <Route path="/" component={DashboardPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/judgment-search" component={JudgmentSearchPage} />
+        <Route path="/judgment-view" component={JudgmentViewPage} />
         <Route path="/statute-search" component={StatuteSearchPage} />
+        <Route path="/statute-view/:id" component={StatuteViewPage} />
         <Route path="/al-wakeelo" component={ChatPage} />
         <Route path="/legal-drafting" component={LegalDraftingPage} />
         <Route path="/contract-drafting" component={ContractDraftingPage} />
@@ -95,6 +114,7 @@ function Router({ onReady }: { onReady?: () => void }) {
         <Route path="/bookmarks" component={BookmarksPage} />
         <Route path="/history" component={HistoryPage} />
         <Route path="/knowledge-vault" component={KnowledgeVaultPage} />
+        <Route path="/organization" component={OrganizationPage} />
         <Route path="/admin" component={AdminPanelPage} />
         <Route path="/settings" component={UserPanelPage} />
         <Route component={NotFound} />

@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
   History, FileBadge, Sparkles, Database, LogOut,
-  User as UserIcon, Shield, Settings
+  User as UserIcon, Shield, Settings, Building2
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -20,8 +20,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { ChatSessionProvider } from "@/hooks/use-chat-session";
-import { ChatDock } from "@/components/chat-dock";
 
 const NAVIGATION_ITEMS = [
   { id: "dashboard", label: "Chambers Dashboard", icon: LayoutDashboard, href: "/dashboard" },
@@ -34,6 +32,7 @@ const NAVIGATION_ITEMS = [
   { id: "bookmarks", label: "Bookmarks", icon: Bookmark, href: "/bookmarks" },
   { id: "history", label: "Search History", icon: History, href: "/history" },
   { id: "knowledge-vault", label: "Knowledge Vault", icon: Database, href: "/knowledge-vault" },
+  { id: "organization", label: "Organization", icon: Building2, href: "/organization" },
 ];
 
 function AppSidebar() {
@@ -149,39 +148,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <ChatSessionProvider>
-        <div className="flex h-screen w-full bg-[#0f172a] text-slate-200 font-sans selection:bg-amber-500/40">
-          <AppSidebar />
- 
-          <div className="flex flex-col flex-1 min-w-0">
-            <header className="h-14 border-b border-slate-800 bg-[#0f172a]/50 flex items-center justify-between px-4 gap-4 z-50 sticky top-0">
-              <SidebarTrigger data-testid="button-sidebar-toggle" className="text-slate-500 hover:text-white" />
-              <div className="flex items-center gap-4">
-                <div className="text-right hidden sm:block">
-                  <p className="text-xs font-black uppercase text-white tracking-widest" data-testid="text-username">
-                    {user?.firstName || user?.email || "Advocate"}
-                  </p>
-                  <p className="text-[8px] font-black uppercase text-amber-500/60 tracking-[0.2em]">Counsel</p>
-                </div>
-                <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 shadow-xl overflow-hidden" data-testid="img-avatar">
-                  {user?.profileImageUrl ? (
-                    <img src={user.profileImageUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <UserIcon size={16} />
-                  )}
-                </div>
+      <div className="flex h-screen w-full bg-[#0f172a] text-slate-200 font-sans selection:bg-amber-500/40">
+        <AppSidebar />
+
+        <div className="flex flex-col flex-1 min-w-0">
+          <header className="h-14 border-b border-slate-800 bg-[#0f172a]/50 flex items-center justify-between px-4 gap-4 z-50 sticky top-0">
+            <SidebarTrigger data-testid="button-sidebar-toggle" className="text-slate-500 hover:text-white" />
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-black uppercase text-white tracking-widest" data-testid="text-username">
+                  {user?.firstName || user?.email || "Advocate"}
+                </p>
+                <p className="text-[8px] font-black uppercase text-amber-500/60 tracking-[0.2em]">Counsel</p>
               </div>
-            </header>
- 
-            <main className="flex-1 overflow-y-auto p-6 md:p-10 bg-[#0f172a] scrollbar-hide">
-              <div className="max-w-7xl mx-auto h-full">
-                {children}
+              <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 shadow-xl overflow-hidden" data-testid="img-avatar">
+                {user?.profileImageUrl ? (
+                  <img src={user.profileImageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <UserIcon size={16} />
+                )}
               </div>
-            </main>
-          </div>
-          <ChatDock />
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-y-auto p-6 md:p-10 bg-[#0f172a] scrollbar-hide">
+            <div className="max-w-7xl mx-auto h-full">
+              {children}
+            </div>
+          </main>
         </div>
-      </ChatSessionProvider>
+      </div>
     </SidebarProvider>
   );
 }
