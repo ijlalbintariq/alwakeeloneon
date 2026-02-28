@@ -6,6 +6,8 @@ import { validateDatabaseUrl, validatePgHost } from "../../env-config";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000;
+  const isProduction = process.env.NODE_ENV === "production";
+  const sessionSecret = process.env.SESSION_SECRET || "dev-session-secret";
   const validatedDatabaseUrl = validateDatabaseUrl(process.env.DATABASE_URL);
   const validatedPgHost = validatePgHost(process.env.PGHOST);
   const canUsePgStore = validatedDatabaseUrl.ok && validatedPgHost.ok && !!validatedDatabaseUrl.value;
@@ -29,13 +31,13 @@ export function getSession() {
   }
 
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: sessionSecret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: isProduction,
       maxAge: sessionTtl,
       sameSite: "lax",
     },

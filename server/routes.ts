@@ -2240,9 +2240,12 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
     }
   });
 
-  await seedLegalData();
-
-  syncGithubKnowledge().catch(err => console.error("[GitHub Sync] Background sync failed:", err));
+  if (dbAvailable) {
+    await seedLegalData();
+    syncGithubKnowledge().catch(err => console.error("[GitHub Sync] Background sync failed:", err));
+  } else {
+    console.warn("[Startup] Skipping legal data seed and GitHub sync because DB is unavailable.");
+  }
 
   app.get("/api/saved-judgments", async (req, res) => {
     const userId = getUserId(req);
