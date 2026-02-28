@@ -19,9 +19,29 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+function isDatabaseConnectivityError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { code?: string; message?: string };
+  const code = err.code || "";
+  const message = (err.message || "").toLowerCase();
+  return (
+    code === "ENOTFOUND" ||
+    code === "ECONNREFUSED" ||
+    code === "ETIMEDOUT" ||
+    code === "EAI_AGAIN" ||
+    message.includes("getaddrinfo") ||
+    message.includes("connection") ||
+    message.includes("database")
+  );
+}
+
 export function registerAuthRoutes(app: Express): void {
   app.post("/api/auth/register", async (req, res) => {
     try {
+      if (!dbAvailable) {
+        return res.status(503).json({ message: "Database unavailable", code: "DB_UNAVAILABLE", reason: dbUnavailableReason });
+      }
+
       const parsed = registerSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.errors[0].message });
@@ -55,8 +75,12 @@ export function registerAuthRoutes(app: Express): void {
       });
     } catch (error) {
       console.error("Registration error:", error);
-      if (!dbAvailable) {
-        return res.status(503).json({ message: "Database unavailable", code: "DB_UNAVAILABLE", reason: dbUnavailableReason });
+      if (!dbAvailable || isDatabaseConnectivityError(error)) {
+        return res.status(503).json({
+          message: "Database unavailable",
+          code: "DB_UNAVAILABLE",
+          reason: (error as any)?.message || dbUnavailableReason,
+        });
       }
       res.status(500).json({ message: "Registration failed" });
     }
@@ -64,6 +88,10 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/api/auth/login", async (req, res) => {
     try {
+      if (!dbAvailable) {
+        return res.status(503).json({ message: "Database unavailable", code: "DB_UNAVAILABLE", reason: dbUnavailableReason });
+      }
+
       const parsed = loginSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.errors[0].message });
@@ -96,8 +124,12 @@ export function registerAuthRoutes(app: Express): void {
       });
     } catch (error) {
       console.error("Login error:", error);
-      if (!dbAvailable) {
-        return res.status(503).json({ message: "Database unavailable", code: "DB_UNAVAILABLE", reason: dbUnavailableReason });
+      if (!dbAvailable || isDatabaseConnectivityError(error)) {
+        return res.status(503).json({
+          message: "Database unavailable",
+          code: "DB_UNAVAILABLE",
+          reason: (error as any)?.message || dbUnavailableReason,
+        });
       }
       res.status(500).json({ message: "Login failed" });
     }
