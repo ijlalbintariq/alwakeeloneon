@@ -5,7 +5,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { registerOfflineTranscriptionRoutes } from "./audio-local";
-import { pool } from "./db";
+import { dbUnavailableReason, pool } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -91,7 +91,7 @@ app.use((req, res, next) => {
         configured,
         host,
         pgHost,
-        reason: "Database pool is not initialized.",
+        reason: dbUnavailableReason || "Database pool is not initialized.",
       });
     }
 

@@ -7,12 +7,13 @@ import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { GoogleGenAI } from "@google/genai";
 import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, threads, TIER_LIMITS } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { db } from "./db";
+import { db, dbAvailable } from "./db";
 import { syncGithubKnowledge } from "./github-sync";
 import { queueAutoExtraction } from "./auto-extract-caselaw";
 import crypto from "crypto";
 import multer from "multer";
 import { extractText } from "unpdf";
+import { requireDatabase } from "./middleware/db-guard";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
@@ -347,6 +348,13 @@ export async function registerRoutes(
 ): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
+
+  app.use("/api", (req, res, next) => {
+    if (!dbAvailable && req.path === "/auth/google/status") {
+      return next();
+    }
+    return requireDatabase(req, res, next);
+  });
 
   app.get(api.threads.list.path, async (req, res) => {
     const userId = getUserId(req);
