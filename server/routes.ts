@@ -736,6 +736,36 @@ export async function registerRoutes(
     }
   });
 
+  app.put(api.documents.update.path, async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) {
+        return res.status(400).json({ message: "Invalid document id" });
+      }
+
+      const input = api.documents.update.input.parse(req.body);
+      if (input.content) {
+        input.content = stripNullBytes(input.content);
+      }
+      if (typeof input.title !== "string" && typeof input.content !== "string") {
+        return res.status(400).json({ message: "Nothing to update" });
+      }
+
+      const title = typeof input.title === "string" ? input.title : undefined;
+      const content = typeof input.content === "string" ? input.content : undefined;
+      const updated = await storage.updateDocument(id, userId, { title, content });
+      if (!updated) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating document:", err);
+      res.status(500).json({ message: "Failed to update document" });
+    }
+  });
+
   app.delete(api.documents.delete.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -1487,6 +1517,109 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
     } catch (err) {
       console.error("Error generating brief:", err);
       res.status(500).json({ message: "Failed to generate brief" });
+    }
+  });
+
+  app.post("/api/ai/draft-risk-analysis", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+
+    try {
+      const allowed = await checkUsageLimit(userId, "draft", res);
+      if (!allowed) return;
+
+      const { title, content } = req.body as { title?: string; content?: string };
+      const draftText = (content || "").trim();
+      if (!draftText) {
+        return res.json({ risks: [] });
+      }
+
+      const draftTitle = (title || "Untitled Draft").trim();
+      const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 14000)}`;
+
+      const { content: responseText, fromCache } = await getCachedOrCall("draft-risk-analysis", cacheKey, async () => {
+        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
+        const sysInstruction = `${getLegalSystemPrompt()}
+
+You are a legal drafting risk scanner for Pakistani legal documents.
+
+TASK:
+Analyze the user's draft and identify drafting, enforceability, compliance, ambiguity, and dispute-risk issues.
+
+OUTPUT FORMAT (STRICT):
+Return ONLY valid JSON with this exact shape:
+{
+  "risks": [
+    {
+      "id": "short-stable-id",
+      "title": "Short risk title",
+      "detail": "1-2 sentence practical explanation of risk",
+      "severity": "warning" | "danger",
+      "prompt": "A direct instruction to generate a corrective clause"
+    }
+  ]
+}
+
+RULES:
+- Return 0 to 8 risks.
+- Use "danger" only for high-impact issues (enforceability/invalidity/major litigation exposure).
+- Use "warning" for medium/low risks.
+- Keep each detail concise and specific to the draft text.
+- If no material risks are found, return {"risks":[]}.
+- Do not include markdown, code fences, or extra keys.${knowledgeContext}`;
+
+        const userInput = `Draft Title: ${draftTitle}\n\nDraft Content:\n${draftText.slice(0, 14000)}`;
+        const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.draft);
+        await logUsageCost(userId, "draft", result.model, sysInstruction + userInput, result.text);
+        return result.text;
+      });
+
+      let parsed: any = null;
+      const cleaned = responseText.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        const start = cleaned.indexOf("{");
+        const end = cleaned.lastIndexOf("}");
+        if (start >= 0 && end > start) {
+          try {
+            parsed = JSON.parse(cleaned.slice(start, end + 1));
+          } catch {
+            parsed = null;
+          }
+        }
+      }
+
+      const rawRisks = Array.isArray(parsed?.risks) ? parsed.risks : [];
+      const risks = rawRisks
+        .slice(0, 8)
+        .map((risk: any, idx: number) => {
+          const severity = risk?.severity === "danger" ? "danger" : "warning";
+          const titleText = typeof risk?.title === "string" && risk.title.trim()
+            ? risk.title.trim()
+            : `Risk ${idx + 1}`;
+          const detailText = typeof risk?.detail === "string" && risk.detail.trim()
+            ? risk.detail.trim()
+            : "Potential drafting issue detected in this document.";
+          const promptText = typeof risk?.prompt === "string" && risk.prompt.trim()
+            ? risk.prompt.trim()
+            : `Draft a corrective clause to resolve: ${titleText}.`;
+          const idText = typeof risk?.id === "string" && risk.id.trim()
+            ? risk.id.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 48)
+            : `risk-${idx + 1}`;
+          return {
+            id: idText || `risk-${idx + 1}`,
+            title: titleText,
+            detail: detailText,
+            severity,
+            prompt: promptText,
+          };
+        });
+
+      res.json({ risks, fromCache });
+    } catch (err) {
+      console.error("Error generating draft risk analysis:", err);
+      res.status(500).json({ message: "Failed to analyze drafting risks" });
     }
   });
 
