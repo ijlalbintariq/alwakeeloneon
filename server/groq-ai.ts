@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
-const FALLBACK_MODEL = "llama-3.3-70b-versatile";
+const FALLBACK_MODEL = "openai/gpt-oss-120b";
 
 let groqClient: OpenAI | null = null;
 let resolvedModel: string | null = null;
@@ -23,11 +23,11 @@ export function isGroqAvailable(): boolean {
   return !!process.env.GROQ_API_KEY;
 }
 
-const MODEL_PRIORITY = [
+const ALLOWED_MODELS = [
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
   "llama-3.1-8b-instant",
-];
+] as const;
 
 async function resolveModel(): Promise<string> {
   if (resolvedModel) return resolvedModel!;
@@ -38,25 +38,21 @@ async function resolveModel(): Promise<string> {
     const available = modelsResponse.data.map((m: any) => m.id);
     console.log("[Groq] Available models:", available.join(", "));
 
-    for (const preferred of MODEL_PRIORITY) {
+    for (const preferred of ALLOWED_MODELS) {
       if (available.includes(preferred)) {
         resolvedModel = preferred;
         console.log(`[Groq] Selected model: ${resolvedModel}`);
         return resolvedModel!;
       }
     }
-
-    if (available.length > 0) {
-      resolvedModel = available[0];
-      console.log(`[Groq] Using first available model: ${resolvedModel}`);
-      return resolvedModel!;
-    }
+    console.warn("[Groq] None of the allowed models are available:", ALLOWED_MODELS.join(", "));
   } catch (err: any) {
     console.warn("[Groq] Could not fetch models list:", err?.message || err);
   }
 
+  // Keep a deterministic fallback from the allowed list only.
   resolvedModel = FALLBACK_MODEL;
-  console.log(`[Groq] Falling back to default model: ${resolvedModel}`);
+  console.log(`[Groq] Falling back to allowed default model: ${resolvedModel}`);
   return resolvedModel!;
 }
 
