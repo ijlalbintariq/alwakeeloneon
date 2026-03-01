@@ -3,7 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 
 type Role = "user" | "assistant";
-type ChatMessage = { id: string; role: Role; content: string };
+type ChatMessage = {
+  id: string;
+  role: Role;
+  content: string;
+  modelName?: string;
+  modelId?: string;
+  modelDescription?: string;
+};
 
 type UsageData = {
   tier: string;
@@ -27,6 +34,29 @@ type ChatSession = {
 };
 
 const ChatSessionContext = createContext<ChatSession | null>(null);
+
+function getModelDisplayName(modelId: string): string {
+  const id = modelId.toLowerCase();
+  if (id.includes("deepseek-reasoner")) return "DeepSeek Pro";
+  if (id.includes("deepseek")) return "Turbo";
+  if (id.includes("openai/gpt-oss-120b")) return "GPT OSS 120B";
+  if (id.includes("openai/gpt-oss-20b")) return "GPT OSS 20B";
+  if (id.includes("llama-3.1-8b-instant")) return "Llama 3.1 8B";
+  if (id.includes("apex")) return "Apex";
+  if (id.includes("groq")) return "Standard";
+  return "Standard";
+}
+
+function getModelFunctionDescription(modelId: string): string {
+  const id = modelId.toLowerCase();
+  if (id.includes("openai/gpt-oss-120b")) return "Highest quality legal reasoning and detailed drafting.";
+  if (id.includes("openai/gpt-oss-20b")) return "Balanced legal analysis with faster response time.";
+  if (id.includes("llama-3.1-8b-instant")) return "Low-latency responses for quick legal guidance.";
+  if (id.includes("deepseek-reasoner")) return "Advanced multi-step reasoning for complex legal problems.";
+  if (id.includes("deepseek")) return "Turbo legal analysis optimized for speed and quality.";
+  if (id.includes("apex")) return "Kimi-based legal assistant focused on high-quality responses.";
+  return "Default legal chat mode with reliable fast responses.";
+}
 
 export function ChatSessionProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -75,7 +105,15 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         const data = await response.json();
-        setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: data.content }]);
+        const modelId = data.model || (turboMode && canUseTurbo ? "deepseek-chat" : "standard");
+        setMessages(prev => [...prev, {
+          id: assistantId,
+          role: "assistant",
+          content: data.content,
+          modelId,
+          modelName: getModelDisplayName(modelId),
+          modelDescription: getModelFunctionDescription(modelId),
+        }]);
       } else {
         setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: "" }]);
         const reader = response.body?.getReader();
@@ -99,6 +137,19 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
                     throw { message: parsed.error, isLimit: false };
                   }
                   if (parsed.done) {
+                    const modelId = parsed.model || (turboMode && canUseTurbo ? "deepseek-chat" : "standard");
+                    setMessages(prev => {
+                      const last = prev[prev.length - 1];
+                      if (last && last.id === assistantId) {
+                        return [...prev.slice(0, -1), {
+                          ...last,
+                          modelId,
+                          modelName: getModelDisplayName(modelId),
+                          modelDescription: getModelFunctionDescription(modelId),
+                        }];
+                      }
+                      return prev;
+                    });
                     break;
                   }
                   if (parsed.text) {
