@@ -3,18 +3,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
   ArrowRight,
+  Brain,
   Bold,
   BookOpen,
   Bot,
   Download,
   FileText,
   Gavel,
-  HelpCircle,
   Italic,
   List,
   ListOrdered,
   Search,
-  Settings,
   Share2,
   Sparkles,
   Type,
@@ -59,7 +58,20 @@ type DraftTemplate = {
   body: string;
 };
 
+type StatuteReference = {
+  label: string;
+  href: string;
+};
+
+type MemoryItem = {
+  id: string;
+  kind: "instruction" | "clause" | "risk";
+  text: string;
+  ts: number;
+};
+
 const AUTOSAVE_KEY = "legal-drafting-workspace-v2";
+const CONTEXT_MEMORY_KEY = "legal-drafting-context-memory-v1";
 const DRAFT_TITLE_PREFIX = "Legal Draft:";
 
 const DEFAULT_DOC = "";
@@ -103,11 +115,39 @@ const TEMPLATES: DraftTemplate[] = [
   },
 ];
 
-const STATUTE_REFERENCES = [
-  { label: "Contract Act, 1872", href: "/statute-search" },
-  { label: "Transfer of Property Act, 1882", href: "/statute-search" },
-  { label: "Code of Civil Procedure", href: "/statute-search" },
-];
+function inferStatuteReferences(draft: string): StatuteReference[] {
+  const text = draft.toLowerCase();
+  if (!text.trim()) return [];
+
+  const patterns: Array<{ key: string; name: string; regex: RegExp }> = [
+    { key: "constitution", name: "Constitution of Pakistan, 1973", regex: /\bconstitution\b/i },
+    { key: "ppc", name: "Pakistan Penal Code, 1860", regex: /\b(pakistan penal code|ppc)\b/i },
+    { key: "crpc", name: "Code of Criminal Procedure, 1898", regex: /\b(code of criminal procedure|crpc)\b/i },
+    { key: "cpc", name: "Code of Civil Procedure, 1908", regex: /\b(code of civil procedure|cpc)\b/i },
+    { key: "contract", name: "Contract Act, 1872", regex: /\b(contract act|contracts? act)\b/i },
+    { key: "property", name: "Transfer of Property Act, 1882", regex: /\b(transfer of property act|property transfer)\b/i },
+    { key: "registration", name: "Registration Act, 1908", regex: /\bregistration act\b/i },
+    { key: "evidence", name: "Qanun-e-Shahadat Order, 1984", regex: /\b(qanun[-\s]?e[-\s]?shahadat|evidence law)\b/i },
+    { key: "family", name: "Family Courts Act, 1964", regex: /\b(family courts? act|family court)\b/i },
+  ];
+
+  const sectionMatches = Array.from(
+    draft.matchAll(/\b(?:section|sec\.?|s\.)\s*(\d+[a-zA-Z-]*)\b/gi),
+  ).map((m) => m[1]).slice(0, 6);
+
+  const refs: StatuteReference[] = [];
+  for (const item of patterns) {
+    if (!item.regex.test(text)) continue;
+    const sectionSuffix = sectionMatches.length > 0 ? ` — Section ${sectionMatches[0]}` : "";
+    const q = encodeURIComponent(`${item.name} ${sectionMatches[0] || ""}`.trim());
+    refs.push({
+      label: `${item.name}${sectionSuffix}`,
+      href: `/statute-search?q=${q}`,
+    });
+  }
+
+  return refs.slice(0, 5);
+}
 
 export default function LegalDraftingPage() {
   const { user } = useAuth();
@@ -124,6 +164,9 @@ export default function LegalDraftingPage() {
   const [riskLoading, setRiskLoading] = useState(false);
   const [riskResults, setRiskResults] = useState<DraftSuggestion[]>([]);
   const [activeLeftTool, setActiveLeftTool] = useState<"drafts" | "templates" | "collab" | "archive">("drafts");
+  const [memoryEnabled, setMemoryEnabled] = useState(true);
+  const [memoryItems, setMemoryItems] = useState<MemoryItem[]>([]);
+  const statuteReferences = useMemo(() => inferStatuteReferences(docText), [docText]);
 
   const { data: allDocuments = [], isLoading: loadingDocs } = useQuery<DraftDocument[]>({
     queryKey: [api.documents.list.path],
@@ -179,6 +222,21 @@ export default function LegalDraftingPage() {
   }, []);
 
   useEffect(() => {
+    const raw = localStorage.getItem(CONTEXT_MEMORY_KEY);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as MemoryItem[];
+      if (Array.isArray(parsed)) {
+        setMemoryItems(
+          parsed
+            .filter((m) => m && typeof m.text === "string" && typeof m.ts === "number")
+            .slice(0, 30)
+        );
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
     setIsSavedLocal(false);
     const timeout = setTimeout(() => {
       localStorage.setItem(AUTOSAVE_KEY, docText);
@@ -186,6 +244,10 @@ export default function LegalDraftingPage() {
     }, 800);
     return () => clearTimeout(timeout);
   }, [docText]);
+
+  useEffect(() => {
+    localStorage.setItem(CONTEXT_MEMORY_KEY, JSON.stringify(memoryItems.slice(0, 30)));
+  }, [memoryItems]);
 
   const collaborators = useMemo(() => {
     if (orgMembers.length > 0) {
@@ -202,6 +264,35 @@ export default function LegalDraftingPage() {
     const self = `${(user?.firstName || "")[0] || ""}${(user?.lastName || "")[0] || ""}`.toUpperCase();
     return [self || "U"];
   }, [orgMembers, user?.firstName, user?.lastName]);
+
+  const addMemoryItem = (kind: MemoryItem["kind"], text: string) => {
+    const clean = text.trim().replace(/\s+/g, " ");
+    if (!clean) return;
+    setMemoryItems((prev) => {
+      const recent = prev[0];
+      if (recent && recent.text === clean && recent.kind === kind) {
+        return prev;
+      }
+      return [
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          kind,
+          text: clean.slice(0, 500),
+          ts: Date.now(),
+        },
+        ...prev,
+      ].slice(0, 30);
+    });
+  };
+
+  const memoryContextText = useMemo(() => {
+    if (!memoryEnabled || memoryItems.length === 0) return "";
+    const entries = memoryItems.slice(0, 8).map((m) => {
+      const label = m.kind === "instruction" ? "Instruction" : m.kind === "clause" ? "Clause" : "Risk";
+      return `- ${label}: ${m.text}`;
+    });
+    return entries.join("\n");
+  }, [memoryEnabled, memoryItems]);
 
   const applyWrap = (prefix: string, suffix = prefix) => {
     const el = editorRef.current;
@@ -280,6 +371,12 @@ export default function LegalDraftingPage() {
       }));
 
       setRiskResults(normalized);
+      if (normalized.length > 0) {
+        addMemoryItem(
+          "risk",
+          `Risk scan found ${normalized.length} item(s): ${normalized.slice(0, 3).map((r) => r.title).join("; ")}`
+        );
+      }
     } catch (err: any) {
       toast({
         title: "Risk analysis failed",
@@ -376,7 +473,11 @@ export default function LegalDraftingPage() {
         messages: [
           {
             role: "user",
-            content: `Current draft:\n${docText}\n\nInstruction:\n${prompt}\n\nReturn only the clause text in legal drafting style for Pakistan.`,
+            content: `Current draft:\n${docText}${
+              memoryContextText
+                ? `\n\nSession context memory (use this to stay consistent with prior drafting decisions):\n${memoryContextText}`
+                : ""
+            }\n\nInstruction:\n${prompt}\n\nReturn only the clause text in legal drafting style for Pakistan.`,
           },
         ],
         type: "draft",
@@ -400,6 +501,8 @@ export default function LegalDraftingPage() {
       if (!clause) throw new Error("No clause generated");
 
       setDocText((prev) => `${prev.trim()}\n\n${clause}\n`);
+      addMemoryItem("instruction", prompt);
+      addMemoryItem("clause", clause);
       setAiPrompt("");
       toast({ title: "Clause inserted" });
 
@@ -471,12 +574,27 @@ export default function LegalDraftingPage() {
   }, []);
 
   return (
-    <div className="h-full min-h-[820px] rounded-2xl border border-amber-500/10 overflow-hidden bg-[#1a160f] text-slate-100 fade-in flex flex-col">
-      <header className="h-16 border-b border-amber-500/10 flex items-center justify-between px-4 md:px-6 bg-[#1a160f] z-20">
+    <div className="relative isolate h-full min-h-[820px] rounded-xl border border-[hsl(var(--preview-border))] overflow-hidden bg-[#0f172a]/70 backdrop-blur-xl text-slate-100 fade-in flex flex-col shadow-2xl">
+      <div className="pointer-events-none absolute -top-24 right-10 h-56 w-56 rounded-full bg-amber-500/12 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 left-8 h-60 w-60 rounded-full bg-cyan-400/10 blur-3xl" />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.08]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.2) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }}
+      />
+      <header className="h-16 border-b border-[hsl(var(--preview-border))] flex items-center justify-between px-4 md:px-6 bg-[#0f172a]/55 backdrop-blur-xl z-20">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="flex items-center gap-2">
-            <Gavel size={28} className="text-amber-400" />
-            <h2 className="text-lg md:text-xl font-bold tracking-tight">Al Wakeelo</h2>
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-lg bg-gradient-to-br from-cyan-300 to-cyan-500 text-slate-950 flex items-center justify-center shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-100/30">
+              <Gavel size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg md:text-xl font-bold tracking-tight">Legal Drafting Studio</h2>
+              <p className="text-[9px] uppercase tracking-[0.24em] text-cyan-300/80 font-black">AL WAKEELO / DRAFT OPS</p>
+            </div>
           </div>
           <div className="hidden md:block h-6 w-px bg-amber-500/20" />
           <div className="hidden md:flex items-center gap-3 min-w-0">
@@ -497,7 +615,7 @@ export default function LegalDraftingPage() {
             {collaborators.map((c, idx) => (
               <div
                 key={`${c}-${idx}`}
-                className="size-8 rounded-full border-2 border-[#1a160f] bg-amber-500/15 flex items-center justify-center text-[10px] font-bold"
+                className="size-8 rounded-md border border-cyan-400/40 bg-cyan-500/15 text-cyan-100 flex items-center justify-center text-[10px] font-bold shadow"
               >
                 {c}
               </div>
@@ -505,7 +623,7 @@ export default function LegalDraftingPage() {
           </div>
           <Button
             variant="outline"
-            className="h-10 px-3 border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+            className="h-10 px-3 border-slate-700 text-slate-200 hover:bg-slate-800"
             onClick={shareDraft}
             data-testid="button-share-draft"
           >
@@ -514,7 +632,7 @@ export default function LegalDraftingPage() {
           </Button>
           <Button
             variant="outline"
-            className="h-10 px-3 border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+            className="h-10 px-3 border-slate-700 text-slate-200 hover:bg-slate-800"
             onClick={exportAsTxt}
             data-testid="button-export-txt"
           >
@@ -522,7 +640,7 @@ export default function LegalDraftingPage() {
             TXT
           </Button>
           <Button
-            className="h-10 px-3 bg-amber-500 text-[#1a160f] hover:bg-amber-400 font-bold"
+            className="h-10 px-3 bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold shadow-lg shadow-amber-500/20"
             onClick={exportAsDoc}
             data-testid="button-export-doc"
           >
@@ -533,12 +651,12 @@ export default function LegalDraftingPage() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-16 md:w-72 border-r border-amber-500/10 bg-[#1a160f] flex flex-col py-4 md:py-5">
-          <div className="hidden md:flex items-center justify-between px-4 pb-3 border-b border-amber-500/10">
+        <aside className="w-16 md:w-64 border-r border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex flex-col py-4 md:py-5">
+          <div className="hidden md:flex items-center justify-between px-4 pb-3 border-b border-[hsl(var(--preview-border))]">
             <p className="text-xs uppercase tracking-widest text-amber-300 font-bold">Workspace</p>
             <Button
               size="sm"
-              className="h-7 px-2 bg-amber-500 text-[#1a160f] hover:bg-amber-400"
+              className="h-7 px-2 bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-md shadow-amber-500/20"
               onClick={() => {
                 setDocText(DEFAULT_DOC);
                 setDraftTitle("Untitled Draft");
@@ -550,26 +668,26 @@ export default function LegalDraftingPage() {
             </Button>
           </div>
 
-          <div className="flex md:hidden flex-col items-center gap-5 pt-4">
-            <button onClick={() => setActiveLeftTool("drafts")} className={activeLeftTool === "drafts" ? "text-amber-400" : "text-slate-400"}><FolderOpen size={20} /></button>
-            <button onClick={() => setActiveLeftTool("templates")} className={activeLeftTool === "templates" ? "text-amber-400" : "text-slate-400"}><FileText size={20} /></button>
-            <button onClick={() => { setActiveLeftTool("collab"); shareWorkspaceLink(); }} className={activeLeftTool === "collab" ? "text-amber-400" : "text-slate-400"}><Users size={20} /></button>
-            <button onClick={() => { setActiveLeftTool("archive"); window.location.href = "/case-documents"; }} className={activeLeftTool === "archive" ? "text-amber-400" : "text-slate-400"}><Archive size={20} /></button>
+          <div className="flex md:hidden flex-col items-center gap-3 pt-4">
+            <button onClick={() => setActiveLeftTool("drafts")} className={`p-2.5 rounded-xl border ${activeLeftTool === "drafts" ? "text-amber-400 border-amber-500/40 bg-amber-500/10" : "text-slate-400 border-slate-700 bg-[#1e293b]/40"}`}><FolderOpen size={18} /></button>
+            <button onClick={() => setActiveLeftTool("templates")} className={`p-2.5 rounded-xl border ${activeLeftTool === "templates" ? "text-amber-400 border-amber-500/40 bg-amber-500/10" : "text-slate-400 border-slate-700 bg-[#1e293b]/40"}`}><FileText size={18} /></button>
+            <button onClick={() => { setActiveLeftTool("collab"); shareWorkspaceLink(); }} className={`p-2.5 rounded-xl border ${activeLeftTool === "collab" ? "text-amber-400 border-amber-500/40 bg-amber-500/10" : "text-slate-400 border-slate-700 bg-[#1e293b]/40"}`}><Users size={18} /></button>
+            <button onClick={() => { setActiveLeftTool("archive"); window.location.href = "/case-documents"; }} className={`p-2.5 rounded-xl border ${activeLeftTool === "archive" ? "text-amber-400 border-amber-500/40 bg-amber-500/10" : "text-slate-400 border-slate-700 bg-[#1e293b]/40"}`}><Archive size={18} /></button>
           </div>
 
           <div className="hidden md:flex flex-col px-3 pt-3 gap-2">
             <button
               onClick={() => setActiveLeftTool("drafts")}
-              className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                activeLeftTool === "drafts" ? "bg-amber-500/12 text-amber-300" : "text-slate-300 hover:bg-amber-500/8"
+              className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
+                activeLeftTool === "drafts" ? "bg-cyan-500/12 text-cyan-200 border border-cyan-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
               }`}
             >
               <FolderOpen size={16} /> My Drafts
             </button>
             <button
               onClick={() => setActiveLeftTool("templates")}
-              className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                activeLeftTool === "templates" ? "bg-amber-500/12 text-amber-300" : "text-slate-300 hover:bg-amber-500/8"
+              className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
+                activeLeftTool === "templates" ? "bg-cyan-500/12 text-cyan-200 border border-cyan-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
               }`}
             >
               <FileText size={16} /> Templates
@@ -579,8 +697,8 @@ export default function LegalDraftingPage() {
                 setActiveLeftTool("collab");
                 shareWorkspaceLink();
               }}
-              className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                activeLeftTool === "collab" ? "bg-amber-500/12 text-amber-300" : "text-slate-300 hover:bg-amber-500/8"
+              className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
+                activeLeftTool === "collab" ? "bg-cyan-500/12 text-cyan-200 border border-cyan-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
               }`}
             >
               <Users size={16} /> Collaborate
@@ -590,8 +708,8 @@ export default function LegalDraftingPage() {
                 setActiveLeftTool("archive");
                 window.location.href = "/case-documents";
               }}
-              className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                activeLeftTool === "archive" ? "bg-amber-500/12 text-amber-300" : "text-slate-300 hover:bg-amber-500/8"
+              className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
+                activeLeftTool === "archive" ? "bg-cyan-500/12 text-cyan-200 border border-cyan-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
               }`}
             >
               <Archive size={16} /> Archive
@@ -605,7 +723,7 @@ export default function LegalDraftingPage() {
                   <button
                     key={template.id}
                     onClick={() => applyTemplate(template)}
-                    className="w-full text-left rounded-lg border border-amber-500/10 bg-[#2a2419]/30 p-3 hover:border-amber-500/30"
+                    className="w-full text-left rounded-xl border border-slate-700/70 bg-[#1e293b]/45 backdrop-blur-md p-3 hover:border-amber-500/30 transition-all"
                   >
                     <p className="text-sm font-semibold text-slate-100">{template.title}</p>
                     <p className="text-xs text-slate-400 mt-1">Click to load this template.</p>
@@ -624,8 +742,8 @@ export default function LegalDraftingPage() {
                     return (
                       <div
                         key={doc.id}
-                        className={`rounded-lg border p-2 ${
-                          active ? "border-amber-400/40 bg-amber-500/10" : "border-amber-500/10 bg-[#2a2419]/20"
+                        className={`rounded-xl border p-2 backdrop-blur-md ${
+                          active ? "border-amber-400/40 bg-amber-500/10" : "border-slate-700 bg-[#1e293b]/20"
                         }`}
                       >
                         <button className="w-full text-left" onClick={() => loadDraft(doc)}>
@@ -653,18 +771,13 @@ export default function LegalDraftingPage() {
             )}
           </div>
 
-          <div className="hidden md:flex mt-auto px-3 pt-3 border-t border-amber-500/10 justify-between">
-            <a href="/settings" className="text-slate-400 hover:text-amber-400" title="Settings">
-              <Settings size={18} />
-            </a>
-            <a href="/history" className="text-slate-400 hover:text-amber-400" title="Help">
-              <HelpCircle size={18} />
-            </a>
+          <div className="hidden md:block mt-auto px-3 pt-3 border-t border-[hsl(var(--preview-border))]">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 font-black">Draft Interface v2.1</p>
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col bg-[#120f0a] overflow-hidden">
-          <div className="h-12 border-b border-amber-500/10 bg-[#1a160f]/85 flex items-center px-2 md:px-4 justify-between">
+        <main className="flex-1 flex flex-col bg-[#0f172a]/50 overflow-hidden">
+          <div className="h-12 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex items-center px-2 md:px-4 justify-between">
             <div className="flex items-center gap-1">
               <button onClick={() => applyWrap("**")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
                 <Bold size={16} />
@@ -701,7 +814,7 @@ export default function LegalDraftingPage() {
                 Insert Citation
               </Button>
               <Button
-                className="h-8 px-3 bg-amber-500 text-[#1a160f] text-xs font-bold hover:bg-amber-400"
+                className="h-8 px-3 bg-amber-500 text-slate-950 text-xs font-bold hover:bg-amber-400"
                 onClick={() => generateClause()}
                 disabled={isGenerating || !aiPrompt.trim()}
                 data-testid="button-generate-clause"
@@ -715,11 +828,11 @@ export default function LegalDraftingPage() {
             <input
               value={draftTitle}
               onChange={(e) => setDraftTitle(e.target.value)}
-              className="h-9 w-[240px] bg-[#2a2419]/40 border border-amber-500/20 rounded-md px-3 text-sm text-slate-100"
+              className="h-9 w-[240px] bg-[#1e293b]/45 border border-slate-700 rounded-lg px-3 text-sm text-slate-100 backdrop-blur-md"
               placeholder="Draft title"
             />
             <Button
-              className="h-9 bg-amber-500 text-[#1a160f] hover:bg-amber-400 font-semibold"
+              className="h-9 bg-amber-500 text-slate-950 hover:bg-amber-400 font-semibold"
               onClick={saveDraft}
               disabled={saveDraftMutation.isPending}
             >
@@ -732,7 +845,7 @@ export default function LegalDraftingPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 flex justify-center">
-            <div className="w-full max-w-[816px] min-h-[860px] md:min-h-[980px] bg-white text-slate-900 shadow-2xl rounded-sm p-6 md:p-12 lg:p-16 legal-draft-font">
+            <div className="w-full max-w-[880px] min-h-[860px] md:min-h-[980px] bg-white/95 text-slate-900 shadow-2xl rounded-2xl p-6 md:p-12 lg:p-16 legal-draft-font border border-white/70 backdrop-blur-sm">
               <Textarea
                 ref={editorRef}
                 value={docText}
@@ -744,13 +857,15 @@ export default function LegalDraftingPage() {
           </div>
         </main>
 
-        <aside className="w-[340px] xl:w-[360px] hidden lg:flex flex-col bg-[#1a160f]/95 border-l border-amber-500/10 overflow-hidden">
-          <div className="p-5 border-b border-amber-500/10 flex items-center justify-between">
+        <aside className="w-[340px] xl:w-[360px] hidden lg:flex flex-col bg-[#0f172a]/45 border-l border-[hsl(var(--preview-border))] backdrop-blur-xl overflow-hidden">
+          <div className="p-5 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/35 backdrop-blur-xl flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bot size={16} className="text-amber-400" />
+              <div className="size-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                <Bot size={14} className="text-amber-300" />
+              </div>
               <h3 className="font-bold text-sm tracking-wide uppercase">AI Drafting Assistant</h3>
             </div>
-            <div className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">PRO</div>
+            <div className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/30 to-amber-300/20 text-amber-200 text-[10px] font-bold border border-amber-400/30">PRO</div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-5 space-y-7">
@@ -760,13 +875,13 @@ export default function LegalDraftingPage() {
                 <Textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  className="w-full bg-[#2a2419]/50 border border-amber-500/20 rounded-xl p-3 text-sm focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none resize-none placeholder:text-slate-600"
+                  className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-xl p-3 text-sm focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none resize-none placeholder:text-slate-600"
                   placeholder="e.g., Write a force majeure clause for Pakistan"
                   rows={4}
                   data-testid="textarea-ai-draft-prompt"
                 />
                 <button
-                  className="absolute bottom-3 right-3 size-8 rounded-lg bg-amber-500 text-[#1a160f] flex items-center justify-center shadow-lg disabled:opacity-50"
+                  className="absolute bottom-3 right-3 size-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center shadow-lg disabled:opacity-50"
                   onClick={() => generateClause()}
                   disabled={isGenerating || !aiPrompt.trim()}
                   data-testid="button-send-ai-draft-prompt"
@@ -822,33 +937,88 @@ export default function LegalDraftingPage() {
             <section>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Statute Reference</label>
               <div className="space-y-2">
-                {STATUTE_REFERENCES.map((item) => (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    className="flex items-center justify-between p-3 rounded-lg bg-[#2a2419]/30 border border-amber-500/5 hover:border-amber-500/20 transition-all"
-                    data-testid={`statute-ref-${item.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <BookOpen size={16} className="text-slate-400" />
-                      <span className="text-xs font-medium">{item.label}</span>
-                    </div>
-                    <ArrowRight size={13} className="text-slate-500" />
-                  </a>
-                ))}
+                {statuteReferences.length === 0 ? (
+                  <div className="p-3 rounded-lg bg-[#1e293b]/20 border border-slate-700">
+                    <p className="text-[11px] text-slate-400">
+                      No statute references detected in this draft yet.
+                    </p>
+                  </div>
+                ) : (
+                  statuteReferences.map((item) => (
+                    <a
+                      key={item.label}
+                      href={item.href}
+                      className="flex items-center justify-between p-3 rounded-lg bg-[#1e293b]/30 border border-slate-700 hover:border-amber-500/20 transition-all"
+                      data-testid={`statute-ref-${item.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <BookOpen size={16} className="text-slate-400" />
+                        <span className="text-xs font-medium">{item.label}</span>
+                      </div>
+                      <ArrowRight size={13} className="text-slate-500" />
+                    </a>
+                  ))
+                )}
               </div>
             </section>
           </div>
 
-          <div className="p-5 border-t border-amber-500/10">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
-              <div className="size-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                <Bot size={18} className="text-amber-400" />
+          <div className="p-5 border-t border-[hsl(var(--preview-border))]">
+            <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-slate-900/30 to-slate-800/30 p-3 shadow-[0_10px_30px_-20px_rgba(251,191,36,0.5)]">
+              <div className="flex items-center gap-3">
+                <div className="size-9 rounded-xl bg-amber-400/20 border border-amber-300/30 flex items-center justify-center">
+                  <Brain size={18} className="text-amber-200" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] font-bold text-amber-200 uppercase tracking-[0.18em]">Context Memory</div>
+                  <div className="text-xs font-medium text-slate-200">
+                    {memoryEnabled
+                      ? `Active · ${memoryItems.length} memory item(s)`
+                      : "Paused · Not applied to AI prompts"}
+                  </div>
+                </div>
+                <div className={`size-2 rounded-full ${memoryEnabled ? "bg-emerald-400" : "bg-slate-500"}`} />
               </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-bold text-slate-500 uppercase">Context Memory</div>
-                <div className="text-xs font-medium">Referencing this legal draft session</div>
+
+              <div className="mt-3 flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 border-amber-300/30 text-amber-100 bg-amber-500/10 hover:bg-amber-500/20"
+                  onClick={() => setMemoryEnabled((v) => !v)}
+                  data-testid="button-toggle-context-memory"
+                >
+                  {memoryEnabled ? "Pause Memory" : "Enable Memory"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 border-rose-300/30 text-rose-100 bg-rose-500/10 hover:bg-rose-500/20"
+                  onClick={() => {
+                    setMemoryItems([]);
+                    localStorage.removeItem(CONTEXT_MEMORY_KEY);
+                    toast({ title: "Context memory cleared" });
+                  }}
+                  data-testid="button-clear-context-memory"
+                >
+                  <Trash2 size={12} className="mr-1" />
+                  Clear
+                </Button>
               </div>
+
+              {memoryItems.length > 0 && (
+                <div className="mt-3 max-h-24 overflow-y-auto space-y-1.5 pr-1">
+                  {memoryItems.slice(0, 3).map((item) => (
+                    <div key={item.id} className="text-[10px] text-slate-300 bg-slate-900/40 border border-slate-700/50 rounded-md px-2 py-1">
+                      <span className="text-amber-200 uppercase mr-1.5 tracking-wide">{item.kind}</span>
+                      {item.text}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {memoryItems.length === 0 && (
+                <p className="mt-3 text-[10px] text-slate-400">No memory captured yet in this drafting session.</p>
+              )}
             </div>
           </div>
         </aside>

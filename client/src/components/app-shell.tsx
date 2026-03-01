@@ -40,9 +40,9 @@ function AppSidebar() {
   const { user, logout } = useAuth();
 
   return (
-    <Sidebar className="bg-gradient-to-b from-[#131f33] to-[#0d1627] border-r border-[hsl(var(--preview-border))]">
+    <Sidebar className="bg-gradient-to-b from-[#131f33]/85 to-[#0d1627]/80 border-r border-[hsl(var(--preview-border))] backdrop-blur-xl">
       <SidebarHeader className="p-4 border-b border-[hsl(var(--preview-border))]">
-        <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/80 px-3 py-3 shadow-[0_18px_34px_-26px_rgba(0,0,0,0.9)]">
+        <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/65 backdrop-blur-lg px-3 py-3 shadow-[0_18px_34px_-26px_rgba(0,0,0,0.9)]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-amber-300 to-amber-500 rounded-xl flex items-center justify-center text-slate-900 shadow-xl shadow-amber-500/30 flex-shrink-0">
               <Scale size={18} />
@@ -93,7 +93,7 @@ function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-[hsl(var(--preview-border))] p-4">
-        <div className="mb-3 rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/70 px-3 py-2">
+        <div className="mb-3 rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 backdrop-blur-md px-3 py-2">
           <p className="text-[9px] uppercase tracking-[0.2em] text-slate-500 font-black">Signed in as</p>
           <p className="text-xs font-bold text-slate-200 truncate">{user?.email || "Advocate"}</p>
         </div>
@@ -153,7 +153,7 @@ function AppSidebar() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [location] = useLocation();
-  const isWideChatLayout = location === "/al-wakeelo";
+  const isWideChatLayout = location === "/al-wakeelo" || location === "/legal-drafting";
 
   const style = {
     "--sidebar-width": "18.5rem",
@@ -166,7 +166,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AppSidebar />
 
         <div className="flex flex-col flex-1 min-w-0">
-          <header className="h-14 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/70 backdrop-blur-sm flex items-center justify-between px-4 gap-4 z-50 sticky top-0">
+          <header className="h-14 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/55 backdrop-blur-xl flex items-center justify-between px-4 gap-4 z-50 sticky top-0">
             <SidebarTrigger data-testid="button-sidebar-toggle" className="text-slate-400 hover:text-white" />
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
@@ -185,8 +185,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto p-6 md:p-10 bg-[#0f172a] scrollbar-hide">
-            <div className={`${isWideChatLayout ? "max-w-[98rem]" : "max-w-7xl"} mx-auto h-full w-full`}>
+          <main className={`flex-1 overflow-y-auto bg-[#0f172a]/65 backdrop-blur-lg scrollbar-hide ${isWideChatLayout ? "p-2 sm:p-3 md:p-4" : "p-6 md:p-10"}`}>
+            <div className={`${isWideChatLayout ? "max-w-none" : "max-w-7xl"} mx-auto h-full w-full`}>
               {children}
             </div>
           </main>
