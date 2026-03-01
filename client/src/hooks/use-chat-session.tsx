@@ -7,6 +7,7 @@ type ChatMessage = {
   id: string;
   role: Role;
   content: string;
+  modeName?: string;
   modelName?: string;
   modelId?: string;
   modelDescription?: string;
@@ -106,10 +107,12 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
       if (contentType.includes("application/json")) {
         const data = await response.json();
         const modelId = data.model || (turboMode && canUseTurbo ? "deepseek-chat" : "standard");
+        const modeName = turboMode && canUseTurbo ? "Turbo" : "Standard";
         setMessages(prev => [...prev, {
           id: assistantId,
           role: "assistant",
           content: data.content,
+          modeName: canUseTurbo ? modeName : undefined,
           modelId,
           modelName: getModelDisplayName(modelId),
           modelDescription: getModelFunctionDescription(modelId),
@@ -138,11 +141,13 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
                   }
                   if (parsed.done) {
                     const modelId = parsed.model || (turboMode && canUseTurbo ? "deepseek-chat" : "standard");
+                    const modeName = turboMode && canUseTurbo ? "Turbo" : "Standard";
                     setMessages(prev => {
                       const last = prev[prev.length - 1];
                       if (last && last.id === assistantId) {
                         return [...prev.slice(0, -1), {
                           ...last,
+                          modeName: canUseTurbo ? modeName : undefined,
                           modelId,
                           modelName: getModelDisplayName(modelId),
                           modelDescription: getModelFunctionDescription(modelId),
