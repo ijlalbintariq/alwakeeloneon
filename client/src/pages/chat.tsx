@@ -22,6 +22,7 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   attachments?: string[];
+  modeName?: string;
   modelName?: string;
   modelId?: string;
   modelDescription?: string;
@@ -298,7 +299,16 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         const modelId = data.model || (isApexMode ? aiMode : aiMode);
         const modelLabel = modelId ? getModelDisplayName(modelId) : undefined;
         const modelDescription = modelId ? getModelFunctionDescription(modelId) : undefined;
-        setMessages([...updated, { id: assistantId, role: "assistant", content: data.content, modelName: modelLabel, modelId, modelDescription }]);
+        const modeLabel = isApexMode ? "Apex" : (turboMode && canUseTurbo ? "Turbo" : "Standard");
+        setMessages([...updated, {
+          id: assistantId,
+          role: "assistant",
+          content: data.content,
+          modeName: canUseTurbo ? modeLabel : undefined,
+          modelName: modelLabel,
+          modelId,
+          modelDescription,
+        }]);
       } else {
         setMessages([...updated, { id: assistantId, role: "assistant", content: "" }]);
         const reader = response.body?.getReader();
@@ -337,10 +347,17 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     const modelId = parsed.model || aiMode;
                     const modelLabel = getModelDisplayName(modelId);
                     const modelDescription = getModelFunctionDescription(modelId);
+                    const modeLabel = isApexMode ? "Apex" : (turboMode && canUseTurbo ? "Turbo" : "Standard");
                     setMessages(prev => {
                       const last = prev[prev.length - 1];
                       if (last && last.id === assistantId) {
-                        return [...prev.slice(0, -1), { ...last, modelName: modelLabel, modelId, modelDescription }];
+                        return [...prev.slice(0, -1), {
+                          ...last,
+                          modeName: canUseTurbo ? modeLabel : undefined,
+                          modelName: modelLabel,
+                          modelId,
+                          modelDescription,
+                        }];
                       }
                       return prev;
                     });
@@ -532,18 +549,25 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               >
                 {m.role === "assistant" ? (
                   <>
-                    {m.modelName && (
+                    {(m.modeName || m.modelName) && (
                       <div className="flex items-center gap-1.5 mb-3 pb-2 border-b border-slate-700/30">
-                        <div className="flex flex-col">
-                          <span className={`text-[9px] font-black uppercase tracking-widest ${
-                            m.modelName === "Turbo" ? "text-purple-400" :
-                            m.modelName === "Standard" ? "text-slate-500" :
-                            "text-emerald-400"
-                          }`}>
-                            {m.modelName === "Turbo" && <Zap size={9} className="inline mr-1" />}
-                            {m.modelName !== "Turbo" && m.modelName !== "Standard" && <Sparkles size={9} className="inline mr-1" />}
-                            {m.modelName}
-                          </span>
+                        <div className="flex flex-col gap-1">
+                          {m.modeName && (
+                            <span className={`text-[9px] font-black uppercase tracking-widest ${
+                              m.modeName === "Turbo" ? "text-purple-400" :
+                              m.modeName === "Standard" ? "text-slate-500" :
+                              "text-emerald-400"
+                            }`}>
+                              {m.modeName === "Turbo" && <Zap size={9} className="inline mr-1" />}
+                              {m.modeName !== "Turbo" && m.modeName !== "Standard" && <Sparkles size={9} className="inline mr-1" />}
+                              Mode: {m.modeName}
+                            </span>
+                          )}
+                          {m.modelName && (
+                            <span className="text-[9px] font-black uppercase tracking-widest text-amber-400">
+                              Model: {m.modelName}
+                            </span>
+                          )}
                           {m.modelDescription && (
                             <span className="text-[10px] text-slate-500 mt-0.5">
                               {m.modelDescription}

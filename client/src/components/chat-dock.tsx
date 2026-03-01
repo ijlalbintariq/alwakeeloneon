@@ -41,11 +41,20 @@ export function ChatDock() {
             {messages.map(m => (
               <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs ${m.role === "user" ? "bg-amber-500 text-slate-950" : "bg-[#0f172a] border border-slate-700 text-slate-200"}`}>
-                  {m.role === "assistant" && m.modelName && (
+                  {m.role === "assistant" && (m.modeName || m.modelName) && (
                     <div className="mb-1.5 pb-1 border-b border-slate-700/40">
-                      <div className="text-[9px] font-black uppercase tracking-widest text-emerald-400">
-                        {m.modelName}
-                      </div>
+                      {m.modeName && (
+                        <div className={`text-[9px] font-black uppercase tracking-widest ${
+                          m.modeName === "Turbo" ? "text-purple-400" : "text-slate-400"
+                        }`}>
+                          Mode: {m.modeName}
+                        </div>
+                      )}
+                      {m.modelName && (
+                        <div className="text-[9px] font-black uppercase tracking-widest text-emerald-400 mt-0.5">
+                          Model: {m.modelName}
+                        </div>
+                      )}
                       {m.modelDescription && (
                         <div className="text-[10px] text-slate-500 mt-0.5">
                           {m.modelDescription}
