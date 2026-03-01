@@ -84,7 +84,7 @@ export interface IStorage {
   hasAnyAdmin(): Promise<boolean>;
   getSystemStats(): Promise<{ totalUsers: number; totalThreads: number; totalMessages: number; totalDocuments: number; totalKnowledge: number; totalCacheEntries: number; totalUsageThisMonth: number }>;
   getUserProfile(userId: string): Promise<User | undefined>;
-  updateUserProfile(userId: string, data: { firstName?: string; lastName?: string }): Promise<User | undefined>;
+  updateUserProfile(userId: string, data: { firstName?: string; lastName?: string; profileImageUrl?: string | null }): Promise<User | undefined>;
 
   addAdminKnowledge(entry: InsertAdminKnowledge): Promise<AdminKnowledge>;
   getAllAdminKnowledge(): Promise<AdminKnowledge[]>;
@@ -520,7 +520,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUserProfile(userId: string, data: { firstName?: string; lastName?: string }): Promise<User | undefined> {
+  async updateUserProfile(userId: string, data: { firstName?: string; lastName?: string; profileImageUrl?: string | null }): Promise<User | undefined> {
     const [updated] = await db.update(users)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(users.id, userId))

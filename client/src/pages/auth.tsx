@@ -134,9 +134,14 @@ export default function AuthPage() {
       navigate("/");
     },
     onError: (error: any) => {
+      const message = typeof error?.message === "string" ? error.message : "Could not create account";
+      const friendlyMessage =
+        message.toLowerCase().includes("already exists")
+          ? "That email is already registered. Please log in or reset your password."
+          : message;
       toast({
         title: "Registration failed",
-        description: error.message || "Could not create account",
+        description: friendlyMessage,
         variant: "destructive",
       });
     },
@@ -154,20 +159,23 @@ export default function AuthPage() {
   const isPending = loginMutation.isPending || registerMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/5 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-amber-500/3 rounded-full blur-[100px]" />
+    <div className="min-h-screen preview-bg flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="absolute top-[-12%] left-[-12%] w-[44%] h-[44%] bg-amber-500/10 rounded-full blur-[130px]" />
+      <div className="absolute bottom-[-14%] right-[-12%] w-[36%] h-[36%] bg-emerald-500/10 rounded-full blur-[120px]" />
 
-      <div className="w-full max-w-md bg-[#1e293b] border border-slate-800 p-10 rounded-[3rem] shadow-2xl relative z-10 fade-in">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center mb-5 shadow-lg shadow-amber-500/20">
+      <div className="w-full max-w-md preview-elevated p-10 rounded-[2.2rem] relative z-10 fade-in">
+        <div className="text-center mb-8 pb-6 border-b border-[hsl(var(--preview-border))]">
+          <div className="w-16 h-16 bg-gradient-to-br from-amber-300 to-amber-500 rounded-2xl mx-auto flex items-center justify-center mb-5 shadow-lg shadow-amber-500/30">
             <Scale size={32} className="text-slate-900" />
           </div>
-          <h1 className="text-3xl font-bold text-white uppercase tracking-tighter italic" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h1 className="text-3xl font-bold preview-title uppercase tracking-tighter italic" style={{ fontFamily: "'Playfair Display', serif" }}>
             Al Wakeelo
           </h1>
-          <p className="text-[10px] uppercase tracking-[0.4em] text-slate-500 font-black mt-2">
+          <p className="text-[10px] uppercase tracking-[0.35em] preview-muted font-black mt-2">
             {mode === "login" ? "Enter the Chambers" : "Join the Chambers"}
+          </p>
+          <p className="text-xs preview-subtitle mt-3">
+            Secure legal workspace access for advocates and teams.
           </p>
         </div>
 
@@ -183,7 +191,7 @@ export default function AuthPage() {
                   onChange={(e) => setFirstName(e.target.value)}
                   required
                   data-testid="input-first-name"
-                  className="w-full bg-[#0f172a] border border-slate-700 text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-2xl text-sm focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-all"
+                  className="w-full bg-[#0f172a]/75 border border-[hsl(var(--preview-border))] text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
                 />
               </div>
               <div className="relative">
@@ -195,7 +203,7 @@ export default function AuthPage() {
                   onChange={(e) => setLastName(e.target.value)}
                   required
                   data-testid="input-last-name"
-                  className="w-full bg-[#0f172a] border border-slate-700 text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-2xl text-sm focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-all"
+                  className="w-full bg-[#0f172a]/75 border border-[hsl(var(--preview-border))] text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
                 />
               </div>
             </div>
@@ -210,7 +218,7 @@ export default function AuthPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               data-testid="input-email"
-              className="w-full bg-[#0f172a] border border-slate-700 text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-2xl text-sm focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-all"
+              className="w-full bg-[#0f172a]/75 border border-[hsl(var(--preview-border))] text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
             />
           </div>
 
@@ -224,7 +232,7 @@ export default function AuthPage() {
               required
               minLength={mode === "register" ? 8 : undefined}
               data-testid="input-password"
-              className="w-full bg-[#0f172a] border border-slate-700 text-white placeholder-slate-500 pl-11 pr-12 py-3.5 rounded-2xl text-sm focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-all"
+              className="w-full bg-[#0f172a]/75 border border-[hsl(var(--preview-border))] text-white placeholder-slate-500 pl-11 pr-12 py-3.5 rounded-xl text-sm transition-all preview-focus"
             />
             <button
               type="button"
@@ -241,7 +249,7 @@ export default function AuthPage() {
               <Link
                 href="/forgot-password"
                 data-testid="link-forgot-password"
-                className="text-xs text-slate-500 hover:text-amber-400 transition-colors"
+                className="text-xs preview-muted hover:text-amber-400 transition-colors"
               >
                 Forgot Password?
               </Link>
@@ -252,7 +260,7 @@ export default function AuthPage() {
             type="submit"
             disabled={isPending}
             data-testid="button-submit-auth"
-            className="w-full bg-amber-500 text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+            className="w-full bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black uppercase tracking-[0.22em] text-[11px] py-4 rounded-xl hover:from-amber-300 hover:to-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
           >
             {isPending ? (
               <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
@@ -265,16 +273,16 @@ export default function AuthPage() {
           </button>
         </form>
 
-        {googleStatus?.available && (
-          <>
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-slate-700" />
-              <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black">or</span>
-              <div className="flex-1 h-px bg-slate-700" />
-            </div>
+        <>
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-[hsl(var(--preview-border))]" />
+            <span className="text-[10px] preview-muted uppercase tracking-widest font-black">or continue with</span>
+            <div className="flex-1 h-px bg-[hsl(var(--preview-border))]" />
+          </div>
 
-            {googleLoading ? (
-              <div className="w-full bg-[#0f172a] border border-slate-700 text-slate-300 font-semibold text-xs py-3.5 rounded-2xl flex items-center justify-center gap-3">
+          {googleStatus?.available ? (
+            googleLoading ? (
+              <div className="w-full bg-[#0f172a]/75 border border-[hsl(var(--preview-border))] text-slate-300 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-3">
                 <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
                 Signing in with Google...
               </div>
@@ -284,9 +292,25 @@ export default function AuthPage() {
                 className="flex justify-center [&>div]:w-full"
                 data-testid="google-signin-button"
               />
-            )}
-          </>
-        )}
+            )
+          ) : (
+            <button
+              type="button"
+              disabled
+              data-testid="button-google-unavailable"
+              className="w-full bg-[#0f172a]/70 border border-[hsl(var(--preview-border))] text-slate-400 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+            >
+              <SiGoogle size={14} />
+              Continue with Google
+            </button>
+          )}
+
+          {!googleStatus?.available && (
+            <p className="mt-2 text-[10px] text-slate-500 text-center">
+              Google sign-in is currently unavailable.
+            </p>
+          )}
+        </>
 
         <div className="mt-6 text-center">
           <button
@@ -295,7 +319,7 @@ export default function AuthPage() {
               setPassword("");
             }}
             data-testid="button-toggle-auth-mode"
-            className="text-xs text-slate-500 hover:text-amber-400 transition-colors"
+            className="text-xs preview-muted hover:text-amber-400 transition-colors"
           >
             {mode === "login"
               ? "Don't have an account? Create one"

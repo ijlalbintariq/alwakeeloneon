@@ -44,7 +44,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-10 fade-in" data-testid="dashboard-page">
-      <div className="p-12 md:p-16 bg-gradient-to-br from-amber-500 to-amber-600 rounded-[3rem] text-slate-950 shadow-2xl relative overflow-hidden group">
+      <div className="p-12 md:p-16 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 rounded-[2.25rem] text-slate-950 shadow-2xl relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 group-hover:rotate-12 transition-all duration-1000">
           <Scale size={240} />
         </div>
@@ -62,7 +62,7 @@ export default function DashboardPage() {
       </div>
 
       {usage && (
-        <div className={`p-8 rounded-[2.5rem] border shadow-xl ${isAtLimit ? "bg-red-950/30 border-red-800/50" : isNearLimit ? "bg-amber-950/30 border-amber-800/50" : "bg-[#1e293b] border-slate-800"}`} data-testid="usage-panel">
+        <div className={`p-8 rounded-[1.75rem] border shadow-xl ${isAtLimit ? "bg-red-950/30 border-red-800/50" : isNearLimit ? "bg-amber-950/30 border-amber-800/50" : "preview-surface"}`} data-testid="usage-panel">
           <div className="flex items-center gap-4 mb-6">
             {isAtLimit ? (
               <AlertTriangle size={18} className="text-red-400" />
@@ -79,15 +79,15 @@ export default function DashboardPage() {
             <div className="md:col-span-2 space-y-4">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-3xl font-black text-white" data-testid="text-usage-count">
+                  <p className="text-3xl font-black preview-title" data-testid="text-usage-count">
                     {usage.used}
-                    <span className="text-lg text-slate-500 font-medium"> / {usage.monthlyLimit === 999999 ? "Unlimited" : usage.monthlyLimit}</span>
+                    <span className="text-lg preview-muted font-medium"> / {usage.monthlyLimit === 999999 ? "Unlimited" : usage.monthlyLimit}</span>
                   </p>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-1">
+                  <p className="text-[9px] font-black uppercase tracking-widest preview-muted mt-1">
                     AI Queries This Month
                   </p>
                 </div>
-                <p className="text-sm font-bold text-slate-400" data-testid="text-usage-remaining">
+                <p className="text-sm font-bold preview-subtitle" data-testid="text-usage-remaining">
                   {usage.remaining === 999999 ? "Unlimited" : usage.remaining} remaining
                 </p>
               </div>
@@ -98,10 +98,10 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="flex flex-col items-center gap-3 p-6 bg-slate-800/50 rounded-2xl">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Current Plan</p>
+            <div className="flex flex-col items-center gap-3 p-6 bg-slate-800/40 border border-[hsl(var(--preview-border))] rounded-2xl">
+              <p className="text-[9px] font-black uppercase tracking-widest preview-muted">Current Plan</p>
               <p className="text-xl font-black text-amber-500" data-testid="text-tier-label">{usage.tierLabel}</p>
-              <p className="text-[10px] text-slate-400 text-center">{usage.tierDescription}</p>
+              <p className="text-[10px] preview-subtitle text-center">{usage.tierDescription}</p>
             </div>
           </div>
 
@@ -127,12 +127,12 @@ export default function DashboardPage() {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.label} className="bg-[#1e293b] border border-slate-800 rounded-[2rem] p-6 md:p-8 shadow-xl" data-testid={`stat-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}>
+            <div key={stat.label} className="preview-surface rounded-[1.4rem] p-6 md:p-8 shadow-xl hover:-translate-y-0.5 transition-all" data-testid={`stat-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}>
               <div className="flex items-center gap-3 mb-4">
                 <div className={`p-2.5 bg-slate-800 rounded-xl ${stat.color}`}><Icon size={18} /></div>
               </div>
-              <p className="text-3xl font-black text-white mb-1">{stat.value}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">{stat.label}</p>
+              <p className="text-3xl font-black preview-title mb-1">{stat.value}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest preview-muted">{stat.label}</p>
             </div>
           );
         })}
@@ -149,12 +149,12 @@ export default function DashboardPage() {
             const Icon = action.icon;
             return (
               <Link key={action.label} href={action.href}>
-                <div className="p-8 bg-[#1e293b] border border-slate-800 rounded-[2.5rem] shadow-xl hover:border-amber-500/30 transition-all cursor-pointer group" data-testid={`action-${action.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                <div className="p-8 preview-surface rounded-[1.6rem] shadow-xl hover:border-amber-500/35 hover:shadow-[0_20px_40px_-26px_rgba(251,191,36,0.7)] transition-all cursor-pointer group" data-testid={`action-${action.label.toLowerCase().replace(/\s+/g, '-')}`}>
                   <div className="flex items-center gap-4 mb-4">
                     <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl group-hover:bg-amber-500 group-hover:text-slate-950 transition-all"><Icon size={20} /></div>
-                    <h4 className="text-sm font-bold text-white">{action.label}</h4>
+                    <h4 className="text-sm font-bold preview-title">{action.label}</h4>
                   </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">{action.desc}</p>
+                  <p className="text-xs preview-subtitle leading-relaxed">{action.desc}</p>
                 </div>
               </Link>
             );
