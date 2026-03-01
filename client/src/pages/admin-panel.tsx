@@ -66,20 +66,24 @@ export default function AdminPanelPage() {
   }
 
   return (
-    <div className="space-y-8 fade-in" data-testid="admin-panel-page">
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <Shield size={20} className="text-amber-500" />
-          <h1 className="text-2xl font-bold tracking-tight text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Admin Control Panel
-          </h1>
+    <div className="admin-panel-premium space-y-8 fade-in" data-testid="admin-panel-page">
+      <div className="admin-panel-hero">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="admin-panel-shield-wrap">
+              <Shield size={18} className="text-amber-400" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Admin Control Panel
+            </h1>
+          </div>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-black">
+            Platform Management Command Center
+          </p>
         </div>
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-500 font-black">
-          Platform Management
-        </p>
       </div>
 
-      <div className="flex gap-2">
+      <div className="admin-tab-strip flex gap-2 flex-wrap">
         {[
           { id: "stats" as const, label: "Analytics", icon: BarChart3 },
           { id: "users" as const, label: "Users", icon: Users },
@@ -90,7 +94,7 @@ export default function AdminPanelPage() {
           <Button
             key={tab.id}
             variant={activeTab === tab.id ? "default" : "ghost"}
-            className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${activeTab === tab.id ? "bg-amber-500 text-slate-950" : "text-slate-400"}`}
+            className={`rounded-xl text-[10px] uppercase tracking-widest font-black admin-tab-button ${activeTab === tab.id ? "bg-amber-400 text-slate-950" : "text-slate-300"}`}
             onClick={() => setActiveTab(tab.id)}
             data-testid={`tab-${tab.id}`}
           >
@@ -372,14 +376,14 @@ function UsersSection() {
                 placeholder="First name"
                 value={newFirstName}
                 onChange={(e) => setNewFirstName(e.target.value)}
-                className="bg-slate-800 border-slate-700 rounded-xl text-sm"
+                className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
                 data-testid="input-new-firstname"
               />
               <Input
                 placeholder="Last name"
                 value={newLastName}
                 onChange={(e) => setNewLastName(e.target.value)}
-                className="bg-slate-800 border-slate-700 rounded-xl text-sm"
+                className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
                 data-testid="input-new-lastname"
               />
             </div>
@@ -388,7 +392,7 @@ function UsersSection() {
               type="email"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              className="bg-slate-800 border-slate-700 rounded-xl text-sm"
+              className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
               data-testid="input-new-email"
             />
             <Input
@@ -396,12 +400,12 @@ function UsersSection() {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="bg-slate-800 border-slate-700 rounded-xl text-sm"
+              className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
               data-testid="input-new-password"
             />
             <div className="flex items-center gap-4 flex-wrap">
               <Select value={newTier} onValueChange={setNewTier}>
-                <SelectTrigger className="w-40 bg-slate-800 border-slate-700 rounded-xl text-xs" data-testid="select-new-tier">
+                <SelectTrigger className="w-40 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid="select-new-tier">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -464,7 +468,7 @@ function UsersSection() {
                   value={u.subscriptionTier}
                   onValueChange={(val) => updateUserMutation.mutate({ userId: u.id, data: { subscriptionTier: val } })}
                 >
-                  <SelectTrigger className="w-32 bg-slate-800 border-slate-700 rounded-xl text-xs" data-testid={`select-tier-${u.id}`}>
+                  <SelectTrigger className="w-32 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid={`select-tier-${u.id}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -655,7 +659,7 @@ function KnowledgeSection() {
         </CardHeader>
         <CardContent className="space-y-4 pt-2">
           <Select value={uploadCategory} onValueChange={setUploadCategory}>
-            <SelectTrigger className="bg-slate-800 border-slate-700 rounded-xl text-xs" data-testid="select-knowledge-category">
+            <SelectTrigger className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid="select-knowledge-category">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -676,7 +680,7 @@ function KnowledgeSection() {
               accept=".txt,.json,.csv,.pdf,.doc,.docx"
               multiple
               onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
-              className="bg-slate-800 border-slate-700 rounded-xl text-xs file:text-slate-400 file:mr-4"
+              className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs file:text-slate-400 file:mr-4"
               data-testid="input-knowledge-files"
             />
             {selectedFiles.length > 0 && (
@@ -1013,14 +1017,14 @@ function CaseLawSection() {
             placeholder="Citation (e.g. PLD 2024 SC 123)"
             value={formData.citation}
             onChange={(e) => setFormData(prev => ({ ...prev, citation: e.target.value }))}
-            className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
+            className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
             data-testid="input-caselaw-citation"
           />
           <Input
             placeholder="Court (e.g. Supreme Court of Pakistan)"
             value={formData.court}
             onChange={(e) => setFormData(prev => ({ ...prev, court: e.target.value }))}
-            className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
+            className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
             data-testid="input-caselaw-court"
           />
         </div>
@@ -1028,14 +1032,14 @@ function CaseLawSection() {
           placeholder="Title (e.g. State vs Ahmed - Property Dispute)"
           value={formData.title}
           onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-          className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
+          className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
           data-testid="input-caselaw-title"
         />
         <Textarea
           placeholder="Summary of the case and legal principle established"
           value={formData.summary}
           onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
-          className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm resize-none"
+          className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm resize-none"
           rows={3}
           data-testid="input-caselaw-summary"
         />
@@ -1043,7 +1047,7 @@ function CaseLawSection() {
           placeholder="Keywords (comma-separated, e.g. bail, cheque, fraud)"
           value={formData.keywords}
           onChange={(e) => setFormData(prev => ({ ...prev, keywords: e.target.value }))}
-          className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
+          className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
           data-testid="input-caselaw-keywords"
         />
         <Button
@@ -1137,7 +1141,7 @@ function CaseLawSection() {
               multiple
               onChange={handleDocumentUpload}
               disabled={isExtracting}
-              className="bg-slate-900 border-slate-700 text-white rounded-xl text-sm"
+              className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
               data-testid="input-bulk-document-file"
             />
             {isExtracting && (
@@ -1410,7 +1414,7 @@ function StatuteDocumentsSection() {
               accept=".txt,.json,.csv,.pdf"
               multiple
               onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
-              className="bg-slate-800 border-slate-700 rounded-xl text-xs file:text-slate-400 file:mr-4"
+              className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs file:text-slate-400 file:mr-4"
               data-testid="input-statute-doc-files"
             />
             {selectedFiles.length > 0 && (

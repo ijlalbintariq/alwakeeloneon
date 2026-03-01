@@ -2265,6 +2265,49 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
     }
   });
 
+  app.post("/api/profile/avatar", upload.single("avatar"), async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+
+    try {
+      const file = req.file;
+      if (!file) return res.status(400).json({ message: "Avatar file is required" });
+
+      const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+      if (!allowedTypes.has(file.mimetype)) {
+        return res.status(400).json({ message: "Unsupported image format. Use JPG, PNG, WEBP, or GIF." });
+      }
+
+      const maxSizeBytes = 2 * 1024 * 1024;
+      if (file.size > maxSizeBytes) {
+        return res.status(400).json({ message: "Image too large. Maximum size is 2MB." });
+      }
+
+      const dataUrl = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+      const updated = await storage.updateUserProfile(userId, { profileImageUrl: dataUrl });
+      if (!updated) return res.status(404).json({ message: "Profile not found" });
+
+      res.json({ profileImageUrl: updated.profileImageUrl });
+    } catch (err) {
+      console.error("Error uploading avatar:", err);
+      res.status(500).json({ message: "Failed to upload profile image" });
+    }
+  });
+
+  app.delete("/api/profile/avatar", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+
+    try {
+      const updated = await storage.updateUserProfile(userId, { profileImageUrl: null });
+      if (!updated) return res.status(404).json({ message: "Profile not found" });
+      res.json({ profileImageUrl: null });
+    } catch (err) {
+      console.error("Error removing avatar:", err);
+      res.status(500).json({ message: "Failed to remove profile image" });
+    }
+  });
+
   app.post("/api/seed-legal-data", async (_req, res) => {
     try {
       await seedLegalData();
