@@ -70,9 +70,6 @@ export function getApexModelsForTier(tier: string): Array<{ id: ApexModel; name:
       name: "Apex",
       description: "Fast, intelligent responses for legal queries",
     });
-  }
-
-  if (tier === "enterprise") {
     models.push({
       id: "apex-pro",
       name: "Apex Pro",
