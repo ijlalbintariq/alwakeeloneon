@@ -1,9 +1,858 @@
-import { ChatModule } from "./chat";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Archive,
+  ArrowRight,
+  Bold,
+  BookOpen,
+  Bot,
+  Download,
+  FileText,
+  Gavel,
+  HelpCircle,
+  Italic,
+  List,
+  ListOrdered,
+  Search,
+  Settings,
+  Share2,
+  Sparkles,
+  Type,
+  Underline,
+  Users,
+  AlertTriangle,
+  Plus,
+  Trash2,
+  Save,
+  FolderOpen,
+} from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { apiRequest } from "@/lib/queryClient";
+import { api } from "@shared/routes";
+import type { Document as DraftDocument } from "@shared/schema";
+
+type DraftSuggestion = {
+  id: string;
+  title: string;
+  detail: string;
+  severity: "warning" | "danger";
+  prompt: string;
+};
+
+type Org = {
+  id: number;
+  name: string;
+};
+
+type OrgMember = {
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+};
+
+type DraftTemplate = {
+  id: string;
+  title: string;
+  body: string;
+};
+
+const AUTOSAVE_KEY = "legal-drafting-workspace-v2";
+const DRAFT_TITLE_PREFIX = "Legal Draft:";
+
+const DEFAULT_DOC = "";
+const LEGACY_DEFAULT_DOC_PREFIX = "IN THE COURT OF THE CIVIL JUDGE";
+const PROPERTY_SALE_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
+Civil District, Islamabad, Pakistan
+
+Suit No. ______ of 2024
+
+IN THE MATTER OF:
+Plaintiff: ____________________
+VERSUS
+Defendant: ____________________
+
+AGREEMENT FOR SALE OF IMMOVABLE PROPERTY
+
+This AGREEMENT FOR SALE is made and executed at Islamabad on this ____ day of ________, 2024, by and between the parties mentioned above.
+
+1. CONSIDERATION:
+The total sale price of the said property is fixed at PKR ____________/- of which a sum of PKR ____________ has been paid as earnest money.
+
+2. TRANSFER OF TITLE:
+The Vendor covenants with the Vendee that the property is free from encumbrances, liens, charges, and legal disputes.
+`;
+
+const TEMPLATES: DraftTemplate[] = [
+  {
+    id: "property-sale",
+    title: "Property Sale Agreement",
+    body: PROPERTY_SALE_TEMPLATE,
+  },
+  {
+    id: "rental",
+    title: "Rental Agreement",
+    body: `RENTAL AGREEMENT\n\nThis Rental Agreement is made on ____ day of ________, 2024 between:\nLandlord: ____________________\nTenant: ______________________\n\n1. Premises\nThe Landlord rents to the Tenant the property located at ____________________.\n\n2. Rent\nMonthly rent shall be PKR ____________, payable on or before the 5th day of each month.\n\n3. Term\nThe term of this Agreement shall be ____ months commencing from ____________.\n\n4. Governing Law\nThis Agreement shall be governed by the laws of Pakistan.\n`,
+  },
+  {
+    id: "nda",
+    title: "Non-Disclosure Agreement",
+    body: `NON-DISCLOSURE AGREEMENT\n\nThis Non-Disclosure Agreement ("Agreement") is made on ____________ between:\nDisclosing Party: ____________________\nReceiving Party: ____________________\n\n1. Confidential Information\nConfidential Information includes non-public business, legal, and technical information disclosed in oral or written form.\n\n2. Obligations\nThe Receiving Party shall keep the Confidential Information confidential and shall not disclose it without prior written consent.\n\n3. Term\nThis Agreement remains effective for ____ years from the Effective Date.\n\n4. Governing Law and Jurisdiction\nThis Agreement is governed by the laws of Pakistan and subject to courts of Islamabad.\n`,
+  },
+];
+
+const STATUTE_REFERENCES = [
+  { label: "Contract Act, 1872", href: "/statute-search" },
+  { label: "Transfer of Property Act, 1882", href: "/statute-search" },
+  { label: "Code of Civil Procedure", href: "/statute-search" },
+];
 
 export default function LegalDraftingPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const editorRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const [docText, setDocText] = useState(DEFAULT_DOC);
+  const [draftTitle, setDraftTitle] = useState("Untitled Draft");
+  const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSavedLocal, setIsSavedLocal] = useState(true);
+  const [riskLoading, setRiskLoading] = useState(false);
+  const [riskResults, setRiskResults] = useState<DraftSuggestion[]>([]);
+  const [activeLeftTool, setActiveLeftTool] = useState<"drafts" | "templates" | "collab" | "archive">("drafts");
+
+  const { data: allDocuments = [], isLoading: loadingDocs } = useQuery<DraftDocument[]>({
+    queryKey: [api.documents.list.path],
+    queryFn: async () => {
+      const res = await fetch(api.documents.list.path, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch drafts");
+      return (await res.json()) as DraftDocument[];
+    },
+  });
+
+  const { data: organization } = useQuery<Org | null>({
+    queryKey: ["/api/org"],
+    queryFn: async () => {
+      const res = await fetch("/api/org", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Failed to fetch organization");
+      return (await res.json()) as Org | null;
+    },
+  });
+
+  const { data: orgMembers = [] } = useQuery<OrgMember[]>({
+    queryKey: ["/api/org", organization?.id, "members"],
+    enabled: !!organization?.id,
+    queryFn: async () => {
+      const res = await fetch(`/api/org/${organization!.id}/members`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch organization members");
+      return (await res.json()) as OrgMember[];
+    },
+  });
+
+  const draftDocuments = useMemo(
+    () =>
+      allDocuments
+        .filter((doc) => doc.title.startsWith(DRAFT_TITLE_PREFIX))
+        .sort((a, b) => {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return bTime - aTime;
+        }),
+    [allDocuments]
+  );
+
+  useEffect(() => {
+    const saved = localStorage.getItem(AUTOSAVE_KEY);
+    if (!saved) return;
+    // Migration: drop previously prefilled template content from autosave.
+    if (saved.trim().startsWith(LEGACY_DEFAULT_DOC_PREFIX)) {
+      localStorage.removeItem(AUTOSAVE_KEY);
+      setDocText("");
+      return;
+    }
+    setDocText(saved);
+  }, []);
+
+  useEffect(() => {
+    setIsSavedLocal(false);
+    const timeout = setTimeout(() => {
+      localStorage.setItem(AUTOSAVE_KEY, docText);
+      setIsSavedLocal(true);
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [docText]);
+
+  const collaborators = useMemo(() => {
+    if (orgMembers.length > 0) {
+      return orgMembers
+        .slice(0, 4)
+        .map((m) => {
+          const first = (m.firstName || "").trim();
+          const last = (m.lastName || "").trim();
+          const initials = `${first[0] || ""}${last[0] || ""}`.toUpperCase();
+          if (initials) return initials;
+          return (m.email || "U").slice(0, 2).toUpperCase();
+        });
+    }
+    const self = `${(user?.firstName || "")[0] || ""}${(user?.lastName || "")[0] || ""}`.toUpperCase();
+    return [self || "U"];
+  }, [orgMembers, user?.firstName, user?.lastName]);
+
+  const applyWrap = (prefix: string, suffix = prefix) => {
+    const el = editorRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const selected = docText.slice(start, end) || "text";
+    const next = `${docText.slice(0, start)}${prefix}${selected}${suffix}${docText.slice(end)}`;
+    setDocText(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const cursorStart = start + prefix.length;
+      const cursorEnd = cursorStart + selected.length;
+      el.setSelectionRange(cursorStart, cursorEnd);
+    });
+  };
+
+  const applyLinePrefix = (prefix: string, ordered = false) => {
+    const el = editorRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const textBefore = docText.slice(0, start);
+    const lineStart = textBefore.lastIndexOf("\n") + 1;
+    const selectedBlock = docText.slice(lineStart, end);
+    const lines = selectedBlock.split("\n");
+    const transformed = lines
+      .map((line, idx) => {
+        if (line.trim().length === 0) return line;
+        return ordered ? `${idx + 1}. ${line}` : `${prefix}${line}`;
+      })
+      .join("\n");
+    const next = `${docText.slice(0, lineStart)}${transformed}${docText.slice(end)}`;
+    setDocText(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const cursor = lineStart + transformed.length;
+      el.setSelectionRange(cursor, cursor);
+    });
+  };
+
+  const runRiskAnalysis = async () => {
+    if (!docText.trim()) {
+      setRiskResults([]);
+      setRiskLoading(false);
+      return;
+    }
+
+    setRiskLoading(true);
+    try {
+      const response = await fetch("/api/ai/draft-risk-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: draftTitle,
+          content: docText,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(errText || "Risk analysis failed");
+      }
+
+      const data = await response.json();
+      const risksRaw = Array.isArray(data?.risks) ? data.risks : [];
+      const normalized: DraftSuggestion[] = risksRaw.slice(0, 8).map((risk: any, idx: number) => ({
+        id: typeof risk?.id === "string" && risk.id.trim() ? risk.id : `risk-${idx + 1}`,
+        title: typeof risk?.title === "string" && risk.title.trim() ? risk.title : `Risk ${idx + 1}`,
+        detail: typeof risk?.detail === "string" && risk.detail.trim() ? risk.detail : "Potential drafting issue detected.",
+        severity: risk?.severity === "danger" ? "danger" : "warning",
+        prompt: typeof risk?.prompt === "string" && risk.prompt.trim()
+          ? risk.prompt
+          : "Draft a corrective clause to fix this risk under Pakistani law.",
+      }));
+
+      setRiskResults(normalized);
+    } catch (err: any) {
+      toast({
+        title: "Risk analysis failed",
+        description: err?.message || "Could not analyze this draft.",
+        variant: "destructive",
+      });
+    } finally {
+      setRiskLoading(false);
+    }
+  };
+
+  const saveDraftMutation = useMutation({
+    mutationFn: async ({
+      id,
+      title,
+      content,
+    }: {
+      id: number | null;
+      title: string;
+      content: string;
+    }) => {
+      const payload = {
+        title: `${DRAFT_TITLE_PREFIX} ${title}`,
+        content,
+      };
+      if (id) {
+        const res = await apiRequest("PUT", `/api/documents/${id}`, payload);
+        return (await res.json()) as DraftDocument;
+      }
+      const res = await apiRequest("POST", "/api/documents", payload);
+      return (await res.json()) as DraftDocument;
+    },
+    onSuccess: (doc) => {
+      setSelectedDraftId(doc.id);
+      queryClient.invalidateQueries({ queryKey: [api.documents.list.path] });
+      toast({ title: "Draft saved" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Save failed",
+        description: err?.message || "Could not save draft.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteDraftMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/documents/${id}`);
+    },
+    onSuccess: (_, id) => {
+      if (selectedDraftId === id) {
+        setSelectedDraftId(null);
+      }
+      queryClient.invalidateQueries({ queryKey: [api.documents.list.path] });
+      toast({ title: "Draft deleted" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Delete failed",
+        description: err?.message || "Could not delete draft.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveDraft = () => {
+    const cleanTitle = draftTitle.trim() || `Draft ${new Date().toLocaleString()}`;
+    saveDraftMutation.mutate({ id: selectedDraftId, title: cleanTitle, content: docText });
+  };
+
+  const loadDraft = (doc: DraftDocument) => {
+    setSelectedDraftId(doc.id);
+    setDraftTitle(doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "") || "Draft");
+    setDocText(doc.content || "");
+    toast({ title: "Draft loaded" });
+  };
+
+  const applyTemplate = (template: DraftTemplate) => {
+    setDraftTitle(template.title);
+    setDocText(template.body);
+    setSelectedDraftId(null);
+    setActiveLeftTool("drafts");
+    toast({ title: `Template applied: ${template.title}` });
+    runRiskAnalysis();
+  };
+
+  const generateClause = async (promptOverride?: string) => {
+    const prompt = (promptOverride ?? aiPrompt).trim();
+    if (!prompt) return;
+    setIsGenerating(true);
+    try {
+      const payload = {
+        messages: [
+          {
+            role: "user",
+            content: `Current draft:\n${docText}\n\nInstruction:\n${prompt}\n\nReturn only the clause text in legal drafting style for Pakistan.`,
+          },
+        ],
+        type: "draft",
+        turbo: false,
+        stream: false,
+      };
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const t = await response.text();
+        throw new Error(t || "AI generation failed");
+      }
+
+      const data = await response.json();
+      const clause = (data?.content || "").trim();
+      if (!clause) throw new Error("No clause generated");
+
+      setDocText((prev) => `${prev.trim()}\n\n${clause}\n`);
+      setAiPrompt("");
+      toast({ title: "Clause inserted" });
+
+      await apiRequest("POST", "/api/search-history", {
+        type: "draft",
+        query: prompt.slice(0, 120),
+      }).catch(() => {});
+
+      runRiskAnalysis();
+    } catch (err: any) {
+      toast({
+        title: "Failed to generate clause",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const exportAsTxt = () => {
+    const blob = new Blob([docText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${draftTitle || "legal-draft"}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported as TXT" });
+  };
+
+  const exportAsDoc = () => {
+    const html = `<!doctype html><html><head><meta charset=\"utf-8\" /></head><body><pre style=\"white-space:pre-wrap;font-family:'Times New Roman',serif;font-size:13pt;line-height:1.6;\">${docText
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")}</pre></body></html>`;
+    const blob = new Blob([html], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${draftTitle || "legal-draft"}.doc`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported as Word (.doc)" });
+  };
+
+  const shareDraft = async () => {
+    const shareText = `${draftTitle}\n\n${docText}`;
+    try {
+      await navigator.clipboard.writeText(shareText);
+      toast({ title: "Draft copied to clipboard" });
+    } catch {
+      toast({ title: "Could not copy draft", variant: "destructive" });
+    }
+  };
+
+  const shareWorkspaceLink = async () => {
+    const link = `${window.location.origin}/legal-drafting`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({ title: "Workspace link copied" });
+    } catch {
+      toast({ title: "Could not copy link", variant: "destructive" });
+    }
+  };
+
+  useEffect(() => {
+    runRiskAnalysis();
+  }, []);
+
   return (
-    <div className="fade-in" data-testid="legal-drafting-page">
-      <ChatModule type="draft" title="Legal Drafting" />
+    <div className="h-full min-h-[820px] rounded-2xl border border-amber-500/10 overflow-hidden bg-[#1a160f] text-slate-100 fade-in flex flex-col">
+      <header className="h-16 border-b border-amber-500/10 flex items-center justify-between px-4 md:px-6 bg-[#1a160f] z-20">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="flex items-center gap-2">
+            <Gavel size={28} className="text-amber-400" />
+            <h2 className="text-lg md:text-xl font-bold tracking-tight">Al Wakeelo</h2>
+          </div>
+          <div className="hidden md:block h-6 w-px bg-amber-500/20" />
+          <div className="hidden md:flex items-center gap-3 min-w-0">
+            <span className="text-sm text-slate-400 truncate">{draftTitle || "Untitled Draft"}</span>
+            <span className="text-slate-500">/</span>
+            <span className="text-sm font-semibold truncate">
+              {selectedDraftId ? `ID ${selectedDraftId}` : "Unsaved"}
+            </span>
+            <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded bg-green-500/10 text-green-400 text-[10px] uppercase font-bold tracking-wider">
+              <Sparkles size={11} />
+              {isSavedLocal ? "Local Saved" : "Typing..."}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="hidden lg:flex items-center -space-x-2">
+            {collaborators.map((c, idx) => (
+              <div
+                key={`${c}-${idx}`}
+                className="size-8 rounded-full border-2 border-[#1a160f] bg-amber-500/15 flex items-center justify-center text-[10px] font-bold"
+              >
+                {c}
+              </div>
+            ))}
+          </div>
+          <Button
+            variant="outline"
+            className="h-10 px-3 border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+            onClick={shareDraft}
+            data-testid="button-share-draft"
+          >
+            <Share2 size={14} className="mr-1.5" />
+            Share
+          </Button>
+          <Button
+            variant="outline"
+            className="h-10 px-3 border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+            onClick={exportAsTxt}
+            data-testid="button-export-txt"
+          >
+            <Download size={14} className="mr-1.5" />
+            TXT
+          </Button>
+          <Button
+            className="h-10 px-3 bg-amber-500 text-[#1a160f] hover:bg-amber-400 font-bold"
+            onClick={exportAsDoc}
+            data-testid="button-export-doc"
+          >
+            <Download size={14} className="mr-1.5" />
+            Word
+          </Button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="w-16 md:w-72 border-r border-amber-500/10 bg-[#1a160f] flex flex-col py-4 md:py-5">
+          <div className="hidden md:flex items-center justify-between px-4 pb-3 border-b border-amber-500/10">
+            <p className="text-xs uppercase tracking-widest text-amber-300 font-bold">Workspace</p>
+            <Button
+              size="sm"
+              className="h-7 px-2 bg-amber-500 text-[#1a160f] hover:bg-amber-400"
+              onClick={() => {
+                setDocText(DEFAULT_DOC);
+                setDraftTitle("Untitled Draft");
+                setSelectedDraftId(null);
+              }}
+            >
+              <Plus size={12} className="mr-1" />
+              New
+            </Button>
+          </div>
+
+          <div className="flex md:hidden flex-col items-center gap-5 pt-4">
+            <button onClick={() => setActiveLeftTool("drafts")} className={activeLeftTool === "drafts" ? "text-amber-400" : "text-slate-400"}><FolderOpen size={20} /></button>
+            <button onClick={() => setActiveLeftTool("templates")} className={activeLeftTool === "templates" ? "text-amber-400" : "text-slate-400"}><FileText size={20} /></button>
+            <button onClick={() => { setActiveLeftTool("collab"); shareWorkspaceLink(); }} className={activeLeftTool === "collab" ? "text-amber-400" : "text-slate-400"}><Users size={20} /></button>
+            <button onClick={() => { setActiveLeftTool("archive"); window.location.href = "/case-documents"; }} className={activeLeftTool === "archive" ? "text-amber-400" : "text-slate-400"}><Archive size={20} /></button>
+          </div>
+
+          <div className="hidden md:flex flex-col px-3 pt-3 gap-2">
+            <button
+              onClick={() => setActiveLeftTool("drafts")}
+              className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                activeLeftTool === "drafts" ? "bg-amber-500/12 text-amber-300" : "text-slate-300 hover:bg-amber-500/8"
+              }`}
+            >
+              <FolderOpen size={16} /> My Drafts
+            </button>
+            <button
+              onClick={() => setActiveLeftTool("templates")}
+              className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                activeLeftTool === "templates" ? "bg-amber-500/12 text-amber-300" : "text-slate-300 hover:bg-amber-500/8"
+              }`}
+            >
+              <FileText size={16} /> Templates
+            </button>
+            <button
+              onClick={() => {
+                setActiveLeftTool("collab");
+                shareWorkspaceLink();
+              }}
+              className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                activeLeftTool === "collab" ? "bg-amber-500/12 text-amber-300" : "text-slate-300 hover:bg-amber-500/8"
+              }`}
+            >
+              <Users size={16} /> Collaborate
+            </button>
+            <button
+              onClick={() => {
+                setActiveLeftTool("archive");
+                window.location.href = "/case-documents";
+              }}
+              className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                activeLeftTool === "archive" ? "bg-amber-500/12 text-amber-300" : "text-slate-300 hover:bg-amber-500/8"
+              }`}
+            >
+              <Archive size={16} /> Archive
+            </button>
+          </div>
+
+          <div className="hidden md:flex flex-1 min-h-0 px-3 pt-3">
+            {activeLeftTool === "templates" ? (
+              <div className="w-full overflow-auto space-y-2">
+                {TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => applyTemplate(template)}
+                    className="w-full text-left rounded-lg border border-amber-500/10 bg-[#2a2419]/30 p-3 hover:border-amber-500/30"
+                  >
+                    <p className="text-sm font-semibold text-slate-100">{template.title}</p>
+                    <p className="text-xs text-slate-400 mt-1">Click to load this template.</p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="w-full overflow-auto space-y-2">
+                {loadingDocs ? (
+                  <p className="text-xs text-slate-400">Loading drafts...</p>
+                ) : draftDocuments.length === 0 ? (
+                  <p className="text-xs text-slate-400">No saved legal drafts yet.</p>
+                ) : (
+                  draftDocuments.map((doc) => {
+                    const active = selectedDraftId === doc.id;
+                    return (
+                      <div
+                        key={doc.id}
+                        className={`rounded-lg border p-2 ${
+                          active ? "border-amber-400/40 bg-amber-500/10" : "border-amber-500/10 bg-[#2a2419]/20"
+                        }`}
+                      >
+                        <button className="w-full text-left" onClick={() => loadDraft(doc)}>
+                          <p className="text-xs font-semibold text-slate-200 line-clamp-1">
+                            {doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "")}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-1">
+                            {doc.createdAt ? new Date(doc.createdAt).toLocaleString() : "Unknown date"}
+                          </p>
+                        </button>
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            onClick={() => deleteDraftMutation.mutate(doc.id)}
+                            className="text-slate-500 hover:text-red-400"
+                            title="Delete draft"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="hidden md:flex mt-auto px-3 pt-3 border-t border-amber-500/10 justify-between">
+            <a href="/settings" className="text-slate-400 hover:text-amber-400" title="Settings">
+              <Settings size={18} />
+            </a>
+            <a href="/history" className="text-slate-400 hover:text-amber-400" title="Help">
+              <HelpCircle size={18} />
+            </a>
+          </div>
+        </aside>
+
+        <main className="flex-1 flex flex-col bg-[#120f0a] overflow-hidden">
+          <div className="h-12 border-b border-amber-500/10 bg-[#1a160f]/85 flex items-center px-2 md:px-4 justify-between">
+            <div className="flex items-center gap-1">
+              <button onClick={() => applyWrap("**")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
+                <Bold size={16} />
+              </button>
+              <button onClick={() => applyWrap("_")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
+                <Italic size={16} />
+              </button>
+              <button onClick={() => applyWrap("<u>", "</u>")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
+                <Underline size={16} />
+              </button>
+              <div className="h-4 w-px bg-amber-500/20 mx-1" />
+              <button onClick={() => applyLinePrefix("- ")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
+                <List size={16} />
+              </button>
+              <button onClick={() => applyLinePrefix("", true)} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
+                <ListOrdered size={16} />
+              </button>
+              <div className="h-4 w-px bg-amber-500/20 mx-1" />
+              <button onClick={() => applyWrap("\nSECTION: ", "\n")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
+                <Type size={16} />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="h-8 px-3 border-amber-500/20 bg-amber-500/5 text-amber-300 text-xs font-bold"
+                onClick={() =>
+                  generateClause(
+                    "Insert properly formatted Pakistani legal citations relevant to this current draft and include section references."
+                  )
+                }
+                data-testid="button-insert-citation"
+              >
+                Insert Citation
+              </Button>
+              <Button
+                className="h-8 px-3 bg-amber-500 text-[#1a160f] text-xs font-bold hover:bg-amber-400"
+                onClick={() => generateClause()}
+                disabled={isGenerating || !aiPrompt.trim()}
+                data-testid="button-generate-clause"
+              >
+                Generate Clause
+              </Button>
+            </div>
+          </div>
+
+          <div className="px-4 md:px-8 pt-3 flex items-center gap-2">
+            <input
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              className="h-9 w-[240px] bg-[#2a2419]/40 border border-amber-500/20 rounded-md px-3 text-sm text-slate-100"
+              placeholder="Draft title"
+            />
+            <Button
+              className="h-9 bg-amber-500 text-[#1a160f] hover:bg-amber-400 font-semibold"
+              onClick={saveDraft}
+              disabled={saveDraftMutation.isPending}
+            >
+              <Save size={14} className="mr-1.5" />
+              {saveDraftMutation.isPending ? "Saving..." : "Save Draft"}
+            </Button>
+            <span className="text-xs text-slate-400 hidden md:inline">
+              {selectedDraftId ? `Loaded draft #${selectedDraftId}` : "New unsaved draft"}
+            </span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 flex justify-center">
+            <div className="w-full max-w-[816px] min-h-[860px] md:min-h-[980px] bg-white text-slate-900 shadow-2xl rounded-sm p-6 md:p-12 lg:p-16 legal-draft-font">
+              <Textarea
+                ref={editorRef}
+                value={docText}
+                onChange={(e) => setDocText(e.target.value)}
+                className="w-full min-h-[760px] md:min-h-[900px] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-900 leading-8 text-[15px]"
+                data-testid="textarea-legal-draft"
+              />
+            </div>
+          </div>
+        </main>
+
+        <aside className="w-[340px] xl:w-[360px] hidden lg:flex flex-col bg-[#1a160f]/95 border-l border-amber-500/10 overflow-hidden">
+          <div className="p-5 border-b border-amber-500/10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bot size={16} className="text-amber-400" />
+              <h3 className="font-bold text-sm tracking-wide uppercase">AI Drafting Assistant</h3>
+            </div>
+            <div className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">PRO</div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-5 space-y-7">
+            <section>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Draft with AI</label>
+              <div className="relative">
+                <Textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  className="w-full bg-[#2a2419]/50 border border-amber-500/20 rounded-xl p-3 text-sm focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none resize-none placeholder:text-slate-600"
+                  placeholder="e.g., Write a force majeure clause for Pakistan"
+                  rows={4}
+                  data-testid="textarea-ai-draft-prompt"
+                />
+                <button
+                  className="absolute bottom-3 right-3 size-8 rounded-lg bg-amber-500 text-[#1a160f] flex items-center justify-center shadow-lg disabled:opacity-50"
+                  onClick={() => generateClause()}
+                  disabled={isGenerating || !aiPrompt.trim()}
+                  data-testid="button-send-ai-draft-prompt"
+                >
+                  {isGenerating ? <Search size={15} className="animate-spin" /> : <ArrowRight size={16} />}
+                </button>
+              </div>
+            </section>
+
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Risk Analysis</label>
+                <button
+                  onClick={runRiskAnalysis}
+                  className="px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold"
+                  data-testid="button-refresh-risk-analysis"
+                >
+                  {riskLoading ? "Scanning..." : `${riskResults.length} Alerts`}
+                </button>
+              </div>
+              <div className="space-y-3">
+                {riskResults.length === 0 ? (
+                  <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                    <p className="text-[11px] text-emerald-300">No obvious drafting risks detected.</p>
+                  </div>
+                ) : (
+                  riskResults.map((risk) => (
+                    <button
+                      key={risk.id}
+                      onClick={() => generateClause(risk.prompt)}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        risk.severity === "danger"
+                          ? "bg-red-500/5 border-red-500/20 hover:bg-red-500/10"
+                          : "bg-orange-500/5 border-orange-500/20 hover:bg-orange-500/10"
+                      }`}
+                      data-testid={`risk-item-${risk.id}`}
+                    >
+                      <div className="flex items-start gap-2 mb-1">
+                        <AlertTriangle
+                          size={14}
+                          className={risk.severity === "danger" ? "text-red-400 mt-0.5" : "text-orange-400 mt-0.5"}
+                        />
+                        <h4 className="text-xs font-bold text-slate-200">{risk.title}</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-normal">{risk.detail}</p>
+                      <div className="mt-2 text-amber-400 text-[10px] font-bold">Fix with AI</div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Statute Reference</label>
+              <div className="space-y-2">
+                {STATUTE_REFERENCES.map((item) => (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    className="flex items-center justify-between p-3 rounded-lg bg-[#2a2419]/30 border border-amber-500/5 hover:border-amber-500/20 transition-all"
+                    data-testid={`statute-ref-${item.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <BookOpen size={16} className="text-slate-400" />
+                      <span className="text-xs font-medium">{item.label}</span>
+                    </div>
+                    <ArrowRight size={13} className="text-slate-500" />
+                  </a>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <div className="p-5 border-t border-amber-500/10">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
+              <div className="size-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                <Bot size={18} className="text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <div className="text-[10px] font-bold text-slate-500 uppercase">Context Memory</div>
+                <div className="text-xs font-medium">Referencing this legal draft session</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
