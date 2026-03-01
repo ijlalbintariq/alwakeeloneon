@@ -23,6 +23,8 @@ interface ChatMessage {
   content: string;
   attachments?: string[];
   modelName?: string;
+  modelId?: string;
+  modelDescription?: string;
 }
 
 type AiMode = "standard" | "turbo" | string;
@@ -88,6 +90,40 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     if (apexModel) return apexModel.name;
     if (modelId.includes("apex")) return "Apex";
     return "Standard";
+  }, [apexData]);
+
+  const getModelFunctionDescription = useCallback((modelIdOrName: string): string => {
+    const id = modelIdOrName.toLowerCase();
+    if (id.includes("openai/gpt-oss-120b")) {
+      return "Highest quality legal reasoning and detailed drafting.";
+    }
+    if (id.includes("openai/gpt-oss-20b")) {
+      return "Balanced legal analysis with faster response time.";
+    }
+    if (id.includes("llama-3.1-8b-instant")) {
+      return "Low-latency responses for quick legal guidance.";
+    }
+    if (id.includes("deepseek-reasoner") || id.includes("deepseek pro")) {
+      return "Advanced multi-step reasoning for complex legal problems.";
+    }
+    if (id.includes("deepseek")) {
+      return "Turbo legal analysis optimized for speed and quality.";
+    }
+    if (id.includes("apex-pro")) {
+      return "Premium Kimi reasoning for highly complex legal strategy.";
+    }
+    if (id.includes("apex-agent")) {
+      return "Agentic Kimi workflow for multi-step legal tasks.";
+    }
+    if (id.includes("apex")) {
+      return "Kimi-based legal assistant focused on high-quality responses.";
+    }
+    if (id.includes("groq") || id.includes("standard")) {
+      return "Default legal chat mode with reliable fast responses.";
+    }
+    const apexModel = apexData?.models.find((m) => m.id === modelIdOrName);
+    if (apexModel?.description) return apexModel.description;
+    return "AI legal assistant response.";
   }, [apexData]);
 
   const currentModeName = useCallback((): { name: string; color: string; icon: "zap" | "sparkles" | "standard" } => {
@@ -259,8 +295,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         const data = await response.json();
-        const modelLabel = data.model ? getModelDisplayName(data.model) : (isApexMode ? getModelDisplayName(aiMode) : undefined);
-        setMessages([...updated, { id: assistantId, role: "assistant", content: data.content, modelName: modelLabel }]);
+        const modelId = data.model || (isApexMode ? aiMode : aiMode);
+        const modelLabel = modelId ? getModelDisplayName(modelId) : undefined;
+        const modelDescription = modelId ? getModelFunctionDescription(modelId) : undefined;
+        setMessages([...updated, { id: assistantId, role: "assistant", content: data.content, modelName: modelLabel, modelId, modelDescription }]);
       } else {
         setMessages([...updated, { id: assistantId, role: "assistant", content: "" }]);
         const reader = response.body?.getReader();
@@ -296,11 +334,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     continue;
                   }
                   if (parsed.done) {
-                    const modelLabel = parsed.model ? getModelDisplayName(parsed.model) : getModelDisplayName(aiMode);
+                    const modelId = parsed.model || aiMode;
+                    const modelLabel = getModelDisplayName(modelId);
+                    const modelDescription = getModelFunctionDescription(modelId);
                     setMessages(prev => {
                       const last = prev[prev.length - 1];
                       if (last && last.id === assistantId) {
-                        return [...prev.slice(0, -1), { ...last, modelName: modelLabel }];
+                        return [...prev.slice(0, -1), { ...last, modelName: modelLabel, modelId, modelDescription }];
                       }
                       return prev;
                     });
@@ -494,15 +534,22 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   <>
                     {m.modelName && (
                       <div className="flex items-center gap-1.5 mb-3 pb-2 border-b border-slate-700/30">
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${
-                          m.modelName === "Turbo" ? "text-purple-400" :
-                          m.modelName === "Standard" ? "text-slate-500" :
-                          "text-emerald-400"
-                        }`}>
-                          {m.modelName === "Turbo" && <Zap size={9} className="inline mr-1" />}
-                          {m.modelName !== "Turbo" && m.modelName !== "Standard" && <Sparkles size={9} className="inline mr-1" />}
-                          {m.modelName}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className={`text-[9px] font-black uppercase tracking-widest ${
+                            m.modelName === "Turbo" ? "text-purple-400" :
+                            m.modelName === "Standard" ? "text-slate-500" :
+                            "text-emerald-400"
+                          }`}>
+                            {m.modelName === "Turbo" && <Zap size={9} className="inline mr-1" />}
+                            {m.modelName !== "Turbo" && m.modelName !== "Standard" && <Sparkles size={9} className="inline mr-1" />}
+                            {m.modelName}
+                          </span>
+                          {m.modelDescription && (
+                            <span className="text-[10px] text-slate-500 mt-0.5">
+                              {m.modelDescription}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
                     <LegalMarkdown content={displayContent} />
