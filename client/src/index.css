@@ -167,6 +167,26 @@
   color: hsl(var(--preview-text-muted));
 }
 
+.glass-shell {
+  background: linear-gradient(180deg, hsl(var(--preview-bg) / 0.78), hsl(var(--preview-bg) / 0.72));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-surface {
+  background: linear-gradient(180deg, hsl(var(--preview-surface-elevated) / 0.72), hsl(var(--preview-surface) / 0.68));
+  border: 1px solid hsl(var(--preview-border) / 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.glass-soft {
+  background: hsl(var(--preview-surface) / 0.55);
+  border: 1px solid hsl(var(--preview-border) / 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
 /* Admin panel redesign (scoped) */
 .admin-panel-premium {
   --admin-bg: 221 44% 9%;
