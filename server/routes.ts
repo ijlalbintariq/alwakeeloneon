@@ -57,26 +57,58 @@ function buildMessages(systemPrompt: string, contents: Array<{ role: string; par
   ];
 }
 
+const MODEL_TIMEOUT_MS = {
+  standardPrimary: 12000,
+  standardFallback: 15000,
+  turboPrimary: 12000,
+  turboFallback: 15000,
+  apexPrimary: 15000,
+  apexFallback: 18000,
+};
+
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+async function withTimeout<T>(label: string, ms: number, fn: () => Promise<T>): Promise<T> {
+  let timeoutId: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const timeoutErr = new Error(`${label} timed out after ${ms}ms`);
+      (timeoutErr as any).code = "MODEL_TIMEOUT";
+      reject(timeoutErr);
+    }, ms);
+  });
+
+  try {
+    return await Promise.race([fn(), timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+function logModelSwitch(mode: string, fromModel: string, toModel: string, err: unknown) {
+  console.log(`[AI Routing][${mode}] Switching ${fromModel} -> ${toModel}. Reason: ${getErrorMessage(err)}`);
+}
+
 async function callStandardAI(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>, maxTokens: number): Promise<{ text: string; model: string }> {
   const messages = buildMessages(systemPrompt, contents);
+  const startedAt = Date.now();
   try {
-    const result = await chatWithGroq({ messages, maxTokens });
+    const result = await withTimeout("Groq", MODEL_TIMEOUT_MS.standardPrimary, () => chatWithGroq({ messages, maxTokens }));
+    console.log(`[AI Routing][standard] Primary Groq succeeded in ${Date.now() - startedAt}ms`);
     return { text: result.content, model: result.model };
   } catch (groqErr) {
-    console.log("[Standard AI] Groq failed:", groqErr instanceof Error ? groqErr.message : groqErr);
     if (isOpenRouterAvailable()) {
       try {
-        console.log("[Standard AI] Trying OpenRouter fallback...");
-        const result = await chatWithOpenRouter({ messages, maxTokens });
+        logModelSwitch("standard", "Groq", "OpenRouter", groqErr);
+        const result = await withTimeout("OpenRouter", MODEL_TIMEOUT_MS.standardFallback, () => chatWithOpenRouter({ messages, maxTokens }));
+        console.log(`[AI Routing][standard] Fallback OpenRouter succeeded in ${Date.now() - startedAt}ms`);
         return { text: result.content, model: result.model };
       } catch (orErr) {
-        console.log("[Standard AI] OpenRouter also failed:", orErr instanceof Error ? orErr.message : orErr);
+        console.log("[AI Routing][standard] OpenRouter fallback failed:", getErrorMessage(orErr));
       }
-    }
-    if (isDeepSeekAvailable()) {
-      console.log("[Standard AI] Trying DeepSeek fallback...");
-      const result = await chatWithDeepSeek({ messages, maxTokens });
-      return { text: result.content, model: result.model };
     }
     throw groqErr;
   }
@@ -84,13 +116,16 @@ async function callStandardAI(systemPrompt: string, contents: Array<{ role: stri
 
 async function callTurboAI(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>, maxTokens: number): Promise<{ text: string; model: string }> {
   const messages = buildMessages(systemPrompt, contents);
+  const startedAt = Date.now();
   try {
-    const result = await chatWithDeepSeek({ messages, maxTokens });
+    const result = await withTimeout("DeepSeek", MODEL_TIMEOUT_MS.turboPrimary, () => chatWithDeepSeek({ messages, maxTokens }));
+    console.log(`[AI Routing][turbo] Primary DeepSeek succeeded in ${Date.now() - startedAt}ms`);
     return { text: result.content, model: result.model };
   } catch (dsErr) {
     if (isGroqAvailable()) {
-      console.log("[Turbo AI] DeepSeek failed, falling back to Groq:", dsErr instanceof Error ? dsErr.message : dsErr);
-      const result = await chatWithGroq({ messages, maxTokens });
+      logModelSwitch("turbo", "DeepSeek", "Groq", dsErr);
+      const result = await withTimeout("Groq", MODEL_TIMEOUT_MS.turboFallback, () => chatWithGroq({ messages, maxTokens }));
+      console.log(`[AI Routing][turbo] Fallback Groq succeeded in ${Date.now() - startedAt}ms`);
       return { text: result.content, model: result.model };
     }
     throw dsErr;
@@ -2466,32 +2501,76 @@ Instructions:
 
       messages.push({ role: "user", content: message });
 
-      let responseContent: string;
+      let responseContent = "";
       let responseReasoning: string | undefined;
-      let responseModel: string;
+      let responseModel = "";
 
       try {
-        const result = await chatWithApex({
-          model: model as ApexModel,
-          messages,
-          maxTokens: model === "apex" ? 4096 : 8192,
+        // Apex mode primary routing: try all available Kimi models for this tier.
+        const kimiModelsOrdered = [
+          model as ApexModel,
+          ...allowedModels.map((m) => m.id).filter((id) => id !== model),
+        ] as ApexModel[];
+
+        const seen = new Set<ApexModel>();
+        const primaryCandidates = kimiModelsOrdered.filter((m) => {
+          if (seen.has(m)) return false;
+          seen.add(m);
+          return true;
         });
-        responseContent = result.content;
-        responseReasoning = result.reasoning;
-        responseModel = result.model;
-      } catch (apexErr: any) {
-        if (isDeepSeekAvailable()) {
-          console.log("[Apex AI] Kimi failed, falling back to DeepSeek Pro:", apexErr?.message || apexErr);
-          const dsResult = await chatWithDeepSeekPro({ messages, maxTokens: 8192 });
-          responseContent = dsResult.content;
-          responseReasoning = undefined;
-          responseModel = "deepseek-reasoner";
-        } else {
-          throw apexErr;
+
+        let lastKimiError: unknown;
+        let primarySucceeded = false;
+        const apexStartedAt = Date.now();
+
+        for (let i = 0; i < primaryCandidates.length; i++) {
+          const kimi = primaryCandidates[i];
+          try {
+            const result = await withTimeout(
+              `Kimi(${kimi})`,
+              MODEL_TIMEOUT_MS.apexPrimary,
+              () => chatWithApex({
+                model: kimi,
+                messages,
+                maxTokens: kimi === "apex" ? 4096 : 8192,
+              }),
+            );
+            responseContent = result.content;
+            responseReasoning = result.reasoning;
+            responseModel = result.model;
+            primarySucceeded = true;
+            console.log(`[AI Routing][apex] Primary Kimi(${kimi}) succeeded in ${Date.now() - apexStartedAt}ms`);
+            break;
+          } catch (kimiErr) {
+            lastKimiError = kimiErr;
+            const nextKimi = primaryCandidates[i + 1];
+            if (nextKimi) {
+              logModelSwitch("apex", `Kimi(${kimi})`, `Kimi(${nextKimi})`, kimiErr);
+            }
+          }
         }
+
+        if (!primarySucceeded) {
+          if (isDeepSeekAvailable()) {
+            logModelSwitch("apex", "Kimi", "DeepSeek Pro", lastKimiError);
+            const dsResult = await withTimeout(
+              "DeepSeek Pro",
+              MODEL_TIMEOUT_MS.apexFallback,
+              () => chatWithDeepSeekPro({ messages, maxTokens: 8192 }),
+            );
+            responseContent = dsResult.content;
+            responseReasoning = undefined;
+            responseModel = dsResult.model;
+            console.log(`[AI Routing][apex] Fallback DeepSeek Pro succeeded in ${Date.now() - apexStartedAt}ms`);
+          } else {
+            throw lastKimiError || new Error("All Kimi models failed and DeepSeek Pro fallback is unavailable.");
+          }
+        }
+      } catch (apexErr: any) {
+        throw apexErr;
       }
 
-      const actualModel = responseModel.includes("deepseek") ? "deepseek-reasoner" : `apex-${model}`;
+      const actualModel = responseModel;
       const inputText = messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat", actualModel, inputText, responseContent);
 
