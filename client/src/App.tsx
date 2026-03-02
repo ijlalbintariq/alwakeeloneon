@@ -32,6 +32,7 @@ import OrganizationPage from "@/pages/organization";
 import InstallAppPage from "@/pages/install-app";
 import NotFound from "@/pages/not-found";
 import { AppShell } from "@/components/app-shell";
+import { ThemeProvider, useTheme } from "@/hooks/use-theme";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
@@ -123,12 +124,24 @@ function Router({ onReady }: { onReady?: () => void }) {
   );
 }
 
+function AppContent({ onReady }: { onReady?: () => void }) {
+  const { resolvedTheme } = useTheme();
+
+  return (
+    <div data-ui-preview="macos" data-theme={resolvedTheme} className="min-h-screen">
+      <Router onReady={onReady} />
+      <Toaster />
+    </div>
+  );
+}
+
 function App({ onReady }: { onReady?: () => void }) {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router onReady={onReady} />
-        <Toaster />
+        <ThemeProvider>
+          <AppContent onReady={onReady} />
+        </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
