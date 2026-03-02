@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, FolderOpen, Folder, PlusCircle, MoreVertical, Settings, User as UserIcon } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -42,7 +42,13 @@ interface ThreadSummary {
 const chatStateStore: Record<string, { messages: ChatMessage[]; shareUrl: string | null; sharedThreadId: number | null }> = {};
 
 export default function ChatPage() {
-  return <ChatModule type="al-wakeelo" title="Al Wakeelo Engine" />;
+  const initialMessage = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    return q && q.trim().length > 0 ? q : undefined;
+  }, []);
+
+  return <ChatModule type="al-wakeelo" title="Al Wakeelo Engine" initialMessage={initialMessage} />;
 }
 
 interface UsageData {
