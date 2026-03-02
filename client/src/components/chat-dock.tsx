@@ -25,7 +25,7 @@ export function ChatDock() {
       </button>
 
       {open && (
-        <div className="fixed bottom-20 right-6 z-40 w-[380px] max-w-[calc(100vw-2rem)] bg-[#1e293b] border border-slate-800 rounded-[2rem] shadow-2xl overflow-hidden">
+        <div className="fixed bottom-20 right-3 sm:right-6 z-40 w-[calc(100vw-1.5rem)] sm:w-[380px] max-w-[calc(100vw-1.5rem)] sm:max-w-[calc(100vw-2rem)] bg-[#1e293b] border border-slate-800 rounded-[1.2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden">
           <div className="p-3 bg-[#0f172a]/80 border-b border-slate-800 flex items-center gap-2">
             <div className="w-7 h-7 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
               <Scale size={16} />

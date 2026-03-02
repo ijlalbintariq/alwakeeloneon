@@ -34,10 +34,10 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-[#1a1f2e] border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden"
+        className="bg-[#1a1f2e] border border-slate-700 rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 bg-[#151a28] border-b border-slate-700/80 flex-shrink-0">
+        <div className="flex items-center justify-between px-3 sm:px-4 py-3 bg-[#151a28] border-b border-slate-700/80 flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="p-2 bg-amber-500/10 rounded-lg flex-shrink-0">
               <FileText size={16} className="text-amber-500" />
@@ -55,7 +55,7 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
             </div>
           </div>
 
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
             <button
               onClick={() => setShowSearch(!showSearch)}
               className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
@@ -140,10 +140,10 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
           </div>
         </div>
 
-        <div className="px-4 py-2 bg-[#151a28] border-t border-slate-700/80 flex items-center justify-between text-[10px] text-slate-500 flex-shrink-0">
+        <div className="px-3 sm:px-4 py-2 bg-[#151a28] border-t border-slate-700/80 flex items-center justify-between text-[10px] text-slate-500 flex-shrink-0">
           <span>{pages.length} page{pages.length !== 1 ? "s" : ""}</span>
-          <span className="font-bold uppercase tracking-widest">Al Wakeelo Digital Chambers</span>
-          <span>Font: {fontSize}px</span>
+          <span className="font-bold uppercase tracking-widest hidden sm:inline">Al Wakeelo Digital Chambers</span>
+          <span className="hidden sm:inline">Font: {fontSize}px</span>
         </div>
       </div>
     </div>,

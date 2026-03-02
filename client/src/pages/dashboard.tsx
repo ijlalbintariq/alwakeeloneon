@@ -43,26 +43,26 @@ export default function DashboardPage() {
   const isAtLimit = usage && usage.percentage >= 100;
 
   return (
-    <div className="space-y-10 fade-in" data-testid="dashboard-page">
-      <div className="p-12 md:p-16 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 rounded-[2.25rem] text-slate-950 shadow-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 group-hover:rotate-12 transition-all duration-1000">
+    <div className="space-y-7 md:space-y-10 fade-in" data-testid="dashboard-page">
+      <div className="p-6 sm:p-8 md:p-16 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 rounded-[1.5rem] md:rounded-[2.25rem] text-slate-950 shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-6 md:p-12 opacity-10 group-hover:scale-110 group-hover:rotate-12 transition-all duration-1000">
           <Scale size={240} />
         </div>
         <div className="relative z-10">
           <p className="text-[10px] font-black uppercase tracking-[0.5em] mb-4 text-slate-900/60">
             Chambers Secure Protocol
           </p>
-          <h2 className="text-4xl md:text-6xl font-bold mb-6 tracking-tighter italic leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h2 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 md:mb-6 tracking-tighter italic leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
             "Justice is for all,<br />but wins are for the smart."
           </h2>
-          <p className="text-lg font-medium opacity-80 max-w-2xl leading-relaxed">
+          <p className="text-base md:text-lg font-medium opacity-80 max-w-2xl leading-relaxed">
             Welcome back, {user?.firstName || "Advocate"}. Al Wakeelo core engine synchronized. Chambers vaults and registries are online.
           </p>
         </div>
       </div>
 
       {usage && (
-        <div className={`p-8 rounded-[1.75rem] border shadow-xl ${isAtLimit ? "bg-red-950/30 border-red-800/50" : isNearLimit ? "bg-amber-950/30 border-amber-800/50" : "preview-surface"}`} data-testid="usage-panel">
+        <div className={`p-4 sm:p-6 md:p-8 rounded-[1.2rem] md:rounded-[1.75rem] border shadow-xl ${isAtLimit ? "bg-red-950/30 border-red-800/50" : isNearLimit ? "bg-amber-950/30 border-amber-800/50" : "preview-surface"}`} data-testid="usage-panel">
           <div className="flex items-center gap-4 mb-6">
             {isAtLimit ? (
               <AlertTriangle size={18} className="text-red-400" />
@@ -123,11 +123,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.label} className="preview-surface rounded-[1.4rem] p-6 md:p-8 shadow-xl hover:-translate-y-0.5 transition-all" data-testid={`stat-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}>
+            <div key={stat.label} className="preview-surface rounded-[1.2rem] md:rounded-[1.4rem] p-4 md:p-8 shadow-xl hover:-translate-y-0.5 transition-all" data-testid={`stat-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}>
               <div className="flex items-center gap-3 mb-4">
                 <div className={`p-2.5 bg-slate-800 rounded-xl ${stat.color}`}><Icon size={18} /></div>
               </div>
@@ -149,7 +149,7 @@ export default function DashboardPage() {
             const Icon = action.icon;
             return (
               <Link key={action.label} href={action.href}>
-                <div className="p-8 preview-surface rounded-[1.6rem] shadow-xl hover:border-amber-500/35 hover:shadow-[0_20px_40px_-26px_rgba(251,191,36,0.7)] transition-all cursor-pointer group" data-testid={`action-${action.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                <div className="p-5 md:p-8 preview-surface rounded-[1.2rem] md:rounded-[1.6rem] shadow-xl hover:border-amber-500/35 hover:shadow-[0_20px_40px_-26px_rgba(251,191,36,0.7)] transition-all cursor-pointer group" data-testid={`action-${action.label.toLowerCase().replace(/\s+/g, '-')}`}>
                   <div className="flex items-center gap-4 mb-4">
                     <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl group-hover:bg-amber-500 group-hover:text-slate-950 transition-all"><Icon size={20} /></div>
                     <h4 className="text-sm font-bold preview-title">{action.label}</h4>

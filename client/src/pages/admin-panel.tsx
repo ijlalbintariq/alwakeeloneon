@@ -148,7 +148,7 @@ function StatsSection() {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="stats-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4" data-testid="stats-grid">
         {statItems.map((item) => (
           <Card key={item.label} className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
             <CardContent className="p-6">
@@ -180,7 +180,7 @@ function StatsSection() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
                 <CardContent className="p-6">
                   <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-2">

@@ -574,7 +574,7 @@ export default function LegalDraftingPage() {
   }, []);
 
   return (
-    <div className="relative isolate h-full min-h-[820px] rounded-xl border border-[hsl(var(--preview-border))] overflow-hidden bg-[#0f172a]/70 backdrop-blur-xl text-slate-100 fade-in flex flex-col shadow-2xl">
+    <div className="relative isolate h-full min-h-[620px] md:min-h-[820px] rounded-xl border border-[hsl(var(--preview-border))] overflow-hidden bg-[#0f172a]/70 backdrop-blur-xl text-slate-100 fade-in flex flex-col shadow-2xl">
       <div className="pointer-events-none absolute -top-24 right-10 h-56 w-56 rounded-full bg-amber-500/12 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 left-8 h-60 w-60 rounded-full bg-cyan-400/10 blur-3xl" />
       <div
@@ -585,7 +585,7 @@ export default function LegalDraftingPage() {
           backgroundSize: "28px 28px",
         }}
       />
-      <header className="h-16 border-b border-[hsl(var(--preview-border))] flex items-center justify-between px-4 md:px-6 bg-[#0f172a]/55 backdrop-blur-xl z-20">
+      <header className="h-16 border-b border-[hsl(var(--preview-border))] flex items-center justify-between px-3 md:px-6 bg-[#0f172a]/55 backdrop-blur-xl z-20">
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-lg bg-gradient-to-br from-cyan-300 to-cyan-500 text-slate-950 flex items-center justify-center shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-100/30">
@@ -623,35 +623,35 @@ export default function LegalDraftingPage() {
           </div>
           <Button
             variant="outline"
-            className="h-10 px-3 border-slate-700 text-slate-200 hover:bg-slate-800"
+            className="h-9 md:h-10 px-2.5 md:px-3 border-slate-700 text-slate-200 hover:bg-slate-800"
             onClick={shareDraft}
             data-testid="button-share-draft"
           >
-            <Share2 size={14} className="mr-1.5" />
-            Share
+            <Share2 size={14} className="md:mr-1.5" />
+            <span className="hidden md:inline">Share</span>
           </Button>
           <Button
             variant="outline"
-            className="h-10 px-3 border-slate-700 text-slate-200 hover:bg-slate-800"
+            className="h-9 md:h-10 px-2.5 md:px-3 border-slate-700 text-slate-200 hover:bg-slate-800"
             onClick={exportAsTxt}
             data-testid="button-export-txt"
           >
-            <Download size={14} className="mr-1.5" />
-            TXT
+            <Download size={14} className="md:mr-1.5" />
+            <span className="hidden md:inline">TXT</span>
           </Button>
           <Button
-            className="h-10 px-3 bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold shadow-lg shadow-amber-500/20"
+            className="h-9 md:h-10 px-2.5 md:px-3 bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold shadow-lg shadow-amber-500/20"
             onClick={exportAsDoc}
             data-testid="button-export-doc"
           >
-            <Download size={14} className="mr-1.5" />
-            Word
+            <Download size={14} className="md:mr-1.5" />
+            <span className="hidden md:inline">Word</span>
           </Button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-16 md:w-64 border-r border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex flex-col py-4 md:py-5">
+        <aside className="hidden md:flex w-64 border-r border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex-col py-4 md:py-5">
           <div className="hidden md:flex items-center justify-between px-4 pb-3 border-b border-[hsl(var(--preview-border))]">
             <p className="text-xs uppercase tracking-widest text-amber-300 font-bold">Workspace</p>
             <Button
@@ -777,7 +777,46 @@ export default function LegalDraftingPage() {
         </aside>
 
         <main className="flex-1 flex flex-col bg-[#0f172a]/50 overflow-hidden">
-          <div className="h-12 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex items-center px-2 md:px-4 justify-between">
+          <div className="md:hidden border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/45 px-3 py-2 flex items-center gap-2 overflow-x-auto">
+            <button onClick={() => setActiveLeftTool("drafts")} className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] border ${activeLeftTool === "drafts" ? "text-amber-300 border-amber-500/40 bg-amber-500/10" : "text-slate-300 border-slate-700 bg-[#1e293b]/40"}`}>Drafts</button>
+            <button onClick={() => setActiveLeftTool("templates")} className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] border ${activeLeftTool === "templates" ? "text-amber-300 border-amber-500/40 bg-amber-500/10" : "text-slate-300 border-slate-700 bg-[#1e293b]/40"}`}>Templates</button>
+            <button onClick={() => shareWorkspaceLink()} className="shrink-0 px-2.5 py-1.5 rounded-md text-[11px] border text-slate-300 border-slate-700 bg-[#1e293b]/40">Share</button>
+            <button onClick={() => (window.location.href = "/case-documents")} className="shrink-0 px-2.5 py-1.5 rounded-md text-[11px] border text-slate-300 border-slate-700 bg-[#1e293b]/40">Archive</button>
+          </div>
+          <div className="md:hidden px-3 py-2 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/30">
+            {activeLeftTool === "templates" ? (
+              <div className="max-h-28 overflow-auto space-y-1.5">
+                {TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => applyTemplate(template)}
+                    className="w-full text-left rounded-lg border border-slate-700/70 bg-[#1e293b]/45 p-2"
+                  >
+                    <p className="text-xs font-semibold text-slate-100">{template.title}</p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="max-h-28 overflow-auto space-y-1.5">
+                {draftDocuments.slice(0, 6).map((doc) => (
+                  <button
+                    key={doc.id}
+                    className="w-full text-left rounded-lg border border-slate-700/70 bg-[#1e293b]/45 p-2"
+                    onClick={() => loadDraft(doc)}
+                  >
+                    <p className="text-xs font-semibold text-slate-100 line-clamp-1">
+                      {doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "")}
+                    </p>
+                  </button>
+                ))}
+                {!loadingDocs && draftDocuments.length === 0 && (
+                  <p className="text-[11px] text-slate-400">No saved legal drafts yet.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="h-auto md:h-12 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex items-center px-2 md:px-4 py-2 md:py-0 justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1">
               <button onClick={() => applyWrap("**")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
                 <Bold size={16} />
@@ -800,10 +839,10 @@ export default function LegalDraftingPage() {
                 <Type size={16} />
               </button>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto">
               <Button
                 variant="outline"
-                className="h-8 px-3 border-amber-500/20 bg-amber-500/5 text-amber-300 text-xs font-bold"
+                className="h-8 px-2 md:px-3 border-amber-500/20 bg-amber-500/5 text-amber-300 text-[11px] md:text-xs font-bold"
                 onClick={() =>
                   generateClause(
                     "Insert properly formatted Pakistani legal citations relevant to this current draft and include section references."
@@ -814,7 +853,7 @@ export default function LegalDraftingPage() {
                 Insert Citation
               </Button>
               <Button
-                className="h-8 px-3 bg-amber-500 text-slate-950 text-xs font-bold hover:bg-amber-400"
+                className="h-8 px-2 md:px-3 bg-amber-500 text-slate-950 text-[11px] md:text-xs font-bold hover:bg-amber-400"
                 onClick={() => generateClause()}
                 disabled={isGenerating || !aiPrompt.trim()}
                 data-testid="button-generate-clause"
@@ -824,11 +863,11 @@ export default function LegalDraftingPage() {
             </div>
           </div>
 
-          <div className="px-4 md:px-8 pt-3 flex items-center gap-2">
+          <div className="px-3 md:px-8 pt-3 flex items-center gap-2 flex-wrap">
             <input
               value={draftTitle}
               onChange={(e) => setDraftTitle(e.target.value)}
-              className="h-9 w-[240px] bg-[#1e293b]/45 border border-slate-700 rounded-lg px-3 text-sm text-slate-100 backdrop-blur-md"
+              className="h-9 w-full sm:w-[240px] bg-[#1e293b]/45 border border-slate-700 rounded-lg px-3 text-sm text-slate-100 backdrop-blur-md"
               placeholder="Draft title"
             />
             <Button
@@ -844,13 +883,13 @@ export default function LegalDraftingPage() {
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 flex justify-center">
-            <div className="w-full max-w-[880px] min-h-[860px] md:min-h-[980px] bg-white/95 text-slate-900 shadow-2xl rounded-2xl p-6 md:p-12 lg:p-16 legal-draft-font border border-white/70 backdrop-blur-sm">
+          <div className="flex-1 overflow-y-auto p-3 md:p-8 lg:p-12 flex justify-center">
+            <div className="w-full max-w-[880px] min-h-[620px] md:min-h-[980px] bg-white/95 text-slate-900 shadow-2xl rounded-2xl p-4 md:p-12 lg:p-16 legal-draft-font border border-white/70 backdrop-blur-sm">
               <Textarea
                 ref={editorRef}
                 value={docText}
                 onChange={(e) => setDocText(e.target.value)}
-                className="w-full min-h-[760px] md:min-h-[900px] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-900 leading-8 text-[15px]"
+                className="w-full min-h-[560px] md:min-h-[900px] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-900 leading-8 text-[15px]"
                 data-testid="textarea-legal-draft"
               />
             </div>

@@ -153,7 +153,8 @@ function AppSidebar() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [location] = useLocation();
-  const isWideChatLayout = location === "/al-wakeelo" || location === "/legal-drafting";
+  const isWideChatLayout =
+    location === "/al-wakeelo" || location === "/legal-drafting" || location === "/contract-drafting";
 
   const style = {
     "--sidebar-width": "18.5rem",
@@ -162,11 +163,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full bg-[#0f172a] text-slate-200 font-sans selection:bg-amber-500/40">
+      <div className="flex h-[100dvh] md:h-screen w-full bg-[#0f172a] text-slate-200 font-sans selection:bg-amber-500/40">
         <AppSidebar />
 
         <div className="flex flex-col flex-1 min-w-0">
-          <header className="h-14 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/55 backdrop-blur-xl flex items-center justify-between px-4 gap-4 z-50 sticky top-0">
+          <header className="h-14 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/55 backdrop-blur-xl flex items-center justify-between px-3 md:px-4 gap-3 md:gap-4 z-50 sticky top-0">
             <SidebarTrigger data-testid="button-sidebar-toggle" className="text-slate-400 hover:text-white" />
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
@@ -185,7 +186,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className={`flex-1 overflow-y-auto bg-[#0f172a]/65 backdrop-blur-lg scrollbar-hide ${isWideChatLayout ? "p-2 sm:p-3 md:p-4" : "p-6 md:p-10"}`}>
+          <main className={`flex-1 overflow-y-auto bg-[#0f172a]/65 backdrop-blur-lg scrollbar-hide ${isWideChatLayout ? "p-2 sm:p-3 md:p-4" : "p-3 sm:p-4 md:p-10"}`}>
             <div className={`${isWideChatLayout ? "max-w-none" : "max-w-7xl"} mx-auto h-full w-full`}>
               {children}
             </div>

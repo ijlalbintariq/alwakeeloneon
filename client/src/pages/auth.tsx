@@ -159,11 +159,11 @@ export default function AuthPage() {
   const isPending = loginMutation.isPending || registerMutation.isPending;
 
   return (
-    <div className="min-h-screen preview-bg flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen preview-bg flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
       <div className="absolute top-[-12%] left-[-12%] w-[44%] h-[44%] bg-amber-500/10 rounded-full blur-[130px]" />
       <div className="absolute bottom-[-14%] right-[-12%] w-[36%] h-[36%] bg-emerald-500/10 rounded-full blur-[120px]" />
 
-      <div className="w-full max-w-md preview-elevated p-10 rounded-[2.2rem] relative z-10 fade-in">
+      <div className="w-full max-w-md preview-elevated p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[2.2rem] relative z-10 fade-in">
         <div className="text-center mb-8 pb-6 border-b border-[hsl(var(--preview-border))]">
           <div className="w-16 h-16 bg-gradient-to-br from-amber-300 to-amber-500 rounded-2xl mx-auto flex items-center justify-center mb-5 shadow-lg shadow-amber-500/30">
             <Scale size={32} className="text-slate-900" />
@@ -181,7 +181,7 @@ export default function AuthPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "register" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="relative">
                 <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input

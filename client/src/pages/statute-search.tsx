@@ -118,10 +118,10 @@ export default function StatuteSearchPage() {
   }
 
   return (
-    <div className="space-y-10 fade-in pb-20" data-testid="statute-search-page">
+    <div className="space-y-7 md:space-y-10 fade-in pb-20" data-testid="statute-search-page">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
-          <h2 className="text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
             Search Statutes Instantly!
           </h2>
           <p className="text-slate-500 mt-2 font-medium">Search, read & consult AI on Pakistani statutes.</p>
@@ -129,8 +129,8 @@ export default function StatuteSearchPage() {
       </div>
 
       <div className="relative w-full max-w-2xl mx-auto" ref={searchRef}>
-        <div className="flex gap-3 bg-[#1e293b] p-3 rounded-[2.5rem] border border-slate-800 shadow-2xl">
-          <div className="flex items-center px-4">
+        <div className="flex gap-2 sm:gap-3 bg-[#1e293b] p-2.5 sm:p-3 rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-800 shadow-2xl">
+          <div className="flex items-center px-2 sm:px-4">
             <Search size={18} className="text-slate-500" />
           </div>
           <input
@@ -153,7 +153,7 @@ export default function StatuteSearchPage() {
           {isSearching && <Loader2 size={18} className="text-amber-500 animate-spin self-center mr-2" />}
           <button
             onClick={() => handleQuickSearch(query)}
-            className="p-4 bg-amber-500 text-slate-950 rounded-[2rem] hover:bg-amber-400 transition-all shadow-xl active:scale-95"
+            className="p-3 sm:p-4 bg-amber-500 text-slate-950 rounded-[1rem] sm:rounded-[2rem] hover:bg-amber-400 transition-all shadow-xl active:scale-95"
             data-testid="button-statute-search"
           >
             <Search size={20} />
@@ -165,7 +165,7 @@ export default function StatuteSearchPage() {
             {suggestions.map((doc) => (
               <button
                 key={doc.id}
-                className="w-full text-left px-6 py-4 hover:bg-slate-700/50 transition-colors border-b border-slate-800 last:border-b-0 flex items-center gap-4"
+                className="w-full text-left px-4 sm:px-6 py-3 sm:py-4 hover:bg-slate-700/50 transition-colors border-b border-slate-800 last:border-b-0 flex items-center gap-3 sm:gap-4"
                 onClick={() => handleSelectStatute(doc)}
                 data-testid={`dropdown-item-${doc.id}`}
               >
@@ -181,7 +181,7 @@ export default function StatuteSearchPage() {
         )}
       </div>
 
-      <div className="bg-[#1e293b] border border-slate-800 rounded-[3rem] p-8 md:p-10 shadow-2xl space-y-8 overflow-hidden relative">
+      <div className="bg-[#1e293b] border border-slate-800 rounded-[1.5rem] md:rounded-[3rem] p-4 sm:p-6 md:p-10 shadow-2xl space-y-6 md:space-y-8 overflow-hidden relative">
         <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none scale-150"><Book size={200} /></div>
         <div className="flex items-center gap-4 relative z-10">
           <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl"><Book size={24} /></div>
@@ -192,7 +192,7 @@ export default function StatuteSearchPage() {
             <p className="text-[9px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">Direct statutory references — tap to search.</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 relative z-10">
           {COMMON_STATUTES.map((cat, idx) => (
             <div key={idx} className="space-y-4">
               <div className="border-b border-slate-800 pb-3">
@@ -204,7 +204,7 @@ export default function StatuteSearchPage() {
                   <button
                     key={i}
                     onClick={() => handleQuickSearch(stat.query)}
-                    className="w-full text-left p-4 bg-[#0f172a] border border-slate-800 rounded-2xl transition-all hover:border-amber-500/50 group"
+                    className="w-full text-left p-3 sm:p-4 bg-[#0f172a] border border-slate-800 rounded-xl sm:rounded-2xl transition-all hover:border-amber-500/50 group"
                     data-testid={`statute-quick-${idx}-${i}`}
                   >
                     <div className="flex items-center justify-between mb-1">

@@ -284,7 +284,7 @@ export default function JudgmentViewPage() {
 
   return (
     <div className="h-full flex flex-col fade-in">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800 bg-[#0f172a]">
+      <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-3 border-b border-slate-800 bg-[#0f172a]">
         <Button size="icon" variant="ghost" onClick={() => setLocation("/judgment-search")} className="text-slate-400 flex-shrink-0">
           <ArrowLeft size={18} />
         </Button>
@@ -297,7 +297,7 @@ export default function JudgmentViewPage() {
             <p className="text-[9px] text-slate-500 uppercase tracking-wider">{judgment.court}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0 flex-wrap justify-end">
           {sourceDocData?.found && sourceDocData.hasSource && (
             <button
               onClick={loadSourceContent}
@@ -352,9 +352,9 @@ export default function JudgmentViewPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col xl:flex-row overflow-y-auto xl:overflow-hidden">
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-6 md:px-12 py-10">
+          <div className="max-w-4xl mx-auto px-3 sm:px-6 md:px-12 py-6 md:py-10">
             <div className="flex items-center gap-4 mb-8">
               <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl">
                 <Gavel size={24} />
@@ -502,8 +502,8 @@ export default function JudgmentViewPage() {
           </div>
         </div>
 
-        <div className="w-[380px] min-w-[340px] border-l border-slate-800 bg-[#0f172a] flex flex-col">
-          <div className="p-4 border-b border-slate-800">
+        <div className="w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-slate-800 bg-[#0f172a] flex flex-col max-h-[52vh] xl:max-h-none">
+          <div className="p-3 md:p-4 border-b border-slate-800">
             <div className="flex items-center gap-2">
               <MessageSquare size={14} className="text-amber-500" />
               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">
@@ -512,7 +512,7 @@ export default function JudgmentViewPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
             {chatMessages.length === 0 && (
               <div className="text-center py-12">
                 <Gavel size={32} className="text-slate-700 mx-auto mb-3" />

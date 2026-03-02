@@ -24,11 +24,11 @@ export default function CaseDocumentsPage() {
   };
 
   return (
-    <div className="space-y-10 fade-in" data-testid="case-documents-page">
+    <div className="space-y-7 md:space-y-10 fade-in" data-testid="case-documents-page">
       {previewDoc && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-6 bg-[#0f172a]/90 backdrop-blur-sm fade-in">
-          <div className="bg-[#1e293b] border border-slate-700 w-full max-w-5xl h-[90vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-6 border-b border-slate-800 bg-[#0f172a]/50 flex items-center justify-between">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-2 sm:p-6 bg-[#0f172a]/90 backdrop-blur-sm fade-in">
+          <div className="bg-[#1e293b] border border-slate-700 w-full max-w-5xl h-[92vh] sm:h-[90vh] rounded-[1.2rem] sm:rounded-[3rem] shadow-2xl flex flex-col overflow-hidden">
+            <div className="p-3 sm:p-6 border-b border-slate-800 bg-[#0f172a]/50 flex items-center justify-between gap-3">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl"><FileText size={24} /></div>
                 <div>
@@ -41,8 +41,8 @@ export default function CaseDocumentsPage() {
                 <button onClick={() => setPreviewDoc(null)} className="p-2 hover:bg-red-500/10 rounded-xl text-slate-400 hover:text-red-500 transition-all"><X size={24} /></button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-8 md:p-12 bg-white/5 scrollbar-hide">
-              <div className="max-w-3xl mx-auto bg-white/[0.02] p-8 md:p-12 rounded-2xl border border-white/5">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-8 md:p-12 bg-white/5 scrollbar-hide">
+              <div className="max-w-3xl mx-auto bg-white/[0.02] p-4 sm:p-8 md:p-12 rounded-xl sm:rounded-2xl border border-white/5">
                 <div className="legal-draft-font whitespace-pre-wrap">{previewDoc.content || "Document indexed..."}</div>
               </div>
             </div>
@@ -62,7 +62,7 @@ export default function CaseDocumentsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {documents?.map((doc) => (
-          <div key={doc.id} className="p-8 bg-[#1e293b] border border-slate-800 rounded-[2.5rem] shadow-xl hover:border-amber-500/40 transition-all group relative overflow-hidden" data-testid={`document-${doc.id}`}>
+          <div key={doc.id} className="p-5 md:p-8 bg-[#1e293b] border border-slate-800 rounded-[1.25rem] md:rounded-[2.5rem] shadow-xl hover:border-amber-500/40 transition-all group relative overflow-hidden" data-testid={`document-${doc.id}`}>
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl"><FileText size={20} /></div>
               <div className="min-w-0">
@@ -82,7 +82,7 @@ export default function CaseDocumentsPage() {
           </div>
         ))}
         {(!documents || documents.length === 0) && !isLoading && (
-          <div className="col-span-full py-20 text-center bg-[#1e293b]/50 border border-dashed border-slate-800 rounded-[3rem]">
+          <div className="col-span-full py-16 md:py-20 text-center bg-[#1e293b]/50 border border-dashed border-slate-800 rounded-[1.5rem] md:rounded-[3rem]">
             <FileSearch size={48} className="mx-auto text-slate-700 mb-6" />
             <p className="text-slate-500 italic font-medium">No documents currently indexed in the Chambers Registry.</p>
           </div>
