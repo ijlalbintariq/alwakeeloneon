@@ -1,99 +1,486 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  Bookmark,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  Eye,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import jsPDF from "jspdf";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Bookmark, Trash2, ChevronRight, Download, X } from "lucide-react";
-import { useState } from "react";
+import { LegalMarkdown } from "@/components/legal-markdown";
+import { parseReferences, ReferenceCards } from "@/components/reference-cards";
 
 interface BookmarkItem {
   id: number;
   title: string;
   content: string;
-  type: string;
+  type: "al-wakeelo" | "draft" | "contract" | string;
   category: string;
   createdAt: string;
 }
 
+type TypeFilter = "all" | "al-wakeelo" | "draft" | "contract";
+
+type TypeMeta = {
+  label: string;
+  chip: string;
+};
+
+const PAGE_SIZE = 6;
+
+const TYPE_META: Record<string, TypeMeta> = {
+  "al-wakeelo": {
+    label: "LEGAL CHAT",
+    chip: "bg-violet-500/15 text-violet-300 border border-violet-400/25",
+  },
+  draft: {
+    label: "LEGAL DRAFT",
+    chip: "bg-blue-500/15 text-blue-300 border border-blue-400/25",
+  },
+  contract: {
+    label: "CONTRACT DRAFT",
+    chip: "bg-amber-500/15 text-amber-300 border border-amber-400/25",
+  },
+};
+
+function getTypeMeta(type: string): TypeMeta {
+  return (
+    TYPE_META[type] || {
+      label: (type || "bookmark").toUpperCase(),
+      chip: "bg-slate-500/20 text-slate-300 border border-slate-400/25",
+    }
+  );
+}
+
+function formatCardDate(value: string): string {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "Unknown date";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function safeFileName(value: string, fallback: string): string {
+  const base = (value || fallback).trim().toLowerCase().replace(/\s+/g, "-");
+  return base.replace(/[^a-z0-9-_]/g, "") || fallback;
+}
+
+function downloadTxt(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filename}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadPdf(title: string, content: string, filename: string) {
+  const pdf = new jsPDF({ unit: "pt", format: "a4" });
+  const margin = 50;
+  const usableWidth = pdf.internal.pageSize.getWidth() - margin * 2;
+  let y = 56;
+
+  pdf.setFont("times", "bold");
+  pdf.setFontSize(16);
+  pdf.text(title || "Bookmark", margin, y);
+  y += 24;
+
+  pdf.setFont("times", "normal");
+  pdf.setFontSize(12);
+  const lines = pdf.splitTextToSize(content || "", usableWidth);
+
+  for (const line of lines) {
+    if (y > pdf.internal.pageSize.getHeight() - 50) {
+      pdf.addPage();
+      y = 56;
+    }
+    pdf.text(line, margin, y);
+    y += 17;
+  }
+
+  pdf.save(`${filename}.pdf`);
+}
+
 export default function BookmarksPage() {
-  const { data: bookmarks } = useQuery<BookmarkItem[]>({ queryKey: ["/api/bookmarks"] });
-  const [previewBookmark, setPreviewBookmark] = useState<BookmarkItem | null>(null);
+  const { data: bookmarks = [], isLoading, isError, error } = useQuery<BookmarkItem[]>({
+    queryKey: ["/api/bookmarks"],
+  });
+
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<TypeFilter>("all");
+  const [page, setPage] = useState(1);
+  const [preview, setPreview] = useState<BookmarkItem | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/bookmarks/${id}`);
     },
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookmarks"] });
+      if (preview?.id === id) setPreview(null);
     },
   });
 
-  const handleExport = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return bookmarks
+      .filter((b) => {
+        const typeOk = filter === "all" || b.type === filter;
+        const queryOk =
+          !q ||
+          b.title.toLowerCase().includes(q) ||
+          b.content.toLowerCase().includes(q) ||
+          b.category.toLowerCase().includes(q);
+        return typeOk && queryOk;
+      })
+      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+  }, [bookmarks, filter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
+  const paged = useMemo(() => {
+    const current = Math.min(page, totalPages);
+    const start = (current - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page, totalPages]);
+
+  const pageButtons = useMemo(() => {
+    const nums: number[] = [];
+    for (let i = 1; i <= totalPages; i += 1) nums.push(i);
+    return nums;
+  }, [totalPages]);
+
+  const counts = useMemo(
+    () => ({
+      all: bookmarks.length,
+      "al-wakeelo": bookmarks.filter((b) => b.type === "al-wakeelo").length,
+      draft: bookmarks.filter((b) => b.type === "draft").length,
+      contract: bookmarks.filter((b) => b.type === "contract").length,
+    }),
+    [bookmarks],
+  );
+
+  const openPreview = (b: BookmarkItem) => {
+    setCopied(false);
+    setPreview(b);
+  };
+
+  const copyText = async () => {
+    if (!preview) return;
+    await navigator.clipboard.writeText(preview.content || "");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const setFilterAndResetPage = (next: TypeFilter) => {
+    setFilter(next);
+    setPage(1);
   };
 
   return (
-    <div className="space-y-7 md:space-y-10 fade-in" data-testid="bookmarks-page">
-      {previewBookmark && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-2 sm:p-6 bg-[#0f172a]/95 backdrop-blur-md fade-in">
-          <div className="bg-[#1e293b] border border-slate-700 w-full max-w-3xl h-[82vh] sm:h-[70vh] rounded-[1.2rem] sm:rounded-[3rem] shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-3 sm:p-6 border-b border-slate-800 bg-[#0f172a]/50 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white italic" style={{ fontFamily: "'Playfair Display', serif" }}>Saved Strategy Preview</h3>
-                <p className="text-[9px] font-black uppercase text-amber-500 tracking-widest mt-1">{previewBookmark.category} - {previewBookmark.type}</p>
+    <section
+      className="h-[calc(100dvh-96px)] md:h-[calc(100vh-120px)] rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[#0f172a] fade-in"
+      data-testid="bookmarks-page"
+    >
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
+        <header className="shrink-0 border-b border-slate-800 bg-[#0f172a]/95 px-4 py-3 md:px-8 md:py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-4 md:gap-7">
+              <div className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
+                <Bookmark size={18} />
               </div>
-              <button onClick={() => setPreviewBookmark(null)} className="p-3 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-all"><X size={24} /></button>
+              <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Noto Serif', serif" }}>
+                Al Wakeelo
+              </h2>
+
+              <div className="relative hidden max-w-lg flex-1 md:block">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Search your bookmarks..."
+                  className="h-12 w-full rounded-xl border border-slate-700 bg-[#1e293b] pl-10 pr-3 text-base text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                  data-testid="input-bookmark-search"
+                />
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-8 md:p-12 bg-white/5 scrollbar-hide">
-              <div className="legal-draft-font whitespace-pre-wrap leading-relaxed">{previewBookmark.content}</div>
+          </div>
+
+          <div className="relative mt-3 md:hidden">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search your bookmarks..."
+              className="h-11 w-full rounded-xl border border-slate-700 bg-[#1e293b] pl-9 pr-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              data-testid="input-bookmark-search-mobile"
+            />
+          </div>
+        </header>
+
+        <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-10 md:py-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl" style={{ fontFamily: "'Noto Serif', serif" }}>
+                  My Bookmarked Responses
+                </h1>
+                <p className="mt-2 text-base text-slate-400 md:text-lg">
+                  Access your saved legal drafts, case law research, and AI consultations securely.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {([
+                  ["all", "All"],
+                  ["draft", "Drafts"],
+                  ["al-wakeelo", "Research"],
+                  ["contract", "Contracts"],
+                ] as Array<[TypeFilter, string]>).map(([value, label]) => {
+                  const active = filter === value;
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => setFilterAndResetPage(value)}
+                      className={`rounded-lg px-4 py-2 text-sm transition-colors ${
+                        active
+                          ? "bg-amber-500 text-slate-900 font-bold"
+                          : "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
+                      }`}
+                      data-testid={`button-bookmark-filter-${value}`}
+                    >
+                      {label} ({counts[value] || 0})
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="p-3 sm:p-6 border-t border-slate-800 bg-[#0f172a]/50 flex justify-end gap-3">
-              <button
-                onClick={() => handleExport(previewBookmark.content, `bookmark-${previewBookmark.id}.txt`)}
-                className="px-5 py-3 bg-amber-500 text-slate-950 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center gap-2"
-              >
-                <Download size={14} /> Export Text
-              </button>
+
+            {isLoading ? (
+              <div className="flex h-40 items-center justify-center">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <span className="animate-spin"><ChevronRight size={18} /></span>
+                  Loading bookmarks...
+                </div>
+              </div>
+            ) : isError ? (
+              <div className="rounded-xl border border-red-400/25 bg-red-500/10 p-4 text-sm text-red-300">
+                Failed to load bookmarks: {(error as Error)?.message || "Unknown error"}
+              </div>
+            ) : paged.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/40 px-6 py-14 text-center">
+                <Bookmark size={44} className="mx-auto mb-4 text-slate-600" />
+                <p className="text-lg font-semibold text-slate-300">No bookmarks found</p>
+                <p className="mt-1 text-sm text-slate-500">Save responses from chat and drafting modules to populate this vault.</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {paged.map((bookmark) => {
+                    const meta = getTypeMeta(bookmark.type);
+                    const filename = safeFileName(bookmark.title, `bookmark-${bookmark.id}`);
+
+                    return (
+                      <article
+                        key={bookmark.id}
+                        className="group relative flex min-h-[288px] flex-col justify-between rounded-xl border border-slate-700/60 bg-[#1e293b] p-6 shadow-sm transition-all duration-300 hover:border-amber-500/30 hover:shadow-xl hover:shadow-amber-500/5"
+                        data-testid={`bookmark-${bookmark.id}`}
+                      >
+                        <div>
+                          <div className="mb-4 flex items-start justify-between gap-3">
+                            <span className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-bold ${meta.chip}`}>
+                              {meta.label}
+                            </span>
+                            <button
+                              onClick={() => deleteMutation.mutate(bookmark.id)}
+                              disabled={deleteMutation.isPending}
+                              className="text-slate-400 opacity-0 transition-colors group-hover:opacity-100 hover:text-red-400 disabled:opacity-40"
+                              title="Delete Bookmark"
+                              data-testid={`button-delete-bookmark-${bookmark.id}`}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+
+                          <h3 className="line-clamp-2 text-xl font-bold leading-snug text-white" style={{ fontFamily: "'Noto Serif', serif" }}>
+                            {bookmark.title || "Untitled Bookmark"}
+                          </h3>
+
+                          <p className="mt-2 flex items-center gap-1 text-sm text-slate-400">
+                            <CalendarDays size={14} />
+                            {formatCardDate(bookmark.createdAt)}
+                          </p>
+
+                          <p className="mt-3 line-clamp-3 text-sm text-slate-400">{bookmark.content}</p>
+                        </div>
+
+                        <div className="mt-4 flex items-center gap-3 border-t border-slate-700/50 pt-4">
+                          <button
+                            onClick={() => openPreview(bookmark)}
+                            className="flex-1 rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-slate-900 transition-colors hover:bg-amber-400"
+                            data-testid={`button-view-bookmark-${bookmark.id}`}
+                          >
+                            <span className="inline-flex items-center justify-center gap-2">
+                              <Eye size={16} />
+                              View Full Response
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => downloadTxt(bookmark.content, filename)}
+                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-600 text-slate-300 transition-colors hover:bg-slate-700"
+                            title="Download .txt"
+                            data-testid={`button-download-bookmark-${bookmark.id}`}
+                          >
+                            <Download size={16} />
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-10 flex justify-center">
+                  <nav className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                      className="rounded-lg border border-slate-700 px-4 py-2 text-slate-400 transition-colors hover:bg-slate-800 disabled:opacity-40"
+                      data-testid="button-bookmarks-prev"
+                    >
+                      <span className="inline-flex items-center gap-1"><ChevronLeft size={14} /> Previous</span>
+                    </button>
+
+                    {pageButtons.map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setPage(n)}
+                        className={`rounded-lg px-4 py-2 text-sm ${
+                          page === n
+                            ? "bg-amber-500 font-bold text-slate-900"
+                            : "border border-slate-700 text-slate-300 hover:bg-slate-800"
+                        }`}
+                        data-testid={`button-bookmarks-page-${n}`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                      className="rounded-lg border border-slate-700 px-4 py-2 text-slate-400 transition-colors hover:bg-slate-800 disabled:opacity-40"
+                      data-testid="button-bookmarks-next"
+                    >
+                      <span className="inline-flex items-center gap-1">Next <ChevronRight size={14} /></span>
+                    </button>
+                  </nav>
+                </div>
+              </>
+            )}
+          </div>
+        </main>
+
+        <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500/5 via-transparent to-transparent opacity-60" />
+      </div>
+
+      {preview && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-6">
+          <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setPreview(null)} />
+
+          <div className="relative flex h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0f172a] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-700 px-4 py-4 sm:px-6">
+              <div className="min-w-0">
+                <h3 className="truncate text-xl font-bold text-white sm:text-2xl" style={{ fontFamily: "'Noto Serif', serif" }}>
+                  {preview.title || "Bookmark"}
+                </h3>
+                <p className="mt-1 text-sm text-slate-400">Generated on {formatCardDate(preview.createdAt)}</p>
+              </div>
+
+              <div className="ml-3 flex items-center gap-1">
+                <button
+                  onClick={copyText}
+                  className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                  title="Copy text"
+                  data-testid="button-bookmark-copy"
+                >
+                  <Copy size={17} />
+                </button>
+                <button
+                  onClick={() => downloadTxt(preview.content, safeFileName(preview.title, `bookmark-${preview.id}`))}
+                  className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                  title="Download TXT"
+                  data-testid="button-bookmark-modal-download-txt"
+                >
+                  <Download size={17} />
+                </button>
+                <button
+                  onClick={() =>
+                    downloadPdf(
+                      preview.title,
+                      preview.content,
+                      safeFileName(preview.title, `bookmark-${preview.id}`),
+                    )
+                  }
+                  className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                  title="Download PDF"
+                  data-testid="button-bookmark-modal-download-pdf"
+                >
+                  <Bookmark size={17} />
+                </button>
+                <button
+                  onClick={() => setPreview(null)}
+                  className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                  title="Close"
+                  data-testid="button-bookmark-close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {copied && (
+              <div className="border-b border-slate-700 bg-emerald-500/10 px-6 py-2 text-xs text-emerald-300">Copied to clipboard.</div>
+            )}
+
+            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-5 font-serif text-slate-800 sm:p-8">
+              {(() => {
+                const parsed = parseReferences(preview.content);
+                return (
+                  <div className="mx-auto max-w-3xl space-y-6">
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <LegalMarkdown content={parsed.cleanContent} />
+                    </div>
+                    {parsed.references && (
+                      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <ReferenceCards references={parsed.references} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
       )}
-
-      <div>
-        <h2 className="text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-          Bookmarks
-        </h2>
-        <p className="text-slate-500 mt-2 font-medium">Your personal strategic vault of saved legal advice and research.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {bookmarks?.map((b) => (
-          <div key={b.id} className="p-5 md:p-8 bg-[#1e293b] border border-slate-800 rounded-[1.5rem] md:rounded-[3rem] shadow-xl relative group hover:border-amber-500/30 transition-all flex flex-col h-full" data-testid={`bookmark-${b.id}`}>
-            <div className="flex justify-between items-start mb-4">
-              <p className="text-[9px] font-black uppercase text-amber-500 tracking-[0.2em]">{b.category} - {b.type}</p>
-              <button onClick={() => deleteMutation.mutate(b.id)} className="text-slate-700 hover:text-red-500 transition-colors p-1" data-testid={`button-delete-bookmark-${b.id}`}>
-                <Trash2 size={14} />
-              </button>
-            </div>
-            <p className="text-sm text-slate-300 leading-relaxed line-clamp-4 italic mb-6">"{b.content.substring(0, 150)}..."</p>
-            <div className="mt-auto pt-4 border-t border-slate-800 flex justify-between items-center">
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{new Date(b.createdAt).toLocaleDateString()}</span>
-              <button onClick={() => setPreviewBookmark(b)} className="text-amber-500 hover:text-amber-400 text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-1" data-testid={`button-view-bookmark-${b.id}`}>
-                View Strategy <ChevronRight size={12} />
-              </button>
-            </div>
-          </div>
-        ))}
-        {(!bookmarks || bookmarks.length === 0) && (
-          <div className="col-span-full py-16 md:py-20 text-center bg-[#1e293b]/30 border border-dashed border-slate-800 rounded-[1.5rem] md:rounded-[3rem]">
-            <Bookmark size={48} className="mx-auto text-slate-800 mb-6" />
-            <p className="text-slate-600 italic font-medium">Your strategic vault is currently empty. Bookmark advice from Al Wakeelo to save it here.</p>
-          </div>
-        )}
-      </div>
-    </div>
+    </section>
   );
 }
