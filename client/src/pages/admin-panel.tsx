@@ -139,7 +139,7 @@ function StatsSection() {
   const statItems = [
     { label: "Total Users", value: stats?.totalUsers || 0, icon: Users, color: "text-blue-400" },
     { label: "Chat Threads", value: stats?.totalThreads || 0, icon: FileText, color: "text-emerald-400" },
-    { label: "Messages", value: stats?.totalMessages || 0, icon: BarChart3, color: "text-purple-400" },
+    { label: "Messages", value: stats?.totalMessages || 0, icon: BarChart3, color: "text-amber-400" },
     { label: "Documents", value: stats?.totalDocuments || 0, icon: Database, color: "text-amber-400" },
     { label: "Knowledge Entries", value: stats?.totalKnowledge || 0, icon: Database, color: "text-cyan-400" },
     { label: "Cache Entries", value: stats?.totalCacheEntries || 0, icon: BarChart3, color: "text-pink-400" },
@@ -206,7 +206,7 @@ function StatsSection() {
                   <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-2">
                     Active Features
                   </span>
-                  <p className="text-2xl font-bold text-purple-400">
+                  <p className="text-2xl font-bold text-amber-400">
                     {costData?.byFeature?.length || 0}
                   </p>
                 </CardContent>

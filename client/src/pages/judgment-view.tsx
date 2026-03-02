@@ -326,7 +326,7 @@ export default function JudgmentViewPage() {
             className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${
               isSaved
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                : "bg-purple-600/10 text-purple-400 hover:bg-purple-600/20"
+                : "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
             }`}
             title={isSaved ? "Judgment saved" : "Save to account"}
           >
@@ -400,8 +400,8 @@ export default function JudgmentViewPage() {
 
             {isLoadingSummary && (
               <div className="flex flex-col items-center justify-center py-16 gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                  <Sparkles size={24} className="text-purple-400 animate-pulse" />
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <Sparkles size={24} className="text-amber-400 animate-pulse" />
                 </div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                   Al Wakeelo is analyzing this judgment...
@@ -429,10 +429,10 @@ export default function JudgmentViewPage() {
             {summaryData && !isLoadingSummary && (
               <div className="space-y-8">
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                    <Sparkles size={14} className="text-purple-400" />
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                    <Sparkles size={14} className="text-amber-400" />
                   </div>
-                  <h3 className="text-[11px] font-black uppercase tracking-widest text-purple-400">
+                  <h3 className="text-[11px] font-black uppercase tracking-widest text-amber-400">
                     AI Judgment Analysis
                   </h3>
                   {summaryData.verified ? (

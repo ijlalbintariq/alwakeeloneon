@@ -27,7 +27,7 @@ export default function DashboardPage() {
     { label: "Active Sessions", value: threads?.length || 0, icon: Scale, color: "text-amber-500" },
     { label: "Saved Strategies", value: bookmarks?.length || 0, icon: Bookmark, color: "text-blue-400" },
     { label: "Search History", value: history?.length || 0, icon: History, color: "text-emerald-400" },
-    { label: "Registry Files", value: documents?.length || 0, icon: FileBadge, color: "text-purple-400" },
+    { label: "Registry Files", value: documents?.length || 0, icon: FileBadge, color: "text-amber-400" },
   ];
 
   const quickActions = [
@@ -44,12 +44,12 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-7 md:space-y-10 fade-in" data-testid="dashboard-page">
-      <div className="p-6 sm:p-8 md:p-16 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 rounded-[1.5rem] md:rounded-[2.25rem] text-slate-950 shadow-2xl relative overflow-hidden group">
+      <div className="p-6 sm:p-8 md:p-16 preview-elevated rounded-[1.5rem] md:rounded-[2.25rem] text-white shadow-2xl relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-6 md:p-12 opacity-10 group-hover:scale-110 group-hover:rotate-12 transition-all duration-1000">
           <Scale size={240} />
         </div>
         <div className="relative z-10">
-          <p className="text-[10px] font-black uppercase tracking-[0.5em] mb-4 text-slate-900/60">
+          <p className="text-[10px] font-black uppercase tracking-[0.5em] mb-4 text-amber-400/70">
             Chambers Secure Protocol
           </p>
           <h2 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 md:mb-6 tracking-tighter italic leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>

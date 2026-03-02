@@ -102,13 +102,13 @@ export default function UserPanelPage() {
   const isAtLimit = usage && usage.percentage >= 100;
 
   const tierColor = profile?.subscriptionTier === "enterprise"
-    ? "text-purple-400"
+    ? "text-emerald-400"
     : profile?.subscriptionTier === "pro"
       ? "text-amber-400"
       : "text-slate-400";
 
   const tierBg = profile?.subscriptionTier === "enterprise"
-    ? "bg-purple-500/20 border-purple-500/30"
+    ? "bg-emerald-500/20 border-emerald-500/30"
     : profile?.subscriptionTier === "pro"
       ? "bg-amber-500/20 border-amber-500/30"
       : "bg-slate-800 border-slate-700";
@@ -140,7 +140,7 @@ export default function UserPanelPage() {
 
   return (
     <div className="space-y-8 fade-in max-w-5xl" data-testid="user-panel-page">
-      <div className="rounded-[1.8rem] border border-[hsl(var(--preview-border))] bg-gradient-to-br from-[#1a2740] via-[#182338] to-[#111b2d] p-8 md:p-10">
+      <div className="preview-elevated rounded-[1.8rem] p-8 md:p-10">
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div className="space-y-2">
             <div className="flex items-center gap-3">

@@ -189,14 +189,14 @@
 
 /* Admin panel redesign (scoped) */
 .admin-panel-premium {
-  --admin-bg: 221 44% 9%;
-  --admin-surface: 220 34% 13%;
-  --admin-surface-2: 220 30% 16%;
-  --admin-border: 218 25% 28%;
-  --admin-text: 212 36% 93%;
-  --admin-muted: 215 16% 62%;
-  --admin-amber: 39 94% 56%;
-  --admin-emerald: 151 61% 45%;
+  --admin-bg: var(--preview-bg);
+  --admin-surface: var(--preview-surface);
+  --admin-surface-2: var(--preview-surface-elevated);
+  --admin-border: var(--preview-border);
+  --admin-text: var(--preview-text-primary);
+  --admin-muted: var(--preview-text-secondary);
+  --admin-amber: var(--preview-accent-amber);
+  --admin-emerald: var(--preview-accent-emerald);
 }
 
 .admin-panel-hero {

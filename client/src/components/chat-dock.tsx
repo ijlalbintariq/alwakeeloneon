@@ -45,7 +45,7 @@ export function ChatDock() {
                     <div className="mb-1.5 pb-1 border-b border-slate-700/40">
                       {m.modeName && (
                         <div className={`text-[9px] font-black uppercase tracking-widest ${
-                          m.modeName === "Turbo" ? "text-purple-400" : "text-slate-400"
+                          m.modeName === "Turbo" ? "text-amber-400" : "text-slate-400"
                         }`}>
                           Mode: {m.modeName}
                         </div>

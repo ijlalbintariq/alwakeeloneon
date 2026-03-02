@@ -141,7 +141,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
   const currentModeName = useCallback((): { name: string; color: string; icon: "zap" | "sparkles" | "standard" } => {
     if (aiMode === "standard") return { name: "Standard", color: "text-slate-400", icon: "standard" };
-    if (aiMode === "turbo") return { name: "Turbo", color: "text-purple-400", icon: "zap" };
+    if (aiMode === "turbo") return { name: "Turbo", color: "text-amber-400", icon: "zap" };
     const apexModel = apexData?.models.find(m => m.id === aiMode);
     return { name: apexModel?.name || "Apex", color: "text-emerald-400", icon: "sparkles" };
   }, [aiMode, apexData]);
@@ -597,7 +597,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           <div className="flex flex-col gap-1">
                             {m.modeName && (
                               <span className={`text-[9px] font-black uppercase tracking-widest ${
-                                m.modeName === "Turbo" ? "text-purple-400" :
+                                m.modeName === "Turbo" ? "text-amber-400" :
                                 m.modeName === "Standard" ? "text-slate-500" :
                                 "text-emerald-400"
                               }`}>
@@ -716,7 +716,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 onClick={() => setShowModelMenu(!showModelMenu)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
                   aiMode === "turbo"
-                    ? "bg-purple-500/20 text-purple-400 border-purple-500/30"
+                    ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
                     : isApexMode
                       ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                       : "text-slate-400 border-slate-700 hover:border-slate-600 hover:text-slate-300"
@@ -724,7 +724,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 data-testid="button-model-selector"
               >
                 {aiMode === "turbo" ? (
-                  <Zap size={12} className="text-purple-400" />
+                  <Zap size={12} className="text-amber-400" />
                 ) : isApexMode ? (
                   <Sparkles size={12} className="text-emerald-400" />
                 ) : (
@@ -751,10 +751,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   {canUseTurbo && (
                     <button
                       onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }}
-                      className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 ${aiMode === "turbo" ? "bg-purple-500/10 text-purple-400" : "text-slate-400"}`}
+                      className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 ${aiMode === "turbo" ? "bg-amber-500/10 text-amber-400" : "text-slate-400"}`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
-                        <Zap size={11} className="text-purple-500" />
+                        <Zap size={11} className="text-amber-500" />
                         Turbo
                       </div>
                       <div className="text-[10px] text-slate-500 mt-0.5">Deep reasoning & analysis</div>
@@ -1101,7 +1101,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   <button
                     onClick={() => setShowModelMenu(!showModelMenu)}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
-                      aiMode === "turbo" ? "text-purple-300 border-purple-500/40 bg-purple-500/10" :
+                      aiMode === "turbo" ? "text-amber-300 border-amber-500/40 bg-amber-500/10" :
                       isApexMode ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" :
                       "text-slate-300 border-amber-500/20"
                     }`}
@@ -1118,7 +1118,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         <div className="font-bold">Standard</div><div className="text-[10px] text-slate-500 mt-0.5">Fast, reliable responses</div>
                       </button>
                       {canUseTurbo && (
-                        <button onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${aiMode === "turbo" ? "bg-purple-500/10 text-purple-300" : "text-slate-300"}`}>
+                        <button onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${aiMode === "turbo" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
                           <div className="font-bold">Turbo</div><div className="text-[10px] text-slate-500 mt-0.5">Deep reasoning & analysis</div>
                         </button>
                       )}

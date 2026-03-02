@@ -159,7 +159,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
   const isWideChatLayout =
-    location === "/al-wakeelo" || location === "/legal-drafting" || location === "/contract-drafting";
+    location === "/al-wakeelo" ||
+    location === "/legal-drafting" ||
+    location === "/contract-drafting" ||
+    location === "/case-documents" ||
+    location === "/knowledge-vault";
 
   const style = {
     "--sidebar-width": "18.5rem",

@@ -42,7 +42,7 @@ export interface IStorage {
     data: Partial<Pick<InsertDocument, "title" | "content">>
   ): Promise<Document | undefined>;
   getAllDocuments(): Promise<Document[]>;
-  deleteDocument(id: number): Promise<void>;
+  deleteDocument(id: number, userId: string): Promise<void>;
 
   createBookmark(bookmark: InsertBookmark & { userId: string }): Promise<Bookmark>;
   getBookmarks(userId: string): Promise<Bookmark[]>;
@@ -207,8 +207,8 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(documents);
   }
 
-  async deleteDocument(id: number): Promise<void> {
-    await db.delete(documents).where(eq(documents.id, id));
+  async deleteDocument(id: number, userId: string): Promise<void> {
+    await db.delete(documents).where(and(eq(documents.id, id), eq(documents.userId, userId)));
   }
 
   async createBookmark(insertBookmark: InsertBookmark & { userId: string }): Promise<Bookmark> {
