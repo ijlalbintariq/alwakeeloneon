@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
   History, FileBadge, Sparkles, Database, LogOut,
-  User as UserIcon, Shield, Settings, Building2
+  User as UserIcon, Shield, Settings, Building2, Monitor, Moon, SunMedium
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -20,6 +20,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/hooks/use-theme";
 
 const NAVIGATION_ITEMS = [
   { id: "dashboard", label: "Chambers Dashboard", icon: LayoutDashboard, href: "/dashboard" },
@@ -40,7 +41,10 @@ function AppSidebar() {
   const { user, logout } = useAuth();
 
   return (
-    <Sidebar className="bg-gradient-to-b from-[#131f33]/85 to-[#0d1627]/80 border-r border-[hsl(var(--preview-border))] backdrop-blur-xl">
+    <Sidebar className={cn(
+      "bg-gradient-to-b from-[#131f33]/85 to-[#0d1627]/80 border-r border-[hsl(var(--preview-border))] backdrop-blur-xl",
+      "app-sidebar mac-glass-panel"
+    )}>
       <SidebarHeader className="p-4 border-b border-[hsl(var(--preview-border))]">
         <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/65 backdrop-blur-lg px-3 py-3 shadow-[0_18px_34px_-26px_rgba(0,0,0,0.9)]">
           <div className="flex items-center gap-3">
@@ -81,7 +85,7 @@ function AppSidebar() {
                     >
                       <Link href={item.href}>
                         <Icon size={17} className={isActive ? "text-slate-900" : "text-slate-400"} />
-                        <span className="text-[10px] uppercase tracking-[0.14em]">{item.label}</span>
+                        <span className="nav-label text-[10px] uppercase tracking-[0.14em]">{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -112,7 +116,7 @@ function AppSidebar() {
               >
                 <Link href="/admin">
                   <Shield size={17} className={location === "/admin" ? "text-slate-900" : "text-slate-400"} />
-                  <span className="text-[10px] uppercase tracking-[0.14em]">Admin Panel</span>
+                  <span className="nav-label text-[10px] uppercase tracking-[0.14em]">Admin Panel</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -130,7 +134,7 @@ function AppSidebar() {
             >
               <Link href="/settings">
                 <Settings size={17} className={location === "/settings" ? "text-slate-900" : "text-slate-400"} />
-                <span className="text-[10px] uppercase tracking-[0.14em]">Settings</span>
+                <span className="nav-label text-[10px] uppercase tracking-[0.14em]">Settings</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -141,7 +145,7 @@ function AppSidebar() {
               className="rounded-xl border border-transparent py-3 text-slate-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all"
             >
               <LogOut size={17} />
-              <span className="text-[10px] font-black uppercase tracking-[0.14em]">Exit Vault</span>
+              <span className="nav-label text-[10px] font-black uppercase tracking-[0.14em]">Exit Vault</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -153,6 +157,7 @@ function AppSidebar() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [location] = useLocation();
+  const { theme, setTheme } = useTheme();
   const isWideChatLayout =
     location === "/al-wakeelo" || location === "/legal-drafting" || location === "/contract-drafting";
 
@@ -163,13 +168,45 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-[100dvh] md:h-screen w-full bg-[#0f172a] text-slate-200 font-sans selection:bg-amber-500/40">
+      <div className={cn(
+        "flex h-[100dvh] md:h-screen w-full bg-[#0f172a] text-slate-200 font-sans selection:bg-amber-500/40",
+        "mac-app-shell"
+      )}>
         <AppSidebar />
 
         <div className="flex flex-col flex-1 min-w-0">
-          <header className="h-14 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/55 backdrop-blur-xl flex items-center justify-between px-3 md:px-4 gap-3 md:gap-4 z-50 sticky top-0">
+          <header className={cn(
+            "h-14 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/55 backdrop-blur-xl flex items-center justify-between px-3 md:px-4 gap-3 md:gap-4 z-50 sticky top-0",
+            "mac-glass-panel"
+          )}>
             <SidebarTrigger data-testid="button-sidebar-toggle" className="text-slate-400 hover:text-white" />
             <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-1 rounded-lg border border-[hsl(var(--preview-border))] bg-[#0f172a]/50 p-1">
+                <button
+                  onClick={() => setTheme("light")}
+                  className={cn("p-1.5 rounded-md transition-colors", theme === "light" ? "bg-white/20 text-white" : "text-slate-400 hover:text-white")}
+                  title="Light"
+                  data-testid="button-theme-light"
+                >
+                  <SunMedium size={14} />
+                </button>
+                <button
+                  onClick={() => setTheme("dark")}
+                  className={cn("p-1.5 rounded-md transition-colors", theme === "dark" ? "bg-white/20 text-white" : "text-slate-400 hover:text-white")}
+                  title="Dark"
+                  data-testid="button-theme-dark"
+                >
+                  <Moon size={14} />
+                </button>
+                <button
+                  onClick={() => setTheme("system")}
+                  className={cn("p-1.5 rounded-md transition-colors", theme === "system" ? "bg-white/20 text-white" : "text-slate-400 hover:text-white")}
+                  title="System"
+                  data-testid="button-theme-system"
+                >
+                  <Monitor size={14} />
+                </button>
+              </div>
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-black uppercase text-white tracking-widest" data-testid="text-username">
                   {user?.firstName || user?.email || "Advocate"}
@@ -186,7 +223,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className={`flex-1 overflow-y-auto bg-[#0f172a]/65 backdrop-blur-lg scrollbar-hide ${isWideChatLayout ? "p-2 sm:p-3 md:p-4" : "p-3 sm:p-4 md:p-10"}`}>
+          <main className={cn(
+            `flex-1 overflow-y-auto bg-[#0f172a]/65 backdrop-blur-lg scrollbar-hide ${isWideChatLayout ? "p-2 sm:p-3 md:p-4" : "p-3 sm:p-4 md:p-10"}`,
+            "mac-main-layer"
+          )}>
             <div className={`${isWideChatLayout ? "max-w-none" : "max-w-7xl"} mx-auto h-full w-full`}>
               {children}
             </div>

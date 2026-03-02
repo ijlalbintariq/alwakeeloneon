@@ -280,3 +280,208 @@
   border-color: hsl(var(--admin-amber));
   box-shadow: 0 0 0 3px hsl(var(--admin-amber) / 0.16);
 }
+
+/* macOS-inspired preview layer (safe, opt-in via ?ui_preview=macos) */
+[data-ui-preview="macos"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Inter, sans-serif;
+  --mac-radius-sm: 12px;
+  --mac-radius-md: 14px;
+  --mac-radius-lg: 16px;
+  --mac-motion-duration: 240ms;
+  --mac-motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --mac-glass-sat: 160%;
+}
+
+[data-ui-preview="macos"] *:not(.legal-draft-font):not(.legal-draft-font *) {
+  font-family: var(--font-sans);
+}
+
+[data-ui-preview="macos"][data-theme="dark"] {
+  --background: 218 40% 7%;
+  --foreground: 215 26% 92%;
+  --card: 218 33% 14%;
+  --card-foreground: 215 26% 92%;
+  --popover: 218 33% 14%;
+  --popover-foreground: 215 26% 92%;
+  --primary: 213 92% 60%;
+  --primary-foreground: 222 47% 6%;
+  --accent: 213 92% 60%;
+  --accent-foreground: 222 47% 6%;
+  --border: 217 23% 28%;
+  --input: 217 23% 28%;
+  --ring: 213 92% 60%;
+  --sidebar: 218 36% 10%;
+  --sidebar-foreground: 215 26% 90%;
+  --sidebar-border: 217 22% 24%;
+  --sidebar-ring: 213 92% 60%;
+  --sidebar-primary: 213 92% 60%;
+  --sidebar-primary-foreground: 222 47% 6%;
+  --sidebar-accent: 217 20% 18%;
+  --sidebar-accent-foreground: 215 26% 90%;
+  --preview-bg: 218 40% 7%;
+  --preview-surface: 218 32% 13%;
+  --preview-surface-elevated: 218 28% 17%;
+  --preview-border: 217 20% 25%;
+  --preview-border-active: 213 92% 60%;
+  --preview-text-primary: 215 26% 94%;
+  --preview-text-secondary: 214 16% 74%;
+  --preview-text-muted: 214 12% 58%;
+  --preview-shadow-soft: 0 20px 42px -24px hsl(220 53% 4% / 0.75);
+  --preview-shadow-glow: 0 14px 34px -22px hsl(213 92% 60% / 0.28);
+  --mac-glass-bg: linear-gradient(180deg, hsl(218 30% 14% / 0.66), hsl(218 28% 11% / 0.56));
+  --mac-glass-border: hsl(217 18% 70% / 0.16);
+  --mac-focus: 0 0 0 3px hsl(213 92% 60% / 0.25);
+}
+
+[data-ui-preview="macos"][data-theme="light"] {
+  --background: 220 30% 95%;
+  --foreground: 220 24% 16%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 24% 16%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 24% 16%;
+  --primary: 213 92% 52%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 213 92% 52%;
+  --accent-foreground: 0 0% 100%;
+  --border: 220 16% 80%;
+  --input: 220 16% 80%;
+  --ring: 213 92% 52%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 220 24% 20%;
+  --sidebar-border: 220 16% 84%;
+  --sidebar-ring: 213 92% 52%;
+  --sidebar-primary: 213 92% 52%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 30% 96%;
+  --sidebar-accent-foreground: 220 24% 20%;
+  --preview-bg: 220 30% 95%;
+  --preview-surface: 220 28% 98%;
+  --preview-surface-elevated: 0 0% 100%;
+  --preview-border: 220 16% 84%;
+  --preview-border-active: 213 92% 52%;
+  --preview-text-primary: 220 24% 16%;
+  --preview-text-secondary: 220 14% 34%;
+  --preview-text-muted: 220 10% 44%;
+  --preview-shadow-soft: 0 20px 36px -26px hsl(220 24% 25% / 0.2);
+  --preview-shadow-glow: 0 12px 28px -20px hsl(213 92% 52% / 0.2);
+  --mac-glass-bg: linear-gradient(180deg, hsl(0 0% 100% / 0.7), hsl(220 28% 96% / 0.64));
+  --mac-glass-border: hsl(220 14% 42% / 0.18);
+  --mac-focus: 0 0 0 3px hsl(213 92% 52% / 0.22);
+}
+
+[data-ui-preview="macos"] .mac-anim {
+  transition: transform var(--mac-motion-duration) var(--mac-motion-ease),
+    box-shadow var(--mac-motion-duration) var(--mac-motion-ease),
+    border-color var(--mac-motion-duration) var(--mac-motion-ease),
+    background-color var(--mac-motion-duration) var(--mac-motion-ease),
+    color var(--mac-motion-duration) var(--mac-motion-ease);
+}
+
+[data-ui-preview="macos"] .mac-glass-panel,
+[data-ui-preview="macos"] .mac-glass-card {
+  background: var(--mac-glass-bg);
+  border: 1px solid var(--mac-glass-border);
+  backdrop-filter: blur(18px) saturate(var(--mac-glass-sat));
+  -webkit-backdrop-filter: blur(18px) saturate(var(--mac-glass-sat));
+  box-shadow: var(--preview-shadow-soft);
+}
+
+[data-ui-preview="macos"] .mac-app-shell {
+  background:
+    radial-gradient(1200px 700px at 10% -5%, hsl(var(--primary) / 0.14), transparent 60%),
+    radial-gradient(1000px 640px at 90% 0%, hsl(185 75% 45% / 0.12), transparent 60%),
+    hsl(var(--background));
+}
+
+[data-ui-preview="macos"] .mac-main-layer {
+  background: linear-gradient(180deg, hsl(var(--background) / 0.7), hsl(var(--background) / 0.78));
+}
+
+[data-ui-preview="macos"] .app-sidebar .nav-label {
+  opacity: 1;
+  margin-left: 0.35rem;
+  white-space: nowrap;
+  transition: opacity var(--mac-motion-duration) var(--mac-motion-ease);
+}
+
+[data-ui-preview="macos"] .shadcn-button {
+  border-radius: var(--mac-radius-md);
+}
+
+[data-ui-preview="macos"] .shadcn-button:hover {
+  transform: scale(1.02);
+  box-shadow: var(--preview-shadow-glow);
+}
+
+[data-ui-preview="macos"] .shadcn-input,
+[data-ui-preview="macos"] .shadcn-textarea {
+  border-radius: var(--mac-radius-sm);
+  background: hsl(var(--card) / 0.74);
+  border-color: hsl(var(--border) / 0.95);
+}
+
+[data-ui-preview="macos"] .shadcn-input:focus-visible,
+[data-ui-preview="macos"] .shadcn-textarea:focus-visible {
+  box-shadow: var(--mac-focus);
+  border-color: hsl(var(--ring));
+}
+
+[data-ui-preview="macos"] .shadcn-card {
+  border-radius: var(--mac-radius-lg);
+  background: var(--mac-glass-bg);
+  border-color: var(--mac-glass-border);
+  backdrop-filter: blur(16px) saturate(var(--mac-glass-sat));
+  -webkit-backdrop-filter: blur(16px) saturate(var(--mac-glass-sat));
+  box-shadow: var(--preview-shadow-soft);
+}
+
+[data-ui-preview="macos"] .shadcn-dialog-overlay,
+[data-ui-preview="macos"] .shadcn-sheet-overlay,
+[data-ui-preview="macos"] .shadcn-alert-overlay {
+  background: hsl(220 30% 6% / 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@keyframes mac-slide-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+[data-ui-preview="macos"] .shadcn-dialog-content,
+[data-ui-preview="macos"] .shadcn-alert-content {
+  border-radius: var(--mac-radius-lg);
+  background: var(--mac-glass-bg);
+  border-color: var(--mac-glass-border);
+  backdrop-filter: blur(20px) saturate(var(--mac-glass-sat));
+  -webkit-backdrop-filter: blur(20px) saturate(var(--mac-glass-sat));
+  box-shadow: var(--preview-shadow-soft), var(--preview-shadow-glow);
+  animation: mac-slide-up 260ms var(--mac-motion-ease);
+}
+
+[data-ui-preview="macos"] .shadcn-sheet-content {
+  border-color: var(--mac-glass-border);
+  background: var(--mac-glass-bg);
+  backdrop-filter: blur(18px) saturate(var(--mac-glass-sat));
+  -webkit-backdrop-filter: blur(18px) saturate(var(--mac-glass-sat));
+  box-shadow: var(--preview-shadow-soft), var(--preview-shadow-glow);
+}
+
+[data-ui-preview="macos"] .fade-in {
+  animation-duration: 260ms;
+  animation-timing-function: var(--mac-motion-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ui-preview="macos"] * {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
