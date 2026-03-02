@@ -82,7 +82,7 @@ export default function SharedConversationPage() {
   return (
     <div className="min-h-screen bg-[#0f172a]">
       <div className="max-w-4xl mx-auto">
-        <div className="sticky top-0 z-10 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800 px-6 py-4">
+        <div className="sticky top-0 z-10 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-6 py-4">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
               <Scale size={20} />
@@ -109,14 +109,14 @@ export default function SharedConversationPage() {
           </div>
         </div>
 
-        <div className="p-6 md:p-10 space-y-6" data-testid="shared-messages-container">
+        <div className="p-3 sm:p-6 md:p-10 space-y-4 sm:space-y-6" data-testid="shared-messages-container">
           {conversation.messages.map((m, i) => {
             const parsed = m.role === "assistant" ? parseReferences(m.content) : null;
             const displayContent = parsed ? parsed.cleanContent : m.content;
             return (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`max-w-[85%] p-6 md:p-8 rounded-[2rem] shadow-xl ${
+                  className={`max-w-[92%] sm:max-w-[85%] p-3 sm:p-6 md:p-8 rounded-[1.2rem] sm:rounded-[2rem] shadow-xl ${
                     m.role === "user"
                       ? "bg-amber-500 text-slate-950 font-bold rounded-tr-lg"
                       : "bg-[#1e293b] border border-slate-700 text-slate-200 rounded-tl-lg"
@@ -136,7 +136,7 @@ export default function SharedConversationPage() {
           })}
         </div>
 
-        <div className="border-t border-slate-800 p-6 text-center space-y-4">
+        <div className="border-t border-slate-800 p-4 sm:p-6 text-center space-y-4">
           <p className="text-slate-500 text-xs uppercase tracking-widest font-bold">
             Want to consult Al Wakeelo yourself?
           </p>

@@ -73,11 +73,11 @@ export default function KnowledgeVaultPage() {
   }
 
   return (
-    <div className="space-y-10 fade-in" data-testid="knowledge-vault-page">
+    <div className="space-y-7 md:space-y-10 fade-in" data-testid="knowledge-vault-page">
       {previewDoc && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-6 bg-[#0f172a]/90 backdrop-blur-sm fade-in">
-          <div className="bg-[#1e293b] border border-slate-700 w-full max-w-5xl h-[90vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-6 border-b border-slate-800 bg-[#0f172a]/50 flex items-center justify-between">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-2 sm:p-6 bg-[#0f172a]/90 backdrop-blur-sm fade-in">
+          <div className="bg-[#1e293b] border border-slate-700 w-full max-w-5xl h-[92vh] sm:h-[90vh] rounded-[1.2rem] sm:rounded-[3rem] shadow-2xl flex flex-col overflow-hidden">
+            <div className="p-3 sm:p-6 border-b border-slate-800 bg-[#0f172a]/50 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl"><FileText size={24} /></div>
                 <div>
@@ -90,8 +90,8 @@ export default function KnowledgeVaultPage() {
                 <button onClick={() => setPreviewDoc(null)} className="p-2 hover:bg-red-500/10 rounded-xl text-slate-400 hover:text-red-500 transition-all" data-testid="button-close-preview"><X size={24} /></button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-8 md:p-12 bg-white/5 scrollbar-hide">
-              <div className="max-w-3xl mx-auto bg-white/[0.02] p-8 md:p-12 rounded-2xl border border-white/5">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 md:p-12 bg-white/5 scrollbar-hide">
+              <div className="max-w-3xl mx-auto bg-white/[0.02] p-4 sm:p-8 md:p-12 rounded-xl sm:rounded-2xl border border-white/5">
                 <div className="legal-draft-font whitespace-pre-wrap">{previewDoc.content || "Document indexed..."}</div>
               </div>
             </div>
@@ -116,7 +116,7 @@ export default function KnowledgeVaultPage() {
       </div>
 
       {isAdding && (
-        <div className="bg-[#1e293b] border border-slate-800 rounded-[2.5rem] p-8 shadow-xl space-y-4 fade-in">
+        <div className="bg-[#1e293b] border border-slate-800 rounded-[1.25rem] md:rounded-[2.5rem] p-4 md:p-8 shadow-xl space-y-4 fade-in">
           <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">Upload Files to Vault</h4>
           <p className="text-xs text-slate-400">Select one or more .txt, .json, .csv, .pdf, or .docx files. Each file will be added as a separate vault entry.</p>
           <input
@@ -150,8 +150,9 @@ export default function KnowledgeVaultPage() {
         </div>
       )}
 
-      <div className="bg-[#1e293b] border border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl">
-        <table className="w-full text-left">
+      <div className="bg-[#1e293b] border border-slate-800 rounded-[1.25rem] md:rounded-[3rem] overflow-hidden shadow-2xl">
+        <div className="overflow-x-auto">
+        <table className="w-full text-left min-w-[640px]">
           <thead className="bg-slate-900/50 border-b border-slate-800">
             <tr>
               <th className="p-6 md:p-8 text-[10px] font-black uppercase tracking-widest text-slate-500">Document</th>
@@ -187,6 +188,7 @@ export default function KnowledgeVaultPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

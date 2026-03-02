@@ -56,11 +56,11 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/5 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-amber-500/3 rounded-full blur-[100px]" />
 
-        <div className="w-full max-w-md bg-[#1e293b] border border-slate-800 p-10 rounded-[3rem] shadow-2xl relative z-10 fade-in">
+        <div className="w-full max-w-md bg-[#1e293b] border border-slate-800 p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[3rem] shadow-2xl relative z-10 fade-in">
           <div className="text-center space-y-4">
             <div className="w-14 h-14 bg-red-500/10 rounded-full mx-auto flex items-center justify-center">
               <AlertTriangle size={28} className="text-red-400" />
@@ -83,11 +83,11 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/5 rounded-full blur-[120px]" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-amber-500/3 rounded-full blur-[100px]" />
 
-      <div className="w-full max-w-md bg-[#1e293b] border border-slate-800 p-10 rounded-[3rem] shadow-2xl relative z-10 fade-in">
+      <div className="w-full max-w-md bg-[#1e293b] border border-slate-800 p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[3rem] shadow-2xl relative z-10 fade-in">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center mb-5 shadow-lg shadow-amber-500/20">
             <Scale size={32} className="text-slate-900" />

@@ -49,7 +49,7 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="space-y-10 fade-in" data-testid="history-page">
+    <div className="space-y-7 md:space-y-10 fade-in" data-testid="history-page">
       <div>
         <h2 className="text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
           Search History
@@ -90,8 +90,9 @@ export default function HistoryPage() {
       )}
 
       {history && history.length > 0 ? (
-        <div className="bg-[#1e293b] rounded-[3rem] overflow-hidden shadow-2xl border border-slate-800">
-          <table className="w-full text-left">
+        <div className="bg-[#1e293b] rounded-[1.25rem] md:rounded-[3rem] overflow-hidden shadow-2xl border border-slate-800">
+          <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[560px]">
             <thead className="bg-slate-900/50 text-[10px] font-black uppercase text-slate-500 border-b border-slate-800">
               <tr>
                 <th className="p-6 md:p-8">Parameter Entry</th>
@@ -112,9 +113,10 @@ export default function HistoryPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       ) : (
-        <div className="py-20 text-center bg-[#1e293b]/30 border border-dashed border-slate-800 rounded-[3rem]">
+        <div className="py-16 md:py-20 text-center bg-[#1e293b]/30 border border-dashed border-slate-800 rounded-[1.5rem] md:rounded-[3rem]">
           <History size={48} className="mx-auto text-slate-800 mb-6" />
           <p className="text-slate-600 italic font-medium">No search history recorded yet.</p>
         </div>
@@ -124,7 +126,7 @@ export default function HistoryPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowThreadsPopup(false)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div
-            className="relative bg-[#1e293b] border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col"
+            className="relative bg-[#1e293b] border border-slate-700 rounded-xl sm:rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-[#1e293b] border-b border-slate-700 p-4 flex items-center justify-between rounded-t-2xl z-10">
@@ -156,7 +158,7 @@ export default function HistoryPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setSelectedThread(null); setThreadMessages(null); }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div
-            className="relative bg-[#1e293b] border border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+            className="relative bg-[#1e293b] border border-slate-700 rounded-xl sm:rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-[#1e293b] border-b border-slate-700 p-4 flex items-center justify-between rounded-t-2xl z-10">

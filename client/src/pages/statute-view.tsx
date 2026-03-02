@@ -65,7 +65,7 @@ export default function StatuteViewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
   const [isTocLoading, setIsTocLoading] = useState(false);
-  const [showToc, setShowToc] = useState(true);
+  const [showToc, setShowToc] = useState(false);
   const [chatMessages, setChatMessages] = useState<AiMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -260,10 +260,10 @@ export default function StatuteViewPage() {
 
   return (
     <div className="h-full flex flex-col fade-in">
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-[#0f172a]">
+      <div className="flex items-center justify-between gap-3 px-3 md:px-4 py-3 border-b border-slate-800 bg-[#0f172a]">
         <div className="flex items-center gap-3 min-w-0">
           {!showToc && (
-            <Button size="icon" variant="ghost" onClick={() => setShowToc(true)} className="text-slate-400 flex-shrink-0">
+            <Button size="icon" variant="ghost" onClick={() => setShowToc(true)} className="text-slate-400 flex-shrink-0 hidden md:inline-flex">
               <List size={18} />
             </Button>
           )}
@@ -279,8 +279,8 @@ export default function StatuteViewPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className={`${showToc ? "w-[280px] min-w-[280px]" : "w-0 min-w-0"} border-r border-slate-800 bg-[#0f172a] flex flex-col overflow-hidden transition-all duration-300`}>
+      <div className="flex-1 flex flex-col xl:flex-row overflow-y-auto xl:overflow-hidden">
+        <div className={`${showToc ? "md:w-[280px] md:min-w-[280px]" : "w-0 min-w-0"} border-r border-slate-800 bg-[#0f172a] hidden md:flex flex-col overflow-hidden transition-all duration-300`}>
           <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <List size={14} className="text-slate-500 flex-shrink-0" />
@@ -310,7 +310,7 @@ export default function StatuteViewPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto min-w-0">
-          <div className="max-w-4xl mx-auto px-6 md:px-12 py-10">
+          <div className="max-w-4xl mx-auto px-3 sm:px-6 md:px-12 py-6 md:py-10">
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-2" style={{ fontFamily: "'Libre Baskerville', serif" }}>
               {doc.title.toUpperCase()}
             </h1>
@@ -337,8 +337,8 @@ export default function StatuteViewPage() {
           </div>
         </div>
 
-        <div className="w-[380px] min-w-[340px] border-l border-slate-800 bg-[#0f172a] flex flex-col">
-          <div className="p-4 border-b border-slate-800">
+        <div className="w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-slate-800 bg-[#0f172a] flex flex-col max-h-[52vh] xl:max-h-none">
+          <div className="p-3 md:p-4 border-b border-slate-800">
             <div className="flex items-center gap-2">
               <MessageSquare size={14} className="text-amber-500" />
               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">
@@ -347,7 +347,7 @@ export default function StatuteViewPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
             {chatMessages.length === 0 && (
               <div className="text-center py-12">
                 <Book size={32} className="text-slate-700 mx-auto mb-3" />

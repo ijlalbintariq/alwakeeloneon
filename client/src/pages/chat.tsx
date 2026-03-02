@@ -877,7 +877,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   }
 
   return (
-    <div className="h-[calc(100vh-96px)] md:h-[calc(100vh-120px)] rounded-2xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[#0f172a]/70 backdrop-blur-xl fade-in">
+    <div className="h-[calc(100dvh-96px)] md:h-[calc(100vh-120px)] rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[#0f172a]/70 backdrop-blur-xl fade-in">
       <div className="flex h-full w-full">
         <aside className="hidden lg:flex w-72 shrink-0 border-r border-[hsl(var(--preview-border))] bg-[#1e293b]/70 backdrop-blur-md flex-col">
           <div className="p-5 flex flex-col h-full">
@@ -951,10 +951,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         </aside>
 
         <main className="flex-1 flex flex-col bg-[#0f172a]/65">
-          <header className="h-16 px-4 sm:px-6 border-b border-amber-500/10 flex items-center justify-between bg-[#0f172a]/75 backdrop-blur-md">
+          <header className="h-16 px-3 sm:px-6 border-b border-amber-500/10 flex items-center justify-between bg-[#0f172a]/75 backdrop-blur-md">
             <div className="flex items-center gap-4 min-w-0">
               <h2 className="font-serif text-lg text-slate-100 truncate">{title || "Al Wakeelo Engine"}</h2>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">ACTIVE</span>
+              <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">ACTIVE</span>
             </div>
             <div className="flex items-center gap-2">
               {messages.length >= 2 && (
@@ -989,15 +989,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               const parsed = m.role === "assistant" ? parseReferences(m.content) : null;
               const displayContent = parsed ? parsed.cleanContent : m.content;
               return (
-                <div key={m.id} className={`flex items-start gap-4 w-full max-w-[min(100%,72rem)] ${m.role === "user" ? "ml-auto flex-row-reverse" : ""}`}>
-                  <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-amber-500 text-slate-950" : "bg-[#1e293b] border border-amber-500/30 text-amber-400"}`}>
+                <div key={m.id} className={`flex items-start gap-2 sm:gap-4 w-full max-w-[min(100%,72rem)] ${m.role === "user" ? "ml-auto flex-row-reverse" : ""}`}>
+                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-amber-500 text-slate-950" : "bg-[#1e293b] border border-amber-500/30 text-amber-400"}`}>
                     {m.role === "assistant" ? <Scale size={18} /> : <UserIcon size={16} />}
                   </div>
                   <div className={`flex flex-col gap-2 ${m.role === "user" ? "items-end" : ""}`}>
                     <p className={`text-[11px] font-bold uppercase tracking-widest ${m.role === "assistant" ? "text-amber-400" : "text-slate-500"}`}>
                       {m.role === "assistant" ? "Al Wakeelo Assistant" : "You"}
                     </p>
-                    <div className={`p-5 rounded-2xl relative group ${m.role === "assistant" ? "bg-amber-500/5 backdrop-blur border border-amber-500/20 rounded-tl-none" : "bg-[#1e293b]/90 border border-amber-500 rounded-tr-none"}`}>
+                    <div className={`p-3 sm:p-5 rounded-2xl relative group ${m.role === "assistant" ? "bg-amber-500/5 backdrop-blur border border-amber-500/20 rounded-tl-none" : "bg-[#1e293b]/90 border border-amber-500 rounded-tr-none"}`}>
                       {m.role === "assistant" ? (
                         <>
                           {(m.modeName || m.modelName) && (
@@ -1054,7 +1054,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             )}
           </div>
 
-          <div className="p-3 sm:p-6 pt-2 border-t border-amber-500/10">
+          <div className="p-2 sm:p-6 pt-2 border-t border-amber-500/10">
             {apiError && (
               <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
                 <AlertCircle size={14} className="text-red-400" />
@@ -1063,7 +1063,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             )}
 
             <div className="w-full max-w-[min(100%,72rem)] mx-auto bg-[#1e293b]/80 border border-amber-500/20 rounded-2xl shadow-2xl p-2">
-              <div className="flex items-center gap-2 p-2 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-2 p-1.5 sm:p-2 flex-wrap">
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple className="hidden" />
                 <input type="file" ref={audioInputRef} onChange={handleAudioSelect} accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" className="hidden" />
 
@@ -1083,7 +1083,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   data-testid="input-chat"
                 />
 
-                <div className="relative border-l border-amber-500/10 pl-3 ml-1">
+                <div className="relative border-l border-amber-500/10 pl-2 sm:pl-3 ml-1">
                   <button
                     onClick={() => setShowModelMenu(!showModelMenu)}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${

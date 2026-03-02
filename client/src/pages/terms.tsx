@@ -7,7 +7,7 @@ export default function TermsOfServicePage() {
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
       <nav className="sticky top-0 z-50 bg-[#0f172a]/90 backdrop-blur-xl border-b border-slate-800/50">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 flex items-center justify-between">
           <button onClick={() => navigate("/")} className="flex items-center gap-3 text-slate-400 hover:text-white transition-colors">
             <ArrowLeft size={18} />
             <div className="flex items-center gap-2">
@@ -20,7 +20,7 @@ export default function TermsOfServicePage() {
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto px-6 py-16">
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 py-10 md:py-16">
         <h1 className="text-4xl font-bold italic mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>Terms of Service</h1>
         <p className="text-sm text-slate-500 mb-12">Last updated: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
 
@@ -157,8 +157,8 @@ export default function TermsOfServicePage() {
         </div>
       </div>
 
-      <footer className="py-8 px-6 border-t border-slate-800/50">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <footer className="py-8 px-3 sm:px-6 border-t border-slate-800/50">
+        <div className="max-w-4xl mx-auto flex items-center justify-between flex-wrap gap-3">
           <p className="text-xs text-slate-600">&copy; {new Date().getFullYear()} Al Wakeelo. All rights reserved.</p>
           <div className="flex gap-4">
             <a href="/privacy" onClick={(e) => { e.preventDefault(); navigate("/privacy"); }} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">Privacy Policy</a>

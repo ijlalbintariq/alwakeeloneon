@@ -180,18 +180,18 @@ export default function JudgmentSearchPage() {
   const allResults = [...localResults, ...externalResults];
 
   return (
-    <div className="space-y-10 fade-in pb-20" data-testid="judgment-search-page">
+    <div className="space-y-7 md:space-y-10 fade-in pb-20" data-testid="judgment-search-page">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
-          <h2 className="text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
             Judgment Vault
           </h2>
           <p className="text-slate-500 mt-2 font-medium">Verified Chambers Vaults & Grounded Pakistani Legal Search.</p>
         </div>
         <div className="flex flex-col gap-2 w-full lg:w-[35rem]">
-          <div className="flex gap-3 bg-[#1e293b] p-3 rounded-[2.5rem] border border-slate-800 shadow-2xl">
+          <div className="flex gap-2 sm:gap-3 bg-[#1e293b] p-2.5 sm:p-3 rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-800 shadow-2xl">
             <input
-              className="flex-1 bg-transparent border-none px-6 py-3 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-600"
+              className="flex-1 bg-transparent border-none px-3 sm:px-6 py-2.5 sm:py-3 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-600"
               placeholder="Search case law, citations, keywords..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -202,7 +202,7 @@ export default function JudgmentSearchPage() {
               onClick={handleSearch}
               disabled={isLoading}
               data-testid="button-judgment-search"
-              className="p-4 bg-amber-500 text-slate-950 rounded-[2rem] hover:bg-amber-400 transition-all shadow-xl active:scale-95"
+              className="p-3 sm:p-4 bg-amber-500 text-slate-950 rounded-[1rem] sm:rounded-[2rem] hover:bg-amber-400 transition-all shadow-xl active:scale-95"
             >
               {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Search size={20} />}
             </button>
@@ -254,11 +254,11 @@ export default function JudgmentSearchPage() {
                 <div className="flex-1 h-px bg-slate-800" />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
                 {allResults.map((item, idx) => (
                   <div
                     key={idx}
-                    className={`rounded-[3rem] shadow-2xl transition-all relative border ${
+                    className={`rounded-[1.5rem] md:rounded-[3rem] shadow-2xl transition-all relative border ${
                       expandedSummary === idx ? "md:col-span-2" : ""
                     } ${
                       item.source === "external"
@@ -267,7 +267,7 @@ export default function JudgmentSearchPage() {
                     }`}
                     data-testid={`judgment-result-${idx}`}
                   >
-                    <div className="p-8 md:p-10">
+                    <div className="p-4 sm:p-6 md:p-10">
                       <div className="flex flex-wrap gap-3 mb-6">
                         <span className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
                           item.source === "external"
