@@ -27,6 +27,8 @@ interface ChatMessage {
   modelName?: string;
   modelId?: string;
   modelDescription?: string;
+  moduleProfile?: string;
+  routingPath?: string[];
 }
 
 type AiMode = "standard" | "turbo" | string;
@@ -275,6 +277,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         const formData = new FormData();
         formData.append("messages", JSON.stringify(updated.map((m) => ({ role: m.role, content: m.content }))));
         formData.append("type", type);
+        formData.append("moduleIntent", "chat.general");
         formData.append("turbo", String(turboMode && canUseTurbo));
         formData.append("stream", "true");
         currentFiles.forEach(file => formData.append("attachments", file));
@@ -291,6 +294,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           body: JSON.stringify({
             messages: updated.map((m) => ({ role: m.role, content: m.content })),
             type,
+            moduleIntent: "chat.general",
             turbo: turboMode && canUseTurbo,
             stream: true,
           }),
@@ -318,6 +322,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           modelName: modelLabel,
           modelId,
           modelDescription,
+          moduleProfile: typeof data.moduleProfile === "string" ? data.moduleProfile : undefined,
+          routingPath: Array.isArray(data.routingPath) ? data.routingPath.map(String) : undefined,
         }]);
       } else {
         setMessages([...updated, { id: assistantId, role: "assistant", content: "" }]);
@@ -367,6 +373,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           modelName: modelLabel,
                           modelId,
                           modelDescription,
+                          moduleProfile: typeof parsed.moduleProfile === "string" ? parsed.moduleProfile : undefined,
+                          routingPath: Array.isArray(parsed.routingPath) ? parsed.routingPath.map(String) : undefined,
                         }];
                       }
                       return prev;
@@ -606,6 +614,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                             {m.modelDescription && (
                               <span className="text-[10px] text-slate-500 mt-0.5">
                                 {m.modelDescription}
+                              </span>
+                            )}
+                            {m.moduleProfile && (
+                              <span className="text-[9px] font-black uppercase tracking-widest text-cyan-300">
+                                Profile: {m.moduleProfile}
                               </span>
                             )}
                           </div>
@@ -1005,6 +1018,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                               <div className="text-[10px] text-slate-400">
                                 {m.modeName && <span className="mr-2 uppercase tracking-wider text-amber-400">{m.modeName}</span>}
                                 {m.modelName && <span className="uppercase tracking-wider text-emerald-300">{m.modelName}</span>}
+                                {m.moduleProfile && <span className="uppercase tracking-wider text-cyan-300 ml-2">{m.moduleProfile}</span>}
                                 {m.modelDescription && <span className="block mt-1 text-slate-500">{m.modelDescription}</span>}
                               </div>
                             </div>
