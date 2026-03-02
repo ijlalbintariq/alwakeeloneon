@@ -784,6 +784,8 @@ export async function registerRoutes(
     res.json(docs);
   });
 
+  const documentUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
   app.post(api.documents.create.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -800,6 +802,86 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error creating document:", err);
       res.status(500).json({ message: "Failed to create document" });
+    }
+  });
+
+  app.post("/api/documents/upload", documentUpload.array("files", 25), async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const files = (req.files as Express.Multer.File[] | undefined) || [];
+      if (files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const uploaded: any[] = [];
+      const errors: string[] = [];
+
+      for (const file of files) {
+        const original = file.originalname || "uploaded-document.txt";
+        const ext = original.includes(".")
+          ? original.substring(original.lastIndexOf(".")).toLowerCase()
+          : "";
+
+        if (![".txt", ".json", ".csv", ".pdf", ".doc", ".docx"].includes(ext)) {
+          errors.push(`${original}: unsupported format (use .txt, .json, .csv, .pdf, or .docx)`);
+          continue;
+        }
+
+        let content = "";
+
+        if (ext === ".pdf") {
+          try {
+            const uint8 = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength);
+            const parsed = await extractText(uint8, { mergePages: true });
+            content = stripNullBytes((parsed.text || "").trim());
+          } catch (pdfErr: any) {
+            console.error(`[Documents Upload] PDF parse error for ${original}:`, pdfErr?.message || pdfErr);
+            content = "";
+          }
+          if (!content) {
+            errors.push(`${original}: could not extract text (file may be scanned/image PDF)`);
+            continue;
+          }
+        } else if (ext === ".doc" || ext === ".docx") {
+          try {
+            const result = await mammoth.extractRawText({ buffer: file.buffer });
+            content = stripNullBytes((result.value || "").trim());
+          } catch (docErr: any) {
+            console.error(`[Documents Upload] DOCX parse error for ${original}:`, docErr?.message || docErr);
+            content = "";
+          }
+          if (!content) {
+            errors.push(`${original}: could not extract text from document`);
+            continue;
+          }
+        } else {
+          content = stripNullBytes(file.buffer.toString("utf-8").trim());
+          if (!content) {
+            errors.push(`${original}: document is empty`);
+            continue;
+          }
+        }
+
+        const customTitle = typeof req.body?.title === "string" ? req.body.title.trim() : "";
+        const title = files.length === 1 && customTitle ? customTitle : original;
+        const doc = await storage.createDocument({ userId, title, content });
+        uploaded.push(doc);
+      }
+
+      if (uploaded.length === 0) {
+        return res.status(400).json({ message: errors[0] || "No valid files uploaded", uploaded: 0, failed: errors.length, errors });
+      }
+
+      res.status(201).json({
+        uploaded: uploaded.length,
+        failed: errors.length,
+        documents: uploaded,
+        errors,
+      });
+    } catch (err) {
+      console.error("Error uploading user documents:", err);
+      res.status(500).json({ message: "Failed to upload documents" });
     }
   });
 
@@ -838,7 +920,7 @@ export async function registerRoutes(
     if (!userId) return res.sendStatus(401);
     try {
       const id = Number(req.params.id);
-      await storage.deleteDocument(id);
+      await storage.deleteDocument(id, userId);
       res.sendStatus(204);
     } catch (err) {
       console.error("Error deleting document:", err);

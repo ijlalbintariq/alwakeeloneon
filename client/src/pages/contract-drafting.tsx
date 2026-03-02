@@ -1017,10 +1017,10 @@ export default function ContractDraftingPage() {
 
   return (
     <div className="h-full min-h-[620px] md:min-h-[760px] rounded-2xl md:rounded-[1.8rem] border border-[hsl(var(--preview-border))] overflow-hidden preview-bg text-slate-100 flex flex-col fade-in">
-      <header className="flex items-center justify-between border-b border-primary/10 glass-surface backdrop-blur-xl px-3 md:px-8 py-3 z-20">
+      <header className="flex items-center justify-between border-b border-[hsl(var(--preview-border))] glass-shell backdrop-blur-xl px-3 md:px-8 py-3 z-20">
         <div className="flex items-center gap-3 md:gap-6 min-w-0">
           <div className="flex items-center gap-3">
-            <div className="size-9 bg-primary rounded-lg flex items-center justify-center">
+            <div className="size-9 bg-amber-500 rounded-lg flex items-center justify-center">
               <Gavel size={18} className="text-slate-950" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-white uppercase italic">Al Wakeelo</h1>
@@ -1038,17 +1038,17 @@ export default function ContractDraftingPage() {
         </div>
 
         <div className="flex items-center gap-4 md:gap-8">
-          <div className="hidden md:flex items-center gap-4 bg-white/5 px-5 py-2 rounded-xl border border-primary/10">
+          <div className="hidden md:flex items-center gap-4 bg-white/5 px-5 py-2 rounded-xl border border-amber-500/10">
             <div className="flex flex-col items-start gap-0.5">
               <span className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-bold">Contract Health</span>
               <div className="flex items-center gap-3">
                 <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className={`h-full ${healthScore >= 75 ? "bg-emerald-400" : healthScore >= 45 ? "bg-primary" : "bg-red-400"}`}
+                    className={`h-full ${healthScore >= 75 ? "bg-emerald-400" : healthScore >= 45 ? "bg-amber-500" : "bg-red-400"}`}
                     style={{ width: `${healthScore}%` }}
                   />
                 </div>
-                <span className="text-primary font-bold text-sm">{healthScore}%</span>
+                <span className="text-amber-400 font-bold text-sm">{healthScore}%</span>
               </div>
             </div>
           </div>
@@ -1056,11 +1056,11 @@ export default function ContractDraftingPage() {
       </header>
 
       <main className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-        <section className="w-full lg:w-[360px] lg:shrink-0 glass-surface border-b lg:border-b-0 lg:border-r border-primary/10 flex flex-col overflow-hidden">
+        <section className="w-full lg:w-[360px] lg:shrink-0 glass-surface border-b lg:border-b-0 lg:border-r border-[hsl(var(--preview-border))] flex flex-col overflow-hidden">
           <div className="p-4 md:p-6 overflow-y-auto scrollbar-hide flex-1 space-y-6 md:space-y-8">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <FileText size={18} className="text-primary" />
+                <FileText size={18} className="text-amber-400" />
                 Input Parameters
               </h2>
               <p className="text-xs text-slate-500">Provide details to generate the legal draft</p>
@@ -1072,7 +1072,7 @@ export default function ContractDraftingPage() {
                 <Input
                   value={form.title}
                   onChange={(e) => onFieldChange("title", e.target.value)}
-                  className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-white focus:border-primary focus-visible:ring-primary/30 placeholder:text-slate-600"
+                  className="w-full bg-white/5 border border-amber-500/20 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 focus-visible:ring-amber-500/30 placeholder:text-slate-600"
                   placeholder="e.g. Service Agreement 2026"
                 />
               </div>
@@ -1081,7 +1081,7 @@ export default function ContractDraftingPage() {
                 <select
                   value={form.contractType}
                   onChange={(e) => onFieldChange("contractType", e.target.value)}
-                  className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-white focus:border-primary outline-none"
+                  className="w-full bg-white/5 border border-amber-500/20 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 outline-none"
                 >
                   {CONTRACT_TYPES.map((type) => (
                     <option key={type} value={type} className="preview-bg">
@@ -1093,7 +1093,7 @@ export default function ContractDraftingPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary/90 uppercase text-[10px] font-bold tracking-widest">
+              <div className="flex items-center gap-2 text-amber-400/90 uppercase text-[10px] font-bold tracking-widest">
                 <span>Parties Information</span>
               </div>
               <div className="space-y-4">
@@ -1102,7 +1102,7 @@ export default function ContractDraftingPage() {
                   <Input
                     value={form.firstParty}
                     onChange={(e) => onFieldChange("firstParty", e.target.value)}
-                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-white focus:border-primary focus-visible:ring-primary/30 placeholder:text-slate-600"
+                    className="w-full bg-white/5 border border-amber-500/20 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 focus-visible:ring-amber-500/30 placeholder:text-slate-600"
                     placeholder="e.g. Malik & Sons Enterprises"
                   />
                 </div>
@@ -1111,7 +1111,7 @@ export default function ContractDraftingPage() {
                   <Input
                     value={form.secondParty}
                     onChange={(e) => onFieldChange("secondParty", e.target.value)}
-                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-white focus:border-primary focus-visible:ring-primary/30 placeholder:text-slate-600"
+                    className="w-full bg-white/5 border border-amber-500/20 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 focus-visible:ring-amber-500/30 placeholder:text-slate-600"
                     placeholder="Full Legal Name"
                   />
                 </div>
@@ -1119,7 +1119,7 @@ export default function ContractDraftingPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary/90 uppercase text-[10px] font-bold tracking-widest">
+              <div className="flex items-center gap-2 text-amber-400/90 uppercase text-[10px] font-bold tracking-widest">
                 <span>Contract Duration</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1129,7 +1129,7 @@ export default function ContractDraftingPage() {
                     type="date"
                     value={form.effectiveDate}
                     onChange={(e) => onFieldChange("effectiveDate", e.target.value)}
-                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-white focus:border-primary outline-none"
+                    className="w-full bg-white/5 border border-amber-500/20 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 outline-none"
                   />
                 </div>
                 <div className="group">
@@ -1137,7 +1137,7 @@ export default function ContractDraftingPage() {
                   <select
                     value={form.terminationNotice}
                     onChange={(e) => onFieldChange("terminationNotice", e.target.value)}
-                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-white focus:border-primary outline-none"
+                    className="w-full bg-white/5 border border-amber-500/20 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 outline-none"
                   >
                     {NOTICE_PERIODS.map((p) => (
                       <option key={p} value={p} className="preview-bg">
@@ -1150,7 +1150,7 @@ export default function ContractDraftingPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary/90 uppercase text-[10px] font-bold tracking-widest">
+              <div className="flex items-center gap-2 text-amber-400/90 uppercase text-[10px] font-bold tracking-widest">
                 <span>Jurisdiction & Governing Law</span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1160,8 +1160,8 @@ export default function ContractDraftingPage() {
                     onClick={() => onFieldChange("jurisdiction", city)}
                     className={`px-4 py-2 rounded-full border text-xs font-bold transition-all ${
                       form.jurisdiction === city
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-primary/20 bg-white/5 text-slate-400 hover:border-primary/50"
+                        ? "border-amber-500 bg-amber-500/10 text-amber-400"
+                        : "border-amber-500/20 bg-white/5 text-slate-400 hover:border-amber-500/50"
                     }`}
                   >
                     {city}
@@ -1172,33 +1172,33 @@ export default function ContractDraftingPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary/90 uppercase text-[10px] font-bold tracking-widest">
+              <div className="flex items-center gap-2 text-amber-400/90 uppercase text-[10px] font-bold tracking-widest">
                 <span>Specific Obligations</span>
               </div>
               <Textarea
                 value={form.obligations}
                 onChange={(e) => onFieldChange("obligations", e.target.value)}
-                className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-white focus:border-primary focus-visible:ring-primary/30 placeholder:text-slate-600 resize-none"
+                className="w-full bg-white/5 border border-amber-500/20 rounded-lg px-4 py-3 text-sm text-white focus:border-amber-500 focus-visible:ring-amber-500/30 placeholder:text-slate-600 resize-none"
                 placeholder="Describe the service scope or payment terms..."
                 rows={4}
               />
             </div>
 
-            <div className="space-y-3 rounded-xl border border-primary/20 glass-soft p-3">
+            <div className="space-y-3 rounded-xl border border-amber-500/20 glass-soft p-3">
               <div className="flex items-center gap-2">
-                <Library size={14} className="text-primary" />
-                <p className="text-[11px] font-semibold text-primary uppercase tracking-widest">Clause Library Panel</p>
+                <Library size={14} className="text-amber-400" />
+                <p className="text-[11px] font-semibold text-amber-400 uppercase tracking-widest">Clause Library Panel</p>
               </div>
               <Input
                 value={clauseSearch}
                 onChange={(e) => setClauseSearch(e.target.value)}
-                className="h-8 bg-white/5 border border-primary/20 text-xs text-white placeholder:text-slate-500"
+                className="h-8 bg-white/5 border border-amber-500/20 text-xs text-white placeholder:text-slate-500"
                 placeholder="Search clause library..."
               />
               <select
                 value={clauseCategory}
                 onChange={(e) => setClauseCategory(e.target.value)}
-                className="h-8 w-full bg-white/5 border border-primary/20 rounded-md px-2 text-xs text-white outline-none focus:border-primary"
+                className="h-8 w-full bg-white/5 border border-amber-500/20 rounded-md px-2 text-xs text-white outline-none focus:border-amber-500"
               >
                 {clauseCategories.map((category) => (
                   <option key={category} value={category} className="preview-bg">
@@ -1211,12 +1211,12 @@ export default function ContractDraftingPage() {
                   <button
                     key={item.id}
                     onClick={() => applySuggestedClause(item.prompt)}
-                    className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-primary/10 border border-white/10"
+                    className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-amber-500/10 border border-white/10"
                     disabled={isGenerating}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-semibold text-slate-100">{item.title}</span>
-                      <span className="text-[9px] uppercase text-primary">{item.category}</span>
+                      <span className="text-[9px] uppercase text-amber-400">{item.category}</span>
                     </div>
                     <p className="text-[10px] text-slate-400 mt-1">{item.subtitle}</p>
                   </button>
@@ -1227,10 +1227,10 @@ export default function ContractDraftingPage() {
               </div>
             </div>
 
-            <div className="space-y-3 rounded-xl border border-primary/20 glass-soft p-3">
+            <div className="space-y-3 rounded-xl border border-amber-500/20 glass-soft p-3">
               <div className="flex items-center gap-2">
-                <ListChecks size={14} className="text-primary" />
-                <p className="text-[11px] font-semibold text-primary uppercase tracking-widest">
+                <ListChecks size={14} className="text-amber-400" />
+                <p className="text-[11px] font-semibold text-amber-400 uppercase tracking-widest">
                   Mandatory Clause Checker
                 </p>
               </div>
@@ -1253,10 +1253,10 @@ export default function ContractDraftingPage() {
             </div>
           </div>
 
-          <div className="p-4 md:p-6 glass-surface border-t border-primary/10 space-y-3">
+          <div className="p-4 md:p-6 glass-surface border-t border-[hsl(var(--preview-border))] space-y-3">
             <button
               onClick={generateDraft}
-              className="w-full py-3 bg-primary hover:bg-primary rounded-lg text-slate-950 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 bg-amber-500 hover:bg-amber-500 rounded-lg text-slate-950 font-bold text-sm transition-colors flex items-center justify-center gap-2"
               data-testid="button-generate-contract-draft"
               disabled={isGenerating}
             >
@@ -1265,7 +1265,7 @@ export default function ContractDraftingPage() {
             </button>
             <button
               onClick={() => runComplianceCheck({ silent: false })}
-              className="w-full py-3 bg-white/5 border border-primary/30 rounded-lg text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 bg-white/5 border border-amber-500/30 rounded-lg text-amber-400 font-bold text-sm hover:bg-amber-500/5 transition-colors flex items-center justify-center gap-2"
               data-testid="button-run-contract-compliance"
               disabled={isRunningCompliance}
             >
@@ -1274,7 +1274,7 @@ export default function ContractDraftingPage() {
             </button>
             <button
               onClick={runCounterpartyRedline}
-              className="w-full py-3 bg-white/5 border border-primary/30 rounded-lg text-primary font-bold text-sm hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 bg-white/5 border border-amber-500/30 rounded-lg text-amber-400 font-bold text-sm hover:bg-amber-500/10 transition-colors flex items-center justify-center gap-2"
               data-testid="button-run-counterparty-redline"
               disabled={isRunningRedline}
             >
@@ -1288,10 +1288,10 @@ export default function ContractDraftingPage() {
           <div className="mx-auto w-full max-w-none grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-4">
             <div>
               <div className="mb-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-4 rounded-xl border border-primary/25 glass-surface backdrop-blur-md">
+                <div className="p-4 rounded-xl border border-amber-500/25 glass-surface backdrop-blur-md">
                   <div className="flex items-center gap-2 mb-2">
-                    <ShieldCheck size={14} className="text-primary" />
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Risk Score Breakdown</p>
+                    <ShieldCheck size={14} className="text-amber-400" />
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">Risk Score Breakdown</p>
                   </div>
                   <p className="text-[10px] text-slate-400 mb-2">
                     {lastRiskScanAt
@@ -1303,9 +1303,9 @@ export default function ContractDraftingPage() {
                       <p className="text-[10px] text-slate-400 uppercase">Critical</p>
                       <p className="text-sm font-bold text-red-300">{riskBreakdown.critical}</p>
                     </div>
-                    <div className="rounded-lg border border-primary/25 bg-primary/10 py-2">
+                    <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 py-2">
                       <p className="text-[10px] text-slate-400 uppercase">Warning</p>
-                      <p className="text-sm font-bold text-primary">{riskBreakdown.warning}</p>
+                      <p className="text-sm font-bold text-amber-400">{riskBreakdown.warning}</p>
                     </div>
                     <div className="rounded-lg border border-emerald-400/25 bg-emerald-500/10 py-2">
                       <p className="text-[10px] text-slate-400 uppercase">Coverage</p>
@@ -1314,26 +1314,26 @@ export default function ContractDraftingPage() {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-xl border border-primary/25 glass-surface backdrop-blur-md">
+                <div className="p-4 rounded-xl border border-amber-500/25 glass-surface backdrop-blur-md">
                   <div className="flex items-center gap-2 mb-2">
-                    <FileDown size={14} className="text-primary" />
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Export Suite</p>
+                    <FileDown size={14} className="text-amber-400" />
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">Export Suite</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-slate-200 hover:bg-primary/10"
+                      className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-slate-200 hover:bg-amber-500/10"
                       onClick={downloadContract}
                     >
                       Export TXT
                     </button>
                     <button
-                      className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-slate-200 hover:bg-primary/10"
+                      className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-slate-200 hover:bg-amber-500/10"
                       onClick={printContract}
                     >
                       Print / PDF
                     </button>
                     <button
-                      className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-slate-200 hover:bg-primary/10"
+                      className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-slate-200 hover:bg-amber-500/10"
                       onClick={copyToClipboard}
                     >
                       Copy Text
@@ -1343,10 +1343,10 @@ export default function ContractDraftingPage() {
               </div>
 
               {complianceRisks.length > 0 && (
-                <div className="mb-5 p-4 rounded-xl border border-primary/25 glass-surface backdrop-blur-md">
+                <div className="mb-5 p-4 rounded-xl border border-amber-500/25 glass-surface backdrop-blur-md">
                   <div className="flex items-center gap-2 mb-2">
-                    <ShieldCheck size={14} className="text-primary" />
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Compliance Findings</p>
+                    <ShieldCheck size={14} className="text-amber-400" />
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">Compliance Findings</p>
                   </div>
                   <div className="space-y-2">
                     {complianceRisks.slice(0, 4).map((risk) => (
@@ -1356,7 +1356,7 @@ export default function ContractDraftingPage() {
                         className={`w-full text-left p-2 rounded-lg border ${
                           risk.severity === "danger"
                             ? "border-red-400/30 bg-red-500/10"
-                            : "border-primary/25 bg-primary/10"
+                            : "border-amber-500/25 bg-amber-500/10"
                         }`}
                         data-testid={`compliance-risk-${risk.id}`}
                       >
@@ -1364,7 +1364,7 @@ export default function ContractDraftingPage() {
                           {risk.severity === "danger" ? (
                             <AlertTriangle size={12} className="text-red-300" />
                           ) : (
-                            <CheckCircle2 size={12} className="text-primary" />
+                            <CheckCircle2 size={12} className="text-amber-400" />
                           )}
                           <span className="text-xs font-semibold text-slate-100">{risk.title}</span>
                         </div>
@@ -1392,14 +1392,14 @@ export default function ContractDraftingPage() {
             </div>
 
             <aside className="space-y-4">
-              <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-primary/20">
+              <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-amber-500/20">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <Sparkles size={16} className="text-primary" />
+                    <Sparkles size={16} className="text-amber-400" />
                     <h3 className="text-sm font-bold text-white tracking-tight">AI Clause Suggester</h3>
                   </div>
                   <button
-                    className="text-[10px] px-2 py-1 rounded border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50"
+                    className="text-[10px] px-2 py-1 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 disabled:opacity-50"
                     onClick={() => refreshClauseSuggestions({ silent: false })}
                     disabled={isLoadingClauseSuggestions}
                     data-testid="button-refresh-ai-clause-suggestions"
@@ -1412,11 +1412,11 @@ export default function ContractDraftingPage() {
                     <button
                       key={item.id}
                       onClick={() => applySuggestedClause(item.prompt)}
-                      className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-primary/10 border border-white/10 transition-all"
+                      className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-amber-500/10 border border-white/10 transition-all"
                       data-testid={`button-suggest-${item.id.replace(/[^a-zA-Z0-9-_]/g, "")}`}
                       disabled={isGenerating || isLoadingClauseSuggestions}
                     >
-                      <div className="text-[11px] font-bold text-primary mb-0.5">{item.title}</div>
+                      <div className="text-[11px] font-bold text-amber-400 mb-0.5">{item.title}</div>
                       <div className="text-[9px] text-slate-400 leading-tight">{item.subtitle}</div>
                     </button>
                   ))}
@@ -1431,14 +1431,14 @@ export default function ContractDraftingPage() {
                 </div>
               </div>
 
-              <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-primary/20">
+              <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-amber-500/20">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <GitCompareArrows size={16} className="text-primary" />
+                    <GitCompareArrows size={16} className="text-amber-400" />
                     <h3 className="text-sm font-bold text-white tracking-tight">Counterparty Redline Mode</h3>
                   </div>
                   <button
-                    className="text-[10px] px-2 py-1 rounded border border-primary/30 text-primary hover:bg-primary/10"
+                    className="text-[10px] px-2 py-1 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
                     onClick={runCounterpartyRedline}
                     disabled={isRunningRedline}
                   >
@@ -1461,7 +1461,7 @@ export default function ContractDraftingPage() {
                               ? "text-emerald-300"
                               : item.status === "rejected"
                                 ? "text-red-300"
-                                : "text-primary"
+                                : "text-amber-400"
                           }`}
                         >
                           {item.status}
@@ -1493,14 +1493,14 @@ export default function ContractDraftingPage() {
         </section>
       </main>
 
-      <footer className="glass-surface border-t border-primary/10 px-3 md:px-8 py-2 flex items-center justify-between gap-2 flex-wrap">
+      <footer className="glass-shell border-t border-[hsl(var(--preview-border))] px-3 md:px-8 py-2 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-3 md:gap-6 flex-wrap">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={14} className="text-primary" />
+            <ShieldCheck size={14} className="text-amber-400" />
             <span className="text-[10px] text-slate-400 uppercase tracking-tight">SSL Encrypted Session</span>
           </div>
           <div className="flex items-center gap-2">
-            <Cloud size={14} className="text-primary" />
+            <Cloud size={14} className="text-amber-400" />
             <span className="text-[10px] text-slate-400 uppercase tracking-tight">
               {saveStatus === "error" ? "Cloud Sync Error" : "Cloud Sync Active"}
             </span>
@@ -1508,7 +1508,7 @@ export default function ContractDraftingPage() {
         </div>
         <div className="flex items-center gap-2 md:gap-3 ml-auto">
           <button
-            className="p-1 hover:text-primary transition-colors text-slate-400"
+            className="p-1 hover:text-amber-400 transition-colors text-slate-400"
             onClick={() => setZoom((z) => clamp(z - 10, 70, 150))}
             data-testid="button-zoom-out"
           >
@@ -1516,29 +1516,29 @@ export default function ContractDraftingPage() {
           </button>
           <span className="text-[10px] font-bold text-slate-300">{zoom}%</span>
           <button
-            className="p-1 hover:text-primary transition-colors text-slate-400"
+            className="p-1 hover:text-amber-400 transition-colors text-slate-400"
             onClick={() => setZoom((z) => clamp(z + 10, 70, 150))}
             data-testid="button-zoom-in"
           >
             <ZoomIn size={18} />
           </button>
-          <div className="h-4 w-px bg-primary/20 mx-2" />
+          <div className="h-4 w-px bg-amber-500/20 mx-2" />
           <button
-            className="p-1 hover:text-primary transition-colors text-slate-400"
+            className="p-1 hover:text-amber-400 transition-colors text-slate-400"
             onClick={printContract}
             data-testid="button-print-contract"
           >
             <Printer size={18} />
           </button>
           <button
-            className="p-1 hover:text-primary transition-colors text-slate-400"
+            className="p-1 hover:text-amber-400 transition-colors text-slate-400"
             onClick={downloadContract}
             data-testid="button-download-contract"
           >
             <Download size={18} />
           </button>
           <button
-            className="p-1 hover:text-primary transition-colors text-slate-400"
+            className="p-1 hover:text-amber-400 transition-colors text-slate-400"
             onClick={() =>
               apiRequest("POST", "/api/search-history", {
                 type: "contract",

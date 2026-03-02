@@ -314,7 +314,7 @@ export default function JudgmentSearchPage() {
                           className={`inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl transition-all ${
                             expandedSummary === idx && summaries[idx]
                               ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                              : "bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20"
+                              : "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"
                           }`}
                         >
                           {summaryLoading[idx] ? (
@@ -334,8 +334,8 @@ export default function JudgmentSearchPage() {
                       <div className="border-t border-slate-800" data-testid={`judgment-summary-panel-${idx}`}>
                         {summaryLoading[idx] ? (
                           <div className="p-10 flex flex-col items-center justify-center gap-4">
-                            <div className="w-12 h-12 rounded-[1.5rem] bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                              <Sparkles size={20} className="text-purple-400 animate-pulse" />
+                            <div className="w-12 h-12 rounded-[1.5rem] bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                              <Sparkles size={20} className="text-amber-400 animate-pulse" />
                             </div>
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                               Al Wakeelo is analyzing this judgment...
@@ -345,10 +345,10 @@ export default function JudgmentSearchPage() {
                           <div className="p-8 md:p-10 space-y-8">
                             <div className="flex flex-wrap items-center justify-between gap-4">
                               <div className="flex flex-wrap items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                                  <Sparkles size={14} className="text-purple-400" />
+                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                                  <Sparkles size={14} className="text-amber-400" />
                                 </div>
-                                <h5 className="text-[11px] font-black uppercase tracking-widest text-purple-400">
+                                <h5 className="text-[11px] font-black uppercase tracking-widest text-amber-400">
                                   AI Judgment Analysis
                                 </h5>
                                 {summaries[idx].verified ? (
