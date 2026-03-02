@@ -750,6 +750,7 @@ export default function ContractDraftingPage() {
         body: JSON.stringify({
           messages: [{ role: "user", content: buildGenerationPrompt(form) }],
           type: "contract-drafting",
+          moduleIntent: "contract.generateDraft",
           turbo: false,
           stream: false,
         }),
@@ -856,6 +857,7 @@ export default function ContractDraftingPage() {
         body: JSON.stringify({
           messages: [{ role: "user", content: buildClausePrompt(prompt, contractText) }],
           type: "contract-drafting",
+          moduleIntent: "contract.generateDraft",
           turbo: false,
           stream: false,
         }),
@@ -891,6 +893,7 @@ export default function ContractDraftingPage() {
         body: JSON.stringify({
           messages: [{ role: "user", content: buildClauseSuggestionPrompt(form, contractText) }],
           type: "contract-drafting",
+          moduleIntent: "contract.clauseSuggest",
           turbo: false,
           stream: false,
         }),
@@ -937,6 +940,7 @@ export default function ContractDraftingPage() {
         body: JSON.stringify({
           messages: [{ role: "user", content: buildRedlinePrompt(contractText) }],
           type: "contract-drafting",
+          moduleIntent: "contract.redline",
           turbo: false,
           stream: false,
         }),

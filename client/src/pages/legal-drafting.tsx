@@ -481,6 +481,7 @@ export default function LegalDraftingPage() {
           },
         ],
         type: "draft",
+        moduleIntent: "draft.generateClause",
         turbo: false,
         stream: false,
       };

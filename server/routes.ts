@@ -18,6 +18,7 @@ import { isApexAvailable, getApexModelsForTier, chatWithApex, type ApexModel } f
 import { chatWithOpenRouter, streamWithOpenRouter, isOpenRouterAvailable, getOpenRouterModelName } from "./openrouter";
 import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, isDeepSeekAvailable, getDeepSeekModelName, getDeepSeekProModelName } from "./deepseek-ai";
+import { getModuleProfile, normalizeModuleType, type ModuleIntent, type ModuleType } from "./ai-module-profiles";
 
 
 const TOKEN_LIMITS = {
@@ -134,6 +135,72 @@ async function callTurboAI(systemPrompt: string, contents: Array<{ role: string;
 
 async function callStandardAISimple(systemPrompt: string, userText: string, maxTokens: number): Promise<{ text: string; model: string }> {
   return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens);
+}
+
+type ChatRouteMode = "standard" | "turbo";
+
+function resolveModuleRoute(modePrimary: ChatRouteMode, modeFallback: ChatRouteMode, userTier: string) {
+  const turboPermitted = (userTier === "pro" || userTier === "enterprise") && isDeepSeekAvailable();
+  if (modePrimary === "turbo" && !turboPermitted) {
+    return { route: modeFallback, downgraded: true as const };
+  }
+  return { route: modePrimary, downgraded: false as const };
+}
+
+function extractJsonObject(raw: string): string | null {
+  const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start >= 0 && end > start) return cleaned.slice(start, end + 1);
+  return null;
+}
+
+function ensureAlWakeeloReferencesBlock(content: string): string {
+  const refsRegex = /```references\s*([\s\S]*?)```/i;
+  const match = content.match(refsRegex);
+  if (!match) {
+    return `${content.trim()}\n\n\`\`\`references\n{"laws":[],"judgments":[]}\n\`\`\``;
+  }
+  try {
+    JSON.parse(match[1].trim());
+    return content;
+  } catch {
+    return content.replace(refsRegex, "```references\n{\"laws\":[],\"judgments\":[]}\n```");
+  }
+}
+
+function normalizeDraftingText(content: string): string {
+  return content
+    .replace(/```references[\s\S]*?```/gi, "")
+    .replace(/```[a-zA-Z]*\s*/g, "")
+    .replace(/```/g, "")
+    .trim();
+}
+
+function normalizeStrictContractJson(intent: ModuleIntent | undefined, raw: string): { normalized: string; valid: boolean } {
+  const jsonText = extractJsonObject(raw);
+  if (!jsonText) {
+    if (intent === "contract.clauseSuggest") return { normalized: '{"suggestions":[]}', valid: false };
+    if (intent === "contract.redline") return { normalized: '{"edits":[]}', valid: false };
+    return { normalized: raw, valid: false };
+  }
+
+  try {
+    const parsed = JSON.parse(jsonText);
+    if (intent === "contract.clauseSuggest") {
+      const suggestions = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+      return { normalized: JSON.stringify({ suggestions }), valid: suggestions.length > 0 };
+    }
+    if (intent === "contract.redline") {
+      const edits = Array.isArray(parsed?.edits) ? parsed.edits : [];
+      return { normalized: JSON.stringify({ edits }), valid: edits.length > 0 };
+    }
+    return { normalized: jsonText, valid: true };
+  } catch {
+    if (intent === "contract.clauseSuggest") return { normalized: '{"suggestions":[]}', valid: false };
+    if (intent === "contract.redline") return { normalized: '{"edits":[]}', valid: false };
+    return { normalized: raw, valid: false };
+  }
 }
 
 const userLastRequest = new Map<string, number>();
@@ -1044,9 +1111,16 @@ export async function registerRoutes(
       if (typeof body.messages === "string") {
         body = { ...body, messages: JSON.parse(body.messages) };
       }
-      const { messages: userMessages, type } = body as { messages: Array<{ role: string; content: string }>; type: string };
-      const useStream = body.stream === true || body.stream === "true";
-      const turbo = body.turbo === true || body.turbo === "true";
+      const {
+        messages: userMessages,
+        type,
+        moduleIntent: moduleIntentRaw,
+      } = body as { messages: Array<{ role: string; content: string }>; type?: string; moduleIntent?: string };
+      const moduleType: ModuleType = normalizeModuleType(type);
+      const moduleProfile = getModuleProfile(type);
+      const moduleIntent = typeof moduleIntentRaw === "string" ? (moduleIntentRaw as ModuleIntent) : undefined;
+      const requestedStream = body.stream === true || body.stream === "true";
+      const useStream = requestedStream && moduleProfile.modelStrategy.stream;
 
       const files = req.files as Express.Multer.File[] | undefined;
       let attachmentContext = "";
@@ -1076,10 +1150,7 @@ export async function registerRoutes(
 
       const userTier = await storage.getUserTier(userId);
 
-      let systemPrompt = getLegalSystemPrompt();
-      if (type === "draft" || type === "contract-drafting") {
-        systemPrompt += `\n\nADDITIONAL INSTRUCTION: You are now in legal drafting mode. Draft professional, airtight legal documents with precise clauses, proper legal formatting, and comprehensive coverage of all contingencies. Use Pakistani legal conventions and terminology.`;
-      }
+      let systemPrompt = `${getLegalSystemPrompt()}\n\nMODULE PROFILE: ${moduleProfile.label}\n${moduleProfile.systemPromptAddon}`;
 
       const systemMessages = userMessages.filter((m) => m.role === "system");
       if (systemMessages.length > 0) {
@@ -1098,14 +1169,20 @@ export async function registerRoutes(
       if (attachmentContext) {
         systemPrompt += `\n\nATTACHED DOCUMENTS FROM USER:\nThe user has attached the following documents for your reference. Analyze them carefully and use them to inform your response.${attachmentContext}`;
       }
-      const canUseTurbo = turbo && (userTier === "pro" || userTier === "enterprise") && isDeepSeekAvailable();
-      let usedModel = canUseTurbo ? getDeepSeekModelName() : getGroqModelName();
-      const featureKey = (type === "draft" || type === "contract-drafting") ? type : "chat";
-      const tokenLimit = TOKEN_LIMITS[featureKey as keyof typeof TOKEN_LIMITS] || TOKEN_LIMITS.chat;
+      const { route: selectedRoute, downgraded } = resolveModuleRoute(
+        moduleProfile.modelStrategy.primary,
+        moduleProfile.modelStrategy.fallback,
+        userTier,
+      );
+      let usedModel = selectedRoute === "turbo" ? getDeepSeekModelName() : getGroqModelName();
+      const featureKey = moduleProfile.modelStrategy.tokenLimitKey;
+      const tokenLimit = TOKEN_LIMITS[featureKey] || TOKEN_LIMITS.chat;
       const systemPromptFull = systemPrompt + knowledgeContext;
+      const routingPath: string[] = [`profile:${moduleType}`, `route:${selectedRoute}`];
+      if (downgraded) routingPath.push("policy-fallback:true");
 
       const cacheRaw = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
-      const cacheKey = `${cacheRaw}::type=${featureKey}::turbo=${!!canUseTurbo}`;
+      const cacheKey = `${cacheRaw}::type=${featureKey}::intent=${moduleIntent || "none"}::profile=${moduleType}::route=${selectedRoute}`;
       const normalized = normalizeQuery(cacheKey);
       const hash = hashQuery("ai-chat", normalized);
 
@@ -1113,7 +1190,16 @@ export async function registerRoutes(
         const cached = await storage.getCachedResponse("ai-chat", hash);
         if (cached && isCacheFresh(cached.createdAt)) {
           await storage.incrementCacheHit(cached.id).catch(() => {});
-          return res.json({ content: cached.response, model: usedModel, fromCache: true });
+          const cachedContent = moduleType === "al-wakeelo"
+            ? ensureAlWakeeloReferencesBlock(cached.response)
+            : cached.response;
+          return res.json({
+            content: cachedContent,
+            model: usedModel,
+            fromCache: true,
+            moduleProfile: moduleProfile.id,
+            routingPath,
+          });
         }
       } catch {}
 
@@ -1126,7 +1212,7 @@ export async function registerRoutes(
         let fullContent = "";
         try {
           const streamMessages = buildMessages(systemPromptFull, geminiContents);
-          if (canUseTurbo) {
+          if (selectedRoute === "turbo") {
             usedModel = getDeepSeekModelName();
             for await (const text of streamWithDeepSeek({ messages: streamMessages, maxTokens: tokenLimit })) {
               fullContent += text;
@@ -1140,7 +1226,7 @@ export async function registerRoutes(
             }
           }
         } catch (streamErr: any) {
-          if (canUseTurbo && isGroqAvailable()) {
+          if (selectedRoute === "turbo" && isGroqAvailable()) {
             console.log("[AI Chat] DeepSeek stream failed, falling back to Groq:", streamErr?.message || streamErr);
             try {
               const fallbackMessages = buildMessages(systemPromptFull, geminiContents);
@@ -1157,7 +1243,7 @@ export async function registerRoutes(
               res.end();
               return;
             }
-          } else if (!canUseTurbo && isOpenRouterAvailable()) {
+          } else if (selectedRoute === "standard" && isOpenRouterAvailable()) {
             console.log("[AI Chat] Groq stream failed, falling back to OpenRouter:", streamErr?.message || streamErr);
             try {
               const fallbackMessages = buildMessages(systemPromptFull, geminiContents);
@@ -1182,7 +1268,21 @@ export async function registerRoutes(
           }
         }
 
-        res.write(`data: ${JSON.stringify({ done: true, model: usedModel })}\n\n`);
+        if (moduleType === "al-wakeelo") {
+          const adjusted = ensureAlWakeeloReferencesBlock(fullContent);
+          if (adjusted.length > fullContent.length && adjusted.startsWith(fullContent)) {
+            const suffix = adjusted.slice(fullContent.length);
+            fullContent = adjusted;
+            if (suffix) {
+              res.write(`data: ${JSON.stringify({ text: suffix })}\n\n`);
+            }
+          }
+        }
+
+        routingPath.push(`model:${usedModel}`);
+        res.write(
+          `data: ${JSON.stringify({ done: true, model: usedModel, moduleProfile: moduleProfile.id, routingPath })}\n\n`,
+        );
         res.end();
 
         if (fullContent) {
@@ -1200,10 +1300,35 @@ export async function registerRoutes(
         return;
       }
 
-      const aiCall = canUseTurbo ? callTurboAI : callStandardAI;
+      const aiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
       const result = await aiCall(systemPromptFull, geminiContents, tokenLimit);
       usedModel = result.model;
-      const completion = result.text;
+      routingPath.push(`model:${usedModel}`);
+      let completion = result.text;
+
+      if (moduleType === "al-wakeelo") {
+        completion = ensureAlWakeeloReferencesBlock(completion);
+      }
+      if (moduleType === "draft" && moduleIntent?.startsWith("draft.")) {
+        completion = normalizeDraftingText(completion);
+      }
+      if (moduleType === "contract-drafting" && moduleIntent === "contract.generateDraft") {
+        completion = normalizeDraftingText(completion);
+      }
+      if (moduleType === "contract-drafting" && (moduleIntent === "contract.clauseSuggest" || moduleIntent === "contract.redline")) {
+        let normalizedContractJson = normalizeStrictContractJson(moduleIntent, completion);
+        if (!normalizedContractJson.valid) {
+          const repairPrompt =
+            moduleIntent === "contract.clauseSuggest"
+              ? `Repair the response into STRICT JSON format: {"suggestions":[{"title":"...","subtitle":"...","prompt":"..."}]}. Return ONLY JSON.\n\nOriginal output:\n${completion}`
+              : `Repair the response into STRICT JSON format: {"edits":[{"title":"...","rationale":"...","originalSnippet":"...","suggestedText":"..."}]}. Return ONLY JSON.\n\nOriginal output:\n${completion}`;
+          const repairResult = await aiCall(systemPromptFull, [{ role: "user", parts: [{ text: repairPrompt }] }], tokenLimit);
+          usedModel = repairResult.model;
+          routingPath.push(`repair:${usedModel}`);
+          normalizedContractJson = normalizeStrictContractJson(moduleIntent, repairResult.text);
+        }
+        completion = normalizedContractJson.normalized;
+      }
 
       const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
       await logUsageCost(userId, featureKey, usedModel, inputText, completion);
@@ -1216,7 +1341,7 @@ export async function registerRoutes(
         });
       } catch {}
 
-      res.json({ content: completion, model: usedModel });
+      res.json({ content: completion, model: usedModel, moduleProfile: moduleProfile.id, routingPath });
     } catch (err) {
       console.error("Error in AI chat:", err);
       res.status(500).json({ message: "Failed to process AI chat" });

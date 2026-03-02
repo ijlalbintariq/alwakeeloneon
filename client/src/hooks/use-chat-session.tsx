@@ -11,6 +11,8 @@ type ChatMessage = {
   modelName?: string;
   modelId?: string;
   modelDescription?: string;
+  moduleProfile?: string;
+  routingPath?: string[];
 };
 
 type UsageData = {
@@ -59,6 +61,12 @@ function getModelFunctionDescription(modelId: string): string {
   return "Default legal chat mode with reliable fast responses.";
 }
 
+function getModuleIntent(type: string): string {
+  if (type === "draft") return "draft.generateClause";
+  if (type === "contract-drafting") return "contract.generateDraft";
+  return "chat.general";
+}
+
 export function ChatSessionProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -92,6 +100,7 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
         body: JSON.stringify({
           messages: updated.map(m => ({ role: m.role, content: m.content })),
           type,
+          moduleIntent: getModuleIntent(type),
           turbo: turboMode && canUseTurbo,
           stream: true,
         }),
@@ -116,6 +125,8 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
           modelId,
           modelName: getModelDisplayName(modelId),
           modelDescription: getModelFunctionDescription(modelId),
+          moduleProfile: typeof data.moduleProfile === "string" ? data.moduleProfile : undefined,
+          routingPath: Array.isArray(data.routingPath) ? data.routingPath.map(String) : undefined,
         }]);
       } else {
         setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: "" }]);
@@ -151,6 +162,8 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
                           modelId,
                           modelName: getModelDisplayName(modelId),
                           modelDescription: getModelFunctionDescription(modelId),
+                          moduleProfile: typeof parsed.moduleProfile === "string" ? parsed.moduleProfile : undefined,
+                          routingPath: Array.isArray(parsed.routingPath) ? parsed.routingPath.map(String) : undefined,
                         }];
                       }
                       return prev;
