@@ -163,7 +163,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     location === "/legal-drafting" ||
     location === "/contract-drafting" ||
     location === "/case-documents" ||
-    location === "/knowledge-vault";
+    location === "/knowledge-vault" ||
+    location === "/organization";
 
   const style = {
     "--sidebar-width": "18.5rem",
