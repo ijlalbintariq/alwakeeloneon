@@ -36,6 +36,11 @@ export interface IStorage {
 
   createDocument(doc: InsertDocument & { userId: string }): Promise<Document>;
   getDocuments(userId: string): Promise<Document[]>;
+  updateDocument(
+    id: number,
+    userId: string,
+    data: Partial<Pick<InsertDocument, "title" | "content">>
+  ): Promise<Document | undefined>;
   getAllDocuments(): Promise<Document[]>;
   deleteDocument(id: number): Promise<void>;
 
@@ -178,6 +183,24 @@ export class DatabaseStorage implements IStorage {
       .from(documents)
       .where(eq(documents.userId, userId))
       .orderBy(desc(documents.createdAt));
+  }
+
+  async updateDocument(
+    id: number,
+    userId: string,
+    data: Partial<Pick<InsertDocument, "title" | "content">>
+  ): Promise<Document | undefined> {
+    const updateData: Partial<Pick<InsertDocument, "title" | "content">> = {};
+    if (typeof data.title === "string") updateData.title = data.title;
+    if (typeof data.content === "string" || data.content === null) updateData.content = data.content;
+    if (Object.keys(updateData).length === 0) return undefined;
+
+    const [doc] = await db
+      .update(documents)
+      .set(updateData)
+      .where(and(eq(documents.id, id), eq(documents.userId, userId)))
+      .returning();
+    return doc;
   }
 
   async getAllDocuments(): Promise<Document[]> {
