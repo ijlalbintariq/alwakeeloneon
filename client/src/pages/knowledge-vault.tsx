@@ -32,7 +32,7 @@ type Doc = {
   fileExtension?: string | null;
   detectedDomain?: string;
   detectedDomainLabel?: string;
-  classificationMethod?: "rule" | "ai" | "fallback";
+  classificationMethod?: "rule" | "ml" | "fallback";
   classificationConfidence?: number; // API value 0-1
   createdAt: string;
 };

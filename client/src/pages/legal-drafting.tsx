@@ -470,22 +470,13 @@ export default function LegalDraftingPage() {
     setIsGenerating(true);
     try {
       const payload = {
-        messages: [
-          {
-            role: "user",
-            content: `Current draft:\n${docText}${
-              memoryContextText
-                ? `\n\nSession context memory (use this to stay consistent with prior drafting decisions):\n${memoryContextText}`
-                : ""
-            }\n\nInstruction:\n${prompt}\n\nReturn only the clause text in legal drafting style for Pakistan.`,
-          },
-        ],
-        type: "draft",
-        moduleIntent: "draft.generateClause",
-        turbo: false,
-        stream: false,
+        prompt: `${prompt}${
+          memoryContextText ? `\n\nContext: ${memoryContextText.slice(0, 1200)}` : ""
+        }`,
+        draftText: docText.slice(0, 12000),
+        jurisdiction: "Lahore",
       };
-      const response = await fetch("/api/ai/chat", {
+      const response = await fetch("/api/retrieval/clauses/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -498,7 +489,7 @@ export default function LegalDraftingPage() {
       }
 
       const data = await response.json();
-      const clause = (data?.content || "").trim();
+      const clause = (data?.clause || "").trim();
       if (!clause) throw new Error("No clause generated");
 
       setDocText((prev) => `${prev.trim()}\n\n${clause}\n`);

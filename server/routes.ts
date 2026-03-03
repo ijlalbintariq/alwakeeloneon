@@ -23,6 +23,8 @@ import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAudi
 import { scanUploadedBuffer } from "./file-scan";
 import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
+import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
+import { extractTocFromText } from "./retrieval/toc-parser";
 
 
 const TOKEN_LIMITS = {
@@ -1409,6 +1411,62 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error fetching usage:", err);
       res.status(500).json({ message: "Failed to fetch usage data" });
+    }
+  });
+
+  app.post("/api/retrieval/clauses/suggest", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { query, draftText, contractType, limit } = req.body as {
+        query?: string;
+        draftText?: string;
+        contractType?: string;
+        limit?: number;
+      };
+      const suggestions = suggestClauses({
+        query: query || "",
+        draftText: draftText || "",
+        contractType: contractType || "",
+        limit: Number.isFinite(limit) ? Number(limit) : 4,
+      }).map((item) => ({
+        id: item.id,
+        title: item.title,
+        subtitle: item.subtitle,
+        prompt: item.prompt,
+      }));
+
+      res.json({ suggestions, method: "retrieval" });
+    } catch (err) {
+      console.error("Error suggesting clauses:", err);
+      res.status(500).json({ message: "Failed to suggest clauses" });
+    }
+  });
+
+  app.post("/api/retrieval/clauses/generate", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { prompt, draftText, jurisdiction } = req.body as {
+        prompt?: string;
+        draftText?: string;
+        jurisdiction?: string;
+      };
+      const safePrompt = (prompt || "").trim();
+      if (!safePrompt) {
+        return res.status(400).json({ message: "Prompt is required" });
+      }
+
+      const generated = generateClauseFromPrompt({
+        prompt: safePrompt,
+        draftText: draftText || "",
+        jurisdiction: jurisdiction || "Lahore",
+      });
+
+      res.json(generated);
+    } catch (err) {
+      console.error("Error generating retrieval clause:", err);
+      res.status(500).json({ message: "Failed to generate clause" });
     }
   });
 
@@ -3074,60 +3132,16 @@ RULES:
     }
   });
 
-  // ====== STATUTE TABLE OF CONTENTS (AI) ======
+  // ====== STATUTE TABLE OF CONTENTS (Rule-Based) ======
   app.post("/api/statute-documents/:id/toc", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const allowed = await checkUsageLimit(userId, "chat", res);
-      if (!allowed) return;
-
       const id = Number(req.params.id);
       const doc = await storage.getStatuteDocument(id);
       if (!doc) return res.status(404).json({ message: "Document not found" });
 
-      const contentExcerpt = doc.content.slice(0, 50000);
-      const tocPrompt = `Analyze this legal document and extract its hierarchical table of contents as a JSON array. Each item has: "title" (short name like "PART I - INTRODUCTORY" or "Chapter 1 - Fundamental Rights"), and optionally "children" (sub-sections). Only include major structural divisions: Parts, Chapters, Schedules, Articles groupings. Use SHORT titles (max 60 chars each). Do NOT include individual article numbers. Return ONLY a valid JSON array - no markdown, no code blocks, no explanation.\n\nDocument Title: ${doc.title}\n\nDocument Content:\n${contentExcerpt}`;
-
-      let tocModel = getOpenRouterModelName();
-      const { content, fromCache } = await getCachedOrCall("toc-extract", `toc-${id}`, async () => {
-        const tocSysPrompt = "You are a document structure analyzer. Extract the table of contents from legal documents. Return ONLY a valid JSON array. No markdown code blocks, no explanation text. Keep titles concise (max 60 chars). Ensure the JSON is complete and properly closed.";
-        const result = await callStandardAISimple(tocSysPrompt, tocPrompt, 8192);
-        tocModel = result.model;
-        return result.text;
-      });
-
-      if (!fromCache) {
-        await logUsageCost(userId, "chat", tocModel, tocPrompt, content);
-      }
-
-      let toc: any[] = [];
-      try {
-        let cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-        try {
-          toc = JSON.parse(cleaned);
-        } catch {
-          const openBrackets = (cleaned.match(/\[/g) || []).length;
-          const closeBrackets = (cleaned.match(/\]/g) || []).length;
-          const openBraces = (cleaned.match(/\{/g) || []).length;
-          const closeBraces = (cleaned.match(/\}/g) || []).length;
-          let fixed = cleaned.replace(/,\s*([}\]])/g, "$1");
-          const lastValid = Math.max(fixed.lastIndexOf("}"), fixed.lastIndexOf("]"));
-          if (lastValid > 0) fixed = fixed.slice(0, lastValid + 1);
-          for (let i = 0; i < openBraces - closeBraces; i++) fixed += "}";
-          for (let i = 0; i < openBrackets - closeBrackets; i++) fixed += "]";
-          try {
-            toc = JSON.parse(fixed);
-            console.log(`[TOC] Recovered truncated JSON (${toc.length} items)`);
-          } catch {
-            console.error("[TOC] Could not parse AI response, raw:", content.slice(0, 200));
-            toc = [];
-          }
-        }
-      } catch {
-        toc = [];
-      }
-
+      const toc = extractTocFromText(doc.content || "");
       res.json({ toc });
     } catch (err) {
       console.error("Error extracting TOC:", err);
