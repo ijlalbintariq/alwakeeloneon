@@ -10,7 +10,18 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, {
+    etag: true,
+    maxAge: "7d",
+    setHeaders: (res, filePath) => {
+      const isHtml = filePath.endsWith(".html");
+      if (isHtml) {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+      }
+    },
+  }));
 
   // fall through to index.html if the file doesn't exist
   app.use("/{*path}", (_req, res) => {

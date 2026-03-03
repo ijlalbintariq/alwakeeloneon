@@ -6,11 +6,15 @@ const DEEPSEEK_REASONER_MODEL = "deepseek-reasoner";
 
 let deepseekClient: OpenAI | null = null;
 
+function resolveDeepSeekApiKey(): string | undefined {
+  return process.env.DEEPSEEK_API_KEY || process.env.DeepSeek_API_KEY;
+}
+
 function getClient(): OpenAI {
   if (deepseekClient) return deepseekClient;
-  const apiKey = process.env.DeepSeek_API_KEY;
+  const apiKey = resolveDeepSeekApiKey();
   if (!apiKey) {
-    throw new Error("DeepSeek is not configured. DeepSeek_API_KEY is required.");
+    throw new Error("DeepSeek is not configured. Set DEEPSEEK_API_KEY.");
   }
   deepseekClient = new OpenAI({
     apiKey,
@@ -20,7 +24,7 @@ function getClient(): OpenAI {
 }
 
 export function isDeepSeekAvailable(): boolean {
-  return !!process.env.DeepSeek_API_KEY;
+  return !!resolveDeepSeekApiKey();
 }
 
 export function getDeepSeekModelName(): string {

@@ -8,7 +8,9 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "test": "DATABASE_URL= PGHOST= node --import tsx --test tests/unit/**/*.test.ts",
+    "test:e2e": "node --import tsx --test tests/e2e/**/*.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

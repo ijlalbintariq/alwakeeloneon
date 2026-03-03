@@ -18,12 +18,12 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
   const pages = splitIntoPages(content, 3000);
 
   const highlightText = (text: string) => {
-    if (!searchTerm.trim()) return text;
+    if (!searchTerm.trim()) return escapeHtml(text);
     const parts = text.split(new RegExp(`(${escapeRegex(searchTerm)})`, "gi"));
     return parts.map((part, i) =>
       part.toLowerCase() === searchTerm.toLowerCase()
-        ? `<mark class="bg-amber-500/40 text-white rounded px-0.5">${part}</mark>`
-        : part
+        ? `<mark class="bg-amber-500/40 text-white rounded px-0.5">${escapeHtml(part)}</mark>`
+        : escapeHtml(part)
     ).join("");
   };
 
@@ -127,7 +127,7 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
                     className="text-slate-800 leading-[1.8] whitespace-pre-wrap break-words"
                     style={{ fontSize: `${fontSize}px`, fontFamily: "'Georgia', 'Times New Roman', serif" }}
                     dangerouslySetInnerHTML={{
-                      __html: searchTerm ? highlightText(pageContent) : pageContent
+                      __html: highlightText(pageContent)
                     }}
                   />
                 </div>
@@ -174,4 +174,13 @@ function splitIntoPages(content: string, charsPerPage: number): string[] {
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

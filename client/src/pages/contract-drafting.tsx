@@ -1055,6 +1055,10 @@ export default function ContractDraftingPage() {
         </div>
       </header>
 
+      <div className="mx-3 md:mx-8 mt-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+        Informational drafting assistance only. Final contracts must be reviewed by a licensed Pakistani advocate.
+      </div>
+
       <main className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         <section className="w-full lg:w-[360px] lg:shrink-0 glass-surface border-b lg:border-b-0 lg:border-r border-[hsl(var(--preview-border))] flex flex-col overflow-hidden">
           <div className="p-4 md:p-6 overflow-y-auto scrollbar-hide flex-1 space-y-6 md:space-y-8">

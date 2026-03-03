@@ -651,6 +651,10 @@ export default function LegalDraftingPage() {
         </div>
       </header>
 
+      <div className="mx-3 md:mx-6 mt-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100 z-20">
+        Informational drafting assistance only. Always have a licensed Pakistani advocate review before filing or execution.
+      </div>
+
       <div className="flex flex-1 overflow-hidden">
         <aside className="hidden md:flex w-64 border-r border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex-col py-4 md:py-5">
           <div className="hidden md:flex items-center justify-between px-4 pb-3 border-b border-[hsl(var(--preview-border))]">
