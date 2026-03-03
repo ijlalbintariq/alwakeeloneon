@@ -1,7 +1,7 @@
 import { db } from "./db";
 import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments, savedJudgments,
-  organizations, orgMembers, orgInvites, orgKnowledge,
+  organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -9,6 +9,7 @@ import {
   type SearchHistory, type InsertSearchHistory,
   type Statute,
   type CaseLaw, type InsertCaseLaw,
+  type InsertJudgment, type Judgment, type InsertCitationLink, type CitationLink, type InsertUnresolvedCitation,
   type GithubKnowledge, type InsertGithubKnowledge,
   type QueryCache, type InsertQueryCache,
   type UsageTracking,
@@ -21,7 +22,7 @@ import {
   type OrgKnowledge, type InsertOrgKnowledge
 } from "@shared/schema";
 import { users, type User } from "@shared/models/auth";
-import { eq, desc, or, ilike, sql, and, lt, gte, count } from "drizzle-orm";
+import { eq, desc, or, ilike, sql, and, lt, gte, count, inArray } from "drizzle-orm";
 
 export type DocumentInsights = {
   totalDocuments: number;
@@ -39,6 +40,46 @@ export type DocumentMetadataUpdate = {
   detectedDomainLabel: string;
   classificationMethod: string;
   classificationConfidence: number;
+};
+
+export type CitationSearchResult = {
+  id: string;
+  citation: string;
+  title: string;
+  court: string;
+  decisionDate: Date | null;
+  pdfUrl: string | null;
+};
+
+export type JudgmentCitationLink = {
+  id: number;
+  citationType: string;
+  contextExcerpt: string | null;
+  citationText: string;
+  linkedJudgmentId: string | null;
+  linkedCitation: string | null;
+  linkedTitle: string | null;
+};
+
+export type JudgmentDetail = {
+  id: string;
+  year: number;
+  page: number;
+  journalCode: string;
+  journalName: string;
+  citation: string;
+  title: string;
+  petitioner: string | null;
+  respondent: string | null;
+  court: string;
+  decisionDate: Date | null;
+  headnotes: string | null;
+  fullText: string;
+  pdfUrl: string | null;
+  citations: {
+    made: JudgmentCitationLink[];
+    received: JudgmentCitationLink[];
+  };
 };
 
 export interface IStorage {
@@ -86,6 +127,13 @@ export interface IStorage {
   deleteCaseLaw(id: number): Promise<void>;
   deleteAllCaseLaw(): Promise<number>;
   bulkCreateCaseLaw(entries: InsertCaseLaw[]): Promise<CaseLaw[]>;
+  getLawJournals(): Promise<Array<{ id: number; code: string; name: string }>>;
+  getCourtsRef(): Promise<Array<{ id: number; code: string; name: string; level: string }>>;
+  searchJudgmentsByCitation(params: { year: number; journalCode: string; page: number; court?: string }): Promise<CitationSearchResult[]>;
+  getJudgmentDetail(id: string): Promise<JudgmentDetail | undefined>;
+  createJudgment(entry: InsertJudgment): Promise<Judgment>;
+  createCitationLinks(entries: InsertCitationLink[]): Promise<number>;
+  createUnresolvedCitations(entries: InsertUnresolvedCitation[]): Promise<number>;
 
   getGithubKnowledgeCount(): Promise<number>;
   getAllGithubKnowledge(): Promise<GithubKnowledge[]>;
@@ -443,6 +491,201 @@ export class DatabaseStorage implements IStorage {
       results.push(...inserted);
     }
     return results;
+  }
+
+  async getLawJournals(): Promise<Array<{ id: number; code: string; name: string }>> {
+    return await db.select({
+      id: lawJournals.id,
+      code: lawJournals.code,
+      name: lawJournals.name,
+    })
+      .from(lawJournals)
+      .where(eq(lawJournals.isActive, true))
+      .orderBy(lawJournals.code);
+  }
+
+  async getCourtsRef(): Promise<Array<{ id: number; code: string; name: string; level: string }>> {
+    return await db.select({
+      id: courtsRef.id,
+      code: courtsRef.code,
+      name: courtsRef.name,
+      level: courtsRef.level,
+    })
+      .from(courtsRef)
+      .where(eq(courtsRef.isActive, true))
+      .orderBy(courtsRef.name);
+  }
+
+  async searchJudgmentsByCitation(params: { year: number; journalCode: string; page: number; court?: string }): Promise<CitationSearchResult[]> {
+    const conditions = [
+      eq(judgments.year, params.year),
+      eq(judgments.page, params.page),
+      eq(judgments.isActive, true),
+      sql`lower(${lawJournals.code}) = lower(${params.journalCode})`,
+    ];
+
+    if (params.court && params.court.trim()) {
+      const courtPattern = `%${params.court.trim()}%`;
+      conditions.push(or(
+        ilike(courtsRef.name, courtPattern),
+        ilike(judgments.courtNameSnapshot, courtPattern),
+      )!);
+    }
+
+    const rows = await db.select({
+      id: judgments.id,
+      citation: judgments.citationString,
+      title: judgments.title,
+      courtName: courtsRef.name,
+      courtSnapshot: judgments.courtNameSnapshot,
+      decisionDate: judgments.decisionDate,
+      pdfUrl: judgments.pdfUrl,
+    })
+      .from(judgments)
+      .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
+      .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+      .where(and(...conditions))
+      .orderBy(desc(judgments.decisionDate));
+
+    return rows.map((row: typeof rows[number]) => ({
+      id: row.id,
+      citation: row.citation,
+      title: row.title,
+      court: row.courtName || row.courtSnapshot || "",
+      decisionDate: row.decisionDate,
+      pdfUrl: row.pdfUrl,
+    }));
+  }
+
+  async getJudgmentDetail(id: string): Promise<JudgmentDetail | undefined> {
+    const [row] = await db.select({
+      id: judgments.id,
+      year: judgments.year,
+      page: judgments.page,
+      journalCode: lawJournals.code,
+      journalName: lawJournals.name,
+      citation: judgments.citationString,
+      title: judgments.title,
+      petitioner: judgments.petitioner,
+      respondent: judgments.respondent,
+      courtName: courtsRef.name,
+      courtSnapshot: judgments.courtNameSnapshot,
+      decisionDate: judgments.decisionDate,
+      headnotes: judgments.headnotes,
+      fullText: judgments.fullText,
+      pdfUrl: judgments.pdfUrl,
+    })
+      .from(judgments)
+      .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
+      .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+      .where(eq(judgments.id, id))
+      .limit(1);
+
+    if (!row) return undefined;
+
+    const madeBase = await db.select({
+      id: citationLinks.id,
+      citationType: citationLinks.citationType,
+      contextExcerpt: citationLinks.contextExcerpt,
+      citationText: citationLinks.citationText,
+      linkedJudgmentId: citationLinks.targetJudgmentId,
+    })
+      .from(citationLinks)
+      .where(eq(citationLinks.sourceJudgmentId, id))
+      .orderBy(desc(citationLinks.createdAt));
+
+    const receivedBase = await db.select({
+      id: citationLinks.id,
+      citationType: citationLinks.citationType,
+      contextExcerpt: citationLinks.contextExcerpt,
+      citationText: citationLinks.citationText,
+      linkedJudgmentId: citationLinks.sourceJudgmentId,
+    })
+      .from(citationLinks)
+      .where(eq(citationLinks.targetJudgmentId, id))
+      .orderBy(desc(citationLinks.createdAt));
+
+    const linkedIds = Array.from(
+      new Set(
+        [...madeBase, ...receivedBase]
+          .map((item) => item.linkedJudgmentId)
+          .filter((item): item is string => typeof item === "string" && item.length > 0),
+      ),
+    );
+
+    const linkedJudgments: Array<{ id: string; citation: string; title: string }> = linkedIds.length > 0
+      ? await db.select({
+        id: judgments.id,
+        citation: judgments.citationString,
+        title: judgments.title,
+      })
+        .from(judgments)
+        .where(inArray(judgments.id, linkedIds))
+      : [];
+    const linkedMap = new Map<string, { id: string; citation: string; title: string }>(
+      linkedJudgments.map((j: { id: string; citation: string; title: string }) => [j.id, j]),
+    );
+
+    const made = madeBase.map((item: typeof madeBase[number]) => {
+      const linked = item.linkedJudgmentId ? linkedMap.get(item.linkedJudgmentId) : undefined;
+      return {
+        id: item.id,
+        citationType: item.citationType,
+        contextExcerpt: item.contextExcerpt,
+        citationText: item.citationText,
+        linkedJudgmentId: item.linkedJudgmentId,
+        linkedCitation: linked?.citation || null,
+        linkedTitle: linked?.title || null,
+      };
+    });
+
+    const received = receivedBase.map((item: typeof receivedBase[number]) => {
+      const linked = item.linkedJudgmentId ? linkedMap.get(item.linkedJudgmentId) : undefined;
+      return {
+        id: item.id,
+        citationType: item.citationType,
+        contextExcerpt: item.contextExcerpt,
+        citationText: item.citationText,
+        linkedJudgmentId: item.linkedJudgmentId,
+        linkedCitation: linked?.citation || null,
+        linkedTitle: linked?.title || null,
+      };
+    });
+
+    return {
+      id: row.id,
+      year: row.year,
+      page: row.page,
+      journalCode: row.journalCode,
+      journalName: row.journalName,
+      citation: row.citation,
+      title: row.title,
+      petitioner: row.petitioner,
+      respondent: row.respondent,
+      court: row.courtName || row.courtSnapshot || "",
+      decisionDate: row.decisionDate,
+      headnotes: row.headnotes,
+      fullText: row.fullText,
+      pdfUrl: row.pdfUrl,
+      citations: { made, received },
+    };
+  }
+
+  async createJudgment(entry: InsertJudgment): Promise<Judgment> {
+    const [created] = await db.insert(judgments).values(entry).returning();
+    return created;
+  }
+
+  async createCitationLinks(entries: InsertCitationLink[]): Promise<number> {
+    if (entries.length === 0) return 0;
+    const inserted = await db.insert(citationLinks).values(entries).returning({ id: citationLinks.id });
+    return inserted.length;
+  }
+
+  async createUnresolvedCitations(entries: InsertUnresolvedCitation[]): Promise<number> {
+    if (entries.length === 0) return 0;
+    const inserted = await db.insert(unresolvedCitations).values(entries).returning({ id: unresolvedCitations.id });
+    return inserted.length;
   }
 
   async getGithubKnowledgeCount(): Promise<number> {
@@ -911,8 +1154,52 @@ export class DatabaseStorage implements IStorage {
 
 export const storage = new DatabaseStorage();
 
+const JOURNAL_SEED_DATA: Array<{ code: string; name: string }> = [
+  { code: "PLD", name: "Pakistan Law Decisions" },
+  { code: "SCMR", name: "Supreme Court Monthly Review" },
+  { code: "PLJ", name: "Pakistan Law Journal" },
+  { code: "MLD", name: "Monthly Law Digest" },
+  { code: "CLC", name: "Civil Law Cases" },
+  { code: "YLR", name: "Yearly Law Reporter" },
+  { code: "CLD", name: "Corporate Law Decisions" },
+  { code: "PTD", name: "Pakistan Tax Decisions" },
+];
+
+const COURT_SEED_DATA: Array<{ code: string; name: string; level: string }> = [
+  { code: "SC", name: "Supreme Court of Pakistan", level: "supreme" },
+  { code: "IHC", name: "Islamabad High Court", level: "high" },
+  { code: "LHC", name: "Lahore High Court", level: "high" },
+  { code: "SHC", name: "Sindh High Court", level: "high" },
+  { code: "PHC", name: "Peshawar High Court", level: "high" },
+  { code: "BHC", name: "Balochistan High Court", level: "high" },
+  { code: "FSC", name: "Federal Shariat Court", level: "federal" },
+];
+
+async function ensureCitationReferenceSeedData(): Promise<void> {
+  for (const journal of JOURNAL_SEED_DATA) {
+    try {
+      await db.insert(lawJournals)
+        .values({ code: journal.code, name: journal.name, isActive: true })
+        .onConflictDoNothing({ target: lawJournals.code });
+    } catch (err: any) {
+      console.warn(`[Seed] Could not ensure journal ${journal.code}:`, err?.message || err);
+    }
+  }
+
+  for (const court of COURT_SEED_DATA) {
+    try {
+      await db.insert(courtsRef)
+        .values({ code: court.code, name: court.name, level: court.level, isActive: true })
+        .onConflictDoNothing({ target: courtsRef.code });
+    } catch (err: any) {
+      console.warn(`[Seed] Could not ensure court ${court.code}:`, err?.message || err);
+    }
+  }
+}
+
 export async function ensureSearchIndexes(): Promise<void> {
   const indexStatements = [
+    { label: "pgcrypto_extension", stmt: sql`CREATE EXTENSION IF NOT EXISTS pgcrypto` },
     { label: "pg_trgm_extension", stmt: sql`CREATE EXTENSION IF NOT EXISTS pg_trgm` },
     { label: "idx_threads_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads (user_id)` },
     { label: "idx_messages_thread_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages (thread_id)` },
@@ -930,6 +1217,14 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_statutes_description_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statutes_description_trgm ON statutes USING gin (description gin_trgm_ops)` },
     { label: "idx_statute_documents_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statute_documents_title_trgm ON statute_documents USING gin (title gin_trgm_ops)` },
     { label: "idx_statute_documents_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statute_documents_content_trgm ON statute_documents USING gin (content gin_trgm_ops)` },
+    { label: "idx_law_journals_code", stmt: sql`CREATE INDEX IF NOT EXISTS idx_law_journals_code ON law_journals (code)` },
+    { label: "idx_courts_ref_code", stmt: sql`CREATE INDEX IF NOT EXISTS idx_courts_ref_code ON courts_ref (code)` },
+    { label: "idx_judgments_citation_parts", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_citation_parts ON judgments (year, journal_id, page)` },
+    { label: "idx_judgments_citation_string_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_citation_string_trgm ON judgments USING gin (citation_string gin_trgm_ops)` },
+    { label: "idx_judgments_full_text_tsv", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_full_text_tsv ON judgments USING gin (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(headnotes,'') || ' ' || coalesce(full_text,'')))` },
+    { label: "idx_citation_links_source", stmt: sql`CREATE INDEX IF NOT EXISTS idx_citation_links_source ON citation_links (source_judgment_id)` },
+    { label: "idx_citation_links_target", stmt: sql`CREATE INDEX IF NOT EXISTS idx_citation_links_target ON citation_links (target_judgment_id)` },
+    { label: "idx_unresolved_citations_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_unresolved_citations_status ON unresolved_citations (status)` },
   ];
 
   for (const { label, stmt } of indexStatements) {
@@ -939,5 +1234,6 @@ export async function ensureSearchIndexes(): Promise<void> {
       console.warn(`[Indexes] Could not ensure ${label}:`, err?.message || err);
     }
   }
+  await ensureCitationReferenceSeedData();
   console.log("Search indexes verification complete.");
 }

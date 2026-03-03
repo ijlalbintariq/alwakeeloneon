@@ -153,6 +153,24 @@ export const api = {
       path: '/api/case-law/search' as const,
     },
   },
+  citation: {
+    journals: {
+      method: 'GET' as const,
+      path: '/api/journals' as const,
+    },
+    search: {
+      method: 'GET' as const,
+      path: '/api/citation-search' as const,
+    },
+    judgmentDetail: {
+      method: 'GET' as const,
+      path: '/api/judgments/:id' as const,
+    },
+    createJudgment: {
+      method: 'POST' as const,
+      path: '/api/judgments' as const,
+    },
+  },
   usage: {
     get: {
       method: 'GET' as const,

@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
   History, FileBadge, Sparkles, Database, LogOut,
-  User as UserIcon, Shield, Settings, Building2, Monitor, Moon, SunMedium
+  User as UserIcon, Shield, Settings, Building2, Monitor, Moon, SunMedium, Link2
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -25,6 +25,7 @@ import { useTheme } from "@/hooks/use-theme";
 const NAVIGATION_ITEMS = [
   { id: "dashboard", label: "Chambers Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { id: "judgment-search", label: "Judgment Search", icon: Gavel, href: "/judgment-search" },
+  { id: "citation-search", label: "Citation Search", icon: Link2, href: "/citation-search" },
   { id: "statute-search", label: "Statute Search", icon: Book, href: "/statute-search" },
   { id: "al-wakeelo", label: "Al Wakeelo Engine", icon: Scale, href: "/al-wakeelo" },
   { id: "legal-drafting", label: "Legal Drafting", icon: FileText, href: "/legal-drafting" },
