@@ -23,6 +23,24 @@ import {
 import { users, type User } from "@shared/models/auth";
 import { eq, desc, or, ilike, sql, and, lt, gte, count } from "drizzle-orm";
 
+export type DocumentInsights = {
+  totalDocuments: number;
+  sourceCounts: Array<{ key: string; label: string; count: number }>;
+  domainCounts: Array<{ key: string; label: string; count: number }>;
+  unclassifiedCount: number;
+};
+
+export type DocumentMetadataUpdate = {
+  id: number;
+  sourceType: string;
+  mimeType: string | null;
+  fileExtension: string | null;
+  detectedDomain: string;
+  detectedDomainLabel: string;
+  classificationMethod: string;
+  classificationConfidence: number;
+};
+
 export interface IStorage {
   createThread(thread: InsertThread & { userId: string }): Promise<Thread>;
   getThreads(userId: string): Promise<Thread[]>;
@@ -42,6 +60,9 @@ export interface IStorage {
     data: Partial<Pick<InsertDocument, "title" | "content">>
   ): Promise<Document | undefined>;
   getAllDocuments(): Promise<Document[]>;
+  getDocumentInsights(userId: string): Promise<DocumentInsights>;
+  getDocumentsNeedingMetadata(userId: string, limit: number): Promise<Document[]>;
+  backfillDocumentMetadata(userId: string, updates: DocumentMetadataUpdate[]): Promise<number>;
   deleteDocument(id: number, userId: string): Promise<void>;
   deleteAllDocuments(userId: string): Promise<number>;
 
@@ -206,6 +227,97 @@ export class DatabaseStorage implements IStorage {
 
   async getAllDocuments(): Promise<Document[]> {
     return await db.select().from(documents);
+  }
+
+  async getDocumentInsights(userId: string): Promise<DocumentInsights> {
+    const totalResult = await db.select({ total: count() }).from(documents).where(eq(documents.userId, userId));
+    const totalDocuments = totalResult[0]?.total || 0;
+
+    const sourceRows = await db.select({
+      key: documents.sourceType,
+      count: count(),
+    })
+      .from(documents)
+      .where(eq(documents.userId, userId))
+      .groupBy(documents.sourceType);
+
+    const domainRows = await db.select({
+      key: documents.detectedDomain,
+      label: documents.detectedDomainLabel,
+      count: count(),
+    })
+      .from(documents)
+      .where(eq(documents.userId, userId))
+      .groupBy(documents.detectedDomain, documents.detectedDomainLabel);
+
+    const unclassifiedResult = await db.select({ total: count() })
+      .from(documents)
+      .where(and(
+        eq(documents.userId, userId),
+        or(
+          sql`${documents.fileExtension} IS NULL`,
+          sql`${documents.fileExtension} = ''`,
+          sql`${documents.classificationMethod} IS NULL`,
+          sql`${documents.classificationMethod} = ''`
+        ),
+      ));
+    const unclassifiedCount = unclassifiedResult[0]?.total || 0;
+
+    return {
+      totalDocuments,
+      sourceCounts: sourceRows
+        .map((row: { key: string | null; count: number }) => {
+          const key = (row.key || "other").toLowerCase();
+          const label = key === "docx" ? "DOCX" : key.toUpperCase();
+          return { key, label, count: row.count };
+        })
+        .sort((a: { count: number }, b: { count: number }) => b.count - a.count),
+      domainCounts: domainRows
+        .map((row: { key: string | null; label: string | null; count: number }) => ({
+          key: row.key || "other",
+          label: row.label || "Other",
+          count: row.count,
+        }))
+        .sort((a: { count: number }, b: { count: number }) => b.count - a.count),
+      unclassifiedCount,
+    };
+  }
+
+  async getDocumentsNeedingMetadata(userId: string, limit: number): Promise<Document[]> {
+    return await db.select()
+      .from(documents)
+      .where(and(
+        eq(documents.userId, userId),
+        or(
+          sql`${documents.fileExtension} IS NULL`,
+          sql`${documents.fileExtension} = ''`,
+          sql`${documents.classificationMethod} IS NULL`,
+          sql`${documents.classificationMethod} = ''`
+        ),
+      ))
+      .orderBy(desc(documents.createdAt))
+      .limit(limit);
+  }
+
+  async backfillDocumentMetadata(userId: string, updates: DocumentMetadataUpdate[]): Promise<number> {
+    let updated = 0;
+    for (const item of updates) {
+      const [row] = await db
+        .update(documents)
+        .set({
+          sourceType: item.sourceType,
+          mimeType: item.mimeType,
+          fileExtension: item.fileExtension,
+          detectedDomain: item.detectedDomain,
+          detectedDomainLabel: item.detectedDomainLabel,
+          classificationMethod: item.classificationMethod,
+          classificationConfidence: item.classificationConfidence,
+        })
+        .where(and(eq(documents.id, item.id), eq(documents.userId, userId)))
+        .returning({ id: documents.id });
+      if (row) updated += 1;
+    }
+    return updated;
   }
 
   async deleteDocument(id: number, userId: string): Promise<void> {

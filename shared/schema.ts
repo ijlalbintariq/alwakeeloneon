@@ -30,6 +30,13 @@ export const documents = pgTable("documents", {
   title: text("title").notNull(),
   content: text("content"),
   summary: text("summary"),
+  sourceType: text("source_type").default("other").notNull(),
+  mimeType: text("mime_type"),
+  fileExtension: text("file_extension"),
+  detectedDomain: text("detected_domain").default("other").notNull(),
+  detectedDomainLabel: text("detected_domain_label").default("Other").notNull(),
+  classificationMethod: text("classification_method").default("fallback").notNull(),
+  classificationConfidence: integer("classification_confidence").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
