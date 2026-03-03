@@ -319,6 +319,44 @@ function normalizeDraftingText(content: string): string {
     .trim();
 }
 
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(1, value));
+}
+
+function resolveConfidenceThreshold(envKey: string, fallback: number): number {
+  const raw = Number(process.env[envKey]);
+  if (!Number.isFinite(raw)) return fallback;
+  return clamp01(raw);
+}
+
+function estimateClauseSuggestionConfidence(topScore: number, secondScore: number): number {
+  const boundedTop = Math.max(0, Math.min(12, topScore));
+  const boundedSpread = Math.max(0, Math.min(4, topScore - secondScore));
+  return clamp01(0.15 + (boundedTop / 12) * 0.6 + (boundedSpread / 4) * 0.25);
+}
+
+function parseClauseSuggestionsFromAi(raw: string, limit: number): Array<{ id: string; title: string; subtitle: string; prompt: string }> {
+  try {
+    const jsonText = extractJsonObject(raw);
+    if (!jsonText) return [];
+    const parsed = JSON.parse(jsonText) as { suggestions?: Array<{ title?: string; subtitle?: string; prompt?: string }> };
+    const items = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+    return items
+      .filter((item) => item && typeof item.title === "string" && typeof item.prompt === "string")
+      .slice(0, Math.max(1, Math.min(8, limit)))
+      .map((item, idx) => ({
+        id: `ai-suggested-${Date.now()}-${idx}`,
+        title: String(item.title || "").trim(),
+        subtitle: String(item.subtitle || "Recommended for this draft.").trim(),
+        prompt: String(item.prompt || "").trim(),
+      }))
+      .filter((item) => item.title.length > 0 && item.prompt.length > 0);
+  } catch {
+    return [];
+  }
+}
+
 function normalizeStrictContractJson(intent: ModuleIntent | undefined, raw: string): { normalized: string; valid: boolean } {
   const jsonText = extractJsonObject(raw);
   if (!jsonText) {
@@ -1424,19 +1462,62 @@ export async function registerRoutes(
         contractType?: string;
         limit?: number;
       };
-      const suggestions = suggestClauses({
+      const safeLimit = Number.isFinite(limit) ? Number(limit) : 4;
+      const retrievalSuggestions = suggestClauses({
         query: query || "",
         draftText: draftText || "",
         contractType: contractType || "",
-        limit: Number.isFinite(limit) ? Number(limit) : 4,
-      }).map((item) => ({
+        limit: safeLimit,
+      });
+      const suggestions = retrievalSuggestions.map((item) => ({
         id: item.id,
         title: item.title,
         subtitle: item.subtitle,
         prompt: item.prompt,
       }));
 
-      res.json({ suggestions, method: "retrieval" });
+      const topScore = retrievalSuggestions[0]?.score || 0;
+      const secondScore = retrievalSuggestions[1]?.score || 0;
+      const retrievalConfidence = estimateClauseSuggestionConfidence(topScore, secondScore);
+      const aiFallbackThreshold = resolveConfidenceThreshold("RETRIEVAL_CLAUSE_SUGGEST_AI_THRESHOLD", 0.55);
+      const shouldAiFallback = retrievalConfidence < aiFallbackThreshold;
+      const canUseAiFallback = isGroqAvailable() || isOpenRouterAvailable();
+
+      if (shouldAiFallback && canUseAiFallback) {
+        const allowed = await checkUsageLimit(userId, "draft", res);
+        if (!allowed) return;
+
+        const sysInstruction = `You are a Pakistani legal drafting assistant.
+Suggest missing or weak contract clauses for the provided draft context.
+Return ONLY valid JSON in this exact format:
+{"suggestions":[{"title":"...","subtitle":"...","prompt":"..."}]}
+Rules:
+- Return up to ${Math.max(1, Math.min(8, safeLimit))} suggestions.
+- Each subtitle must be concise (max 12 words).
+- Each prompt must be directly usable to draft a clause under Pakistani law.
+- No markdown, no explanations, no extra keys.`;
+        const userInput = `Contract Type: ${contractType || "Not provided"}
+Query: ${query || "Not provided"}
+Draft Excerpt:
+${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
+        try {
+          const aiResult = await callStandardAISimple(sysInstruction, userInput, 1200);
+          await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
+          const aiSuggestions = parseClauseSuggestionsFromAi(aiResult.text, safeLimit);
+          if (aiSuggestions.length > 0) {
+            return res.json({
+              suggestions: aiSuggestions,
+              method: "ai-fallback",
+              retrievalConfidence,
+              confidence: Math.max(retrievalConfidence, 0.7),
+            });
+          }
+        } catch (aiErr) {
+          console.warn("[Retrieval Clauses] AI fallback for suggestions failed:", getErrorMessage(aiErr));
+        }
+      }
+
+      res.json({ suggestions, method: "retrieval", confidence: retrievalConfidence });
     } catch (err) {
       console.error("Error suggesting clauses:", err);
       res.status(500).json({ message: "Failed to suggest clauses" });
@@ -1462,6 +1543,39 @@ export async function registerRoutes(
         draftText: draftText || "",
         jurisdiction: jurisdiction || "Lahore",
       });
+
+      const aiFallbackThreshold = resolveConfidenceThreshold("RETRIEVAL_CLAUSE_GENERATE_AI_THRESHOLD", 0.58);
+      const shouldAiFallback = generated.method === "fallback" || generated.confidence < aiFallbackThreshold;
+      const canUseAiFallback = isGroqAvailable() || isOpenRouterAvailable();
+
+      if (shouldAiFallback && canUseAiFallback) {
+        const allowed = await checkUsageLimit(userId, "draft", res);
+        if (!allowed) return;
+
+        const sysInstruction = `You are a Pakistani legal drafting assistant.
+Draft one enforceable contract clause based on the instruction and draft context.
+Return only clause text. No markdown. No bullet list. No JSON.`;
+        const userInput = `Instruction: ${safePrompt}
+Jurisdiction: ${jurisdiction || "Lahore"}
+Current Draft Excerpt:
+${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
+        try {
+          const aiResult = await callStandardAISimple(sysInstruction, userInput, 1400);
+          await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
+          const clauseText = normalizeDraftingText(aiResult.text);
+          if (clauseText) {
+            return res.json({
+              clause: clauseText,
+              sourceId: "ai-fallback",
+              confidence: Math.max(generated.confidence, 0.72),
+              retrievalConfidence: generated.confidence,
+              method: "ai-fallback",
+            });
+          }
+        } catch (aiErr) {
+          console.warn("[Retrieval Clauses] AI fallback for generation failed:", getErrorMessage(aiErr));
+        }
+      }
 
       res.json(generated);
     } catch (err) {
