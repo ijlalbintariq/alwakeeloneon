@@ -22,6 +22,7 @@ import { getModuleProfile, normalizeModuleType, type ModuleIntent, type ModuleTy
 import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAuditEvent, unbanUser } from "./security-governance";
 import { scanUploadedBuffer } from "./file-scan";
 import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
+import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
 
 
 const TOKEN_LIMITS = {
@@ -49,6 +50,15 @@ function estimateCost(model: string, inputText: string, outputText: string): num
   const inputTokens = estimateTokens(inputText);
   const outputTokens = estimateTokens(outputText);
   return (inputTokens / 1000) * rates.input + (outputTokens / 1000) * rates.output;
+}
+
+function toApiDocument(doc: any) {
+  return {
+    ...doc,
+    classificationConfidence: Number.isFinite(doc?.classificationConfidence)
+      ? Number(doc.classificationConfidence) / 100
+      : 0,
+  };
 }
 
 function buildMessages(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>): Array<{ role: "system" | "user" | "assistant"; content: string }> {
@@ -927,7 +937,66 @@ export async function registerRoutes(
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     const docs = await storage.getDocuments(userId);
-    res.json(docs);
+    res.json(docs.map(toApiDocument));
+  });
+
+  app.get("/api/documents/insights", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const insights = await storage.getDocumentInsights(userId);
+      res.json(insights);
+    } catch (err) {
+      console.error("Error fetching document insights:", err);
+      res.status(500).json({ message: "Failed to fetch document insights" });
+    }
+  });
+
+  app.post("/api/documents/backfill-metadata", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const limitRaw = Number(req.body?.limit);
+      const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.floor(limitRaw), 1), 50) : 50;
+      const pending = await storage.getDocumentsNeedingMetadata(userId, limit);
+      const updates: Array<DocumentMetadata & { id: number }> = [];
+      let failed = 0;
+
+      for (const doc of pending) {
+        try {
+          const metadata = await classifyDocumentMetadata({
+            title: doc.title || `document-${doc.id}`,
+            filename: doc.title || `document-${doc.id}.txt`,
+            content: doc.content || "",
+            mimeType: doc.mimeType,
+          });
+          updates.push({ id: doc.id, ...metadata });
+        } catch {
+          failed += 1;
+        }
+      }
+
+      const updated = updates.length > 0
+        ? await storage.backfillDocumentMetadata(
+          userId,
+          updates.map((item) => ({
+            ...item,
+            classificationConfidence: item.classificationConfidence,
+          })),
+        )
+        : 0;
+
+      const insights = await storage.getDocumentInsights(userId);
+      res.json({
+        processed: pending.length,
+        updated,
+        failed,
+        remainingUnclassified: insights.unclassifiedCount,
+      });
+    } catch (err) {
+      console.error("Error backfilling document metadata:", err);
+      res.status(500).json({ message: "Failed to backfill document metadata" });
+    }
   });
 
   const documentUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -940,11 +1009,17 @@ export async function registerRoutes(
       if (input.content) {
         input.content = stripNullBytes(input.content);
       }
+      const metadata = await classifyDocumentMetadata({
+        title: input.title,
+        filename: input.title,
+        content: input.content || "",
+      });
       const doc = await storage.createDocument({
         ...input,
         userId,
+        ...metadata,
       });
-      res.status(201).json(doc);
+      res.status(201).json(toApiDocument(doc));
     } catch (err) {
       console.error("Error creating document:", err);
       res.status(500).json({ message: "Failed to create document" });
@@ -1031,8 +1106,14 @@ export async function registerRoutes(
 
         const customTitle = typeof req.body?.title === "string" ? req.body.title.trim() : "";
         const title = files.length === 1 && customTitle ? customTitle : original;
-        const doc = await storage.createDocument({ userId, title, content });
-        uploaded.push(doc);
+        const metadata = await classifyDocumentMetadata({
+          title,
+          filename: original,
+          content,
+          mimeType: file.mimetype,
+        });
+        const doc = await storage.createDocument({ userId, title, content, ...metadata });
+        uploaded.push(toApiDocument(doc));
       }
 
       if (uploaded.length === 0) {
@@ -1074,7 +1155,7 @@ export async function registerRoutes(
       if (!updated) {
         return res.status(404).json({ message: "Document not found" });
       }
-      res.json(updated);
+      res.json(toApiDocument(updated));
     } catch (err) {
       console.error("Error updating document:", err);
       res.status(500).json({ message: "Failed to update document" });

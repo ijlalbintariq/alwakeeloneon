@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -9,8 +9,6 @@ import {
   ChevronRight,
   Download,
   Eye,
-  FileSearch,
-  FileText,
   FolderOpen,
   Gavel,
   Loader2,
@@ -29,13 +27,19 @@ type Doc = {
   title: string;
   content?: string | null;
   summary?: string | null;
+  sourceType?: TypeFilter;
+  mimeType?: string | null;
+  fileExtension?: string | null;
+  detectedDomain?: string;
+  detectedDomainLabel?: string;
+  classificationMethod?: "rule" | "ai" | "fallback";
+  classificationConfidence?: number; // API value 0-1
   createdAt: string;
 };
 
 type VaultView = "home" | "uploads" | "results" | "processing";
 type TypeFilter = "all" | "pdf" | "docx" | "txt" | "json" | "csv" | "other";
 type StatusFilter = "all" | "trained" | "failed";
-type CaseType = "civil-litigation" | "corporate-law" | "real-estate" | "other";
 type DateFilter = "any" | "year" | "month";
 type JurisdictionFilter = "all" | "supreme-court" | "high-court" | "district-court";
 
@@ -51,8 +55,16 @@ type VaultDoc = Doc & {
   extension: TypeFilter;
   status: Exclude<StatusFilter, "all">;
   approxBytes: number;
-  caseType: CaseType;
+  domainKey: string;
+  domainLabel: string;
   jurisdiction: JurisdictionFilter;
+};
+
+type VaultInsights = {
+  totalDocuments: number;
+  sourceCounts: Array<{ key: string; label: string; count: number }>;
+  domainCounts: Array<{ key: string; label: string; count: number }>;
+  unclassifiedCount: number;
 };
 
 const SUGGESTED_SEARCHES = [
@@ -86,14 +98,6 @@ function extensionFromTitle(title: string): TypeFilter {
   return "other";
 }
 
-function inferCaseType(text: string): CaseType {
-  const lower = text.toLowerCase();
-  if (/(civil|injunction|appeal|plaint|petition|writ|suit)/.test(lower)) return "civil-litigation";
-  if (/(company|shareholder|board|corporate|merger|acquisition|commercial)/.test(lower)) return "corporate-law";
-  if (/(property|lease|tenant|sale deed|registry|real estate|land)/.test(lower)) return "real-estate";
-  return "other";
-}
-
 function inferJurisdiction(text: string): JurisdictionFilter {
   const lower = text.toLowerCase();
   if (/(supreme court|scmr|pld)/.test(lower)) return "supreme-court";
@@ -117,13 +121,6 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function labelForCaseType(caseType: CaseType): string {
-  if (caseType === "civil-litigation") return "Civil Litigation";
-  if (caseType === "corporate-law") return "Corporate Law";
-  if (caseType === "real-estate") return "Real Estate";
-  return "General";
 }
 
 function labelForJurisdiction(jurisdiction: JurisdictionFilter): string {
@@ -220,8 +217,10 @@ function detectedConcepts(text: string): string[] {
 export default function KnowledgeVaultPage() {
   const { toast } = useToast();
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const hasRequestedBackfillRef = useRef(false);
 
   const { data: documents = [], isLoading } = useQuery<Doc[]>({ queryKey: ["/api/documents"] });
+  const { data: insightsData } = useQuery<VaultInsights>({ queryKey: ["/api/documents/insights"] });
 
   const [previewDoc, setPreviewDoc] = useState<VaultDoc | null>(null);
   const [view, setView] = useState<VaultView>("home");
@@ -235,12 +234,8 @@ export default function KnowledgeVaultPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("any");
   const [jurisdictionFilter, setJurisdictionFilter] = useState<JurisdictionFilter>("all");
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
-  const [caseTypeFilters, setCaseTypeFilters] = useState<Record<CaseType, boolean>>({
-    "civil-litigation": true,
-    "corporate-law": false,
-    "real-estate": false,
-    other: false,
-  });
+  const [domainFilters, setDomainFilters] = useState<Record<string, boolean>>({});
+  const [isBackfilling, setIsBackfilling] = useState(false);
 
   const [uploadState, setUploadState] = useState<UploadState>({
     total: 0,
@@ -256,6 +251,7 @@ export default function KnowledgeVaultPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents/insights"] });
       toast({ title: "Document deleted" });
       setPreviewDoc(null);
     },
@@ -271,6 +267,7 @@ export default function KnowledgeVaultPage() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents/insights"] });
       setShowDeleteAllConfirm(false);
       setPreviewDoc(null);
       const deleted = Number(data?.deleted || 0);
@@ -282,9 +279,59 @@ export default function KnowledgeVaultPage() {
     },
   });
 
+  useEffect(() => {
+    const domainCounts = insightsData?.domainCounts || [];
+    if (domainCounts.length === 0) return;
+    setDomainFilters((prev) => {
+      const next: Record<string, boolean> = {};
+      for (const item of domainCounts) {
+        next[item.key] = prev[item.key] ?? true;
+      }
+      return next;
+    });
+  }, [insightsData?.domainCounts]);
+
+  useEffect(() => {
+    if (!insightsData?.unclassifiedCount || insightsData.unclassifiedCount <= 0) return;
+    if (hasRequestedBackfillRef.current || isBackfilling) return;
+
+    hasRequestedBackfillRef.current = true;
+    let cancelled = false;
+
+    const runBackfill = async () => {
+      setIsBackfilling(true);
+      try {
+        let remaining = insightsData.unclassifiedCount;
+        while (remaining > 0 && !cancelled) {
+          const response = await fetch("/api/documents/backfill-metadata", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ limit: 50 }),
+          });
+          if (!response.ok) break;
+          const payload = await response.json().catch(() => null);
+          remaining = Number(payload?.remainingUnclassified || 0);
+          await queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/documents/insights"] });
+          if (remaining > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          }
+        }
+      } finally {
+        if (!cancelled) setIsBackfilling(false);
+      }
+    };
+
+    runBackfill();
+    return () => {
+      cancelled = true;
+    };
+  }, [insightsData?.unclassifiedCount, isBackfilling]);
+
   const vaultDocs = useMemo<VaultDoc[]>(() => {
     return documents.map((doc) => {
-      const extension = extensionFromTitle(doc.title);
+      const extension = (doc.sourceType && doc.sourceType !== "all" ? doc.sourceType : extensionFromTitle(doc.title)) as TypeFilter;
       const content = doc.content || "";
       const status = statusFromDoc(doc);
       const approxBytes = new TextEncoder().encode(content).length;
@@ -294,7 +341,8 @@ export default function KnowledgeVaultPage() {
         extension,
         status,
         approxBytes,
-        caseType: inferCaseType(merged),
+        domainKey: doc.detectedDomain || "other",
+        domainLabel: doc.detectedDomainLabel || "Other",
         jurisdiction: inferJurisdiction(merged),
       };
     });
@@ -320,15 +368,18 @@ export default function KnowledgeVaultPage() {
     return latest;
   }, [vaultDocs]);
 
-  const categoryCards = useMemo(() => {
-    const byType = {
-      contracts: vaultDocs.filter((d) => d.caseType === "real-estate" || d.caseType === "corporate-law").length,
-      litigation: vaultDocs.filter((d) => d.caseType === "civil-litigation").length,
-      evidence: vaultDocs.filter((d) => /(evidence|exhibit|forensic|statement)/i.test(`${d.title} ${d.content || ""}`)).length,
-      other: vaultDocs.filter((d) => d.caseType === "other").length,
-    };
-    return byType;
-  }, [vaultDocs]);
+  const sourceCounts = insightsData?.sourceCounts || [];
+  const domainCounts = insightsData?.domainCounts || [];
+
+  const topDomainCards = useMemo(() => {
+    const nonZero = domainCounts.filter((item) => item.count > 0);
+    const top = nonZero.slice(0, 3);
+    if (top.length >= 3) return top;
+    const hasOther = top.some((d) => d.key === "other");
+    const other = nonZero.find((d) => d.key === "other");
+    if (!hasOther && other && top.length < 3) return [...top, other];
+    return top;
+  }, [domainCounts]);
 
   const filteredUploads = useMemo(() => {
     const query = uploadSearch.trim().toLowerCase();
@@ -351,9 +402,9 @@ export default function KnowledgeVaultPage() {
     const query = activeQuery.trim();
     if (!query) return [];
 
-    const includeTypes = Object.entries(caseTypeFilters)
+    const includeTypes = Object.entries(domainFilters)
       .filter(([, checked]) => checked)
-      .map(([key]) => key as CaseType);
+      .map(([key]) => key);
 
     const now = Date.now();
     return vaultDocs
@@ -364,7 +415,7 @@ export default function KnowledgeVaultPage() {
       })
       .filter(({ doc, score }) => {
         if (score <= 0) return false;
-        if (includeTypes.length > 0 && !includeTypes.includes(doc.caseType)) return false;
+        if (includeTypes.length > 0 && !includeTypes.includes(doc.domainKey)) return false;
         if (jurisdictionFilter !== "all" && doc.jurisdiction !== jurisdictionFilter) return false;
         if (dateFilter !== "any") {
           const ageMs = now - new Date(doc.createdAt).getTime();
@@ -374,7 +425,7 @@ export default function KnowledgeVaultPage() {
         return true;
       })
       .sort((a, b) => b.score - a.score);
-  }, [activeQuery, caseTypeFilters, dateFilter, jurisdictionFilter, vaultDocs]);
+  }, [activeQuery, domainFilters, dateFilter, jurisdictionFilter, vaultDocs]);
 
   const resultPageSize = 4;
   const resultPageCount = Math.max(1, Math.ceil(results.length / resultPageSize));
@@ -389,12 +440,9 @@ export default function KnowledgeVaultPage() {
   const concepts = useMemo(() => detectedConcepts(processingText), [processingText]);
 
   const clearFilters = () => {
-    setCaseTypeFilters({
-      "civil-litigation": true,
-      "corporate-law": false,
-      "real-estate": false,
-      other: false,
-    });
+    const reset: Record<string, boolean> = {};
+    for (const item of domainCounts) reset[item.key] = true;
+    setDomainFilters(reset);
     setDateFilter("any");
     setJurisdictionFilter("all");
     setResultPage(1);
@@ -483,6 +531,7 @@ export default function KnowledgeVaultPage() {
     }
 
     await queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+    await queryClient.invalidateQueries({ queryKey: ["/api/documents/insights"] });
     if (uploadInputRef.current) uploadInputRef.current.value = "";
 
     if (errors.length === files.length) {
@@ -705,41 +754,39 @@ export default function KnowledgeVaultPage() {
                       <p className="text-sm text-slate-400 mt-1">Private files in your account vault.</p>
                       <p className="text-2xl text-white mt-3 font-bold">{stats.total} <span className="text-sm text-slate-400 font-medium">Documents</span></p>
                     </div>
-
-                    <div className="rounded-2xl border border-amber-500/20 bg-black/20 p-5">
-                      <div className="flex items-center justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-                          <Gavel size={16} />
+                    {topDomainCards.map((item) => (
+                      <div key={item.key} className="rounded-2xl border border-amber-500/20 bg-black/20 p-5">
+                        <div className="flex items-center justify-between">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                            <Gavel size={16} />
+                          </div>
+                          <span className="text-xs text-slate-500 font-mono">Live</span>
                         </div>
-                        <span className="text-xs text-slate-500 font-mono">Live</span>
+                        <p className="text-white text-lg mt-3 font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>{item.label}</p>
+                        <p className="text-sm text-slate-400 mt-1">Detected from your uploaded document content.</p>
+                        <p className="text-xl text-white mt-3 font-bold">{item.count}</p>
                       </div>
-                      <p className="text-white text-lg mt-3 font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Civil Litigation</p>
-                      <p className="text-sm text-slate-400 mt-1">Matters, petitions, appeals and court filings.</p>
-                      <p className="text-xl text-white mt-3 font-bold">{categoryCards.litigation}</p>
+                    ))}
+                    {stats.total === 0 && (
+                      <div className="rounded-2xl border border-amber-500/20 bg-black/20 p-5 sm:col-span-2">
+                        <p className="text-slate-300 text-sm">Upload documents to generate domains and sources.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-amber-500/20 bg-black/20 p-5">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-lg text-white font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Sources</h4>
+                      {isBackfilling && <span className="text-xs text-amber-300">Updating domain insights...</span>}
                     </div>
-
-                    <div className="rounded-2xl border border-amber-500/20 bg-black/20 p-5">
-                      <div className="flex items-center justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-                          <FileText size={16} />
-                        </div>
-                        <span className="text-xs text-slate-500 font-mono">Live</span>
-                      </div>
-                      <p className="text-white text-lg mt-3 font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Contracts</p>
-                      <p className="text-sm text-slate-400 mt-1">Commercial, deed, and transaction documents.</p>
-                      <p className="text-xl text-white mt-3 font-bold">{categoryCards.contracts}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-amber-500/20 bg-black/20 p-5">
-                      <div className="flex items-center justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-                          <FileSearch size={16} />
-                        </div>
-                        <span className="text-xs text-slate-500 font-mono">Live</span>
-                      </div>
-                      <p className="text-white text-lg mt-3 font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Evidence & Notes</p>
-                      <p className="text-sm text-slate-400 mt-1">Evidence bundles, notes and supporting docs.</p>
-                      <p className="text-xl text-white mt-3 font-bold">{categoryCards.evidence + categoryCards.other}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {sourceCounts.length > 0 ? sourceCounts.map((source) => (
+                        <span key={source.key} className="px-3 py-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 text-xs text-amber-200">
+                          {source.label}: <span className="font-bold text-white">{source.count}</span>
+                        </span>
+                      )) : (
+                        <span className="text-sm text-slate-500">No upload sources detected yet.</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -901,7 +948,7 @@ export default function KnowledgeVaultPage() {
                             </div>
                             <div>
                               <p className="text-sm text-white font-medium">{doc.title}</p>
-                              <p className="text-xs text-slate-500">{labelForCaseType(doc.caseType)}</p>
+                              <p className="text-xs text-slate-500">{doc.domainLabel}</p>
                             </div>
                           </div>
                         </td>
@@ -1020,27 +1067,23 @@ export default function KnowledgeVaultPage() {
                 </div>
 
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">Case Type</p>
+                  <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">Legal Domain</p>
                   <div className="space-y-2 text-sm">
-                    {([
-                      { key: "civil-litigation", label: "Civil Litigation" },
-                      { key: "corporate-law", label: "Corporate Law" },
-                      { key: "real-estate", label: "Real Estate" },
-                      { key: "other", label: "Other" },
-                    ] as Array<{ key: CaseType; label: string }>).map((item) => (
+                    {domainCounts.map((item) => (
                       <label key={item.key} className="flex items-center gap-2 cursor-pointer text-slate-300">
                         <input
                           type="checkbox"
-                          checked={caseTypeFilters[item.key]}
+                          checked={domainFilters[item.key] ?? true}
                           onChange={(e) => {
-                            setCaseTypeFilters((prev) => ({ ...prev, [item.key]: e.target.checked }));
+                            setDomainFilters((prev) => ({ ...prev, [item.key]: e.target.checked }));
                             setResultPage(1);
                           }}
                           className="rounded border-slate-600 bg-transparent text-amber-500 focus:ring-amber-500/40"
                         />
-                        {item.label}
+                        {item.label} ({item.count})
                       </label>
                     ))}
+                    {domainCounts.length === 0 && <p className="text-xs text-slate-500">Upload documents to enable domain filters.</p>}
                   </div>
                 </div>
 
@@ -1117,7 +1160,7 @@ export default function KnowledgeVaultPage() {
                     </p>
 
                     <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                      <span>/{labelForCaseType(doc.caseType).replace(/\s+/g, "-")}/{new Date(doc.createdAt).getFullYear()}</span>
+                      <span>/{doc.domainLabel.replace(/\s+/g, "-")}/{new Date(doc.createdAt).getFullYear()}</span>
                       <span className="text-emerald-400">{Math.min(99, 60 + score * 4)}% Match</span>
                     </div>
 

@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import { insertThreadSchema, insertMessageSchema, insertDocumentSchema, insertBookmarkSchema, insertSearchHistorySchema, threads, messages, documents } from './schema';
+import { insertThreadSchema, insertMessageSchema, insertBookmarkSchema, insertSearchHistorySchema, threads, messages, documents } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -88,7 +88,10 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/documents' as const,
-      input: insertDocumentSchema,
+      input: z.object({
+        title: z.string().min(1),
+        content: z.string().optional(),
+      }),
       responses: {
         201: z.custom<typeof documents.$inferSelect>(),
         401: errorSchemas.unauthorized,
@@ -97,7 +100,10 @@ export const api = {
     update: {
       method: 'PUT' as const,
       path: '/api/documents/:id' as const,
-      input: insertDocumentSchema.partial(),
+      input: z.object({
+        title: z.string().optional(),
+        content: z.string().optional(),
+      }),
       responses: {
         200: z.custom<typeof documents.$inferSelect>(),
         401: errorSchemas.unauthorized,
