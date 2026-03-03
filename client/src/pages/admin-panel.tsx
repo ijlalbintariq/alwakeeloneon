@@ -55,11 +55,37 @@ type CostAnalytics = {
   totalTokens: number;
 };
 
+type AdminUser = User & {
+  isBanned?: boolean;
+  banReason?: string | null;
+  bannedAt?: string | null;
+  bannedBy?: string | null;
+};
+
+type AdminAuditLog = {
+  id: number;
+  action: string;
+  actorUserId: string | null;
+  targetUserId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+type SecurityEventSnapshot = {
+  id: number;
+  type: string;
+  key: string;
+  count: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  metadata: Record<string, unknown> | null;
+};
+
 export default function AdminPanelPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit">("stats");
 
   if (!user?.isAdmin) {
     return <Redirect to="/dashboard" />;
@@ -87,6 +113,7 @@ export default function AdminPanelPage() {
         {[
           { id: "stats" as const, label: "Analytics", icon: BarChart3 },
           { id: "users" as const, label: "Users", icon: Users },
+          { id: "audit" as const, label: "Audit Logs", icon: Shield },
           { id: "knowledge" as const, label: "Knowledge Vault", icon: Database },
           { id: "case-law" as const, label: "Case Law", icon: Scale },
           { id: "statute-docs" as const, label: "Statute Library", icon: FileText },
@@ -106,6 +133,7 @@ export default function AdminPanelPage() {
 
       {activeTab === "stats" && <StatsSection />}
       {activeTab === "users" && <UsersSection />}
+      {activeTab === "audit" && <AuditLogsSection />}
       {activeTab === "knowledge" && <KnowledgeSection />}
       {activeTab === "case-law" && <CaseLawSection />}
       {activeTab === "statute-docs" && <StatuteDocumentsSection />}
@@ -266,7 +294,7 @@ function UsersSection() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: allUsers, isLoading } = useQuery<User[]>({ queryKey: ["/api/admin/users"] });
+  const { data: allUsers, isLoading } = useQuery<AdminUser[]>({ queryKey: ["/api/admin/users"] });
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -276,6 +304,7 @@ function UsersSection() {
   const [newLastName, setNewLastName] = useState("");
   const [newTier, setNewTier] = useState("free");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
+  const [banReasons, setBanReasons] = useState<Record<string, string>>({});
 
   const addUserMutation = useMutation({
     mutationFn: async () => {
@@ -292,6 +321,7 @@ function UsersSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-logs"] });
       setShowAddForm(false);
       setNewEmail("");
       setNewPassword("");
@@ -314,6 +344,7 @@ function UsersSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-logs"] });
       toast({ title: "User updated successfully" });
     },
     onError: () => {
@@ -329,11 +360,42 @@ function UsersSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-logs"] });
       setConfirmDeleteId(null);
       toast({ title: "User removed successfully" });
     },
     onError: () => {
       toast({ title: "Failed to remove user", variant: "destructive" });
+    },
+  });
+
+  const suspendUserMutation = useMutation({
+    mutationFn: async ({ userId, reason }: { userId: string; reason?: string }) => {
+      const res = await apiRequest("POST", `/api/admin/users/${userId}/ban`, { reason: reason || "" });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-logs"] });
+      toast({ title: "User account suspended" });
+    },
+    onError: () => {
+      toast({ title: "Failed to suspend user", variant: "destructive" });
+    },
+  });
+
+  const reactivateUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/users/${userId}/ban`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-logs"] });
+      toast({ title: "User account reactivated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to reactivate user", variant: "destructive" });
     },
   });
 
@@ -463,6 +525,11 @@ function UsersSection() {
                     ADMIN
                   </Badge>
                 )}
+                {u.isBanned && (
+                  <Badge className="bg-red-500/20 text-red-300 border-red-500/30 rounded-lg text-[9px]">
+                    SUSPENDED
+                  </Badge>
+                )}
 
                 <Select
                   value={u.subscriptionTier}
@@ -489,6 +556,37 @@ function UsersSection() {
                 >
                   {u.isAdmin ? <UserCheck size={16} /> : <UserX size={16} />}
                 </Button>
+
+                {u.id !== currentUser?.id && (
+                  u.isBanned ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-emerald-300 text-[9px] uppercase tracking-widest font-black"
+                      onClick={() => reactivateUserMutation.mutate(u.id)}
+                      disabled={reactivateUserMutation.isPending}
+                      data-testid={`button-reactivate-user-${u.id}`}
+                    >
+                      <Check size={12} />
+                      <span>Reactivate</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-300 text-[9px] uppercase tracking-widest font-black"
+                      onClick={() => {
+                        const reason = (banReasons[u.id] || "").trim();
+                        suspendUserMutation.mutate({ userId: u.id, reason });
+                      }}
+                      disabled={suspendUserMutation.isPending}
+                      data-testid={`button-suspend-user-${u.id}`}
+                    >
+                      <AlertTriangle size={12} />
+                      <span>Suspend</span>
+                    </Button>
+                  )
+                )}
 
                 {u.id !== currentUser?.id && (
                   confirmDeleteId === u.id ? (
@@ -528,9 +626,138 @@ function UsersSection() {
                   )
                 )}
               </div>
+              {!u.isBanned && u.id !== currentUser?.id && (
+                <div className="w-full">
+                  <Input
+                    placeholder="Suspension reason (optional)"
+                    value={banReasons[u.id] || ""}
+                    onChange={(e) => setBanReasons((prev) => ({ ...prev, [u.id]: e.target.value }))}
+                    className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+                    data-testid={`input-ban-reason-${u.id}`}
+                  />
+                </div>
+              )}
+              {u.isBanned && (
+                <div className="w-full">
+                  <p className="text-[10px] text-red-300">
+                    Reason: {u.banReason || "No reason provided"}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function AuditLogsSection() {
+  const { data: logs, isLoading } = useQuery<AdminAuditLog[]>({
+    queryKey: ["/api/admin/audit-logs"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/admin/audit-logs?limit=250");
+      return res.json();
+    },
+  });
+  const { data: securityEvents, isLoading: securityLoading } = useQuery<SecurityEventSnapshot[]>({
+    queryKey: ["/api/admin/security-events"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/admin/security-events?limit=100");
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-amber-500" size={24} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-testid="audit-logs-section">
+      <div className="flex items-center gap-3">
+        <Shield size={16} className="text-amber-500" />
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+          Audit Events ({logs?.length || 0})
+        </span>
+      </div>
+
+      {!logs || logs.length === 0 ? (
+        <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+          <CardContent className="p-12 text-center">
+            <Shield size={32} className="text-slate-700 mx-auto mb-3" />
+            <p className="text-sm text-slate-500">No audit events yet</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {logs.map((log) => (
+            <Card key={log.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`audit-log-${log.id}`}>
+              <CardContent className="p-5 space-y-2">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <Badge className="bg-slate-800 text-slate-300 border-slate-700 rounded-lg text-[9px]">
+                    {log.action}
+                  </Badge>
+                  <span className="text-[10px] text-slate-500">
+                    {new Date(log.createdAt).toLocaleString()}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-300 flex flex-wrap gap-3">
+                  <span>Actor: {log.actorUserId || "system"}</span>
+                  <span>Target: {log.targetUserId || "-"}</span>
+                </div>
+                {log.metadata && (
+                  <pre className="text-[10px] text-slate-400 bg-[#101a2b] border border-slate-800 rounded-xl p-3 overflow-x-auto whitespace-pre-wrap break-words">
+                    {JSON.stringify(log.metadata, null, 2)}
+                  </pre>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <div className="pt-4 border-t border-slate-800">
+        <div className="flex items-center gap-3 mb-3">
+          <AlertTriangle size={16} className="text-amber-500" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            Security Event Stream ({securityEvents?.length || 0})
+          </span>
+        </div>
+
+        {securityLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="animate-spin text-amber-500" size={20} />
+          </div>
+        ) : !securityEvents || securityEvents.length === 0 ? (
+          <Card className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]">
+            <CardContent className="p-6 text-center text-slate-500 text-sm">
+              No recent security alerts.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {securityEvents.map((event) => (
+              <Card key={`security-event-${event.id}-${event.lastSeenAt}`} className="bg-[#1e293b] border-slate-800 rounded-[1.2rem]">
+                <CardContent className="p-4 space-y-1">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <Badge className="bg-red-500/20 text-red-300 border-red-500/30 rounded-lg text-[9px]">
+                      {event.type}
+                    </Badge>
+                    <span className="text-[10px] text-slate-500">Count: {event.count}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-200 break-all">Key: {event.key}</p>
+                  <p className="text-[10px] text-slate-500">
+                    First: {new Date(event.firstSeenAt).toLocaleString()} | Last: {new Date(event.lastSeenAt).toLocaleString()}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

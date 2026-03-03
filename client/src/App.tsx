@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -6,33 +6,34 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 
-import LandingPage from "@/pages/landing";
-import AuthPage from "@/pages/auth";
-import DashboardPage from "@/pages/dashboard";
-import JudgmentSearchPage from "@/pages/judgment-search";
-import JudgmentViewPage from "@/pages/judgment-view";
-import StatuteSearchPage from "@/pages/statute-search";
-import StatuteViewPage from "@/pages/statute-view";
-import ChatPage from "@/pages/chat";
-import LegalDraftingPage from "@/pages/legal-drafting";
-import ContractDraftingPage from "@/pages/contract-drafting";
-import CaseDocumentsPage from "@/pages/case-documents";
-import BookmarksPage from "@/pages/bookmarks";
-import HistoryPage from "@/pages/history";
-import KnowledgeVaultPage from "@/pages/knowledge-vault";
-import AdminPanelPage from "@/pages/admin-panel";
-import AdminSetupPage from "@/pages/admin-setup";
-import UserPanelPage from "@/pages/user-panel";
-import ForgotPasswordPage from "@/pages/forgot-password";
-import ResetPasswordPage from "@/pages/reset-password";
-import SharedConversationPage from "@/pages/shared-conversation";
-import PrivacyPolicyPage from "@/pages/privacy";
-import TermsOfServicePage from "@/pages/terms";
-import OrganizationPage from "@/pages/organization";
-import InstallAppPage from "@/pages/install-app";
-import NotFound from "@/pages/not-found";
 import { AppShell } from "@/components/app-shell";
 import { ThemeProvider, useTheme } from "@/hooks/use-theme";
+
+const LandingPage = lazy(() => import("@/pages/landing"));
+const AuthPage = lazy(() => import("@/pages/auth"));
+const DashboardPage = lazy(() => import("@/pages/dashboard"));
+const JudgmentSearchPage = lazy(() => import("@/pages/judgment-search"));
+const JudgmentViewPage = lazy(() => import("@/pages/judgment-view"));
+const StatuteSearchPage = lazy(() => import("@/pages/statute-search"));
+const StatuteViewPage = lazy(() => import("@/pages/statute-view"));
+const ChatPage = lazy(() => import("@/pages/chat"));
+const LegalDraftingPage = lazy(() => import("@/pages/legal-drafting"));
+const ContractDraftingPage = lazy(() => import("@/pages/contract-drafting"));
+const CaseDocumentsPage = lazy(() => import("@/pages/case-documents"));
+const BookmarksPage = lazy(() => import("@/pages/bookmarks"));
+const HistoryPage = lazy(() => import("@/pages/history"));
+const KnowledgeVaultPage = lazy(() => import("@/pages/knowledge-vault"));
+const AdminPanelPage = lazy(() => import("@/pages/admin-panel"));
+const AdminSetupPage = lazy(() => import("@/pages/admin-setup"));
+const UserPanelPage = lazy(() => import("@/pages/user-panel"));
+const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
+const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
+const SharedConversationPage = lazy(() => import("@/pages/shared-conversation"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/privacy"));
+const TermsOfServicePage = lazy(() => import("@/pages/terms"));
+const OrganizationPage = lazy(() => import("@/pages/organization"));
+const InstallAppPage = lazy(() => import("@/pages/install-app"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
@@ -129,7 +130,15 @@ function AppContent({ onReady }: { onReady?: () => void }) {
 
   return (
     <div data-ui-preview="macos" data-theme={resolvedTheme} className="min-h-screen">
-      <Router onReady={onReady} />
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">
+            Loading workspace...
+          </div>
+        }
+      >
+        <Router onReady={onReady} />
+      </Suspense>
       <Toaster />
     </div>
   );

@@ -1,6 +1,7 @@
 import { users, passwordResetTokens, type User, type UpsertUser } from "@shared/models/auth";
 import { db } from "../../db";
 import { eq, and, gt, isNull } from "drizzle-orm";
+import crypto from "crypto";
 
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -13,6 +14,10 @@ export interface IAuthStorage {
 }
 
 class AuthStorage implements IAuthStorage {
+  private hashResetToken(token: string): string {
+    return crypto.createHash("sha256").update(token).digest("hex");
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -28,7 +33,7 @@ class AuthStorage implements IAuthStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.email,
         set: {
           ...userData,
           updatedAt: new Date(),
@@ -43,16 +48,18 @@ class AuthStorage implements IAuthStorage {
   }
 
   async createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void> {
-    await db.insert(passwordResetTokens).values({ userId, token, expiresAt });
+    const tokenHash = this.hashResetToken(token);
+    await db.insert(passwordResetTokens).values({ userId, token: tokenHash, expiresAt });
   }
 
   async getValidResetToken(token: string): Promise<{ id: string; userId: string } | undefined> {
+    const tokenHash = this.hashResetToken(token);
     const [result] = await db
       .select({ id: passwordResetTokens.id, userId: passwordResetTokens.userId })
       .from(passwordResetTokens)
       .where(
         and(
-          eq(passwordResetTokens.token, token),
+          eq(passwordResetTokens.token, tokenHash),
           gt(passwordResetTokens.expiresAt, new Date()),
           isNull(passwordResetTokens.usedAt)
         )

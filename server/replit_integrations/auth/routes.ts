@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { authStorage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 import bcrypt from "bcryptjs";
@@ -6,6 +6,8 @@ import { z } from "zod";
 import crypto from "crypto";
 import { sendPasswordResetEmail } from "../../email";
 import { dbAvailable, dbUnavailableReason } from "../../db";
+import { isUserBanned, logAuditEvent } from "../../security-governance";
+import { recordSecurityEvent } from "../../security-monitoring";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -18,6 +20,72 @@ const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
 });
+
+const authAttemptHistory = new Map<string, number[]>();
+
+function applyAuthRateLimit(
+  req: Request,
+  res: any,
+  routeKey: string,
+  maxRequests: number,
+  windowMs: number
+): boolean {
+  const forwarded = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
+  const ip = forwarded || req.ip || req.socket.remoteAddress || "unknown";
+  const key = `${routeKey}:${ip}`;
+  const now = Date.now();
+  const windowStart = now - windowMs;
+  const existing = authAttemptHistory.get(key) || [];
+  const recent = existing.filter((ts) => ts >= windowStart);
+
+  if (recent.length >= maxRequests) {
+    recordSecurityEvent("auth_anomaly", `rate-limit:${routeKey}:${ip}`, {
+      routeKey,
+      ip,
+      maxRequests,
+      windowMs,
+    });
+    res.setHeader("Retry-After", Math.ceil(windowMs / 1000));
+    res.status(429).json({ message: "Too many authentication attempts. Please try again later." });
+    return false;
+  }
+
+  recent.push(now);
+  authAttemptHistory.set(key, recent);
+  return true;
+}
+
+const authRateCleanupTimer = setInterval(() => {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  for (const [key, attempts] of authAttemptHistory.entries()) {
+    const recent = attempts.filter((ts) => ts >= cutoff);
+    if (recent.length === 0) {
+      authAttemptHistory.delete(key);
+    } else {
+      authAttemptHistory.set(key, recent);
+    }
+  }
+}, 30 * 60 * 1000);
+authRateCleanupTimer.unref?.();
+
+function persistSession(req: any, res: any, user: any, statusCode: number = 200): void {
+  req.session.regenerate((regenErr: any) => {
+    if (regenErr) {
+      console.error("Session regenerate error:", regenErr);
+      return res.status(500).json({ message: "Failed to create session" });
+    }
+
+    (req.session as any).userId = user.id;
+    req.session.save((saveErr: any) => {
+      if (saveErr) {
+        console.error("Session save error:", saveErr);
+        return res.status(500).json({ message: "Failed to create session" });
+      }
+      const { passwordHash: _, ...safeUser } = user;
+      return res.status(statusCode).json(safeUser);
+    });
+  });
+}
 
 function isDatabaseConnectivityError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -38,6 +106,8 @@ function isDatabaseConnectivityError(error: unknown): boolean {
 export function registerAuthRoutes(app: Express): void {
   app.post("/api/auth/register", async (req, res) => {
     try {
+      if (!applyAuthRateLimit(req, res, "register", 10, 15 * 60 * 1000)) return;
+
       if (!dbAvailable) {
         return res.status(503).json({ message: "Database unavailable", code: "DB_UNAVAILABLE", reason: dbUnavailableReason });
       }
@@ -64,15 +134,8 @@ export function registerAuthRoutes(app: Express): void {
         authProvider: "email",
       });
 
-      (req.session as any).userId = user.id;
-      req.session.save((err) => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Failed to create session" });
-        }
-        const { passwordHash: _, ...safeUser } = user;
-        res.status(201).json(safeUser);
-      });
+      await logAuditEvent("auth.register", user.id, user.id, { provider: "email" }).catch(() => {});
+      persistSession(req, res, user, 201);
     } catch (error) {
       console.error("Registration error:", error);
       if (!dbAvailable || isDatabaseConnectivityError(error)) {
@@ -88,6 +151,8 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/api/auth/login", async (req, res) => {
     try {
+      if (!applyAuthRateLimit(req, res, "login", 15, 15 * 60 * 1000)) return;
+
       if (!dbAvailable) {
         return res.status(503).json({ message: "Database unavailable", code: "DB_UNAVAILABLE", reason: dbUnavailableReason });
       }
@@ -101,27 +166,28 @@ export function registerAuthRoutes(app: Express): void {
 
       const user = await authStorage.getUserByEmail(email);
       if (!user || !user.passwordHash) {
+        recordSecurityEvent("auth_anomaly", `login-failed:${email.toLowerCase()}`, { reason: "user_not_found_or_no_password" });
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
+      if (await isUserBanned(user.id)) {
+        recordSecurityEvent("auth_anomaly", `banned-login:${user.id}`, { provider: "email" });
+        return res.status(403).json({ message: "Your account is suspended. Please contact support." });
+      }
+
       if (user.authProvider === "google") {
+        recordSecurityEvent("auth_anomaly", `provider-mismatch:${email.toLowerCase()}`, { expectedProvider: "google", attemptedProvider: "email" });
         return res.status(401).json({ message: "This account uses Google sign-in. Please use the Google login button." });
       }
 
       const isValid = await bcrypt.compare(password, user.passwordHash);
       if (!isValid) {
+        recordSecurityEvent("auth_anomaly", `login-failed:${email.toLowerCase()}`, { reason: "invalid_password" });
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      (req.session as any).userId = user.id;
-      req.session.save((err) => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Failed to create session" });
-        }
-        const { passwordHash: _, ...safeUser } = user;
-        res.json(safeUser);
-      });
+      await logAuditEvent("auth.login", user.id, user.id, { provider: "email" }).catch(() => {});
+      persistSession(req, res, user);
     } catch (error) {
       console.error("Login error:", error);
       if (!dbAvailable || isDatabaseConnectivityError(error)) {
@@ -136,6 +202,10 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   app.post("/api/auth/logout", (req, res) => {
+    const userId = (req.session as any)?.userId as string | undefined;
+    if (userId) {
+      logAuditEvent("auth.logout", userId, userId).catch(() => {});
+    }
     req.session.destroy((err) => {
       if (err) {
         console.error("Logout error:", err);
@@ -163,6 +233,8 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/api/auth/google/token", async (req, res) => {
     try {
+      if (!applyAuthRateLimit(req, res, "google-token", 20, 15 * 60 * 1000)) return;
+
       const { credential } = req.body;
       if (!credential) {
         return res.status(400).json({ message: "No credential provided" });
@@ -175,12 +247,14 @@ export function registerAuthRoutes(app: Express): void {
 
       const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
       if (!verifyRes.ok) {
+        recordSecurityEvent("auth_anomaly", "google-token-invalid", {});
         return res.status(401).json({ message: "Invalid Google token" });
       }
 
       const payload = await verifyRes.json();
 
       if (payload.aud !== clientId) {
+        recordSecurityEvent("auth_anomaly", "google-token-audience-mismatch", {});
         return res.status(401).json({ message: "Token audience mismatch" });
       }
 
@@ -195,6 +269,10 @@ export function registerAuthRoutes(app: Express): void {
         if (user.authProvider === "email") {
           return res.status(409).json({ message: "An account with this email already exists using email/password. Please sign in with your email and password." });
         }
+        if (await isUserBanned(user.id)) {
+          recordSecurityEvent("auth_anomaly", `banned-login:${user.id}`, { provider: "google" });
+          return res.status(403).json({ message: "Your account is suspended. Please contact support." });
+        }
       } else {
         user = await authStorage.upsertUser({
           email,
@@ -203,17 +281,11 @@ export function registerAuthRoutes(app: Express): void {
           profileImageUrl,
           authProvider: "google",
         });
+        await logAuditEvent("auth.register", user.id, user.id, { provider: "google" }).catch(() => {});
       }
 
-      (req.session as any).userId = user.id;
-      req.session.save((err) => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Failed to create session" });
-        }
-        const { passwordHash: _, ...safeUser } = user!;
-        res.json(safeUser);
-      });
+      await logAuditEvent("auth.login", user!.id, user!.id, { provider: "google" }).catch(() => {});
+      persistSession(req, res, user!);
     } catch (error) {
       console.error("Google token auth error:", error);
       res.status(500).json({ message: "Google sign-in failed" });
@@ -227,6 +299,8 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
+      if (!applyAuthRateLimit(req, res, "forgot-password", 8, 15 * 60 * 1000)) return;
+
       const schema = z.object({ email: z.string().email() });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
@@ -249,12 +323,10 @@ export function registerAuthRoutes(app: Express): void {
       const emailSent = await sendPasswordResetEmail(parsed.data.email, resetUrl, user.firstName);
 
       if (emailSent) {
-        res.json({ message: "A password reset link has been sent to your email address." });
+        return res.json({ message: "A password reset link has been sent to your email address." });
       } else {
-        res.json({
-          message: "If an account with that email exists, a password reset link has been sent.",
-          resetUrl,
-        });
+        console.warn(`[Auth] Password reset email could not be sent for ${parsed.data.email}.`);
+        return res.json({ message: "If an account with that email exists, a password reset link has been sent." });
       }
     } catch (error) {
       console.error("Forgot password error:", error);
@@ -264,6 +336,8 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/api/auth/reset-password", async (req, res) => {
     try {
+      if (!applyAuthRateLimit(req, res, "reset-password", 10, 15 * 60 * 1000)) return;
+
       const schema = z.object({
         token: z.string().min(1),
         password: z.string().min(8, "Password must be at least 8 characters"),

@@ -43,10 +43,11 @@ export interface IStorage {
   ): Promise<Document | undefined>;
   getAllDocuments(): Promise<Document[]>;
   deleteDocument(id: number, userId: string): Promise<void>;
+  deleteAllDocuments(userId: string): Promise<number>;
 
   createBookmark(bookmark: InsertBookmark & { userId: string }): Promise<Bookmark>;
   getBookmarks(userId: string): Promise<Bookmark[]>;
-  deleteBookmark(id: number): Promise<void>;
+  deleteBookmark(id: number, userId: string): Promise<void>;
 
   addSearchHistory(entry: InsertSearchHistory & { userId: string }): Promise<SearchHistory>;
   getSearchHistory(userId: string): Promise<SearchHistory[]>;
@@ -211,6 +212,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(documents).where(and(eq(documents.id, id), eq(documents.userId, userId)));
   }
 
+  async deleteAllDocuments(userId: string): Promise<number> {
+    const all = await db.select({ id: documents.id }).from(documents).where(eq(documents.userId, userId));
+    if (all.length === 0) return 0;
+    await db.delete(documents).where(eq(documents.userId, userId));
+    return all.length;
+  }
+
   async createBookmark(insertBookmark: InsertBookmark & { userId: string }): Promise<Bookmark> {
     const [bookmark] = await db.insert(bookmarks).values(insertBookmark).returning();
     return bookmark;
@@ -223,8 +231,8 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(bookmarks.createdAt));
   }
 
-  async deleteBookmark(id: number): Promise<void> {
-    await db.delete(bookmarks).where(eq(bookmarks.id, id));
+  async deleteBookmark(id: number, userId: string): Promise<void> {
+    await db.delete(bookmarks).where(and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)));
   }
 
   async addSearchHistory(entry: InsertSearchHistory & { userId: string }): Promise<SearchHistory> {
@@ -643,7 +651,14 @@ export class DatabaseStorage implements IStorage {
       createdAt: statuteDocuments.createdAt,
     })
       .from(statuteDocuments)
-      .where(ilike(statuteDocuments.title, `%${trimmed}%`))
+      .where(
+        or(
+          ilike(statuteDocuments.title, `%${trimmed}%`),
+          ilike(statuteDocuments.content, `%${trimmed}%`),
+          ilike(statuteDocuments.filename, `%${trimmed}%`),
+          ilike(statuteDocuments.category, `%${trimmed}%`)
+        )
+      )
       .orderBy(statuteDocuments.title)
       .limit(limit);
   }
@@ -785,16 +800,32 @@ export class DatabaseStorage implements IStorage {
 export const storage = new DatabaseStorage();
 
 export async function ensureSearchIndexes(): Promise<void> {
-  try {
-    await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_case_law_citation_trgm ON case_law USING gin (citation gin_trgm_ops)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_case_law_title_trgm ON case_law USING gin (title gin_trgm_ops)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_case_law_court_trgm ON case_law USING gin (court gin_trgm_ops)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_title_trgm ON github_knowledge USING gin (title gin_trgm_ops)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_statutes_short_title_trgm ON statutes USING gin (short_title gin_trgm_ops)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_statutes_description_trgm ON statutes USING gin (description gin_trgm_ops)`);
-    console.log("Search indexes verified/created.");
-  } catch (err: any) {
-    console.warn("Could not create search indexes:", err?.message || err);
+  const indexStatements = [
+    { label: "pg_trgm_extension", stmt: sql`CREATE EXTENSION IF NOT EXISTS pg_trgm` },
+    { label: "idx_threads_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads (user_id)` },
+    { label: "idx_messages_thread_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages (thread_id)` },
+    { label: "idx_documents_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents (user_id)` },
+    { label: "idx_bookmarks_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks (user_id)` },
+    { label: "idx_search_history_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_search_history_user_id ON search_history (user_id)` },
+    { label: "idx_usage_tracking_user_created", stmt: sql`CREATE INDEX IF NOT EXISTS idx_usage_tracking_user_created ON usage_tracking (user_id, created_at)` },
+    { label: "idx_saved_judgments_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_saved_judgments_user_id ON saved_judgments (user_id)` },
+    { label: "idx_query_cache_endpoint_hash", stmt: sql`CREATE INDEX IF NOT EXISTS idx_query_cache_endpoint_hash ON query_cache (endpoint, query_hash)` },
+    { label: "idx_case_law_citation_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_citation_trgm ON case_law USING gin (citation gin_trgm_ops)` },
+    { label: "idx_case_law_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_title_trgm ON case_law USING gin (title gin_trgm_ops)` },
+    { label: "idx_case_law_court_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_court_trgm ON case_law USING gin (court gin_trgm_ops)` },
+    { label: "idx_github_knowledge_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_title_trgm ON github_knowledge USING gin (title gin_trgm_ops)` },
+    { label: "idx_statutes_short_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statutes_short_title_trgm ON statutes USING gin (short_title gin_trgm_ops)` },
+    { label: "idx_statutes_description_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statutes_description_trgm ON statutes USING gin (description gin_trgm_ops)` },
+    { label: "idx_statute_documents_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statute_documents_title_trgm ON statute_documents USING gin (title gin_trgm_ops)` },
+    { label: "idx_statute_documents_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statute_documents_content_trgm ON statute_documents USING gin (content gin_trgm_ops)` },
+  ];
+
+  for (const { label, stmt } of indexStatements) {
+    try {
+      await db.execute(stmt);
+    } catch (err: any) {
+      console.warn(`[Indexes] Could not ensure ${label}:`, err?.message || err);
+    }
   }
+  console.log("Search indexes verification complete.");
 }

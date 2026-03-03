@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
+  AlertOctagon,
   BookOpen,
   CheckCircle2,
   ChevronLeft,
@@ -233,6 +234,7 @@ export default function KnowledgeVaultPage() {
   const [resultPage, setResultPage] = useState(1);
   const [dateFilter, setDateFilter] = useState<DateFilter>("any");
   const [jurisdictionFilter, setJurisdictionFilter] = useState<JurisdictionFilter>("all");
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [caseTypeFilters, setCaseTypeFilters] = useState<Record<CaseType, boolean>>({
     "civil-litigation": true,
     "corporate-law": false,
@@ -259,6 +261,24 @@ export default function KnowledgeVaultPage() {
     },
     onError: (err: any) => {
       toast({ title: "Delete failed", description: err?.message || "Could not delete document.", variant: "destructive" });
+    },
+  });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/documents");
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      setShowDeleteAllConfirm(false);
+      setPreviewDoc(null);
+      const deleted = Number(data?.deleted || 0);
+      toast({ title: `${deleted} document${deleted === 1 ? "" : "s"} deleted` });
+    },
+    onError: (err: any) => {
+      setShowDeleteAllConfirm(false);
+      toast({ title: "Delete failed", description: err?.message || "Could not delete documents.", variant: "destructive" });
     },
   });
 
@@ -757,12 +777,43 @@ export default function KnowledgeVaultPage() {
                 <h1 className="text-4xl font-bold text-white mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>My Uploaded Files</h1>
                 <p className="text-slate-400 mt-2">Manage your private legal documents and vault context.</p>
               </div>
-              <button
-                onClick={openUploader}
-                className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-[#251607] font-black flex items-center gap-2"
-              >
-                <Upload size={16} /> Upload New
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {(documents.length > 0 && !showDeleteAllConfirm) && (
+                  <button
+                    onClick={() => setShowDeleteAllConfirm(true)}
+                    className="px-4 py-3 rounded-xl border border-red-500/30 text-red-300 hover:bg-red-500/10 font-black text-xs uppercase tracking-widest flex items-center gap-2"
+                  >
+                    <Trash2 size={14} /> Delete All
+                  </button>
+                )}
+
+                {showDeleteAllConfirm && (
+                  <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2">
+                    <AlertOctagon size={14} className="text-red-300" />
+                    <span className="text-[11px] text-red-200 font-bold">Delete all {documents.length} files?</span>
+                    <button
+                      onClick={() => deleteAllMutation.mutate()}
+                      disabled={deleteAllMutation.isPending}
+                      className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest"
+                    >
+                      {deleteAllMutation.isPending ? "Deleting..." : "Confirm"}
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteAllConfirm(false)}
+                      className="px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 text-[10px] font-black uppercase tracking-widest"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={openUploader}
+                  className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-[#251607] font-black flex items-center gap-2"
+                >
+                  <Upload size={16} /> Upload New
+                </button>
+              </div>
             </div>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

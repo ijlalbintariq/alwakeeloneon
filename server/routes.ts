@@ -19,6 +19,9 @@ import { chatWithOpenRouter, streamWithOpenRouter, isOpenRouterAvailable, getOpe
 import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, isDeepSeekAvailable, getDeepSeekModelName, getDeepSeekProModelName } from "./deepseek-ai";
 import { getModuleProfile, normalizeModuleType, type ModuleIntent, type ModuleType } from "./ai-module-profiles";
+import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAuditEvent, unbanUser } from "./security-governance";
+import { scanUploadedBuffer } from "./file-scan";
+import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 
 
 const TOKEN_LIMITS = {
@@ -167,6 +170,133 @@ function ensureAlWakeeloReferencesBlock(content: string): string {
   } catch {
     return content.replace(refsRegex, "```references\n{\"laws\":[],\"judgments\":[]}\n```");
   }
+}
+
+const REFERENCES_BLOCK_REGEX = /```references\s*([\s\S]*?)```/i;
+const LEGAL_DISCLAIMER =
+  "Disclaimer: This AI output is for informational purposes only and is not a substitute for advice from a licensed Pakistani advocate.";
+
+function ensureLegalDisclaimer(content: string): string {
+  if (/not\s+a?\s*substitute\s+for\s+advice\s+from\s+a\s+licensed/i.test(content)) {
+    return content;
+  }
+  return `${LEGAL_DISCLAIMER}\n\n${content.trim()}`;
+}
+
+type RawLawRef = { name?: string; section?: string; description?: string };
+type RawJudgmentRef = { citation?: string; court?: string; description?: string };
+
+async function verifyReferencesBlock(content: string): Promise<string> {
+  const match = content.match(REFERENCES_BLOCK_REGEX);
+  if (!match) return ensureAlWakeeloReferencesBlock(content);
+
+  let parsed: { laws?: RawLawRef[]; judgments?: RawJudgmentRef[] } = {};
+  try {
+    parsed = JSON.parse(match[1].trim() || "{}");
+  } catch {
+    parsed = {};
+  }
+
+  const inputLaws = Array.isArray(parsed.laws) ? parsed.laws.slice(0, 6) : [];
+  const inputJudgments = Array.isArray(parsed.judgments) ? parsed.judgments.slice(0, 6) : [];
+  const verifiedLaws: Array<{ name: string; section: string; description: string }> = [];
+  const verifiedJudgments: Array<{ citation: string; court: string; description: string }> = [];
+
+  for (const law of inputLaws) {
+    const name = (law?.name || "").trim();
+    const section = (law?.section || "").trim();
+    if (!name && !section) continue;
+
+    const query = `${name} ${section}`.trim();
+    const matched = query ? await storage.searchStatutes(query, 3).catch(() => []) : [];
+    if (matched.length === 0) continue;
+
+    const primary = matched[0];
+    verifiedLaws.push({
+      name: primary.shortTitle || name || "Pakistani Statute",
+      section: section || primary.section || "",
+      description: (law?.description || "").trim() || primary.description || "",
+    });
+  }
+
+  for (const judgment of inputJudgments) {
+    const citation = (judgment?.citation || "").trim();
+    if (!citation) continue;
+    const matched = await storage.getCaseLawByCitation(citation).catch(() => undefined);
+    if (!matched) continue;
+
+    verifiedJudgments.push({
+      citation: matched.citation,
+      court: matched.court,
+      description: (judgment?.description || "").trim() || matched.summary || "",
+    });
+  }
+
+  const normalized = JSON.stringify({
+    laws: verifiedLaws.slice(0, 5),
+    judgments: verifiedJudgments.slice(0, 5),
+  });
+  return content.replace(REFERENCES_BLOCK_REGEX, `\`\`\`references\n${normalized}\n\`\`\``);
+}
+
+async function applyAlWakeeloSafetyGuardrails(content: string): Promise<string> {
+  const withRefs = ensureAlWakeeloReferencesBlock(content);
+  const verifiedRefs = await verifyReferencesBlock(withRefs);
+  return ensureLegalDisclaimer(verifiedRefs);
+}
+
+function startsWithBytes(buffer: Buffer, signature: number[]): boolean {
+  if (buffer.length < signature.length) return false;
+  for (let i = 0; i < signature.length; i++) {
+    if (buffer[i] !== signature[i]) return false;
+  }
+  return true;
+}
+
+function appearsTextLike(buffer: Buffer): boolean {
+  if (buffer.length === 0) return false;
+  const sample = buffer.subarray(0, Math.min(buffer.length, 2048));
+  let suspicious = 0;
+  for (const byte of sample) {
+    const isAllowedControl = byte === 9 || byte === 10 || byte === 13;
+    const isAsciiPrintable = byte >= 32 && byte <= 126;
+    const isUtf8High = byte >= 128;
+    if (!isAllowedControl && !isAsciiPrintable && !isUtf8High) {
+      suspicious++;
+    }
+  }
+  return suspicious / sample.length < 0.08;
+}
+
+function hasSafeDocumentSignature(file: Express.Multer.File, ext: string): boolean {
+  const b = file.buffer;
+  if (ext === ".pdf") return startsWithBytes(b, [0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
+  if (ext === ".doc") return startsWithBytes(b, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]); // OLE2
+  if (ext === ".docx") return startsWithBytes(b, [0x50, 0x4b, 0x03, 0x04]); // ZIP-based OpenXML
+  if (ext === ".txt" || ext === ".json" || ext === ".csv") return appearsTextLike(b);
+  return false;
+}
+
+function hasSafeImageSignature(file: Express.Multer.File): boolean {
+  const b = file.buffer;
+  const mime = file.mimetype;
+  if (mime === "image/jpeg") return startsWithBytes(b, [0xff, 0xd8, 0xff]);
+  if (mime === "image/png") return startsWithBytes(b, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (mime === "image/gif") return startsWithBytes(b, [0x47, 0x49, 0x46, 0x38]);
+  if (mime === "image/webp") {
+    const riff = startsWithBytes(b, [0x52, 0x49, 0x46, 0x46]); // RIFF
+    const webp = b.length > 12 && String.fromCharCode(...b.subarray(8, 12)) === "WEBP";
+    return riff && webp;
+  }
+  return false;
+}
+
+async function passesMalwareScan(
+  file: Express.Multer.File,
+): Promise<{ ok: boolean; reason?: string }> {
+  const scan = await scanUploadedBuffer(file.buffer, file.originalname || "upload.bin");
+  if (scan.allowed) return { ok: true };
+  return { ok: false, reason: scan.reason || "File failed malware scan." };
 }
 
 function normalizeDraftingText(content: string): string {
@@ -563,6 +693,21 @@ export async function registerRoutes(
     return requireDatabase(req, res, next);
   });
 
+  app.use("/api", async (req, res, next) => {
+    const userId = getUserId(req);
+    if (!userId) return next();
+    if (req.path.startsWith("/auth/logout")) return next();
+
+    const banned = await isUserBanned(userId).catch(() => false);
+    if (!banned) return next();
+    recordSecurityEvent("auth_anomaly", `banned-api-access:${userId}`, {
+      path: req.path,
+      method: req.method,
+    });
+
+    return res.status(403).json({ message: "Your account is suspended. Please contact support." });
+  });
+
   app.get(api.threads.list.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -599,15 +744,16 @@ export async function registerRoutes(
         usedModel = result.model;
         return result.text;
       });
+      const safeAiResponse = await applyAlWakeeloSafetyGuardrails(aiResponse).catch(() => ensureAlWakeeloReferencesBlock(aiResponse));
 
       if (!fromCache) {
-        await logUsageCost(userId, "chat", usedModel || getOpenRouterModelName(), systemPromptFull + firstMessage, aiResponse);
+        await logUsageCost(userId, "chat", usedModel || getOpenRouterModelName(), systemPromptFull + firstMessage, safeAiResponse);
       }
 
       await storage.createMessage({
         threadId: thread.id,
         role: "assistant",
-        content: aiResponse,
+        content: safeAiResponse,
       });
 
       res.status(201).json(thread);
@@ -760,7 +906,7 @@ export async function registerRoutes(
 
       const result = await callStandardAI(systemPromptFull, geminiContents, TOKEN_LIMITS.chat);
 
-      const aiResponse = result.text;
+      const aiResponse = await applyAlWakeeloSafetyGuardrails(result.text).catch(() => ensureAlWakeeloReferencesBlock(result.text));
       const inputText = systemPromptFull + history.map(m => m.content).join(" ");
       await logUsageCost(userId, "chat", result.model, inputText, aiResponse);
 
@@ -825,6 +971,26 @@ export async function registerRoutes(
 
         if (![".txt", ".json", ".csv", ".pdf", ".doc", ".docx"].includes(ext)) {
           errors.push(`${original}: unsupported format (use .txt, .json, .csv, .pdf, or .docx)`);
+          continue;
+        }
+
+        if (!hasSafeDocumentSignature(file, ext)) {
+          recordSecurityEvent("upload_signature_failure", `user-doc:${userId}`, {
+            filename: original,
+            ext,
+            mimetype: file.mimetype,
+          });
+          errors.push(`${original}: file signature does not match declared format`);
+          continue;
+        }
+        const malwareCheck = await passesMalwareScan(file);
+        if (!malwareCheck.ok) {
+          recordSecurityEvent("malware_detected", `user-doc:${userId}`, {
+            filename: original,
+            ext,
+            reason: malwareCheck.reason || null,
+          });
+          errors.push(`${original}: ${malwareCheck.reason || "malware detected"}`);
           continue;
         }
 
@@ -928,6 +1094,18 @@ export async function registerRoutes(
     }
   });
 
+  app.delete(api.documents.list.path, async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const deleted = await storage.deleteAllDocuments(userId);
+      res.json({ deleted });
+    } catch (err) {
+      console.error("Error deleting all documents:", err);
+      res.status(500).json({ message: "Failed to delete all documents" });
+    }
+  });
+
   app.get(api.bookmarks.list.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -956,7 +1134,7 @@ export async function registerRoutes(
     if (!userId) return res.sendStatus(401);
     try {
       const id = Number(req.params.id);
-      await storage.deleteBookmark(id);
+      await storage.deleteBookmark(id, userId);
       res.sendStatus(204);
     } catch (err) {
       console.error("Error deleting bookmark:", err);
@@ -988,6 +1166,8 @@ export async function registerRoutes(
   });
 
   app.get(api.statutes.search.path, async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
     try {
       const query = (req.query.q as string) || "";
       if (!query) {
@@ -1003,6 +1183,8 @@ export async function registerRoutes(
   });
 
   app.get("/api/statute-documents/search", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
     try {
       const query = (req.query.q as string) || "";
       if (!query) return res.json([]);
@@ -1015,6 +1197,8 @@ export async function registerRoutes(
   });
 
   app.get("/api/statute-documents/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
     try {
       const id = parseInt(String(req.params.id));
       if (isNaN(id)) return res.status(400).json({ message: "Invalid document ID" });
@@ -1028,6 +1212,8 @@ export async function registerRoutes(
   });
 
   app.get(api.caseLaw.search.path, async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
     try {
       const query = (req.query.q as string) || "";
       if (!query) {
@@ -1043,6 +1229,8 @@ export async function registerRoutes(
   });
 
   app.get("/api/case-law/lookup", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
     try {
       const citation = (req.query.citation as string) || "";
       if (!citation) return res.status(400).json({ message: "Citation required" });
@@ -1066,6 +1254,8 @@ export async function registerRoutes(
   });
 
   app.get("/api/case-law/:id/source", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
     try {
       const id = parseInt(String(req.params.id));
       if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
@@ -1093,12 +1283,9 @@ export async function registerRoutes(
         const doc = docs.find(d => d.id === entry.sourceDocId);
         if (doc) { title = doc.title; content = doc.content; filename = doc.filename; }
       } else if (entry.sourceType === "user") {
-        const userId = (req as any).session?.userId;
-        if (userId) {
-          const docs = await storage.getAllDocuments();
-          const doc = docs.find(d => d.id === entry.sourceDocId && d.userId === userId);
-          if (doc) { title = doc.title || ""; content = doc.content || ""; filename = doc.title || ""; }
-        }
+        const docs = await storage.getDocuments(userId);
+        const doc = docs.find(d => d.id === entry.sourceDocId);
+        if (doc) { title = doc.title || ""; content = doc.content || ""; filename = doc.title || ""; }
       }
 
       if (!content) {
@@ -1150,12 +1337,24 @@ export async function registerRoutes(
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
+      if (!isOpenRouterAvailable()) {
+        return res.status(503).json({ message: "Transcription is currently unavailable." });
+      }
+
       const file = req.file;
       if (!file) return res.status(400).json({ message: "No audio file provided" });
 
       const allowedAudio = ["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a", "audio/webm", "audio/ogg", "audio/mp3"];
       if (!allowedAudio.some(t => file.mimetype.startsWith("audio/") || allowedAudio.includes(file.mimetype))) {
         return res.status(400).json({ message: "Unsupported audio format. Use MP3, WAV, M4A, or WebM." });
+      }
+      const transcribeMalwareCheck = await passesMalwareScan(file);
+      if (!transcribeMalwareCheck.ok) {
+        recordSecurityEvent("malware_detected", `audio-upload:${userId}`, {
+          filename: file.originalname,
+          reason: transcribeMalwareCheck.reason || null,
+        });
+        return res.status(400).json({ message: transcribeMalwareCheck.reason || "Malware detected in audio file." });
       }
 
       const base64Audio = file.buffer.toString("base64");
@@ -1191,7 +1390,11 @@ export async function registerRoutes(
 
       let body = req.body;
       if (typeof body.messages === "string") {
-        body = { ...body, messages: JSON.parse(body.messages) };
+        try {
+          body = { ...body, messages: JSON.parse(body.messages) };
+        } catch {
+          return res.status(400).json({ message: "Invalid messages payload" });
+        }
       }
       const {
         messages: userMessages,
@@ -1213,15 +1416,41 @@ export async function registerRoutes(
           return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, and DOCX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
         }
         for (const file of files) {
+          const ext = file.originalname.includes(".")
+            ? file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase()
+            : "";
+          const signatureExt =
+            file.mimetype === "application/pdf"
+              ? ".pdf"
+              : file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                ? ".docx"
+                : ".txt";
+          if ((ext && ![".txt", ".pdf", ".docx"].includes(ext)) || !hasSafeDocumentSignature(file, signatureExt)) {
+            recordSecurityEvent("upload_signature_failure", `chat-attachment:${userId}`, {
+              filename: file.originalname,
+              ext,
+              mimetype: file.mimetype,
+            });
+            return res.status(400).json({ message: `Unsafe or invalid attachment detected: ${file.originalname}` });
+          }
+          const malwareCheck = await passesMalwareScan(file);
+          if (!malwareCheck.ok) {
+            recordSecurityEvent("malware_detected", `chat-attachment:${userId}`, {
+              filename: file.originalname,
+              reason: malwareCheck.reason || null,
+            });
+            return res.status(400).json({ message: `${file.originalname}: ${malwareCheck.reason || "malware detected"}` });
+          }
           try {
             if (file.mimetype === "text/plain") {
-              attachmentContext += `\n\n--- Attached File: ${file.originalname} ---\n${file.buffer.toString("utf-8")}\n--- End of File ---`;
+              attachmentContext += `\n\n--- Attached File: ${file.originalname} ---\n${stripNullBytes(file.buffer.toString("utf-8"))}\n--- End of File ---`;
             } else if (file.mimetype === "application/pdf") {
               const { text } = await extractText(new Uint8Array(file.buffer));
-              attachmentContext += `\n\n--- Attached PDF: ${file.originalname} ---\n${text}\n--- End of PDF ---`;
+              const parsedText = Array.isArray(text) ? text.join("\n") : (text || "");
+              attachmentContext += `\n\n--- Attached PDF: ${file.originalname} ---\n${stripNullBytes(parsedText)}\n--- End of PDF ---`;
             } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
               const result = await mammoth.extractRawText({ buffer: file.buffer });
-              attachmentContext += `\n\n--- Attached Document: ${file.originalname} ---\n${result.value}\n--- End of Document ---`;
+              attachmentContext += `\n\n--- Attached Document: ${file.originalname} ---\n${stripNullBytes(result.value || "")}\n--- End of Document ---`;
             }
           } catch (fileErr) {
             console.error(`Error extracting text from ${file.originalname}:`, fileErr);
@@ -1273,7 +1502,7 @@ export async function registerRoutes(
         if (cached && isCacheFresh(cached.createdAt)) {
           await storage.incrementCacheHit(cached.id).catch(() => {});
           const cachedContent = moduleType === "al-wakeelo"
-            ? ensureAlWakeeloReferencesBlock(cached.response)
+            ? await applyAlWakeeloSafetyGuardrails(cached.response).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
             : cached.response;
           return res.json({
             content: cachedContent,
@@ -1351,13 +1580,11 @@ export async function registerRoutes(
         }
 
         if (moduleType === "al-wakeelo") {
-          const adjusted = ensureAlWakeeloReferencesBlock(fullContent);
-          if (adjusted.length > fullContent.length && adjusted.startsWith(fullContent)) {
-            const suffix = adjusted.slice(fullContent.length);
+          const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
+          if (adjusted !== fullContent) {
             fullContent = adjusted;
-            if (suffix) {
-              res.write(`data: ${JSON.stringify({ text: suffix })}\n\n`);
-            }
+            res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+            res.write(`data: ${JSON.stringify({ text: adjusted })}\n\n`);
           }
         }
 
@@ -1389,7 +1616,7 @@ export async function registerRoutes(
       let completion = result.text;
 
       if (moduleType === "al-wakeelo") {
-        completion = ensureAlWakeeloReferencesBlock(completion);
+        completion = await applyAlWakeeloSafetyGuardrails(completion).catch(() => ensureAlWakeeloReferencesBlock(completion));
       }
       if (moduleType === "draft" && moduleIntent?.startsWith("draft.")) {
         completion = normalizeDraftingText(completion);
@@ -1856,6 +2083,22 @@ RULES:
 
   app.post("/api/admin/setup", async (req, res) => {
     try {
+      if (process.env.NODE_ENV === "production") {
+        const configuredSetupKey = process.env.ADMIN_SETUP_KEY?.trim();
+        if (!configuredSetupKey) {
+          return res.status(503).json({
+            message: "Admin setup is disabled in production. Set ADMIN_SETUP_KEY to enable bootstrap.",
+          });
+        }
+
+        const providedSetupKeyHeader = req.get("x-admin-setup-key");
+        const providedSetupKeyBody = typeof req.body?.setupKey === "string" ? req.body.setupKey : "";
+        const providedSetupKey = (providedSetupKeyHeader || providedSetupKeyBody).trim();
+        if (!providedSetupKey || providedSetupKey !== configuredSetupKey) {
+          return res.status(403).json({ message: "Invalid admin setup key" });
+        }
+      }
+
       const hasAdmin = await storage.hasAnyAdmin();
       if (hasAdmin) {
         return res.status(403).json({ message: "An admin already exists. Use the admin panel to manage admins." });
@@ -1864,6 +2107,7 @@ RULES:
       if (!userId) return res.sendStatus(401);
       const updated = await storage.updateUserAdminStatus(userId, true);
       if (!updated) return res.status(404).json({ message: "User not found" });
+      await logAuditEvent("admin.bootstrap", userId, userId, { method: "setup-endpoint" });
       res.json({ message: "You are now the admin", user: updated });
     } catch (err) {
       console.error("Error in admin setup:", err);
@@ -1875,7 +2119,20 @@ RULES:
     if (!(await isAdmin(req, res))) return;
     try {
       const allUsers = await storage.getAllUsers();
-      res.json(allUsers);
+      const banMap = await getUserBanMap(allUsers.map((u) => u.id)).catch(
+        () => ({} as Record<string, { reason?: string | null; bannedBy?: string | null; createdAt?: string }>),
+      );
+      const usersWithFlags = allUsers.map((u) => {
+        const ban = banMap[u.id];
+        return {
+          ...u,
+          isBanned: !!ban,
+          banReason: ban?.reason || null,
+          bannedBy: ban?.bannedBy || null,
+          bannedAt: ban?.createdAt || null,
+        };
+      });
+      res.json(usersWithFlags);
     } catch (err) {
       console.error("Error fetching users:", err);
       res.status(500).json({ message: "Failed to fetch users" });
@@ -1909,6 +2166,10 @@ RULES:
       }
 
       if (!updated) return res.status(404).json({ message: "User not found" });
+      await logAuditEvent("admin.user.update", currentUserId, targetId, {
+        subscriptionTier: subscriptionTier ?? undefined,
+        isAdmin: adminFlag ?? undefined,
+      });
       res.json(updated);
     } catch (err) {
       console.error("Error updating user:", err);
@@ -1946,6 +2207,11 @@ RULES:
       if (makeAdmin === true) {
         await storage.updateUserAdminStatus(user.id, true);
       }
+      await logAuditEvent("admin.user.create", getUserId(req), user.id, {
+        email,
+        subscriptionTier: subscriptionTier || "free",
+        isAdmin: makeAdmin === true,
+      });
       res.status(201).json({ message: "User created successfully", user });
     } catch (err) {
       console.error("Error creating user:", err);
@@ -1962,10 +2228,94 @@ RULES:
         return res.status(400).json({ message: "You cannot delete your own account" });
       }
       await storage.deleteUser(targetId);
+      await logAuditEvent("admin.user.delete", currentUserId, targetId, {});
       res.json({ message: "User deleted successfully" });
     } catch (err) {
       console.error("Error deleting user:", err);
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  app.get("/api/admin/users/:id/ban", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const targetId = req.params.id;
+      const ban = await getUserBan(targetId);
+      if (!ban) return res.json({ isBanned: false });
+      res.json({
+        isBanned: true,
+        reason: ban.reason || null,
+        bannedBy: ban.bannedBy || null,
+        bannedAt: ban.createdAt,
+      });
+    } catch (err) {
+      console.error("Error fetching user ban status:", err);
+      res.status(500).json({ message: "Failed to fetch user ban status" });
+    }
+  });
+
+  app.post("/api/admin/users/:id/ban", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const actorUserId = getUserId(req);
+      const targetId = req.params.id;
+      if (!actorUserId) return res.sendStatus(401);
+      if (!targetId) return res.status(400).json({ message: "User id is required" });
+      if (targetId === actorUserId) {
+        return res.status(400).json({ message: "You cannot suspend your own account" });
+      }
+
+      const targetUser = await storage.getUserProfile(targetId);
+      if (!targetUser) return res.status(404).json({ message: "User not found" });
+
+      const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+      await banUser(targetId, actorUserId, reason || undefined);
+      await logAuditEvent("admin.user.ban", actorUserId, targetId, { reason: reason || null });
+      res.json({ message: "User suspended successfully" });
+    } catch (err) {
+      console.error("Error suspending user:", err);
+      res.status(500).json({ message: "Failed to suspend user" });
+    }
+  });
+
+  app.delete("/api/admin/users/:id/ban", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const actorUserId = getUserId(req);
+      const targetId = req.params.id;
+      if (!targetId) return res.status(400).json({ message: "User id is required" });
+
+      await unbanUser(targetId);
+      await logAuditEvent("admin.user.unban", actorUserId, targetId, {});
+      res.json({ message: "User reactivated successfully" });
+    } catch (err) {
+      console.error("Error reactivating user:", err);
+      res.status(500).json({ message: "Failed to reactivate user" });
+    }
+  });
+
+  app.get("/api/admin/audit-logs", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(500, limitRaw)) : 200;
+      const logs = await getAuditLogs(limit);
+      res.json(logs);
+    } catch (err) {
+      console.error("Error fetching audit logs:", err);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  app.get("/api/admin/security-events", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(500, limitRaw)) : 200;
+      res.json(getSecurityEvents(limit));
+    } catch (err) {
+      console.error("Error fetching security events:", err);
+      res.status(500).json({ message: "Failed to fetch security events" });
     }
   });
 
@@ -2024,6 +2374,24 @@ RULES:
             errors.push(`${file.originalname}: unsupported format (use .txt, .json, .csv, .pdf, or .docx)`);
             continue;
           }
+          if (!hasSafeDocumentSignature(file, ext)) {
+            recordSecurityEvent("upload_signature_failure", `admin-knowledge:${userId}`, {
+              filename: file.originalname,
+              ext,
+              mimetype: file.mimetype,
+            });
+            errors.push(`${file.originalname}: file signature does not match declared format`);
+            continue;
+          }
+          const malwareCheck = await passesMalwareScan(file);
+          if (!malwareCheck.ok) {
+            recordSecurityEvent("malware_detected", `admin-knowledge:${userId}`, {
+              filename: file.originalname,
+              reason: malwareCheck.reason || null,
+            });
+            errors.push(`${file.originalname}: ${malwareCheck.reason || "malware detected"}`);
+            continue;
+          }
 
           let content = "";
           if (ext === ".pdf") {
@@ -2069,6 +2437,11 @@ RULES:
             uploadedBy: userId,
           });
           results.push(doc);
+          await logAuditEvent("admin.knowledge.upload", userId, null, {
+            docId: doc.id,
+            filename: file.originalname,
+            category: category || "general",
+          });
           if (content.length > 200) {
             queueAutoExtraction(content, `admin-knowledge:${file.originalname}`, {
               sourceDocId: doc.id,
@@ -2088,6 +2461,12 @@ RULES:
           uploadedBy: userId,
         });
         results.push(doc);
+        await logAuditEvent("admin.knowledge.upload", userId, null, {
+          docId: doc.id,
+          filename,
+          category: category || "general",
+          manual: true,
+        });
         if (content.length > 200) {
           queueAutoExtraction(content, `admin-knowledge:${filename}`, {
             sourceDocId: doc.id,
@@ -2095,6 +2474,14 @@ RULES:
             sourceFilename: filename,
           });
         }
+      }
+
+      if (results.length === 0) {
+        return res.status(400).json({
+          message: errors[0] || "No valid files were uploaded",
+          uploaded: 0,
+          errors,
+        });
       }
 
       res.status(201).json({
@@ -2111,8 +2498,10 @@ RULES:
   app.delete("/api/admin/knowledge/:id", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      const actorUserId = getUserId(req);
       const id = Number(req.params.id);
       await storage.deleteAdminKnowledge(id);
+      await logAuditEvent("admin.knowledge.delete", actorUserId, null, { id });
       res.sendStatus(204);
     } catch (err) {
       console.error("Error deleting knowledge:", err);
@@ -2123,7 +2512,9 @@ RULES:
   app.delete("/api/admin/knowledge", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      const actorUserId = getUserId(req);
       const count = await storage.deleteAllAdminKnowledge();
+      await logAuditEvent("admin.knowledge.deleteAll", actorUserId, null, { count });
       res.json({ deleted: count });
     } catch (err) {
       console.error("Error deleting all knowledge:", err);
@@ -2146,12 +2537,14 @@ RULES:
   app.post("/api/admin/case-law", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      const actorUserId = getUserId(req);
       const { citation, court, title, summary, keywords } = req.body;
       if (!citation || !court || !title || !summary) {
         return res.status(400).json({ message: "Citation, court, title, and summary are required" });
       }
       const keywordsArr = Array.isArray(keywords) ? keywords : (typeof keywords === "string" ? keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : []);
       const created = await storage.createCaseLaw({ citation, court, title, summary, keywords: keywordsArr });
+      await logAuditEvent("admin.caseLaw.create", actorUserId, null, { id: created.id, citation: created.citation });
       res.status(201).json(created);
     } catch (err) {
       console.error("Error creating case law:", err);
@@ -2162,6 +2555,7 @@ RULES:
   app.put("/api/admin/case-law/:id", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      const actorUserId = getUserId(req);
       const id = Number(req.params.id);
       const { citation, court, title, summary, keywords } = req.body;
       const updateData: any = {};
@@ -2174,6 +2568,7 @@ RULES:
       }
       const updated = await storage.updateCaseLaw(id, updateData);
       if (!updated) return res.status(404).json({ message: "Case law not found" });
+      await logAuditEvent("admin.caseLaw.update", actorUserId, null, { id, citation: updated.citation });
       res.json(updated);
     } catch (err) {
       console.error("Error updating case law:", err);
@@ -2184,8 +2579,10 @@ RULES:
   app.delete("/api/admin/case-law/:id", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      const actorUserId = getUserId(req);
       const id = Number(req.params.id);
       await storage.deleteCaseLaw(id);
+      await logAuditEvent("admin.caseLaw.delete", actorUserId, null, { id });
       res.sendStatus(204);
     } catch (err) {
       console.error("Error deleting case law:", err);
@@ -2196,7 +2593,9 @@ RULES:
   app.delete("/api/admin/case-law", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      const actorUserId = getUserId(req);
       const count = await storage.deleteAllCaseLaw();
+      await logAuditEvent("admin.caseLaw.deleteAll", actorUserId, null, { count });
       res.json({ deleted: count });
     } catch (err) {
       console.error("Error deleting all case law:", err);
@@ -2207,6 +2606,7 @@ RULES:
   app.post("/api/admin/case-law/bulk", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      const actorUserId = getUserId(req);
       const { entries, sourceDocId, sourceFilename } = req.body as {
         entries: Array<{ citation: string; court: string; title: string; summary: string; keywords: string | string[] }>;
         sourceDocId?: number;
@@ -2233,6 +2633,7 @@ RULES:
         valid.push(entry);
       }
       const created = valid.length > 0 ? await storage.bulkCreateCaseLaw(valid) : [];
+      await logAuditEvent("admin.caseLaw.bulkCreate", actorUserId, null, { inserted: created.length, errors: errors.length, sourceDocId: sourceDocId || null });
       res.status(201).json({ inserted: created.length, errors });
     } catch (err) {
       console.error("Error bulk creating case law:", err);
@@ -2261,6 +2662,27 @@ RULES:
       }
 
       const ext = file.originalname.split(".").pop()?.toLowerCase();
+      const extWithDot = ext ? `.${ext}` : "";
+      const signatureExt = extWithDot === ".text" ? ".txt" : extWithDot;
+      if (![".pdf", ".doc", ".docx", ".txt", ".text", ".json", ".csv"].includes(extWithDot)) {
+        return res.status(400).json({ message: "Supported formats: PDF, DOC, DOCX, TXT, JSON, CSV" });
+      }
+      if (!hasSafeDocumentSignature(file, signatureExt === ".text" ? ".txt" : signatureExt)) {
+        recordSecurityEvent("upload_signature_failure", "admin-case-law-extract", {
+          filename: file.originalname,
+          ext: extWithDot,
+          mimetype: file.mimetype,
+        });
+        return res.status(400).json({ message: "File signature does not match declared format" });
+      }
+      const extractMalwareCheck = await passesMalwareScan(file);
+      if (!extractMalwareCheck.ok) {
+        recordSecurityEvent("malware_detected", "admin-case-law-extract", {
+          filename: file.originalname,
+          reason: extractMalwareCheck.reason || null,
+        });
+        return res.status(400).json({ message: extractMalwareCheck.reason || "Malware detected in uploaded file." });
+      }
       let content = "";
 
       if (ext === "pdf") {
@@ -2393,6 +2815,11 @@ RULES:
           sourceType: "admin",
           sourceFilename: file.originalname,
         });
+        await logAuditEvent("admin.caseLaw.extract", userId, null, {
+          filename: file.originalname,
+          savedDocId,
+          extractedLength: content.length,
+        });
       } catch (saveErr) {
         console.error("[Case Law Extract] Failed to save document to knowledge base:", saveErr);
       }
@@ -2436,9 +2863,34 @@ RULES:
       }
 
       const results = [];
+      const errors: string[] = [];
       for (const file of files) {
         let content = "";
         const ext = file.originalname.split(".").pop()?.toLowerCase();
+        const extWithDot = ext ? `.${ext}` : "";
+
+        if (![".txt", ".json", ".csv", ".pdf"].includes(extWithDot)) {
+          errors.push(`${file.originalname}: unsupported format (use .txt, .json, .csv, .pdf)`);
+          continue;
+        }
+        if (!hasSafeDocumentSignature(file, extWithDot)) {
+          recordSecurityEvent("upload_signature_failure", `admin-statute:${userId}`, {
+            filename: file.originalname,
+            ext: extWithDot,
+            mimetype: file.mimetype,
+          });
+          errors.push(`${file.originalname}: file signature does not match declared format`);
+          continue;
+        }
+        const statuteMalwareCheck = await passesMalwareScan(file);
+        if (!statuteMalwareCheck.ok) {
+          recordSecurityEvent("malware_detected", `admin-statute:${userId}`, {
+            filename: file.originalname,
+            reason: statuteMalwareCheck.reason || null,
+          });
+          errors.push(`${file.originalname}: ${statuteMalwareCheck.reason || "malware detected"}`);
+          continue;
+        }
 
         if (ext === "pdf") {
           try {
@@ -2451,15 +2903,17 @@ RULES:
             content = "";
           }
           if (!content) {
-            content = `[Could not extract text from "${file.originalname}". The file may be a scanned image PDF or an unsupported format. Please upload a text-based PDF or a .txt file instead.]`;
+            errors.push(`${file.originalname}: could not extract text from PDF`);
+            continue;
           }
-        } else if (ext === "doc" || ext === "docx") {
-          content = `[.${ext} files are not supported. Please convert "${file.originalname}" to PDF or .txt format and re-upload.]`;
         } else {
           content = stripNullBytes(file.buffer.toString("utf-8"));
         }
 
-        if (!content.trim()) continue;
+        if (!content.trim()) {
+          errors.push(`${file.originalname}: document is empty`);
+          continue;
+        }
 
         const title = file.originalname
           .replace(/\.[^.]+$/, "")
@@ -2477,6 +2931,11 @@ RULES:
           uploadedBy: userId,
         });
         results.push(doc);
+        await logAuditEvent("admin.statuteDocs.upload", userId, null, {
+          docId: doc.id,
+          filename: file.originalname,
+          category,
+        });
         if (content.length > 200) {
           queueAutoExtraction(content, `statute:${file.originalname}`, {
             sourceDocId: doc.id,
@@ -2486,7 +2945,21 @@ RULES:
         }
       }
 
-      res.json({ message: `${results.length} statute document(s) uploaded successfully`, count: results.length });
+      if (results.length === 0) {
+        return res.status(400).json({
+          message: errors[0] || "No valid statute documents were uploaded",
+          count: 0,
+          failed: errors.length,
+          errors,
+        });
+      }
+
+      res.json({
+        message: `${results.length} statute document(s) uploaded successfully`,
+        count: results.length,
+        failed: errors.length,
+        errors,
+      });
     } catch (err) {
       console.error("Error uploading statute documents:", err);
       res.status(500).json({ message: "Failed to upload statute documents" });
@@ -2496,8 +2969,10 @@ RULES:
   app.delete("/api/admin/statute-documents/:id", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      const actorUserId = getUserId(req);
       const id = Number(req.params.id);
       await storage.deleteStatuteDocument(id);
+      await logAuditEvent("admin.statuteDocs.delete", actorUserId, null, { id });
       res.sendStatus(204);
     } catch (err) {
       console.error("Error deleting statute document:", err);
@@ -2508,7 +2983,9 @@ RULES:
   app.delete("/api/admin/statute-documents", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      const actorUserId = getUserId(req);
       const count = await storage.deleteAllStatuteDocuments();
+      await logAuditEvent("admin.statuteDocs.deleteAll", actorUserId, null, { count });
       res.json({ deleted: count });
     } catch (err) {
       console.error("Error deleting all statute documents:", err);
@@ -2617,6 +3094,21 @@ RULES:
       if (!allowedTypes.has(file.mimetype)) {
         return res.status(400).json({ message: "Unsupported image format. Use JPG, PNG, WEBP, or GIF." });
       }
+      if (!hasSafeImageSignature(file)) {
+        recordSecurityEvent("upload_signature_failure", `avatar:${userId}`, {
+          filename: file.originalname,
+          mimetype: file.mimetype,
+        });
+        return res.status(400).json({ message: "Image signature does not match declared format." });
+      }
+      const avatarMalwareCheck = await passesMalwareScan(file);
+      if (!avatarMalwareCheck.ok) {
+        recordSecurityEvent("malware_detected", `avatar:${userId}`, {
+          filename: file.originalname,
+          reason: avatarMalwareCheck.reason || null,
+        });
+        return res.status(400).json({ message: avatarMalwareCheck.reason || "Malware detected in uploaded image." });
+      }
 
       const maxSizeBytes = 2 * 1024 * 1024;
       if (file.size > maxSizeBytes) {
@@ -2648,7 +3140,8 @@ RULES:
     }
   });
 
-  app.post("/api/seed-legal-data", async (_req, res) => {
+  app.post("/api/seed-legal-data", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
     try {
       await seedLegalData();
       res.json({ message: "Legal data seeded successfully" });
@@ -2814,7 +3307,7 @@ Instructions:
 
       const result = await callStandardAI(systemPrompt, chatHistory, 4096);
 
-      const aiResponse = result.text;
+      const aiResponse = ensureLegalDisclaimer(result.text);
       const inputText = systemPrompt + messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat", result.model, inputText, aiResponse);
 
@@ -2954,11 +3447,12 @@ Instructions:
       }
 
       const actualModel = responseModel;
+      const safeResponseContent = await applyAlWakeeloSafetyGuardrails(responseContent).catch(() => ensureAlWakeeloReferencesBlock(responseContent));
       const inputText = messages.map(m => m.content).join("\n");
-      await logUsageCost(userId, "chat", actualModel, inputText, responseContent);
+      await logUsageCost(userId, "chat", actualModel, inputText, safeResponseContent);
 
       res.json({
-        content: responseContent,
+        content: safeResponseContent,
         reasoning: responseReasoning,
         model: responseModel,
       });
@@ -3116,15 +3610,48 @@ Instructions:
 
     try {
       if (filename.endsWith(".txt")) {
+        if (!hasSafeDocumentSignature(file, ".txt")) {
+          recordSecurityEvent("upload_signature_failure", `org-knowledge:${orgId}`, {
+            filename: file.originalname,
+            ext: ".txt",
+            mimetype: file.mimetype,
+          });
+          return res.status(400).json({ message: "File signature does not match .txt format." });
+        }
         content = file.buffer.toString("utf-8");
       } else if (filename.endsWith(".pdf")) {
+        if (!hasSafeDocumentSignature(file, ".pdf")) {
+          recordSecurityEvent("upload_signature_failure", `org-knowledge:${orgId}`, {
+            filename: file.originalname,
+            ext: ".pdf",
+            mimetype: file.mimetype,
+          });
+          return res.status(400).json({ message: "File signature does not match .pdf format." });
+        }
         const { text } = await extractText(new Uint8Array(file.buffer));
         content = Array.isArray(text) ? text.join("\n") : (text || "");
       } else if (filename.endsWith(".docx")) {
+        if (!hasSafeDocumentSignature(file, ".docx")) {
+          recordSecurityEvent("upload_signature_failure", `org-knowledge:${orgId}`, {
+            filename: file.originalname,
+            ext: ".docx",
+            mimetype: file.mimetype,
+          });
+          return res.status(400).json({ message: "File signature does not match .docx format." });
+        }
         const result = await mammoth.extractRawText({ buffer: file.buffer });
         content = result.value;
       } else {
         return res.status(400).json({ message: "Unsupported file type. Use TXT, PDF, or DOCX." });
+      }
+
+      const orgMalwareCheck = await passesMalwareScan(file);
+      if (!orgMalwareCheck.ok) {
+        recordSecurityEvent("malware_detected", `org-knowledge:${orgId}`, {
+          filename: file.originalname,
+          reason: orgMalwareCheck.reason || null,
+        });
+        return res.status(400).json({ message: orgMalwareCheck.reason || "Malware detected in uploaded file." });
       }
     } catch (err: any) {
       return res.status(500).json({ message: "Failed to extract text from file" });
