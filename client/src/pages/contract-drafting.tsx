@@ -448,74 +448,12 @@ Instructions:
 5. Return only contract text, no markdown fences, no extra commentary.`;
 }
 
-function buildClausePrompt(clausePrompt: string, currentDraft: string): string {
-  return `Current contract draft:
-${currentDraft || "[Draft is currently empty]"}
-
-Instruction:
-${clausePrompt}
-
-Return only the clause text suitable to insert into this contract under Pakistani legal style.`;
-}
-
-function buildClauseSuggestionPrompt(form: ContractFormState, currentDraft: string): string {
-  return `You are an AI legal contract assistant.
-
-Contract context:
-- Contract Type: ${form.contractType}
-- Title: ${form.title}
-- Jurisdiction: ${form.jurisdiction}
-- Current draft text:
-${currentDraft || "[Draft is currently empty. Use form context only.]"}
-
-Task:
-Suggest exactly 4 high-value clauses that are missing or weak in this specific draft.
-
-Return STRICT JSON only in this format:
-{
-  "suggestions": [
-    {
-      "title": "Clause title",
-      "subtitle": "Short reason (max 12 words)",
-      "prompt": "Instruction to draft this clause"
-    }
-  ]
-}
-
-Rules:
-1. Suggestions must be tailored to the current draft, not generic.
-2. Keep each subtitle concise.
-3. "prompt" must be directly usable to generate the clause text.
-4. No markdown and no extra text outside JSON.`;
-}
-
 function extractJsonObject(raw: string): string | null {
   const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
   if (start >= 0 && end > start) return cleaned.slice(start, end + 1);
   return null;
-}
-
-function parseClauseSuggestions(raw: string): ClauseSuggestion[] {
-  try {
-    const jsonText = extractJsonObject(raw);
-    if (!jsonText) return [];
-    const parsed = JSON.parse(jsonText) as { suggestions?: Array<Partial<ClauseSuggestion>> };
-    const items = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
-    const normalized = items
-      .filter((s) => s?.title && s?.prompt)
-      .slice(0, 4)
-      .map((s, idx) => ({
-        id: `live-clause-${Date.now()}-${idx}`,
-        title: String(s.title),
-        subtitle: String(s.subtitle || "Recommended for this draft."),
-        prompt: String(s.prompt),
-      }));
-    return normalized;
-  } catch {
-    return [];
-  }
 }
 
 function buildRedlinePrompt(currentDraft: string): string {
@@ -850,16 +788,14 @@ export default function ContractDraftingPage() {
   const applySuggestedClause = async (prompt: string) => {
     setIsGenerating(true);
     try {
-      const response = await fetch("/api/ai/chat", {
+      const response = await fetch("/api/retrieval/clauses/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          messages: [{ role: "user", content: buildClausePrompt(prompt, contractText) }],
-          type: "contract-drafting",
-          moduleIntent: "contract.generateDraft",
-          turbo: false,
-          stream: false,
+          prompt,
+          draftText: contractText.slice(0, 12000),
+          jurisdiction: form.jurisdiction,
         }),
       });
       if (!response.ok) {
@@ -867,8 +803,8 @@ export default function ContractDraftingPage() {
         throw new Error(text || "Failed to generate clause");
       }
       const data = await response.json();
-      const clause = (data?.content || "").trim();
-      if (!clause) throw new Error("AI returned empty clause");
+      const clause = (data?.clause || "").trim();
+      if (!clause) throw new Error("Clause retrieval returned empty result");
       setContractText((prev) => `${prev.trim()}\n\n${clause}\n`);
       toast({ title: "Clause inserted" });
     } catch (err: any) {
@@ -886,16 +822,15 @@ export default function ContractDraftingPage() {
     setIsLoadingClauseSuggestions(true);
     setClauseSuggestionError(null);
     try {
-      const response = await fetch("/api/ai/chat", {
+      const response = await fetch("/api/retrieval/clauses/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          messages: [{ role: "user", content: buildClauseSuggestionPrompt(form, contractText) }],
-          type: "contract-drafting",
-          moduleIntent: "contract.clauseSuggest",
-          turbo: false,
-          stream: false,
+          query: `${form.contractType} ${form.title || ""} ${form.obligations || ""}`.trim(),
+          draftText: contractText.slice(0, 12000),
+          contractType: form.contractType,
+          limit: 4,
         }),
       });
       if (!response.ok) {
@@ -903,20 +838,20 @@ export default function ContractDraftingPage() {
         throw new Error(text || "Failed to load clause suggestions");
       }
       const data = await response.json();
-      const parsed = parseClauseSuggestions(String(data?.content || ""));
+      const parsed = Array.isArray(data?.suggestions) ? (data.suggestions as ClauseSuggestion[]) : [];
       if (parsed.length === 0) {
-        throw new Error("AI returned no valid clause suggestions.");
+        throw new Error("No retrieval suggestions available for this draft.");
       }
       setLiveClauseSuggestions(parsed);
       if (!silent) {
-        toast({ title: "AI Clause Suggester refreshed", description: "Suggestions are now tailored to this draft." });
+        toast({ title: "Clause suggestions refreshed", description: "Retrieval suggestions are tailored to this draft." });
       }
     } catch (err: any) {
       setLiveClauseSuggestions([]);
       setClauseSuggestionError(err?.message || "Could not load live suggestions.");
       if (!silent) {
         toast({
-          title: "Could not refresh AI suggestions",
+          title: "Could not refresh clause suggestions",
           description: err?.message || "No live suggestions available right now.",
           variant: "destructive",
         });

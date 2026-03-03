@@ -34,11 +34,9 @@ test("classifies civil litigation petition with rule engine", async () => {
   assert.equal(result.classificationMethod, "rule");
 });
 
-test("falls back to other when ambiguous and no AI provider is configured", async () => {
-  const prevOpenRouter = process.env.OPENROUTER_API_KEY;
-  const prevOpenAI = process.env.OPENAI_API_KEY;
-  delete process.env.OPENROUTER_API_KEY;
-  process.env.OPENAI_API_KEY = "REPLACE_WITH_YOUR_OPENROUTER_KEY";
+test("falls back to other when ambiguous and no ML classifier is configured", async () => {
+  const prevMlServiceUrl = process.env.ML_SERVICE_URL;
+  delete process.env.ML_SERVICE_URL;
 
   const result = await classifyDocumentMetadata({
     title: "notes.txt",
@@ -51,8 +49,6 @@ test("falls back to other when ambiguous and no AI provider is configured", asyn
   assert.equal(result.classificationMethod, "fallback");
   assert.equal(result.classificationConfidence, 0);
 
-  if (typeof prevOpenRouter === "string") process.env.OPENROUTER_API_KEY = prevOpenRouter;
-  else delete process.env.OPENROUTER_API_KEY;
-  if (typeof prevOpenAI === "string") process.env.OPENAI_API_KEY = prevOpenAI;
-  else delete process.env.OPENAI_API_KEY;
+  if (typeof prevMlServiceUrl === "string") process.env.ML_SERVICE_URL = prevMlServiceUrl;
+  else delete process.env.ML_SERVICE_URL;
 });

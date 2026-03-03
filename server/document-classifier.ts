@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { classifyDocumentDomainWithML } from "./ml/ml-client";
 
 export const DOMAIN_TAXONOMY = [
   { key: "civil-litigation", label: "Civil Litigation", keywords: ["civil", "injunction", "appeal", "plaint", "petition", "writ", "suit", "decree", "summons", "tribunal"] },
@@ -16,7 +16,7 @@ export const DOMAIN_TAXONOMY = [
 ] as const;
 
 export type DomainKey = (typeof DOMAIN_TAXONOMY)[number]["key"];
-export type ClassificationMethod = "rule" | "ai" | "fallback";
+export type ClassificationMethod = "rule" | "ml" | "fallback";
 export type SourceType = "pdf" | "docx" | "txt" | "csv" | "json" | "other";
 
 export type DocumentMetadata = {
@@ -92,80 +92,20 @@ function scoreByRules(title: string, content: string): { primary: ScoreRow | nul
   };
 }
 
-function parseAiJson(raw: string): { key?: string; confidence?: number } | null {
-  const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start < 0 || end <= start) return null;
-  const jsonSlice = cleaned.slice(start, end + 1);
-  try {
-    const parsed = JSON.parse(jsonSlice);
-    return typeof parsed === "object" && parsed ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function resolveAiClient(): { client: OpenAI; model: string } | null {
-  if (process.env.OPENROUTER_API_KEY) {
-    return {
-      client: new OpenAI({
-        apiKey: process.env.OPENROUTER_API_KEY,
-        baseURL: "https://openrouter.ai/api/v1",
-        defaultHeaders: {
-          "HTTP-Referer": "https://al-wakeelo.replit.app",
-          "X-Title": "Al Wakeelo Legal Assistant",
-        },
-      }),
-      model: "google/gemini-2.0-flash-001",
-    };
-  }
-
-  if (process.env.OPENAI_API_KEY && !/^replace_/i.test((process.env.OPENAI_API_KEY || "").trim())) {
-    return {
-      client: new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
-      model: "gpt-4o-mini",
-    };
-  }
-
-  return null;
-}
-
-async function classifyWithAI(title: string, content: string): Promise<{ key: DomainKey; confidence: number } | null> {
-  const resolved = resolveAiClient();
-  if (!resolved) return null;
-
-  const taxonomyText = DOMAIN_TAXONOMY.map((d) => `- ${d.key}: ${d.label}`).join("\n");
-  const input = `${title}\n\n${content}`.slice(0, 8000);
-
-  const response = await resolved.client.chat.completions.create({
-    model: resolved.model,
-    temperature: 0,
-    response_format: { type: "json_object" },
-    max_tokens: 120,
-    messages: [
-      {
-        role: "system",
-        content: `Classify Pakistani legal documents into one taxonomy key. Return strict JSON: {"key":"<taxonomy>","confidence":<0-1>}. Keys:\n${taxonomyText}`,
-      },
-      {
-        role: "user",
-        content: input,
-      },
-    ],
+async function classifyWithML(title: string, content: string): Promise<{ key: DomainKey; confidence: number } | null> {
+  const response = await classifyDocumentDomainWithML({
+    title,
+    content,
+    taxonomy: DOMAIN_TAXONOMY.map((d) => d.key),
   });
 
-  const raw = response.choices?.[0]?.message?.content || "";
-  const parsed = parseAiJson(raw);
-  if (!parsed?.key || typeof parsed.key !== "string") return null;
+  if (!response?.key) return null;
+  if (!DOMAIN_LABEL_MAP.has(response.key)) return null;
 
-  const normalizedKey = parsed.key.trim().toLowerCase();
-  if (!DOMAIN_LABEL_MAP.has(normalizedKey)) return null;
-
-  const confidenceRaw = typeof parsed.confidence === "number" ? parsed.confidence : 0.55;
-  const confidence = Math.max(0, Math.min(1, confidenceRaw));
-
-  return { key: normalizedKey as DomainKey, confidence };
+  return {
+    key: response.key as DomainKey,
+    confidence: Math.max(0, Math.min(1, response.confidence)),
+  };
 }
 
 export async function classifyDocumentMetadata(params: {
@@ -197,16 +137,16 @@ export async function classifyDocumentMetadata(params: {
   }
 
   try {
-    const ai = await classifyWithAI(params.title, params.content);
-    if (ai && DOMAIN_LABEL_MAP.has(ai.key)) {
+    const ml = await classifyWithML(params.title, params.content);
+    if (ml && DOMAIN_LABEL_MAP.has(ml.key)) {
       return {
         sourceType,
         mimeType,
         fileExtension,
-        detectedDomain: ai.key,
-        detectedDomainLabel: DOMAIN_LABEL_MAP.get(ai.key) || "Other",
-        classificationMethod: "ai",
-        classificationConfidence: Math.round(ai.confidence * 100),
+        detectedDomain: ml.key,
+        detectedDomainLabel: DOMAIN_LABEL_MAP.get(ml.key) || "Other",
+        classificationMethod: "ml",
+        classificationConfidence: Math.round(ml.confidence * 100),
       };
     }
   } catch {
