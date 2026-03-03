@@ -25,6 +25,7 @@ import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
+import { citationExtractor } from "./services/citation-extractor";
 
 
 const TOKEN_LIMITS = {
@@ -1424,6 +1425,149 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error fetching case law source:", err);
       res.status(500).json({ message: "Failed to fetch source document" });
+    }
+  });
+
+  app.get("/api/journals", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const journals = await storage.getLawJournals();
+      res.json(journals);
+    } catch (err) {
+      console.error("Error fetching journals:", err);
+      res.status(500).json({ message: "Failed to fetch journals" });
+    }
+  });
+
+  app.get("/api/citation-search", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const year = Number(req.query.year);
+      const journalCode = String(req.query.journal || "").trim();
+      const page = Number(req.query.page);
+      const court = String(req.query.court || "").trim();
+      const currentYear = new Date().getFullYear();
+
+      if (!Number.isInteger(year) || year < 1947 || year > currentYear + 1) {
+        return res.status(400).json({ message: `Year must be between 1947 and ${currentYear + 1}` });
+      }
+      if (!journalCode) {
+        return res.status(400).json({ message: "Journal code is required" });
+      }
+      if (!Number.isInteger(page) || page < 1) {
+        return res.status(400).json({ message: "Page must be a positive integer" });
+      }
+
+      const journals = await storage.getLawJournals();
+      const exists = journals.some((j) => j.code.toLowerCase() === journalCode.toLowerCase());
+      if (!exists) {
+        return res.status(400).json({ message: `Unknown journal code: ${journalCode}` });
+      }
+
+      const matches = await storage.searchJudgmentsByCitation({
+        year,
+        journalCode,
+        page,
+        court: court || undefined,
+      });
+
+      res.json(matches);
+    } catch (err) {
+      console.error("Error in citation search:", err);
+      res.status(500).json({ message: "Failed to search by citation" });
+    }
+  });
+
+  app.get("/api/judgments/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ message: "Judgment id is required" });
+      const judgment = await storage.getJudgmentDetail(id);
+      if (!judgment) return res.status(404).json({ message: "Judgment not found" });
+      res.json(judgment);
+    } catch (err) {
+      console.error("Error fetching judgment detail:", err);
+      res.status(500).json({ message: "Failed to fetch judgment details" });
+    }
+  });
+
+  app.post("/api/judgments", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const currentYear = new Date().getFullYear();
+      const parsed = z.object({
+        year: z.number().int().min(1947).max(currentYear + 1),
+        journalCode: z.string().min(1),
+        page: z.number().int().min(1),
+        title: z.string().min(1),
+        petitioner: z.string().optional(),
+        respondent: z.string().optional(),
+        courtCode: z.string().optional(),
+        courtName: z.string().optional(),
+        decisionDate: z.string().datetime().optional(),
+        headnotes: z.string().optional(),
+        fullText: z.string().min(1),
+        pdfUrl: z.string().url().optional(),
+      }).parse(req.body);
+
+      const journals = await storage.getLawJournals();
+      const journal = journals.find((j) => j.code.toLowerCase() === parsed.journalCode.toLowerCase());
+      if (!journal) {
+        return res.status(400).json({ message: `Unknown journal code: ${parsed.journalCode}` });
+      }
+
+      const courts = await storage.getCourtsRef();
+      const courtByCode = parsed.courtCode
+        ? courts.find((c) => c.code.toLowerCase() === parsed.courtCode!.toLowerCase())
+        : undefined;
+      const courtByName = parsed.courtName
+        ? courts.find((c) => c.name.toLowerCase() === parsed.courtName!.toLowerCase())
+        : undefined;
+      const court = courtByCode || courtByName;
+
+      const citationString = `${parsed.year} ${journal.code.toUpperCase()} ${parsed.page}`;
+      const created = await storage.createJudgment({
+        year: parsed.year,
+        journalId: journal.id,
+        page: parsed.page,
+        citationString,
+        title: parsed.title,
+        petitioner: parsed.petitioner || null,
+        respondent: parsed.respondent || null,
+        courtId: court?.id,
+        courtNameSnapshot: parsed.courtName || court?.name || null,
+        decisionDate: parsed.decisionDate ? new Date(parsed.decisionDate) : null,
+        headnotes: parsed.headnotes || null,
+        fullText: parsed.fullText,
+        pdfUrl: parsed.pdfUrl || null,
+      });
+
+      const extraction = await citationExtractor.processJudgment(created.id, parsed.fullText);
+      const actorUserId = getUserId(req);
+      await logAuditEvent("admin.judgment.create", actorUserId, null, {
+        judgmentId: created.id,
+        citation: created.citationString,
+        extraction,
+      });
+
+      res.status(201).json({
+        judgmentId: created.id,
+        citation: created.citationString,
+        extraction,
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid judgment payload" });
+      }
+      if (String(err?.code || "") === "23505") {
+        return res.status(409).json({ message: "A judgment with the same year, journal, and page already exists" });
+      }
+      console.error("Error creating judgment:", err);
+      res.status(500).json({ message: "Failed to create judgment" });
     }
   });
 

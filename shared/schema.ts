@@ -1,5 +1,5 @@
 
-import { pgTable, text, serial, integer, boolean, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -76,6 +76,95 @@ export const caseLaw = pgTable("case_law", {
   sourceDocId: integer("source_doc_id"),
   sourceType: text("source_type"),
   sourceFilename: text("source_filename"),
+});
+
+export const lawJournals = pgTable(
+  "law_journals",
+  {
+    id: serial("id").primaryKey(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    codeUnique: uniqueIndex("law_journals_code_unique").on(table.code),
+  }),
+);
+
+export const courtsRef = pgTable(
+  "courts_ref",
+  {
+    id: serial("id").primaryKey(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    level: text("level").notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    codeUnique: uniqueIndex("courts_ref_code_unique").on(table.code),
+  }),
+);
+
+export const judgments = pgTable(
+  "judgments",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    year: integer("year").notNull(),
+    journalId: integer("journal_id").references(() => lawJournals.id).notNull(),
+    page: integer("page").notNull(),
+    citationString: text("citation_string").notNull(),
+    title: text("title").notNull(),
+    petitioner: text("petitioner"),
+    respondent: text("respondent"),
+    courtId: integer("court_id").references(() => courtsRef.id),
+    courtNameSnapshot: text("court_name_snapshot"),
+    decisionDate: timestamp("decision_date"),
+    headnotes: text("headnotes"),
+    fullText: text("full_text").notNull(),
+    pdfUrl: text("pdf_url"),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    uniqueCitationParts: uniqueIndex("judgments_year_journal_page_unique").on(table.year, table.journalId, table.page),
+  }),
+);
+
+export const citationLinks = pgTable(
+  "citation_links",
+  {
+    id: serial("id").primaryKey(),
+    sourceJudgmentId: uuid("source_judgment_id").references(() => judgments.id).notNull(),
+    targetJudgmentId: uuid("target_judgment_id").references(() => judgments.id).notNull(),
+    citationType: text("citation_type").notNull(),
+    contextExcerpt: text("context_excerpt"),
+    citationText: text("citation_text").notNull(),
+    startOffset: integer("start_offset"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    uniqueCitationLink: uniqueIndex("citation_links_unique").on(
+      table.sourceJudgmentId,
+      table.targetJudgmentId,
+      table.citationType,
+      table.citationText,
+    ),
+  }),
+);
+
+export const unresolvedCitations = pgTable("unresolved_citations", {
+  id: serial("id").primaryKey(),
+  sourceJudgmentId: uuid("source_judgment_id").references(() => judgments.id).notNull(),
+  rawCitation: text("raw_citation").notNull(),
+  year: integer("year"),
+  journalCode: text("journal_code"),
+  page: integer("page"),
+  contextExcerpt: text("context_excerpt"),
+  status: text("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const queryCache = pgTable("query_cache", {
@@ -184,6 +273,11 @@ export const insertBookmarkSchema = createInsertSchema(bookmarks).omit({ id: tru
 export const insertSearchHistorySchema = createInsertSchema(searchHistory).omit({ id: true, createdAt: true });
 export const insertStatuteSchema = createInsertSchema(statutes).omit({ id: true });
 export const insertCaseLawSchema = createInsertSchema(caseLaw).omit({ id: true });
+export const insertLawJournalSchema = createInsertSchema(lawJournals).omit({ id: true, createdAt: true });
+export const insertCourtRefSchema = createInsertSchema(courtsRef).omit({ id: true, createdAt: true });
+export const insertJudgmentSchema = createInsertSchema(judgments).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCitationLinkSchema = createInsertSchema(citationLinks).omit({ id: true, createdAt: true });
+export const insertUnresolvedCitationSchema = createInsertSchema(unresolvedCitations).omit({ id: true, createdAt: true });
 export const insertQueryCacheSchema = createInsertSchema(queryCache).omit({ id: true, createdAt: true, hitCount: true });
 export const insertUsageTrackingSchema = createInsertSchema(usageTracking).omit({ id: true, createdAt: true });
 export const insertGithubKnowledgeSchema = createInsertSchema(githubKnowledge).omit({ id: true, syncedAt: true });
@@ -210,6 +304,16 @@ export type Statute = typeof statutes.$inferSelect;
 export type InsertStatute = z.infer<typeof insertStatuteSchema>;
 export type CaseLaw = typeof caseLaw.$inferSelect;
 export type InsertCaseLaw = z.infer<typeof insertCaseLawSchema>;
+export type LawJournal = typeof lawJournals.$inferSelect;
+export type InsertLawJournal = z.infer<typeof insertLawJournalSchema>;
+export type CourtRef = typeof courtsRef.$inferSelect;
+export type InsertCourtRef = z.infer<typeof insertCourtRefSchema>;
+export type Judgment = typeof judgments.$inferSelect;
+export type InsertJudgment = z.infer<typeof insertJudgmentSchema>;
+export type CitationLink = typeof citationLinks.$inferSelect;
+export type InsertCitationLink = z.infer<typeof insertCitationLinkSchema>;
+export type UnresolvedCitation = typeof unresolvedCitations.$inferSelect;
+export type InsertUnresolvedCitation = z.infer<typeof insertUnresolvedCitationSchema>;
 export type QueryCache = typeof queryCache.$inferSelect;
 export type InsertQueryCache = z.infer<typeof insertQueryCacheSchema>;
 export type UsageTracking = typeof usageTracking.$inferSelect;
