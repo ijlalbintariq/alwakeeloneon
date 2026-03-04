@@ -17,6 +17,7 @@ import {
   Sparkles,
   Trash2,
   Upload,
+  Cpu,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -236,6 +237,8 @@ export default function KnowledgeVaultPage() {
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [domainFilters, setDomainFilters] = useState<Record<string, boolean>>({});
   const [isBackfilling, setIsBackfilling] = useState(false);
+  const [ragIndexingIds, setRagIndexingIds] = useState<Record<number, boolean>>({});
+  const [isBulkRagIndexing, setIsBulkRagIndexing] = useState(false);
 
   const [uploadState, setUploadState] = useState<UploadState>({
     total: 0,
@@ -448,6 +451,52 @@ export default function KnowledgeVaultPage() {
     setResultPage(1);
   };
 
+  const indexDocumentForRag = async (doc: Doc) => {
+    if (!doc?.id || ragIndexingIds[doc.id]) return;
+    setRagIndexingIds((prev) => ({ ...prev, [doc.id]: true }));
+    try {
+      const response = await apiRequest("POST", "/api/rag/index-document", { documentId: doc.id });
+      const payload = await response.json().catch(() => ({}));
+      toast({
+        title: "Indexed for RAG",
+        description: `${doc.title} (${Number(payload?.chunks || 0)} chunks)`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "RAG indexing failed",
+        description: err?.message || `Could not index ${doc.title}`,
+        variant: "destructive",
+      });
+    } finally {
+      setRagIndexingIds((prev) => ({ ...prev, [doc.id]: false }));
+    }
+  };
+
+  const indexAllForRag = async () => {
+    if (isBulkRagIndexing || documents.length === 0) return;
+    setIsBulkRagIndexing(true);
+    let success = 0;
+    let failed = 0;
+    for (const doc of documents) {
+      if (!doc?.id) continue;
+      setRagIndexingIds((prev) => ({ ...prev, [doc.id]: true }));
+      try {
+        await apiRequest("POST", "/api/rag/index-document", { documentId: doc.id });
+        success += 1;
+      } catch {
+        failed += 1;
+      } finally {
+        setRagIndexingIds((prev) => ({ ...prev, [doc.id]: false }));
+      }
+    }
+    setIsBulkRagIndexing(false);
+    toast({
+      title: "RAG indexing complete",
+      description: `${success} indexed${failed ? `, ${failed} failed` : ""}.`,
+      variant: failed > 0 ? "destructive" : "default",
+    });
+  };
+
   const openUploader = () => uploadInputRef.current?.click();
 
   const downloadDoc = (doc: VaultDoc) => {
@@ -540,6 +589,17 @@ export default function KnowledgeVaultPage() {
       toast({ title: "Upload partially complete", description: `${files.length - errors.length} uploaded, ${errors.length} failed.` });
     } else {
       toast({ title: "Upload complete", description: `${files.length} file${files.length > 1 ? "s" : ""} added to your vault.` });
+    }
+
+    if (extracted.length > 0) {
+      for (const doc of extracted) {
+        if (!doc?.id) continue;
+        try {
+          await apiRequest("POST", "/api/rag/index-document", { documentId: doc.id });
+        } catch {
+          // Indexing errors are non-fatal for upload flow.
+        }
+      }
     }
 
     setView("uploads");
@@ -860,6 +920,16 @@ export default function KnowledgeVaultPage() {
                 >
                   <Upload size={16} /> Upload New
                 </button>
+                {documents.length > 0 && (
+                  <button
+                    onClick={indexAllForRag}
+                    disabled={isBulkRagIndexing}
+                    className="px-4 py-3 rounded-xl border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 font-black text-xs uppercase tracking-widest flex items-center gap-2 disabled:opacity-60"
+                  >
+                    {isBulkRagIndexing ? <Loader2 size={14} className="animate-spin" /> : <Cpu size={14} />}
+                    {isBulkRagIndexing ? "Indexing..." : "Index All for RAG"}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -980,6 +1050,14 @@ export default function KnowledgeVaultPage() {
                               title="Download"
                             >
                               <Download size={16} />
+                            </button>
+                            <button
+                              onClick={() => indexDocumentForRag(doc)}
+                              disabled={Boolean(ragIndexingIds[doc.id])}
+                              className="p-2 rounded-lg text-slate-300 hover:text-emerald-300 hover:bg-emerald-500/15 disabled:opacity-50"
+                              title="Index for RAG"
+                            >
+                              {ragIndexingIds[doc.id] ? <Loader2 size={16} className="animate-spin" /> : <Cpu size={16} />}
                             </button>
                             <button
                               onClick={() => deleteMutation.mutate(doc.id)}
@@ -1170,6 +1248,13 @@ export default function KnowledgeVaultPage() {
                         className="px-3 py-1.5 rounded-lg border border-white/15 text-sm text-slate-200 hover:bg-white/10"
                       >
                         Open Source
+                      </button>
+                      <button
+                        onClick={() => indexDocumentForRag(doc)}
+                        disabled={Boolean(ragIndexingIds[doc.id])}
+                        className="px-3 py-1.5 rounded-lg border border-emerald-500/30 text-sm text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50"
+                      >
+                        {ragIndexingIds[doc.id] ? "Indexing..." : "Index for RAG"}
                       </button>
                       <button
                         onClick={() => downloadDoc(doc)}

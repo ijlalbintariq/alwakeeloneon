@@ -29,6 +29,8 @@ interface ChatMessage {
   modelDescription?: string;
   moduleProfile?: string;
   routingPath?: string[];
+  ragCitations?: RAGCitation[];
+  ragConfidence?: "high" | "medium" | "low";
 }
 
 type AiMode = "standard" | "turbo" | string;
@@ -59,6 +61,20 @@ interface UsageData {
   monthlyLimit: number;
 }
 
+interface UserDocument {
+  id: number;
+  title: string;
+}
+
+interface RAGCitation {
+  documentId: number;
+  sourceDocumentId: number;
+  title: string;
+  chunkIndex: number;
+  score: number;
+  quote: string;
+}
+
 export function ChatModule({ type, title, initialMessage }: { type: string; title?: string; initialMessage?: string }) {
   const { user } = useAuth();
   const isAlWakeelo = type === "al-wakeelo";
@@ -77,12 +93,17 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [ragEnabled, setRagEnabled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
   const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
   const { data: threads = [] } = useQuery<ThreadSummary[]>({ queryKey: ["/api/threads"] });
+  const { data: userDocuments = [] } = useQuery<UserDocument[]>({
+    queryKey: ["/api/documents"],
+    enabled: isAlWakeelo,
+  });
   const canUseTurbo = usage?.tier === "pro" || usage?.tier === "enterprise";
   const isApexMode = aiMode !== "standard" && aiMode !== "turbo";
   const selectedApexModel = isApexMode ? aiMode : null;
@@ -245,6 +266,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const formatRagAnswer = (answer: string, citations: RAGCitation[]): string => {
+    if (!citations || citations.length === 0) return answer;
+    const sourceLines = citations.slice(0, 5).map((c, idx) => {
+      return `${idx + 1}. ${c.title} (Doc ${c.sourceDocumentId}, Chunk ${c.chunkIndex}, Score ${Math.round(c.score * 100)}%)`;
+    });
+    return `${answer}\n\n**Retrieved Sources**\n${sourceLines.join("\n")}`;
+  };
+
   const handleSend = async (overrideInput?: string) => {
     const text = overrideInput || input;
     if ((!text.trim() && attachedFiles.length === 0) || isLoading) return;
@@ -268,6 +297,32 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
     try {
       let response: Response;
+
+      if (ragEnabled && isAlWakeelo && text.trim().length > 0 && currentFiles.length === 0) {
+        const ragRes = await apiRequest("POST", "/api/rag/ask", {
+          query: text,
+          documentIds: userDocuments.map((d) => d.id),
+        });
+        const ragData = await ragRes.json();
+        const ragCitations: RAGCitation[] = Array.isArray(ragData?.citations) ? ragData.citations : [];
+        const formatted = formatRagAnswer(String(ragData?.answer || ""), ragCitations);
+        const modelName = ragData?.model?.name ? String(ragData.model.name) : "RAG";
+        const modeName = "RAG";
+        setMessages([...updated, {
+          id: assistantId,
+          role: "assistant",
+          content: formatted,
+          modeName,
+          modelName,
+          modelId: modelName,
+          modelDescription: "Retrieval-grounded response from indexed vault documents.",
+          ragCitations,
+          ragConfidence: ragData?.confidence || "low",
+        }]);
+        await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
+        queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
+        return;
+      }
 
       if (selectedApexModel && apexData?.available) {
         response = await fetch("/api/apex/chat", {
@@ -518,6 +573,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const latestAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
   const latestParsed = latestAssistantMessage ? parseReferences(latestAssistantMessage.content) : null;
   const latestRefs = latestParsed?.references ?? null;
+  const latestRagCitations = latestAssistantMessage?.ragCitations || [];
 
   if (!isAlWakeelo) {
     return (
@@ -632,6 +688,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       )}
                       <LegalMarkdown content={displayContent} />
                       {parsed?.references && <ReferenceCards references={parsed.references} />}
+                      {(m.ragCitations?.length || 0) > 0 && (
+                        <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                            RAG Citations ({m.ragConfidence || "low"})
+                          </p>
+                          <div className="mt-2 space-y-1.5">
+                            {m.ragCitations!.slice(0, 5).map((c, idx) => (
+                              <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[11px] text-emerald-100">
+                                <span className="font-bold">{idx + 1}.</span> {c.title} · chunk {c.chunkIndex} · {Math.round(c.score * 100)}%
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
@@ -1035,6 +1105,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           )}
                           <LegalMarkdown content={displayContent} />
                           {parsed?.references && <ReferenceCards references={parsed.references} />}
+                          {(m.ragCitations?.length || 0) > 0 && (
+                            <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                                RAG Citations ({m.ragConfidence || "low"})
+                              </p>
+                              <div className="mt-2 space-y-1.5">
+                                {m.ragCitations!.slice(0, 5).map((c, idx) => (
+                                  <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[11px] text-emerald-100">
+                                    <span className="font-bold">{idx + 1}.</span> {c.title} · chunk {c.chunkIndex} · {Math.round(c.score * 100)}%
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </>
                       ) : (
                         <>
@@ -1097,6 +1181,19 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 <button onClick={() => audioInputRef.current?.click()} disabled={isLoading || isTranscribing} className="p-2 text-slate-500 hover:text-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 rounded-lg">
                   {isTranscribing ? <Loader2 size={18} className="animate-spin text-amber-400" /> : <Mic size={18} />}
                 </button>
+                {isAlWakeelo && (
+                  <button
+                    onClick={() => setRagEnabled((prev) => !prev)}
+                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
+                      ragEnabled
+                        ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10"
+                        : "text-slate-400 border-amber-500/20"
+                    }`}
+                    title="Use Retrieval-Augmented Generation"
+                  >
+                    RAG {ragEnabled ? "On" : "Off"}
+                  </button>
+                )}
 
                 <input
                   className="flex-1 min-w-[180px] bg-transparent border-none focus:ring-0 text-slate-100 placeholder:text-slate-500 px-2"
@@ -1187,6 +1284,17 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 <FileText size={13} /> Legal Citations
               </h3>
               <div className="space-y-3">
+                {(latestRagCitations?.length || 0) > 0 && latestRagCitations.slice(0, 4).map((c, idx) => (
+                  <div key={`rag-${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/25 transition-all">
+                    <div className="flex justify-between items-start mb-2 gap-2">
+                      <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded truncate">
+                        Doc {c.sourceDocumentId} · Chunk {c.chunkIndex}
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-200 mb-1">{c.title}</p>
+                    <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{c.quote}</p>
+                  </div>
+                ))}
                 {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments.slice(0, 4).map((j, idx) => (
                   <div key={`${j.citation}-${idx}`} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all">
                     <div className="flex justify-between items-start mb-2 gap-2">
@@ -1205,7 +1313,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     {l.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{l.description}</p>}
                   </div>
                 ))}
-                {!latestRefs && (
+                {!latestRefs && (latestRagCitations?.length || 0) === 0 && (
                   <p className="text-xs text-slate-500">Citations from Al Wakeelo responses will appear here.</p>
                 )}
               </div>
