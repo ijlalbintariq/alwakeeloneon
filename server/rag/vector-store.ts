@@ -1,0 +1,229 @@
+import { pool, dbAvailable } from "../db";
+
+export type RagChunkInsert = {
+  ragDocumentId: number;
+  userId: string;
+  sourceDocumentId: number;
+  chunkIndex: number;
+  tokenCount: number;
+  chunkText: string;
+  embedding: number[];
+  metadata?: Record<string, unknown>;
+};
+
+export type RagMatch = {
+  id: number;
+  ragDocumentId: number;
+  sourceDocumentId: number;
+  title: string;
+  chunkIndex: number;
+  tokenCount: number;
+  chunkText: string;
+  metadata: Record<string, unknown>;
+  score: number;
+};
+
+function assertDb() {
+  if (!dbAvailable || !pool) {
+    throw new Error("Database is not available for RAG operations");
+  }
+}
+
+function vectorLiteral(values: number[]): string {
+  const safe = values.map((n) => (Number.isFinite(n) ? n : 0));
+  return `[${safe.join(",")}]`;
+}
+
+export async function ensureRagSchema(): Promise<void> {
+  if (!dbAvailable || !pool) return;
+
+  await pool.query("CREATE EXTENSION IF NOT EXISTS vector");
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rag_documents (
+      id BIGSERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      org_id INTEGER NULL,
+      source_document_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      file_name TEXT NULL,
+      mime_type TEXT NULL,
+      content_hash TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      chunk_count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (user_id, source_document_id)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rag_chunks (
+      id BIGSERIAL PRIMARY KEY,
+      rag_document_id BIGINT NOT NULL REFERENCES rag_documents(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL,
+      source_document_id INTEGER NOT NULL,
+      chunk_index INTEGER NOT NULL,
+      token_count INTEGER NOT NULL,
+      chunk_text TEXT NOT NULL,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      embedding VECTOR(384) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (rag_document_id, chunk_index)
+    )
+  `);
+
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_documents_user_source ON rag_documents (user_id, source_document_id)");
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_chunks_user_doc ON rag_chunks (user_id, source_document_id)");
+
+  // IVFFLAT can fail before enough rows exist; keep startup resilient.
+  try {
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_chunks_embedding_cosine ON rag_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)");
+  } catch (err: any) {
+    console.warn("[RAG] Could not ensure ivfflat index:", err?.message || err);
+  }
+}
+
+export async function upsertRagDocument(args: {
+  userId: string;
+  sourceDocumentId: number;
+  title: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+  contentHash: string;
+  status?: string;
+}): Promise<{ id: number; status: string; chunkCount: number }> {
+  assertDb();
+
+  const result = await pool.query(
+    `
+    INSERT INTO rag_documents (user_id, source_document_id, title, file_name, mime_type, content_hash, status, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+    ON CONFLICT (user_id, source_document_id)
+    DO UPDATE SET
+      title = EXCLUDED.title,
+      file_name = EXCLUDED.file_name,
+      mime_type = EXCLUDED.mime_type,
+      content_hash = EXCLUDED.content_hash,
+      status = EXCLUDED.status,
+      updated_at = now()
+    RETURNING id, status, chunk_count
+    `,
+    [
+      args.userId,
+      args.sourceDocumentId,
+      args.title,
+      args.fileName || null,
+      args.mimeType || null,
+      args.contentHash,
+      args.status || "pending",
+    ],
+  );
+
+  return {
+    id: Number(result.rows[0].id),
+    status: String(result.rows[0].status || "pending"),
+    chunkCount: Number(result.rows[0].chunk_count || 0),
+  };
+}
+
+export async function replaceDocumentChunks(ragDocumentId: number, entries: RagChunkInsert[]): Promise<number> {
+  assertDb();
+
+  await pool.query("DELETE FROM rag_chunks WHERE rag_document_id = $1", [ragDocumentId]);
+  if (entries.length === 0) {
+    await pool.query("UPDATE rag_documents SET chunk_count = 0, status = 'indexed', updated_at = now() WHERE id = $1", [ragDocumentId]);
+    return 0;
+  }
+
+  for (const chunk of entries) {
+    await pool.query(
+      `
+      INSERT INTO rag_chunks (rag_document_id, user_id, source_document_id, chunk_index, token_count, chunk_text, metadata, embedding)
+      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::vector)
+      `,
+      [
+        chunk.ragDocumentId,
+        chunk.userId,
+        chunk.sourceDocumentId,
+        chunk.chunkIndex,
+        chunk.tokenCount,
+        chunk.chunkText,
+        JSON.stringify(chunk.metadata || {}),
+        vectorLiteral(chunk.embedding),
+      ],
+    );
+  }
+
+  await pool.query("UPDATE rag_documents SET chunk_count = $2, status = 'indexed', updated_at = now() WHERE id = $1", [ragDocumentId, entries.length]);
+  return entries.length;
+}
+
+export async function similaritySearch(args: {
+  userId: string;
+  queryEmbedding: number[];
+  sourceDocumentIds?: number[];
+  topK: number;
+}): Promise<RagMatch[]> {
+  assertDb();
+
+  const filters: string[] = ["c.user_id = $1"];
+  const params: any[] = [args.userId, vectorLiteral(args.queryEmbedding), args.topK];
+
+  if (args.sourceDocumentIds && args.sourceDocumentIds.length > 0) {
+    const offset = params.length + 1;
+    filters.push(`c.source_document_id = ANY($${offset}::int[])`);
+    params.push(args.sourceDocumentIds);
+  }
+
+  const sql = `
+    SELECT
+      c.id,
+      c.rag_document_id,
+      c.source_document_id,
+      d.title,
+      c.chunk_index,
+      c.token_count,
+      c.chunk_text,
+      c.metadata,
+      1 - (c.embedding <=> $2::vector) AS score
+    FROM rag_chunks c
+    JOIN rag_documents d ON d.id = c.rag_document_id
+    WHERE ${filters.join(" AND ")}
+    ORDER BY c.embedding <=> $2::vector ASC
+    LIMIT $3
+  `;
+
+  const result = await pool.query(sql, params);
+  return result.rows.map((row: any) => ({
+    id: Number(row.id),
+    ragDocumentId: Number(row.rag_document_id),
+    sourceDocumentId: Number(row.source_document_id),
+    title: String(row.title || "Untitled Document"),
+    chunkIndex: Number(row.chunk_index),
+    tokenCount: Number(row.token_count),
+    chunkText: String(row.chunk_text || ""),
+    metadata: (row.metadata || {}) as Record<string, unknown>,
+    score: Number(row.score || 0),
+  }));
+}
+
+export async function deleteVectorsBySourceDocument(args: {
+  sourceDocumentId: number;
+  userId?: string;
+}): Promise<number> {
+  assertDb();
+
+  if (args.userId) {
+    const del = await pool.query(
+      `DELETE FROM rag_chunks WHERE source_document_id = $1 AND user_id = $2 RETURNING id`,
+      [args.sourceDocumentId, args.userId],
+    );
+    await pool.query("UPDATE rag_documents SET chunk_count = 0, status = 'pending', updated_at = now() WHERE source_document_id = $1 AND user_id = $2", [args.sourceDocumentId, args.userId]);
+    return del.rowCount || 0;
+  }
+
+  const del = await pool.query(`DELETE FROM rag_chunks WHERE source_document_id = $1 RETURNING id`, [args.sourceDocumentId]);
+  await pool.query("UPDATE rag_documents SET chunk_count = 0, status = 'pending', updated_at = now() WHERE source_document_id = $1", [args.sourceDocumentId]);
+  return del.rowCount || 0;
+}

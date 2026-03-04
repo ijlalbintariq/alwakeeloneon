@@ -26,6 +26,7 @@ import { classifyDocumentMetadata, type DocumentMetadata } from "./document-clas
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
+import { buildRagContext, deleteDocumentVectors, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
 
 
 const TOKEN_LIMITS = {
@@ -1225,6 +1226,119 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error deleting all documents:", err);
       res.status(500).json({ message: "Failed to delete all documents" });
+    }
+  });
+
+  app.post("/api/rag/index-document", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+
+    try {
+      const parsed = z.object({ documentId: z.number().int().positive() }).parse(req.body);
+      const indexed = await indexUserDocument(userId, parsed.documentId);
+      res.json({ ok: true, ...indexed });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error indexing RAG document:", err);
+      res.status(500).json({ message: err?.message || "Failed to index document for RAG" });
+    }
+  });
+
+  app.post("/api/rag/ask", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+
+    try {
+      const allowed = await checkUsageLimit(userId, "chat", res);
+      if (!allowed) return;
+
+      const parsed = z.object({
+        query: z.string().min(3),
+        documentIds: z.array(z.number().int().positive()).optional(),
+      }).parse(req.body);
+
+      const retrieval = await retrieveForQuery({
+        userId,
+        query: parsed.query,
+        documentIds: parsed.documentIds,
+        topK: Number(process.env.RAG_TOP_K || 5),
+      });
+
+      const strictContext = String(process.env.RAG_FORCE_CONTEXT || "true").toLowerCase() !== "false";
+      if (retrieval.matches.length === 0 || (strictContext && retrieval.confidence === "low")) {
+        return res.json({
+          answer: "I cannot answer reliably from the uploaded materials. Please upload a more relevant document or refine your question.",
+          confidence: "low",
+          citations: [],
+          retrieval: {
+            topK: Number(process.env.RAG_TOP_K || 5),
+            matched: retrieval.matches.length,
+            threshold: Number(process.env.RAG_MIN_SCORE || 0.62),
+          },
+          model: { provider: "none", name: "none" },
+        });
+      }
+
+      const ragContext = buildRagContext(retrieval.matches);
+      const systemPrompt = `${getLegalSystemPrompt()}
+
+RAG POLICY (STRICT):
+- Answer only using the provided retrieved context.
+- If context is insufficient, explicitly state what is missing.
+- Do not invent facts, citations, statutes, or case holdings.
+- Keep answer concise, legally structured, and practical for Pakistani legal practice.
+- Provide supportable claims only.`;
+
+      const userPrompt = `User question:\n${parsed.query}\n\nRetrieved context:\n${ragContext}\n\nReturn a clear answer grounded only in this context.`;
+      const result = await callStandardAISimple(systemPrompt, userPrompt, TOKEN_LIMITS.chat);
+      await logUsageCost(userId, "chat", result.model, systemPrompt + userPrompt, result.text);
+
+      const citations = retrieval.matches.slice(0, 5).map((m) => ({
+        documentId: m.ragDocumentId,
+        sourceDocumentId: m.sourceDocumentId,
+        title: m.title,
+        chunkIndex: m.chunkIndex,
+        score: Number(m.score.toFixed(4)),
+        quote: m.chunkText.slice(0, 240),
+      }));
+
+      const provider = result.model === getGroqModelName() ? "groq" : "openrouter";
+      res.json({
+        answer: result.text,
+        confidence: retrieval.confidence,
+        citations,
+        retrieval: {
+          topK: Number(process.env.RAG_TOP_K || 5),
+          matched: retrieval.matches.length,
+          threshold: Number(process.env.RAG_MIN_SCORE || 0.62),
+        },
+        model: { provider, name: result.model },
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error in RAG ask:", err);
+      res.status(500).json({ message: err?.message || "Failed to answer using RAG" });
+    }
+  });
+
+  app.delete("/api/rag/documents/:documentId/vectors", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const documentId = Number(req.params.documentId);
+      if (!Number.isInteger(documentId) || documentId < 1) {
+        return res.status(400).json({ message: "Invalid document id" });
+      }
+      const deleted = await deleteDocumentVectors(documentId);
+      const actorUserId = getUserId(req);
+      await logAuditEvent("admin.rag.deleteVectors", actorUserId, null, { documentId, deletedChunks: deleted });
+      res.json({ ok: true, deletedChunks: deleted });
+    } catch (err) {
+      console.error("Error deleting RAG vectors:", err);
+      res.status(500).json({ message: "Failed to delete vectors for document" });
     }
   });
 

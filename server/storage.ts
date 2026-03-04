@@ -1234,6 +1234,12 @@ export async function ensureSearchIndexes(): Promise<void> {
       console.warn(`[Indexes] Could not ensure ${label}:`, err?.message || err);
     }
   }
+  try {
+    const { ensureRagSchema } = await import("./rag/vector-store");
+    await ensureRagSchema();
+  } catch (err: any) {
+    console.warn("[RAG] Could not ensure RAG schema:", err?.message || err);
+  }
   await ensureCitationReferenceSeedData();
   console.log("Search indexes verification complete.");
 }

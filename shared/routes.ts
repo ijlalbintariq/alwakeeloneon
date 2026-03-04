@@ -171,6 +171,20 @@ export const api = {
       path: '/api/judgments' as const,
     },
   },
+  rag: {
+    indexDocument: {
+      method: 'POST' as const,
+      path: '/api/rag/index-document' as const,
+    },
+    ask: {
+      method: 'POST' as const,
+      path: '/api/rag/ask' as const,
+    },
+    deleteVectors: {
+      method: 'DELETE' as const,
+      path: '/api/rag/documents/:documentId/vectors' as const,
+    },
+  },
   usage: {
     get: {
       method: 'GET' as const,
