@@ -28,6 +28,7 @@ import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import { buildRagContext, deleteDocumentVectors, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
 import { isPdfOcrAvailable, ocrPdfWithTesseract } from "./ocr";
+import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 
 
 const TOKEN_LIMITS = {
@@ -1902,46 +1903,153 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
       let transcription = "";
       let provider = "groq";
       let model = "whisper-large-v3-turbo";
+      let fallbackUsed = false;
+      let fallbackFrom: "deepseek" | "apex" | null = null;
+      let localFallbackUsed = false;
+
+      const tryGroqFallback = async (source: "deepseek" | "apex") => {
+        if (!isGroqAvailable()) return false;
+        try {
+          const fallback = await transcribeWithGroq({
+            audioBuffer: file.buffer,
+            filename: file.originalname,
+            mimeType: file.mimetype,
+            model: "whisper-large-v3-turbo",
+            prompt: commonPrompt,
+          });
+          const text = (fallback.text || "").trim();
+          if (!text) return false;
+          transcription = text;
+          provider = "groq";
+          model = fallback.model || "whisper-large-v3-turbo";
+          fallbackUsed = true;
+          fallbackFrom = source;
+          return true;
+        } catch (fallbackErr) {
+          console.warn(
+            `[Transcription] Groq fallback failed after ${source} failure:`,
+            getErrorMessage(fallbackErr),
+          );
+          return false;
+        }
+      };
+
+      const tryWhisperCppFallback = async (source: "deepseek" | "apex" | "groq") => {
+        if (!isWhisperCppConfigured()) return false;
+        try {
+          const localResult = await transcribeWithWhisperCpp({
+            audioBuffer: file.buffer,
+            filename: file.originalname,
+          });
+          const text = (localResult.text || "").trim();
+          if (!text) return false;
+          transcription = text;
+          provider = "local";
+          model = localResult.model || "whisper.cpp";
+          localFallbackUsed = true;
+          if (source === "deepseek" || source === "apex") {
+            fallbackUsed = true;
+            fallbackFrom = source;
+          }
+          return true;
+        } catch (localErr) {
+          console.warn(
+            `[Transcription] whisper.cpp fallback failed after ${source} path failure:`,
+            getErrorMessage(localErr),
+          );
+          return false;
+        }
+      };
 
       if (requestedMode === "turbo") {
-        if (!isDeepSeekAvailable()) {
-          return res.status(503).json({ message: "Turbo transcription is unavailable because DeepSeek is not configured." });
+        if (isDeepSeekAvailable()) {
+          try {
+            const result = await transcribeWithDeepSeek({
+              audioBase64: base64Audio,
+              audioFormat,
+              prompt: commonPrompt,
+            });
+            transcription = (result.content || "").trim();
+            provider = "deepseek";
+            model = result.model || "deepseek-chat";
+          } catch (deepseekErr) {
+            console.warn("[Transcription] DeepSeek transcription failed:", getErrorMessage(deepseekErr));
+          }
+        } else {
+          console.warn("[Transcription] DeepSeek not configured for turbo mode; trying Groq fallback.");
         }
-        const result = await transcribeWithDeepSeek({
-          audioBase64: base64Audio,
-          audioFormat,
-          prompt: commonPrompt,
-        });
-        transcription = result.content || "";
-        provider = "deepseek";
-        model = result.model || "deepseek-chat";
+
+        if (!transcription.trim()) {
+          const fallbackOk = await tryGroqFallback("deepseek");
+          if (!fallbackOk) {
+            const localOk = await tryWhisperCppFallback("deepseek");
+            if (!localOk) {
+              return res.status(503).json({
+                message: isDeepSeekAvailable()
+                  ? "Turbo transcription failed and no fallback is available."
+                  : "Turbo transcription is unavailable because DeepSeek is not configured and no fallback is available.",
+              });
+            }
+          }
+        }
       } else if (requestedMode === "apex" || requestedMode === "apex-pro" || requestedMode === "apex-agent") {
-        if (!isApexAvailable()) {
-          return res.status(503).json({ message: "Apex transcription is unavailable because Kimi is not configured." });
+        if (isApexAvailable()) {
+          try {
+            const result = await transcribeWithApex({
+              model: requestedMode,
+              audioBase64: base64Audio,
+              audioFormat,
+              prompt: commonPrompt,
+            });
+            transcription = (result.content || "").trim();
+            provider = "apex";
+            model = result.model || requestedMode;
+          } catch (apexErr) {
+            console.warn("[Transcription] Apex transcription failed:", getErrorMessage(apexErr));
+          }
+        } else {
+          console.warn("[Transcription] Apex/Kimi not configured for apex mode; trying Groq fallback.");
         }
-        const result = await transcribeWithApex({
-          model: requestedMode,
-          audioBase64: base64Audio,
-          audioFormat,
-          prompt: commonPrompt,
-        });
-        transcription = result.content || "";
-        provider = "apex";
-        model = result.model || requestedMode;
+
+        if (!transcription.trim()) {
+          const fallbackOk = await tryGroqFallback("apex");
+          if (!fallbackOk) {
+            const localOk = await tryWhisperCppFallback("apex");
+            if (!localOk) {
+              return res.status(503).json({
+                message: isApexAvailable()
+                  ? "Apex transcription failed and no fallback is available."
+                  : "Apex transcription is unavailable because Kimi is not configured and no fallback is available.",
+              });
+            }
+          }
+        }
       } else {
-        if (!isGroqAvailable()) {
-          return res.status(503).json({ message: "Standard transcription is unavailable because Groq is not configured." });
+        if (isGroqAvailable()) {
+          try {
+            const result = await transcribeWithGroq({
+              audioBuffer: file.buffer,
+              filename: file.originalname,
+              mimeType: file.mimetype,
+              model: "whisper-large-v3-turbo",
+              prompt: commonPrompt,
+            });
+            transcription = (result.text || "").trim();
+            provider = "groq";
+            model = result.model || "whisper-large-v3-turbo";
+          } catch (groqErr) {
+            console.warn("[Transcription] Groq standard transcription failed:", getErrorMessage(groqErr));
+          }
         }
-        const result = await transcribeWithGroq({
-          audioBuffer: file.buffer,
-          filename: file.originalname,
-          mimeType: file.mimetype,
-          model: "whisper-large-v3-turbo",
-          prompt: commonPrompt,
-        });
-        transcription = result.text || "";
-        provider = "groq";
-        model = result.model || "whisper-large-v3-turbo";
+        if (!transcription.trim()) {
+          const localOk = await tryWhisperCppFallback("groq");
+          if (!localOk) {
+            return res.status(503).json({
+              message:
+                "Standard transcription is unavailable because Groq failed/unconfigured and whisper.cpp fallback is unavailable.",
+            });
+          }
+        }
       }
 
       if (!transcription.trim()) {
@@ -1953,6 +2061,9 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
         provider,
         model,
         mode: requestedMode,
+        fallbackUsed,
+        fallbackFrom,
+        localFallbackUsed,
       });
     } catch (err) {
       console.error("Error transcribing audio:", err);
