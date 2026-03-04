@@ -31,6 +31,13 @@ interface ApexResponse {
   outputTokens?: number;
 }
 
+interface ApexTranscriptionOptions {
+  model?: ApexModel;
+  audioBase64: string;
+  audioFormat: "wav" | "mp3" | "m4a" | "webm" | "ogg";
+  prompt?: string;
+}
+
 function getModelConfig(model: ApexModel) {
   switch (model) {
     case "apex":
@@ -113,6 +120,60 @@ export async function chatWithApex(options: ApexChatOptions): Promise<ApexRespon
   return {
     content,
     reasoning,
+    model: config.displayName,
+    inputTokens: response.usage?.prompt_tokens,
+    outputTokens: response.usage?.completion_tokens,
+  };
+}
+
+export async function transcribeWithApex(options: ApexTranscriptionOptions): Promise<ApexResponse> {
+  const client = getClient();
+  if (!client) {
+    throw new Error("Apex AI is not configured. MOONSHOT_API_KEY is required.");
+  }
+
+  const model = options.model || "apex";
+  const config = getModelConfig(model);
+
+  const response = await client.chat.completions.create({
+    model: config.modelId,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_audio",
+            input_audio: {
+              data: options.audioBase64,
+              format: options.audioFormat,
+            },
+          },
+          {
+            type: "text",
+            text:
+              options.prompt ||
+              "Transcribe this audio accurately. Return ONLY the transcription text. If the audio is in Urdu or another language, transcribe it in that language.",
+          },
+        ] as any,
+      },
+    ],
+    temperature: 0,
+    max_tokens: 2048,
+    top_p: 1,
+  } as any);
+
+  const choice = response.choices[0];
+  const messageContent: any = choice?.message?.content;
+  const content =
+    typeof messageContent === "string"
+      ? messageContent
+      : Array.isArray(messageContent)
+        ? messageContent.map((part: any) => (typeof part?.text === "string" ? part.text : "")).join(" ").trim()
+        : "No response generated.";
+
+  return {
+    content,
+    reasoning: undefined,
     model: config.displayName,
     inputTokens: response.usage?.prompt_tokens,
     outputTokens: response.usage?.completion_tokens,

@@ -14,10 +14,10 @@ import crypto from "crypto";
 import multer from "multer";
 import { extractText } from "unpdf";
 import mammoth from "mammoth";
-import { isApexAvailable, getApexModelsForTier, chatWithApex, type ApexModel } from "./apex-ai";
+import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, type ApexModel } from "./apex-ai";
 import { chatWithOpenRouter, streamWithOpenRouter, isOpenRouterAvailable, getOpenRouterModelName } from "./openrouter";
-import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName } from "./groq-ai";
-import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, isDeepSeekAvailable, getDeepSeekModelName, getDeepSeekProModelName } from "./deepseek-ai";
+import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
+import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekModelName, getDeepSeekProModelName } from "./deepseek-ai";
 import { getModuleProfile, normalizeModuleType, type ModuleIntent, type ModuleType } from "./ai-module-profiles";
 import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAuditEvent, unbanUser } from "./security-governance";
 import { scanUploadedBuffer } from "./file-scan";
@@ -27,6 +27,7 @@ import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-lib
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import { buildRagContext, deleteDocumentVectors, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
+import { isPdfOcrAvailable, ocrPdfWithTesseract } from "./ocr";
 
 
 const TOKEN_LIMITS = {
@@ -1123,6 +1124,9 @@ export async function registerRoutes(
             content = "";
           }
           if (!content) {
+            content = await extractPdfTextWithOcrFallback(file, "documents-upload");
+          }
+          if (!content) {
             errors.push(`${original}: could not extract text (file may be scanned/image PDF)`);
             continue;
           }
@@ -1848,10 +1852,6 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      if (!isOpenRouterAvailable()) {
-        return res.status(503).json({ message: "Transcription is currently unavailable." });
-      }
-
       const file = req.file;
       if (!file) return res.status(400).json({ message: "No audio file provided" });
 
@@ -1868,24 +1868,92 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
         return res.status(400).json({ message: transcribeMalwareCheck.reason || "Malware detected in audio file." });
       }
 
-      const base64Audio = file.buffer.toString("base64");
-      const result = await chatWithOpenRouter({
-        messages: [{
-          role: "user",
-          content: [
-            { type: "input_audio", input_audio: { data: base64Audio, format: file.mimetype.includes("wav") ? "wav" : "mp3" } },
-            { type: "text", text: "Transcribe this audio accurately. Return ONLY the transcription text, nothing else. If the audio is in Urdu or another language, transcribe it in that language." }
-          ] as any,
-        }],
-        maxTokens: 2048,
-      });
+      const requestedModeRaw = String(req.body?.mode || "standard").trim().toLowerCase();
+      const requestedMode: "standard" | "turbo" | ApexModel =
+        requestedModeRaw === "turbo"
+          ? "turbo"
+          : (requestedModeRaw === "apex" || requestedModeRaw === "apex-pro" || requestedModeRaw === "apex-agent")
+            ? (requestedModeRaw as ApexModel)
+            : "standard";
+      const userTier = await storage.getUserTier(userId);
+      const canUsePremiumModes = userTier === "pro" || userTier === "enterprise";
+      if (requestedMode === "turbo" && !canUsePremiumModes) {
+        return res.status(403).json({ message: "Turbo transcription requires Pro or Enterprise." });
+      }
+      if ((requestedMode === "apex" || requestedMode === "apex-pro" || requestedMode === "apex-agent") && !canUsePremiumModes) {
+        return res.status(403).json({ message: "Apex transcription requires Pro or Enterprise." });
+      }
 
-      const transcription = result.content || "";
+      const resolveAudioFormat = (mimeType: string, filename: string): "wav" | "mp3" | "m4a" | "webm" | "ogg" => {
+        const type = (mimeType || "").toLowerCase();
+        const ext = filename.toLowerCase();
+        if (type.includes("wav") || ext.endsWith(".wav")) return "wav";
+        if (type.includes("webm") || ext.endsWith(".webm")) return "webm";
+        if (type.includes("ogg") || ext.endsWith(".ogg")) return "ogg";
+        if (type.includes("m4a") || type.includes("mp4") || ext.endsWith(".m4a") || ext.endsWith(".mp4")) return "m4a";
+        return "mp3";
+      };
+
+      const commonPrompt =
+        "Transcribe this audio accurately. Return only the transcription text. If the audio is in Urdu or another language, transcribe it in that language.";
+      const audioFormat = resolveAudioFormat(file.mimetype, file.originalname);
+      const base64Audio = file.buffer.toString("base64");
+
+      let transcription = "";
+      let provider = "groq";
+      let model = "whisper-large-v3-turbo";
+
+      if (requestedMode === "turbo") {
+        if (!isDeepSeekAvailable()) {
+          return res.status(503).json({ message: "Turbo transcription is unavailable because DeepSeek is not configured." });
+        }
+        const result = await transcribeWithDeepSeek({
+          audioBase64: base64Audio,
+          audioFormat,
+          prompt: commonPrompt,
+        });
+        transcription = result.content || "";
+        provider = "deepseek";
+        model = result.model || "deepseek-chat";
+      } else if (requestedMode === "apex" || requestedMode === "apex-pro" || requestedMode === "apex-agent") {
+        if (!isApexAvailable()) {
+          return res.status(503).json({ message: "Apex transcription is unavailable because Kimi is not configured." });
+        }
+        const result = await transcribeWithApex({
+          model: requestedMode,
+          audioBase64: base64Audio,
+          audioFormat,
+          prompt: commonPrompt,
+        });
+        transcription = result.content || "";
+        provider = "apex";
+        model = result.model || requestedMode;
+      } else {
+        if (!isGroqAvailable()) {
+          return res.status(503).json({ message: "Standard transcription is unavailable because Groq is not configured." });
+        }
+        const result = await transcribeWithGroq({
+          audioBuffer: file.buffer,
+          filename: file.originalname,
+          mimeType: file.mimetype,
+          model: "whisper-large-v3-turbo",
+          prompt: commonPrompt,
+        });
+        transcription = result.text || "";
+        provider = "groq";
+        model = result.model || "whisper-large-v3-turbo";
+      }
+
       if (!transcription.trim()) {
         return res.status(400).json({ message: "Could not transcribe audio. The audio may be too short or unclear." });
       }
 
-      res.json({ transcription: transcription.trim() });
+      res.json({
+        transcription: transcription.trim(),
+        provider,
+        model,
+        mode: requestedMode,
+      });
     } catch (err) {
       console.error("Error transcribing audio:", err);
       res.status(500).json({ message: "Failed to transcribe audio" });
@@ -1957,7 +2025,11 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
               attachmentContext += `\n\n--- Attached File: ${file.originalname} ---\n${stripNullBytes(file.buffer.toString("utf-8"))}\n--- End of File ---`;
             } else if (file.mimetype === "application/pdf") {
               const { text } = await extractText(new Uint8Array(file.buffer));
-              const parsedText = Array.isArray(text) ? text.join("\n") : (text || "");
+              let parsedText = Array.isArray(text) ? text.join("\n") : (text || "");
+              parsedText = stripNullBytes(parsedText || "");
+              if (!parsedText.trim()) {
+                parsedText = await extractPdfTextWithOcrFallback(file, "chat-attachment");
+              }
               attachmentContext += `\n\n--- Attached PDF: ${file.originalname} ---\n${stripNullBytes(parsedText)}\n--- End of PDF ---`;
             } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
               const result = await mammoth.extractRawText({ buffer: file.buffer });
@@ -2574,6 +2646,33 @@ RULES:
     return text.replace(/\x00/g, "");
   }
 
+  async function extractPdfTextWithOcrFallback(
+    file: Express.Multer.File,
+    context: string,
+  ): Promise<string> {
+    const ocrAvailable = await isPdfOcrAvailable();
+    if (!ocrAvailable) return "";
+
+    try {
+      const result = await ocrPdfWithTesseract(file.buffer, {
+        maxPages: Number(process.env.PDF_OCR_MAX_PAGES || 8),
+        dpi: Number(process.env.PDF_OCR_DPI || 220),
+        language: process.env.TESSERACT_OCR_LANG || process.env.TESSERACT_LANG || "eng+urd",
+        timeoutMs: Number(process.env.PDF_OCR_TIMEOUT_MS || 120000),
+      });
+      const text = stripNullBytes((result.text || "").trim());
+      if (text) {
+        console.log(
+          `[OCR][${context}] Extracted ${text.length} chars from ${file.originalname} using ${result.pageCount} page(s), language ${result.language}.`,
+        );
+      }
+      return text;
+    } catch (err) {
+      console.warn(`[OCR][${context}] OCR failed for ${file.originalname}: ${getErrorMessage(err)}`);
+      return "";
+    }
+  }
+
   async function isAdmin(req: any, res: any): Promise<boolean> {
     const userId = getUserId(req);
     if (!userId) { res.sendStatus(401); return false; }
@@ -2916,6 +3015,9 @@ RULES:
               content = "";
             }
             if (!content) {
+              content = await extractPdfTextWithOcrFallback(file, "admin-knowledge-upload");
+            }
+            if (!content) {
               errors.push(`${file.originalname}: could not extract text (may be scanned/image PDF)`);
               continue;
             }
@@ -3203,7 +3305,13 @@ RULES:
           content = stripNullBytes((pdfResult.text || "").trim());
         } catch (pdfErr: any) {
           console.error("[Case Law Extract] PDF parse error:", pdfErr?.message);
-          return res.status(400).json({ message: "Failed to parse PDF file. Try uploading as TXT instead." });
+          content = "";
+        }
+        if (!content) {
+          content = await extractPdfTextWithOcrFallback(file, "admin-case-law-extract");
+        }
+        if (!content) {
+          return res.status(400).json({ message: "Failed to extract text from PDF file. Upload searchable PDF or enable OCR dependencies." });
         }
       } else if (ext === "doc" || ext === "docx") {
         try {
@@ -3412,6 +3520,9 @@ RULES:
           } catch (pdfErr: any) {
             console.error(`[Statute Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
             content = "";
+          }
+          if (!content) {
+            content = await extractPdfTextWithOcrFallback(file, "admin-statute-upload");
           }
           if (!content) {
             errors.push(`${file.originalname}: could not extract text from PDF`);
@@ -4097,6 +4208,10 @@ Instructions:
         }
         const { text } = await extractText(new Uint8Array(file.buffer));
         content = Array.isArray(text) ? text.join("\n") : (text || "");
+        content = stripNullBytes(content || "");
+        if (!content.trim()) {
+          content = await extractPdfTextWithOcrFallback(file, "org-knowledge-upload");
+        }
       } else if (filename.endsWith(".docx")) {
         if (!hasSafeDocumentSignature(file, ".docx")) {
           recordSecurityEvent("upload_signature_failure", `org-knowledge:${orgId}`, {

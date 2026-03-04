@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { toFile } from "openai/uploads";
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 const FALLBACK_MODEL = "openai/gpt-oss-120b";
@@ -73,6 +74,20 @@ interface GroqResponse {
   outputTokens?: number;
 }
 
+interface GroqTranscriptionOptions {
+  audioBuffer: Buffer;
+  filename?: string;
+  mimeType?: string;
+  model?: string;
+  language?: string;
+  prompt?: string;
+}
+
+interface GroqTranscriptionResult {
+  text: string;
+  model: string;
+}
+
 export async function chatWithGroq(options: GroqChatOptions): Promise<GroqResponse> {
   const client = getClient();
   const model = options.model || await resolveModel();
@@ -113,4 +128,26 @@ export async function* streamWithGroq(options: GroqChatOptions): AsyncGenerator<
       yield text;
     }
   }
+}
+
+export async function transcribeWithGroq(options: GroqTranscriptionOptions): Promise<GroqTranscriptionResult> {
+  const client = getClient();
+  const model = options.model || process.env.GROQ_TRANSCRIBE_MODEL || "whisper-large-v3-turbo";
+  const audioFile = await toFile(options.audioBuffer, options.filename || "audio.webm", {
+    type: options.mimeType || "audio/webm",
+  });
+
+  const response = await client.audio.transcriptions.create({
+    model,
+    file: audioFile,
+    response_format: "json",
+    temperature: 0,
+    ...(options.language ? { language: options.language } : {}),
+    ...(options.prompt ? { prompt: options.prompt } : {}),
+  });
+
+  return {
+    text: (response as any)?.text || "",
+    model,
+  };
 }
