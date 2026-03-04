@@ -48,6 +48,12 @@ interface DeepSeekResponse {
   outputTokens?: number;
 }
 
+interface DeepSeekTranscriptionOptions {
+  audioBase64: string;
+  audioFormat: "wav" | "mp3" | "m4a" | "webm" | "ogg";
+  prompt?: string;
+}
+
 export async function chatWithDeepSeek(options: DeepSeekChatOptions): Promise<DeepSeekResponse> {
   const client = getClient();
   const model = options.model || DEEPSEEK_CHAT_MODEL;
@@ -92,4 +98,50 @@ export async function* streamWithDeepSeek(options: DeepSeekChatOptions): AsyncGe
       yield text;
     }
   }
+}
+
+export async function transcribeWithDeepSeek(options: DeepSeekTranscriptionOptions): Promise<DeepSeekResponse> {
+  const client = getClient();
+
+  const response = await client.chat.completions.create({
+    model: DEEPSEEK_CHAT_MODEL,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_audio",
+            input_audio: {
+              data: options.audioBase64,
+              format: options.audioFormat,
+            },
+          },
+          {
+            type: "text",
+            text:
+              options.prompt ||
+              "Transcribe this audio accurately. Return ONLY the transcription text. If the audio is in Urdu or another language, transcribe it in that language.",
+          },
+        ] as any,
+      },
+    ],
+    max_tokens: 2048,
+    temperature: 0,
+  } as any);
+
+  const choice = response.choices[0];
+  const messageContent: any = choice?.message?.content;
+  const content =
+    typeof messageContent === "string"
+      ? messageContent
+      : Array.isArray(messageContent)
+        ? messageContent.map((part: any) => (typeof part?.text === "string" ? part.text : "")).join(" ").trim()
+        : "No response generated.";
+
+  return {
+    content,
+    model: response.model || DEEPSEEK_CHAT_MODEL,
+    inputTokens: response.usage?.prompt_tokens,
+    outputTokens: response.usage?.completion_tokens,
+  };
 }

@@ -242,6 +242,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     try {
       const formData = new FormData();
       formData.append("audio", file);
+      formData.append("mode", aiMode);
       const response = await fetch("/api/ai/transcribe", {
         method: "POST",
         credentials: "include",
