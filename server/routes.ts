@@ -29,6 +29,7 @@ import { citationExtractor } from "./services/citation-extractor";
 import { buildRagContext, deleteDocumentVectors, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
 import { isPdfOcrAvailable, ocrPdfWithTesseract } from "./ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
+import { deleteR2Object, uploadBufferToR2 } from "./r2-storage";
 
 
 const TOKEN_LIMITS = {
@@ -1233,6 +1234,16 @@ export async function registerRoutes(
         }
 
         let content = "";
+        const r2Upload = await uploadBufferToR2({
+          buffer: file.buffer,
+          fileName: original,
+          contentType: file.mimetype,
+          prefix: `documents/${userId}`,
+          metadata: {
+            user_id: userId,
+            source: "knowledge-vault",
+          },
+        });
 
         if (ext === ".pdf") {
           try {
@@ -1279,6 +1290,24 @@ export async function registerRoutes(
           mimeType: file.mimetype,
         });
         const doc = await storage.createDocument({ userId, title, content, ...metadata });
+        if (r2Upload) {
+          try {
+            await storage.upsertDocumentFile({
+              documentId: doc.id,
+              userId,
+              provider: r2Upload.provider,
+              bucket: r2Upload.bucket,
+              objectKey: r2Upload.objectKey,
+              originalFilename: original,
+              mimeType: file.mimetype || null,
+              sizeBytes: file.size,
+              etag: r2Upload.etag,
+              publicUrl: r2Upload.publicUrl,
+            });
+          } catch (r2MetaErr: any) {
+            console.warn("[R2] Failed to persist document file metadata:", r2MetaErr?.message || r2MetaErr);
+          }
+        }
         uploaded.push(toApiDocument(doc));
       }
 
@@ -1333,6 +1362,10 @@ export async function registerRoutes(
     if (!userId) return res.sendStatus(401);
     try {
       const id = Number(req.params.id);
+      const docFile = await storage.getDocumentFile(id, userId);
+      if (docFile?.provider === "r2" && docFile.objectKey) {
+        await deleteR2Object(docFile.objectKey);
+      }
       await storage.deleteDocument(id, userId);
       res.sendStatus(204);
     } catch (err) {
@@ -1345,7 +1378,13 @@ export async function registerRoutes(
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
+      const docFiles = await storage.getDocumentFilesByUser(userId);
       const deleted = await storage.deleteAllDocuments(userId);
+      await Promise.allSettled(
+        docFiles
+          .filter((item) => item.provider === "r2" && !!item.objectKey)
+          .map((item) => deleteR2Object(item.objectKey)),
+      );
       res.json({ deleted });
     } catch (err) {
       console.error("Error deleting all documents:", err);
