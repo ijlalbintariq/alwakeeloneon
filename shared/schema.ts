@@ -47,6 +47,7 @@ export const documentFiles = pgTable("document_files", {
   provider: text("provider").notNull().default("r2"),
   bucket: text("bucket").notNull(),
   objectKey: text("object_key").notNull(),
+  extractedTextKey: text("extracted_text_key"),
   originalFilename: text("original_filename"),
   mimeType: text("mime_type"),
   sizeBytes: integer("size_bytes"),
@@ -220,6 +221,22 @@ export const statuteDocuments = pgTable("statute_documents", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const statuteDocumentFiles = pgTable("statute_document_files", {
+  id: serial("id").primaryKey(),
+  statuteDocumentId: integer("statute_document_id").references(() => statuteDocuments.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  provider: text("provider").notNull().default("r2"),
+  bucket: text("bucket").notNull(),
+  objectKey: text("object_key").notNull(),
+  extractedTextKey: text("extracted_text_key"),
+  originalFilename: text("original_filename"),
+  mimeType: text("mime_type"),
+  sizeBytes: integer("size_bytes"),
+  etag: text("etag"),
+  publicUrl: text("public_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const savedJudgments = pgTable("saved_judgments", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").references(() => users.id).notNull(),
@@ -280,6 +297,22 @@ export const adminKnowledge = pgTable("admin_knowledge", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const adminKnowledgeFiles = pgTable("admin_knowledge_files", {
+  id: serial("id").primaryKey(),
+  adminKnowledgeId: integer("admin_knowledge_id").references(() => adminKnowledge.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  provider: text("provider").notNull().default("r2"),
+  bucket: text("bucket").notNull(),
+  objectKey: text("object_key").notNull(),
+  extractedTextKey: text("extracted_text_key"),
+  originalFilename: text("original_filename"),
+  mimeType: text("mime_type"),
+  sizeBytes: integer("size_bytes"),
+  etag: text("etag"),
+  publicUrl: text("public_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
@@ -298,12 +331,14 @@ export const insertQueryCacheSchema = createInsertSchema(queryCache).omit({ id: 
 export const insertUsageTrackingSchema = createInsertSchema(usageTracking).omit({ id: true, createdAt: true });
 export const insertGithubKnowledgeSchema = createInsertSchema(githubKnowledge).omit({ id: true, syncedAt: true });
 export const insertStatuteDocumentSchema = createInsertSchema(statuteDocuments).omit({ id: true, createdAt: true });
+export const insertStatuteDocumentFileSchema = createInsertSchema(statuteDocumentFiles).omit({ id: true, createdAt: true });
 export const insertSavedJudgmentSchema = createInsertSchema(savedJudgments).omit({ id: true, createdAt: true });
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
 export const insertOrgMemberSchema = createInsertSchema(orgMembers).omit({ id: true, joinedAt: true });
 export const insertOrgInviteSchema = createInsertSchema(orgInvites).omit({ id: true, createdAt: true, status: true });
 export const insertOrgKnowledgeSchema = createInsertSchema(orgKnowledge).omit({ id: true, createdAt: true });
 export const insertAdminKnowledgeSchema = createInsertSchema(adminKnowledge).omit({ id: true, createdAt: true });
+export const insertAdminKnowledgeFileSchema = createInsertSchema(adminKnowledgeFiles).omit({ id: true, createdAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -340,6 +375,8 @@ export type GithubKnowledge = typeof githubKnowledge.$inferSelect;
 export type InsertGithubKnowledge = z.infer<typeof insertGithubKnowledgeSchema>;
 export type StatuteDocument = typeof statuteDocuments.$inferSelect;
 export type InsertStatuteDocument = z.infer<typeof insertStatuteDocumentSchema>;
+export type StatuteDocumentFile = typeof statuteDocumentFiles.$inferSelect;
+export type InsertStatuteDocumentFile = z.infer<typeof insertStatuteDocumentFileSchema>;
 export type SavedJudgment = typeof savedJudgments.$inferSelect;
 export type InsertSavedJudgment = z.infer<typeof insertSavedJudgmentSchema>;
 export type Organization = typeof organizations.$inferSelect;
@@ -352,6 +389,8 @@ export type OrgKnowledge = typeof orgKnowledge.$inferSelect;
 export type InsertOrgKnowledge = z.infer<typeof insertOrgKnowledgeSchema>;
 export type AdminKnowledge = typeof adminKnowledge.$inferSelect;
 export type InsertAdminKnowledge = z.infer<typeof insertAdminKnowledgeSchema>;
+export type AdminKnowledgeFile = typeof adminKnowledgeFiles.$inferSelect;
+export type InsertAdminKnowledgeFile = z.infer<typeof insertAdminKnowledgeFileSchema>;
 
 export const TIER_LIMITS: Record<string, { monthlyQueries: number; label: string; description: string }> = {
   free: { monthlyQueries: 10, label: "Free", description: "10 AI queries/month" },

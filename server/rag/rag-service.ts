@@ -13,6 +13,7 @@ import {
   upsertRagDocument,
   type RagMatch,
 } from "./vector-store";
+import { getR2ObjectText } from "../r2-storage";
 
 export type RAGIndexResult = {
   ragDocumentId: number;
@@ -73,7 +74,20 @@ export async function indexUserDocument(userId: string, sourceDocumentId: number
   }
 
   const raw = doc.content || "";
-  const cleaned = cleanLegalDocumentText(raw);
+  let sourceText = raw;
+  try {
+    const fileMeta = await storage.getDocumentFile(doc.id, userId);
+    if (fileMeta?.extractedTextKey) {
+      const fullText = await getR2ObjectText(fileMeta.extractedTextKey);
+      if (fullText) {
+        sourceText = fullText;
+      }
+    }
+  } catch (err) {
+    console.warn("[RAG] Could not load full extracted text from R2, using inline DB content.");
+  }
+
+  const cleaned = cleanLegalDocumentText(sourceText);
   if (!cleaned) {
     throw new Error("Document has no indexable text content");
   }
