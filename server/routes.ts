@@ -29,7 +29,7 @@ import { citationExtractor } from "./services/citation-extractor";
 import { buildRagContext, deleteDocumentVectors, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
 import { isPdfOcrAvailable, ocrPdfWithTesseract } from "./ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
-import { deleteR2Object, uploadBufferToR2 } from "./r2-storage";
+import { deleteR2Object, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
 
 
 const TOKEN_LIMITS = {
@@ -47,6 +47,12 @@ const COST_PER_1K_TOKENS: Record<string, { input: number; output: number }> = {
   "gemini-3-pro-preview": { input: 0.00125, output: 0.005 },
   "google/gemini-2.0-flash-001": { input: 0.0001, output: 0.0004 },
 };
+
+const INLINE_DB_CONTENT_LIMIT = Math.max(5000, Number(process.env.DB_INLINE_CONTENT_MAX_CHARS || 60000));
+
+function normalizeTextForStorage(text: string): string {
+  return (text || "").replace(/\0/g, "");
+}
 
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
@@ -66,6 +72,121 @@ function toApiDocument(doc: any) {
       ? Number(doc.classificationConfidence) / 100
       : 0,
   };
+}
+
+function compactContentForDb(content: string): { inlineContent: string; wasTruncated: boolean } {
+  const normalized = normalizeTextForStorage(content || "");
+  if (normalized.length <= INLINE_DB_CONTENT_LIMIT) {
+    return { inlineContent: normalized, wasTruncated: false };
+  }
+  const marker = `\n\n[Content truncated for DB storage at ${INLINE_DB_CONTENT_LIMIT.toLocaleString()} characters; full text stored in R2]`;
+  const maxBase = Math.max(0, INLINE_DB_CONTENT_LIMIT - marker.length);
+  return {
+    inlineContent: `${normalized.slice(0, maxBase)}${marker}`,
+    wasTruncated: true,
+  };
+}
+
+async function uploadExtractedTextToR2(args: {
+  text: string;
+  fileName: string;
+  prefix: string;
+  metadata: Record<string, string>;
+}): Promise<string | null> {
+  const text = normalizeTextForStorage(args.text || "");
+  if (!text) return null;
+  const base = (args.fileName || "document").replace(/\.[^.]+$/, "");
+  const fileName = `${base}.extracted.txt`;
+  const r2 = await uploadBufferToR2({
+    buffer: Buffer.from(text, "utf-8"),
+    fileName,
+    contentType: "text/plain; charset=utf-8",
+    prefix: args.prefix,
+    metadata: {
+      ...args.metadata,
+      extracted_text: "true",
+    },
+  });
+  return r2?.objectKey || null;
+}
+
+async function uploadAdminKnowledgeFileToR2(args: {
+  docId: number;
+  userId: string;
+  file: Express.Multer.File;
+  source: string;
+  extractedTextKey?: string | null;
+}) {
+  const r2Upload = await uploadBufferToR2({
+    buffer: args.file.buffer,
+    fileName: args.file.originalname,
+    contentType: args.file.mimetype,
+    prefix: `admin-knowledge/${args.userId}`,
+    metadata: {
+      user_id: args.userId,
+      source: args.source,
+      admin_knowledge_id: String(args.docId),
+    },
+  });
+
+  if (!r2Upload) return;
+
+  try {
+    await storage.upsertAdminKnowledgeFile({
+      adminKnowledgeId: args.docId,
+      userId: args.userId,
+      provider: r2Upload.provider,
+      bucket: r2Upload.bucket,
+      objectKey: r2Upload.objectKey,
+      extractedTextKey: args.extractedTextKey ?? null,
+      originalFilename: args.file.originalname,
+      mimeType: args.file.mimetype || null,
+      sizeBytes: args.file.size,
+      etag: r2Upload.etag,
+      publicUrl: r2Upload.publicUrl,
+    });
+  } catch (r2MetaErr: any) {
+    console.warn("[R2] Failed to persist admin knowledge file metadata:", r2MetaErr?.message || r2MetaErr);
+  }
+}
+
+async function uploadStatuteDocumentFileToR2(args: {
+  docId: number;
+  userId: string;
+  file: Express.Multer.File;
+  extractedTextKey?: string | null;
+}) {
+  const r2Upload = await uploadBufferToR2({
+    buffer: args.file.buffer,
+    fileName: args.file.originalname,
+    contentType: args.file.mimetype,
+    prefix: `admin-statute/${args.userId}`,
+    metadata: {
+      user_id: args.userId,
+      source: "admin-statute",
+      statute_document_id: String(args.docId),
+    },
+  });
+
+  if (!r2Upload) return;
+
+  try {
+    await storage.upsertStatuteDocumentFile({
+      statuteDocumentId: args.docId,
+      userId: args.userId,
+      provider: r2Upload.provider,
+      bucket: r2Upload.bucket,
+      objectKey: r2Upload.objectKey,
+      extractedTextKey: args.extractedTextKey ?? null,
+      originalFilename: args.file.originalname,
+      mimeType: args.file.mimetype || null,
+      sizeBytes: args.file.size,
+      etag: r2Upload.etag,
+      publicUrl: r2Upload.publicUrl,
+    });
+  } catch (r2MetaErr: any) {
+    console.warn("[R2] Failed to persist statute document file metadata:", r2MetaErr?.message || r2MetaErr);
+  }
 }
 
 function buildMessages(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>): Array<{ role: "system" | "user" | "assistant"; content: string }> {
@@ -1289,7 +1410,20 @@ export async function registerRoutes(
           content,
           mimeType: file.mimetype,
         });
-        const doc = await storage.createDocument({ userId, title, content, ...metadata });
+        const compacted = compactContentForDb(content);
+        const extractedTextKey = compacted.wasTruncated
+          ? await uploadExtractedTextToR2({
+            text: content,
+            fileName: original,
+            prefix: `documents-text/${userId}`,
+            metadata: {
+              user_id: userId,
+              source: "knowledge-vault-extracted",
+            },
+          })
+          : null;
+        const dbContent = compacted.wasTruncated && extractedTextKey && !!r2Upload ? compacted.inlineContent : content;
+        const doc = await storage.createDocument({ userId, title, content: dbContent, ...metadata });
         if (r2Upload) {
           try {
             await storage.upsertDocumentFile({
@@ -1298,6 +1432,7 @@ export async function registerRoutes(
               provider: r2Upload.provider,
               bucket: r2Upload.bucket,
               objectKey: r2Upload.objectKey,
+              extractedTextKey,
               originalFilename: original,
               mimeType: file.mimetype || null,
               sizeBytes: file.size,
@@ -1363,8 +1498,9 @@ export async function registerRoutes(
     try {
       const id = Number(req.params.id);
       const docFile = await storage.getDocumentFile(id, userId);
-      if (docFile?.provider === "r2" && docFile.objectKey) {
-        await deleteR2Object(docFile.objectKey);
+      if (docFile?.provider === "r2") {
+        const keys = [docFile.objectKey, docFile.extractedTextKey].filter((k): k is string => !!k);
+        await Promise.allSettled(keys.map((key) => deleteR2Object(key)));
       }
       await storage.deleteDocument(id, userId);
       res.sendStatus(204);
@@ -1382,8 +1518,9 @@ export async function registerRoutes(
       const deleted = await storage.deleteAllDocuments(userId);
       await Promise.allSettled(
         docFiles
-          .filter((item) => item.provider === "r2" && !!item.objectKey)
-          .map((item) => deleteR2Object(item.objectKey)),
+          .filter((item) => item.provider === "r2")
+          .flatMap((item) => [item.objectKey, item.extractedTextKey].filter((k): k is string => !!k))
+          .map((key) => deleteR2Object(key)),
       );
       res.json({ deleted });
     } catch (err) {
@@ -1603,7 +1740,12 @@ RAG POLICY (STRICT):
       if (isNaN(id)) return res.status(400).json({ message: "Invalid document ID" });
       const doc = await storage.getStatuteDocument(id);
       if (!doc) return res.status(404).json({ message: "Document not found" });
-      res.json(doc);
+      const fileMeta = await storage.getStatuteDocumentFile(id);
+      const fullContent = fileMeta?.extractedTextKey ? await getR2ObjectText(fileMeta.extractedTextKey) : null;
+      res.json({
+        ...doc,
+        content: fullContent || doc.content,
+      });
     } catch (err) {
       console.error("Error fetching statute document:", err);
       res.status(500).json({ message: "Failed to fetch statute document" });
@@ -1676,15 +1818,42 @@ RAG POLICY (STRICT):
       } else if (entry.sourceType === "admin") {
         const docs = await storage.getAllAdminKnowledge();
         const doc = docs.find(d => d.id === entry.sourceDocId);
-        if (doc) { title = doc.title; content = doc.content; filename = doc.filename; }
+        if (doc) {
+          title = doc.title;
+          content = doc.content;
+          filename = doc.filename;
+          const fileMeta = await storage.getAdminKnowledgeFile(doc.id);
+          if (fileMeta?.extractedTextKey) {
+            const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
+            if (fullContent) content = fullContent;
+          }
+        }
       } else if (entry.sourceType === "statute") {
         const docs = await storage.getAllStatuteDocuments();
         const doc = docs.find(d => d.id === entry.sourceDocId);
-        if (doc) { title = doc.title; content = doc.content; filename = doc.filename; }
+        if (doc) {
+          title = doc.title;
+          content = doc.content;
+          filename = doc.filename;
+          const fileMeta = await storage.getStatuteDocumentFile(doc.id);
+          if (fileMeta?.extractedTextKey) {
+            const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
+            if (fullContent) content = fullContent;
+          }
+        }
       } else if (entry.sourceType === "user") {
         const docs = await storage.getDocuments(userId);
         const doc = docs.find(d => d.id === entry.sourceDocId);
-        if (doc) { title = doc.title || ""; content = doc.content || ""; filename = doc.title || ""; }
+        if (doc) {
+          title = doc.title || "";
+          content = doc.content || "";
+          filename = doc.title || "";
+          const fileMeta = await storage.getDocumentFile(doc.id, userId);
+          if (fileMeta?.extractedTextKey) {
+            const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
+            if (fullContent) content = fullContent;
+          }
+        }
       }
 
       if (!content) {
@@ -3324,12 +3493,32 @@ RULES:
             ? title
             : file.originalname.replace(/\.[^/.]+$/, "");
 
+          const compacted = compactContentForDb(content);
+          const extractedTextKey = compacted.wasTruncated
+            ? await uploadExtractedTextToR2({
+              text: content,
+              fileName: file.originalname,
+              prefix: `admin-knowledge-text/${userId}`,
+              metadata: {
+                user_id: userId,
+                source: "admin-knowledge-extracted",
+              },
+            })
+            : null;
+          const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : content;
           const doc = await storage.addAdminKnowledge({
             title: docTitle,
             filename: file.originalname,
-            content,
+            content: persistedContent,
             category: category || "general",
             uploadedBy: userId,
+          });
+          await uploadAdminKnowledgeFileToR2({
+            docId: doc.id,
+            userId,
+            file,
+            source: "admin-knowledge",
+            extractedTextKey,
           });
           results.push(doc);
           await logAuditEvent("admin.knowledge.upload", userId, null, {
@@ -3395,6 +3584,11 @@ RULES:
     try {
       const actorUserId = getUserId(req);
       const id = Number(req.params.id);
+      const fileMeta = await storage.getAdminKnowledgeFile(id);
+      if (fileMeta?.provider === "r2") {
+        const keys = [fileMeta.objectKey, fileMeta.extractedTextKey].filter((k): k is string => !!k);
+        await Promise.allSettled(keys.map((key) => deleteR2Object(key)));
+      }
       await storage.deleteAdminKnowledge(id);
       await logAuditEvent("admin.knowledge.delete", actorUserId, null, { id });
       res.sendStatus(204);
@@ -3408,7 +3602,14 @@ RULES:
     if (!(await isAdmin(req, res))) return;
     try {
       const actorUserId = getUserId(req);
+      const fileMetas = await storage.getAdminKnowledgeFiles();
       const count = await storage.deleteAllAdminKnowledge();
+      await Promise.allSettled(
+        fileMetas
+          .filter((item) => item.provider === "r2")
+          .flatMap((item) => [item.objectKey, item.extractedTextKey].filter((k): k is string => !!k))
+          .map((key) => deleteR2Object(key)),
+      );
       await logAuditEvent("admin.knowledge.deleteAll", actorUserId, null, { count });
       res.json({ deleted: count });
     } catch (err) {
@@ -3628,8 +3829,28 @@ RULES:
               let jsonDocId: number | null = null;
               try {
                 const docTitle = file.originalname.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
-                const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: rawJson, category: "case-law", uploadedBy: uid });
+                const compacted = compactContentForDb(rawJson);
+                const extractedTextKey = compacted.wasTruncated
+                  ? await uploadExtractedTextToR2({
+                    text: rawJson,
+                    fileName: file.originalname,
+                    prefix: `admin-knowledge-text/${uid}`,
+                    metadata: {
+                      user_id: uid,
+                      source: "admin-case-law-extracted",
+                    },
+                  })
+                  : null;
+                const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : rawJson;
+                const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: persistedContent, category: "case-law", uploadedBy: uid });
                 jsonDocId = savedDoc.id;
+                await uploadAdminKnowledgeFileToR2({
+                  docId: savedDoc.id,
+                  userId: uid,
+                  file,
+                  source: "admin-case-law-extract",
+                  extractedTextKey,
+                });
                 console.log(`[Case Law Extract] Saved JSON document as admin_knowledge id=${jsonDocId}`);
               } catch (saveErr) {
                 console.error("[Case Law Extract] Failed to save JSON document:", saveErr);
@@ -3678,8 +3899,28 @@ RULES:
               let csvDocId: number | null = null;
               try {
                 const docTitle = file.originalname.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
-                const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: rawCsv, category: "case-law", uploadedBy: uid });
+                const compacted = compactContentForDb(rawCsv);
+                const extractedTextKey = compacted.wasTruncated
+                  ? await uploadExtractedTextToR2({
+                    text: rawCsv,
+                    fileName: file.originalname,
+                    prefix: `admin-knowledge-text/${uid}`,
+                    metadata: {
+                      user_id: uid,
+                      source: "admin-case-law-extracted",
+                    },
+                  })
+                  : null;
+                const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : rawCsv;
+                const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: persistedContent, category: "case-law", uploadedBy: uid });
                 csvDocId = savedDoc.id;
+                await uploadAdminKnowledgeFileToR2({
+                  docId: savedDoc.id,
+                  userId: uid,
+                  file,
+                  source: "admin-case-law-extract",
+                  extractedTextKey,
+                });
                 console.log(`[Case Law Extract] Saved CSV document as admin_knowledge id=${csvDocId}`);
               } catch (saveErr) {
                 console.error("[Case Law Extract] Failed to save CSV document:", saveErr);
@@ -3702,14 +3943,34 @@ RULES:
       let savedFilename = file.originalname;
       try {
         const docTitle = file.originalname.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
+        const compacted = compactContentForDb(content);
+        const extractedTextKey = compacted.wasTruncated
+          ? await uploadExtractedTextToR2({
+            text: content,
+            fileName: file.originalname,
+            prefix: `admin-knowledge-text/${userId}`,
+            metadata: {
+              user_id: userId,
+              source: "admin-case-law-extracted",
+            },
+          })
+          : null;
+        const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : content;
         const savedDoc = await storage.addAdminKnowledge({
           title: docTitle,
           filename: file.originalname,
-          content,
+          content: persistedContent,
           category: "case-law",
           uploadedBy: userId,
         });
         savedDocId = savedDoc.id;
+        await uploadAdminKnowledgeFileToR2({
+          docId: savedDoc.id,
+          userId,
+          file,
+          source: "admin-case-law-extract",
+          extractedTextKey,
+        });
         console.log(`[Case Law Extract] Saved document as admin_knowledge id=${savedDocId}: "${docTitle}"`);
         queueAutoExtraction(content, `admin-knowledge:${file.originalname}`, {
           sourceDocId: savedDocId,
@@ -3827,12 +4088,31 @@ RULES:
 
         const category = (req.body.category as string) || "general";
 
+        const compacted = compactContentForDb(content);
+        const extractedTextKey = compacted.wasTruncated
+          ? await uploadExtractedTextToR2({
+            text: content,
+            fileName: file.originalname,
+            prefix: `admin-statute-text/${userId}`,
+            metadata: {
+              user_id: userId,
+              source: "admin-statute-extracted",
+            },
+          })
+          : null;
+        const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : content;
         const doc = await storage.addStatuteDocument({
           title,
           filename: file.originalname,
-          content,
+          content: persistedContent,
           category,
           uploadedBy: userId,
+        });
+        await uploadStatuteDocumentFileToR2({
+          docId: doc.id,
+          userId,
+          file,
+          extractedTextKey,
         });
         results.push(doc);
         await logAuditEvent("admin.statuteDocs.upload", userId, null, {
@@ -3875,6 +4155,11 @@ RULES:
     try {
       const actorUserId = getUserId(req);
       const id = Number(req.params.id);
+      const fileMeta = await storage.getStatuteDocumentFile(id);
+      if (fileMeta?.provider === "r2") {
+        const keys = [fileMeta.objectKey, fileMeta.extractedTextKey].filter((k): k is string => !!k);
+        await Promise.allSettled(keys.map((key) => deleteR2Object(key)));
+      }
       await storage.deleteStatuteDocument(id);
       await logAuditEvent("admin.statuteDocs.delete", actorUserId, null, { id });
       res.sendStatus(204);
@@ -3888,7 +4173,14 @@ RULES:
     if (!(await isAdmin(req, res))) return;
     try {
       const actorUserId = getUserId(req);
+      const fileMetas = await storage.getStatuteDocumentFiles();
       const count = await storage.deleteAllStatuteDocuments();
+      await Promise.allSettled(
+        fileMetas
+          .filter((item) => item.provider === "r2")
+          .flatMap((item) => [item.objectKey, item.extractedTextKey].filter((k): k is string => !!k))
+          .map((key) => deleteR2Object(key)),
+      );
       await logAuditEvent("admin.statuteDocs.deleteAll", actorUserId, null, { count });
       res.json({ deleted: count });
     } catch (err) {

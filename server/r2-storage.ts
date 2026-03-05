@@ -98,7 +98,7 @@ function buildDates(now: Date) {
 }
 
 async function signedR2Request(args: {
-  method: "PUT" | "DELETE";
+  method: "PUT" | "DELETE" | "GET";
   objectKey: string;
   body?: Buffer;
   contentType?: string;
@@ -116,7 +116,7 @@ async function signedR2Request(args: {
   const canonicalUri = `/${encodeURIComponent(R2_BUCKET)}/${encodedKey}`;
   const requestUrl = `${R2_ENDPOINT}${canonicalUri}`;
 
-  const payload = args.body || Buffer.alloc(0);
+  const payload = args.method === "PUT" ? (args.body || Buffer.alloc(0)) : Buffer.alloc(0);
   const payloadHash = sha256Hex(payload);
   const credentialScope = `${shortDate}/${R2_REGION}/s3/aws4_request`;
 
@@ -223,3 +223,21 @@ export async function deleteR2Object(objectKey: string): Promise<boolean> {
   }
 }
 
+export async function getR2ObjectText(objectKey: string): Promise<string | null> {
+  if (!isR2StorageEnabled() || !objectKey) return null;
+  try {
+    const res = await signedR2Request({
+      method: "GET",
+      objectKey,
+    });
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      const reason = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status} ${res.statusText} ${reason}`.trim());
+    }
+    return await res.text();
+  } catch (err: any) {
+    console.warn("[R2] Failed to fetch object text:", objectKey, err?.message || err);
+    return null;
+  }
+}

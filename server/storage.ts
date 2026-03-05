@@ -1,7 +1,7 @@
 import { db } from "./db";
 import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments, savedJudgments,
-  organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles,
+  organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -15,7 +15,9 @@ import {
   type QueryCache, type InsertQueryCache,
   type UsageTracking,
   type AdminKnowledge, type InsertAdminKnowledge,
+  type AdminKnowledgeFile, type InsertAdminKnowledgeFile,
   type StatuteDocument, type InsertStatuteDocument,
+  type StatuteDocumentFile, type InsertStatuteDocumentFile,
   type SavedJudgment, type InsertSavedJudgment,
   type Organization, type InsertOrganization,
   type OrgMember, type InsertOrgMember,
@@ -111,6 +113,14 @@ export interface IStorage {
   getDocumentFile(documentId: number, userId: string): Promise<DocumentFile | undefined>;
   getDocumentFilesByUser(userId: string): Promise<DocumentFile[]>;
   deleteDocumentFile(documentId: number, userId: string): Promise<void>;
+  upsertAdminKnowledgeFile(entry: InsertAdminKnowledgeFile): Promise<AdminKnowledgeFile>;
+  getAdminKnowledgeFile(adminKnowledgeId: number): Promise<AdminKnowledgeFile | undefined>;
+  getAdminKnowledgeFiles(): Promise<AdminKnowledgeFile[]>;
+  deleteAdminKnowledgeFile(adminKnowledgeId: number): Promise<void>;
+  upsertStatuteDocumentFile(entry: InsertStatuteDocumentFile): Promise<StatuteDocumentFile>;
+  getStatuteDocumentFile(statuteDocumentId: number): Promise<StatuteDocumentFile | undefined>;
+  getStatuteDocumentFiles(): Promise<StatuteDocumentFile[]>;
+  deleteStatuteDocumentFile(statuteDocumentId: number): Promise<void>;
 
   createBookmark(bookmark: InsertBookmark & { userId: string }): Promise<Bookmark>;
   getBookmarks(userId: string): Promise<Bookmark[]>;
@@ -395,6 +405,7 @@ export class DatabaseStorage implements IStorage {
           provider: entry.provider,
           bucket: entry.bucket,
           objectKey: entry.objectKey,
+          extractedTextKey: entry.extractedTextKey ?? null,
           originalFilename: entry.originalFilename ?? null,
           mimeType: entry.mimeType ?? null,
           sizeBytes: entry.sizeBytes ?? null,
@@ -427,6 +438,88 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(documentFiles)
       .where(and(eq(documentFiles.documentId, documentId), eq(documentFiles.userId, userId)));
+  }
+
+  async upsertAdminKnowledgeFile(entry: InsertAdminKnowledgeFile): Promise<AdminKnowledgeFile> {
+    const [record] = await db
+      .insert(adminKnowledgeFiles)
+      .values(entry)
+      .onConflictDoUpdate({
+        target: adminKnowledgeFiles.adminKnowledgeId,
+        set: {
+          userId: entry.userId,
+          provider: entry.provider,
+          bucket: entry.bucket,
+          objectKey: entry.objectKey,
+          extractedTextKey: entry.extractedTextKey ?? null,
+          originalFilename: entry.originalFilename ?? null,
+          mimeType: entry.mimeType ?? null,
+          sizeBytes: entry.sizeBytes ?? null,
+          etag: entry.etag ?? null,
+          publicUrl: entry.publicUrl ?? null,
+          createdAt: new Date(),
+        },
+      })
+      .returning();
+    return record;
+  }
+
+  async getAdminKnowledgeFile(adminKnowledgeId: number): Promise<AdminKnowledgeFile | undefined> {
+    const [record] = await db
+      .select()
+      .from(adminKnowledgeFiles)
+      .where(eq(adminKnowledgeFiles.adminKnowledgeId, adminKnowledgeId))
+      .limit(1);
+    return record;
+  }
+
+  async getAdminKnowledgeFiles(): Promise<AdminKnowledgeFile[]> {
+    return await db.select().from(adminKnowledgeFiles);
+  }
+
+  async deleteAdminKnowledgeFile(adminKnowledgeId: number): Promise<void> {
+    await db.delete(adminKnowledgeFiles).where(eq(adminKnowledgeFiles.adminKnowledgeId, adminKnowledgeId));
+  }
+
+  async upsertStatuteDocumentFile(entry: InsertStatuteDocumentFile): Promise<StatuteDocumentFile> {
+    const [record] = await db
+      .insert(statuteDocumentFiles)
+      .values(entry)
+      .onConflictDoUpdate({
+        target: statuteDocumentFiles.statuteDocumentId,
+        set: {
+          userId: entry.userId,
+          provider: entry.provider,
+          bucket: entry.bucket,
+          objectKey: entry.objectKey,
+          extractedTextKey: entry.extractedTextKey ?? null,
+          originalFilename: entry.originalFilename ?? null,
+          mimeType: entry.mimeType ?? null,
+          sizeBytes: entry.sizeBytes ?? null,
+          etag: entry.etag ?? null,
+          publicUrl: entry.publicUrl ?? null,
+          createdAt: new Date(),
+        },
+      })
+      .returning();
+    return record;
+  }
+
+  async getStatuteDocumentFile(statuteDocumentId: number): Promise<StatuteDocumentFile | undefined> {
+    const [record] = await db
+      .select()
+      .from(statuteDocumentFiles)
+      .where(eq(statuteDocumentFiles.statuteDocumentId, statuteDocumentId))
+      .limit(1);
+    return record;
+  }
+
+  async getStatuteDocumentFiles(): Promise<StatuteDocumentFile[]> {
+    return await db.select().from(statuteDocumentFiles);
+  }
+
+  async deleteStatuteDocumentFile(statuteDocumentId: number): Promise<void> {
+    await db.delete(statuteDocumentFiles).where(eq(statuteDocumentFiles.statuteDocumentId, statuteDocumentId));
   }
 
   async createBookmark(insertBookmark: InsertBookmark & { userId: string }): Promise<Bookmark> {
@@ -1261,6 +1354,47 @@ export async function ensureSearchIndexes(): Promise<void> {
           provider text NOT NULL DEFAULT 'r2',
           bucket text NOT NULL,
           object_key text NOT NULL,
+          extracted_text_key text,
+          original_filename text,
+          mime_type text,
+          size_bytes integer,
+          etag text,
+          public_url text,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "admin_knowledge_files_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS admin_knowledge_files (
+          id serial PRIMARY KEY,
+          admin_knowledge_id integer NOT NULL REFERENCES admin_knowledge(id) ON DELETE CASCADE,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          provider text NOT NULL DEFAULT 'r2',
+          bucket text NOT NULL,
+          object_key text NOT NULL,
+          extracted_text_key text,
+          original_filename text,
+          mime_type text,
+          size_bytes integer,
+          etag text,
+          public_url text,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "statute_document_files_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS statute_document_files (
+          id serial PRIMARY KEY,
+          statute_document_id integer NOT NULL REFERENCES statute_documents(id) ON DELETE CASCADE,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          provider text NOT NULL DEFAULT 'r2',
+          bucket text NOT NULL,
+          object_key text NOT NULL,
+          extracted_text_key text,
           original_filename text,
           mime_type text,
           size_bytes integer,
@@ -1296,6 +1430,13 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_unresolved_citations_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_unresolved_citations_status ON unresolved_citations (status)` },
     { label: "idx_document_files_document_id", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_document_files_document_id ON document_files (document_id)` },
     { label: "idx_document_files_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_document_files_user_id ON document_files (user_id)` },
+    { label: "alter_document_files_extracted_text_key", stmt: sql`ALTER TABLE document_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
+    { label: "alter_admin_knowledge_files_extracted_text_key", stmt: sql`ALTER TABLE admin_knowledge_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
+    { label: "alter_statute_document_files_extracted_text_key", stmt: sql`ALTER TABLE statute_document_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
+    { label: "idx_admin_knowledge_files_doc_id", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_knowledge_files_doc_id ON admin_knowledge_files (admin_knowledge_id)` },
+    { label: "idx_admin_knowledge_files_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_admin_knowledge_files_user_id ON admin_knowledge_files (user_id)` },
+    { label: "idx_statute_document_files_doc_id", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_statute_document_files_doc_id ON statute_document_files (statute_document_id)` },
+    { label: "idx_statute_document_files_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statute_document_files_user_id ON statute_document_files (user_id)` },
   ];
 
   for (const { label, stmt } of indexStatements) {
