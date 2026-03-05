@@ -3244,7 +3244,7 @@ RULES:
     }
   });
 
-  app.post("/api/admin/knowledge", upload.array("files", 1000), async (req, res) => {
+  app.post("/api/admin/knowledge", upload.array("files", 2000), async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const userId = getUserId(req)!;
