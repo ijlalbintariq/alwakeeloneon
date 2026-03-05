@@ -258,12 +258,42 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(port, "0.0.0.0", () => {
-    log(`serving on port ${port}`);
-  });
+  // Serve API + client on the configured port. In local/dev, gracefully
+  // fall back if 5000 is already occupied by another process.
+  const preferredPort = parseInt(process.env.PORT || "5000", 10);
+  const fallbackPort = parseInt(process.env.DEV_PORT_FALLBACK || "5001", 10);
+  const host = "0.0.0.0";
+  const allowPortFallback = process.env.NODE_ENV !== "production";
+  let reportedListening = false;
+
+  const startServer = (port: number) => {
+    httpServer.once("error", (err: any) => {
+      if (
+        allowPortFallback &&
+        err?.code === "EADDRINUSE" &&
+        port === preferredPort &&
+        fallbackPort !== preferredPort
+      ) {
+        console.warn(`[Startup] Port ${preferredPort} is busy. Retrying on ${fallbackPort}.`);
+        startServer(fallbackPort);
+        return;
+      }
+
+      console.error("[Startup] Failed to bind HTTP server:", err);
+      process.exit(1);
+    });
+
+    httpServer.listen(port, host, () => {
+      if (reportedListening) return;
+      reportedListening = true;
+      const addr = httpServer.address();
+      const boundPort = typeof addr === "object" && addr ? addr.port : port;
+      log(`serving on port ${boundPort}`);
+      if (boundPort !== preferredPort) {
+        log(`PORT fallback active. Set PORT=${boundPort} to make this explicit.`, "startup");
+      }
+    });
+  };
+
+  startServer(preferredPort);
 })();
