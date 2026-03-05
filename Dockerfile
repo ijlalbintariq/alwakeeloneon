@@ -1,5 +1,6 @@
 FROM node:20-alpine
 WORKDIR /app
+RUN apk add --no-cache tesseract-ocr poppler-utils
 COPY package*.json ./
 RUN npm ci
 COPY . .
