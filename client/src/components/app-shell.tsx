@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
   History, FileBadge, Sparkles, Database, LogOut,
-  User as UserIcon, Shield, Settings, Building2, Monitor, Moon, SunMedium, Link2
+  User as UserIcon, Shield, Settings, Building2, Link2
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -20,7 +20,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/hooks/use-theme";
 
 const NAVIGATION_ITEMS = [
   { id: "dashboard", label: "Chambers Dashboard", icon: LayoutDashboard, href: "/dashboard" },
@@ -158,7 +157,6 @@ function AppSidebar() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [location] = useLocation();
-  const { theme, setTheme } = useTheme();
   const isWideChatLayout =
     location === "/al-wakeelo" ||
     location === "/legal-drafting" ||
@@ -187,32 +185,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}>
             <SidebarTrigger data-testid="button-sidebar-toggle" className="text-slate-400 hover:text-white" />
             <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-1 rounded-lg border border-[hsl(var(--preview-border))] bg-[#0f172a]/50 p-1">
-                <button
-                  onClick={() => setTheme("light")}
-                  className={cn("p-1.5 rounded-md transition-colors", theme === "light" ? "bg-white/20 text-white" : "text-slate-400 hover:text-white")}
-                  title="Light"
-                  data-testid="button-theme-light"
-                >
-                  <SunMedium size={14} />
-                </button>
-                <button
-                  onClick={() => setTheme("dark")}
-                  className={cn("p-1.5 rounded-md transition-colors", theme === "dark" ? "bg-white/20 text-white" : "text-slate-400 hover:text-white")}
-                  title="Dark"
-                  data-testid="button-theme-dark"
-                >
-                  <Moon size={14} />
-                </button>
-                <button
-                  onClick={() => setTheme("system")}
-                  className={cn("p-1.5 rounded-md transition-colors", theme === "system" ? "bg-white/20 text-white" : "text-slate-400 hover:text-white")}
-                  title="System"
-                  data-testid="button-theme-system"
-                >
-                  <Monitor size={14} />
-                </button>
-              </div>
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-black uppercase text-white tracking-widest" data-testid="text-username">
                   {user?.firstName || user?.email || "Advocate"}
