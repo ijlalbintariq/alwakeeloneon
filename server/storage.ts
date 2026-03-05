@@ -1,10 +1,11 @@
 import { db } from "./db";
 import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments, savedJudgments,
-  organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations,
+  organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
+  type DocumentFile, type InsertDocumentFile,
   type Bookmark, type InsertBookmark,
   type SearchHistory, type InsertSearchHistory,
   type Statute,
@@ -106,6 +107,10 @@ export interface IStorage {
   backfillDocumentMetadata(userId: string, updates: DocumentMetadataUpdate[]): Promise<number>;
   deleteDocument(id: number, userId: string): Promise<void>;
   deleteAllDocuments(userId: string): Promise<number>;
+  upsertDocumentFile(entry: InsertDocumentFile): Promise<DocumentFile>;
+  getDocumentFile(documentId: number, userId: string): Promise<DocumentFile | undefined>;
+  getDocumentFilesByUser(userId: string): Promise<DocumentFile[]>;
+  deleteDocumentFile(documentId: number, userId: string): Promise<void>;
 
   createBookmark(bookmark: InsertBookmark & { userId: string }): Promise<Bookmark>;
   getBookmarks(userId: string): Promise<Bookmark[]>;
@@ -377,6 +382,51 @@ export class DatabaseStorage implements IStorage {
     if (all.length === 0) return 0;
     await db.delete(documents).where(eq(documents.userId, userId));
     return all.length;
+  }
+
+  async upsertDocumentFile(entry: InsertDocumentFile): Promise<DocumentFile> {
+    const [record] = await db
+      .insert(documentFiles)
+      .values(entry)
+      .onConflictDoUpdate({
+        target: documentFiles.documentId,
+        set: {
+          userId: entry.userId,
+          provider: entry.provider,
+          bucket: entry.bucket,
+          objectKey: entry.objectKey,
+          originalFilename: entry.originalFilename ?? null,
+          mimeType: entry.mimeType ?? null,
+          sizeBytes: entry.sizeBytes ?? null,
+          etag: entry.etag ?? null,
+          publicUrl: entry.publicUrl ?? null,
+          createdAt: new Date(),
+        },
+      })
+      .returning();
+    return record;
+  }
+
+  async getDocumentFile(documentId: number, userId: string): Promise<DocumentFile | undefined> {
+    const [record] = await db
+      .select()
+      .from(documentFiles)
+      .where(and(eq(documentFiles.documentId, documentId), eq(documentFiles.userId, userId)))
+      .limit(1);
+    return record;
+  }
+
+  async getDocumentFilesByUser(userId: string): Promise<DocumentFile[]> {
+    return await db
+      .select()
+      .from(documentFiles)
+      .where(eq(documentFiles.userId, userId));
+  }
+
+  async deleteDocumentFile(documentId: number, userId: string): Promise<void> {
+    await db
+      .delete(documentFiles)
+      .where(and(eq(documentFiles.documentId, documentId), eq(documentFiles.userId, userId)));
   }
 
   async createBookmark(insertBookmark: InsertBookmark & { userId: string }): Promise<Bookmark> {
@@ -1201,6 +1251,25 @@ export async function ensureSearchIndexes(): Promise<void> {
   const indexStatements = [
     { label: "pgcrypto_extension", stmt: sql`CREATE EXTENSION IF NOT EXISTS pgcrypto` },
     { label: "pg_trgm_extension", stmt: sql`CREATE EXTENSION IF NOT EXISTS pg_trgm` },
+    {
+      label: "document_files_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS document_files (
+          id serial PRIMARY KEY,
+          document_id integer NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          provider text NOT NULL DEFAULT 'r2',
+          bucket text NOT NULL,
+          object_key text NOT NULL,
+          original_filename text,
+          mime_type text,
+          size_bytes integer,
+          etag text,
+          public_url text,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
     { label: "idx_threads_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads (user_id)` },
     { label: "idx_messages_thread_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages (thread_id)` },
     { label: "idx_documents_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents (user_id)` },
@@ -1225,6 +1294,8 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_citation_links_source", stmt: sql`CREATE INDEX IF NOT EXISTS idx_citation_links_source ON citation_links (source_judgment_id)` },
     { label: "idx_citation_links_target", stmt: sql`CREATE INDEX IF NOT EXISTS idx_citation_links_target ON citation_links (target_judgment_id)` },
     { label: "idx_unresolved_citations_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_unresolved_citations_status ON unresolved_citations (status)` },
+    { label: "idx_document_files_document_id", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_document_files_document_id ON document_files (document_id)` },
+    { label: "idx_document_files_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_document_files_user_id ON document_files (user_id)` },
   ];
 
   for (const { label, stmt } of indexStatements) {

@@ -40,6 +40,21 @@ export const documents = pgTable("documents", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const documentFiles = pgTable("document_files", {
+  id: serial("id").primaryKey(),
+  documentId: integer("document_id").references(() => documents.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  provider: text("provider").notNull().default("r2"),
+  bucket: text("bucket").notNull(),
+  objectKey: text("object_key").notNull(),
+  originalFilename: text("original_filename"),
+  mimeType: text("mime_type"),
+  sizeBytes: integer("size_bytes"),
+  etag: text("etag"),
+  publicUrl: text("public_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const bookmarks = pgTable("bookmarks", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").references(() => users.id).notNull(),
@@ -269,6 +284,7 @@ export const adminKnowledge = pgTable("admin_knowledge", {
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, summary: true, userId: true });
+export const insertDocumentFileSchema = createInsertSchema(documentFiles).omit({ id: true, createdAt: true });
 export const insertBookmarkSchema = createInsertSchema(bookmarks).omit({ id: true, createdAt: true });
 export const insertSearchHistorySchema = createInsertSchema(searchHistory).omit({ id: true, createdAt: true });
 export const insertStatuteSchema = createInsertSchema(statutes).omit({ id: true });
@@ -296,6 +312,8 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Document = typeof documents.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type DocumentFile = typeof documentFiles.$inferSelect;
+export type InsertDocumentFile = z.infer<typeof insertDocumentFileSchema>;
 export type Bookmark = typeof bookmarks.$inferSelect;
 export type InsertBookmark = z.infer<typeof insertBookmarkSchema>;
 export type SearchHistory = typeof searchHistory.$inferSelect;
