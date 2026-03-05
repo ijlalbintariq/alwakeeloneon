@@ -133,11 +133,21 @@ export async function upsertRagDocument(args: {
 export async function replaceDocumentChunks(ragDocumentId: number, entries: RagChunkInsert[]): Promise<number> {
   assertDb();
 
+  await resetDocumentChunks(ragDocumentId);
+  const inserted = await insertDocumentChunkBatch(entries);
+  await markRagDocumentIndexed(ragDocumentId, inserted);
+  return inserted;
+}
+
+export async function resetDocumentChunks(ragDocumentId: number): Promise<void> {
+  assertDb();
   await pool.query("DELETE FROM rag_chunks WHERE rag_document_id = $1", [ragDocumentId]);
-  if (entries.length === 0) {
-    await pool.query("UPDATE rag_documents SET chunk_count = 0, status = 'indexed', updated_at = now() WHERE id = $1", [ragDocumentId]);
-    return 0;
-  }
+  await pool.query("UPDATE rag_documents SET chunk_count = 0, status = 'pending', updated_at = now() WHERE id = $1", [ragDocumentId]);
+}
+
+export async function insertDocumentChunkBatch(entries: RagChunkInsert[]): Promise<number> {
+  assertDb();
+  if (entries.length === 0) return 0;
 
   for (const chunk of entries) {
     await pool.query(
@@ -158,8 +168,12 @@ export async function replaceDocumentChunks(ragDocumentId: number, entries: RagC
     );
   }
 
-  await pool.query("UPDATE rag_documents SET chunk_count = $2, status = 'indexed', updated_at = now() WHERE id = $1", [ragDocumentId, entries.length]);
   return entries.length;
+}
+
+export async function markRagDocumentIndexed(ragDocumentId: number, chunkCount: number): Promise<void> {
+  assertDb();
+  await pool.query("UPDATE rag_documents SET chunk_count = $2, status = 'indexed', updated_at = now() WHERE id = $1", [ragDocumentId, chunkCount]);
 }
 
 export async function similaritySearch(args: {
