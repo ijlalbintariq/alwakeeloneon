@@ -237,15 +237,6 @@ function ensureAlWakeeloReferencesBlock(content: string): string {
 }
 
 const REFERENCES_BLOCK_REGEX = /```references\s*([\s\S]*?)```/i;
-const LEGAL_DISCLAIMER =
-  "Disclaimer: This AI output is for informational purposes only and is not a substitute for advice from a licensed Pakistani advocate.";
-
-function ensureLegalDisclaimer(content: string): string {
-  if (/not\s+a?\s*substitute\s+for\s+advice\s+from\s+a\s+licensed/i.test(content)) {
-    return content;
-  }
-  return `${LEGAL_DISCLAIMER}\n\n${content.trim()}`;
-}
 
 function isDirectModePrompt(text: string): boolean {
   const normalized = (text || "").trim().toLowerCase();
@@ -362,7 +353,7 @@ async function verifyReferencesBlock(content: string): Promise<string> {
 async function applyAlWakeeloSafetyGuardrails(content: string): Promise<string> {
   const withRefs = ensureAlWakeeloReferencesBlock(content);
   const verifiedRefs = await verifyReferencesBlock(withRefs);
-  return ensureLegalDisclaimer(verifiedRefs);
+  return verifiedRefs;
 }
 
 function startsWithBytes(buffer: Buffer, signature: number[]): boolean {
@@ -4137,7 +4128,7 @@ Instructions:
 
       const result = await callStandardAI(systemPrompt, chatHistory, 4096, { timeoutProfile: "analysis", temperature: 0.3 });
 
-      const aiResponse = ensureLegalDisclaimer(result.text);
+      const aiResponse = result.text;
       const inputText = systemPrompt + messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat", result.model, inputText, aiResponse);
 
