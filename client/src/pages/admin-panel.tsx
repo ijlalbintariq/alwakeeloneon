@@ -1591,19 +1591,16 @@ function StatuteDocumentsSection() {
     }
 
     setIsUploading(true);
-    const BATCH_SIZE = 25;
     const totalFiles = selectedFiles.length;
     let totalUploaded = 0;
     let totalErrors = 0;
     setUploadProgress({ current: 0, total: totalFiles, uploaded: 0, errors: 0 });
 
     try {
-      for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
-        const batch = selectedFiles.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < totalFiles; i += 1) {
+        const file = selectedFiles[i];
         const formData = new FormData();
-        for (const file of batch) {
-          formData.append("files", file);
-        }
+        formData.append("files", file);
 
         try {
           const res = await fetch("/api/admin/statute-documents", {
@@ -1613,18 +1610,21 @@ function StatuteDocumentsSection() {
           });
 
           if (!res.ok) {
-            totalErrors += batch.length;
-            setUploadProgress({ current: i + batch.length, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
+            totalErrors += 1;
+            setUploadProgress({ current: i + 1, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
             continue;
           }
 
           const data = await res.json();
-          totalUploaded += Number(data?.count || 0);
-          totalErrors += Number(data?.failed || 0);
-          setUploadProgress({ current: i + batch.length, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
+          const failed = Number(data?.failed || 0);
+          const reportedCount = Number(data?.count);
+          const uploaded = Number.isFinite(reportedCount) ? reportedCount : Math.max(0, 1 - failed);
+          totalUploaded += uploaded;
+          totalErrors += failed;
+          setUploadProgress({ current: i + 1, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
         } catch {
-          totalErrors += batch.length;
-          setUploadProgress({ current: i + batch.length, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
+          totalErrors += 1;
+          setUploadProgress({ current: i + 1, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
         }
       }
 
