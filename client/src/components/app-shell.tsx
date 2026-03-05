@@ -78,14 +78,14 @@ function AppSidebar() {
                       isActive={isActive}
                       data-testid={`nav-${item.id}`}
                       className={cn(
-                        "rounded-xl py-3 border border-transparent bg-transparent transition-all",
+                        "nav-glow-button rounded-xl py-3 border border-transparent bg-transparent transition-all",
                         "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
                         isActive && "bg-gradient-to-r from-amber-300 to-amber-500 text-slate-950 font-black border-amber-300/40 shadow-[0_16px_30px_-24px_rgba(251,191,36,0.8)] data-[active=true]:bg-gradient-to-r data-[active=true]:from-amber-300 data-[active=true]:to-amber-500 data-[active=true]:text-slate-950"
                       )}
                     >
                       <Link href={item.href}>
                         <Icon size={17} className={isActive ? "text-slate-900" : "text-slate-400"} />
-                        <span className="nav-label text-[10px] uppercase tracking-[0.14em]">{item.label}</span>
+                        <span className="nav-label text-[10px] font-black uppercase tracking-[0.14em]">{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -109,14 +109,14 @@ function AppSidebar() {
                 isActive={location === "/admin"}
                 data-testid="nav-admin"
                 className={cn(
-                  "rounded-xl py-3 border border-transparent transition-all",
+                  "nav-glow-button rounded-xl py-3 border border-transparent transition-all",
                   "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
                   location === "/admin" && "bg-gradient-to-r from-amber-300 to-amber-500 text-slate-950 font-black border-amber-300/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-amber-300 data-[active=true]:to-amber-500 data-[active=true]:text-slate-950"
                 )}
               >
                 <Link href="/admin">
                   <Shield size={17} className={location === "/admin" ? "text-slate-900" : "text-slate-400"} />
-                  <span className="nav-label text-[10px] uppercase tracking-[0.14em]">Admin Panel</span>
+                  <span className="nav-label text-[10px] font-black uppercase tracking-[0.14em]">Admin Panel</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -127,14 +127,14 @@ function AppSidebar() {
               isActive={location === "/settings"}
               data-testid="nav-settings"
               className={cn(
-                "rounded-xl py-3 border border-transparent transition-all",
+                "nav-glow-button rounded-xl py-3 border border-transparent transition-all",
                 "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
                 location === "/settings" && "bg-gradient-to-r from-amber-300 to-amber-500 text-slate-950 font-black border-amber-300/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-amber-300 data-[active=true]:to-amber-500 data-[active=true]:text-slate-950"
               )}
             >
               <Link href="/settings">
                 <Settings size={17} className={location === "/settings" ? "text-slate-900" : "text-slate-400"} />
-                <span className="nav-label text-[10px] uppercase tracking-[0.14em]">Settings</span>
+                <span className="nav-label text-[10px] font-black uppercase tracking-[0.14em]">Settings</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -142,7 +142,7 @@ function AppSidebar() {
             <SidebarMenuButton
               onClick={() => logout()}
               data-testid="button-logout"
-              className="rounded-xl border border-transparent py-3 text-slate-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all"
+              className="nav-glow-button rounded-xl border border-transparent py-3 text-slate-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all"
             >
               <LogOut size={17} />
               <span className="nav-label text-[10px] font-black uppercase tracking-[0.14em]">Exit Vault</span>
