@@ -54,6 +54,13 @@ function normalizeTextForStorage(text: string): string {
   return (text || "").replace(/\0/g, "");
 }
 
+function cloneUploadFile(file: Express.Multer.File): Express.Multer.File {
+  return {
+    ...file,
+    buffer: Buffer.from(file.buffer),
+  };
+}
+
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
@@ -113,14 +120,17 @@ async function uploadExtractedTextToR2(args: {
 async function uploadAdminKnowledgeFileToR2(args: {
   docId: number;
   userId: string;
-  file: Express.Multer.File;
+  buffer: Buffer;
+  fileName: string;
+  mimeType?: string;
+  sizeBytes?: number;
   source: string;
   extractedTextKey?: string | null;
 }) {
   const r2Upload = await uploadBufferToR2({
-    buffer: args.file.buffer,
-    fileName: args.file.originalname,
-    contentType: args.file.mimetype,
+    buffer: args.buffer,
+    fileName: args.fileName,
+    contentType: args.mimeType,
     prefix: `admin-knowledge/${args.userId}`,
     metadata: {
       user_id: args.userId,
@@ -139,9 +149,9 @@ async function uploadAdminKnowledgeFileToR2(args: {
       bucket: r2Upload.bucket,
       objectKey: r2Upload.objectKey,
       extractedTextKey: args.extractedTextKey ?? null,
-      originalFilename: args.file.originalname,
-      mimeType: args.file.mimetype || null,
-      sizeBytes: args.file.size,
+      originalFilename: args.fileName,
+      mimeType: args.mimeType || null,
+      sizeBytes: args.sizeBytes ?? null,
       etag: r2Upload.etag,
       publicUrl: r2Upload.publicUrl,
     });
@@ -153,13 +163,16 @@ async function uploadAdminKnowledgeFileToR2(args: {
 async function uploadStatuteDocumentFileToR2(args: {
   docId: number;
   userId: string;
-  file: Express.Multer.File;
+  buffer: Buffer;
+  fileName: string;
+  mimeType?: string;
+  sizeBytes?: number;
   extractedTextKey?: string | null;
 }) {
   const r2Upload = await uploadBufferToR2({
-    buffer: args.file.buffer,
-    fileName: args.file.originalname,
-    contentType: args.file.mimetype,
+    buffer: args.buffer,
+    fileName: args.fileName,
+    contentType: args.mimeType,
     prefix: `admin-statute/${args.userId}`,
     metadata: {
       user_id: args.userId,
@@ -178,9 +191,9 @@ async function uploadStatuteDocumentFileToR2(args: {
       bucket: r2Upload.bucket,
       objectKey: r2Upload.objectKey,
       extractedTextKey: args.extractedTextKey ?? null,
-      originalFilename: args.file.originalname,
-      mimeType: args.file.mimetype || null,
-      sizeBytes: args.file.size,
+      originalFilename: args.fileName,
+      mimeType: args.mimeType || null,
+      sizeBytes: args.sizeBytes ?? null,
       etag: r2Upload.etag,
       publicUrl: r2Upload.publicUrl,
     });
@@ -1324,6 +1337,7 @@ export async function registerRoutes(
       const errors: string[] = [];
 
       for (const file of files) {
+        const stableFile = cloneUploadFile(file);
         const original = file.originalname || "uploaded-document.txt";
         const ext = original.includes(".")
           ? original.substring(original.lastIndexOf(".")).toLowerCase()
@@ -1356,7 +1370,7 @@ export async function registerRoutes(
 
         let content = "";
         const r2Upload = await uploadBufferToR2({
-          buffer: file.buffer,
+          buffer: stableFile.buffer,
           fileName: original,
           contentType: file.mimetype,
           prefix: `documents/${userId}`,
@@ -1368,7 +1382,7 @@ export async function registerRoutes(
 
         if (ext === ".pdf") {
           try {
-            const uint8 = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength);
+            const uint8 = new Uint8Array(stableFile.buffer.buffer, stableFile.buffer.byteOffset, stableFile.buffer.byteLength);
             const parsed = await extractText(uint8, { mergePages: true });
             content = stripNullBytes((parsed.text || "").trim());
           } catch (pdfErr: any) {
@@ -1376,7 +1390,7 @@ export async function registerRoutes(
             content = "";
           }
           if (!content) {
-            content = await extractPdfTextWithOcrFallback(file, "documents-upload");
+            content = await extractPdfTextWithOcrFallback(stableFile, "documents-upload");
           }
           if (!content) {
             errors.push(`${original}: could not extract text (file may be scanned/image PDF)`);
@@ -1384,7 +1398,7 @@ export async function registerRoutes(
           }
         } else if (ext === ".doc" || ext === ".docx") {
           try {
-            const result = await mammoth.extractRawText({ buffer: file.buffer });
+            const result = await mammoth.extractRawText({ buffer: stableFile.buffer });
             content = stripNullBytes((result.value || "").trim());
           } catch (docErr: any) {
             console.error(`[Documents Upload] DOCX parse error for ${original}:`, docErr?.message || docErr);
@@ -1395,7 +1409,7 @@ export async function registerRoutes(
             continue;
           }
         } else {
-          content = stripNullBytes(file.buffer.toString("utf-8").trim());
+          content = stripNullBytes(stableFile.buffer.toString("utf-8").trim());
           if (!content) {
             errors.push(`${original}: document is empty`);
             continue;
@@ -3430,6 +3444,7 @@ RULES:
 
       if (files && files.length > 0) {
         for (const file of files) {
+          const stableFile = cloneUploadFile(file);
           const ext = file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase();
           if (!allowedExts.includes(ext)) {
             errors.push(`${file.originalname}: unsupported format (use .txt, .json, .csv, .pdf, or .docx)`);
@@ -3457,7 +3472,7 @@ RULES:
           let content = "";
           if (ext === ".pdf") {
             try {
-              const uint8 = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength);
+              const uint8 = new Uint8Array(stableFile.buffer.buffer, stableFile.buffer.byteOffset, stableFile.buffer.byteLength);
               const pdfResult = await extractText(uint8, { mergePages: true });
               content = stripNullBytes((pdfResult.text || "").trim());
               console.log(`[Knowledge Upload] Extracted ${content.length} chars from ${file.originalname}`);
@@ -3466,7 +3481,7 @@ RULES:
               content = "";
             }
             if (!content) {
-              content = await extractPdfTextWithOcrFallback(file, "admin-knowledge-upload");
+              content = await extractPdfTextWithOcrFallback(stableFile, "admin-knowledge-upload");
             }
             if (!content) {
               errors.push(`${file.originalname}: could not extract text (may be scanned/image PDF)`);
@@ -3474,7 +3489,7 @@ RULES:
             }
           } else if (ext === ".doc" || ext === ".docx") {
             try {
-              const result = await mammoth.extractRawText({ buffer: file.buffer });
+              const result = await mammoth.extractRawText({ buffer: stableFile.buffer });
               content = stripNullBytes((result.value || "").trim());
               console.log(`[Knowledge Upload] Extracted ${content.length} chars from ${file.originalname}`);
             } catch (docErr: any) {
@@ -3486,7 +3501,7 @@ RULES:
               continue;
             }
           } else {
-            content = stripNullBytes(file.buffer.toString("utf-8"));
+            content = stripNullBytes(stableFile.buffer.toString("utf-8"));
           }
 
           const docTitle = title && files.length === 1
@@ -3516,7 +3531,10 @@ RULES:
           await uploadAdminKnowledgeFileToR2({
             docId: doc.id,
             userId,
-            file,
+            buffer: stableFile.buffer,
+            fileName: file.originalname,
+            mimeType: file.mimetype,
+            sizeBytes: file.size,
             source: "admin-knowledge",
             extractedTextKey,
           });
@@ -3756,6 +3774,7 @@ RULES:
       if (!file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
+      const stableFile = cloneUploadFile(file);
 
       const ext = file.originalname.split(".").pop()?.toLowerCase();
       const extWithDot = ext ? `.${ext}` : "";
@@ -3783,7 +3802,7 @@ RULES:
 
       if (ext === "pdf") {
         try {
-          const uint8 = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength);
+          const uint8 = new Uint8Array(stableFile.buffer.buffer, stableFile.buffer.byteOffset, stableFile.buffer.byteLength);
           const pdfResult = await extractText(uint8, { mergePages: true });
           content = stripNullBytes((pdfResult.text || "").trim());
         } catch (pdfErr: any) {
@@ -3791,14 +3810,14 @@ RULES:
           content = "";
         }
         if (!content) {
-          content = await extractPdfTextWithOcrFallback(file, "admin-case-law-extract");
+          content = await extractPdfTextWithOcrFallback(stableFile, "admin-case-law-extract");
         }
         if (!content) {
           return res.status(400).json({ message: "Failed to extract text from PDF file. Upload searchable PDF or enable OCR dependencies." });
         }
       } else if (ext === "doc" || ext === "docx") {
         try {
-          const result = await mammoth.extractRawText({ buffer: file.buffer });
+          const result = await mammoth.extractRawText({ buffer: stableFile.buffer });
           content = stripNullBytes((result.value || "").trim());
         } catch (docErr: any) {
           console.error("[Case Law Extract] Word doc parse error:", docErr?.message);
@@ -3808,9 +3827,9 @@ RULES:
           return res.status(400).json({ message: "Could not extract text from Word document." });
         }
       } else if (ext === "txt" || ext === "text") {
-        content = stripNullBytes(file.buffer.toString("utf-8").trim());
+        content = stripNullBytes(stableFile.buffer.toString("utf-8").trim());
       } else if (ext === "json") {
-        const rawJson = file.buffer.toString("utf-8").trim();
+        const rawJson = stableFile.buffer.toString("utf-8").trim();
         try {
           const parsed = JSON.parse(rawJson);
           const entries = Array.isArray(parsed) ? parsed : (parsed.cases || parsed.entries || parsed.data || parsed.judgments || parsed.results || [parsed]);
@@ -3847,7 +3866,10 @@ RULES:
                 await uploadAdminKnowledgeFileToR2({
                   docId: savedDoc.id,
                   userId: uid,
-                  file,
+                  buffer: stableFile.buffer,
+                  fileName: file.originalname,
+                  mimeType: file.mimetype,
+                  sizeBytes: file.size,
                   source: "admin-case-law-extract",
                   extractedTextKey,
                 });
@@ -3870,7 +3892,7 @@ RULES:
           content = stripNullBytes(rawJson);
         }
       } else if (ext === "csv") {
-        const rawCsv = file.buffer.toString("utf-8").trim();
+        const rawCsv = stableFile.buffer.toString("utf-8").trim();
         const lines = rawCsv.split(/\r?\n/);
         if (lines.length > 1) {
           const header = lines[0].toLowerCase();
@@ -3917,7 +3939,10 @@ RULES:
                 await uploadAdminKnowledgeFileToR2({
                   docId: savedDoc.id,
                   userId: uid,
-                  file,
+                  buffer: stableFile.buffer,
+                  fileName: file.originalname,
+                  mimeType: file.mimetype,
+                  sizeBytes: file.size,
                   source: "admin-case-law-extract",
                   extractedTextKey,
                 });
@@ -3967,7 +3992,10 @@ RULES:
         await uploadAdminKnowledgeFileToR2({
           docId: savedDoc.id,
           userId,
-          file,
+          buffer: stableFile.buffer,
+          fileName: file.originalname,
+          mimeType: file.mimetype,
+          sizeBytes: file.size,
           source: "admin-case-law-extract",
           extractedTextKey,
         });
@@ -4027,6 +4055,7 @@ RULES:
       const results = [];
       const errors: string[] = [];
       for (const file of files) {
+        const stableFile = cloneUploadFile(file);
         let content = "";
         const ext = file.originalname.split(".").pop()?.toLowerCase();
         const extWithDot = ext ? `.${ext}` : "";
@@ -4056,7 +4085,7 @@ RULES:
 
         if (ext === "pdf") {
           try {
-            const uint8 = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength);
+            const uint8 = new Uint8Array(stableFile.buffer.buffer, stableFile.buffer.byteOffset, stableFile.buffer.byteLength);
             const pdfResult = await extractText(uint8, { mergePages: true });
             content = stripNullBytes((pdfResult.text || "").trim());
             console.log(`[Statute Upload] Extracted ${content.length} chars from ${file.originalname}`);
@@ -4065,14 +4094,14 @@ RULES:
             content = "";
           }
           if (!content) {
-            content = await extractPdfTextWithOcrFallback(file, "admin-statute-upload");
+            content = await extractPdfTextWithOcrFallback(stableFile, "admin-statute-upload");
           }
           if (!content) {
             errors.push(`${file.originalname}: could not extract text from PDF`);
             continue;
           }
         } else {
-          content = stripNullBytes(file.buffer.toString("utf-8"));
+          content = stripNullBytes(stableFile.buffer.toString("utf-8"));
         }
 
         if (!content.trim()) {
@@ -4111,7 +4140,10 @@ RULES:
         await uploadStatuteDocumentFileToR2({
           docId: doc.id,
           userId,
-          file,
+          buffer: stableFile.buffer,
+          fileName: file.originalname,
+          mimeType: file.mimetype,
+          sizeBytes: file.size,
           extractedTextKey,
         });
         results.push(doc);

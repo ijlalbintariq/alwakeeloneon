@@ -1552,6 +1552,7 @@ function StatuteDocumentsSection() {
   const { data: docs, isLoading } = useQuery<StatuteDoc[]>({ queryKey: ["/api/admin/statute-documents"] });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, uploaded: 0, errors: 0 });
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   const deleteMutation = useMutation({
@@ -1590,31 +1591,56 @@ function StatuteDocumentsSection() {
     }
 
     setIsUploading(true);
+    const BATCH_SIZE = 25;
+    const totalFiles = selectedFiles.length;
+    let totalUploaded = 0;
+    let totalErrors = 0;
+    setUploadProgress({ current: 0, total: totalFiles, uploaded: 0, errors: 0 });
+
     try {
-      const formData = new FormData();
-      for (const file of selectedFiles) {
-        formData.append("files", file);
+      for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
+        const batch = selectedFiles.slice(i, i + BATCH_SIZE);
+        const formData = new FormData();
+        for (const file of batch) {
+          formData.append("files", file);
+        }
+
+        try {
+          const res = await fetch("/api/admin/statute-documents", {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            totalErrors += batch.length;
+            setUploadProgress({ current: i + batch.length, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
+            continue;
+          }
+
+          const data = await res.json();
+          totalUploaded += Number(data?.count || 0);
+          totalErrors += Number(data?.failed || 0);
+          setUploadProgress({ current: i + batch.length, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
+        } catch {
+          totalErrors += batch.length;
+          setUploadProgress({ current: i + batch.length, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
+        }
       }
-
-      const res = await fetch("/api/admin/statute-documents", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
 
       queryClient.invalidateQueries({ queryKey: ["/api/admin/statute-documents"] });
       setSelectedFiles([]);
       const fileInput = document.querySelector('[data-testid="input-statute-doc-files"]') as HTMLInputElement;
       if (fileInput) fileInput.value = "";
 
-      toast({ title: `${data.count} statute document${data.count !== 1 ? "s" : ""} uploaded` });
+      let message = `${totalUploaded} statute document${totalUploaded !== 1 ? "s" : ""} uploaded`;
+      if (totalErrors > 0) message += `, ${totalErrors} failed`;
+      toast({ title: message });
     } catch {
       toast({ title: "Upload failed", variant: "destructive" });
     } finally {
       setIsUploading(false);
+      setUploadProgress({ current: 0, total: 0, uploaded: 0, errors: 0 });
     }
   }
 
@@ -1650,6 +1676,26 @@ function StatuteDocumentsSection() {
               </p>
             )}
           </div>
+
+          {isUploading && uploadProgress.total > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-slate-400">Uploading {uploadProgress.current} of {uploadProgress.total} files...</span>
+                <span className="text-amber-400 font-bold">{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
+              </div>
+              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-amber-500 rounded-full transition-all duration-300"
+                  style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                />
+              </div>
+              <div className="text-[9px] flex flex-wrap gap-3">
+                <span className="text-emerald-400 font-bold">Uploaded: {uploadProgress.uploaded}</span>
+                <span className="text-red-400 font-bold">Failed: {uploadProgress.errors}</span>
+                <span className="text-slate-400 font-bold">Remaining: {Math.max(uploadProgress.total - uploadProgress.current, 0)}</span>
+              </div>
+            </div>
+          )}
 
           <Button
             onClick={handleUpload}
