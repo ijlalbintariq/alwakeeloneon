@@ -116,7 +116,8 @@ async function signedR2Request(args: {
   const canonicalUri = `/${encodeURIComponent(R2_BUCKET)}/${encodedKey}`;
   const requestUrl = `${R2_ENDPOINT}${canonicalUri}`;
 
-  const payload = args.method === "PUT" ? (args.body || Buffer.alloc(0)) : Buffer.alloc(0);
+  // Keep a private payload copy to avoid side effects from caller-owned buffers.
+  const payload = args.method === "PUT" ? Buffer.from(args.body || Buffer.alloc(0)) : Buffer.alloc(0);
   const payloadHash = sha256Hex(payload);
   const credentialScope = `${shortDate}/${R2_REGION}/s3/aws4_request`;
 

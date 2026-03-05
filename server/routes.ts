@@ -1382,9 +1382,7 @@ export async function registerRoutes(
 
         if (ext === ".pdf") {
           try {
-            const uint8 = new Uint8Array(stableFile.buffer.buffer, stableFile.buffer.byteOffset, stableFile.buffer.byteLength);
-            const parsed = await extractText(uint8, { mergePages: true });
-            content = stripNullBytes((parsed.text || "").trim());
+            content = await extractPdfTextSafe(stableFile.buffer);
           } catch (pdfErr: any) {
             console.error(`[Documents Upload] PDF parse error for ${original}:`, pdfErr?.message || pdfErr);
             content = "";
@@ -2476,9 +2474,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
             if (file.mimetype === "text/plain") {
               attachmentContext += `\n\n--- Attached File: ${file.originalname} ---\n${stripNullBytes(file.buffer.toString("utf-8"))}\n--- End of File ---`;
             } else if (file.mimetype === "application/pdf") {
-              const { text } = await extractText(new Uint8Array(file.buffer));
-              let parsedText = Array.isArray(text) ? text.join("\n") : (text || "");
-              parsedText = stripNullBytes(parsedText || "");
+              let parsedText = await extractPdfTextSafe(file.buffer);
               if (!parsedText.trim()) {
                 parsedText = await extractPdfTextWithOcrFallback(file, "chat-attachment");
               }
@@ -3111,6 +3107,17 @@ RULES:
     return text.replace(/\x00/g, "");
   }
 
+  async function extractPdfTextSafe(sourceBuffer: Buffer): Promise<string> {
+    // unpdf may transfer/detach the input ArrayBuffer. Parse from an isolated copy.
+    const parseBuffer = Buffer.from(sourceBuffer);
+    const uint8 = new Uint8Array(parseBuffer.buffer, parseBuffer.byteOffset, parseBuffer.byteLength);
+    const parsed = await extractText(uint8, { mergePages: true });
+    const rawText = Array.isArray((parsed as any)?.text)
+      ? (parsed as any).text.join("\n")
+      : ((parsed as any)?.text || "");
+    return stripNullBytes(String(rawText).trim());
+  }
+
   async function extractPdfTextWithOcrFallback(
     file: Express.Multer.File,
     context: string,
@@ -3472,9 +3479,7 @@ RULES:
           let content = "";
           if (ext === ".pdf") {
             try {
-              const uint8 = new Uint8Array(stableFile.buffer.buffer, stableFile.buffer.byteOffset, stableFile.buffer.byteLength);
-              const pdfResult = await extractText(uint8, { mergePages: true });
-              content = stripNullBytes((pdfResult.text || "").trim());
+              content = await extractPdfTextSafe(stableFile.buffer);
               console.log(`[Knowledge Upload] Extracted ${content.length} chars from ${file.originalname}`);
             } catch (pdfErr: any) {
               console.error(`[Knowledge Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
@@ -3802,9 +3807,7 @@ RULES:
 
       if (ext === "pdf") {
         try {
-          const uint8 = new Uint8Array(stableFile.buffer.buffer, stableFile.buffer.byteOffset, stableFile.buffer.byteLength);
-          const pdfResult = await extractText(uint8, { mergePages: true });
-          content = stripNullBytes((pdfResult.text || "").trim());
+          content = await extractPdfTextSafe(stableFile.buffer);
         } catch (pdfErr: any) {
           console.error("[Case Law Extract] PDF parse error:", pdfErr?.message);
           content = "";
@@ -4085,9 +4088,7 @@ RULES:
 
         if (ext === "pdf") {
           try {
-            const uint8 = new Uint8Array(stableFile.buffer.buffer, stableFile.buffer.byteOffset, stableFile.buffer.byteLength);
-            const pdfResult = await extractText(uint8, { mergePages: true });
-            content = stripNullBytes((pdfResult.text || "").trim());
+            content = await extractPdfTextSafe(stableFile.buffer);
             console.log(`[Statute Upload] Extracted ${content.length} chars from ${file.originalname}`);
           } catch (pdfErr: any) {
             console.error(`[Statute Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
@@ -4812,9 +4813,7 @@ Instructions:
           });
           return res.status(400).json({ message: "File signature does not match .pdf format." });
         }
-        const { text } = await extractText(new Uint8Array(file.buffer));
-        content = Array.isArray(text) ? text.join("\n") : (text || "");
-        content = stripNullBytes(content || "");
+        content = await extractPdfTextSafe(file.buffer);
         if (!content.trim()) {
           content = await extractPdfTextWithOcrFallback(file, "org-knowledge-upload");
         }
