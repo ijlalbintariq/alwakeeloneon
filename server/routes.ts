@@ -78,12 +78,41 @@ function buildMessages(systemPrompt: string, contents: Array<{ role: string; par
 }
 
 const MODEL_TIMEOUT_MS = {
-  standardPrimary: 12000,
-  standardFallback: 15000,
-  turboPrimary: 12000,
-  turboFallback: 15000,
-  apexPrimary: 15000,
-  apexFallback: 18000,
+  standardPrimary: 9000,
+  standardFallback: 12000,
+  turboPrimary: 9000,
+  turboFallback: 12000,
+  apexPrimary: 12000,
+  apexFallback: 15000,
+};
+
+type TimeoutProfile = "default" | "search" | "analysis";
+type TimeoutConfig = {
+  standardPrimary: number;
+  standardFallback: number;
+  turboPrimary: number;
+  turboFallback: number;
+};
+
+const MODEL_TIMEOUT_PROFILES: Record<TimeoutProfile, TimeoutConfig> = {
+  default: {
+    standardPrimary: MODEL_TIMEOUT_MS.standardPrimary,
+    standardFallback: MODEL_TIMEOUT_MS.standardFallback,
+    turboPrimary: MODEL_TIMEOUT_MS.turboPrimary,
+    turboFallback: MODEL_TIMEOUT_MS.turboFallback,
+  },
+  search: {
+    standardPrimary: 7000,
+    standardFallback: 9000,
+    turboPrimary: 7500,
+    turboFallback: 9500,
+  },
+  analysis: {
+    standardPrimary: 11000,
+    standardFallback: 14000,
+    turboPrimary: 11000,
+    turboFallback: 14000,
+  },
 };
 
 function getErrorMessage(err: unknown): string {
@@ -112,18 +141,25 @@ function logModelSwitch(mode: string, fromModel: string, toModel: string, err: u
   console.log(`[AI Routing][${mode}] Switching ${fromModel} -> ${toModel}. Reason: ${getErrorMessage(err)}`);
 }
 
-async function callStandardAI(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>, maxTokens: number): Promise<{ text: string; model: string }> {
+async function callStandardAI(
+  systemPrompt: string,
+  contents: Array<{ role: string; parts: Array<{ text: string }> }>,
+  maxTokens: number,
+  options?: { timeoutProfile?: TimeoutProfile; temperature?: number },
+): Promise<{ text: string; model: string }> {
+  const timeoutConfig = MODEL_TIMEOUT_PROFILES[options?.timeoutProfile || "default"] || MODEL_TIMEOUT_PROFILES.default;
+  const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, contents);
   const startedAt = Date.now();
   try {
-    const result = await withTimeout("Groq", MODEL_TIMEOUT_MS.standardPrimary, () => chatWithGroq({ messages, maxTokens }));
+    const result = await withTimeout("Groq", timeoutConfig.standardPrimary, () => chatWithGroq({ messages, maxTokens, temperature }));
     console.log(`[AI Routing][standard] Primary Groq succeeded in ${Date.now() - startedAt}ms`);
     return { text: result.content, model: result.model };
   } catch (groqErr) {
     if (isOpenRouterAvailable()) {
       try {
         logModelSwitch("standard", "Groq", "OpenRouter", groqErr);
-        const result = await withTimeout("OpenRouter", MODEL_TIMEOUT_MS.standardFallback, () => chatWithOpenRouter({ messages, maxTokens }));
+        const result = await withTimeout("OpenRouter", timeoutConfig.standardFallback, () => chatWithOpenRouter({ messages, maxTokens, temperature }));
         console.log(`[AI Routing][standard] Fallback OpenRouter succeeded in ${Date.now() - startedAt}ms`);
         return { text: result.content, model: result.model };
       } catch (orErr) {
@@ -134,17 +170,24 @@ async function callStandardAI(systemPrompt: string, contents: Array<{ role: stri
   }
 }
 
-async function callTurboAI(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>, maxTokens: number): Promise<{ text: string; model: string }> {
+async function callTurboAI(
+  systemPrompt: string,
+  contents: Array<{ role: string; parts: Array<{ text: string }> }>,
+  maxTokens: number,
+  options?: { timeoutProfile?: TimeoutProfile; temperature?: number },
+): Promise<{ text: string; model: string }> {
+  const timeoutConfig = MODEL_TIMEOUT_PROFILES[options?.timeoutProfile || "default"] || MODEL_TIMEOUT_PROFILES.default;
+  const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, contents);
   const startedAt = Date.now();
   try {
-    const result = await withTimeout("DeepSeek", MODEL_TIMEOUT_MS.turboPrimary, () => chatWithDeepSeek({ messages, maxTokens }));
+    const result = await withTimeout("DeepSeek", timeoutConfig.turboPrimary, () => chatWithDeepSeek({ messages, maxTokens, temperature }));
     console.log(`[AI Routing][turbo] Primary DeepSeek succeeded in ${Date.now() - startedAt}ms`);
     return { text: result.content, model: result.model };
   } catch (dsErr) {
     if (isGroqAvailable()) {
       logModelSwitch("turbo", "DeepSeek", "Groq", dsErr);
-      const result = await withTimeout("Groq", MODEL_TIMEOUT_MS.turboFallback, () => chatWithGroq({ messages, maxTokens }));
+      const result = await withTimeout("Groq", timeoutConfig.turboFallback, () => chatWithGroq({ messages, maxTokens, temperature }));
       console.log(`[AI Routing][turbo] Fallback Groq succeeded in ${Date.now() - startedAt}ms`);
       return { text: result.content, model: result.model };
     }
@@ -152,8 +195,13 @@ async function callTurboAI(systemPrompt: string, contents: Array<{ role: string;
   }
 }
 
-async function callStandardAISimple(systemPrompt: string, userText: string, maxTokens: number): Promise<{ text: string; model: string }> {
-  return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens);
+async function callStandardAISimple(
+  systemPrompt: string,
+  userText: string,
+  maxTokens: number,
+  options?: { timeoutProfile?: TimeoutProfile; temperature?: number },
+): Promise<{ text: string; model: string }> {
+  return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens, options);
 }
 
 type ChatRouteMode = "standard" | "turbo";
@@ -197,6 +245,62 @@ function ensureLegalDisclaimer(content: string): string {
     return content;
   }
   return `${LEGAL_DISCLAIMER}\n\n${content.trim()}`;
+}
+
+function isDirectModePrompt(text: string): boolean {
+  const normalized = (text || "").trim().toLowerCase();
+  if (!normalized || normalized.length > 120) return false;
+  const directPatterns = [
+    /^reply with\b/,
+    /^respond with\b/,
+    /^answer with\b/,
+    /only$/,
+    /\bexactly\b/,
+    /\bone word\b/,
+    /\bjust\b/,
+  ];
+  return directPatterns.some((rx) => rx.test(normalized));
+}
+
+function getDirectModeSystemPrompt(): string {
+  return `You are Al Wakeelo.
+Follow the latest user instruction exactly.
+If the user asks for a strict output format (e.g., "Reply YES only"), output exactly that and nothing else.
+Do not add disclaimers, headings, references, or extra explanation unless explicitly requested.`;
+}
+
+function extractKeywords(text: string, limit: number = 6): string[] {
+  const tokens = (text || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 3);
+
+  const stop = new Set([
+    "pakistan",
+    "under",
+    "with",
+    "from",
+    "that",
+    "this",
+    "their",
+    "there",
+    "have",
+    "will",
+    "shall",
+    "where",
+  ]);
+
+  const counts = new Map<string, number>();
+  for (const token of tokens) {
+    if (stop.has(token)) continue;
+    counts.set(token, (counts.get(token) || 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, Math.max(1, limit))
+    .map(([token]) => token);
 }
 
 type RawLawRef = { name?: string; section?: string; description?: string };
@@ -387,27 +491,51 @@ function normalizeStrictContractJson(intent: ModuleIntent | undefined, raw: stri
   }
 }
 
-const userLastRequest = new Map<string, number>();
-const RATE_LIMIT_MS = 2000;
+type RateLimitConfig = { capacity: number; refillPerSec: number };
+type RateBucket = { tokens: number; lastRefillMs: number };
 
-function checkRateLimit(userId: string): boolean {
+const RATE_LIMITS_BY_FEATURE: Record<string, RateLimitConfig> = {
+  chat: { capacity: 4, refillPerSec: 1.4 },
+  "search-judgments": { capacity: 3, refillPerSec: 1.1 },
+  "search-statutes": { capacity: 3, refillPerSec: 1.1 },
+  summarize: { capacity: 2, refillPerSec: 0.7 },
+  brief: { capacity: 2, refillPerSec: 0.6 },
+  draft: { capacity: 2, refillPerSec: 0.7 },
+  "contract-drafting": { capacity: 2, refillPerSec: 0.7 },
+  default: { capacity: 3, refillPerSec: 1.0 },
+};
+
+const userRateBuckets = new Map<string, RateBucket>();
+
+function resolveRateLimitConfig(feature: string): RateLimitConfig {
+  return RATE_LIMITS_BY_FEATURE[feature] || RATE_LIMITS_BY_FEATURE.default;
+}
+
+function checkRateLimit(userId: string, feature: string): boolean {
+  const cfg = resolveRateLimitConfig(feature);
+  const key = `${userId}:${feature}`;
   const now = Date.now();
-  const last = userLastRequest.get(userId);
-  if (last && now - last < RATE_LIMIT_MS) {
+  const bucket = userRateBuckets.get(key) || { tokens: cfg.capacity, lastRefillMs: now };
+  const elapsedSec = Math.max(0, (now - bucket.lastRefillMs) / 1000);
+  const refilled = Math.min(cfg.capacity, bucket.tokens + elapsedSec * cfg.refillPerSec);
+
+  if (refilled < 1) {
+    userRateBuckets.set(key, { tokens: refilled, lastRefillMs: now });
     return false;
   }
-  userLastRequest.set(userId, now);
+
+  userRateBuckets.set(key, { tokens: refilled - 1, lastRefillMs: now });
   return true;
 }
 
 setInterval(() => {
-  const cutoff = Date.now() - 60000;
-  const keysToDelete: string[] = [];
-  userLastRequest.forEach((val, key) => {
-    if (val < cutoff) keysToDelete.push(key);
-  });
-  keysToDelete.forEach(key => userLastRequest.delete(key));
-}, 60000);
+  const cutoff = Date.now() - 10 * 60 * 1000;
+  const staleKeys: string[] = [];
+  for (const [key, bucket] of userRateBuckets.entries()) {
+    if (bucket.lastRefillMs < cutoff) staleKeys.push(key);
+  }
+  for (const key of staleKeys) userRateBuckets.delete(key);
+}, 60_000);
 
 function getAlWakeeloIdentity(): string {
   return `You are Al Wakeelo — Pakistan's first AI-powered legal assistant, built by Al Wakeelo. Your tagline is "Your Digital Lawyer, Always on Duty." You are an expert in Pakistani law, specializing in the Constitution of Pakistan 1973, Pakistan Penal Code, Code of Civil Procedure, Code of Criminal Procedure, Family Laws, Contract Act, and all major Pakistani statutes and case law. You serve Pakistani lawyers, law students, and citizens seeking legal guidance. Always be authoritative, precise, and cite real Pakistani legal sources.`;
@@ -505,7 +633,7 @@ function getUserId(req: any): string | null {
 
 async function checkUsageLimit(userId: string, feature: string, res: any): Promise<boolean> {
   try {
-    if (!checkRateLimit(userId)) {
+    if (!checkRateLimit(userId, feature)) {
       res.status(429).json({ message: "Too many requests. Please wait a moment before trying again." });
       return false;
     }
@@ -1297,7 +1425,7 @@ RAG POLICY (STRICT):
 - Provide supportable claims only.`;
 
       const userPrompt = `User question:\n${parsed.query}\n\nRetrieved context:\n${ragContext}\n\nReturn a clear answer grounded only in this context.`;
-      const result = await callStandardAISimple(systemPrompt, userPrompt, TOKEN_LIMITS.chat);
+      const result = await callStandardAISimple(systemPrompt, userPrompt, TOKEN_LIMITS.chat, { timeoutProfile: "search", temperature: 0.2 });
       await logUsageCost(userId, "chat", result.model, systemPrompt + userPrompt, result.text);
 
       const citations = retrieval.matches.slice(0, 5).map((m) => ({
@@ -1764,7 +1892,7 @@ Query: ${query || "Not provided"}
 Draft Excerpt:
 ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         try {
-          const aiResult = await callStandardAISimple(sysInstruction, userInput, 1200);
+          const aiResult = await callStandardAISimple(sysInstruction, userInput, 1200, { timeoutProfile: "analysis", temperature: 0.3 });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
           const aiSuggestions = parseClauseSuggestionsFromAi(aiResult.text, safeLimit);
           if (aiSuggestions.length > 0) {
@@ -1823,7 +1951,7 @@ Jurisdiction: ${jurisdiction || "Lahore"}
 Current Draft Excerpt:
 ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
         try {
-          const aiResult = await callStandardAISimple(sysInstruction, userInput, 1400);
+          const aiResult = await callStandardAISimple(sysInstruction, userInput, 1400, { timeoutProfile: "analysis", temperature: 0.3 });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
           const clauseText = normalizeDraftingText(aiResult.text);
           if (clauseText) {
@@ -2155,10 +2283,19 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
 
       const userTier = await storage.getUserTier(userId);
 
-      let systemPrompt = `${getLegalSystemPrompt()}\n\nMODULE PROFILE: ${moduleProfile.label}\n${moduleProfile.systemPromptAddon}`;
+      const lastUserMessage = userMessages.filter(m => m.role === "user").pop();
+      const directMode = Boolean(
+        lastUserMessage &&
+        moduleType === "al-wakeelo" &&
+        !attachmentContext &&
+        isDirectModePrompt(lastUserMessage.content),
+      );
+      let systemPrompt = directMode
+        ? getDirectModeSystemPrompt()
+        : `${getLegalSystemPrompt()}\n\nMODULE PROFILE: ${moduleProfile.label}\n${moduleProfile.systemPromptAddon}`;
 
       const systemMessages = userMessages.filter((m) => m.role === "system");
-      if (systemMessages.length > 0) {
+      if (!directMode && systemMessages.length > 0) {
         systemPrompt += "\n\n" + systemMessages.map((m) => m.content).join("\n");
       }
 
@@ -2169,8 +2306,9 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
           parts: [{ text: m.content }],
         }));
 
-      const lastUserMessage = userMessages.filter(m => m.role === "user").pop();
-      const knowledgeContext = lastUserMessage ? await gatherKnowledgeContext(lastUserMessage.content, userId) : "";
+      const knowledgeContext = (!directMode && lastUserMessage)
+        ? await gatherKnowledgeContext(lastUserMessage.content, userId)
+        : "";
       if (attachmentContext) {
         systemPrompt += `\n\nATTACHED DOCUMENTS FROM USER:\nThe user has attached the following documents for your reference. Analyze them carefully and use them to inform your response.${attachmentContext}`;
       }
@@ -2181,13 +2319,16 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
       );
       let usedModel = selectedRoute === "turbo" ? getDeepSeekModelName() : getGroqModelName();
       const featureKey = moduleProfile.modelStrategy.tokenLimitKey;
-      const tokenLimit = TOKEN_LIMITS[featureKey] || TOKEN_LIMITS.chat;
+      const tokenLimit = directMode ? 128 : (TOKEN_LIMITS[featureKey] || TOKEN_LIMITS.chat);
+      const timeoutProfile: TimeoutProfile = directMode ? "search" : "default";
+      const temperature = directMode ? 0 : 0.7;
       const systemPromptFull = systemPrompt + knowledgeContext;
       const routingPath: string[] = [`profile:${moduleType}`, `route:${selectedRoute}`];
       if (downgraded) routingPath.push("policy-fallback:true");
+      if (directMode) routingPath.push("direct-mode:true");
 
       const cacheRaw = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
-      const cacheKey = `${cacheRaw}::type=${featureKey}::intent=${moduleIntent || "none"}::profile=${moduleType}::route=${selectedRoute}`;
+      const cacheKey = `${cacheRaw}::type=${featureKey}::intent=${moduleIntent || "none"}::profile=${moduleType}::route=${selectedRoute}::direct=${directMode ? "1" : "0"}`;
       const normalized = normalizeQuery(cacheKey);
       const hash = hashQuery("ai-chat", normalized);
 
@@ -2195,7 +2336,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
         const cached = await storage.getCachedResponse("ai-chat", hash);
         if (cached && isCacheFresh(cached.createdAt)) {
           await storage.incrementCacheHit(cached.id).catch(() => {});
-          const cachedContent = moduleType === "al-wakeelo"
+          const cachedContent = moduleType === "al-wakeelo" && !directMode
             ? await applyAlWakeeloSafetyGuardrails(cached.response).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
             : cached.response;
           return res.json({
@@ -2219,13 +2360,13 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
           const streamMessages = buildMessages(systemPromptFull, geminiContents);
           if (selectedRoute === "turbo") {
             usedModel = getDeepSeekModelName();
-            for await (const text of streamWithDeepSeek({ messages: streamMessages, maxTokens: tokenLimit })) {
+            for await (const text of streamWithDeepSeek({ messages: streamMessages, maxTokens: tokenLimit, temperature })) {
               fullContent += text;
               res.write(`data: ${JSON.stringify({ text })}\n\n`);
             }
           } else {
             usedModel = getGroqModelName();
-            for await (const text of streamWithGroq({ messages: streamMessages, maxTokens: tokenLimit })) {
+            for await (const text of streamWithGroq({ messages: streamMessages, maxTokens: tokenLimit, temperature })) {
               fullContent += text;
               res.write(`data: ${JSON.stringify({ text })}\n\n`);
             }
@@ -2238,7 +2379,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
               usedModel = getGroqModelName();
               res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
               fullContent = "";
-              for await (const text of streamWithGroq({ messages: fallbackMessages, maxTokens: tokenLimit })) {
+              for await (const text of streamWithGroq({ messages: fallbackMessages, maxTokens: tokenLimit, temperature })) {
                 fullContent += text;
                 res.write(`data: ${JSON.stringify({ text })}\n\n`);
               }
@@ -2255,7 +2396,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
               usedModel = getOpenRouterModelName();
               res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
               fullContent = "";
-              for await (const text of streamWithOpenRouter({ messages: fallbackMessages, maxTokens: tokenLimit })) {
+              for await (const text of streamWithOpenRouter({ messages: fallbackMessages, maxTokens: tokenLimit, temperature })) {
                 fullContent += text;
                 res.write(`data: ${JSON.stringify({ text })}\n\n`);
               }
@@ -2273,7 +2414,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
           }
         }
 
-        if (moduleType === "al-wakeelo") {
+        if (moduleType === "al-wakeelo" && !directMode) {
           const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
           if (adjusted !== fullContent) {
             fullContent = adjusted;
@@ -2304,12 +2445,12 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
       }
 
       const aiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
-      const result = await aiCall(systemPromptFull, geminiContents, tokenLimit);
+      const result = await aiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
       usedModel = result.model;
       routingPath.push(`model:${usedModel}`);
       let completion = result.text;
 
-      if (moduleType === "al-wakeelo") {
+      if (moduleType === "al-wakeelo" && !directMode) {
         completion = await applyAlWakeeloSafetyGuardrails(completion).catch(() => ensureAlWakeeloReferencesBlock(completion));
       }
       if (moduleType === "draft" && moduleIntent?.startsWith("draft.")) {
@@ -2325,7 +2466,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
             moduleIntent === "contract.clauseSuggest"
               ? `Repair the response into STRICT JSON format: {"suggestions":[{"title":"...","subtitle":"...","prompt":"..."}]}. Return ONLY JSON.\n\nOriginal output:\n${completion}`
               : `Repair the response into STRICT JSON format: {"edits":[{"title":"...","rationale":"...","originalSnippet":"...","suggestedText":"..."}]}. Return ONLY JSON.\n\nOriginal output:\n${completion}`;
-          const repairResult = await aiCall(systemPromptFull, [{ role: "user", parts: [{ text: repairPrompt }] }], tokenLimit);
+          const repairResult = await aiCall(systemPromptFull, [{ role: "user", parts: [{ text: repairPrompt }] }], tokenLimit, { timeoutProfile: "analysis", temperature: 0.2 });
           usedModel = repairResult.model;
           routingPath.push(`repair:${usedModel}`);
           normalizedContractJson = normalizeStrictContractJson(moduleIntent, repairResult.text);
@@ -2359,24 +2500,23 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
       if (!allowed) return;
 
       const { query } = req.body as { query: string };
-
-      let usedModelJ = getOpenRouterModelName();
-      const { content: responseText, fromCache } = await getCachedOrCall("searchJudgments", query, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(query);
-        const sysInstruction = `${getAlWakeeloIdentity()}\n\nYou are in judgment search mode. Given a query, provide relevant Pakistani court judgments. Return a JSON object with a "judgments" key containing an array of judgment objects. Each object must have: citation (string), court (string), title (string), summary (string), keywords (array of strings), uri (string, can be empty). Only include real, verifiable Pakistani case citations (PLD, SCMR, YLR, MLD, CLC, PCRLJ). If unsure, provide fewer but accurate results. IMPORTANT: Return ONLY valid JSON, no markdown code blocks.${knowledgeContext}`;
-        const result = await callStandardAISimple(sysInstruction, query, TOKEN_LIMITS["search-judgments"]);
-        usedModelJ = result.model;
-        await logUsageCost(userId, "search-judgments", result.model, sysInstruction + query, result.text);
-        return result.text;
-      });
-
-      let parsed;
-      try {
-        parsed = JSON.parse(responseText);
-      } catch {
-        parsed = { judgments: [] };
+      const safeQuery = (query || "").trim();
+      if (!safeQuery) {
+        return res.status(400).json({ message: "Query is required" });
       }
-      res.json(parsed.judgments || []);
+
+      const results = await storage.searchCaseLaw(safeQuery, 20);
+      const verified = results.map((j) => ({
+        citation: j.citation,
+        court: j.court,
+        title: j.title,
+        summary: j.summary,
+        keywords: extractKeywords(`${j.title} ${j.summary}`, 8),
+        uri: ((j as unknown as { uri?: string }).uri) || "",
+      }));
+
+      // Keep this endpoint citation-safe: return only DB-verified judgments.
+      res.json(verified);
     } catch (err: any) {
       console.error("Error searching judgments:", err?.message || err, err?.stack);
       res.status(500).json({ message: "Failed to search judgments", error: err?.message || "Unknown error" });
@@ -2547,7 +2687,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
           userInput = `Provide a general legal analysis around the TOPIC of this judgment. Remember: you do NOT have the actual judgment text, so do NOT fabricate case-specific details. Stay strictly within the relevant area of law.\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}`;
         }
 
-        const aiResult = await callStandardAISimple(sysInstruction, userInput, 6144);
+        const aiResult = await callStandardAISimple(sysInstruction, userInput, 6144, { timeoutProfile: "analysis", temperature: 0.3 });
         await logUsageCost(userId, "judgment-summary", aiResult.model, sysInstruction + userInput, aiResult.text);
         return aiResult.text;
       });
@@ -2572,22 +2712,23 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       if (!allowed) return;
 
       const { query } = req.body as { query: string };
-
-      const { content: responseText, fromCache } = await getCachedOrCall("searchStatutes", query, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(query);
-        const sysInstruction = `${getAlWakeeloIdentity()}\n\nYou are in statute search mode. Given a query, provide relevant Pakistani statutes and legal provisions. Return a JSON object with a "statutes" key containing an array of statute objects. Each object must have: shortTitle (string), section (string), description (string), punishment (string), uri (string, can be empty), keywords (array of strings). Focus on Pakistani laws including PPC, CrPC, Constitution, Family Laws, Contract Act, etc. IMPORTANT: Return ONLY valid JSON, no markdown code blocks.${knowledgeContext}`;
-        const result = await callStandardAISimple(sysInstruction, query, TOKEN_LIMITS["search-statutes"]);
-        await logUsageCost(userId, "search-statutes", result.model, sysInstruction + query, result.text);
-        return result.text;
-      });
-
-      let parsed;
-      try {
-        parsed = JSON.parse(responseText);
-      } catch {
-        parsed = { statutes: [] };
+      const safeQuery = (query || "").trim();
+      if (!safeQuery) {
+        return res.status(400).json({ message: "Query is required" });
       }
-      res.json(parsed.statutes || []);
+
+      const statutesResults = await storage.searchStatutes(safeQuery, 20);
+      const verified = statutesResults.map((s) => ({
+        shortTitle: s.shortTitle,
+        section: s.section,
+        description: s.description,
+        punishment: s.punishment,
+        uri: ((s as unknown as { uri?: string }).uri) || "",
+        keywords: extractKeywords(`${s.shortTitle} ${s.section} ${s.description}`, 8),
+      }));
+
+      // Return only statute data verifiable from the database.
+      res.json(verified);
     } catch (err) {
       console.error("Error searching statutes via AI:", err);
       res.status(500).json({ message: "Failed to search statutes" });
@@ -2608,7 +2749,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         const knowledgeContext = await gatherKnowledgeContext(query);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`;
         const userInput = `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.`;
-        const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.summarize);
+        const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.summarize, { timeoutProfile: "analysis", temperature: 0.3 });
         await logUsageCost(userId, "summarize", result.model, sysInstruction + userInput, result.text);
         return result.text;
       });
@@ -2635,7 +2776,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;
         const userInput = `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}`;
-        const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.brief);
+        const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.brief, { timeoutProfile: "analysis", temperature: 0.3 });
         briefModel = result.model;
         await logUsageCost(userId, "brief", briefModel, sysInstruction + userInput, result.text);
         return result.text;
@@ -2697,7 +2838,7 @@ RULES:
 - Do not include markdown, code fences, or extra keys.${knowledgeContext}`;
 
         const userInput = `Draft Title: ${draftTitle}\n\nDraft Content:\n${draftText.slice(0, 14000)}`;
-        const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.draft);
+        const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.draft, { timeoutProfile: "analysis", temperature: 0.25 });
         await logUsageCost(userId, "draft", result.model, sysInstruction + userInput, result.text);
         return result.text;
       });
@@ -3994,7 +4135,7 @@ Instructions:
         parts: [{ text: m.content }],
       }));
 
-      const result = await callStandardAI(systemPrompt, chatHistory, 4096);
+      const result = await callStandardAI(systemPrompt, chatHistory, 4096, { timeoutProfile: "analysis", temperature: 0.3 });
 
       const aiResponse = ensureLegalDisclaimer(result.text);
       const inputText = systemPrompt + messages.map(m => m.content).join("\n");

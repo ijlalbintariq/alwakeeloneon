@@ -39,6 +39,7 @@ interface DeepSeekChatOptions {
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   maxTokens?: number;
   model?: string;
+  temperature?: number;
 }
 
 interface DeepSeekResponse {
@@ -57,12 +58,13 @@ interface DeepSeekTranscriptionOptions {
 export async function chatWithDeepSeek(options: DeepSeekChatOptions): Promise<DeepSeekResponse> {
   const client = getClient();
   const model = options.model || DEEPSEEK_CHAT_MODEL;
+  const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
 
   const response = await client.chat.completions.create({
     model,
     messages: options.messages,
     max_tokens: options.maxTokens || 8192,
-    temperature: 0.7,
+    temperature,
   });
 
   const choice = response.choices[0];
@@ -83,12 +85,13 @@ export async function chatWithDeepSeekPro(options: Omit<DeepSeekChatOptions, "mo
 export async function* streamWithDeepSeek(options: DeepSeekChatOptions): AsyncGenerator<string> {
   const client = getClient();
   const model = options.model || DEEPSEEK_CHAT_MODEL;
+  const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
 
   const stream = await client.chat.completions.create({
     model,
     messages: options.messages,
     max_tokens: options.maxTokens || 8192,
-    temperature: 0.7,
+    temperature,
     stream: true,
   });
 
