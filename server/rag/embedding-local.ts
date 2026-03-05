@@ -1,7 +1,10 @@
 import crypto from "crypto";
 
 const DEFAULT_DIM = Number(process.env.RAG_EMBEDDING_DIM || 384);
-const EMBEDDING_PROVIDER = (process.env.RAG_EMBEDDING_PROVIDER || "semantic").toLowerCase();
+const EMBEDDING_PROVIDER = (
+  process.env.RAG_EMBEDDING_PROVIDER ||
+  (process.env.NODE_ENV === "production" ? "hashing" : "semantic")
+).toLowerCase();
 const SEMANTIC_MODEL_NAME = process.env.RAG_SEMANTIC_MODEL || "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
 
 type SemanticEmbedder = (text: string) => Promise<number[]>;

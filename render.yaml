@@ -30,6 +30,16 @@ services:
         sync: false
       - key: FROM_EMAIL
         sync: false
+      - key: RAG_EMBEDDING_PROVIDER
+        value: hashing
+      - key: RAG_INDEX_BATCH_SIZE
+        value: "8"
+      - key: GITHUB_SYNC_ENABLED
+        value: "false"
+      - key: GITHUB_SYNC_AUTO_EXTRACT
+        value: "false"
+      - key: GITHUB_SYNC_BATCH_SIZE
+        value: "2"
     routes:
       - type: public
         domainType: default

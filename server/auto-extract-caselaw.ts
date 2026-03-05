@@ -1,6 +1,14 @@
 import { storage } from "./storage";
 
-const MAX_QUEUE_SIZE = 200;
+function envInt(name: string, defaultValue: number, min: number, max: number): number {
+  const raw = Number(process.env[name]);
+  if (!Number.isFinite(raw)) return defaultValue;
+  return Math.min(max, Math.max(min, Math.floor(raw)));
+}
+
+const MAX_QUEUE_SIZE = envInt("AUTO_EXTRACT_MAX_QUEUE_SIZE", 200, 10, 2000);
+const MAX_ITEM_TEXT_CHARS = envInt("AUTO_EXTRACT_MAX_ITEM_TEXT_CHARS", process.env.NODE_ENV === "production" ? 160_000 : 240_000, 10_000, 2_000_000);
+const MAX_TOTAL_QUEUE_CHARS = envInt("AUTO_EXTRACT_MAX_TOTAL_QUEUE_CHARS", process.env.NODE_ENV === "production" ? 1_200_000 : 2_400_000, 100_000, 20_000_000);
 
 interface ExtractedCase {
   citation: string;
@@ -20,6 +28,7 @@ interface QueueItem {
 
 let extractionQueue: QueueItem[] = [];
 let isProcessing = false;
+let queuedChars = 0;
 const knownCitations = new Set<string>();
 let knownCitationsLoaded = false;
 
@@ -269,11 +278,18 @@ async function loadKnownCitations(): Promise<void> {
 
 export function queueAutoExtraction(text: string, source: string, opts?: { sourceDocId?: number; sourceType?: string; sourceFilename?: string }): void {
   if (!text || text.length < 100) return;
+  const safeText = text.replace(/\x00/g, "").trim().slice(0, MAX_ITEM_TEXT_CHARS);
+  if (safeText.length < 100) return;
   if (extractionQueue.length >= MAX_QUEUE_SIZE) {
     console.log(`[Auto-Extract] Queue full (${MAX_QUEUE_SIZE}), skipping: ${source}`);
     return;
   }
-  extractionQueue.push({ text, source, ...opts });
+  if ((queuedChars + safeText.length) > MAX_TOTAL_QUEUE_CHARS) {
+    console.log(`[Auto-Extract] Queue memory cap reached (${MAX_TOTAL_QUEUE_CHARS} chars), skipping: ${source}`);
+    return;
+  }
+  extractionQueue.push({ text: safeText, source, ...opts });
+  queuedChars += safeText.length;
   if (!isProcessing) {
     processQueue();
   }
@@ -287,6 +303,7 @@ async function processQueue(): Promise<void> {
 
   while (extractionQueue.length > 0) {
     const item = extractionQueue.shift()!;
+    queuedChars = Math.max(0, queuedChars - item.text.length);
     await extractAndSave(item.text, item.source, item.sourceDocId, item.sourceType, item.sourceFilename);
   }
 

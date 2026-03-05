@@ -6,7 +6,9 @@ import { cleanLegalDocumentText } from "./text-cleaner";
 import {
   deleteVectorsBySourceDocument,
   ensureRagSchema,
-  replaceDocumentChunks,
+  insertDocumentChunkBatch,
+  markRagDocumentIndexed,
+  resetDocumentChunks,
   similaritySearch,
   upsertRagDocument,
   type RagMatch,
@@ -29,6 +31,8 @@ const MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.5);
 const TOP_K = Number(process.env.RAG_TOP_K || 5);
 const VECTOR_WEIGHT_RAW = Number(process.env.RAG_VECTOR_WEIGHT || 0.72);
 const KEYWORD_WEIGHT_RAW = Number(process.env.RAG_KEYWORD_WEIGHT || 0.28);
+const INDEX_BATCH_SIZE = Math.max(1, Number(process.env.RAG_INDEX_BATCH_SIZE || (process.env.NODE_ENV === "production" ? 8 : 16)));
+const MAX_CHUNKS_PER_DOC = Math.max(10, Number(process.env.RAG_MAX_CHUNKS_PER_DOC || 600));
 
 function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
@@ -85,12 +89,14 @@ export async function indexUserDocument(userId: string, sourceDocumentId: number
     status: "pending",
   });
 
-  const chunks = chunkTextByTokens(cleaned);
-  const embeddings = await embedTextsLocal(chunks.map((c) => c.text));
+  const chunks = chunkTextByTokens(cleaned).slice(0, MAX_CHUNKS_PER_DOC);
+  await resetDocumentChunks(ragDoc.id);
 
-  const inserted = await replaceDocumentChunks(
-    ragDoc.id,
-    chunks.map((chunk, idx) => ({
+  let inserted = 0;
+  for (let start = 0; start < chunks.length; start += INDEX_BATCH_SIZE) {
+    const batch = chunks.slice(start, start + INDEX_BATCH_SIZE);
+    const embeddings = await embedTextsLocal(batch.map((c) => c.text));
+    const entries = batch.map((chunk, idx) => ({
       ragDocumentId: ragDoc.id,
       userId,
       sourceDocumentId,
@@ -102,8 +108,11 @@ export async function indexUserDocument(userId: string, sourceDocumentId: number
         sourceType: doc.sourceType || "other",
         fileExtension: doc.fileExtension || null,
       },
-    })),
-  );
+    }));
+    inserted += await insertDocumentChunkBatch(entries);
+  }
+
+  await markRagDocumentIndexed(ragDoc.id, inserted);
 
   return {
     ragDocumentId: ragDoc.id,
