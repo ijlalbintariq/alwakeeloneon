@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-export type ThemeMode = "light" | "dark" | "system";
-type ResolvedTheme = "light" | "dark";
+export type ThemeMode = "dark";
+type ResolvedTheme = "dark";
 
 type ThemeContextValue = {
   theme: ThemeMode;
@@ -9,46 +9,20 @@ type ThemeContextValue = {
   setTheme: (mode: ThemeMode) => void;
 };
 
-const THEME_KEY = "alwakeelo-theme";
-
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function resolveTheme(mode: ThemeMode): ResolvedTheme {
-  if (mode === "light" || mode === "dark") return mode;
-  if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "system";
-    const stored = window.localStorage.getItem(THEME_KEY);
-    return stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
-  });
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(resolveTheme(theme));
+  const [theme] = useState<ThemeMode>("dark");
+  const [resolvedTheme] = useState<ResolvedTheme>("dark");
 
   useEffect(() => {
-    const next = resolveTheme(theme);
-    setResolvedTheme(next);
-
     const root = document.documentElement;
-    root.setAttribute("data-theme", next);
-    root.classList.toggle("dark", next === "dark");
-    root.classList.toggle("light", next === "light");
-  }, [theme]);
+    root.setAttribute("data-theme", "dark");
+    root.classList.add("dark");
+    root.classList.remove("light");
+  }, []);
 
-  useEffect(() => {
-    if (theme !== "system") return;
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setResolvedTheme(resolveTheme("system"));
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, [theme]);
-
-  const setTheme = (mode: ThemeMode) => {
-    setThemeState(mode);
-    window.localStorage.setItem(THEME_KEY, mode);
-  };
+  const setTheme = (_mode: ThemeMode) => {};
 
   const value = useMemo(
     () => ({ theme, resolvedTheme, setTheme }),
@@ -63,4 +37,3 @@ export function useTheme() {
   if (!value) throw new Error("useTheme must be used within ThemeProvider");
   return value;
 }
-
