@@ -1345,6 +1345,156 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "pgcrypto_extension", stmt: sql`CREATE EXTENSION IF NOT EXISTS pgcrypto` },
     { label: "pg_trgm_extension", stmt: sql`CREATE EXTENSION IF NOT EXISTS pg_trgm` },
     {
+      label: "saved_judgments_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS saved_judgments (
+          id serial PRIMARY KEY,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          citation text NOT NULL,
+          court text NOT NULL,
+          title text NOT NULL,
+          summary text NOT NULL,
+          keywords text[],
+          uri text,
+          source text,
+          ai_analysis text,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "organizations_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS organizations (
+          id serial PRIMARY KEY,
+          name text NOT NULL,
+          description text,
+          owner_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "org_members_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS org_members (
+          id serial PRIMARY KEY,
+          org_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          role text NOT NULL DEFAULT 'member',
+          joined_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "org_invites_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS org_invites (
+          id serial PRIMARY KEY,
+          org_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+          email text NOT NULL,
+          invited_by varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          status text NOT NULL DEFAULT 'pending',
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "org_knowledge_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS org_knowledge (
+          id serial PRIMARY KEY,
+          org_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+          title text NOT NULL,
+          filename text NOT NULL,
+          content text NOT NULL,
+          category text NOT NULL DEFAULT 'general',
+          uploaded_by varchar REFERENCES users(id),
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "law_journals_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS law_journals (
+          id serial PRIMARY KEY,
+          code text NOT NULL,
+          name text NOT NULL,
+          is_active boolean NOT NULL DEFAULT true,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "courts_ref_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS courts_ref (
+          id serial PRIMARY KEY,
+          code text NOT NULL,
+          name text NOT NULL,
+          level text NOT NULL,
+          is_active boolean NOT NULL DEFAULT true,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "judgments_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS judgments (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          year integer NOT NULL,
+          journal_id integer NOT NULL REFERENCES law_journals(id),
+          page integer NOT NULL,
+          citation_string text NOT NULL,
+          title text NOT NULL,
+          petitioner text,
+          respondent text,
+          court_id integer REFERENCES courts_ref(id),
+          court_name_snapshot text,
+          decision_date timestamp,
+          headnotes text,
+          full_text text NOT NULL,
+          pdf_url text,
+          is_active boolean NOT NULL DEFAULT true,
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "citation_links_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS citation_links (
+          id serial PRIMARY KEY,
+          source_judgment_id uuid NOT NULL REFERENCES judgments(id) ON DELETE CASCADE,
+          target_judgment_id uuid NOT NULL REFERENCES judgments(id) ON DELETE CASCADE,
+          citation_type text NOT NULL,
+          context_excerpt text,
+          citation_text text NOT NULL,
+          start_offset integer,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "unresolved_citations_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS unresolved_citations (
+          id serial PRIMARY KEY,
+          source_judgment_id uuid NOT NULL REFERENCES judgments(id) ON DELETE CASCADE,
+          raw_citation text NOT NULL,
+          year integer,
+          journal_code text,
+          page integer,
+          context_excerpt text,
+          status text NOT NULL DEFAULT 'pending',
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
       label: "document_files_table",
       stmt: sql`
         CREATE TABLE IF NOT EXISTS document_files (
@@ -1422,11 +1572,15 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_statute_documents_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statute_documents_content_trgm ON statute_documents USING gin (content gin_trgm_ops)` },
     { label: "idx_law_journals_code", stmt: sql`CREATE INDEX IF NOT EXISTS idx_law_journals_code ON law_journals (code)` },
     { label: "idx_courts_ref_code", stmt: sql`CREATE INDEX IF NOT EXISTS idx_courts_ref_code ON courts_ref (code)` },
+    { label: "law_journals_code_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS law_journals_code_unique ON law_journals (code)` },
+    { label: "courts_ref_code_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS courts_ref_code_unique ON courts_ref (code)` },
     { label: "idx_judgments_citation_parts", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_citation_parts ON judgments (year, journal_id, page)` },
+    { label: "judgments_year_journal_page_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS judgments_year_journal_page_unique ON judgments (year, journal_id, page)` },
     { label: "idx_judgments_citation_string_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_citation_string_trgm ON judgments USING gin (citation_string gin_trgm_ops)` },
     { label: "idx_judgments_full_text_tsv", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_full_text_tsv ON judgments USING gin (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(headnotes,'') || ' ' || coalesce(full_text,'')))` },
     { label: "idx_citation_links_source", stmt: sql`CREATE INDEX IF NOT EXISTS idx_citation_links_source ON citation_links (source_judgment_id)` },
     { label: "idx_citation_links_target", stmt: sql`CREATE INDEX IF NOT EXISTS idx_citation_links_target ON citation_links (target_judgment_id)` },
+    { label: "citation_links_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS citation_links_unique ON citation_links (source_judgment_id, target_judgment_id, citation_type, citation_text)` },
     { label: "idx_unresolved_citations_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_unresolved_citations_status ON unresolved_citations (status)` },
     { label: "idx_document_files_document_id", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_document_files_document_id ON document_files (document_id)` },
     { label: "idx_document_files_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_document_files_user_id ON document_files (user_id)` },
