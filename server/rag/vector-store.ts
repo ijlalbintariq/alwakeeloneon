@@ -21,6 +21,8 @@ export type RagMatch = {
   chunkText: string;
   metadata: Record<string, unknown>;
   score: number;
+  vectorScore: number;
+  keywordScore: number;
 };
 
 function assertDb() {
@@ -75,6 +77,7 @@ export async function ensureRagSchema(): Promise<void> {
 
   await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_documents_user_source ON rag_documents (user_id, source_document_id)");
   await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_chunks_user_doc ON rag_chunks (user_id, source_document_id)");
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_chunks_tsv_simple ON rag_chunks USING gin (to_tsvector('simple', chunk_text))");
 
   // IVFFLAT can fail before enough rows exist; keep startup resilient.
   try {
@@ -162,37 +165,96 @@ export async function replaceDocumentChunks(ragDocumentId: number, entries: RagC
 export async function similaritySearch(args: {
   userId: string;
   queryEmbedding: number[];
+  queryText: string;
   sourceDocumentIds?: number[];
   topK: number;
+  vectorWeight?: number;
+  keywordWeight?: number;
 }): Promise<RagMatch[]> {
   assertDb();
+  const vectorWeightRaw = Number.isFinite(args.vectorWeight) ? Number(args.vectorWeight) : 0.72;
+  const keywordWeightRaw = Number.isFinite(args.keywordWeight) ? Number(args.keywordWeight) : 0.28;
+  const weightSum = vectorWeightRaw + keywordWeightRaw || 1;
+  const vectorWeight = Math.max(0, vectorWeightRaw / weightSum);
+  const keywordWeight = Math.max(0, keywordWeightRaw / weightSum);
+  const candidateLimit = Math.max(args.topK * 4, 20);
 
-  const filters: string[] = ["c.user_id = $1"];
-  const params: any[] = [args.userId, vectorLiteral(args.queryEmbedding), args.topK];
-
-  if (args.sourceDocumentIds && args.sourceDocumentIds.length > 0) {
-    const offset = params.length + 1;
-    filters.push(`c.source_document_id = ANY($${offset}::int[])`);
-    params.push(args.sourceDocumentIds);
-  }
+  const sourceFilter = args.sourceDocumentIds && args.sourceDocumentIds.length > 0
+    ? " AND c.source_document_id = ANY($8::int[])"
+    : "";
 
   const sql = `
+    WITH vector_hits AS (
+      SELECT
+        c.id,
+        c.rag_document_id,
+        c.source_document_id,
+        d.title,
+        c.chunk_index,
+        c.token_count,
+        c.chunk_text,
+        c.metadata,
+        GREATEST(0, 1 - (c.embedding <=> $2::vector)) AS vector_score,
+        COALESCE(ts_rank_cd(to_tsvector('simple', c.chunk_text), plainto_tsquery('simple', $3)), 0) AS keyword_score
+      FROM rag_chunks c
+      JOIN rag_documents d ON d.id = c.rag_document_id
+      WHERE c.user_id = $1${sourceFilter}
+      ORDER BY c.embedding <=> $2::vector ASC
+      LIMIT $5
+    ),
+    keyword_hits AS (
+      SELECT
+        c.id,
+        c.rag_document_id,
+        c.source_document_id,
+        d.title,
+        c.chunk_index,
+        c.token_count,
+        c.chunk_text,
+        c.metadata,
+        GREATEST(0, 1 - (c.embedding <=> $2::vector)) AS vector_score,
+        COALESCE(ts_rank_cd(to_tsvector('simple', c.chunk_text), plainto_tsquery('simple', $3)), 0) AS keyword_score
+      FROM rag_chunks c
+      JOIN rag_documents d ON d.id = c.rag_document_id
+      WHERE c.user_id = $1${sourceFilter}
+        AND to_tsvector('simple', c.chunk_text) @@ plainto_tsquery('simple', $3)
+      ORDER BY keyword_score DESC
+      LIMIT $5
+    ),
+    merged AS (
+      SELECT * FROM vector_hits
+      UNION
+      SELECT * FROM keyword_hits
+    )
     SELECT
-      c.id,
-      c.rag_document_id,
-      c.source_document_id,
-      d.title,
-      c.chunk_index,
-      c.token_count,
-      c.chunk_text,
-      c.metadata,
-      1 - (c.embedding <=> $2::vector) AS score
-    FROM rag_chunks c
-    JOIN rag_documents d ON d.id = c.rag_document_id
-    WHERE ${filters.join(" AND ")}
-    ORDER BY c.embedding <=> $2::vector ASC
-    LIMIT $3
+      id,
+      rag_document_id,
+      source_document_id,
+      title,
+      chunk_index,
+      token_count,
+      chunk_text,
+      metadata,
+      vector_score,
+      keyword_score,
+      (($6 * vector_score) + ($7 * LEAST(1.0, keyword_score))) AS score
+    FROM merged
+    ORDER BY score DESC, vector_score DESC
+    LIMIT $4
   `;
+
+  const params: any[] = [
+    args.userId,
+    vectorLiteral(args.queryEmbedding),
+    args.queryText,
+    args.topK,
+    candidateLimit,
+    vectorWeight,
+    keywordWeight,
+  ];
+  if (args.sourceDocumentIds && args.sourceDocumentIds.length > 0) {
+    params.push(args.sourceDocumentIds);
+  }
 
   const result = await pool.query(sql, params);
   return result.rows.map((row: any) => ({
@@ -205,6 +267,8 @@ export async function similaritySearch(args: {
     chunkText: String(row.chunk_text || ""),
     metadata: (row.metadata || {}) as Record<string, unknown>,
     score: Number(row.score || 0),
+    vectorScore: Number(row.vector_score || 0),
+    keywordScore: Number(row.keyword_score || 0),
   }));
 }
 

@@ -65,6 +65,7 @@ interface GroqChatOptions {
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   maxTokens?: number;
   model?: string;
+  temperature?: number;
 }
 
 interface GroqResponse {
@@ -91,12 +92,13 @@ interface GroqTranscriptionResult {
 export async function chatWithGroq(options: GroqChatOptions): Promise<GroqResponse> {
   const client = getClient();
   const model = options.model || await resolveModel();
+  const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
 
   const response = await client.chat.completions.create({
     model,
     messages: options.messages,
     max_tokens: options.maxTokens || 8192,
-    temperature: 0.7,
+    temperature,
   });
 
   const choice = response.choices[0];
@@ -113,12 +115,13 @@ export async function chatWithGroq(options: GroqChatOptions): Promise<GroqRespon
 export async function* streamWithGroq(options: GroqChatOptions): AsyncGenerator<string> {
   const client = getClient();
   const model = options.model || await resolveModel();
+  const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
 
   const stream = await client.chat.completions.create({
     model,
     messages: options.messages,
     max_tokens: options.maxTokens || 8192,
-    temperature: 0.7,
+    temperature,
     stream: true,
   });
 

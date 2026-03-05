@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { storage } from "../storage";
 import { chunkTextByTokens } from "./chunker";
-import { embedTextLocal } from "./embedding-local";
+import { embedTextLocal, embedTextsLocal } from "./embedding-local";
 import { cleanLegalDocumentText } from "./text-cleaner";
 import {
   deleteVectorsBySourceDocument,
@@ -25,8 +25,26 @@ export type RAGRetrievalResult = {
   confidence: "high" | "medium" | "low";
 };
 
-const MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.62);
+const MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.5);
 const TOP_K = Number(process.env.RAG_TOP_K || 5);
+const VECTOR_WEIGHT_RAW = Number(process.env.RAG_VECTOR_WEIGHT || 0.72);
+const KEYWORD_WEIGHT_RAW = Number(process.env.RAG_KEYWORD_WEIGHT || 0.28);
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function resolveHybridWeights(): { vectorWeight: number; keywordWeight: number } {
+  const vectorWeight = clamp(VECTOR_WEIGHT_RAW, 0, 1);
+  const keywordWeight = clamp(KEYWORD_WEIGHT_RAW, 0, 1);
+  const sum = vectorWeight + keywordWeight;
+  if (sum <= 0) return { vectorWeight: 0.72, keywordWeight: 0.28 };
+  return {
+    vectorWeight: vectorWeight / sum,
+    keywordWeight: keywordWeight / sum,
+  };
+}
 
 function sha256(text: string): string {
   return crypto.createHash("sha256").update(text).digest("hex");
@@ -36,8 +54,8 @@ function resolveConfidence(scores: number[]): "high" | "medium" | "low" {
   if (scores.length === 0) return "low";
   const top1 = scores[0] || 0;
   const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-  if (top1 >= 0.72 && avg >= 0.66) return "high";
-  if (top1 >= 0.66) return "medium";
+  if (top1 >= 0.78 && avg >= 0.64) return "high";
+  if (top1 >= 0.62) return "medium";
   return "low";
 }
 
@@ -68,7 +86,7 @@ export async function indexUserDocument(userId: string, sourceDocumentId: number
   });
 
   const chunks = chunkTextByTokens(cleaned);
-  const embeddings = chunks.map((c) => embedTextLocal(c.text));
+  const embeddings = await embedTextsLocal(chunks.map((c) => c.text));
 
   const inserted = await replaceDocumentChunks(
     ragDoc.id,
@@ -109,15 +127,25 @@ export async function retrieveForQuery(args: {
     return { matches: [], confidence: "low" };
   }
 
-  const queryEmbedding = embedTextLocal(queryText);
+  const queryEmbedding = await embedTextLocal(queryText);
+  const { vectorWeight, keywordWeight } = resolveHybridWeights();
   const matches = await similaritySearch({
     userId: args.userId,
     queryEmbedding,
+    queryText,
     sourceDocumentIds: args.documentIds,
     topK: Math.max(1, args.topK || TOP_K),
+    vectorWeight,
+    keywordWeight,
   });
 
-  const filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= MIN_SCORE);
+  let filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= MIN_SCORE);
+  if (filtered.length === 0 && matches.length > 0) {
+    // Soft fallback to avoid false negatives on short/simple legal queries.
+    const relaxedCutoff = Math.max(0.35, MIN_SCORE - 0.08);
+    filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= relaxedCutoff).slice(0, Math.max(1, Math.min(2, TOP_K)));
+  }
+
   const confidence = resolveConfidence(filtered.map((m) => m.score));
   return { matches: filtered, confidence };
 }
