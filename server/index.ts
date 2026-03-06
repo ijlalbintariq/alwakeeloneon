@@ -275,6 +275,15 @@ app.use((req, res, next) => {
       return res.status(499).json({ message: "Request was aborted before completion." });
     }
 
+    if (err?.code === "LIMIT_FILE_SIZE") {
+      if (res.headersSent) return next(err);
+      return res.status(413).json({ message: "Uploaded file exceeds server file-size limit." });
+    }
+    if (err?.code === "LIMIT_FILE_COUNT" || err?.code === "LIMIT_UNEXPECTED_FILE") {
+      if (res.headersSent) return next(err);
+      return res.status(400).json({ message: "Too many files were uploaded in one request." });
+    }
+
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
