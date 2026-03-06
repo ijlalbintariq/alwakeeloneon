@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -38,9 +38,16 @@ type AdminKnowledgeDoc = {
   title: string;
   filename: string;
   category: string;
-  content: string;
   uploadedBy: string;
   createdAt: string;
+};
+
+type PagedResponse<T> = {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
 };
 
 type CostAnalytics = {
@@ -151,6 +158,56 @@ const FEATURE_LABELS: Record<string, string> = {
   contract: "Contract",
   "contract-drafting": "Contract Draft",
 };
+
+const ADMIN_PAGE_SIZE = 50;
+
+function PaginationStrip({
+  page,
+  total,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  total: number;
+  pageSize: number;
+  onPageChange: (nextPage: number) => void;
+}) {
+  if (total <= pageSize) return null;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(total, page * pageSize);
+
+  return (
+    <div className="flex items-center justify-between gap-3 pt-2">
+      <span className="text-[10px] text-slate-500 font-bold">
+        Showing {start}-{end} of {total}
+      </span>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-[10px] text-slate-300 rounded-lg"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+        >
+          Prev
+        </Button>
+        <span className="text-[10px] text-slate-400 font-bold">
+          Page {page} / {totalPages}
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-[10px] text-slate-300 rounded-lg"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function StatsSection() {
   const { data: stats, isLoading } = useQuery<SystemStats>({ queryKey: ["/api/admin/stats"] });
@@ -766,17 +823,41 @@ function AuditLogsSection() {
 function KnowledgeSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: docs, isLoading } = useQuery<AdminKnowledgeDoc[]>({ queryKey: ["/api/admin/knowledge"] });
+  const [page, setPage] = useState(1);
+  const { data: docsPage, isLoading } = useQuery<PagedResponse<AdminKnowledgeDoc>>({
+    queryKey: ["/api/admin/knowledge", page, ADMIN_PAGE_SIZE],
+    queryFn: async () => {
+      const offset = (page - 1) * ADMIN_PAGE_SIZE;
+      const res = await fetch(`/api/admin/knowledge?limit=${ADMIN_PAGE_SIZE}&offset=${offset}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch knowledge documents");
+      }
+      return res.json();
+    },
+  });
+  const docs = docsPage?.items || [];
+  const totalDocs = docsPage?.total || 0;
   const [uploadCategory, setUploadCategory] = useState("general");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+
+  useEffect(() => {
+    if (page > 1 && docs.length === 0 && totalDocs > 0) {
+      setPage((p) => Math.max(1, p - 1));
+    }
+  }, [page, docs.length, totalDocs]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/admin/knowledge/${id}`);
     },
     onSuccess: () => {
+      if (page > 1 && docs.length === 1) {
+        setPage((p) => Math.max(1, p - 1));
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/admin/knowledge"] });
       toast({ title: "Document removed from vault" });
     },
@@ -791,6 +872,7 @@ function KnowledgeSection() {
       return res.json();
     },
     onSuccess: (data: any) => {
+      setPage(1);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/knowledge"] });
       toast({ title: `${data.deleted} document${data.deleted !== 1 ? "s" : ""} deleted` });
       setShowDeleteAllConfirm(false);
@@ -857,6 +939,7 @@ function KnowledgeSection() {
       }
 
       setUploadProgress({ current: totalFiles, total: totalFiles, uploaded: totalUploaded, errors: totalErrors });
+      setPage(1);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/knowledge"] });
       setSelectedFiles([]);
       const fileInput = document.querySelector('[data-testid="input-knowledge-files"]') as HTMLInputElement;
@@ -949,10 +1032,10 @@ function KnowledgeSection() {
           <div className="flex items-center gap-3">
             <Database size={16} className="text-amber-500" />
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-              Vault Documents ({docs?.length || 0})
+              Vault Documents ({totalDocs})
             </span>
           </div>
-          {(docs?.length || 0) > 0 && !showDeleteAllConfirm && (
+          {totalDocs > 0 && !showDeleteAllConfirm && (
             <Button
               size="sm"
               variant="ghost"
@@ -965,7 +1048,7 @@ function KnowledgeSection() {
           {showDeleteAllConfirm && (
             <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
               <AlertOctagon size={14} className="text-red-400 flex-shrink-0" />
-              <span className="text-[10px] text-red-300 font-bold">Delete all {docs?.length} documents?</span>
+              <span className="text-[10px] text-red-300 font-bold">Delete all {totalDocs} documents?</span>
               <Button
                 size="sm"
                 className="bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold h-7 px-3 rounded-lg"
@@ -990,7 +1073,7 @@ function KnowledgeSection() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="animate-spin text-amber-500" size={24} />
           </div>
-        ) : docs?.length === 0 ? (
+        ) : docs.length === 0 ? (
           <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
             <CardContent className="p-12 text-center">
               <Database size={32} className="text-slate-700 mx-auto mb-3" />
@@ -998,7 +1081,7 @@ function KnowledgeSection() {
             </CardContent>
           </Card>
         ) : (
-          docs?.map((doc) => (
+          docs.map((doc) => (
             <Card key={doc.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`knowledge-doc-${doc.id}`}>
               <CardContent className="p-5 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
@@ -1030,6 +1113,7 @@ function KnowledgeSection() {
             </Card>
           ))
         )}
+        <PaginationStrip page={page} total={totalDocs} pageSize={ADMIN_PAGE_SIZE} onPageChange={setPage} />
       </div>
     </div>
   );
@@ -1049,7 +1133,22 @@ function CaseLawSection() {
   const CASELAW_EXTRACT_MAX_RETRIES = 2;
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: caseLawEntries, isLoading } = useQuery<CaseLawEntry[]>({ queryKey: ["/api/admin/case-law"] });
+  const [page, setPage] = useState(1);
+  const { data: caseLawPage, isLoading } = useQuery<PagedResponse<CaseLawEntry>>({
+    queryKey: ["/api/admin/case-law", page, ADMIN_PAGE_SIZE],
+    queryFn: async () => {
+      const offset = (page - 1) * ADMIN_PAGE_SIZE;
+      const res = await fetch(`/api/admin/case-law?limit=${ADMIN_PAGE_SIZE}&offset=${offset}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch case law entries");
+      }
+      return res.json();
+    },
+  });
+  const caseLawEntries = caseLawPage?.items || [];
+  const totalCaseLawEntries = caseLawPage?.total || 0;
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -1061,6 +1160,12 @@ function CaseLawSection() {
   const [formData, setFormData] = useState({ citation: "", court: "", title: "", summary: "", keywords: "" });
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
+  useEffect(() => {
+    if (page > 1 && caseLawEntries.length === 0 && totalCaseLawEntries > 0) {
+      setPage((p) => Math.max(1, p - 1));
+    }
+  }, [page, caseLawEntries.length, totalCaseLawEntries]);
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       await apiRequest("POST", "/api/admin/case-law", {
@@ -1069,6 +1174,7 @@ function CaseLawSection() {
       });
     },
     onSuccess: () => {
+      setPage(1);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
       toast({ title: "Case law entry added" });
       setFormData({ citation: "", court: "", title: "", summary: "", keywords: "" });
@@ -1085,6 +1191,7 @@ function CaseLawSection() {
       });
     },
     onSuccess: () => {
+      setPage(1);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
       toast({ title: "Case law entry updated" });
       setEditingId(null);
@@ -1098,6 +1205,9 @@ function CaseLawSection() {
       await apiRequest("DELETE", `/api/admin/case-law/${id}`);
     },
     onSuccess: () => {
+      if (page > 1 && caseLawEntries.length === 1) {
+        setPage((p) => Math.max(1, p - 1));
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
       toast({ title: "Case law entry removed" });
     },
@@ -1110,6 +1220,7 @@ function CaseLawSection() {
       return res.json();
     },
     onSuccess: (data: any) => {
+      setPage(1);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
       toast({ title: `${data.deleted} case law entr${data.deleted !== 1 ? "ies" : "y"} deleted` });
       setShowDeleteAllConfirm(false);
@@ -1144,6 +1255,7 @@ function CaseLawSection() {
       return { inserted: totalInserted, errors: allErrors };
     },
     onSuccess: (data: any) => {
+      setPage(1);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
       const hasSource = extractedCases.some(e => e._sourceDocId);
       const docMsg = hasSource ? " (linked to source document)" : "";
@@ -1355,7 +1467,7 @@ function CaseLawSection() {
         <div className="flex items-center gap-3">
           <Scale size={16} className="text-amber-500" />
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-            Case Law Database ({caseLawEntries?.length || 0})
+            Case Law Database ({totalCaseLawEntries})
           </span>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -1527,10 +1639,10 @@ function CaseLawSection() {
         <div className="flex items-center gap-3">
           <Scale size={16} className="text-amber-500" />
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-            Case Law Entries ({caseLawEntries?.length || 0})
+            Case Law Entries ({totalCaseLawEntries})
           </span>
         </div>
-        {(caseLawEntries?.length || 0) > 0 && !showDeleteAllConfirm && (
+        {totalCaseLawEntries > 0 && !showDeleteAllConfirm && (
           <Button
             size="sm"
             variant="ghost"
@@ -1543,7 +1655,7 @@ function CaseLawSection() {
         {showDeleteAllConfirm && (
           <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
             <AlertOctagon size={14} className="text-red-400 flex-shrink-0" />
-            <span className="text-[10px] text-red-300 font-bold">Delete all {caseLawEntries?.length} entries?</span>
+            <span className="text-[10px] text-red-300 font-bold">Delete all {totalCaseLawEntries} entries?</span>
             <Button
               size="sm"
               className="bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold h-7 px-3 rounded-lg"
@@ -1568,7 +1680,7 @@ function CaseLawSection() {
         <div className="flex items-center justify-center py-12">
           <Loader2 className="animate-spin text-amber-500" size={24} />
         </div>
-      ) : caseLawEntries?.length === 0 ? (
+      ) : caseLawEntries.length === 0 ? (
         <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
           <CardContent className="p-12 text-center">
             <Scale size={32} className="text-slate-700 mx-auto mb-3" />
@@ -1577,7 +1689,7 @@ function CaseLawSection() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {caseLawEntries?.map((entry) => (
+          {caseLawEntries.map((entry) => (
             <Card key={entry.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`caselaw-entry-${entry.id}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-4">
@@ -1610,6 +1722,7 @@ function CaseLawSection() {
           ))}
         </div>
       )}
+      <PaginationStrip page={page} total={totalCaseLawEntries} pageSize={ADMIN_PAGE_SIZE} onPageChange={setPage} />
     </div>
   );
 }
@@ -1625,17 +1738,41 @@ type StatuteDoc = {
 function StatuteDocumentsSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: docs, isLoading } = useQuery<StatuteDoc[]>({ queryKey: ["/api/admin/statute-documents"] });
+  const [page, setPage] = useState(1);
+  const { data: docsPage, isLoading } = useQuery<PagedResponse<StatuteDoc>>({
+    queryKey: ["/api/admin/statute-documents", page, ADMIN_PAGE_SIZE],
+    queryFn: async () => {
+      const offset = (page - 1) * ADMIN_PAGE_SIZE;
+      const res = await fetch(`/api/admin/statute-documents?limit=${ADMIN_PAGE_SIZE}&offset=${offset}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch statute documents");
+      }
+      return res.json();
+    },
+  });
+  const docs = docsPage?.items || [];
+  const totalDocs = docsPage?.total || 0;
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, uploaded: 0, errors: 0 });
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+
+  useEffect(() => {
+    if (page > 1 && docs.length === 0 && totalDocs > 0) {
+      setPage((p) => Math.max(1, p - 1));
+    }
+  }, [page, docs.length, totalDocs]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/admin/statute-documents/${id}`);
     },
     onSuccess: () => {
+      if (page > 1 && docs.length === 1) {
+        setPage((p) => Math.max(1, p - 1));
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/admin/statute-documents"] });
       toast({ title: "Statute document removed" });
     },
@@ -1650,6 +1787,7 @@ function StatuteDocumentsSection() {
       return res.json();
     },
     onSuccess: (data: any) => {
+      setPage(1);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/statute-documents"] });
       toast({ title: `${data.deleted} statute document${data.deleted !== 1 ? "s" : ""} deleted` });
       setShowDeleteAllConfirm(false);
@@ -1705,6 +1843,7 @@ function StatuteDocumentsSection() {
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/admin/statute-documents"] });
+      setPage(1);
       setSelectedFiles([]);
       const fileInput = document.querySelector('[data-testid="input-statute-doc-files"]') as HTMLInputElement;
       if (fileInput) fileInput.value = "";
@@ -1790,10 +1929,10 @@ function StatuteDocumentsSection() {
           <div className="flex items-center gap-3">
             <FileText size={16} className="text-amber-500" />
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-              Statute Library ({docs?.length || 0})
+              Statute Library ({totalDocs})
             </span>
           </div>
-          {(docs?.length || 0) > 0 && !showDeleteAllConfirm && (
+          {totalDocs > 0 && !showDeleteAllConfirm && (
             <Button
               size="sm"
               variant="ghost"
@@ -1806,7 +1945,7 @@ function StatuteDocumentsSection() {
           {showDeleteAllConfirm && (
             <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
               <AlertOctagon size={14} className="text-red-400 flex-shrink-0" />
-              <span className="text-[10px] text-red-300 font-bold">Delete all {docs?.length} documents?</span>
+              <span className="text-[10px] text-red-300 font-bold">Delete all {totalDocs} documents?</span>
               <Button
                 size="sm"
                 className="bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold h-7 px-3 rounded-lg"
@@ -1831,7 +1970,7 @@ function StatuteDocumentsSection() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="animate-spin text-amber-500" size={24} />
           </div>
-        ) : docs?.length === 0 ? (
+        ) : docs.length === 0 ? (
           <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
             <CardContent className="p-12 text-center">
               <FileText size={32} className="text-slate-700 mx-auto mb-3" />
@@ -1839,7 +1978,7 @@ function StatuteDocumentsSection() {
             </CardContent>
           </Card>
         ) : (
-          docs?.map((doc) => (
+          docs.map((doc) => (
             <Card key={doc.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`statute-doc-${doc.id}`}>
               <CardContent className="p-5 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
@@ -1871,6 +2010,7 @@ function StatuteDocumentsSection() {
             </Card>
           ))
         )}
+        <PaginationStrip page={page} total={totalDocs} pageSize={ADMIN_PAGE_SIZE} onPageChange={setPage} />
       </div>
     </div>
   );

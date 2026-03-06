@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
@@ -79,6 +79,16 @@ function toApiDocument(doc: any) {
       ? Number(doc.classificationConfidence) / 100
       : 0,
   };
+}
+
+function parsePagination(req: Request, options?: { defaultLimit?: number; maxLimit?: number }) {
+  const defaultLimit = options?.defaultLimit ?? 50;
+  const maxLimit = options?.maxLimit ?? 200;
+  const limitRaw = Number(req.query.limit);
+  const offsetRaw = Number(req.query.offset);
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(maxLimit, Math.floor(limitRaw))) : defaultLimit;
+  const offset = Number.isFinite(offsetRaw) ? Math.max(0, Math.floor(offsetRaw)) : 0;
+  return { limit, offset };
 }
 
 function compactContentForDb(content: string): { inlineContent: string; wasTruncated: boolean } {
@@ -1768,12 +1778,11 @@ RAG POLICY (STRICT):
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const query = (req.query.q as string) || "";
-      if (!query) {
-        const all = await storage.getAllCaseLaw();
-        return res.json(all);
-      }
-      const results = await storage.searchCaseLaw(query);
+      const query = ((req.query.q as string) || "").trim();
+      if (!query) return res.json([]);
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, Math.floor(limitRaw))) : 25;
+      const results = await storage.searchCaseLaw(query, limit);
       res.json(results);
     } catch (err) {
       console.error("Error searching case law:", err);
@@ -1824,12 +1833,10 @@ RAG POLICY (STRICT):
       let filename = "";
 
       if (entry.sourceType === "github") {
-        const docs = await storage.getAllGithubKnowledge();
-        const doc = docs.find(d => d.id === entry.sourceDocId);
+        const doc = await storage.getGithubKnowledgeById(entry.sourceDocId);
         if (doc) { title = doc.title; content = doc.content; filename = doc.filename; }
       } else if (entry.sourceType === "admin") {
-        const docs = await storage.getAllAdminKnowledge();
-        const doc = docs.find(d => d.id === entry.sourceDocId);
+        const doc = await storage.getAdminKnowledgeById(entry.sourceDocId);
         if (doc) {
           title = doc.title;
           content = doc.content;
@@ -1841,8 +1848,7 @@ RAG POLICY (STRICT):
           }
         }
       } else if (entry.sourceType === "statute") {
-        const docs = await storage.getAllStatuteDocuments();
-        const doc = docs.find(d => d.id === entry.sourceDocId);
+        const doc = await storage.getStatuteDocument(entry.sourceDocId);
         if (doc) {
           title = doc.title;
           content = doc.content;
@@ -1854,8 +1860,7 @@ RAG POLICY (STRICT):
           }
         }
       } else if (entry.sourceType === "user") {
-        const docs = await storage.getDocuments(userId);
-        const doc = docs.find(d => d.id === entry.sourceDocId);
+        const doc = await storage.getDocumentById(entry.sourceDocId, userId);
         if (doc) {
           title = doc.title || "";
           content = doc.content || "";
@@ -3426,8 +3431,9 @@ RULES:
   app.get("/api/admin/knowledge", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
-      const docs = await storage.getAllAdminKnowledge();
-      res.json(docs);
+      const { limit, offset } = parsePagination(req, { defaultLimit: 50, maxLimit: 200 });
+      const page = await storage.getAdminKnowledgePage(limit, offset);
+      res.json(page);
     } catch (err) {
       console.error("Error fetching knowledge:", err);
       res.status(500).json({ message: "Failed to fetch knowledge" });
@@ -3645,8 +3651,9 @@ RULES:
   app.get("/api/admin/case-law", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
-      const all = await storage.getAllCaseLaw();
-      res.json(all);
+      const { limit, offset } = parsePagination(req, { defaultLimit: 50, maxLimit: 200 });
+      const page = await storage.getCaseLawPage(limit, offset);
+      res.json(page);
     } catch (err) {
       console.error("Error fetching case law:", err);
       res.status(500).json({ message: "Failed to fetch case law" });
@@ -4038,8 +4045,9 @@ RULES:
   app.get("/api/admin/statute-documents", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
-      const docs = await storage.getAllStatuteDocuments();
-      res.json(docs);
+      const { limit, offset } = parsePagination(req, { defaultLimit: 50, maxLimit: 200 });
+      const page = await storage.getStatuteDocumentsPage(limit, offset);
+      res.json(page);
     } catch (err) {
       console.error("Error fetching statute documents:", err);
       res.status(500).json({ message: "Failed to fetch statute documents" });

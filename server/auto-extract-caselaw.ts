@@ -369,10 +369,15 @@ export async function extractFromAllExistingSources(): Promise<void> {
     }
     console.log(`[Auto-Extract] Queued ${githubQueued} GitHub knowledge documents`);
 
-    const adminDocs = await storage.getAllAdminKnowledge();
     let adminQueued = 0;
-    for (const doc of adminDocs) {
-      if (doc.content && doc.content.length > 200) {
+    let adminOffset = 0;
+    const PAGE_SIZE = 100;
+    while (true) {
+      const page = await storage.getAdminKnowledgePage(PAGE_SIZE, adminOffset);
+      if (page.items.length === 0) break;
+      for (const row of page.items) {
+        const doc = await storage.getAdminKnowledgeById(row.id);
+        if (!doc || !doc.content || doc.content.length <= 200) continue;
         queueAutoExtraction(doc.content, `admin:${doc.filename}`, {
           sourceDocId: doc.id,
           sourceType: "admin",
@@ -380,13 +385,19 @@ export async function extractFromAllExistingSources(): Promise<void> {
         });
         adminQueued++;
       }
+      adminOffset += page.items.length;
+      if (!page.hasMore) break;
     }
     console.log(`[Auto-Extract] Queued ${adminQueued} admin knowledge documents`);
 
-    const statuteDocs = await storage.getAllStatuteDocuments();
     let statuteQueued = 0;
-    for (const doc of statuteDocs) {
-      if (doc.content && doc.content.length > 200) {
+    let statuteOffset = 0;
+    while (true) {
+      const page = await storage.getStatuteDocumentsPage(PAGE_SIZE, statuteOffset);
+      if (page.items.length === 0) break;
+      for (const row of page.items) {
+        const doc = await storage.getStatuteDocument(row.id);
+        if (!doc || !doc.content || doc.content.length <= 200) continue;
         queueAutoExtraction(doc.content, `statute:${doc.filename}`, {
           sourceDocId: doc.id,
           sourceType: "statute",
@@ -394,6 +405,8 @@ export async function extractFromAllExistingSources(): Promise<void> {
         });
         statuteQueued++;
       }
+      statuteOffset += page.items.length;
+      if (!page.hasMore) break;
     }
     console.log(`[Auto-Extract] Queued ${statuteQueued} statute documents`);
 

@@ -34,6 +34,17 @@ export type DocumentInsights = {
   unclassifiedCount: number;
 };
 
+export type PagedResult<T> = {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+};
+
+export type AdminKnowledgeListItem = Omit<AdminKnowledge, "content">;
+export type StatuteDocumentListItem = Omit<StatuteDocument, "content">;
+
 export type DocumentMetadataUpdate = {
   id: number;
   sourceType: string;
@@ -98,6 +109,7 @@ export interface IStorage {
 
   createDocument(doc: InsertDocument & { userId: string }): Promise<Document>;
   getDocuments(userId: string): Promise<Document[]>;
+  getDocumentById(id: number, userId: string): Promise<Document | undefined>;
   updateDocument(
     id: number,
     userId: string,
@@ -134,6 +146,7 @@ export interface IStorage {
 
   searchCaseLaw(query: string, limit?: number): Promise<CaseLaw[]>;
   getAllCaseLaw(): Promise<CaseLaw[]>;
+  getCaseLawPage(limit: number, offset: number): Promise<PagedResult<CaseLaw>>;
   getCaseLawById(id: number): Promise<CaseLaw | undefined>;
   getCaseLawByCitation(citation: string): Promise<CaseLaw | undefined>;
   getCaseLawCitations(): Promise<string[]>;
@@ -152,6 +165,7 @@ export interface IStorage {
 
   getGithubKnowledgeCount(): Promise<number>;
   getAllGithubKnowledge(): Promise<GithubKnowledge[]>;
+  getGithubKnowledgeById(id: number): Promise<GithubKnowledge | undefined>;
   upsertGithubKnowledge(items: InsertGithubKnowledge[]): Promise<void>;
   searchGithubKnowledge(query: string, limit?: number): Promise<GithubKnowledge[]>;
 
@@ -177,7 +191,9 @@ export interface IStorage {
   updateUserProfile(userId: string, data: { firstName?: string; lastName?: string; profileImageUrl?: string | null }): Promise<User | undefined>;
 
   addAdminKnowledge(entry: InsertAdminKnowledge): Promise<AdminKnowledge>;
+  getAdminKnowledgeById(id: number): Promise<AdminKnowledge | undefined>;
   getAllAdminKnowledge(): Promise<AdminKnowledge[]>;
+  getAdminKnowledgePage(limit: number, offset: number): Promise<PagedResult<AdminKnowledgeListItem>>;
   deleteAdminKnowledge(id: number): Promise<void>;
   deleteAllAdminKnowledge(): Promise<number>;
   searchAdminKnowledge(query: string, limit?: number): Promise<AdminKnowledge[]>;
@@ -188,6 +204,7 @@ export interface IStorage {
 
   addStatuteDocument(entry: InsertStatuteDocument): Promise<StatuteDocument>;
   getAllStatuteDocuments(): Promise<StatuteDocument[]>;
+  getStatuteDocumentsPage(limit: number, offset: number): Promise<PagedResult<StatuteDocumentListItem>>;
   getStatuteDocument(id: number): Promise<StatuteDocument | undefined>;
   deleteStatuteDocument(id: number): Promise<void>;
   deleteAllStatuteDocuments(): Promise<number>;
@@ -268,6 +285,14 @@ export class DatabaseStorage implements IStorage {
       .from(documents)
       .where(eq(documents.userId, userId))
       .orderBy(desc(documents.createdAt));
+  }
+
+  async getDocumentById(id: number, userId: string): Promise<Document | undefined> {
+    const [doc] = await db.select()
+      .from(documents)
+      .where(and(eq(documents.id, id), eq(documents.userId, userId)))
+      .limit(1);
+    return doc;
   }
 
   async updateDocument(
@@ -588,6 +613,25 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(caseLaw);
   }
 
+  async getCaseLawPage(limit: number, offset: number): Promise<PagedResult<CaseLaw>> {
+    const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+    const safeOffset = Math.max(0, Number(offset) || 0);
+    const [totalRow] = await db.select({ total: count() }).from(caseLaw);
+    const total = Number(totalRow?.total || 0);
+    const items = await db.select()
+      .from(caseLaw)
+      .orderBy(desc(caseLaw.id))
+      .limit(safeLimit)
+      .offset(safeOffset);
+    return {
+      items,
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + items.length < total,
+    };
+  }
+
   async getCaseLawById(id: number): Promise<CaseLaw | undefined> {
     const [row] = await db.select().from(caseLaw).where(eq(caseLaw.id, id));
     return row;
@@ -840,6 +884,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(githubKnowledge);
   }
 
+  async getGithubKnowledgeById(id: number): Promise<GithubKnowledge | undefined> {
+    const [doc] = await db.select().from(githubKnowledge).where(eq(githubKnowledge.id, id)).limit(1);
+    return doc;
+  }
+
   async upsertGithubKnowledge(items: InsertGithubKnowledge[]): Promise<void> {
     for (const item of items) {
       const existing = await db.select().from(githubKnowledge).where(eq(githubKnowledge.filename, item.filename));
@@ -1062,8 +1111,39 @@ export class DatabaseStorage implements IStorage {
     return doc;
   }
 
+  async getAdminKnowledgeById(id: number): Promise<AdminKnowledge | undefined> {
+    const [doc] = await db.select().from(adminKnowledge).where(eq(adminKnowledge.id, id)).limit(1);
+    return doc;
+  }
+
   async getAllAdminKnowledge(): Promise<AdminKnowledge[]> {
     return await db.select().from(adminKnowledge).orderBy(desc(adminKnowledge.createdAt));
+  }
+
+  async getAdminKnowledgePage(limit: number, offset: number): Promise<PagedResult<AdminKnowledgeListItem>> {
+    const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+    const safeOffset = Math.max(0, Number(offset) || 0);
+    const [totalRow] = await db.select({ total: count() }).from(adminKnowledge);
+    const total = Number(totalRow?.total || 0);
+    const items = await db.select({
+      id: adminKnowledge.id,
+      title: adminKnowledge.title,
+      filename: adminKnowledge.filename,
+      category: adminKnowledge.category,
+      uploadedBy: adminKnowledge.uploadedBy,
+      createdAt: adminKnowledge.createdAt,
+    })
+      .from(adminKnowledge)
+      .orderBy(desc(adminKnowledge.createdAt))
+      .limit(safeLimit)
+      .offset(safeOffset);
+    return {
+      items,
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + items.length < total,
+    };
   }
 
   async deleteAdminKnowledge(id: number): Promise<void> {
@@ -1117,6 +1197,32 @@ export class DatabaseStorage implements IStorage {
 
   async getAllStatuteDocuments(): Promise<StatuteDocument[]> {
     return await db.select().from(statuteDocuments).orderBy(desc(statuteDocuments.createdAt));
+  }
+
+  async getStatuteDocumentsPage(limit: number, offset: number): Promise<PagedResult<StatuteDocumentListItem>> {
+    const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+    const safeOffset = Math.max(0, Number(offset) || 0);
+    const [totalRow] = await db.select({ total: count() }).from(statuteDocuments);
+    const total = Number(totalRow?.total || 0);
+    const items = await db.select({
+      id: statuteDocuments.id,
+      title: statuteDocuments.title,
+      filename: statuteDocuments.filename,
+      category: statuteDocuments.category,
+      uploadedBy: statuteDocuments.uploadedBy,
+      createdAt: statuteDocuments.createdAt,
+    })
+      .from(statuteDocuments)
+      .orderBy(desc(statuteDocuments.createdAt))
+      .limit(safeLimit)
+      .offset(safeOffset);
+    return {
+      items,
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + items.length < total,
+    };
   }
 
   async getStatuteDocument(id: number): Promise<StatuteDocument | undefined> {
