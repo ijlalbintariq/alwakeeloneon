@@ -1045,6 +1045,8 @@ type CaseLawEntry = {
 };
 
 function CaseLawSection() {
+  const CASELAW_EXTRACT_TIMEOUT_MS = 180000;
+  const CASELAW_EXTRACT_MAX_RETRIES = 2;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: caseLawEntries, isLoading } = useQuery<CaseLawEntry[]>({ queryKey: ["/api/admin/case-law"] });
@@ -1054,6 +1056,7 @@ function CaseLawSection() {
   const [extractedCases, setExtractedCases] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string[]; _sourceDocId?: number; _sourceFilename?: string }>>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractProgress, setExtractProgress] = useState({ current: 0, total: 0, currentFile: "" });
+  const [retryExtractFiles, setRetryExtractFiles] = useState<File[]>([]);
   const [isAutoScanning, setIsAutoScanning] = useState(false);
   const [formData, setFormData] = useState({ citation: "", court: "", title: "", summary: "", keywords: "" });
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
@@ -1146,63 +1149,119 @@ function CaseLawSection() {
       const docMsg = hasSource ? " (linked to source document)" : "";
       toast({ title: `${data.inserted} case law entries saved to database${data.errors?.length ? `, ${data.errors.length} skipped` : ""}${docMsg}` });
       setExtractedCases([]);
+      setRetryExtractFiles([]);
       setShowBulkUpload(false);
     },
     onError: () => toast({ title: "Failed to save case law entries", variant: "destructive" }),
   });
 
-  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const processCaseLawFiles = async (files: File[], append: boolean = false) => {
     if (files.length === 0) return;
     setIsExtracting(true);
-    setExtractedCases([]);
+    if (!append) {
+      setExtractedCases([]);
+    }
     setExtractProgress({ current: 0, total: files.length, currentFile: "" });
 
     const allCases: typeof extractedCases = [];
-    const failedFiles: string[] = [];
+    const failedFileNames: string[] = [];
+    const failedFileObjects: File[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       setExtractProgress({ current: i + 1, total: files.length, currentFile: file.name });
-      try {
+
+      let succeeded = false;
+      for (let attempt = 1; attempt <= CASELAW_EXTRACT_MAX_RETRIES; attempt++) {
         const formDataUpload = new FormData();
         formDataUpload.append("file", file);
-        const res = await fetch("/api/admin/case-law/extract", {
-          method: "POST",
-          credentials: "include",
-          body: formDataUpload,
-        });
-        if (!res.ok) {
-          failedFiles.push(file.name);
-          continue;
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), CASELAW_EXTRACT_TIMEOUT_MS);
+
+        try {
+          const res = await fetch("/api/admin/case-law/extract", {
+            method: "POST",
+            credentials: "include",
+            body: formDataUpload,
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            if (attempt === CASELAW_EXTRACT_MAX_RETRIES) {
+              failedFileNames.push(file.name);
+              failedFileObjects.push(file);
+            }
+            continue;
+          }
+
+          const data = await res.json();
+          if (data.cases && data.cases.length > 0) {
+            const validCases = data.cases
+              .filter((c: any) => c.citation && c.title)
+              .map((c: any) => ({
+                ...c,
+                _sourceDocId: data.savedDocId || undefined,
+                _sourceFilename: data.savedFilename || file.name,
+              }));
+            allCases.push(...validCases);
+          }
+          succeeded = true;
+          break;
+        } catch {
+          if (attempt === CASELAW_EXTRACT_MAX_RETRIES) {
+            failedFileNames.push(file.name);
+            failedFileObjects.push(file);
+          }
+        } finally {
+          window.clearTimeout(timeoutId);
         }
-        const data = await res.json();
-        if (data.cases && data.cases.length > 0) {
-          const validCases = data.cases
-            .filter((c: any) => c.citation && c.title)
-            .map((c: any) => ({
-              ...c,
-              _sourceDocId: data.savedDocId || undefined,
-              _sourceFilename: data.savedFilename || file.name,
-            }));
-          allCases.push(...validCases);
-        }
-      } catch {
-        failedFiles.push(file.name);
+      }
+
+      if (!succeeded) {
+        // Continue with remaining files; do not block full upload flow on one stuck file.
       }
     }
 
     if (allCases.length > 0) {
-      setExtractedCases(allCases);
-      let msg = `Extracted ${allCases.length} cases from ${files.length - failedFiles.length} file${files.length - failedFiles.length !== 1 ? "s" : ""}`;
-      if (failedFiles.length > 0) msg += ` (${failedFiles.length} file${failedFiles.length !== 1 ? "s" : ""} failed)`;
+      setExtractedCases((prev) => {
+        if (!append) return allCases;
+        const merged = [...prev];
+        const seen = new Set(
+          merged.map((item) => `${item.citation}|${item.title}|${item._sourceDocId || "none"}`),
+        );
+        for (const item of allCases) {
+          const key = `${item.citation}|${item.title}|${item._sourceDocId || "none"}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          merged.push(item);
+        }
+        return merged;
+      });
+    }
+
+    setRetryExtractFiles(failedFileObjects);
+
+    if (allCases.length > 0) {
+      let msg = `Extracted ${allCases.length} cases from ${files.length - failedFileNames.length} file${files.length - failedFileNames.length !== 1 ? "s" : ""}`;
+      if (failedFileNames.length > 0) msg += ` (${failedFileNames.length} file${failedFileNames.length !== 1 ? "s" : ""} failed)`;
       toast({ title: msg });
     } else {
-      toast({ title: failedFiles.length > 0 ? `Failed to process ${failedFiles.length} file(s)` : "No case law entries could be identified in the uploaded documents", variant: "destructive" });
+      toast({
+        title: failedFileNames.length > 0
+          ? `Failed to process ${failedFileNames.length} file(s)`
+          : "No case law entries could be identified in the uploaded documents",
+        variant: "destructive",
+      });
     }
 
     setIsExtracting(false);
     setExtractProgress({ current: 0, total: 0, currentFile: "" });
+  };
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    await processCaseLawFiles(files, false);
     const input = e.target;
     if (input) input.value = "";
   };
@@ -1326,7 +1385,7 @@ function CaseLawSection() {
           <Button
             variant="ghost"
             className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
-            onClick={() => { setShowBulkUpload(!showBulkUpload); setShowAddForm(false); cancelEdit(); setExtractedCases([]); }}
+            onClick={() => { setShowBulkUpload(!showBulkUpload); setShowAddForm(false); cancelEdit(); setExtractedCases([]); setRetryExtractFiles([]); }}
             data-testid="button-toggle-bulk-upload"
           >
             <FileUp size={14} />
@@ -1353,7 +1412,7 @@ function CaseLawSection() {
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">
                 AI-Powered Case Law Extraction
               </span>
-              <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => { setShowBulkUpload(false); setExtractedCases([]); }} data-testid="button-cancel-bulk">
+              <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => { setShowBulkUpload(false); setExtractedCases([]); setRetryExtractFiles([]); }} data-testid="button-cancel-bulk">
                 <X size={14} />
               </Button>
             </div>
@@ -1371,6 +1430,23 @@ function CaseLawSection() {
               className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
               data-testid="input-bulk-document-file"
             />
+            {!isExtracting && retryExtractFiles.length > 0 && (
+              <div className="flex items-center justify-between gap-3 bg-[#0d1728] border border-slate-700 rounded-xl px-3 py-2">
+                <p className="text-[10px] text-amber-300 font-bold">
+                  {retryExtractFiles.length} file{retryExtractFiles.length !== 1 ? "s" : ""} failed in the last run.
+                </p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  onClick={() => processCaseLawFiles(retryExtractFiles, true)}
+                  data-testid="button-retry-failed-caselaw-files"
+                >
+                  <Upload size={12} />
+                  <span>Resume Failed</span>
+                </Button>
+              </div>
+            )}
             {isExtracting && (
               <div className="flex items-center gap-3 py-8 justify-center">
                 <Loader2 className="animate-spin text-amber-500" size={24} />
