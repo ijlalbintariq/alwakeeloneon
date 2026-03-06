@@ -100,6 +100,19 @@ function getClientIdentifier(req: Request): string {
   return forwarded || req.ip || req.socket.remoteAddress || "unknown";
 }
 
+function isRequestAbortedError(err: any): boolean {
+  if (!err) return false;
+  const code = String(err.code || "").toUpperCase();
+  const message = String(err.message || "").toLowerCase();
+  return (
+    code === "ECONNRESET" ||
+    code === "ECONNABORTED" ||
+    code === "ERR_STREAM_PREMATURE_CLOSE" ||
+    message.includes("request aborted") ||
+    message.includes("socket hang up")
+  );
+}
+
 app.use((req, res, next) => {
   const isProduction = process.env.NODE_ENV === "production";
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -251,7 +264,17 @@ app.use((req, res, next) => {
     }
   });
 
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    if (isRequestAbortedError(err) || req.aborted) {
+      console.warn(
+        `[Request Aborted] ${req.method} ${req.path} :: ${err?.message || "Client disconnected before request completed"}`,
+      );
+      if (res.headersSent) {
+        return next(err);
+      }
+      return res.status(499).json({ message: "Request was aborted before completion." });
+    }
+
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
