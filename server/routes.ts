@@ -1,4 +1,4 @@
-import type { Express, Request } from "express";
+import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
@@ -12,8 +12,6 @@ import { syncGithubKnowledge } from "./github-sync";
 import { queueAutoExtraction, nlpExtractCases } from "./auto-extract-caselaw";
 import crypto from "crypto";
 import multer from "multer";
-import { extractText } from "unpdf";
-import mammoth from "mammoth";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, type ApexModel } from "./apex-ai";
 import { chatWithOpenRouter, streamWithOpenRouter, isOpenRouterAvailable, getOpenRouterModelName } from "./openrouter";
 import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
@@ -27,9 +25,16 @@ import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-lib
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import { buildRagContext, deleteDocumentVectors, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
-import { isPdfOcrAvailable, ocrPdfWithTesseract } from "./ocr";
+import { isPdfOcrAvailable } from "./ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 import { deleteR2Object, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
+import {
+  extractDocxTextGuarded,
+  extractPdfOcrGuarded,
+  extractPdfTextGuarded,
+  getExtractionQueueStats,
+  isExtractionQueueFullError,
+} from "./extraction-guard";
 
 
 const TOKEN_LIMITS = {
@@ -49,6 +54,27 @@ const COST_PER_1K_TOKENS: Record<string, { input: number; output: number }> = {
 };
 
 const INLINE_DB_CONTENT_LIMIT = Math.max(5000, Number(process.env.DB_INLINE_CONTENT_MAX_CHARS || 60000));
+const MB = 1024 * 1024;
+const DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(5, Number(process.env.DOCUMENT_UPLOAD_MAX_FILE_MB || 25)) * MB;
+const DOCUMENT_UPLOAD_MAX_FILES = Math.max(1, Number(process.env.DOCUMENT_UPLOAD_MAX_FILES || 25));
+const ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(5, Number(process.env.ADMIN_UPLOAD_MAX_FILE_MB || 25)) * MB;
+const ADMIN_UPLOAD_MAX_FILES = Math.max(1, Number(process.env.ADMIN_UPLOAD_MAX_FILES || 200));
+const GENERAL_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(2, Number(process.env.GENERAL_UPLOAD_MAX_FILE_MB || 25)) * MB;
+const EXTRACTION_TIMEOUT_MS = Math.max(3000, Number(process.env.EXTRACTION_TIMEOUT_MS || 120000));
+const UPLOAD_QUEUE_CONCURRENCY = Math.max(1, Number(process.env.UPLOAD_QUEUE_CONCURRENCY || 2));
+const UPLOAD_QUEUE_MAX_PENDING = Math.max(UPLOAD_QUEUE_CONCURRENCY, Number(process.env.UPLOAD_QUEUE_MAX_PENDING || 32));
+
+let activeUploadRequests = 0;
+const pendingUploadResolvers: Array<() => void> = [];
+
+function getUploadQueueStats() {
+  return {
+    active: activeUploadRequests,
+    queued: pendingUploadResolvers.length,
+    concurrency: UPLOAD_QUEUE_CONCURRENCY,
+    maxPending: UPLOAD_QUEUE_MAX_PENDING,
+  };
+}
 
 function normalizeTextForStorage(text: string): string {
   return (text || "").replace(/\0/g, "");
@@ -89,6 +115,59 @@ function parsePagination(req: Request, options?: { defaultLimit?: number; maxLim
   const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(maxLimit, Math.floor(limitRaw))) : defaultLimit;
   const offset = Number.isFinite(offsetRaw) ? Math.max(0, Math.floor(offsetRaw)) : 0;
   return { limit, offset };
+}
+
+function toMbText(bytes: number): string {
+  return `${Math.round(bytes / MB)}MB`;
+}
+
+function sendExtractionBusy(res: any) {
+  const queue = getExtractionQueueStats();
+  return res.status(503).json({
+    message: `Extraction queue is busy (${queue.active} active, ${queue.queued} queued). Retry shortly.`,
+    queue,
+  });
+}
+
+function releaseUploadSlot() {
+  activeUploadRequests = Math.max(0, activeUploadRequests - 1);
+  while (activeUploadRequests < UPLOAD_QUEUE_CONCURRENCY && pendingUploadResolvers.length > 0) {
+    const resume = pendingUploadResolvers.shift();
+    if (!resume) continue;
+    activeUploadRequests += 1;
+    resume();
+  }
+}
+
+function createUploadQueueMiddleware(label: string) {
+  return (req: Request, res: any, next: NextFunction) => {
+    const begin = () => {
+      let released = false;
+      const cleanup = () => {
+        if (released) return;
+        released = true;
+        releaseUploadSlot();
+      };
+      res.once("finish", cleanup);
+      res.once("close", cleanup);
+      next();
+    };
+
+    if (activeUploadRequests < UPLOAD_QUEUE_CONCURRENCY) {
+      activeUploadRequests += 1;
+      begin();
+      return;
+    }
+
+    if (pendingUploadResolvers.length >= UPLOAD_QUEUE_MAX_PENDING) {
+      return res.status(503).json({
+        message: `Upload queue is full for ${label}. Retry shortly.`,
+        queue: getUploadQueueStats(),
+      });
+    }
+
+    pendingUploadResolvers.push(begin);
+  };
 }
 
 function compactContentForDb(content: string): { inlineContent: string; wasTruncated: boolean } {
@@ -1001,6 +1080,14 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  const extractionGuards = getExtractionQueueStats();
+  console.log(
+    `[Extraction Guards] concurrency=${extractionGuards.concurrency} maxPending=${extractionGuards.maxPending} worker=${extractionGuards.workerEnabled}`,
+  );
+  const uploadGuards = getUploadQueueStats();
+  console.log(
+    `[Upload Guards] concurrency=${uploadGuards.concurrency} maxPending=${uploadGuards.maxPending} documentFileMax=${toMbText(DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES)} adminFileMax=${toMbText(ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES)}`,
+  );
   await setupAuth(app);
   registerAuthRoutes(app);
 
@@ -1307,7 +1394,15 @@ export async function registerRoutes(
     }
   });
 
-  const documentUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+  const guardedUploadQueue = createUploadQueueMiddleware("upload-processing");
+
+  const documentUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES,
+      files: DOCUMENT_UPLOAD_MAX_FILES,
+    },
+  });
 
   app.post(api.documents.create.path, async (req, res) => {
     const userId = getUserId(req);
@@ -1334,7 +1429,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/documents/upload", documentUpload.array("files", 25), async (req, res) => {
+  app.post("/api/documents/upload", guardedUploadQueue, documentUpload.array("files", 25), async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
@@ -1352,6 +1447,11 @@ export async function registerRoutes(
         const ext = original.includes(".")
           ? original.substring(original.lastIndexOf(".")).toLowerCase()
           : "";
+
+        if (file.size > DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES) {
+          errors.push(`${original}: exceeds max file size (${toMbText(DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES)})`);
+          continue;
+        }
 
         if (![".txt", ".json", ".csv", ".pdf", ".doc", ".docx"].includes(ext)) {
           errors.push(`${original}: unsupported format (use .txt, .json, .csv, .pdf, or .docx)`);
@@ -1392,13 +1492,19 @@ export async function registerRoutes(
 
         if (ext === ".pdf") {
           try {
-            content = await extractPdfTextSafe(stableFile.buffer);
+            content = await extractPdfTextSafe(stableFile.buffer, "documents-upload");
           } catch (pdfErr: any) {
+            if (isExtractionQueueFullError(pdfErr)) return sendExtractionBusy(res);
             console.error(`[Documents Upload] PDF parse error for ${original}:`, pdfErr?.message || pdfErr);
             content = "";
           }
           if (!content) {
-            content = await extractPdfTextWithOcrFallback(stableFile, "documents-upload");
+            try {
+              content = await extractPdfTextWithOcrFallback(stableFile, "documents-upload");
+            } catch (ocrErr) {
+              if (isExtractionQueueFullError(ocrErr)) return sendExtractionBusy(res);
+              throw ocrErr;
+            }
           }
           if (!content) {
             errors.push(`${original}: could not extract text (file may be scanned/image PDF)`);
@@ -1406,9 +1512,9 @@ export async function registerRoutes(
           }
         } else if (ext === ".doc" || ext === ".docx") {
           try {
-            const result = await mammoth.extractRawText({ buffer: stableFile.buffer });
-            content = stripNullBytes((result.value || "").trim());
+            content = await extractDocxTextSafe(stableFile.buffer, "documents-upload");
           } catch (docErr: any) {
+            if (isExtractionQueueFullError(docErr)) return sendExtractionBusy(res);
             console.error(`[Documents Upload] DOCX parse error for ${original}:`, docErr?.message || docErr);
             content = "";
           }
@@ -1479,6 +1585,7 @@ export async function registerRoutes(
         errors,
       });
     } catch (err) {
+      if (isExtractionQueueFullError(err)) return sendExtractionBusy(res);
       console.error("Error uploading user documents:", err);
       res.status(500).json({ message: "Failed to upload documents" });
     }
@@ -2191,9 +2298,15 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
     }
   });
 
-  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: GENERAL_UPLOAD_MAX_FILE_SIZE_BYTES,
+      files: ADMIN_UPLOAD_MAX_FILES,
+    },
+  });
 
-  app.post("/api/ai/transcribe", upload.single("audio"), async (req, res) => {
+  app.post("/api/ai/transcribe", guardedUploadQueue, upload.single("audio"), async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
@@ -2415,7 +2528,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
     }
   });
 
-  app.post(api.ai.chat.path, upload.array("attachments", 5), async (req, res) => {
+  app.post(api.ai.chat.path, guardedUploadQueue, upload.array("attachments", 5), async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
@@ -2479,16 +2592,19 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
             if (file.mimetype === "text/plain") {
               attachmentContext += `\n\n--- Attached File: ${file.originalname} ---\n${stripNullBytes(file.buffer.toString("utf-8"))}\n--- End of File ---`;
             } else if (file.mimetype === "application/pdf") {
-              let parsedText = await extractPdfTextSafe(file.buffer);
+              let parsedText = await extractPdfTextSafe(file.buffer, "chat-attachment");
               if (!parsedText.trim()) {
                 parsedText = await extractPdfTextWithOcrFallback(file, "chat-attachment");
               }
               attachmentContext += `\n\n--- Attached PDF: ${file.originalname} ---\n${stripNullBytes(parsedText)}\n--- End of PDF ---`;
             } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-              const result = await mammoth.extractRawText({ buffer: file.buffer });
-              attachmentContext += `\n\n--- Attached Document: ${file.originalname} ---\n${stripNullBytes(result.value || "")}\n--- End of Document ---`;
+              const parsedText = await extractDocxTextSafe(file.buffer, "chat-attachment");
+              attachmentContext += `\n\n--- Attached Document: ${file.originalname} ---\n${stripNullBytes(parsedText)}\n--- End of Document ---`;
             }
           } catch (fileErr) {
+            if (isExtractionQueueFullError(fileErr)) {
+              return sendExtractionBusy(res);
+            }
             console.error(`Error extracting text from ${file.originalname}:`, fileErr);
             attachmentContext += `\n\n--- Attached File: ${file.originalname} ---\n[Could not extract text from this file]\n--- End of File ---`;
           }
@@ -3112,15 +3228,20 @@ RULES:
     return text.replace(/\x00/g, "");
   }
 
-  async function extractPdfTextSafe(sourceBuffer: Buffer): Promise<string> {
-    // unpdf may transfer/detach the input ArrayBuffer. Parse from an isolated copy.
-    const parseBuffer = Buffer.from(sourceBuffer);
-    const uint8 = new Uint8Array(parseBuffer.buffer, parseBuffer.byteOffset, parseBuffer.byteLength);
-    const parsed = await extractText(uint8, { mergePages: true });
-    const rawText = Array.isArray((parsed as any)?.text)
-      ? (parsed as any).text.join("\n")
-      : ((parsed as any)?.text || "");
-    return stripNullBytes(String(rawText).trim());
+  async function extractPdfTextSafe(sourceBuffer: Buffer, context: string = "pdf-parse"): Promise<string> {
+    const text = await extractPdfTextGuarded(sourceBuffer, {
+      timeoutMs: EXTRACTION_TIMEOUT_MS,
+      context,
+    });
+    return stripNullBytes(text);
+  }
+
+  async function extractDocxTextSafe(sourceBuffer: Buffer, context: string = "docx-parse"): Promise<string> {
+    const text = await extractDocxTextGuarded(sourceBuffer, {
+      timeoutMs: EXTRACTION_TIMEOUT_MS,
+      context,
+    });
+    return stripNullBytes(text);
   }
 
   async function extractPdfTextWithOcrFallback(
@@ -3131,11 +3252,12 @@ RULES:
     if (!ocrAvailable) return "";
 
     try {
-      const result = await ocrPdfWithTesseract(file.buffer, {
+      const result = await extractPdfOcrGuarded(file.buffer, {
         maxPages: Number(process.env.PDF_OCR_MAX_PAGES || 8),
         dpi: Number(process.env.PDF_OCR_DPI || 220),
         language: process.env.TESSERACT_OCR_LANG || process.env.TESSERACT_LANG || "eng+urd",
         timeoutMs: Number(process.env.PDF_OCR_TIMEOUT_MS || 120000),
+        context,
       });
       const text = stripNullBytes((result.text || "").trim());
       if (text) {
@@ -3145,6 +3267,9 @@ RULES:
       }
       return text;
     } catch (err) {
+      if (isExtractionQueueFullError(err)) {
+        throw err;
+      }
       console.warn(`[OCR][${context}] OCR failed for ${file.originalname}: ${getErrorMessage(err)}`);
       return "";
     }
@@ -3417,6 +3542,19 @@ RULES:
     }
   });
 
+  app.get("/api/admin/extraction-queue", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      res.json({
+        extraction: getExtractionQueueStats(),
+        uploads: getUploadQueueStats(),
+      });
+    } catch (err) {
+      console.error("Error fetching extraction queue stats:", err);
+      res.status(500).json({ message: "Failed to fetch extraction queue stats" });
+    }
+  });
+
   app.get("/api/admin/cost-analytics", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
@@ -3440,7 +3578,7 @@ RULES:
     }
   });
 
-  app.post("/api/admin/knowledge", upload.array("files", 2000), async (req, res) => {
+  app.post("/api/admin/knowledge", guardedUploadQueue, upload.array("files", Math.min(2000, ADMIN_UPLOAD_MAX_FILES)), async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const userId = getUserId(req)!;
@@ -3459,6 +3597,10 @@ RULES:
         for (const file of files) {
           const stableFile = cloneUploadFile(file);
           const ext = file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase();
+          if (file.size > ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES) {
+            errors.push(`${file.originalname}: exceeds max file size (${toMbText(ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES)})`);
+            continue;
+          }
           if (!allowedExts.includes(ext)) {
             errors.push(`${file.originalname}: unsupported format (use .txt, .json, .csv, .pdf, or .docx)`);
             continue;
@@ -3485,14 +3627,20 @@ RULES:
           let content = "";
           if (ext === ".pdf") {
             try {
-              content = await extractPdfTextSafe(stableFile.buffer);
+              content = await extractPdfTextSafe(stableFile.buffer, "admin-knowledge-upload");
               console.log(`[Knowledge Upload] Extracted ${content.length} chars from ${file.originalname}`);
             } catch (pdfErr: any) {
+              if (isExtractionQueueFullError(pdfErr)) return sendExtractionBusy(res);
               console.error(`[Knowledge Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
               content = "";
             }
             if (!content) {
-              content = await extractPdfTextWithOcrFallback(stableFile, "admin-knowledge-upload");
+              try {
+                content = await extractPdfTextWithOcrFallback(stableFile, "admin-knowledge-upload");
+              } catch (ocrErr) {
+                if (isExtractionQueueFullError(ocrErr)) return sendExtractionBusy(res);
+                throw ocrErr;
+              }
             }
             if (!content) {
               errors.push(`${file.originalname}: could not extract text (may be scanned/image PDF)`);
@@ -3500,10 +3648,10 @@ RULES:
             }
           } else if (ext === ".doc" || ext === ".docx") {
             try {
-              const result = await mammoth.extractRawText({ buffer: stableFile.buffer });
-              content = stripNullBytes((result.value || "").trim());
+              content = await extractDocxTextSafe(stableFile.buffer, "admin-knowledge-upload");
               console.log(`[Knowledge Upload] Extracted ${content.length} chars from ${file.originalname}`);
             } catch (docErr: any) {
+              if (isExtractionQueueFullError(docErr)) return sendExtractionBusy(res);
               console.error(`[Knowledge Upload] DOCX parse error for ${file.originalname}:`, docErr?.message || docErr);
               content = "";
             }
@@ -3603,6 +3751,7 @@ RULES:
         documents: results,
       });
     } catch (err) {
+      if (isExtractionQueueFullError(err)) return sendExtractionBusy(res);
       console.error("Error uploading knowledge:", err);
       res.status(500).json({ message: "Failed to upload knowledge" });
     }
@@ -3779,12 +3928,15 @@ RULES:
     }
   });
 
-  app.post("/api/admin/case-law/extract", upload.single("file"), async (req, res) => {
+  app.post("/api/admin/case-law/extract", guardedUploadQueue, upload.single("file"), async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const file = req.file;
       if (!file) {
         return res.status(400).json({ message: "No file uploaded" });
+      }
+      if (file.size > ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES) {
+        return res.status(413).json({ message: `File exceeds max size (${toMbText(ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES)})` });
       }
       const stableFile = cloneUploadFile(file);
 
@@ -3814,22 +3966,28 @@ RULES:
 
       if (ext === "pdf") {
         try {
-          content = await extractPdfTextSafe(stableFile.buffer);
+          content = await extractPdfTextSafe(stableFile.buffer, "admin-case-law-extract");
         } catch (pdfErr: any) {
+          if (isExtractionQueueFullError(pdfErr)) return sendExtractionBusy(res);
           console.error("[Case Law Extract] PDF parse error:", pdfErr?.message);
           content = "";
         }
         if (!content) {
-          content = await extractPdfTextWithOcrFallback(stableFile, "admin-case-law-extract");
+          try {
+            content = await extractPdfTextWithOcrFallback(stableFile, "admin-case-law-extract");
+          } catch (ocrErr) {
+            if (isExtractionQueueFullError(ocrErr)) return sendExtractionBusy(res);
+            throw ocrErr;
+          }
         }
         if (!content) {
           return res.status(400).json({ message: "Failed to extract text from PDF file. Upload searchable PDF or enable OCR dependencies." });
         }
       } else if (ext === "doc" || ext === "docx") {
         try {
-          const result = await mammoth.extractRawText({ buffer: stableFile.buffer });
-          content = stripNullBytes((result.value || "").trim());
+          content = await extractDocxTextSafe(stableFile.buffer, "admin-case-law-extract");
         } catch (docErr: any) {
+          if (isExtractionQueueFullError(docErr)) return sendExtractionBusy(res);
           console.error("[Case Law Extract] Word doc parse error:", docErr?.message);
           return res.status(400).json({ message: "Failed to parse Word document. Try uploading as TXT instead." });
         }
@@ -4036,6 +4194,7 @@ RULES:
         savedFilename,
       });
     } catch (err) {
+      if (isExtractionQueueFullError(err)) return sendExtractionBusy(res);
       console.error("Error extracting case law:", err);
       res.status(500).json({ message: "Failed to extract case law from document" });
     }
@@ -4054,7 +4213,7 @@ RULES:
     }
   });
 
-  app.post("/api/admin/statute-documents", upload.array("files", 500), async (req, res) => {
+  app.post("/api/admin/statute-documents", guardedUploadQueue, upload.array("files", Math.min(500, ADMIN_UPLOAD_MAX_FILES)), async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const userId = getUserId(req)!;
@@ -4070,6 +4229,11 @@ RULES:
         let content = "";
         const ext = file.originalname.split(".").pop()?.toLowerCase();
         const extWithDot = ext ? `.${ext}` : "";
+
+        if (file.size > ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES) {
+          errors.push(`${file.originalname}: exceeds max file size (${toMbText(ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES)})`);
+          continue;
+        }
 
         if (![".txt", ".json", ".csv", ".pdf"].includes(extWithDot)) {
           errors.push(`${file.originalname}: unsupported format (use .txt, .json, .csv, .pdf)`);
@@ -4096,14 +4260,20 @@ RULES:
 
         if (ext === "pdf") {
           try {
-            content = await extractPdfTextSafe(stableFile.buffer);
+            content = await extractPdfTextSafe(stableFile.buffer, "admin-statute-upload");
             console.log(`[Statute Upload] Extracted ${content.length} chars from ${file.originalname}`);
           } catch (pdfErr: any) {
+            if (isExtractionQueueFullError(pdfErr)) return sendExtractionBusy(res);
             console.error(`[Statute Upload] PDF parse error for ${file.originalname}:`, pdfErr?.message || pdfErr);
             content = "";
           }
           if (!content) {
-            content = await extractPdfTextWithOcrFallback(stableFile, "admin-statute-upload");
+            try {
+              content = await extractPdfTextWithOcrFallback(stableFile, "admin-statute-upload");
+            } catch (ocrErr) {
+              if (isExtractionQueueFullError(ocrErr)) return sendExtractionBusy(res);
+              throw ocrErr;
+            }
           }
           if (!content) {
             errors.push(`${file.originalname}: could not extract text from PDF`);
@@ -4186,6 +4356,7 @@ RULES:
         errors,
       });
     } catch (err) {
+      if (isExtractionQueueFullError(err)) return sendExtractionBusy(res);
       console.error("Error uploading statute documents:", err);
       res.status(500).json({ message: "Failed to upload statute documents" });
     }
@@ -4275,7 +4446,7 @@ RULES:
     }
   });
 
-  app.post("/api/profile/avatar", upload.single("avatar"), async (req, res) => {
+  app.post("/api/profile/avatar", guardedUploadQueue, upload.single("avatar"), async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
 
@@ -4786,9 +4957,15 @@ Instructions:
     res.json(docs);
   });
 
-  const orgKnowledgeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+  const orgKnowledgeUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES,
+      files: DOCUMENT_UPLOAD_MAX_FILES,
+    },
+  });
 
-  app.post("/api/org/:id/knowledge", orgKnowledgeUpload.single("file"), async (req, res) => {
+  app.post("/api/org/:id/knowledge", guardedUploadQueue, orgKnowledgeUpload.single("file"), async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const orgId = parseInt(String(req.params.id));
@@ -4797,6 +4974,9 @@ Instructions:
 
     const file = req.file;
     if (!file) return res.status(400).json({ message: "No file uploaded" });
+    if (file.size > DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES) {
+      return res.status(413).json({ message: `File exceeds max size (${toMbText(DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES)})` });
+    }
 
     let content = "";
     const filename = file.originalname.toLowerCase();
@@ -4821,7 +5001,7 @@ Instructions:
           });
           return res.status(400).json({ message: "File signature does not match .pdf format." });
         }
-        content = await extractPdfTextSafe(file.buffer);
+        content = await extractPdfTextSafe(file.buffer, "org-knowledge-upload");
         if (!content.trim()) {
           content = await extractPdfTextWithOcrFallback(file, "org-knowledge-upload");
         }
@@ -4834,8 +5014,7 @@ Instructions:
           });
           return res.status(400).json({ message: "File signature does not match .docx format." });
         }
-        const result = await mammoth.extractRawText({ buffer: file.buffer });
-        content = result.value;
+        content = await extractDocxTextSafe(file.buffer, "org-knowledge-upload");
       } else {
         return res.status(400).json({ message: "Unsupported file type. Use TXT, PDF, or DOCX." });
       }
@@ -4849,6 +5028,9 @@ Instructions:
         return res.status(400).json({ message: orgMalwareCheck.reason || "Malware detected in uploaded file." });
       }
     } catch (err: any) {
+      if (isExtractionQueueFullError(err)) {
+        return sendExtractionBusy(res);
+      }
       return res.status(500).json({ message: "Failed to extract text from file" });
     }
 
