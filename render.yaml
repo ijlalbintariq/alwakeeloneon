@@ -1,11 +1,11 @@
 services:
   - type: web
     name: alwakeelo-web
-    env: docker
+    env: node
     plan: starter
     autoDeploy: true
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    buildCommand: apt-get update && apt-get install -y --no-install-recommends tesseract-ocr poppler-utils && npm ci && npm run build
+    startCommand: node dist/index.cjs
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
