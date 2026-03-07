@@ -35,12 +35,12 @@ export default function LandingPage() {
             <a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
             <a href="#about" className="text-sm text-slate-400 hover:text-white transition-colors">About</a>
           </div>
-          <button
-            onClick={() => navigate(ctaTarget)}
+          <a
+            href={ctaTarget}
             className="px-6 py-2.5 bg-amber-500 text-slate-950 rounded-xl text-sm font-bold hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
           >
             {user ? <><LayoutDashboard size={16} /> Dashboard</> : "Get Started"}
-          </button>
+          </a>
         </div>
       </nav>
 
@@ -67,12 +67,12 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              onClick={() => navigate(ctaTarget)}
+            <a
+              href={ctaTarget}
               className="w-full sm:w-auto px-8 py-4 bg-amber-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20"
             >
               {user ? "Go to Dashboard" : "Enter the Chambers"} <ArrowRight size={16} />
-            </button>
+            </a>
             <a
               href="#features"
               className="w-full sm:w-auto px-8 py-4 border border-slate-700 text-slate-300 rounded-2xl text-sm font-bold hover:border-slate-500 hover:text-white transition-all text-center"
@@ -148,12 +148,12 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => navigate(ctaTarget)}
-                className="w-full py-3.5 border border-slate-700 text-slate-300 rounded-xl text-sm font-bold hover:border-amber-500 hover:text-amber-500 transition-all"
+              <a
+                href={ctaTarget}
+                className="w-full py-3.5 border border-slate-700 text-slate-300 rounded-xl text-sm font-bold hover:border-amber-500 hover:text-amber-500 transition-all flex items-center justify-center"
               >
                 Get Started Free
-              </button>
+              </a>
             </div>
 
             <div className="p-8 bg-gradient-to-b from-amber-500/10 to-[#1e293b] border-2 border-amber-500/30 rounded-3xl relative shadow-xl shadow-amber-500/5">
@@ -170,12 +170,12 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => navigate(ctaTarget)}
-                className="w-full py-3.5 bg-amber-500 text-slate-950 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20"
+              <a
+                href={ctaTarget}
+                className="w-full py-3.5 bg-amber-500 text-slate-950 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center"
               >
                 Upgrade to Pro
-              </button>
+              </a>
             </div>
 
             <div className="p-8 bg-[#1e293b] border border-slate-800 rounded-3xl hover:border-slate-700 transition-all">
@@ -189,12 +189,12 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => navigate(ctaTarget)}
-                className="w-full py-3.5 border border-slate-700 text-slate-300 rounded-xl text-sm font-bold hover:border-amber-500 hover:text-amber-500 transition-all"
+              <a
+                href={ctaTarget}
+                className="w-full py-3.5 border border-slate-700 text-slate-300 rounded-xl text-sm font-bold hover:border-amber-500 hover:text-amber-500 transition-all flex items-center justify-center"
               >
                 Contact Us
-              </button>
+              </a>
             </div>
           </div>
         </div>
@@ -235,12 +235,12 @@ export default function LandingPage() {
           <p className="text-slate-400 mb-8">
             Join hundreds of Pakistani legal professionals already using Al Wakeelo.
           </p>
-          <button
-            onClick={() => navigate(ctaTarget)}
+          <a
+            href={ctaTarget}
             className="px-10 py-4 bg-amber-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center gap-2 mx-auto shadow-xl shadow-amber-500/20"
           >
             {user ? "Go to Dashboard" : "Start Using Al Wakeelo"} <ArrowRight size={16} />
-          </button>
+          </a>
         </div>
       </section>
 
