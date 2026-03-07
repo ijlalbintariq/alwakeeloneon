@@ -24,6 +24,14 @@ import {
   Trash2,
   Save,
   FolderOpen,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  Focus,
+  Minimize2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -164,9 +172,15 @@ export default function LegalDraftingPage() {
   const [riskLoading, setRiskLoading] = useState(false);
   const [riskResults, setRiskResults] = useState<DraftSuggestion[]>([]);
   const [activeLeftTool, setActiveLeftTool] = useState<"drafts" | "templates" | "collab" | "archive">("drafts");
+  const [leftRailOpen, setLeftRailOpen] = useState(true);
+  const [rightRailOpen, setRightRailOpen] = useState(true);
+  const [focusWritingMode, setFocusWritingMode] = useState(false);
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryItems, setMemoryItems] = useState<MemoryItem[]>([]);
   const statuteReferences = useMemo(() => inferStatuteReferences(docText), [docText]);
+
+  const leftRailVisible = leftRailOpen && !focusWritingMode;
+  const rightRailVisible = rightRailOpen && !focusWritingMode;
 
   const { data: allDocuments = [], isLoading: loadingDocs } = useQuery<DraftDocument[]>({
     queryKey: [api.documents.list.path],
@@ -568,7 +582,7 @@ export default function LegalDraftingPage() {
   return (
     <div className="relative isolate h-full min-h-[620px] md:min-h-[820px] rounded-xl border border-[hsl(var(--preview-border))] overflow-hidden bg-[#0f172a]/70 backdrop-blur-xl text-slate-100 fade-in flex flex-col shadow-2xl">
       <div className="pointer-events-none absolute -top-24 right-10 h-56 w-56 rounded-full bg-amber-500/12 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-20 left-8 h-60 w-60 rounded-full bg-cyan-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 left-8 h-60 w-60 rounded-full bg-amber-400/10 blur-3xl" />
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.08]"
         style={{
@@ -580,12 +594,12 @@ export default function LegalDraftingPage() {
       <header className="h-16 border-b border-[hsl(var(--preview-border))] flex items-center justify-between px-3 md:px-6 bg-[#0f172a]/55 backdrop-blur-xl z-20">
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-lg bg-gradient-to-br from-cyan-300 to-cyan-500 text-slate-950 flex items-center justify-center shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-100/30">
-              <Gavel size={20} />
+            <div className="size-9 shrink-0 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/25 ring-1 ring-amber-100/30">
+              <Gavel size={18} className="translate-y-[0.5px]" />
             </div>
-            <div>
+            <div className="leading-tight">
               <h2 className="text-lg md:text-xl font-bold tracking-tight">Legal Drafting Studio</h2>
-              <p className="text-[9px] uppercase tracking-[0.24em] text-cyan-300/80 font-black">AL WAKEELO / DRAFT OPS</p>
+              <p className="text-[9px] uppercase tracking-[0.24em] text-amber-300/90 font-black">AL WAKEELO / DRAFT OPS</p>
             </div>
           </div>
           <div className="hidden md:block h-6 w-px bg-amber-500/20" />
@@ -603,11 +617,46 @@ export default function LegalDraftingPage() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
+          <div className="hidden md:flex items-center gap-1">
+            <Button
+              variant="outline"
+              className="h-9 px-2 border-slate-700 text-slate-200 hover:bg-slate-800"
+              onClick={() => {
+                setFocusWritingMode(false);
+                setLeftRailOpen((v) => !v);
+              }}
+              data-testid="button-toggle-left-rail"
+              title={leftRailVisible ? "Hide workspace panel" : "Show workspace panel"}
+            >
+              {leftRailVisible ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+            </Button>
+            <Button
+              variant="outline"
+              className="h-9 px-2 border-slate-700 text-slate-200 hover:bg-slate-800"
+              onClick={() => setFocusWritingMode((v) => !v)}
+              data-testid="button-toggle-focus-writing"
+              title={focusWritingMode ? "Exit focus writing mode" : "Focus writing mode"}
+            >
+              {focusWritingMode ? <Minimize2 size={14} /> : <Focus size={14} />}
+            </Button>
+            <Button
+              variant="outline"
+              className="hidden lg:inline-flex h-9 px-2 border-slate-700 text-slate-200 hover:bg-slate-800"
+              onClick={() => {
+                setFocusWritingMode(false);
+                setRightRailOpen((v) => !v);
+              }}
+              data-testid="button-toggle-right-rail"
+              title={rightRailVisible ? "Hide AI assistant panel" : "Show AI assistant panel"}
+            >
+              {rightRailVisible ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+            </Button>
+          </div>
           <div className="hidden lg:flex items-center -space-x-2">
             {collaborators.map((c, idx) => (
               <div
                 key={`${c}-${idx}`}
-                className="size-8 rounded-md border border-cyan-400/40 bg-cyan-500/15 text-cyan-100 flex items-center justify-center text-[10px] font-bold shadow"
+                className="size-8 rounded-md border border-amber-400/40 bg-amber-500/15 text-amber-100 flex items-center justify-center text-[10px] font-bold shadow"
               >
                 {c}
               </div>
@@ -643,19 +692,26 @@ export default function LegalDraftingPage() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="hidden md:flex w-64 border-r border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex-col py-4 md:py-5">
+        <aside
+          className={`hidden md:flex transition-[width] duration-300 ease-out overflow-hidden ${
+            leftRailVisible
+              ? "w-56 border-r border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl"
+              : "w-0 border-r-0"
+          }`}
+        >
+          <div className="w-56 flex flex-col py-4 md:py-5">
           <div className="hidden md:flex items-center justify-between px-4 pb-3 border-b border-[hsl(var(--preview-border))]">
             <p className="text-xs uppercase tracking-widest text-amber-300 font-bold">Workspace</p>
             <Button
               size="sm"
-              className="h-7 px-2 bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-md shadow-amber-500/20"
+              className="inline-flex h-7 items-center justify-center gap-1 px-2 bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-md shadow-amber-500/20"
               onClick={() => {
                 setDocText(DEFAULT_DOC);
                 setDraftTitle("Untitled Draft");
                 setSelectedDraftId(null);
               }}
             >
-              <Plus size={12} className="mr-1" />
+              <Plus size={12} className="shrink-0" />
               New
             </Button>
           </div>
@@ -671,7 +727,7 @@ export default function LegalDraftingPage() {
             <button
               onClick={() => setActiveLeftTool("drafts")}
               className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
-                activeLeftTool === "drafts" ? "bg-cyan-500/12 text-cyan-200 border border-cyan-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
+                activeLeftTool === "drafts" ? "bg-amber-500/12 text-amber-200 border border-amber-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
               }`}
             >
               <FolderOpen size={16} /> My Drafts
@@ -679,7 +735,7 @@ export default function LegalDraftingPage() {
             <button
               onClick={() => setActiveLeftTool("templates")}
               className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
-                activeLeftTool === "templates" ? "bg-cyan-500/12 text-cyan-200 border border-cyan-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
+                activeLeftTool === "templates" ? "bg-amber-500/12 text-amber-200 border border-amber-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
               }`}
             >
               <FileText size={16} /> Templates
@@ -690,7 +746,7 @@ export default function LegalDraftingPage() {
                 shareWorkspaceLink();
               }}
               className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
-                activeLeftTool === "collab" ? "bg-cyan-500/12 text-cyan-200 border border-cyan-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
+                activeLeftTool === "collab" ? "bg-amber-500/12 text-amber-200 border border-amber-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
               }`}
             >
               <Users size={16} /> Collaborate
@@ -701,7 +757,7 @@ export default function LegalDraftingPage() {
                 window.location.href = "/case-documents";
               }}
               className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
-                activeLeftTool === "archive" ? "bg-cyan-500/12 text-cyan-200 border border-cyan-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
+                activeLeftTool === "archive" ? "bg-amber-500/12 text-amber-200 border border-amber-500/35" : "text-slate-300 hover:bg-[#1e293b]/60 border border-transparent hover:border-slate-700"
               }`}
             >
               <Archive size={16} /> Archive
@@ -766,7 +822,20 @@ export default function LegalDraftingPage() {
           <div className="hidden md:block mt-auto px-3 pt-3 border-t border-[hsl(var(--preview-border))]">
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 font-black">Draft Interface v2.1</p>
           </div>
+          </div>
         </aside>
+
+        <div className={`${focusWritingMode ? "hidden" : "hidden md:flex"} items-stretch`}>
+          <button
+            onClick={() => setLeftRailOpen((v) => !v)}
+            className="h-full w-6 border-r border-amber-400/35 bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            data-testid="divider-toggle-left-rail"
+            title={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
+            aria-label={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
+          >
+            {leftRailVisible ? <ChevronLeft size={15} className="drop-shadow" /> : <ChevronRight size={15} className="drop-shadow" />}
+          </button>
+        </div>
 
         <main className="flex-1 flex flex-col bg-[#0f172a]/50 overflow-hidden">
           <div className="md:hidden border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/45 px-3 py-2 flex items-center gap-2 overflow-x-auto">
@@ -875,21 +944,42 @@ export default function LegalDraftingPage() {
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 md:p-8 lg:p-12 flex justify-center">
-            <div className="w-full max-w-[880px] min-h-[620px] md:min-h-[980px] bg-white/95 text-slate-900 shadow-2xl rounded-2xl p-4 md:p-12 lg:p-16 legal-draft-font border border-white/70 backdrop-blur-sm">
-              <Textarea
-                ref={editorRef}
-                value={docText}
-                onChange={(e) => setDocText(e.target.value)}
-                className="w-full min-h-[560px] md:min-h-[900px] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-900 leading-8 text-[15px]"
-                data-testid="textarea-legal-draft"
-              />
+          <div className="flex-1 overflow-hidden p-2 md:p-4 lg:p-5">
+            <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl">
+              <div className="h-full overflow-y-auto p-3 md:p-5 lg:p-7">
+                <Textarea
+                  ref={editorRef}
+                  value={docText}
+                  onChange={(e) => setDocText(e.target.value)}
+                  className="legal-draft-font w-full h-full min-h-[72vh] md:min-h-[76vh] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-100 leading-8 text-[16px]"
+                  data-testid="textarea-legal-draft"
+                />
+              </div>
             </div>
           </div>
         </main>
 
-        <aside className="w-[340px] xl:w-[360px] hidden lg:flex flex-col bg-[#0f172a]/45 border-l border-[hsl(var(--preview-border))] backdrop-blur-xl overflow-hidden">
-          <div className="p-5 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/35 backdrop-blur-xl flex items-center justify-between">
+        <div className={`${focusWritingMode ? "hidden" : "hidden lg:flex"} items-stretch`}>
+          <button
+            onClick={() => setRightRailOpen((v) => !v)}
+            className="h-full w-6 border-l border-amber-400/35 bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            data-testid="divider-toggle-right-rail"
+            title={rightRailVisible ? "Collapse AI panel" : "Expand AI panel"}
+            aria-label={rightRailVisible ? "Collapse AI panel" : "Expand AI panel"}
+          >
+            {rightRailVisible ? <ChevronRight size={15} className="drop-shadow" /> : <ChevronLeft size={15} className="drop-shadow" />}
+          </button>
+        </div>
+
+        <aside
+          className={`hidden lg:flex transition-[width] duration-300 ease-out overflow-hidden ${
+            rightRailVisible
+              ? "w-[300px] xl:w-[320px] border-l border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl"
+              : "w-0 border-l-0"
+          }`}
+        >
+          <div className="w-[300px] xl:w-[320px] flex flex-col">
+          <div className="p-4 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/35 backdrop-blur-xl flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="size-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
                 <Bot size={14} className="text-amber-300" />
@@ -899,7 +989,7 @@ export default function LegalDraftingPage() {
             <div className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/30 to-amber-300/20 text-amber-200 text-[10px] font-bold border border-amber-400/30">PRO</div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-7">
+          <div className="flex-1 overflow-y-auto p-4 space-y-5">
             <section>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Draft with AI</label>
               <div className="relative">
@@ -994,7 +1084,7 @@ export default function LegalDraftingPage() {
             </section>
           </div>
 
-          <div className="p-5 border-t border-[hsl(var(--preview-border))]">
+          <div className="p-4 border-t border-[hsl(var(--preview-border))]">
             <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-slate-900/30 to-slate-800/30 p-3 shadow-[0_10px_30px_-20px_rgba(251,191,36,0.5)]">
               <div className="flex items-center gap-3">
                 <div className="size-9 rounded-xl bg-amber-400/20 border border-amber-300/30 flex items-center justify-center">
@@ -1051,6 +1141,7 @@ export default function LegalDraftingPage() {
                 <p className="mt-3 text-[10px] text-slate-400">No memory captured yet in this drafting session.</p>
               )}
             </div>
+          </div>
           </div>
         </aside>
       </div>
