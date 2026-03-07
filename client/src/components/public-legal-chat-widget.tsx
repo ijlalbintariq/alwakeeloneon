@@ -1,11 +1,13 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { MessageCircle, Send, X, Briefcase, PhoneCall, FilePlus, Loader2 } from "lucide-react";
+import { MessageCircle, Send, X, Briefcase, PhoneCall, FilePlus, Loader2, Scale, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { LegalMarkdown } from "@/components/legal-markdown";
+import { parseReferences } from "@/components/reference-cards";
 import {
   Select,
   SelectContent,
@@ -141,6 +143,12 @@ export function PublicLegalChatWidget() {
     }
   }
 
+  function handleMessageInputKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    void sendMessage();
+  }
+
   async function submitCaseLead(e: FormEvent) {
     e.preventDefault();
     if (isSubmittingLead) return;
@@ -221,18 +229,44 @@ export function PublicLegalChatWidget() {
 
           <CardContent className="p-0">
             <div ref={scrollerRef} className="h-[360px] overflow-y-auto px-4 py-3 space-y-3">
-              {messages.map((msg, idx) => (
-                <div
-                  key={`${msg.role}-${idx}`}
-                  className={`rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                    msg.role === "user"
-                      ? "ml-8 bg-amber-500 text-slate-950 font-medium"
-                      : "mr-8 bg-slate-800 text-slate-100"
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              ))}
+              {messages.map((msg, idx) => {
+                const parsed = msg.role === "assistant" ? parseReferences(msg.content) : null;
+                const displayContent = parsed ? parsed.cleanContent : msg.content;
+                return (
+                  <div
+                    key={`${msg.role}-${idx}`}
+                    className={`flex items-start gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                  >
+                    <div
+                      className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center ${
+                        msg.role === "assistant"
+                          ? "bg-amber-500 text-slate-950"
+                          : "bg-[#1e293b] border border-amber-500/30 text-amber-400"
+                      }`}
+                    >
+                      {msg.role === "assistant" ? <Scale size={15} /> : <UserIcon size={14} />}
+                    </div>
+                    <div className={`flex flex-col gap-1.5 ${msg.role === "user" ? "items-end" : "items-start"} max-w-[85%]`}>
+                      <p className={`text-[10px] font-black uppercase tracking-wider ${msg.role === "assistant" ? "text-amber-400" : "text-slate-500"}`}>
+                        {msg.role === "assistant" ? "Al Wakeelo Assistant" : "You"}
+                      </p>
+                      <div
+                        className={`rounded-2xl p-3 ${
+                          msg.role === "assistant"
+                            ? "bg-amber-500/5 border border-amber-500/25 rounded-tl-none"
+                            : "bg-[#1e293b]/95 border border-amber-500 rounded-tr-none"
+                        }`}
+                      >
+                        {msg.role === "assistant" ? (
+                          <LegalMarkdown content={displayContent} className="text-sm" />
+                        ) : (
+                          <p className="text-slate-100 leading-relaxed whitespace-pre-wrap text-sm">{displayContent}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {limitReached && (
@@ -343,6 +377,7 @@ export function PublicLegalChatWidget() {
                 <Textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleMessageInputKeyDown}
                   placeholder={limitReached ? "Daily free limit reached" : "Describe your legal issue..."}
                   rows={2}
                   disabled={isSending || limitReached}
