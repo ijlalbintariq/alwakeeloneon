@@ -1,7 +1,7 @@
 import { db } from "./db";
 import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments, savedJudgments,
-  organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles, visitorSessions, caseLeads,
+  organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles, visitorSessions, caseLeads, publicFunnelEvents,
   styleMemorySettings, styleMemorySamples, styleMemoryChunks, styleMemoryEvents,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
@@ -21,7 +21,7 @@ import {
   type StatuteDocumentFile, type InsertStatuteDocumentFile,
   type SavedJudgment, type InsertSavedJudgment,
   type VisitorSession, type InsertVisitorSession,
-  type CaseLead, type CaseLeadStatus, type InsertCaseLead,
+  type CaseLead, type CaseLeadStatus, type InsertCaseLead, type InsertPublicFunnelEvent,
   type Organization, type InsertOrganization,
   type OrgMember, type InsertOrgMember,
   type OrgInvite, type InsertOrgInvite,
@@ -207,6 +207,7 @@ export interface IStorage {
   deleteDocumentFile(documentId: number, userId: string): Promise<void>;
   getVisitorSessionStats(ipAddress: string, windowHours: number, maxMessages: number): Promise<VisitorSessionStats>;
   incrementVisitorSession(ipAddress: string, windowHours: number, maxMessages: number): Promise<VisitorSessionStats>;
+  logPublicFunnelEvent(entry: InsertPublicFunnelEvent & { ipAddress: string }): Promise<void>;
   createCaseLead(entry: InsertCaseLead): Promise<CaseLead>;
   getCaseLeadsPage(limit: number, offset: number, query?: string): Promise<PagedResult<CaseLead>>;
   getCaseLeadById(id: string): Promise<CaseLead | undefined>;
@@ -637,6 +638,15 @@ export class DatabaseStorage implements IStorage {
     return toVisitorSessionStats(inserted, normalizedIp, windowHours, maxMessages);
   }
 
+  async logPublicFunnelEvent(entry: InsertPublicFunnelEvent & { ipAddress: string }): Promise<void> {
+    await db.insert(publicFunnelEvents).values({
+      eventType: entry.eventType,
+      sessionId: entry.sessionId || null,
+      ipAddress: entry.ipAddress,
+      metadata: entry.metadata || {},
+    });
+  }
+
   async createCaseLead(entry: InsertCaseLead): Promise<CaseLead> {
     const [lead] = await db.insert(caseLeads).values(entry).returning();
     return lead;
@@ -653,6 +663,8 @@ export class DatabaseStorage implements IStorage {
         ilike(caseLeads.phone, pattern),
         ilike(caseLeads.email, pattern),
         ilike(caseLeads.caseType, pattern),
+        ilike(caseLeads.city, pattern),
+        ilike(caseLeads.urgency, pattern),
         ilike(caseLeads.caseDescription, pattern),
         ilike(caseLeads.ipAddress, pattern),
         ilike(caseLeads.status, pattern),
@@ -2154,9 +2166,26 @@ export async function ensureSearchIndexes(): Promise<void> {
           email text NOT NULL,
           case_type text NOT NULL,
           case_description text NOT NULL,
+          city text NOT NULL DEFAULT '',
+          urgency text NOT NULL DEFAULT 'normal',
+          preferred_callback_time text,
+          consent_to_contact boolean NOT NULL DEFAULT false,
           ip_address text NOT NULL,
           status text NOT NULL DEFAULT 'open',
           status_updated_at timestamp NOT NULL DEFAULT now(),
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "public_funnel_events_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS public_funnel_events (
+          id serial PRIMARY KEY,
+          event_type text NOT NULL,
+          session_id text,
+          ip_address text NOT NULL,
+          metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
           created_at timestamp NOT NULL DEFAULT now()
         )
       `,
@@ -2305,9 +2334,18 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_visitor_sessions_last_message_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_visitor_sessions_last_message_at ON visitor_sessions (last_message_at)` },
     { label: "idx_case_leads_created_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_created_at ON case_leads (created_at)` },
     { label: "idx_case_leads_case_type", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_case_type ON case_leads (case_type)` },
+    { label: "idx_case_leads_city", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_city ON case_leads (city)` },
+    { label: "idx_case_leads_urgency", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_urgency ON case_leads (urgency)` },
     { label: "idx_case_leads_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_status ON case_leads (status)` },
+    { label: "idx_public_funnel_events_created_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_public_funnel_events_created_at ON public_funnel_events (created_at)` },
+    { label: "idx_public_funnel_events_event_type", stmt: sql`CREATE INDEX IF NOT EXISTS idx_public_funnel_events_event_type ON public_funnel_events (event_type)` },
+    { label: "idx_public_funnel_events_ip", stmt: sql`CREATE INDEX IF NOT EXISTS idx_public_funnel_events_ip ON public_funnel_events (ip_address)` },
     { label: "alter_case_leads_status", stmt: sql`ALTER TABLE case_leads ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'open'` },
     { label: "alter_case_leads_status_updated_at", stmt: sql`ALTER TABLE case_leads ADD COLUMN IF NOT EXISTS status_updated_at timestamp NOT NULL DEFAULT now()` },
+    { label: "alter_case_leads_city", stmt: sql`ALTER TABLE case_leads ADD COLUMN IF NOT EXISTS city text NOT NULL DEFAULT ''` },
+    { label: "alter_case_leads_urgency", stmt: sql`ALTER TABLE case_leads ADD COLUMN IF NOT EXISTS urgency text NOT NULL DEFAULT 'normal'` },
+    { label: "alter_case_leads_preferred_callback_time", stmt: sql`ALTER TABLE case_leads ADD COLUMN IF NOT EXISTS preferred_callback_time text` },
+    { label: "alter_case_leads_consent_to_contact", stmt: sql`ALTER TABLE case_leads ADD COLUMN IF NOT EXISTS consent_to_contact boolean NOT NULL DEFAULT false` },
     { label: "alter_document_files_extracted_text_key", stmt: sql`ALTER TABLE document_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
     { label: "alter_admin_knowledge_files_extracted_text_key", stmt: sql`ALTER TABLE admin_knowledge_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
     { label: "alter_statute_document_files_extracted_text_key", stmt: sql`ALTER TABLE statute_document_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },

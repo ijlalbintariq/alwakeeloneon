@@ -31,6 +31,8 @@ type PublicChatResponse = {
   showCaseIntake?: boolean;
 };
 
+type PublicFunnelEventType = "widget_open" | "message_sent" | "lead_form_open" | "lead_submitted" | "contact_click";
+
 const CASE_TYPE_OPTIONS = [
   "Civil Litigation",
   "Criminal Law",
@@ -43,7 +45,23 @@ const CASE_TYPE_OPTIONS = [
   "Other",
 ];
 
+const URGENCY_OPTIONS = [
+  { key: "low", label: "Low" },
+  { key: "normal", label: "Normal" },
+  { key: "high", label: "High" },
+  { key: "urgent", label: "Urgent" },
+] as const;
+
 const PUBLIC_ROUTES = new Set(["/", "/privacy", "/terms", "/install"]);
+
+function getOrCreatePublicSessionId(): string {
+  const key = "alwakeelo_public_session_id";
+  const existing = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
+  if (existing && existing.trim()) return existing;
+  const generated = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  if (typeof window !== "undefined") window.localStorage.setItem(key, generated);
+  return generated;
+}
 
 export function PublicLegalChatWidget() {
   const { user } = useAuth();
@@ -63,12 +81,17 @@ export function PublicLegalChatWidget() {
   const [remaining, setRemaining] = useState<number | null>(10);
   const [showCaseForm, setShowCaseForm] = useState(false);
   const [showContactInfo, setShowContactInfo] = useState(false);
+  const [sessionId] = useState<string>(() => getOrCreatePublicSessionId());
   const [leadForm, setLeadForm] = useState({
     name: "",
     phone: "",
     email: "",
+    city: "",
     caseType: "Civil Litigation",
+    urgency: "normal",
+    preferredCallbackTime: "",
     caseDescription: "",
+    consentToContact: false,
   });
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
@@ -84,10 +107,28 @@ export function PublicLegalChatWidget() {
     scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
   }, [isOpen, messages, showCaseForm]);
 
+  async function trackPublicEvent(eventType: PublicFunnelEventType, metadata?: Record<string, unknown>) {
+    try {
+      await fetch("/api/public-chat/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          eventType,
+          sessionId,
+          metadata: metadata || {},
+        }),
+      });
+    } catch {
+      // Intentionally swallow telemetry errors.
+    }
+  }
+
   async function sendMessage(e?: FormEvent) {
     e?.preventDefault();
     const message = input.trim();
     if (!message || isSending || limitReached) return;
+    void trackPublicEvent("message_sent", { chars: message.length, limitReached });
 
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: message }]);
@@ -122,7 +163,10 @@ export function PublicLegalChatWidget() {
       }
 
       if (typeof data.remaining === "number") setRemaining(data.remaining);
-      if (data.showCaseIntake) setShowCaseForm(true);
+      if (data.showCaseIntake) {
+        setShowCaseForm(true);
+        void trackPublicEvent("lead_form_open", { from: "assistant_nudge" });
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -160,7 +204,10 @@ export function PublicLegalChatWidget() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(leadForm),
+        body: JSON.stringify({
+          ...leadForm,
+          sessionId,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -180,8 +227,12 @@ export function PublicLegalChatWidget() {
         name: "",
         phone: "",
         email: "",
+        city: "",
         caseType: "Civil Litigation",
+        urgency: "normal",
+        preferredCallbackTime: "",
         caseDescription: "",
+        consentToContact: false,
       });
     } catch (err: any) {
       setMessages((prev) => [
@@ -202,12 +253,17 @@ export function PublicLegalChatWidget() {
     <>
       <div className="fixed bottom-6 right-6 z-[70]">
         <Button
-          onClick={() => setIsOpen((v) => !v)}
+          onClick={() => {
+            const next = !isOpen;
+            setIsOpen(next);
+            if (next) void trackPublicEvent("widget_open", { path: location });
+          }}
           className="rounded-full h-12 px-5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs tracking-wide shadow-xl shadow-amber-500/30"
           data-testid="public-chat-toggle"
         >
           <MessageCircle size={16} className="mr-2" />
-          Consult Al Wakeelo Ai + Hire Lawyer
+          <span className="sm:hidden">Consult Now</span>
+          <span className="hidden sm:inline">Consult Al Wakeelo AI + Hire Lawyer</span>
         </Button>
       </div>
 
@@ -271,14 +327,15 @@ export function PublicLegalChatWidget() {
               })}
             </div>
 
-            {limitReached && (
-              <div className="px-4 pb-3 space-y-2">
+            {!showCaseForm && (
+              <div className="px-4 pt-3 pb-3 space-y-2 border-t border-slate-800">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
                       setShowContactInfo((prev) => !prev);
+                      void trackPublicEvent("contact_click", { from: "widget-actions" });
                     }}
                     className="h-9 border-slate-700 text-slate-200 hover:bg-slate-800 text-[11px]"
                   >
@@ -287,7 +344,10 @@ export function PublicLegalChatWidget() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowCaseForm(true)}
+                    onClick={() => {
+                      setShowCaseForm(true);
+                      void trackPublicEvent("lead_form_open", { from: "widget-actions" });
+                    }}
                     className="h-9 border-slate-700 text-slate-200 hover:bg-slate-800 text-[11px]"
                   >
                     <FilePlus size={14} className="mr-1" /> Submit Case
@@ -298,13 +358,21 @@ export function PublicLegalChatWidget() {
                     <p className="font-semibold text-amber-300">Consultation Contact</p>
                     <p>
                       Email:{" "}
-                      <a className="underline hover:text-amber-200" href="mailto:support@alwakeelo.com">
+                      <a
+                        className="underline hover:text-amber-200"
+                        href="mailto:support@alwakeelo.com"
+                        onClick={() => void trackPublicEvent("contact_click", { channel: "email" })}
+                      >
                         support@alwakeelo.com
                       </a>
                     </p>
                     <p>
                       Phone:{" "}
-                      <a className="underline hover:text-amber-200" href="tel:00923096875797">
+                      <a
+                        className="underline hover:text-amber-200"
+                        href="tel:00923096875797"
+                        onClick={() => void trackPublicEvent("contact_click", { channel: "phone" })}
+                      >
                         00923096875797
                       </a>
                     </p>
@@ -338,6 +406,13 @@ export function PublicLegalChatWidget() {
                   className="h-9 bg-[#111827] border-slate-700 text-slate-100"
                   required
                 />
+                <Input
+                  placeholder="City"
+                  value={leadForm.city}
+                  onChange={(e) => setLeadForm((prev) => ({ ...prev, city: e.target.value }))}
+                  className="h-9 bg-[#111827] border-slate-700 text-slate-100"
+                  required
+                />
                 <Select
                   value={leadForm.caseType}
                   onValueChange={(value) => setLeadForm((prev) => ({ ...prev, caseType: value }))}
@@ -353,6 +428,27 @@ export function PublicLegalChatWidget() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Select
+                  value={leadForm.urgency}
+                  onValueChange={(value) => setLeadForm((prev) => ({ ...prev, urgency: value }))}
+                >
+                  <SelectTrigger className="h-9 bg-[#111827] border-slate-700 text-slate-100">
+                    <SelectValue placeholder="Urgency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {URGENCY_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.key} value={opt.key}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Preferred Callback Time (Optional)"
+                  value={leadForm.preferredCallbackTime}
+                  onChange={(e) => setLeadForm((prev) => ({ ...prev, preferredCallbackTime: e.target.value }))}
+                  className="h-9 bg-[#111827] border-slate-700 text-slate-100"
+                />
                 <Textarea
                   placeholder="Case Description"
                   rows={4}
@@ -361,10 +457,20 @@ export function PublicLegalChatWidget() {
                   className="bg-[#111827] border-slate-700 text-slate-100"
                   required
                 />
+                <label className="flex items-start gap-2 rounded-lg border border-slate-800 bg-[#101a2b] px-3 py-2 text-xs text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={leadForm.consentToContact}
+                    onChange={(e) => setLeadForm((prev) => ({ ...prev, consentToContact: e.target.checked }))}
+                    className="mt-0.5 h-4 w-4 accent-amber-500"
+                    required
+                  />
+                  <span>I consent to be contacted by Al Wakeelo chamber for legal consultation about this case.</span>
+                </label>
                 <div className="flex items-center gap-2">
                   <Button
                     type="submit"
-                    disabled={isSubmittingLead}
+                    disabled={isSubmittingLead || !leadForm.consentToContact}
                     className="flex-1 h-9 bg-amber-500 text-slate-950 hover:bg-amber-400 text-xs font-black"
                   >
                     {isSubmittingLead ? <Loader2 size={14} className="animate-spin mr-1" /> : null}
@@ -383,7 +489,7 @@ export function PublicLegalChatWidget() {
             )}
 
             {!showCaseForm && (
-              <form onSubmit={sendMessage} className="px-4 py-3 border-t border-slate-800 flex items-end gap-2">
+              <form onSubmit={sendMessage} className="px-4 py-3 flex items-end gap-2">
                 <Textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}

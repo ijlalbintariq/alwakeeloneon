@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import { caseLeadStatusSchema, insertThreadSchema, insertMessageSchema, insertBookmarkSchema, insertSearchHistorySchema, insertCaseLeadSchema, threads, messages, documents, caseLeads } from './schema';
+import { caseLeadStatusSchema, insertThreadSchema, insertMessageSchema, insertBookmarkSchema, insertSearchHistorySchema, threads, messages, documents, caseLeads } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -196,11 +196,31 @@ export const api = {
     submitCase: {
       method: "POST" as const,
       path: "/api/public-chat/submit-case" as const,
-      input: insertCaseLeadSchema.omit({ ipAddress: true }),
+      input: z.object({
+        name: z.string().min(1).max(120),
+        phone: z.string().min(6).max(40),
+        email: z.string().email().max(160),
+        city: z.string().min(1).max(80),
+        caseType: z.string().min(1).max(120),
+        urgency: z.enum(["low", "normal", "high", "urgent"]).optional(),
+        preferredCallbackTime: z.string().max(120).optional(),
+        caseDescription: z.string().min(20).max(6000),
+        consentToContact: z.literal(true),
+        sessionId: z.string().min(8).max(120).optional(),
+      }),
       responses: {
         201: z.custom<typeof caseLeads.$inferSelect>(),
         400: errorSchemas.validation,
       },
+    },
+    event: {
+      method: "POST" as const,
+      path: "/api/public-chat/event" as const,
+      input: z.object({
+        eventType: z.enum(["widget_open", "message_sent", "lead_form_open", "lead_submitted", "contact_click"]),
+        sessionId: z.string().min(8).max(120).optional(),
+        metadata: z.record(z.any()).optional(),
+      }),
     },
   },
   admin: {

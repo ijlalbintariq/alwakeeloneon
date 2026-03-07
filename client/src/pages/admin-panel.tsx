@@ -94,6 +94,10 @@ type ClientLead = {
   phone: string;
   email: string;
   caseType: string;
+  city: string;
+  urgency: "low" | "normal" | "high" | "urgent";
+  preferredCallbackTime: string | null;
+  consentToContact: boolean;
   caseDescription: string;
   ipAddress: string;
   status: "open" | "completed";
@@ -1843,7 +1847,7 @@ function ClientLeadsSection() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left min-w-[1040px]">
+              <table className="w-full text-xs text-left min-w-[1200px]">
                 <thead>
                   <tr className="text-slate-500 border-b border-slate-800">
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Lead ID</th>
@@ -1851,6 +1855,8 @@ function ClientLeadsSection() {
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Phone</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Email</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Case Type</th>
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">City</th>
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">Urgency</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Status</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Case Description</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">IP Address</th>
@@ -1866,6 +1872,8 @@ function ClientLeadsSection() {
                       <td className="py-2 pr-3 text-slate-300">{lead.phone}</td>
                       <td className="py-2 pr-3 text-slate-300">{lead.email}</td>
                       <td className="py-2 pr-3 text-amber-400">{lead.caseType}</td>
+                      <td className="py-2 pr-3 text-slate-300">{lead.city || "-"}</td>
+                      <td className="py-2 pr-3 text-slate-300 uppercase">{lead.urgency}</td>
                       <td className="py-2 pr-3">
                         <Badge className={lead.status === "completed"
                           ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 rounded-md"
@@ -1949,6 +1957,10 @@ function ClientLeadsSection() {
                   <p className="text-slate-300"><span className="text-slate-500">Phone:</span> {selectedLead.phone}</p>
                   <p className="text-slate-300"><span className="text-slate-500">Email:</span> {selectedLead.email}</p>
                   <p className="text-slate-300"><span className="text-slate-500">Case Type:</span> {selectedLead.caseType}</p>
+                  <p className="text-slate-300"><span className="text-slate-500">City:</span> {selectedLead.city || "-"}</p>
+                  <p className="text-slate-300"><span className="text-slate-500">Urgency:</span> <span className="uppercase">{selectedLead.urgency}</span></p>
+                  <p className="text-slate-300"><span className="text-slate-500">Preferred Callback:</span> {selectedLead.preferredCallbackTime || "Not provided"}</p>
+                  <p className="text-slate-300"><span className="text-slate-500">Consent:</span> {selectedLead.consentToContact ? "Yes" : "No"}</p>
                   <p className="text-slate-300">
                     <span className="text-slate-500">Status:</span>{" "}
                     <span className={selectedLead.status === "completed" ? "text-emerald-300 font-semibold" : "text-amber-300 font-semibold"}>
