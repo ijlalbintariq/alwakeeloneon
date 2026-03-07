@@ -3,15 +3,22 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Cloud,
   Download,
-  FileDown,
   FileText,
+  Focus,
   Gavel,
   GitCompareArrows,
   Library,
   Loader2,
   ListChecks,
+  Minimize2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   Plus,
   Printer,
   ScanText,
@@ -38,6 +45,7 @@ type ComplianceRisk = {
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type RedlineStatus = "pending" | "accepted" | "rejected";
+type RiskSeverityFilter = "all" | "danger" | "warning";
 
 type ContractFormState = {
   title: string;
@@ -532,10 +540,16 @@ export default function ContractDraftingPage() {
   const [clauseCategory, setClauseCategory] = useState("All");
   const [redlineItems, setRedlineItems] = useState<RedlineItem[]>([]);
   const [isRunningRedline, setIsRunningRedline] = useState(false);
+  const [riskSeverityFilter, setRiskSeverityFilter] = useState<RiskSeverityFilter>("all");
   const [isLoadingClauseSuggestions, setIsLoadingClauseSuggestions] = useState(false);
   const [liveClauseSuggestions, setLiveClauseSuggestions] = useState<ClauseSuggestion[]>([]);
   const [clauseSuggestionError, setClauseSuggestionError] = useState<string | null>(null);
+  const [leftRailOpen, setLeftRailOpen] = useState(true);
+  const [rightRailOpen, setRightRailOpen] = useState(true);
+  const [focusWritingMode, setFocusWritingMode] = useState(false);
   const autoRiskScanSignatureRef = useRef<string>("");
+  const leftRailVisible = leftRailOpen && !focusWritingMode;
+  const rightRailVisible = rightRailOpen && !focusWritingMode;
 
   useEffect(() => {
     const raw = localStorage.getItem(CONTRACT_AUTOSAVE_KEY);
@@ -657,6 +671,11 @@ export default function ContractDraftingPage() {
     return clamp(100 - penalty, 0, 100);
   }, [contractText, riskBreakdown]);
 
+  const filteredComplianceRisks = useMemo(() => {
+    if (riskSeverityFilter === "all") return complianceRisks;
+    return complianceRisks.filter((risk) => risk.severity === riskSeverityFilter);
+  }, [complianceRisks, riskSeverityFilter]);
+
   const clauseCategories = useMemo(() => {
     const unique = Array.from(new Set(CLAUSE_LIBRARY.map((item) => item.category)));
     return ["All", ...unique];
@@ -769,6 +788,7 @@ export default function ContractDraftingPage() {
       setComplianceRisks([]);
       setLastRiskScanAt(null);
       setRiskFromCache(false);
+      setRiskSeverityFilter("all");
       autoRiskScanSignatureRef.current = "";
       return;
     }
@@ -950,6 +970,105 @@ export default function ContractDraftingPage() {
           ? "Sync error"
           : "Idle";
 
+  const renderRightRailContent = () => (
+    <>
+      <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-amber-500/20">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <Sparkles size={16} className="text-amber-400" />
+            <h3 className="text-sm font-bold text-white tracking-tight">AI Clause Suggester</h3>
+          </div>
+          <button
+            className="text-[10px] px-2 py-1 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 disabled:opacity-50"
+            onClick={() => refreshClauseSuggestions({ silent: false })}
+            disabled={isLoadingClauseSuggestions}
+            data-testid="button-refresh-ai-clause-suggestions"
+          >
+            {isLoadingClauseSuggestions ? "Loading..." : "Refresh"}
+          </button>
+        </div>
+        <div className="space-y-2">
+          {liveClauseSuggestions.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => applySuggestedClause(item.prompt)}
+              className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-amber-500/10 border border-white/10 transition-all"
+              data-testid={`button-suggest-${item.id.replace(/[^a-zA-Z0-9-_]/g, "")}`}
+              disabled={isGenerating || isLoadingClauseSuggestions}
+            >
+              <div className="text-[11px] font-bold text-amber-400 mb-0.5">{item.title}</div>
+              <div className="text-[9px] text-slate-400 leading-tight">{item.subtitle}</div>
+            </button>
+          ))}
+          {!isLoadingClauseSuggestions && liveClauseSuggestions.length === 0 && (
+            <div className="rounded-lg border border-white/10 bg-white/5 p-2">
+              <p className="text-[10px] text-slate-300">No live suggestions available.</p>
+              {clauseSuggestionError && <p className="mt-1 text-[9px] text-red-300">{clauseSuggestionError}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-amber-500/20">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <GitCompareArrows size={16} className="text-amber-400" />
+            <h3 className="text-sm font-bold text-white tracking-tight">Counterparty Redline Mode</h3>
+          </div>
+          <button
+            className="text-[10px] px-2 py-1 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+            onClick={runCounterpartyRedline}
+            disabled={isRunningRedline}
+          >
+            Refresh
+          </button>
+        </div>
+        <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+          {!redlineItems.length && (
+            <p className="text-[11px] text-slate-500">
+              Run redline mode to generate counterparty edits, then accept or reject each one.
+            </p>
+          )}
+          {redlineItems.map((item) => (
+            <div key={item.id} className="rounded-lg border border-white/10 bg-white/5 p-2">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-xs font-semibold text-slate-100">{item.title}</p>
+                <span
+                  className={`text-[9px] uppercase ${
+                    item.status === "accepted"
+                      ? "text-emerald-300"
+                      : item.status === "rejected"
+                        ? "text-red-300"
+                        : "text-amber-400"
+                  }`}
+                >
+                  {item.status}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">{item.rationale}</p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  className="flex-1 rounded border border-emerald-400/30 bg-emerald-500/10 py-1 text-[10px] font-semibold text-emerald-200 disabled:opacity-40"
+                  onClick={() => acceptRedline(item)}
+                  disabled={item.status !== "pending"}
+                >
+                  Accept
+                </button>
+                <button
+                  className="flex-1 rounded border border-red-400/30 bg-red-500/10 py-1 text-[10px] font-semibold text-red-200 disabled:opacity-40"
+                  onClick={() => rejectRedline(item.id)}
+                  disabled={item.status !== "pending"}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="h-full min-h-[620px] md:min-h-[760px] rounded-2xl md:rounded-[1.8rem] border border-[hsl(var(--preview-border))] overflow-hidden preview-bg text-slate-100 flex flex-col fade-in">
       <header className="flex items-center justify-between border-b border-[hsl(var(--preview-border))] glass-shell backdrop-blur-xl px-3 md:px-8 py-3 z-20">
@@ -987,12 +1106,75 @@ export default function ContractDraftingPage() {
               </div>
             </div>
           </div>
+          <div className="hidden md:flex items-center gap-1.5 bg-white/5 px-3 py-2 rounded-xl border border-amber-500/10">
+            <button
+              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-amber-500/10"
+              onClick={downloadContract}
+              data-testid="button-header-export-txt"
+            >
+              <Download size={11} className="shrink-0" />
+              TXT
+            </button>
+            <button
+              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-amber-500/10"
+              onClick={printContract}
+              data-testid="button-header-export-print"
+            >
+              <Download size={11} className="shrink-0" />
+              PDF
+            </button>
+            <button
+              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-amber-500/10"
+              onClick={copyToClipboard}
+              data-testid="button-header-export-copy"
+            >
+              <Download size={11} className="shrink-0" />
+              Copy
+            </button>
+          </div>
+          <div className="hidden md:flex items-center gap-1">
+            <button
+              className="inline-flex items-center justify-center h-9 px-2 rounded-md border border-slate-700 text-slate-200 hover:bg-slate-800"
+              onClick={() => {
+                setFocusWritingMode(false);
+                setLeftRailOpen((v) => !v);
+              }}
+              data-testid="button-toggle-left-contract-rail"
+              title={leftRailVisible ? "Hide contract inputs" : "Show contract inputs"}
+            >
+              {leftRailVisible ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+            </button>
+            <button
+              className="inline-flex items-center justify-center h-9 px-2 rounded-md border border-slate-700 text-slate-200 hover:bg-slate-800"
+              onClick={() => setFocusWritingMode((v) => !v)}
+              data-testid="button-toggle-contract-focus-writing"
+              title={focusWritingMode ? "Exit focus writing mode" : "Focus writing mode"}
+            >
+              {focusWritingMode ? <Minimize2 size={14} /> : <Focus size={14} />}
+            </button>
+            <button
+              className="hidden lg:inline-flex items-center justify-center h-9 px-2 rounded-md border border-slate-700 text-slate-200 hover:bg-slate-800"
+              onClick={() => {
+                setFocusWritingMode(false);
+                setRightRailOpen((v) => !v);
+              }}
+              data-testid="button-toggle-right-contract-rail"
+              title={rightRailVisible ? "Hide AI panel" : "Show AI panel"}
+            >
+              {rightRailVisible ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-        <section className="w-full lg:w-[360px] lg:shrink-0 glass-surface border-b lg:border-b-0 lg:border-r border-[hsl(var(--preview-border))] flex flex-col overflow-hidden">
-          <div className="p-4 md:p-6 overflow-y-auto scrollbar-hide flex-1 space-y-6 md:space-y-8">
+        <section
+          className={`w-full lg:shrink-0 glass-surface border-b lg:border-b-0 border-[hsl(var(--preview-border))] transition-[width] duration-300 ease-out overflow-hidden ${
+            leftRailVisible ? "lg:w-[360px] lg:border-r" : "lg:w-0 lg:border-r-0"
+          } ${focusWritingMode ? "hidden" : ""}`}
+        >
+          <div className="w-full lg:w-[360px] h-full flex flex-col">
+            <div className="p-4 md:p-6 overflow-y-auto scrollbar-hide flex-1 space-y-6 md:space-y-8">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <FileText size={18} className="text-amber-400" />
@@ -1186,43 +1368,56 @@ export default function ContractDraftingPage() {
                 ))}
               </div>
             </div>
-          </div>
+            </div>
 
-          <div className="p-4 md:p-6 glass-surface border-t border-[hsl(var(--preview-border))] space-y-3">
-            <button
-              onClick={generateDraft}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-500 rounded-lg text-slate-950 font-bold text-sm transition-colors flex items-center justify-center gap-2"
-              data-testid="button-generate-contract-draft"
-              disabled={isGenerating}
-            >
-              {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-              {isGenerating ? "Generating..." : "Generate Contract Draft"}
-            </button>
-            <button
-              onClick={() => runComplianceCheck({ silent: false })}
-              className="w-full py-3 bg-white/5 border border-amber-500/30 rounded-lg text-amber-400 font-bold text-sm hover:bg-amber-500/5 transition-colors flex items-center justify-center gap-2"
-              data-testid="button-run-contract-compliance"
-              disabled={isRunningCompliance}
-            >
-              {isRunningCompliance ? <Loader2 size={16} className="animate-spin" /> : <ScanText size={16} />}
-              {isRunningCompliance ? "Scanning..." : "Run Live AI Risk Scan"}
-            </button>
-            <button
-              onClick={runCounterpartyRedline}
-              className="w-full py-3 bg-white/5 border border-amber-500/30 rounded-lg text-amber-400 font-bold text-sm hover:bg-amber-500/10 transition-colors flex items-center justify-center gap-2"
-              data-testid="button-run-counterparty-redline"
-              disabled={isRunningRedline}
-            >
-              {isRunningRedline ? <Loader2 size={16} className="animate-spin" /> : <GitCompareArrows size={16} />}
-              {isRunningRedline ? "Reviewing..." : "Counterparty Redline Mode"}
-            </button>
+            <div className="p-4 md:p-6 glass-surface border-t border-[hsl(var(--preview-border))] space-y-3">
+              <button
+                onClick={generateDraft}
+                className="w-full py-3 bg-amber-500 hover:bg-amber-500 rounded-lg text-slate-950 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                data-testid="button-generate-contract-draft"
+                disabled={isGenerating}
+              >
+                {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                {isGenerating ? "Generating..." : "Generate Contract Draft"}
+              </button>
+              <button
+                onClick={() => runComplianceCheck({ silent: false })}
+                className="w-full py-3 bg-white/5 border border-amber-500/30 rounded-lg text-amber-400 font-bold text-sm hover:bg-amber-500/5 transition-colors flex items-center justify-center gap-2"
+                data-testid="button-run-contract-compliance"
+                disabled={isRunningCompliance}
+              >
+                {isRunningCompliance ? <Loader2 size={16} className="animate-spin" /> : <ScanText size={16} />}
+                {isRunningCompliance ? "Scanning..." : "Run Live AI Risk Scan"}
+              </button>
+              <button
+                onClick={runCounterpartyRedline}
+                className="w-full py-3 bg-white/5 border border-amber-500/30 rounded-lg text-amber-400 font-bold text-sm hover:bg-amber-500/10 transition-colors flex items-center justify-center gap-2"
+                data-testid="button-run-counterparty-redline"
+                disabled={isRunningRedline}
+              >
+                {isRunningRedline ? <Loader2 size={16} className="animate-spin" /> : <GitCompareArrows size={16} />}
+                {isRunningRedline ? "Reviewing..." : "Counterparty Redline Mode"}
+              </button>
+            </div>
           </div>
         </section>
 
+        <div className={`${focusWritingMode ? "hidden" : "hidden lg:flex"} items-stretch`}>
+          <button
+            onClick={() => setLeftRailOpen((v) => !v)}
+            className="h-full w-6 border-r border-amber-400/35 bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            data-testid="divider-toggle-left-contract-rail"
+            title={leftRailVisible ? "Collapse contract inputs" : "Expand contract inputs"}
+            aria-label={leftRailVisible ? "Collapse contract inputs" : "Expand contract inputs"}
+          >
+            {leftRailVisible ? <ChevronLeft size={15} className="drop-shadow" /> : <ChevronRight size={15} className="drop-shadow" />}
+          </button>
+        </div>
+
         <section className="flex-1 bg-[hsl(var(--preview-bg)/0.45)] p-3 md:p-6 overflow-y-auto scrollbar-hide">
-          <div className="mx-auto w-full max-w-none grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-4">
+          <div className="mx-auto w-full max-w-none">
             <div>
-              <div className="mb-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="mb-5">
                 <div className="p-4 rounded-xl border border-amber-500/25 glass-surface backdrop-blur-md">
                   <div className="flex items-center gap-2 mb-2">
                     <ShieldCheck size={14} className="text-amber-400" />
@@ -1233,45 +1428,72 @@ export default function ContractDraftingPage() {
                       ? `Live scan ${lastRiskScanAt.toLocaleTimeString()}${riskFromCache ? " (cached)" : ""}`
                       : "Live scan pending..."}
                   </p>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-lg border border-red-400/25 bg-red-500/10 py-2">
-                      <p className="text-[10px] text-slate-400 uppercase">Critical</p>
-                      <p className="text-sm font-bold text-red-300">{riskBreakdown.critical}</p>
-                    </div>
-                    <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 py-2">
-                      <p className="text-[10px] text-slate-400 uppercase">Warning</p>
-                      <p className="text-sm font-bold text-amber-400">{riskBreakdown.warning}</p>
-                    </div>
-                    <div className="rounded-lg border border-emerald-400/25 bg-emerald-500/10 py-2">
-                      <p className="text-[10px] text-slate-400 uppercase">Coverage</p>
-                      <p className="text-sm font-bold text-emerald-300">{mandatoryCoverage}%</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-xl border border-amber-500/25 glass-surface backdrop-blur-md">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileDown size={14} className="text-amber-400" />
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">Export Suite</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
-                      className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-slate-200 hover:bg-amber-500/10"
-                      onClick={downloadContract}
+                      onClick={() => {
+                        setRiskSeverityFilter("danger");
+                        if (!lastRiskScanAt) {
+                          void runComplianceCheck({ silent: false });
+                        }
+                      }}
+                      className={`min-w-0 h-8 rounded-lg border px-2 py-1 transition-colors ${
+                        riskSeverityFilter === "danger"
+                          ? "border-red-300/60 bg-red-500/20"
+                          : "border-red-400/25 bg-red-500/10 hover:bg-red-500/15"
+                      }`}
+                      data-testid="button-risk-filter-critical"
+                      title="Show critical findings"
                     >
-                      Export TXT
+                      <div className="flex h-full items-center justify-between gap-1 whitespace-nowrap">
+                        <p className="min-w-0 truncate text-[9px] font-semibold leading-none text-slate-300 uppercase tracking-[0.08em]">
+                          Critical
+                        </p>
+                        <p className="shrink-0 text-xs font-bold leading-none tabular-nums text-red-300">{riskBreakdown.critical}</p>
+                      </div>
                     </button>
                     <button
-                      className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-slate-200 hover:bg-amber-500/10"
-                      onClick={printContract}
+                      onClick={() => {
+                        setRiskSeverityFilter("warning");
+                        if (!lastRiskScanAt) {
+                          void runComplianceCheck({ silent: false });
+                        }
+                      }}
+                      className={`min-w-0 h-8 rounded-lg border px-2 py-1 transition-colors ${
+                        riskSeverityFilter === "warning"
+                          ? "border-amber-300/60 bg-amber-500/20"
+                          : "border-amber-500/25 bg-amber-500/10 hover:bg-amber-500/15"
+                      }`}
+                      data-testid="button-risk-filter-warning"
+                      title="Show warning findings"
                     >
-                      Print / PDF
+                      <div className="flex h-full items-center justify-between gap-1 whitespace-nowrap">
+                        <p className="min-w-0 truncate text-[9px] font-semibold leading-none text-slate-300 uppercase tracking-[0.08em]">
+                          Warnings
+                        </p>
+                        <p className="shrink-0 text-xs font-bold leading-none tabular-nums text-amber-400">{riskBreakdown.warning}</p>
+                      </div>
                     </button>
                     <button
-                      className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-slate-200 hover:bg-amber-500/10"
-                      onClick={copyToClipboard}
+                      onClick={() => {
+                        setRiskSeverityFilter("all");
+                        if (!lastRiskScanAt) {
+                          void runComplianceCheck({ silent: false });
+                        }
+                      }}
+                      className={`min-w-0 h-8 rounded-lg border px-2 py-1 transition-colors ${
+                        riskSeverityFilter === "all"
+                          ? "border-emerald-300/60 bg-emerald-500/20"
+                          : "border-emerald-400/25 bg-emerald-500/10 hover:bg-emerald-500/15"
+                      }`}
+                      data-testid="button-risk-filter-coverage"
+                      title="Show all findings"
                     >
-                      Copy Text
+                      <div className="flex h-full items-center justify-between gap-1 whitespace-nowrap">
+                        <p className="min-w-0 truncate text-[9px] font-semibold leading-none text-slate-300 uppercase tracking-[0.08em]">
+                          Coverage
+                        </p>
+                        <p className="shrink-0 text-xs font-bold leading-none tabular-nums text-emerald-300">{mandatoryCoverage}%</p>
+                      </div>
                     </button>
                   </div>
                 </div>
@@ -1279,153 +1501,102 @@ export default function ContractDraftingPage() {
 
               {complianceRisks.length > 0 && (
                 <div className="mb-5 p-4 rounded-xl border border-amber-500/25 glass-surface backdrop-blur-md">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ShieldCheck size={14} className="text-amber-400" />
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">Compliance Findings</p>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck size={14} className="text-amber-400" />
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">
+                        Compliance Findings
+                      </p>
+                    </div>
+                    {riskSeverityFilter !== "all" && (
+                      <button
+                        onClick={() => setRiskSeverityFilter("all")}
+                        className="text-[10px] px-2 py-0.5 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                        data-testid="button-risk-filter-clear"
+                      >
+                        Show All
+                      </button>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    {complianceRisks.slice(0, 4).map((risk) => (
-                      <button
-                        key={risk.id}
-                        onClick={() => applySuggestedClause(risk.prompt)}
-                        className={`w-full text-left p-2 rounded-lg border ${
-                          risk.severity === "danger"
-                            ? "border-red-400/30 bg-red-500/10"
-                            : "border-amber-500/25 bg-amber-500/10"
-                        }`}
-                        data-testid={`compliance-risk-${risk.id}`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {risk.severity === "danger" ? (
-                            <AlertTriangle size={12} className="text-red-300" />
-                          ) : (
-                            <CheckCircle2 size={12} className="text-amber-400" />
-                          )}
-                          <span className="text-xs font-semibold text-slate-100">{risk.title}</span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-1">{risk.detail}</p>
-                      </button>
-                    ))}
+                    {filteredComplianceRisks.length === 0 ? (
+                      <div className="rounded-lg border border-white/10 bg-white/5 p-2">
+                        <p className="text-[11px] text-slate-300">
+                          {riskSeverityFilter === "danger"
+                            ? "No critical findings in the latest scan."
+                            : "No warning findings in the latest scan."}
+                        </p>
+                      </div>
+                    ) : (
+                      filteredComplianceRisks.slice(0, 4).map((risk) => (
+                        <button
+                          key={risk.id}
+                          onClick={() => applySuggestedClause(risk.prompt)}
+                          className={`w-full text-left p-2 rounded-lg border ${
+                            risk.severity === "danger"
+                              ? "border-red-400/30 bg-red-500/10"
+                              : "border-amber-500/25 bg-amber-500/10"
+                          }`}
+                          data-testid={`compliance-risk-${risk.id}`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            {risk.severity === "danger" ? (
+                              <AlertTriangle size={12} className="text-red-300" />
+                            ) : (
+                              <CheckCircle2 size={12} className="text-amber-400" />
+                            )}
+                            <span className="text-xs font-semibold text-slate-100">{risk.title}</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1">{risk.detail}</p>
+                        </button>
+                      ))
+                    )}
                   </div>
                 </div>
               )}
 
               <div
-                className="bg-white shadow-2xl min-h-[680px] md:min-h-[1120px] p-4 sm:p-8 md:p-16 font-serif text-[#1a1a1a] rounded-sm"
+                className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl p-3 md:p-5 lg:p-7 min-h-[560px] md:min-h-[760px] print:bg-white print:text-black"
                 style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
                 ref={printRef}
               >
                 <Textarea
                   value={contractText}
                   onChange={(e) => setContractText(e.target.value)}
-                  className="w-full min-h-[620px] md:min-h-[1020px] resize-none border-0 p-0 focus-visible:ring-0 bg-transparent text-[15px] leading-relaxed text-justify text-[#1a1a1a]"
+                  className="w-full min-h-[520px] md:min-h-[700px] resize-none border-0 p-0 focus-visible:ring-0 bg-transparent text-[15px] leading-relaxed text-slate-100 print:text-black"
                   placeholder="Your generated contract draft will appear here..."
                   data-testid="textarea-contract-draft"
                 />
               </div>
               <div className="mt-6 text-center text-slate-500 text-xs">Contract Workspace</div>
+              <div className="mt-4 space-y-4 lg:hidden">{renderRightRailContent()}</div>
             </div>
-
-            <aside className="space-y-4">
-              <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-amber-500/20">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={16} className="text-amber-400" />
-                    <h3 className="text-sm font-bold text-white tracking-tight">AI Clause Suggester</h3>
-                  </div>
-                  <button
-                    className="text-[10px] px-2 py-1 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 disabled:opacity-50"
-                    onClick={() => refreshClauseSuggestions({ silent: false })}
-                    disabled={isLoadingClauseSuggestions}
-                    data-testid="button-refresh-ai-clause-suggestions"
-                  >
-                    {isLoadingClauseSuggestions ? "Loading..." : "Refresh"}
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {liveClauseSuggestions.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => applySuggestedClause(item.prompt)}
-                      className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-amber-500/10 border border-white/10 transition-all"
-                      data-testid={`button-suggest-${item.id.replace(/[^a-zA-Z0-9-_]/g, "")}`}
-                      disabled={isGenerating || isLoadingClauseSuggestions}
-                    >
-                      <div className="text-[11px] font-bold text-amber-400 mb-0.5">{item.title}</div>
-                      <div className="text-[9px] text-slate-400 leading-tight">{item.subtitle}</div>
-                    </button>
-                  ))}
-                  {!isLoadingClauseSuggestions && liveClauseSuggestions.length === 0 && (
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-2">
-                      <p className="text-[10px] text-slate-300">No live suggestions available.</p>
-                      {clauseSuggestionError && (
-                        <p className="mt-1 text-[9px] text-red-300">{clauseSuggestionError}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-amber-500/20">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <GitCompareArrows size={16} className="text-amber-400" />
-                    <h3 className="text-sm font-bold text-white tracking-tight">Counterparty Redline Mode</h3>
-                  </div>
-                  <button
-                    className="text-[10px] px-2 py-1 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                    onClick={runCounterpartyRedline}
-                    disabled={isRunningRedline}
-                  >
-                    Refresh
-                  </button>
-                </div>
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                  {!redlineItems.length && (
-                    <p className="text-[11px] text-slate-500">
-                      Run redline mode to generate counterparty edits, then accept or reject each one.
-                    </p>
-                  )}
-                  {redlineItems.map((item) => (
-                    <div key={item.id} className="rounded-lg border border-white/10 bg-white/5 p-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs font-semibold text-slate-100">{item.title}</p>
-                        <span
-                          className={`text-[9px] uppercase ${
-                            item.status === "accepted"
-                              ? "text-emerald-300"
-                              : item.status === "rejected"
-                                ? "text-red-300"
-                                : "text-amber-400"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-1">{item.rationale}</p>
-                      <div className="mt-2 flex gap-2">
-                        <button
-                          className="flex-1 rounded border border-emerald-400/30 bg-emerald-500/10 py-1 text-[10px] font-semibold text-emerald-200 disabled:opacity-40"
-                          onClick={() => acceptRedline(item)}
-                          disabled={item.status !== "pending"}
-                        >
-                          Accept
-                        </button>
-                        <button
-                          className="flex-1 rounded border border-red-400/30 bg-red-500/10 py-1 text-[10px] font-semibold text-red-200 disabled:opacity-40"
-                          onClick={() => rejectRedline(item.id)}
-                          disabled={item.status !== "pending"}
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </aside>
           </div>
         </section>
+
+        <div className={`${focusWritingMode ? "hidden" : "hidden lg:flex"} items-stretch`}>
+          <button
+            onClick={() => setRightRailOpen((v) => !v)}
+            className="h-full w-6 border-l border-amber-400/35 bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            data-testid="divider-toggle-right-contract-rail"
+            title={rightRailVisible ? "Collapse AI panel" : "Expand AI panel"}
+            aria-label={rightRailVisible ? "Collapse AI panel" : "Expand AI panel"}
+          >
+            {rightRailVisible ? <ChevronRight size={15} className="drop-shadow" /> : <ChevronLeft size={15} className="drop-shadow" />}
+          </button>
+        </div>
+
+        <aside
+          className={`hidden lg:flex transition-[width] duration-300 ease-out overflow-hidden ${
+            rightRailVisible
+              ? "w-[300px] xl:w-[320px] border-l border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl"
+              : "w-0 border-l-0"
+          }`}
+        >
+          <div className="w-[300px] xl:w-[320px] p-3 md:p-4 space-y-4 overflow-y-auto scrollbar-hide">
+            {renderRightRailContent()}
+          </div>
+        </aside>
       </main>
 
       <footer className="glass-shell border-t border-[hsl(var(--preview-border))] px-3 md:px-8 py-2 flex items-center justify-between gap-2 flex-wrap">

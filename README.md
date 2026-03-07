@@ -1,5 +1,13 @@
 # Al Wakeelo — Full Developer Reference Guide
 
+## Canonical Engineering Guide
+
+For the current architecture, runtime behavior, AI/provider routing, RAG design, upload pipeline, and operations runbook, use:
+
+- `docs/ENGINEERING_HANDOFF_GUIDE.md`
+
+This README is kept for historical context and may not reflect all recent implementation changes.
+
 **Version**: Current (February 2026)  
 **Stack**: React + TypeScript (frontend) · Express.js + TypeScript (backend) · PostgreSQL + Drizzle ORM · Google Gemini AI · Kimi K2.5 (Apex)
 
