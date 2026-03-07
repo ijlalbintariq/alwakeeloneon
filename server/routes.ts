@@ -104,17 +104,15 @@ Language policy (strict):
 - Reply only in English or Urdu.
 - Never reply in Hindi.
 - Never use Devanagari script.
-- If user writes in Roman Urdu, reply in Roman Urdu.
 - If user writes in Urdu script, reply in Urdu script.
-- If user writes in English, reply in English.`;
+- Otherwise, reply in English.
+- Do not use Roman Urdu transliteration in responses.`;
 const PUBLIC_CHAT_CLOSING_LINES = {
   english: "For professional legal assistance, you may contact the chamber or hire a lawyer.",
-  romanUrdu: "Professional qanooni madad ke liye aap chamber se rabta karein ya lawyer hire karein.",
   urdu: "پیشہ ورانہ قانونی مدد کے لیے آپ چیمبر سے رابطہ کریں یا وکیل ہائر کریں۔",
 } as const;
 const PUBLIC_CHAT_CASE_NUDGE = {
   english: "This appears to be a legal matter that may require professional legal review. If you would like, you can submit your case details and our chamber can review it.",
-  romanUrdu: "Yeh masla professional qanooni review ka mutaliba karta hai. Agar aap chahain to apne case ki tafseel submit karein, hamara chamber us ka review karega.",
   urdu: "یہ معاملہ پیشہ ورانہ قانونی جائزے کا تقاضا کرتا ہے۔ اگر آپ چاہیں تو اپنے کیس کی تفصیل جمع کروائیں، ہمارا چیمبر اس کا جائزہ لے گا۔",
 } as const;
 
@@ -147,29 +145,27 @@ function hasUrduScript(text: string): boolean {
   return /[\u0600-\u06FF]/.test(text || "");
 }
 
-function looksLikeRomanUrdu(text: string): boolean {
+function looksLikeRomanizedSouthAsian(text: string): boolean {
   const normalized = (text || "").toLowerCase();
   if (!/[a-z]/.test(normalized)) return false;
   const hints = [
-    "kya", "ka", "ki", "ke", "hai", "hain", "nahi", "nhi", "kyun", "qanoon", "wakil", "lawyer", "masla", "aap", "mujhe", "mera", "meri", "please", "madad", "kar", "karo",
+    "agar", "aap", "aapko", "ghatna", "madad", "bataiye", "yad", "rakhein", "zaroorat", "sakta", "kya", "hai", "hain", "nahi", "kyun", "vakil", "wakil", "qanoon", "masla", "mujhe", "mera", "meri",
   ];
   return hints.some((h) => normalized.includes(h));
 }
 
-function resolvePublicChatLanguage(input: string): "english" | "romanUrdu" | "urdu" {
+function resolvePublicChatLanguage(input: string): "english" | "urdu" {
   if (hasUrduScript(input)) return "urdu";
-  if (looksLikeRomanUrdu(input)) return "romanUrdu";
   return "english";
 }
 
-function ensurePublicChatClosingLine(text: string, language: "english" | "romanUrdu" | "urdu"): string {
+function ensurePublicChatClosingLine(text: string, language: "english" | "urdu"): string {
   const closingLine = PUBLIC_CHAT_CLOSING_LINES[language];
   const normalized = (text || "").trim();
   if (!normalized) return closingLine;
   const lowered = normalized.toLowerCase();
   if (
     (language === "english" && (lowered.includes("contact the chamber") || lowered.includes("hire a lawyer"))) ||
-    (language === "romanUrdu" && (lowered.includes("chamber se rabta") || lowered.includes("lawyer hire"))) ||
     (language === "urdu" && (normalized.includes("چیمبر") || normalized.includes("وکیل")))
   ) {
     return normalized;
@@ -179,13 +175,11 @@ function ensurePublicChatClosingLine(text: string, language: "english" | "romanU
 
 async function rewritePublicChatOutput(args: {
   content: string;
-  targetLanguage: "english" | "romanUrdu" | "urdu";
+  targetLanguage: "english" | "urdu";
   provider: "groq" | "openrouter";
 }): Promise<string> {
   const languageLabel =
-    args.targetLanguage === "romanUrdu"
-      ? "Roman Urdu (Latin Urdu)"
-      : args.targetLanguage === "urdu"
+    args.targetLanguage === "urdu"
         ? "Urdu script"
         : "English";
   const rewriteMessages = [
@@ -196,7 +190,7 @@ async function rewritePublicChatOutput(args: {
     },
     {
       role: "user" as const,
-      content: `Rewrite the following in ${languageLabel}.\nRules:\n- No Hindi.\n- No Devanagari script.\n- Keep it concise and professional.\n- Output only rewritten text.\n\nText:\n${args.content}`,
+      content: `Rewrite the following in ${languageLabel}.\nRules:\n- Output only in ${languageLabel}.\n- No Hindi.\n- No Devanagari script.\n- No Roman Urdu transliteration.\n- Keep it concise and professional.\n- Output only rewritten text.\n\nText:\n${args.content}`,
     },
   ];
   if (args.provider === "openrouter") {
@@ -217,12 +211,9 @@ async function rewritePublicChatOutput(args: {
   return rewritten.content || "";
 }
 
-function getPublicChatLanguageFallback(language: "english" | "romanUrdu" | "urdu"): string {
+function getPublicChatLanguageFallback(language: "english" | "urdu"): string {
   if (language === "urdu") {
     return "آپ کے سوال کے مطابق جواب اردو میں فراہم کیا جا رہا ہے۔ برائے پیشہ ورانہ قانونی مدد چیمبر سے رابطہ کریں یا وکیل ہائر کریں۔";
-  }
-  if (language === "romanUrdu") {
-    return "Aap ke sawal ke mutabiq jawab Roman Urdu mein diya ja raha hai. Professional qanooni madad ke liye chamber se rabta karein ya lawyer hire karein.";
   }
   return "Your response is being provided in English as requested. For professional legal assistance, please contact the chamber or hire a lawyer.";
 }
@@ -960,11 +951,12 @@ MOTTO: "Main hoon Al Wakeelo — not just your lawyer, your strategy partner in 
 
 LANGUAGE POLICY (STRICT):
 - Match the user's language. If the user chats in English, reply in English.
-- If the user shifts to Urdu (script or Roman), you MUST respond in Urdu.
+- If the user writes in Urdu script, you MUST respond in Urdu script.
+- Otherwise, respond in English.
 - Maintain your sharp, witty persona in both languages.
 - Do NOT use Hindi.
 - Do NOT use Devanagari script.
-- If user writes in Roman Urdu, respond in Roman Urdu (Latin script Urdu), not Hindi.
+- Do NOT use Roman Urdu transliteration in responses.
 
 PERSONALITY & VOICE:
 - Bold, confident, and strategically aggressive yet always professional.
@@ -1372,7 +1364,11 @@ export async function registerRoutes(
       }
 
       let normalizedReply = sanitizeInputText(aiReply, 6000);
-      if (hasDevanagari(normalizedReply)) {
+      const needsLanguageRewrite =
+        hasDevanagari(normalizedReply) ||
+        (preferredLanguage === "english" && looksLikeRomanizedSouthAsian(normalizedReply)) ||
+        (preferredLanguage === "urdu" && !hasUrduScript(normalizedReply));
+      if (needsLanguageRewrite) {
         try {
           normalizedReply = sanitizeInputText(
             await rewritePublicChatOutput({
@@ -1386,7 +1382,12 @@ export async function registerRoutes(
           console.warn("[Public Chat] Language rewrite failed:", getErrorMessage(rewriteErr));
         }
       }
-      if (!normalizedReply || hasDevanagari(normalizedReply)) {
+      const stillInvalid =
+        !normalizedReply ||
+        hasDevanagari(normalizedReply) ||
+        (preferredLanguage === "english" && looksLikeRomanizedSouthAsian(normalizedReply)) ||
+        (preferredLanguage === "urdu" && !hasUrduScript(normalizedReply));
+      if (stillInvalid) {
         normalizedReply = getPublicChatLanguageFallback(preferredLanguage);
       }
 
