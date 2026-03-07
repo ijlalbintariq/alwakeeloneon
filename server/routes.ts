@@ -98,8 +98,25 @@ Do not give definitive legal judgments.
 
 Encourage the user to consult a professional lawyer.
 
-Always end responses by suggesting that the user may contact the chamber or hire a lawyer for professional assistance.`;
-const PUBLIC_CHAT_CLOSING_LINE = "For professional legal assistance, you may contact the chamber or hire a lawyer.";
+Always end responses by suggesting that the user may contact the chamber or hire a lawyer for professional assistance.
+
+Language policy (strict):
+- Reply only in English or Urdu.
+- Never reply in Hindi.
+- Never use Devanagari script.
+- If user writes in Roman Urdu, reply in Roman Urdu.
+- If user writes in Urdu script, reply in Urdu script.
+- If user writes in English, reply in English.`;
+const PUBLIC_CHAT_CLOSING_LINES = {
+  english: "For professional legal assistance, you may contact the chamber or hire a lawyer.",
+  romanUrdu: "Professional qanooni madad ke liye aap chamber se rabta karein ya lawyer hire karein.",
+  urdu: "پیشہ ورانہ قانونی مدد کے لیے آپ چیمبر سے رابطہ کریں یا وکیل ہائر کریں۔",
+} as const;
+const PUBLIC_CHAT_CASE_NUDGE = {
+  english: "This appears to be a legal matter that may require professional legal review. If you would like, you can submit your case details and our chamber can review it.",
+  romanUrdu: "Yeh masla professional qanooni review ka mutaliba karta hai. Agar aap chahain to apne case ki tafseel submit karein, hamara chamber us ka review karega.",
+  urdu: "یہ معاملہ پیشہ ورانہ قانونی جائزے کا تقاضا کرتا ہے۔ اگر آپ چاہیں تو اپنے کیس کی تفصیل جمع کروائیں، ہمارا چیمبر اس کا جائزہ لے گا۔",
+} as const;
 
 let activeUploadRequests = 0;
 const pendingUploadResolvers: Array<() => void> = [];
@@ -122,14 +139,92 @@ function sanitizeInputText(value: unknown, maxLen: number): string {
     .slice(0, Math.max(1, maxLen));
 }
 
-function ensurePublicChatClosingLine(text: string): string {
+function hasDevanagari(text: string): boolean {
+  return /[\u0900-\u097F]/.test(text || "");
+}
+
+function hasUrduScript(text: string): boolean {
+  return /[\u0600-\u06FF]/.test(text || "");
+}
+
+function looksLikeRomanUrdu(text: string): boolean {
+  const normalized = (text || "").toLowerCase();
+  if (!/[a-z]/.test(normalized)) return false;
+  const hints = [
+    "kya", "ka", "ki", "ke", "hai", "hain", "nahi", "nhi", "kyun", "qanoon", "wakil", "lawyer", "masla", "aap", "mujhe", "mera", "meri", "please", "madad", "kar", "karo",
+  ];
+  return hints.some((h) => normalized.includes(h));
+}
+
+function resolvePublicChatLanguage(input: string): "english" | "romanUrdu" | "urdu" {
+  if (hasUrduScript(input)) return "urdu";
+  if (looksLikeRomanUrdu(input)) return "romanUrdu";
+  return "english";
+}
+
+function ensurePublicChatClosingLine(text: string, language: "english" | "romanUrdu" | "urdu"): string {
+  const closingLine = PUBLIC_CHAT_CLOSING_LINES[language];
   const normalized = (text || "").trim();
-  if (!normalized) return PUBLIC_CHAT_CLOSING_LINE;
+  if (!normalized) return closingLine;
   const lowered = normalized.toLowerCase();
-  if (lowered.includes("contact the chamber") || lowered.includes("hire a lawyer")) {
+  if (
+    (language === "english" && (lowered.includes("contact the chamber") || lowered.includes("hire a lawyer"))) ||
+    (language === "romanUrdu" && (lowered.includes("chamber se rabta") || lowered.includes("lawyer hire"))) ||
+    (language === "urdu" && (normalized.includes("چیمبر") || normalized.includes("وکیل")))
+  ) {
     return normalized;
   }
-  return `${normalized}\n\n${PUBLIC_CHAT_CLOSING_LINE}`;
+  return `${normalized}\n\n${closingLine}`;
+}
+
+async function rewritePublicChatOutput(args: {
+  content: string;
+  targetLanguage: "english" | "romanUrdu" | "urdu";
+  provider: "groq" | "openrouter";
+}): Promise<string> {
+  const languageLabel =
+    args.targetLanguage === "romanUrdu"
+      ? "Roman Urdu (Latin Urdu)"
+      : args.targetLanguage === "urdu"
+        ? "Urdu script"
+        : "English";
+  const rewriteMessages = [
+    {
+      role: "system" as const,
+      content:
+        "You are a legal response language normalizer. Rewrite only. Keep legal meaning intact. Strictly avoid Hindi and Devanagari script.",
+    },
+    {
+      role: "user" as const,
+      content: `Rewrite the following in ${languageLabel}.\nRules:\n- No Hindi.\n- No Devanagari script.\n- Keep it concise and professional.\n- Output only rewritten text.\n\nText:\n${args.content}`,
+    },
+  ];
+  if (args.provider === "openrouter") {
+    const rewritten = await chatWithOpenRouter({
+      messages: rewriteMessages,
+      model: "deepseek-chat",
+      maxTokens: 700,
+      temperature: 0.1,
+    });
+    return rewritten.content || "";
+  }
+  const rewritten = await chatWithGroq({
+    messages: rewriteMessages,
+    model: "llama-3.1-8b-instant",
+    maxTokens: 700,
+    temperature: 0.1,
+  });
+  return rewritten.content || "";
+}
+
+function getPublicChatLanguageFallback(language: "english" | "romanUrdu" | "urdu"): string {
+  if (language === "urdu") {
+    return "آپ کے سوال کے مطابق جواب اردو میں فراہم کیا جا رہا ہے۔ برائے پیشہ ورانہ قانونی مدد چیمبر سے رابطہ کریں یا وکیل ہائر کریں۔";
+  }
+  if (language === "romanUrdu") {
+    return "Aap ke sawal ke mutabiq jawab Roman Urdu mein diya ja raha hai. Professional qanooni madad ke liye chamber se rabta karein ya lawyer hire karein.";
+  }
+  return "Your response is being provided in English as requested. For professional legal assistance, please contact the chamber or hire a lawyer.";
 }
 
 function getUploadQueueStats() {
@@ -867,6 +962,9 @@ LANGUAGE POLICY (STRICT):
 - Match the user's language. If the user chats in English, reply in English.
 - If the user shifts to Urdu (script or Roman), you MUST respond in Urdu.
 - Maintain your sharp, witty persona in both languages.
+- Do NOT use Hindi.
+- Do NOT use Devanagari script.
+- If user writes in Roman Urdu, respond in Roman Urdu (Latin script Urdu), not Hindi.
 
 PERSONALITY & VOICE:
 - Bold, confident, and strategically aggressive yet always professional.
@@ -1244,8 +1342,9 @@ export async function registerRoutes(
         { role: "system" as const, content: PUBLIC_CHAT_SYSTEM_PROMPT },
         { role: "user" as const, content: message },
       ];
+      const preferredLanguage = resolvePublicChatLanguage(message);
 
-      let provider = "groq";
+      let provider: "groq" | "openrouter" = "groq";
       let model = "llama-3.1-8b-instant";
       let aiReply = "";
       try {
@@ -1272,6 +1371,25 @@ export async function registerRoutes(
         aiReply = fallback.content;
       }
 
+      let normalizedReply = sanitizeInputText(aiReply, 6000);
+      if (hasDevanagari(normalizedReply)) {
+        try {
+          normalizedReply = sanitizeInputText(
+            await rewritePublicChatOutput({
+              content: normalizedReply,
+              targetLanguage: preferredLanguage,
+              provider,
+            }),
+            6000,
+          );
+        } catch (rewriteErr) {
+          console.warn("[Public Chat] Language rewrite failed:", getErrorMessage(rewriteErr));
+        }
+      }
+      if (!normalizedReply || hasDevanagari(normalizedReply)) {
+        normalizedReply = getPublicChatLanguageFallback(preferredLanguage);
+      }
+
       const updated = await storage.incrementVisitorSession(
         visitorIp,
         PUBLIC_CHAT_WINDOW_HOURS,
@@ -1279,9 +1397,9 @@ export async function registerRoutes(
       );
 
       const shouldPromptCaseSubmission = updated.messageCount >= 7 && updated.messageCount <= 8;
-      let safeReply = ensurePublicChatClosingLine(sanitizeInputText(aiReply, 6000));
+      let safeReply = ensurePublicChatClosingLine(normalizedReply, preferredLanguage);
       if (shouldPromptCaseSubmission && !safeReply.toLowerCase().includes("submit your case")) {
-        safeReply += "\n\nThis appears to be a legal matter that may require professional legal review. If you would like, you can submit your case details and our chamber can review it.";
+        safeReply += `\n\n${PUBLIC_CHAT_CASE_NUDGE[preferredLanguage]}`;
       }
 
       res.json({
