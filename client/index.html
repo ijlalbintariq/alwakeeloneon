@@ -2,11 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Al Wakeelo - Your Digital Lawyer | AI Legal Assistant</title>
     <meta name="description" content="AI-powered Pakistani legal assistant. Search judgments, research statutes, draft contracts, and consult with Al Wakeelo for expert legal guidance." />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
-    <link rel="canonical" href="https://alwakeeloneon.onrender.com/" />
+    <link id="canonical-link" rel="canonical" href="/" />
     <meta name="theme-color" content="#f59e0b" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -18,7 +18,7 @@
     <meta property="og:description" content="AI-powered Pakistani legal assistant for judgment search, statute research, and contract drafting." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Al Wakeelo" />
-    <meta property="og:url" content="https://alwakeeloneon.onrender.com/" />
+    <meta id="og-url-meta" property="og:url" content="/" />
     <meta property="og:image" content="/icon-512.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Al Wakeelo - Your Digital Lawyer" />
@@ -46,6 +46,17 @@
         ]
       }
     </script>
+    <script>
+      (function () {
+        try {
+          var base = window.location.origin + "/";
+          var canonical = document.getElementById("canonical-link");
+          if (canonical) canonical.setAttribute("href", base);
+          var ogUrl = document.getElementById("og-url-meta");
+          if (ogUrl) ogUrl.setAttribute("content", base);
+        } catch (_) {}
+      })();
+    </script>
     <style>
       #splash-screen {
         position: fixed;
@@ -55,7 +66,7 @@
         align-items: center;
         justify-content: center;
         background: #0f172a;
-        transition: opacity 0.6s ease, visibility 0.6s ease;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
       }
       #splash-screen.splash-hidden {
         opacity: 0;

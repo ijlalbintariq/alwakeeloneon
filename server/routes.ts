@@ -83,6 +83,8 @@ const PUBLIC_CHAT_MESSAGE_LIMIT = Math.max(1, Number(process.env.PUBLIC_CHAT_MES
 const PUBLIC_CHAT_WINDOW_HOURS = Math.max(1, Number(process.env.PUBLIC_CHAT_WINDOW_HOURS || 24));
 const PUBLIC_CHAT_MAX_INPUT_CHARS = Math.max(300, Number(process.env.PUBLIC_CHAT_MAX_INPUT_CHARS || 2000));
 const PUBLIC_LEAD_MAX_DESCRIPTION_CHARS = Math.max(500, Number(process.env.PUBLIC_LEAD_MAX_DESCRIPTION_CHARS || 6000));
+const PUBLIC_LEAD_MAX_CITY_CHARS = Math.max(20, Number(process.env.PUBLIC_LEAD_MAX_CITY_CHARS || 80));
+const PUBLIC_LEAD_MAX_CALLBACK_CHARS = Math.max(20, Number(process.env.PUBLIC_LEAD_MAX_CALLBACK_CHARS || 120));
 const PUBLIC_CHAT_LIMIT_MESSAGE = "You have reached the free AI consultation limit. For professional legal assistance you can contact our chamber or hire a lawyer.";
 const PUBLIC_CHAT_SYSTEM_PROMPT = `You are the AI legal intake assistant for AlWakeelo Law Chamber.
 
@@ -137,6 +139,42 @@ function sanitizeInputText(value: unknown, maxLen: number): string {
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
     .trim()
     .slice(0, Math.max(1, maxLen));
+}
+
+function sanitizeTelemetryMetadata(input: unknown): Record<string, string | number | boolean | null> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const out: Record<string, string | number | boolean | null> = {};
+  const entries = Object.entries(input as Record<string, unknown>).slice(0, 12);
+  for (const [rawKey, rawValue] of entries) {
+    const key = sanitizeInputText(rawKey, 40).replace(/\s+/g, "_");
+    if (!key) continue;
+    if (typeof rawValue === "string") {
+      out[key] = sanitizeInputText(rawValue, 240);
+      continue;
+    }
+    if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+      out[key] = rawValue;
+      continue;
+    }
+    if (typeof rawValue === "boolean") {
+      out[key] = rawValue;
+      continue;
+    }
+    out[key] = rawValue == null ? null : sanitizeInputText(String(rawValue), 240);
+  }
+  return out;
+}
+
+function normalizeSiteBaseUrl(req: Request): string {
+  const configured = String(process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "").trim();
+  if (configured) {
+    return configured.replace(/\/+$/, "");
+  }
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0]?.trim();
+  const proto = forwardedProto || req.protocol || "https";
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0]?.trim();
+  const host = forwardedHost || req.get("host") || "localhost";
+  return `${proto}://${host}`.replace(/\/+$/, "");
 }
 
 function hasDevanagari(text: string): boolean {
@@ -909,6 +947,7 @@ type RateBucket = { tokens: number; lastRefillMs: number };
 const RATE_LIMITS_BY_FEATURE: Record<string, RateLimitConfig> = {
   chat: { capacity: 4, refillPerSec: 1.4 },
   "public-chat": { capacity: 3, refillPerSec: 0.5 },
+  "public-funnel": { capacity: 8, refillPerSec: 1.2 },
   "search-judgments": { capacity: 3, refillPerSec: 1.1 },
   "search-statutes": { capacity: 3, refillPerSec: 1.1 },
   summarize: { capacity: 2, refillPerSec: 0.7 },
@@ -1293,6 +1332,23 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
+  app.get("/robots.txt", (req, res) => {
+    const base = normalizeSiteBaseUrl(req);
+    res.type("text/plain").send(`User-agent: *\nAllow: /\n\nSitemap: ${base}/sitemap.xml\n`);
+  });
+
+  app.get("/sitemap.xml", (req, res) => {
+    const base = normalizeSiteBaseUrl(req);
+    const urls = ["/", "/auth", "/privacy", "/terms", "/install"];
+    const body = `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      urls.map((path) => (
+        `  <url><loc>${base}${path}</loc><changefreq>${path === "/" ? "weekly" : "monthly"}</changefreq><priority>${path === "/" ? "1.0" : "0.6"}</priority></url>`
+      )).join("\n") +
+      `\n</urlset>\n`;
+    res.type("application/xml").send(body);
+  });
+
   app.use("/api", (req, res, next) => {
     if (!dbAvailable && req.path === "/auth/google/status") {
       return next();
@@ -1341,7 +1397,7 @@ export async function registerRoutes(
           remaining: 0,
           limit: PUBLIC_CHAT_MESSAGE_LIMIT,
           resetAt: stats.resetAt.toISOString(),
-          actions: ["Hire Lawyer", "Contact Chamber", "Submit Case"],
+          actions: ["Contact Chamber", "Submit Case"],
         });
       }
 
@@ -1437,6 +1493,32 @@ export async function registerRoutes(
     }
   });
 
+  app.post(api.publicChat.event.path, async (req, res) => {
+    try {
+      const visitorIp = getVisitorIpAddress(req);
+      if (!checkRateLimit(`public-event:${visitorIp}`, "public-funnel")) {
+        return res.status(429).json({ message: "Too many events. Slow down." });
+      }
+
+      const parsed = api.publicChat.event.input.safeParse(req.body || {});
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid event payload." });
+      }
+
+      await storage.logPublicFunnelEvent({
+        eventType: parsed.data.eventType,
+        sessionId: parsed.data.sessionId,
+        ipAddress: visitorIp,
+        metadata: sanitizeTelemetryMetadata(parsed.data.metadata),
+      });
+
+      return res.status(201).json({ ok: true });
+    } catch (err) {
+      console.error("Error logging public funnel event:", err);
+      return res.status(500).json({ message: "Failed to log event." });
+    }
+  });
+
   app.post(api.publicChat.submitCase.path, async (req, res) => {
     try {
       const visitorIp = getVisitorIpAddress(req);
@@ -1445,8 +1527,13 @@ export async function registerRoutes(
       const email = sanitizeInputText(req.body?.email, 160).toLowerCase();
       const caseType = sanitizeInputText(req.body?.caseType, 120);
       const caseDescription = sanitizeInputText(req.body?.caseDescription, PUBLIC_LEAD_MAX_DESCRIPTION_CHARS);
+      const city = sanitizeInputText(req.body?.city, PUBLIC_LEAD_MAX_CITY_CHARS);
+      const urgencyRaw = sanitizeInputText(req.body?.urgency, 20).toLowerCase();
+      const preferredCallbackTime = sanitizeInputText(req.body?.preferredCallbackTime, PUBLIC_LEAD_MAX_CALLBACK_CHARS);
+      const consentToContact = req.body?.consentToContact === true || req.body?.consentToContact === "true";
+      const urgency = (["low", "normal", "high", "urgent"].includes(urgencyRaw) ? urgencyRaw : "normal") as "low" | "normal" | "high" | "urgent";
 
-      if (!name || !phone || !email || !caseType || !caseDescription) {
+      if (!name || !phone || !email || !caseType || !caseDescription || !city) {
         return res.status(400).json({ message: "All fields are required." });
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1458,6 +1545,9 @@ export async function registerRoutes(
       if (caseDescription.length < 20) {
         return res.status(400).json({ message: "Case description is too short." });
       }
+      if (!consentToContact) {
+        return res.status(400).json({ message: "Consent is required before submitting your case." });
+      }
 
       const created = await storage.createCaseLead({
         name,
@@ -1465,7 +1555,21 @@ export async function registerRoutes(
         email,
         caseType,
         caseDescription,
+        city,
+        urgency,
+        preferredCallbackTime: preferredCallbackTime || null,
+        consentToContact,
         ipAddress: visitorIp,
+      });
+      await storage.logPublicFunnelEvent({
+        eventType: "lead_submitted",
+        sessionId: sanitizeInputText(req.body?.sessionId, 120) || null,
+        ipAddress: visitorIp,
+        metadata: sanitizeTelemetryMetadata({
+          caseType,
+          urgency,
+          city,
+        }),
       });
 
       res.status(201).json({

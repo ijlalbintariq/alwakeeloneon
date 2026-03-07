@@ -1,4 +1,5 @@
-import { Scale, ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard } from "lucide-react";
+import { useState } from "react";
+import { Scale, ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail, Star } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -14,11 +15,70 @@ function FeatureCard({ icon: Icon, title, desc, bgClass, iconClass }: { icon: an
   );
 }
 
+const CORE_FEATURES = [
+  { icon: MessageSquare, title: "AI Legal Chat", desc: "Consult with an AI legal advisor trained on Pakistani law. Get strategy and next-step guidance fast.", bgClass: "bg-amber-500/10", iconClass: "text-amber-500" },
+  { icon: Search, title: "Judgment Search", desc: "Find relevant Pakistani case law with quick citation-focused search and contextual summaries.", bgClass: "bg-blue-500/10", iconClass: "text-blue-500" },
+  { icon: BookOpen, title: "Statute Lookup", desc: "Navigate Pakistani statutes and sections with plain-language legal explanations.", bgClass: "bg-emerald-500/10", iconClass: "text-emerald-500" },
+  { icon: FileText, title: "Legal Drafting", desc: "Prepare petitions, notices, and applications faster with drafting workflows.", bgClass: "bg-amber-500/10", iconClass: "text-amber-500" },
+  { icon: Shield, title: "Contract Drafting", desc: "Generate professional contracts with structured clauses and risk-focused review.", bgClass: "bg-red-500/10", iconClass: "text-red-500" },
+  { icon: Paperclip, title: "Document Analysis", desc: "Upload legal files and get practical insights grounded in your documents.", bgClass: "bg-cyan-500/10", iconClass: "text-cyan-500" },
+];
+
+const TESTIMONIALS = [
+  {
+    quote: "We reduced first-response time for client queries dramatically. The chamber now handles intake with more confidence.",
+    name: "Advocate, Lahore",
+    role: "Civil Litigation Practice",
+  },
+  {
+    quote: "Judgment and statute lookups are faster, and draft quality is much better before lawyer review.",
+    name: "Legal Associate, Islamabad",
+    role: "Corporate & Tax Desk",
+  },
+  {
+    quote: "Our team uses Al Wakeelo daily for research prep and draft structure. It saves meaningful billable hours.",
+    name: "Partner, Karachi",
+    role: "Chamber Operations",
+  },
+];
+
+const FAQ_ITEMS = [
+  {
+    q: "Can I use Al Wakeelo for Pakistani case law research?",
+    a: "Yes. You can search judgments, explore statutes, and use AI-assisted legal research workflows focused on Pakistani law.",
+  },
+  {
+    q: "Does Al Wakeelo replace a licensed advocate?",
+    a: "No. It supports legal research and drafting, but professional legal advice and representation should come from a licensed advocate.",
+  },
+  {
+    q: "How can I contact the chamber for consultation?",
+    a: "You can submit your case through the intake flow, email support@alwakeelo.com, or call 00923096875797.",
+  },
+  {
+    q: "Is my information confidential?",
+    a: "The platform is designed with privacy and access controls. For sensitive matters, always use official chamber consultation channels as well.",
+  },
+];
+
 export default function LandingPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const ctaTarget = user ? "/dashboard" : "/auth";
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.a,
+      },
+    })),
+  };
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white overflow-x-hidden">
@@ -34,14 +94,43 @@ export default function LandingPage() {
             <a href="#features" className="text-sm text-slate-400 hover:text-white transition-colors">Features</a>
             <a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
             <a href="#about" className="text-sm text-slate-400 hover:text-white transition-colors">About</a>
+            <a href="#contact" className="text-sm text-slate-400 hover:text-white transition-colors">Contact</a>
           </div>
-          <a
-            href={ctaTarget}
-            className="px-6 py-2.5 bg-amber-500 text-slate-950 rounded-xl text-sm font-bold hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
-          >
-            {user ? <><LayoutDashboard size={16} /> Dashboard</> : "Get Started"}
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              className="md:hidden h-10 w-10 rounded-xl border border-slate-700 bg-transparent text-slate-200 hover:bg-slate-800 p-0 inline-flex items-center justify-center"
+              aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+            >
+              {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+            <a
+              href={ctaTarget}
+              className="px-6 py-2.5 bg-amber-500 text-slate-950 rounded-xl text-sm font-bold hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
+            >
+              {user ? <><LayoutDashboard size={16} /> Dashboard</> : "Start Free"}
+            </a>
+          </div>
         </div>
+        {mobileNavOpen && (
+          <div className="md:hidden border-t border-slate-800/70">
+            <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-3">
+              <a href="#features" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Features</a>
+              <a href="#pricing" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Pricing</a>
+              <a href="#about" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">About</a>
+              <a href="#contact" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Contact</a>
+              <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-2">
+                <a href="mailto:support@alwakeelo.com" className="inline-flex items-center gap-2 text-sm text-amber-300 hover:text-amber-200 transition-colors">
+                  <Mail size={14} /> support@alwakeelo.com
+                </a>
+                <a href="tel:00923096875797" className="inline-flex items-center gap-2 text-sm text-amber-300 hover:text-amber-200 transition-colors">
+                  <PhoneCall size={14} /> 00923096875797
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       <section className="relative pt-32 pb-20 md:pt-44 md:pb-32 px-6">
@@ -71,7 +160,7 @@ export default function LandingPage() {
               href={ctaTarget}
               className="w-full sm:w-auto px-8 py-4 bg-amber-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20"
             >
-              {user ? "Go to Dashboard" : "Enter the Chambers"} <ArrowRight size={16} />
+              {user ? "Go to Dashboard" : "Get Legal Consultation"} <ArrowRight size={16} />
             </a>
             <a
               href="#features"
@@ -98,6 +187,77 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section className="py-16 md:py-20 px-6 bg-[#111b2d] border-y border-slate-800/60">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">How It Works</p>
+            <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
+              From Query to Consultation in 3 Steps
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              {
+                step: "01",
+                title: "Ask Your Legal Question",
+                desc: "Start with AI guidance for Pakistani law issues through chat and legal search.",
+              },
+              {
+                step: "02",
+                title: "Review Drafts & Evidence",
+                desc: "Use drafting, contract, and document tools to prepare a stronger legal position.",
+              },
+              {
+                step: "03",
+                title: "Consult the Chamber",
+                desc: "Submit case details or contact the chamber for professional advocate review.",
+              },
+            ].map((item) => (
+              <div key={item.step} className="rounded-2xl border border-slate-800 bg-[#1a2437] p-6">
+                <p className="text-[10px] text-amber-400 font-black tracking-[0.3em] mb-2">{item.step}</p>
+                <h3 className="text-white text-lg font-bold mb-2">{item.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 md:py-20 px-6 bg-[#0f172a]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">Platform Preview</p>
+            <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Built Like a Modern Legal Workspace
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="rounded-3xl border border-slate-800 bg-gradient-to-b from-[#1f2a40] to-[#131c2e] p-5 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-400">Research Panel</p>
+                <span className="text-[10px] text-slate-500">Live Workspace</span>
+              </div>
+              <div className="space-y-3">
+                <div className="rounded-xl border border-slate-700 bg-[#0f172a] p-3 text-xs text-slate-300">Judgment Search: <span className="text-amber-300">2023 SCMR 1450</span></div>
+                <div className="rounded-xl border border-slate-700 bg-[#0f172a] p-3 text-xs text-slate-300">Statute Lookup: <span className="text-amber-300">CPC S.9</span></div>
+                <div className="rounded-xl border border-slate-700 bg-[#0f172a] p-3 text-xs text-slate-300">AI Summary: <span className="text-slate-200">Actionable litigation notes generated.</span></div>
+              </div>
+            </div>
+            <div className="rounded-3xl border border-slate-800 bg-gradient-to-b from-[#241f17] to-[#17120f] p-5 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-400">Drafting Panel</p>
+                <span className="text-[10px] text-slate-500">Conversion Ready</span>
+              </div>
+              <div className="space-y-3">
+                <div className="rounded-xl border border-amber-500/20 bg-[#0f172a] p-3 text-xs text-slate-300">Legal Draft: <span className="text-amber-300">Petition structure ready</span></div>
+                <div className="rounded-xl border border-amber-500/20 bg-[#0f172a] p-3 text-xs text-slate-300">Contract Risk: <span className="text-amber-300">Critical clauses flagged</span></div>
+                <div className="rounded-xl border border-amber-500/20 bg-[#0f172a] p-3 text-xs text-slate-300">Client Intake: <span className="text-slate-200">Submit case + chamber callback.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="features" className="py-20 md:py-28 px-6 bg-[#0f172a]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
@@ -111,15 +271,49 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard icon={MessageSquare} title="AI Legal Chat" desc="Consult with an AI legal advisor trained on Pakistani law. Get opinions, strategies, and analysis instantly." bgClass="bg-amber-500/10" iconClass="text-amber-500" />
-            <FeatureCard icon={Search} title="Judgment Search" desc="Search through Pakistani case law with AI-powered analysis. Find relevant judgments and citations quickly." bgClass="bg-blue-500/10" iconClass="text-blue-500" />
-            <FeatureCard icon={BookOpen} title="Statute Lookup" desc="Browse and analyze Pakistani statutes including PPC, CrPC, CPC, and more with AI explanations." bgClass="bg-emerald-500/10" iconClass="text-emerald-500" />
-            <FeatureCard icon={FileText} title="Legal Drafting" desc="Draft professional legal documents, petitions, applications, and notices with AI assistance." bgClass="bg-amber-500/10" iconClass="text-amber-500" />
-            <FeatureCard icon={Shield} title="Contract Drafting" desc="Generate airtight contracts with proper Pakistani legal conventions, clauses, and formatting." bgClass="bg-red-500/10" iconClass="text-red-500" />
-            <FeatureCard icon={Paperclip} title="Document Analysis" desc="Upload PDFs, legal documents, and case files. AI reads and analyzes them for your queries." bgClass="bg-cyan-500/10" iconClass="text-cyan-500" />
-            <FeatureCard icon={Mic} title="Voice Transcription" desc="Upload audio recordings of hearings or dictations. AI transcribes and integrates them into your workflow." bgClass="bg-pink-500/10" iconClass="text-pink-500" />
-            <FeatureCard icon={Crown} title="Knowledge Vault" desc="Access a curated database of Pakistani legal texts, statutes, and precedents synced from verified sources." bgClass="bg-amber-500/10" iconClass="text-amber-500" />
-            <FeatureCard icon={Users} title="Team Collaboration" desc="Share conversations, bookmark insights, and manage your case research history seamlessly." bgClass="bg-indigo-500/10" iconClass="text-indigo-500" />
+            {CORE_FEATURES.map((item) => (
+              <FeatureCard
+                key={item.title}
+                icon={item.icon}
+                title={item.title}
+                desc={item.desc}
+                bgClass={item.bgClass}
+                iconClass={item.iconClass}
+              />
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <a
+              href={ctaTarget}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-700 text-slate-300 text-sm font-bold hover:border-amber-500 hover:text-amber-300 transition-all"
+            >
+              Explore Full Platform <ArrowRight size={14} />
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 md:py-20 px-6 bg-[#101a2b] border-y border-slate-800/60">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">Social Proof</p>
+            <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Trusted by Legal Professionals
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {TESTIMONIALS.map((item, i) => (
+              <div key={`${item.name}-${i}`} className="rounded-2xl border border-slate-800 bg-[#1a2437] p-6">
+                <div className="flex items-center gap-1 mb-3 text-amber-400">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <Star key={idx} size={14} fill="currentColor" />
+                  ))}
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed mb-4">"{item.quote}"</p>
+                <p className="text-sm font-bold text-white">{item.name}</p>
+                <p className="text-xs text-slate-500">{item.role}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -190,10 +384,10 @@ export default function LandingPage() {
                 ))}
               </ul>
               <a
-                href={ctaTarget}
+                href="mailto:support@alwakeelo.com?subject=Enterprise%20Consultation"
                 className="w-full py-3.5 border border-slate-700 text-slate-300 rounded-xl text-sm font-bold hover:border-amber-500 hover:text-amber-500 transition-all flex items-center justify-center"
               >
-                Contact Us
+                Contact Chamber
               </a>
             </div>
           </div>
@@ -227,22 +421,63 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-20 px-6 bg-[#131c2e]">
+      <section id="contact" className="py-20 px-6 bg-[#131c2e]">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold italic mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Ready to Transform Your Practice?
+            Ready for Professional Consultation?
           </h2>
           <p className="text-slate-400 mb-8">
-            Join hundreds of Pakistani legal professionals already using Al Wakeelo.
+            Start with AI guidance, then connect with our chamber for professional legal consultation.
           </p>
-          <a
-            href={ctaTarget}
-            className="px-10 py-4 bg-amber-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center gap-2 mx-auto shadow-xl shadow-amber-500/20"
-          >
-            {user ? "Go to Dashboard" : "Start Using Al Wakeelo"} <ArrowRight size={16} />
-          </a>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a
+              href={ctaTarget}
+              className="px-8 py-3.5 bg-amber-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center gap-2 shadow-xl shadow-amber-500/20"
+            >
+              {user ? "Go to Dashboard" : "Start Free"} <ArrowRight size={16} />
+            </a>
+            <a
+              href="mailto:support@alwakeelo.com"
+              className="px-8 py-3.5 border border-slate-700 text-slate-200 rounded-2xl text-sm font-bold hover:border-amber-500 hover:text-amber-300 transition-all inline-flex items-center gap-2"
+            >
+              <Mail size={15} /> Email Chamber
+            </a>
+            <a
+              href="tel:00923096875797"
+              className="px-8 py-3.5 border border-slate-700 text-slate-200 rounded-2xl text-sm font-bold hover:border-amber-500 hover:text-amber-300 transition-all inline-flex items-center gap-2"
+            >
+              <PhoneCall size={15} /> Call Chamber
+            </a>
+          </div>
+          <p className="mt-4 text-xs text-slate-500">
+            support@alwakeelo.com · 00923096875797
+          </p>
         </div>
       </section>
+
+      <section className="py-16 px-6 bg-[#0f172a]">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">FAQ</p>
+            <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Frequently Asked Questions
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {FAQ_ITEMS.map((item) => (
+              <div key={item.q} className="rounded-2xl border border-slate-800 bg-[#1a2437] p-5">
+                <h3 className="text-base font-bold text-white mb-2">{item.q}</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">{item.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
 
       <footer className="py-10 px-6 bg-[#0f172a] border-t border-slate-800/50">
         <div className="max-w-6xl mx-auto">

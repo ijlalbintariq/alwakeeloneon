@@ -77,9 +77,24 @@ export const caseLeads = pgTable("case_leads", {
   email: text("email").notNull(),
   caseType: text("case_type").notNull(),
   caseDescription: text("case_description").notNull(),
+  city: text("city").default("").notNull(),
+  urgency: text("urgency", { enum: ["low", "normal", "high", "urgent"] }).default("normal").notNull(),
+  preferredCallbackTime: text("preferred_callback_time"),
+  consentToContact: boolean("consent_to_contact").default(false).notNull(),
   ipAddress: text("ip_address").notNull(),
   status: text("status", { enum: ["open", "completed"] }).notNull().default("open"),
   statusUpdatedAt: timestamp("status_updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const publicFunnelEvents = pgTable("public_funnel_events", {
+  id: serial("id").primaryKey(),
+  eventType: text("event_type", {
+    enum: ["widget_open", "message_sent", "lead_form_open", "lead_submitted", "contact_click"],
+  }).notNull(),
+  sessionId: text("session_id"),
+  ipAddress: text("ip_address").notNull(),
+  metadata: jsonb("metadata").default({}).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -401,6 +416,7 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({ id: tru
 export const insertDocumentFileSchema = createInsertSchema(documentFiles).omit({ id: true, createdAt: true });
 export const insertVisitorSessionSchema = createInsertSchema(visitorSessions).omit({ id: true, createdAt: true, lastMessageAt: true });
 export const insertCaseLeadSchema = createInsertSchema(caseLeads).omit({ id: true, createdAt: true, status: true, statusUpdatedAt: true });
+export const insertPublicFunnelEventSchema = createInsertSchema(publicFunnelEvents).omit({ id: true, createdAt: true, ipAddress: true });
 export const insertBookmarkSchema = createInsertSchema(bookmarks).omit({ id: true, createdAt: true });
 export const insertSearchHistorySchema = createInsertSchema(searchHistory).omit({ id: true, createdAt: true });
 export const insertStatuteSchema = createInsertSchema(statutes).omit({ id: true });
@@ -442,6 +458,8 @@ export const caseLeadStatusSchema = z.enum(["open", "completed"]);
 export type CaseLeadStatus = z.infer<typeof caseLeadStatusSchema>;
 export type CaseLead = typeof caseLeads.$inferSelect;
 export type InsertCaseLead = z.infer<typeof insertCaseLeadSchema>;
+export type PublicFunnelEvent = typeof publicFunnelEvents.$inferSelect;
+export type InsertPublicFunnelEvent = z.infer<typeof insertPublicFunnelEventSchema>;
 export type Bookmark = typeof bookmarks.$inferSelect;
 export type InsertBookmark = z.infer<typeof insertBookmarkSchema>;
 export type SearchHistory = typeof searchHistory.$inferSelect;
