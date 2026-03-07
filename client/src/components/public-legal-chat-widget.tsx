@@ -1,6 +1,6 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { MessageCircle, Send, X, Briefcase, PhoneCall, FilePlus, Loader2, Scale, User as UserIcon } from "lucide-react";
+import { MessageCircle, Send, X, PhoneCall, FilePlus, Loader2, Scale, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ export function PublicLegalChatWidget() {
     {
       role: "assistant",
       content:
-        "Assalam-o-Alaikum. I am AlWakeelo AI Legal Intake Assistant. Share your legal issue, and I can provide general guidance.",
+        "Assalam-o-Alaikum. I'm AlWakeelo Legal Consultation Assistant. Share your issue for general legal guidance. If needed, you can consult our chamber and hire a lawyer.",
     },
   ]);
   const [isSending, setIsSending] = useState(false);
@@ -62,6 +62,7 @@ export function PublicLegalChatWidget() {
   const [limitReached, setLimitReached] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(10);
   const [showCaseForm, setShowCaseForm] = useState(false);
+  const [showContactInfo, setShowContactInfo] = useState(false);
   const [leadForm, setLeadForm] = useState({
     name: "",
     phone: "",
@@ -206,7 +207,7 @@ export function PublicLegalChatWidget() {
           data-testid="public-chat-toggle"
         >
           <MessageCircle size={16} className="mr-2" />
-          Ask AI Legal Assistant
+          Consult Al Wakeelo Ai + Hire Lawyer
         </Button>
       </div>
 
@@ -214,7 +215,8 @@ export function PublicLegalChatWidget() {
         <Card className="fixed bottom-20 right-6 z-[80] w-[min(94vw,420px)] border border-amber-500/30 bg-[#0f172a] shadow-2xl shadow-black/50">
           <CardHeader className="pb-2 px-4 py-3 border-b border-slate-800 flex flex-row items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-amber-400">AI Legal Assistant</p>
+              <p className="text-sm font-bold text-amber-400">Legal Consultation Desk</p>
+              <p className="text-[10px] text-slate-400">Consultation &amp; Hiring Support</p>
               <p className="text-[10px] text-slate-400">Free messages left: {remaining ?? "-"}</p>
             </div>
             <Button
@@ -271,21 +273,12 @@ export function PublicLegalChatWidget() {
 
             {limitReached && (
               <div className="px-4 pb-3 space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      window.location.href = "/auth";
-                    }}
-                    className="h-9 bg-amber-500 text-slate-950 hover:bg-amber-400 text-[11px] font-bold"
-                  >
-                    <Briefcase size={14} className="mr-1" /> Hire Lawyer
-                  </Button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      window.location.href = "/#about";
+                      setShowContactInfo((prev) => !prev);
                     }}
                     className="h-9 border-slate-700 text-slate-200 hover:bg-slate-800 text-[11px]"
                   >
@@ -300,6 +293,23 @@ export function PublicLegalChatWidget() {
                     <FilePlus size={14} className="mr-1" /> Submit Case
                   </Button>
                 </div>
+                {showContactInfo && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                    <p className="font-semibold text-amber-300">Consultation Contact</p>
+                    <p>
+                      Email:{" "}
+                      <a className="underline hover:text-amber-200" href="mailto:support@alwakeelo.com">
+                        support@alwakeelo.com
+                      </a>
+                    </p>
+                    <p>
+                      Phone:{" "}
+                      <a className="underline hover:text-amber-200" href="tel:00923096875797">
+                        00923096875797
+                      </a>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

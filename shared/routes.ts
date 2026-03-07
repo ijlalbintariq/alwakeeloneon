@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import { insertThreadSchema, insertMessageSchema, insertBookmarkSchema, insertSearchHistorySchema, insertCaseLeadSchema, threads, messages, documents, caseLeads } from './schema';
+import { caseLeadStatusSchema, insertThreadSchema, insertMessageSchema, insertBookmarkSchema, insertSearchHistorySchema, insertCaseLeadSchema, threads, messages, documents, caseLeads } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -216,6 +216,13 @@ export const api = {
       delete: {
         method: "DELETE" as const,
         path: "/api/admin/client-leads/:id" as const,
+      },
+      update: {
+        method: "PATCH" as const,
+        path: "/api/admin/client-leads/:id" as const,
+        input: z.object({
+          status: caseLeadStatusSchema,
+        }),
       },
     },
   },

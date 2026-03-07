@@ -4404,6 +4404,43 @@ RULES:
     }
   });
 
+  app.patch("/api/admin/client-leads/:id", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ message: "Lead id is required" });
+      const parsed = api.admin.clientLeads.update.input.safeParse(req.body || {});
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid status value" });
+      }
+
+      const actorUserId = getUserId(req);
+      const existing = await storage.getCaseLeadById(id);
+      if (!existing) return res.status(404).json({ message: "Lead not found" });
+
+      const targetStatus = parsed.data.status;
+      if (existing.status === targetStatus) {
+        return res.json(existing);
+      }
+
+      const updated = await storage.updateCaseLeadStatus(id, targetStatus);
+      if (!updated) return res.status(500).json({ message: "Failed to update lead status" });
+
+      await logAuditEvent("admin.clientLead.status", actorUserId, null, {
+        leadId: id,
+        fromStatus: existing.status,
+        toStatus: updated.status,
+        email: existing.email,
+        caseType: existing.caseType,
+      });
+
+      res.json(updated);
+    } catch (err) {
+      console.error("Error updating client lead status:", err);
+      res.status(500).json({ message: "Failed to update client lead status" });
+    }
+  });
+
   app.delete("/api/admin/client-leads/:id", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {

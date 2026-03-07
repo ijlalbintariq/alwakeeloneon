@@ -96,6 +96,8 @@ type ClientLead = {
   caseType: string;
   caseDescription: string;
   ipAddress: string;
+  status: "open" | "completed";
+  statusUpdatedAt: string;
   createdAt: string;
 };
 
@@ -1784,6 +1786,23 @@ function ClientLeadsSection() {
     },
   });
 
+  const completeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("PATCH", `/api/admin/client-leads/${id}`, { status: "completed" });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/client-leads"] });
+      if (selectedLeadId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/client-leads", selectedLeadId] });
+      }
+      toast({ title: "Lead marked as completed" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update lead status", variant: "destructive" });
+    },
+  });
+
   const leads = leadsPage?.items || [];
   const totalLeads = leadsPage?.total || 0;
 
@@ -1824,7 +1843,7 @@ function ClientLeadsSection() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left min-w-[980px]">
+              <table className="w-full text-xs text-left min-w-[1040px]">
                 <thead>
                   <tr className="text-slate-500 border-b border-slate-800">
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Lead ID</th>
@@ -1832,6 +1851,7 @@ function ClientLeadsSection() {
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Phone</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Email</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Case Type</th>
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">Status</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Case Description</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">IP Address</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Submission Date</th>
@@ -1846,6 +1866,14 @@ function ClientLeadsSection() {
                       <td className="py-2 pr-3 text-slate-300">{lead.phone}</td>
                       <td className="py-2 pr-3 text-slate-300">{lead.email}</td>
                       <td className="py-2 pr-3 text-amber-400">{lead.caseType}</td>
+                      <td className="py-2 pr-3">
+                        <Badge className={lead.status === "completed"
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 rounded-md"
+                          : "bg-amber-500/15 text-amber-300 border-amber-500/40 rounded-md"}
+                        >
+                          {lead.status === "completed" ? "Completed" : "Open"}
+                        </Badge>
+                      </td>
                       <td className="py-2 pr-3 text-slate-400 max-w-[260px] truncate">{lead.caseDescription}</td>
                       <td className="py-2 pr-3 text-slate-400">{lead.ipAddress}</td>
                       <td className="py-2 pr-3 text-slate-400">{new Date(lead.createdAt).toLocaleString()}</td>
@@ -1860,6 +1888,18 @@ function ClientLeadsSection() {
                           >
                             View
                           </Button>
+                          {lead.status === "open" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-emerald-300 text-[10px] h-7 px-2"
+                              onClick={() => completeMutation.mutate(lead.id)}
+                              disabled={completeMutation.isPending}
+                              data-testid={`button-complete-lead-${lead.id}`}
+                            >
+                              <Check size={12} className="mr-1" /> Completed
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="ghost"
@@ -1909,9 +1949,27 @@ function ClientLeadsSection() {
                   <p className="text-slate-300"><span className="text-slate-500">Phone:</span> {selectedLead.phone}</p>
                   <p className="text-slate-300"><span className="text-slate-500">Email:</span> {selectedLead.email}</p>
                   <p className="text-slate-300"><span className="text-slate-500">Case Type:</span> {selectedLead.caseType}</p>
+                  <p className="text-slate-300">
+                    <span className="text-slate-500">Status:</span>{" "}
+                    <span className={selectedLead.status === "completed" ? "text-emerald-300 font-semibold" : "text-amber-300 font-semibold"}>
+                      {selectedLead.status === "completed" ? "Completed" : "Open"}
+                    </span>
+                  </p>
                   <p className="text-slate-300"><span className="text-slate-500">IP Address:</span> {selectedLead.ipAddress}</p>
                   <p className="text-slate-300"><span className="text-slate-500">Submitted:</span> {new Date(selectedLead.createdAt).toLocaleString()}</p>
                 </div>
+                {selectedLead.status === "open" && (
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      className="bg-emerald-500 text-slate-950 hover:bg-emerald-400 h-8 text-[11px] font-bold"
+                      onClick={() => completeMutation.mutate(selectedLead.id)}
+                      disabled={completeMutation.isPending}
+                    >
+                      <Check size={13} className="mr-1" /> Mark as Completed
+                    </Button>
+                  </div>
+                )}
                 <div className="rounded-xl border border-slate-800 bg-[#101a2b] p-3">
                   <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wider font-bold">Case Description</p>
                   <p className="text-slate-200 whitespace-pre-wrap text-sm">{selectedLead.caseDescription}</p>
