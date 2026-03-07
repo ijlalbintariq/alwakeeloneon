@@ -1,7 +1,8 @@
 import { db } from "./db";
 import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments, savedJudgments,
-  organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles,
+  organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles, visitorSessions, caseLeads,
+  styleMemorySettings, styleMemorySamples, styleMemoryChunks, styleMemoryEvents,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -19,10 +20,14 @@ import {
   type StatuteDocument, type InsertStatuteDocument,
   type StatuteDocumentFile, type InsertStatuteDocumentFile,
   type SavedJudgment, type InsertSavedJudgment,
+  type VisitorSession, type InsertVisitorSession,
+  type CaseLead, type InsertCaseLead,
   type Organization, type InsertOrganization,
   type OrgMember, type InsertOrgMember,
   type OrgInvite, type InsertOrgInvite,
-  type OrgKnowledge, type InsertOrgKnowledge
+  type OrgKnowledge, type InsertOrgKnowledge,
+  type StyleMemorySettings, type InsertStyleMemorySettings,
+  type StyleMemorySample, type InsertStyleMemorySample
 } from "@shared/schema";
 import { users, type User } from "@shared/models/auth";
 import { eq, desc, or, ilike, sql, and, lt, gte, count, inArray } from "drizzle-orm";
@@ -45,6 +50,13 @@ export type PagedResult<T> = {
 export type AdminKnowledgeListItem = Omit<AdminKnowledge, "content">;
 export type StatuteDocumentListItem = Omit<StatuteDocument, "content">;
 
+export type VisitorSessionStats = {
+  ipAddress: string;
+  messageCount: number;
+  remaining: number;
+  resetAt: Date;
+};
+
 export type DocumentMetadataUpdate = {
   id: number;
   sourceType: string;
@@ -55,6 +67,74 @@ export type DocumentMetadataUpdate = {
   classificationMethod: string;
   classificationConfidence: number;
 };
+
+export type StyleMemoryModule = "legal-drafting" | "contract-drafting";
+export type StyleMemoryScope = "user" | "org" | "user-org";
+export type StyleMemoryStrictness = "strict" | "balanced" | "flexible";
+export type StyleMemorySourceType = "upload" | "saved-draft" | "accepted-redline";
+
+export type StyleMemorySettingsView = {
+  module: StyleMemoryModule;
+  enabled: boolean;
+  ownershipMode: StyleMemoryScope;
+  learningSource: "full-activity";
+  coverage: "generation-only";
+  strictness: StyleMemoryStrictness;
+  lastBackfillAt: Date | null;
+};
+
+export type StyleMemorySampleView = {
+  id: number;
+  module: StyleMemoryModule;
+  sourceType: StyleMemorySourceType;
+  sourceRef: string | null;
+  title: string;
+  status: "active" | "deleted";
+  createdAt: Date | null;
+};
+
+export type StyleMemorySourceCounts = {
+  upload: number;
+  savedDraft: number;
+  acceptedRedline: number;
+  total: number;
+};
+
+function toStyleMemorySettingsView(row: StyleMemorySettings): StyleMemorySettingsView {
+  return {
+    module: row.module as StyleMemoryModule,
+    enabled: !!row.enabled,
+    ownershipMode: row.ownershipMode as StyleMemoryScope,
+    learningSource: "full-activity",
+    coverage: "generation-only",
+    strictness: row.strictness as StyleMemoryStrictness,
+    lastBackfillAt: row.lastBackfillAt || null,
+  };
+}
+
+function toVisitorSessionStats(
+  row: VisitorSession | undefined,
+  ipAddress: string,
+  windowHours: number,
+  maxMessages: number,
+): VisitorSessionStats {
+  const now = new Date();
+  const windowMs = Math.max(1, windowHours) * 60 * 60 * 1000;
+  const lastMessageAt = row?.lastMessageAt ? new Date(row.lastMessageAt) : null;
+  const inWindow = !!lastMessageAt && (now.getTime() - lastMessageAt.getTime() < windowMs);
+  const messageCount = inWindow ? Number(row?.messageCount || 0) : 0;
+  const remaining = Math.max(0, maxMessages - messageCount);
+  const resetAt = inWindow && lastMessageAt
+    ? new Date(lastMessageAt.getTime() + windowMs)
+    : new Date(now.getTime() + windowMs);
+
+  return {
+    ipAddress,
+    messageCount,
+    remaining,
+    resetAt,
+  };
+}
 
 export type CitationSearchResult = {
   id: string;
@@ -125,6 +205,51 @@ export interface IStorage {
   getDocumentFile(documentId: number, userId: string): Promise<DocumentFile | undefined>;
   getDocumentFilesByUser(userId: string): Promise<DocumentFile[]>;
   deleteDocumentFile(documentId: number, userId: string): Promise<void>;
+  getVisitorSessionStats(ipAddress: string, windowHours: number, maxMessages: number): Promise<VisitorSessionStats>;
+  incrementVisitorSession(ipAddress: string, windowHours: number, maxMessages: number): Promise<VisitorSessionStats>;
+  createCaseLead(entry: InsertCaseLead): Promise<CaseLead>;
+  getCaseLeadsPage(limit: number, offset: number, query?: string): Promise<PagedResult<CaseLead>>;
+  getCaseLeadById(id: string): Promise<CaseLead | undefined>;
+  deleteCaseLead(id: string): Promise<void>;
+  getStyleMemorySettings(userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<StyleMemorySettingsView | null>;
+  upsertStyleMemorySettings(args: {
+    userId: string;
+    module: StyleMemoryModule;
+    orgId?: number | null;
+    enabled?: boolean;
+    ownershipMode?: StyleMemoryScope;
+    strictness?: StyleMemoryStrictness;
+  }): Promise<StyleMemorySettingsView>;
+  touchStyleMemoryBackfill(userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<void>;
+  getStyleMemorySourceCounts(userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<StyleMemorySourceCounts>;
+  getStyleMemorySampleByHash(userId: string, module: StyleMemoryModule, textHash: string, orgId?: number | null): Promise<StyleMemorySample | undefined>;
+  addStyleMemorySample(entry: InsertStyleMemorySample): Promise<StyleMemorySample>;
+  listStyleMemorySamples(
+    userId: string,
+    module: StyleMemoryModule,
+    limit: number,
+    offset: number,
+    orgId?: number | null,
+  ): Promise<PagedResult<StyleMemorySampleView>>;
+  deleteStyleMemorySample(id: number, userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<number>;
+  deleteStyleMemoryChunksBySample(sampleId: number, userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<number>;
+  addStyleMemoryChunk(args: {
+    sampleId: number;
+    userId: string;
+    module: StyleMemoryModule;
+    orgId?: number | null;
+    chunkIndex: number;
+    content: string;
+    tokenCount: number;
+    embedding: string;
+  }): Promise<void>;
+  logStyleMemoryEvent(args: {
+    eventType: string;
+    userId: string;
+    module: StyleMemoryModule;
+    orgId?: number | null;
+    metadata?: Record<string, unknown>;
+  }): Promise<void>;
   upsertAdminKnowledgeFile(entry: InsertAdminKnowledgeFile): Promise<AdminKnowledgeFile>;
   getAdminKnowledgeFile(adminKnowledgeId: number): Promise<AdminKnowledgeFile | undefined>;
   getAdminKnowledgeFiles(): Promise<AdminKnowledgeFile[]>;
@@ -463,6 +588,379 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(documentFiles)
       .where(and(eq(documentFiles.documentId, documentId), eq(documentFiles.userId, userId)));
+  }
+
+  async getVisitorSessionStats(ipAddress: string, windowHours: number, maxMessages: number): Promise<VisitorSessionStats> {
+    const normalizedIp = String(ipAddress || "").trim() || "unknown";
+    const [row] = await db
+      .select()
+      .from(visitorSessions)
+      .where(eq(visitorSessions.ipAddress, normalizedIp))
+      .limit(1);
+    return toVisitorSessionStats(row, normalizedIp, windowHours, maxMessages);
+  }
+
+  async incrementVisitorSession(ipAddress: string, windowHours: number, maxMessages: number): Promise<VisitorSessionStats> {
+    const normalizedIp = String(ipAddress || "").trim() || "unknown";
+    const now = new Date();
+    const [existing] = await db
+      .select()
+      .from(visitorSessions)
+      .where(eq(visitorSessions.ipAddress, normalizedIp))
+      .limit(1);
+    const stats = toVisitorSessionStats(existing, normalizedIp, windowHours, maxMessages);
+    const nextCount = Math.max(1, Math.min(maxMessages, stats.messageCount + 1));
+
+    if (existing) {
+      const [updated] = await db
+        .update(visitorSessions)
+        .set({
+          messageCount: nextCount,
+          createdAt: stats.messageCount === 0 ? now : existing.createdAt,
+          lastMessageAt: now,
+        })
+        .where(eq(visitorSessions.id, existing.id))
+        .returning();
+      return toVisitorSessionStats(updated, normalizedIp, windowHours, maxMessages);
+    }
+
+    const [inserted] = await db
+      .insert(visitorSessions)
+      .values({
+        ipAddress: normalizedIp,
+        messageCount: nextCount,
+        createdAt: now,
+        lastMessageAt: now,
+      })
+      .returning();
+    return toVisitorSessionStats(inserted, normalizedIp, windowHours, maxMessages);
+  }
+
+  async createCaseLead(entry: InsertCaseLead): Promise<CaseLead> {
+    const [lead] = await db.insert(caseLeads).values(entry).returning();
+    return lead;
+  }
+
+  async getCaseLeadsPage(limit: number, offset: number, query?: string): Promise<PagedResult<CaseLead>> {
+    const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+    const safeOffset = Math.max(0, Number(offset) || 0);
+    const q = String(query || "").trim();
+    const pattern = `%${q}%`;
+    const whereClause = q
+      ? or(
+        ilike(caseLeads.name, pattern),
+        ilike(caseLeads.phone, pattern),
+        ilike(caseLeads.email, pattern),
+        ilike(caseLeads.caseType, pattern),
+        ilike(caseLeads.caseDescription, pattern),
+        ilike(caseLeads.ipAddress, pattern),
+      )
+      : undefined;
+
+    const [totalRow] = whereClause
+      ? await db.select({ total: count() }).from(caseLeads).where(whereClause)
+      : await db.select({ total: count() }).from(caseLeads);
+    const total = Number(totalRow?.total || 0);
+
+    const items = whereClause
+      ? await db.select().from(caseLeads).where(whereClause).orderBy(desc(caseLeads.createdAt)).limit(safeLimit).offset(safeOffset)
+      : await db.select().from(caseLeads).orderBy(desc(caseLeads.createdAt)).limit(safeLimit).offset(safeOffset);
+
+    return {
+      items,
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + items.length < total,
+    };
+  }
+
+  async getCaseLeadById(id: string): Promise<CaseLead | undefined> {
+    const [lead] = await db.select().from(caseLeads).where(eq(caseLeads.id, id)).limit(1);
+    return lead;
+  }
+
+  async deleteCaseLead(id: string): Promise<void> {
+    await db.delete(caseLeads).where(eq(caseLeads.id, id));
+  }
+
+  async getStyleMemorySettings(userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<StyleMemorySettingsView | null> {
+    const [row] = await db
+      .select()
+      .from(styleMemorySettings)
+      .where(
+        and(
+          eq(styleMemorySettings.userId, userId),
+          eq(styleMemorySettings.module, module),
+          orgId == null ? sql`${styleMemorySettings.orgId} IS NULL` : eq(styleMemorySettings.orgId, orgId),
+        ),
+      )
+      .limit(1);
+    return row ? toStyleMemorySettingsView(row) : null;
+  }
+
+  async upsertStyleMemorySettings(args: {
+    userId: string;
+    module: StyleMemoryModule;
+    orgId?: number | null;
+    enabled?: boolean;
+    ownershipMode?: StyleMemoryScope;
+    strictness?: StyleMemoryStrictness;
+  }): Promise<StyleMemorySettingsView> {
+    const existing = await this.getStyleMemorySettings(args.userId, args.module, args.orgId);
+    const nextEnabled = args.enabled ?? existing?.enabled ?? true;
+    const nextOwnershipMode = args.ownershipMode ?? existing?.ownershipMode ?? "user-org";
+    const nextStrictness = args.strictness ?? existing?.strictness ?? "balanced";
+
+    if (existing) {
+      const [updated] = await db
+        .update(styleMemorySettings)
+        .set({
+          enabled: nextEnabled,
+          ownershipMode: nextOwnershipMode,
+          strictness: nextStrictness,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(styleMemorySettings.userId, args.userId),
+            eq(styleMemorySettings.module, args.module),
+            args.orgId == null ? sql`${styleMemorySettings.orgId} IS NULL` : eq(styleMemorySettings.orgId, args.orgId),
+          ),
+        )
+        .returning();
+      return toStyleMemorySettingsView(updated);
+    }
+
+    const [inserted] = await db
+      .insert(styleMemorySettings)
+      .values({
+        userId: args.userId,
+        orgId: args.orgId ?? null,
+        module: args.module,
+        enabled: nextEnabled,
+        ownershipMode: nextOwnershipMode,
+        strictness: nextStrictness,
+        learningSource: "full-activity",
+        coverage: "generation-only",
+      })
+      .returning();
+    return toStyleMemorySettingsView(inserted);
+  }
+
+  async touchStyleMemoryBackfill(userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<void> {
+    const existing = await this.getStyleMemorySettings(userId, module, orgId);
+    if (!existing) {
+      await db.insert(styleMemorySettings).values({
+        userId,
+        orgId: orgId ?? null,
+        module,
+        enabled: true,
+        ownershipMode: "user-org",
+        learningSource: "full-activity",
+        coverage: "generation-only",
+        strictness: "balanced",
+        lastBackfillAt: new Date(),
+      });
+      return;
+    }
+
+    await db
+      .update(styleMemorySettings)
+      .set({ lastBackfillAt: new Date(), updatedAt: new Date() })
+      .where(
+        and(
+          eq(styleMemorySettings.userId, userId),
+          eq(styleMemorySettings.module, module),
+          orgId == null ? sql`${styleMemorySettings.orgId} IS NULL` : eq(styleMemorySettings.orgId, orgId),
+        ),
+      );
+  }
+
+  async getStyleMemorySourceCounts(userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<StyleMemorySourceCounts> {
+    const rows = await db
+      .select({
+        sourceType: styleMemorySamples.sourceType,
+        total: count(),
+      })
+      .from(styleMemorySamples)
+      .where(
+        and(
+          eq(styleMemorySamples.userId, userId),
+          eq(styleMemorySamples.module, module),
+          eq(styleMemorySamples.status, "active"),
+          orgId == null ? sql`${styleMemorySamples.orgId} IS NULL` : eq(styleMemorySamples.orgId, orgId),
+        ),
+      )
+      .groupBy(styleMemorySamples.sourceType);
+
+    let upload = 0;
+    let savedDraft = 0;
+    let acceptedRedline = 0;
+    for (const row of rows) {
+      if (row.sourceType === "upload") upload = Number(row.total || 0);
+      if (row.sourceType === "saved-draft") savedDraft = Number(row.total || 0);
+      if (row.sourceType === "accepted-redline") acceptedRedline = Number(row.total || 0);
+    }
+
+    return {
+      upload,
+      savedDraft,
+      acceptedRedline,
+      total: upload + savedDraft + acceptedRedline,
+    };
+  }
+
+  async getStyleMemorySampleByHash(
+    userId: string,
+    module: StyleMemoryModule,
+    textHash: string,
+    orgId?: number | null,
+  ): Promise<StyleMemorySample | undefined> {
+    const [row] = await db
+      .select()
+      .from(styleMemorySamples)
+      .where(
+        and(
+          eq(styleMemorySamples.userId, userId),
+          eq(styleMemorySamples.module, module),
+          eq(styleMemorySamples.textHash, textHash),
+          orgId == null ? sql`${styleMemorySamples.orgId} IS NULL` : eq(styleMemorySamples.orgId, orgId),
+        ),
+      )
+      .limit(1);
+    return row;
+  }
+
+  async addStyleMemorySample(entry: InsertStyleMemorySample): Promise<StyleMemorySample> {
+    const [row] = await db.insert(styleMemorySamples).values(entry).returning();
+    return row;
+  }
+
+  async listStyleMemorySamples(
+    userId: string,
+    module: StyleMemoryModule,
+    limit: number,
+    offset: number,
+    orgId?: number | null,
+  ): Promise<PagedResult<StyleMemorySampleView>> {
+    const safeLimit = Math.max(1, Math.min(200, Number(limit) || 20));
+    const safeOffset = Math.max(0, Number(offset) || 0);
+    const baseWhere = and(
+      eq(styleMemorySamples.userId, userId),
+      eq(styleMemorySamples.module, module),
+      eq(styleMemorySamples.status, "active"),
+      orgId == null ? sql`${styleMemorySamples.orgId} IS NULL` : eq(styleMemorySamples.orgId, orgId),
+    );
+    const [totalRow] = await db.select({ total: count() }).from(styleMemorySamples).where(baseWhere);
+    const total = Number(totalRow?.total || 0);
+    const rows = await db
+      .select({
+        id: styleMemorySamples.id,
+        module: styleMemorySamples.module,
+        sourceType: styleMemorySamples.sourceType,
+        sourceRef: styleMemorySamples.sourceRef,
+        title: styleMemorySamples.title,
+        status: styleMemorySamples.status,
+        createdAt: styleMemorySamples.createdAt,
+      })
+      .from(styleMemorySamples)
+      .where(baseWhere)
+      .orderBy(desc(styleMemorySamples.createdAt))
+      .limit(safeLimit)
+      .offset(safeOffset);
+
+    return {
+      items: rows.map((row: {
+        id: number;
+        module: string;
+        sourceType: string;
+        sourceRef: string | null;
+        title: string;
+        status: string;
+        createdAt: Date | null;
+      }) => ({
+        id: row.id,
+        module: row.module as StyleMemoryModule,
+        sourceType: row.sourceType as StyleMemorySourceType,
+        sourceRef: row.sourceRef,
+        title: row.title,
+        status: row.status as "active" | "deleted",
+        createdAt: row.createdAt || null,
+      })),
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + rows.length < total,
+    };
+  }
+
+  async deleteStyleMemorySample(id: number, userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<number> {
+    const removed = await db
+      .delete(styleMemorySamples)
+      .where(
+        and(
+          eq(styleMemorySamples.id, id),
+          eq(styleMemorySamples.userId, userId),
+          eq(styleMemorySamples.module, module),
+          orgId == null ? sql`${styleMemorySamples.orgId} IS NULL` : eq(styleMemorySamples.orgId, orgId),
+        ),
+      )
+      .returning({ id: styleMemorySamples.id });
+    return removed.length;
+  }
+
+  async deleteStyleMemoryChunksBySample(sampleId: number, userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<number> {
+    const removed = await db
+      .delete(styleMemoryChunks)
+      .where(
+        and(
+          eq(styleMemoryChunks.sampleId, sampleId),
+          eq(styleMemoryChunks.userId, userId),
+          eq(styleMemoryChunks.module, module),
+          orgId == null ? sql`${styleMemoryChunks.orgId} IS NULL` : eq(styleMemoryChunks.orgId, orgId),
+        ),
+      )
+      .returning({ id: styleMemoryChunks.id });
+    return removed.length;
+  }
+
+  async addStyleMemoryChunk(args: {
+    sampleId: number;
+    userId: string;
+    module: StyleMemoryModule;
+    orgId?: number | null;
+    chunkIndex: number;
+    content: string;
+    tokenCount: number;
+    embedding: string;
+  }): Promise<void> {
+    await db.insert(styleMemoryChunks).values({
+      sampleId: args.sampleId,
+      userId: args.userId,
+      orgId: args.orgId ?? null,
+      module: args.module,
+      chunkIndex: args.chunkIndex,
+      content: args.content,
+      tokenCount: args.tokenCount,
+      embedding: args.embedding,
+    });
+  }
+
+  async logStyleMemoryEvent(args: {
+    eventType: string;
+    userId: string;
+    module: StyleMemoryModule;
+    orgId?: number | null;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    await db.insert(styleMemoryEvents).values({
+      eventType: args.eventType,
+      userId: args.userId,
+      orgId: args.orgId ?? null,
+      module: args.module,
+      metadata: args.metadata || {},
+    });
   }
 
   async upsertAdminKnowledgeFile(entry: InsertAdminKnowledgeFile): Promise<AdminKnowledgeFile> {
@@ -1621,6 +2119,33 @@ export async function ensureSearchIndexes(): Promise<void> {
       `,
     },
     {
+      label: "visitor_sessions_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS visitor_sessions (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          ip_address text NOT NULL,
+          message_count integer NOT NULL DEFAULT 0,
+          created_at timestamp NOT NULL DEFAULT now(),
+          last_message_at timestamp NOT NULL DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "case_leads_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS case_leads (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          name text NOT NULL,
+          phone text NOT NULL,
+          email text NOT NULL,
+          case_type text NOT NULL,
+          case_description text NOT NULL,
+          ip_address text NOT NULL,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `,
+    },
+    {
       label: "admin_knowledge_files_table",
       stmt: sql`
         CREATE TABLE IF NOT EXISTS admin_knowledge_files (
@@ -1660,6 +2185,76 @@ export async function ensureSearchIndexes(): Promise<void> {
         )
       `,
     },
+    { label: "vector_extension", stmt: sql`CREATE EXTENSION IF NOT EXISTS vector` },
+    {
+      label: "style_memory_settings_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS style_memory_settings (
+          id serial PRIMARY KEY,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          org_id integer REFERENCES organizations(id) ON DELETE CASCADE,
+          module text NOT NULL,
+          enabled boolean NOT NULL DEFAULT true,
+          ownership_mode text NOT NULL DEFAULT 'user-org',
+          learning_source text NOT NULL DEFAULT 'full-activity',
+          coverage text NOT NULL DEFAULT 'generation-only',
+          strictness text NOT NULL DEFAULT 'balanced',
+          last_backfill_at timestamp,
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "style_memory_samples_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS style_memory_samples (
+          id serial PRIMARY KEY,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          org_id integer REFERENCES organizations(id) ON DELETE CASCADE,
+          module text NOT NULL,
+          source_type text NOT NULL,
+          source_ref text,
+          title text NOT NULL,
+          raw_text text NOT NULL,
+          text_hash text NOT NULL,
+          status text NOT NULL DEFAULT 'active',
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "style_memory_chunks_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS style_memory_chunks (
+          id serial PRIMARY KEY,
+          sample_id integer NOT NULL REFERENCES style_memory_samples(id) ON DELETE CASCADE,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          org_id integer REFERENCES organizations(id) ON DELETE CASCADE,
+          module text NOT NULL,
+          chunk_index integer NOT NULL,
+          content text NOT NULL,
+          token_count integer NOT NULL,
+          embedding vector(384) NOT NULL,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "style_memory_events_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS style_memory_events (
+          id serial PRIMARY KEY,
+          event_type text NOT NULL,
+          module text NOT NULL,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          org_id integer REFERENCES organizations(id) ON DELETE CASCADE,
+          metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
     { label: "idx_threads_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads (user_id)` },
     { label: "idx_messages_thread_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages (thread_id)` },
     { label: "idx_documents_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents (user_id)` },
@@ -1690,6 +2285,10 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_unresolved_citations_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_unresolved_citations_status ON unresolved_citations (status)` },
     { label: "idx_document_files_document_id", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_document_files_document_id ON document_files (document_id)` },
     { label: "idx_document_files_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_document_files_user_id ON document_files (user_id)` },
+    { label: "visitor_sessions_ip_address_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS visitor_sessions_ip_address_unique ON visitor_sessions (ip_address)` },
+    { label: "idx_visitor_sessions_last_message_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_visitor_sessions_last_message_at ON visitor_sessions (last_message_at)` },
+    { label: "idx_case_leads_created_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_created_at ON case_leads (created_at)` },
+    { label: "idx_case_leads_case_type", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_case_type ON case_leads (case_type)` },
     { label: "alter_document_files_extracted_text_key", stmt: sql`ALTER TABLE document_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
     { label: "alter_admin_knowledge_files_extracted_text_key", stmt: sql`ALTER TABLE admin_knowledge_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
     { label: "alter_statute_document_files_extracted_text_key", stmt: sql`ALTER TABLE statute_document_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
@@ -1697,6 +2296,16 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_admin_knowledge_files_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_admin_knowledge_files_user_id ON admin_knowledge_files (user_id)` },
     { label: "idx_statute_document_files_doc_id", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_statute_document_files_doc_id ON statute_document_files (statute_document_id)` },
     { label: "idx_statute_document_files_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statute_document_files_user_id ON statute_document_files (user_id)` },
+    { label: "idx_style_memory_settings_scope", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_style_memory_settings_scope ON style_memory_settings (user_id, coalesce(org_id, 0), module)` },
+    { label: "idx_style_memory_samples_hash", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_style_memory_samples_hash ON style_memory_samples (module, user_id, coalesce(org_id, 0), text_hash)` },
+    { label: "idx_style_memory_samples_scope", stmt: sql`CREATE INDEX IF NOT EXISTS idx_style_memory_samples_scope ON style_memory_samples (module, user_id, org_id, status, source_type, created_at)` },
+    { label: "idx_style_memory_chunks_scope", stmt: sql`CREATE INDEX IF NOT EXISTS idx_style_memory_chunks_scope ON style_memory_chunks (module, user_id, org_id, sample_id)` },
+    { label: "idx_style_memory_chunks_tsv", stmt: sql`CREATE INDEX IF NOT EXISTS idx_style_memory_chunks_tsv ON style_memory_chunks USING gin (to_tsvector('simple', content))` },
+    { label: "idx_style_memory_chunks_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_style_memory_chunks_unique ON style_memory_chunks (sample_id, chunk_index)` },
+    { label: "idx_style_memory_events_scope", stmt: sql`CREATE INDEX IF NOT EXISTS idx_style_memory_events_scope ON style_memory_events (module, user_id, org_id, created_at)` },
+    { label: "alter_style_memory_chunks_embedding_vector", stmt: sql`ALTER TABLE style_memory_chunks ALTER COLUMN embedding TYPE vector(384) USING embedding::vector` },
+    { label: "alter_style_memory_settings_last_backfill", stmt: sql`ALTER TABLE style_memory_settings ADD COLUMN IF NOT EXISTS last_backfill_at timestamp` },
+    { label: "alter_style_memory_settings_updated_at", stmt: sql`ALTER TABLE style_memory_settings ADD COLUMN IF NOT EXISTS updated_at timestamp DEFAULT now()` },
   ];
 
   for (const { label, stmt } of indexStatements) {
@@ -1705,6 +2314,13 @@ export async function ensureSearchIndexes(): Promise<void> {
     } catch (err: any) {
       console.warn(`[Indexes] Could not ensure ${label}:`, err?.message || err);
     }
+  }
+  try {
+    await db.execute(
+      sql`CREATE INDEX IF NOT EXISTS idx_style_memory_chunks_embedding_cosine ON style_memory_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)`,
+    );
+  } catch (err: any) {
+    console.warn("[Indexes] Could not ensure idx_style_memory_chunks_embedding_cosine:", err?.message || err);
   }
   try {
     const { ensureRagSchema } = await import("./rag/vector-store");

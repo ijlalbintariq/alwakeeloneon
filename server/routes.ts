@@ -29,6 +29,16 @@ import { isPdfOcrAvailable } from "./ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 import { deleteR2Object, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
 import {
+  backfillStyleMemoryFromSavedDrafts,
+  getOrCreateStyleMemorySettings,
+  getStyleMemoryQueueStats,
+  ingestStyleSample,
+  isStyleMemoryModule,
+  recordAcceptedRedlineStyleEvent,
+  retrieveStyleContextForGeneration,
+  updateStyleMemorySettings,
+} from "./style-memory";
+import {
   extractDocxTextGuarded,
   extractPdfOcrGuarded,
   extractPdfTextGuarded,
@@ -63,9 +73,64 @@ const GENERAL_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(2, Number(process.env.GENERA
 const EXTRACTION_TIMEOUT_MS = Math.max(3000, Number(process.env.EXTRACTION_TIMEOUT_MS || 120000));
 const UPLOAD_QUEUE_CONCURRENCY = Math.max(1, Number(process.env.UPLOAD_QUEUE_CONCURRENCY || 2));
 const UPLOAD_QUEUE_MAX_PENDING = Math.max(UPLOAD_QUEUE_CONCURRENCY, Number(process.env.UPLOAD_QUEUE_MAX_PENDING || 32));
+const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
+const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
+const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_TOKEN_BUDGET || 900));
+const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 1800));
+const LEGAL_DRAFT_DOC_PREFIX = "Legal Draft:";
+const CONTRACT_DRAFT_DOC_PREFIX = "Contract Draft:";
+const PUBLIC_CHAT_MESSAGE_LIMIT = Math.max(1, Number(process.env.PUBLIC_CHAT_MESSAGE_LIMIT || 10));
+const PUBLIC_CHAT_WINDOW_HOURS = Math.max(1, Number(process.env.PUBLIC_CHAT_WINDOW_HOURS || 24));
+const PUBLIC_CHAT_MAX_INPUT_CHARS = Math.max(300, Number(process.env.PUBLIC_CHAT_MAX_INPUT_CHARS || 2000));
+const PUBLIC_LEAD_MAX_DESCRIPTION_CHARS = Math.max(500, Number(process.env.PUBLIC_LEAD_MAX_DESCRIPTION_CHARS || 6000));
+const PUBLIC_CHAT_LIMIT_MESSAGE = "You have reached the free AI consultation limit. For professional legal assistance you can contact our chamber or hire a lawyer.";
+const PUBLIC_CHAT_SYSTEM_PROMPT = `You are the AI legal intake assistant for AlWakeelo Law Chamber.
+
+Your responsibilities are:
+
+Understand the user's legal issue.
+
+Provide general legal information.
+
+Ask clarifying questions if needed.
+
+Do not give definitive legal judgments.
+
+Encourage the user to consult a professional lawyer.
+
+Always end responses by suggesting that the user may contact the chamber or hire a lawyer for professional assistance.`;
+const PUBLIC_CHAT_CLOSING_LINE = "For professional legal assistance, you may contact the chamber or hire a lawyer.";
 
 let activeUploadRequests = 0;
 const pendingUploadResolvers: Array<() => void> = [];
+
+function getVisitorIpAddress(req: Request): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const forwardedValue = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  const firstForwarded = typeof forwardedValue === "string" ? forwardedValue.split(",")[0]?.trim() : "";
+  const socketIp = (req.socket?.remoteAddress || "").trim();
+  const raw = firstForwarded || socketIp || "unknown";
+  return raw.startsWith("::ffff:") ? raw.slice(7) : raw;
+}
+
+function sanitizeInputText(value: unknown, maxLen: number): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/\0/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .trim()
+    .slice(0, Math.max(1, maxLen));
+}
+
+function ensurePublicChatClosingLine(text: string): string {
+  const normalized = (text || "").trim();
+  if (!normalized) return PUBLIC_CHAT_CLOSING_LINE;
+  const lowered = normalized.toLowerCase();
+  if (lowered.includes("contact the chamber") || lowered.includes("hire a lawyer")) {
+    return normalized;
+  }
+  return `${normalized}\n\n${PUBLIC_CHAT_CLOSING_LINE}`;
+}
 
 function getUploadQueueStats() {
   return {
@@ -89,6 +154,37 @@ function cloneUploadFile(file: Express.Multer.File): Express.Multer.File {
 
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
+}
+
+function trimTextToTokenBudget(text: string, maxTokens: number): string {
+  const safe = text || "";
+  const maxChars = Math.max(200, maxTokens * 4);
+  if (safe.length <= maxChars) return safe;
+  return `${safe.slice(0, maxChars)}...`;
+}
+
+function mapModuleTypeToStyleModule(moduleType: ModuleType): "legal-drafting" | "contract-drafting" | null {
+  if (moduleType === "draft") return "legal-drafting";
+  if (moduleType === "contract-drafting") return "contract-drafting";
+  return null;
+}
+
+function shouldApplyStyleForChat(moduleType: ModuleType, moduleIntent?: ModuleIntent): boolean {
+  if (moduleType === "draft") {
+    if (!moduleIntent) return true;
+    return moduleIntent !== "draft.riskScan";
+  }
+  if (moduleType === "contract-drafting") {
+    return moduleIntent === "contract.generateDraft" || moduleIntent === "contract.clauseSuggest" || moduleIntent === "contract.redline";
+  }
+  return false;
+}
+
+function resolveDraftModuleFromDocumentTitle(title: string): "legal-drafting" | "contract-drafting" | null {
+  const normalized = (title || "").trim();
+  if (normalized.startsWith(LEGAL_DRAFT_DOC_PREFIX)) return "legal-drafting";
+  if (normalized.startsWith(CONTRACT_DRAFT_DOC_PREFIX)) return "contract-drafting";
+  return null;
 }
 
 function estimateCost(model: string, inputText: string, outputText: string): number {
@@ -711,6 +807,7 @@ type RateBucket = { tokens: number; lastRefillMs: number };
 
 const RATE_LIMITS_BY_FEATURE: Record<string, RateLimitConfig> = {
   chat: { capacity: 4, refillPerSec: 1.4 },
+  "public-chat": { capacity: 3, refillPerSec: 0.5 },
   "search-judgments": { capacity: 3, refillPerSec: 1.1 },
   "search-statutes": { capacity: 3, refillPerSec: 1.1 },
   summarize: { capacity: 2, refillPerSec: 0.7 },
@@ -1113,6 +1210,138 @@ export async function registerRoutes(
     return res.status(403).json({ message: "Your account is suspended. Please contact support." });
   });
 
+  app.post(api.publicChat.send.path, async (req, res) => {
+    try {
+      const visitorIp = getVisitorIpAddress(req);
+      if (!checkRateLimit(`public:${visitorIp}`, "public-chat")) {
+        return res.status(429).json({
+          message: "Too many requests. Please wait a moment before trying again.",
+        });
+      }
+
+      const message = sanitizeInputText(req.body?.message, PUBLIC_CHAT_MAX_INPUT_CHARS);
+      if (!message || message.length < 2) {
+        return res.status(400).json({ message: "Message is required." });
+      }
+
+      const stats = await storage.getVisitorSessionStats(
+        visitorIp,
+        PUBLIC_CHAT_WINDOW_HOURS,
+        PUBLIC_CHAT_MESSAGE_LIMIT,
+      );
+      if (stats.messageCount >= PUBLIC_CHAT_MESSAGE_LIMIT) {
+        return res.status(429).json({
+          limitReached: true,
+          message: PUBLIC_CHAT_LIMIT_MESSAGE,
+          remaining: 0,
+          limit: PUBLIC_CHAT_MESSAGE_LIMIT,
+          resetAt: stats.resetAt.toISOString(),
+          actions: ["Hire Lawyer", "Contact Chamber", "Submit Case"],
+        });
+      }
+
+      const aiMessages = [
+        { role: "system" as const, content: PUBLIC_CHAT_SYSTEM_PROMPT },
+        { role: "user" as const, content: message },
+      ];
+
+      let provider = "groq";
+      let model = "llama-3.1-8b-instant";
+      let aiReply = "";
+      try {
+        const primary = await chatWithGroq({
+          messages: aiMessages,
+          model: "llama-3.1-8b-instant",
+          maxTokens: 900,
+          temperature: 0.4,
+        });
+        aiReply = primary.content;
+        model = primary.model || model;
+      } catch (groqErr) {
+        if (!isOpenRouterAvailable()) {
+          throw groqErr;
+        }
+        const fallback = await chatWithOpenRouter({
+          messages: aiMessages,
+          model: "deepseek-chat",
+          maxTokens: 900,
+          temperature: 0.4,
+        });
+        provider = "openrouter";
+        model = fallback.model || "deepseek-chat";
+        aiReply = fallback.content;
+      }
+
+      const updated = await storage.incrementVisitorSession(
+        visitorIp,
+        PUBLIC_CHAT_WINDOW_HOURS,
+        PUBLIC_CHAT_MESSAGE_LIMIT,
+      );
+
+      const shouldPromptCaseSubmission = updated.messageCount >= 7 && updated.messageCount <= 8;
+      let safeReply = ensurePublicChatClosingLine(sanitizeInputText(aiReply, 6000));
+      if (shouldPromptCaseSubmission && !safeReply.toLowerCase().includes("submit your case")) {
+        safeReply += "\n\nThis appears to be a legal matter that may require professional legal review. If you would like, you can submit your case details and our chamber can review it.";
+      }
+
+      res.json({
+        limitReached: false,
+        reply: safeReply,
+        messageCount: updated.messageCount,
+        remaining: updated.remaining,
+        limit: PUBLIC_CHAT_MESSAGE_LIMIT,
+        resetAt: updated.resetAt.toISOString(),
+        showCaseIntake: shouldPromptCaseSubmission,
+        provider,
+        model,
+      });
+    } catch (err) {
+      console.error("Error in public chat:", err);
+      res.status(503).json({ message: "Public AI assistant is currently unavailable. Please try again shortly." });
+    }
+  });
+
+  app.post(api.publicChat.submitCase.path, async (req, res) => {
+    try {
+      const visitorIp = getVisitorIpAddress(req);
+      const name = sanitizeInputText(req.body?.name, 120);
+      const phone = sanitizeInputText(req.body?.phone, 40);
+      const email = sanitizeInputText(req.body?.email, 160).toLowerCase();
+      const caseType = sanitizeInputText(req.body?.caseType, 120);
+      const caseDescription = sanitizeInputText(req.body?.caseDescription, PUBLIC_LEAD_MAX_DESCRIPTION_CHARS);
+
+      if (!name || !phone || !email || !caseType || !caseDescription) {
+        return res.status(400).json({ message: "All fields are required." });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ message: "Invalid email address." });
+      }
+      if (!/^[0-9+()\-.\s]{6,40}$/.test(phone)) {
+        return res.status(400).json({ message: "Invalid phone number." });
+      }
+      if (caseDescription.length < 20) {
+        return res.status(400).json({ message: "Case description is too short." });
+      }
+
+      const created = await storage.createCaseLead({
+        name,
+        phone,
+        email,
+        caseType,
+        caseDescription,
+        ipAddress: visitorIp,
+      });
+
+      res.status(201).json({
+        message: "Your case has been submitted successfully. Our chamber may contact you soon.",
+        lead: created,
+      });
+    } catch (err) {
+      console.error("Error submitting public case lead:", err);
+      res.status(500).json({ message: "Failed to submit your case." });
+    }
+  });
+
   app.get(api.threads.list.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -1396,6 +1625,320 @@ export async function registerRoutes(
 
   const guardedUploadQueue = createUploadQueueMiddleware("upload-processing");
 
+  const styleMemoryUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES,
+      files: Math.max(1, Math.min(20, DOCUMENT_UPLOAD_MAX_FILES)),
+    },
+  });
+
+  app.get("/api/style-memory/settings", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      if (!STYLE_MEMORY_ENABLED) {
+        return res.status(503).json({ message: "Style memory is disabled" });
+      }
+      const moduleRaw = String(req.query.module || "");
+      if (!isStyleMemoryModule(moduleRaw)) {
+        return res.status(400).json({ message: "Invalid module. Use legal-drafting or contract-drafting." });
+      }
+      const scopeRaw = String(req.query.scope || "user").toLowerCase();
+      const useOrgScope = scopeRaw === "org";
+      let orgId: number | null = null;
+      if (useOrgScope) {
+        const org = await storage.getUserOrganization(userId);
+        if (!org) return res.status(400).json({ message: "Organization scope requested but user has no organization." });
+        orgId = org.id;
+      }
+      const settings = await getOrCreateStyleMemorySettings(userId, moduleRaw, orgId);
+      res.json(settings);
+    } catch (err: any) {
+      console.error("Error fetching style-memory settings:", err);
+      res.status(500).json({ message: err?.message || "Failed to fetch style-memory settings" });
+    }
+  });
+
+  app.put("/api/style-memory/settings", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      if (!STYLE_MEMORY_ENABLED) {
+        return res.status(503).json({ message: "Style memory is disabled" });
+      }
+      const parsed = z.object({
+        module: z.enum(["legal-drafting", "contract-drafting"]),
+        scope: z.enum(["user", "org"]).optional(),
+        enabled: z.boolean().optional(),
+        ownershipMode: z.enum(["user", "org", "user-org"]).optional(),
+        strictness: z.enum(["strict", "balanced", "flexible"]).optional(),
+      }).parse(req.body || {});
+      let orgId: number | null = null;
+      if ((parsed.scope || "user") === "org" || parsed.ownershipMode === "org" || parsed.ownershipMode === "user-org") {
+        const org = await storage.getUserOrganization(userId);
+        if (!org) return res.status(400).json({ message: "Organization scope requested but user has no organization." });
+        orgId = org.id;
+      }
+      const settings = await updateStyleMemorySettings({
+        userId,
+        module: parsed.module,
+        orgId,
+        enabled: parsed.enabled,
+        ownershipMode: parsed.ownershipMode,
+        strictness: parsed.strictness,
+      });
+      res.json(settings);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error updating style-memory settings:", err);
+      res.status(500).json({ message: err?.message || "Failed to update style-memory settings" });
+    }
+  });
+
+  app.get("/api/style-memory/samples", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      if (!STYLE_MEMORY_ENABLED) {
+        return res.status(503).json({ message: "Style memory is disabled" });
+      }
+      const moduleRaw = String(req.query.module || "");
+      if (!isStyleMemoryModule(moduleRaw)) {
+        return res.status(400).json({ message: "Invalid module. Use legal-drafting or contract-drafting." });
+      }
+      const scopeRaw = String(req.query.scope || "user").toLowerCase();
+      const useOrgScope = scopeRaw === "org";
+      const { limit, offset } = parsePagination(req, { defaultLimit: 20, maxLimit: 200 });
+      let orgId: number | null = null;
+      if (useOrgScope) {
+        const org = await storage.getUserOrganization(userId);
+        if (!org) return res.status(400).json({ message: "Organization scope requested but user has no organization." });
+        orgId = org.id;
+      }
+      const page = await storage.listStyleMemorySamples(userId, moduleRaw, limit, offset, orgId);
+      res.json(page);
+    } catch (err: any) {
+      console.error("Error listing style-memory samples:", err);
+      res.status(500).json({ message: err?.message || "Failed to list style-memory samples" });
+    }
+  });
+
+  app.post("/api/style-memory/samples/upload", guardedUploadQueue, styleMemoryUpload.array("files", 20), async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      if (!STYLE_MEMORY_ENABLED) {
+        return res.status(503).json({ message: "Style memory is disabled" });
+      }
+      const moduleRaw = String(req.body?.module || "");
+      if (!isStyleMemoryModule(moduleRaw)) {
+        return res.status(400).json({ message: "Invalid module. Use legal-drafting or contract-drafting." });
+      }
+      const scopeRaw = String(req.body?.scope || "user").toLowerCase();
+      const useOrgScope = scopeRaw === "org";
+      let orgId: number | null = null;
+      if (useOrgScope) {
+        const org = await storage.getUserOrganization(userId);
+        if (!org) return res.status(400).json({ message: "Organization scope requested but user has no organization." });
+        orgId = org.id;
+      }
+
+      const files = (req.files as Express.Multer.File[] | undefined) || [];
+      if (files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const accepted: Array<{ file: string; sampleId: number | null; indexedChunks: number; deduped: boolean }> = [];
+      const rejected: Array<{ file: string; reason: string }> = [];
+
+      for (const file of files) {
+        const stableFile = cloneUploadFile(file);
+        const original = file.originalname || "style-sample.txt";
+        const ext = original.includes(".")
+          ? original.substring(original.lastIndexOf(".")).toLowerCase()
+          : "";
+        const allowedExt = [".txt", ".pdf", ".docx"];
+        if (!allowedExt.includes(ext)) {
+          rejected.push({ file: original, reason: "unsupported format (allowed: .txt, .pdf, .docx)" });
+          continue;
+        }
+        if (!hasSafeDocumentSignature(file, ext)) {
+          rejected.push({ file: original, reason: "file signature mismatch" });
+          continue;
+        }
+        const malwareCheck = await passesMalwareScan(file);
+        if (!malwareCheck.ok) {
+          rejected.push({ file: original, reason: malwareCheck.reason || "malware detected" });
+          continue;
+        }
+
+        let text = "";
+        try {
+          if (ext === ".pdf") {
+            text = await extractPdfTextSafe(stableFile.buffer, "style-memory-upload");
+            if (!text) {
+              text = await extractPdfTextWithOcrFallback(stableFile, "style-memory-upload");
+            }
+          } else if (ext === ".docx") {
+            text = await extractDocxTextSafe(stableFile.buffer, "style-memory-upload");
+          } else {
+            text = stripNullBytes(stableFile.buffer.toString("utf-8"));
+          }
+        } catch (extractErr: any) {
+          if (isExtractionQueueFullError(extractErr)) return sendExtractionBusy(res);
+          rejected.push({ file: original, reason: extractErr?.message || "text extraction failed" });
+          continue;
+        }
+
+        const result = await ingestStyleSample({
+          userId,
+          module: moduleRaw,
+          orgId,
+          sourceType: "upload",
+          sourceRef: `upload:${original}`,
+          title: original,
+          rawText: text,
+        });
+        if (!result.accepted) {
+          rejected.push({ file: original, reason: result.reason || "not accepted" });
+          continue;
+        }
+        accepted.push({
+          file: original,
+          sampleId: result.sampleId,
+          indexedChunks: result.indexedChunks,
+          deduped: result.deduped,
+        });
+      }
+
+      res.status(201).json({
+        accepted: accepted.length,
+        rejected: rejected.length,
+        indexed: accepted.reduce((sum, item) => sum + (item.indexedChunks || 0), 0),
+        files: accepted,
+        errors: rejected,
+        queue: getStyleMemoryQueueStats(),
+      });
+    } catch (err: any) {
+      if (isExtractionQueueFullError(err)) return sendExtractionBusy(res);
+      console.error("Error uploading style-memory samples:", err);
+      res.status(500).json({ message: err?.message || "Failed to upload style-memory samples" });
+    }
+  });
+
+  app.delete("/api/style-memory/samples/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      if (!STYLE_MEMORY_ENABLED) {
+        return res.status(503).json({ message: "Style memory is disabled" });
+      }
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) {
+        return res.status(400).json({ message: "Invalid sample id" });
+      }
+      const moduleRaw = String(req.query.module || "");
+      if (!isStyleMemoryModule(moduleRaw)) {
+        return res.status(400).json({ message: "Invalid module. Use legal-drafting or contract-drafting." });
+      }
+      const scopeRaw = String(req.query.scope || "user").toLowerCase();
+      const useOrgScope = scopeRaw === "org";
+      let orgId: number | null = null;
+      if (useOrgScope) {
+        const org = await storage.getUserOrganization(userId);
+        if (!org) return res.status(400).json({ message: "Organization scope requested but user has no organization." });
+        orgId = org.id;
+      }
+
+      const removed = await storage.deleteStyleMemorySample(id, userId, moduleRaw, orgId);
+      if (removed === 0) return res.status(404).json({ message: "Style sample not found" });
+      res.json({ deleted: removed });
+    } catch (err: any) {
+      console.error("Error deleting style-memory sample:", err);
+      res.status(500).json({ message: err?.message || "Failed to delete style-memory sample" });
+    }
+  });
+
+  app.post("/api/style-memory/events/accepted-redline", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      if (!STYLE_MEMORY_ENABLED) {
+        return res.status(503).json({ message: "Style memory is disabled" });
+      }
+      const parsed = z.object({
+        module: z.enum(["legal-drafting", "contract-drafting"]),
+        draftId: z.union([z.number().int().positive(), z.string().min(1)]),
+        acceptedText: z.string().min(10),
+        beforeText: z.string().optional(),
+        scope: z.enum(["user", "org"]).optional(),
+      }).parse(req.body || {});
+      let orgId: number | null = null;
+      if ((parsed.scope || "user") === "org") {
+        const org = await storage.getUserOrganization(userId);
+        if (!org) return res.status(400).json({ message: "Organization scope requested but user has no organization." });
+        orgId = org.id;
+      }
+      const result = await recordAcceptedRedlineStyleEvent({
+        userId,
+        module: parsed.module,
+        orgId,
+        draftId: parsed.draftId,
+        acceptedText: parsed.acceptedText,
+        beforeText: parsed.beforeText,
+      });
+      res.status(201).json({
+        accepted: result.accepted,
+        deduped: result.deduped,
+        indexedChunks: result.indexedChunks,
+        sampleId: result.sampleId,
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error recording style-memory redline event:", err);
+      res.status(500).json({ message: err?.message || "Failed to record accepted redline" });
+    }
+  });
+
+  app.post("/api/style-memory/backfill", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      if (!STYLE_MEMORY_ENABLED) {
+        return res.status(503).json({ message: "Style memory is disabled" });
+      }
+      const parsed = z.object({
+        module: z.enum(["legal-drafting", "contract-drafting"]),
+        scope: z.enum(["user", "org"]).optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+      }).parse(req.body || {});
+      let orgId: number | null = null;
+      if ((parsed.scope || "user") === "org") {
+        const org = await storage.getUserOrganization(userId);
+        if (!org) return res.status(400).json({ message: "Organization scope requested but user has no organization." });
+        orgId = org.id;
+      }
+      const result = await backfillStyleMemoryFromSavedDrafts({
+        userId,
+        module: parsed.module,
+        orgId,
+        limit: parsed.limit ?? 50,
+      });
+      res.json(result);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error backfilling style-memory:", err);
+      res.status(500).json({ message: err?.message || "Failed to backfill style memory" });
+    }
+  });
+
   const documentUpload = multer({
     storage: multer.memoryStorage(),
     limits: {
@@ -1422,6 +1965,21 @@ export async function registerRoutes(
         userId,
         ...metadata,
       });
+      if (STYLE_MEMORY_ENABLED && typeof doc.content === "string" && doc.content.trim()) {
+        const styleModule = resolveDraftModuleFromDocumentTitle(doc.title || "");
+        if (styleModule) {
+          ingestStyleSample({
+            userId,
+            module: styleModule,
+            sourceType: "saved-draft",
+            sourceRef: `document:${doc.id}`,
+            title: doc.title || `Draft ${doc.id}`,
+            rawText: doc.content,
+          }).catch((styleErr) => {
+            console.warn("[StyleMemory] Could not ingest created draft:", getErrorMessage(styleErr));
+          });
+        }
+      }
       res.status(201).json(toApiDocument(doc));
     } catch (err) {
       console.error("Error creating document:", err);
@@ -1613,6 +2171,21 @@ export async function registerRoutes(
       const updated = await storage.updateDocument(id, userId, { title, content });
       if (!updated) {
         return res.status(404).json({ message: "Document not found" });
+      }
+      if (STYLE_MEMORY_ENABLED && typeof updated.content === "string" && updated.content.trim()) {
+        const styleModule = resolveDraftModuleFromDocumentTitle(updated.title || "");
+        if (styleModule) {
+          ingestStyleSample({
+            userId,
+            module: styleModule,
+            sourceType: "saved-draft",
+            sourceRef: `document:${updated.id}`,
+            title: updated.title || `Draft ${updated.id}`,
+            rawText: updated.content,
+          }).catch((styleErr) => {
+            console.warn("[StyleMemory] Could not ingest updated draft:", getErrorMessage(styleErr));
+          });
+        }
       }
       res.json(toApiDocument(updated));
     } catch (err) {
@@ -2242,14 +2815,50 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const { prompt, draftText, jurisdiction } = req.body as {
+      const { prompt, draftText, jurisdiction, module } = req.body as {
         prompt?: string;
         draftText?: string;
         jurisdiction?: string;
+        module?: string;
       };
       const safePrompt = (prompt || "").trim();
       if (!safePrompt) {
         return res.status(400).json({ message: "Prompt is required" });
+      }
+
+      let styleMemoryMeta: {
+        applied: boolean;
+        module: "legal-drafting" | "contract-drafting" | null;
+        scopeUsed: "user" | "org" | "user-org";
+        chunksUsed: number;
+        confidence: number;
+      } | null = null;
+      let styleContext = "";
+      const styleModule = isStyleMemoryModule(String(module || "")) ? (module as "legal-drafting" | "contract-drafting") : null;
+      if (STYLE_MEMORY_ENABLED && styleModule) {
+        try {
+          const userOrg = await storage.getUserOrganization(userId).catch(() => undefined);
+          const retrieved = await retrieveStyleContextForGeneration({
+            userId,
+            module: styleModule,
+            orgId: userOrg?.id ?? null,
+            userPrompt: safePrompt,
+            draftText: draftText || "",
+          });
+          styleMemoryMeta = {
+            applied: false,
+            module: styleModule,
+            scopeUsed: retrieved.result.scopeUsed,
+            chunksUsed: retrieved.result.chunks.length,
+            confidence: retrieved.result.confidence,
+          };
+          if (retrieved.result.applied && retrieved.result.confidence >= STYLE_CONTEXT_MIN_CONFIDENCE) {
+            styleContext = trimTextToTokenBudget(retrieved.result.contextText, STYLE_PROMPT_TOKEN_BUDGET);
+            styleMemoryMeta.applied = true;
+          }
+        } catch (styleErr) {
+          console.warn("[StyleMemory] Could not retrieve clause style context:", getErrorMessage(styleErr));
+        }
       }
 
       const generated = generateClauseFromPrompt({
@@ -2260,19 +2869,24 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
 
       const aiFallbackThreshold = resolveConfidenceThreshold("RETRIEVAL_CLAUSE_GENERATE_AI_THRESHOLD", 0.58);
       const shouldAiFallback = generated.method === "fallback" || generated.confidence < aiFallbackThreshold;
+      const shouldStyleRewrite = !!styleContext && generated.method === "retrieval";
       const canUseAiFallback = isGroqAvailable() || isOpenRouterAvailable();
 
-      if (shouldAiFallback && canUseAiFallback) {
+      if ((shouldAiFallback || shouldStyleRewrite) && canUseAiFallback) {
         const allowed = await checkUsageLimit(userId, "draft", res);
         if (!allowed) return;
 
-        const sysInstruction = `You are a Pakistani legal drafting assistant.
+        const sysInstruction = shouldStyleRewrite
+          ? `You are a Pakistani legal drafting assistant.
+Rewrite the provided clause in the user's drafting style while preserving legal meaning and enforceability.
+Return only clause text. No markdown. No bullet list. No JSON.`
+          : `You are a Pakistani legal drafting assistant.
 Draft one enforceable contract clause based on the instruction and draft context.
 Return only clause text. No markdown. No bullet list. No JSON.`;
-        const userInput = `Instruction: ${safePrompt}
+        const userInput = `${shouldStyleRewrite ? `Base Clause:\n${generated.clause}\n\n` : ""}Instruction: ${safePrompt}
 Jurisdiction: ${jurisdiction || "Lahore"}
 Current Draft Excerpt:
-${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
+${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
         try {
           const aiResult = await callStandardAISimple(sysInstruction, userInput, 1400, { timeoutProfile: "analysis", temperature: 0.3 });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
@@ -2280,10 +2894,11 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
           if (clauseText) {
             return res.json({
               clause: clauseText,
-              sourceId: "ai-fallback",
+              sourceId: shouldStyleRewrite ? generated.sourceId : "ai-fallback",
               confidence: Math.max(generated.confidence, 0.72),
               retrievalConfidence: generated.confidence,
-              method: "ai-fallback",
+              method: shouldStyleRewrite ? "style-rewrite" : "ai-fallback",
+              styleMemory: styleMemoryMeta || undefined,
             });
           }
         } catch (aiErr) {
@@ -2291,7 +2906,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
         }
       }
 
-      res.json(generated);
+      res.json({ ...generated, styleMemory: styleMemoryMeta || undefined });
     } catch (err) {
       console.error("Error generating retrieval clause:", err);
       res.status(500).json({ message: "Failed to generate clause" });
@@ -2642,6 +3257,54 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
       if (attachmentContext) {
         systemPrompt += `\n\nATTACHED DOCUMENTS FROM USER:\nThe user has attached the following documents for your reference. Analyze them carefully and use them to inform your response.${attachmentContext}`;
       }
+      const styleModule = mapModuleTypeToStyleModule(moduleType);
+      const styleEligible = STYLE_MEMORY_ENABLED && !directMode && !!lastUserMessage && !!styleModule && shouldApplyStyleForChat(moduleType, moduleIntent);
+      let styleContext = "";
+      let styleMemoryMeta: {
+        applied: boolean;
+        module: "legal-drafting" | "contract-drafting" | null;
+        scopeUsed: "user" | "org" | "user-org";
+        chunksUsed: number;
+        confidence: number;
+      } | null = styleEligible
+        ? {
+          applied: false,
+          module: styleModule!,
+          scopeUsed: "user-org",
+          chunksUsed: 0,
+          confidence: 0,
+        }
+        : null;
+
+      if (styleEligible && styleModule) {
+        try {
+          const userOrg = await storage.getUserOrganization(userId).catch(() => undefined);
+          const styleRetrieved = await retrieveStyleContextForGeneration({
+            userId,
+            module: styleModule,
+            orgId: userOrg?.id ?? null,
+            userPrompt: lastUserMessage!.content,
+            draftText: userMessages
+              .filter((m) => m.role === "user")
+              .map((m) => m.content)
+              .join("\n\n")
+              .slice(0, 8000),
+          });
+          if (styleMemoryMeta) {
+            styleMemoryMeta.scopeUsed = styleRetrieved.result.scopeUsed;
+            styleMemoryMeta.confidence = styleRetrieved.result.confidence;
+            styleMemoryMeta.chunksUsed = styleRetrieved.result.chunks.length;
+          }
+          if (styleRetrieved.result.applied && styleRetrieved.result.confidence >= STYLE_CONTEXT_MIN_CONFIDENCE) {
+            styleContext = trimTextToTokenBudget(styleRetrieved.result.contextText, STYLE_PROMPT_TOKEN_BUDGET);
+            if (styleMemoryMeta) {
+              styleMemoryMeta.applied = true;
+            }
+          }
+        } catch (styleErr) {
+          console.warn("[StyleMemory] Retrieval failed for chat route:", getErrorMessage(styleErr));
+        }
+      }
       const { route: selectedRoute, downgraded } = resolveModuleRoute(
         moduleProfile.modelStrategy.primary,
         moduleProfile.modelStrategy.fallback,
@@ -2652,13 +3315,18 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
       const tokenLimit = directMode ? 128 : (TOKEN_LIMITS[featureKey] || TOKEN_LIMITS.chat);
       const timeoutProfile: TimeoutProfile = directMode ? "search" : "default";
       const temperature = directMode ? 0 : 0.7;
-      const systemPromptFull = systemPrompt + knowledgeContext;
+      const knowledgeTokensBudget = styleContext
+        ? Math.max(300, KNOWLEDGE_PROMPT_TOKEN_BUDGET - estimateTokens(styleContext))
+        : KNOWLEDGE_PROMPT_TOKEN_BUDGET;
+      const boundedKnowledgeContext = trimTextToTokenBudget(knowledgeContext, knowledgeTokensBudget);
+      const systemPromptFull = systemPrompt + boundedKnowledgeContext + (styleContext ? `\n\nPERSONAL STYLE MEMORY (generation-only):\n${styleContext}` : "");
       const routingPath: string[] = [`profile:${moduleType}`, `route:${selectedRoute}`];
       if (downgraded) routingPath.push("policy-fallback:true");
       if (directMode) routingPath.push("direct-mode:true");
 
       const cacheRaw = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
-      const cacheKey = `${cacheRaw}::type=${featureKey}::intent=${moduleIntent || "none"}::profile=${moduleType}::route=${selectedRoute}::direct=${directMode ? "1" : "0"}`;
+      const styleCacheTag = styleContext ? hashQuery("style-context", styleContext).slice(0, 12) : "none";
+      const cacheKey = `${cacheRaw}::type=${featureKey}::intent=${moduleIntent || "none"}::profile=${moduleType}::route=${selectedRoute}::direct=${directMode ? "1" : "0"}::style=${styleCacheTag}`;
       const normalized = normalizeQuery(cacheKey);
       const hash = hashQuery("ai-chat", normalized);
 
@@ -2675,6 +3343,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
             fromCache: true,
             moduleProfile: moduleProfile.id,
             routingPath,
+            styleMemory: styleMemoryMeta || undefined,
           });
         }
       } catch {}
@@ -2755,7 +3424,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
 
         routingPath.push(`model:${usedModel}`);
         res.write(
-          `data: ${JSON.stringify({ done: true, model: usedModel, moduleProfile: moduleProfile.id, routingPath })}\n\n`,
+          `data: ${JSON.stringify({ done: true, model: usedModel, moduleProfile: moduleProfile.id, routingPath, styleMemory: styleMemoryMeta || undefined })}\n\n`,
         );
         res.end();
 
@@ -2815,7 +3484,13 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}`;
         });
       } catch {}
 
-      res.json({ content: completion, model: usedModel, moduleProfile: moduleProfile.id, routingPath });
+      res.json({
+        content: completion,
+        model: usedModel,
+        moduleProfile: moduleProfile.id,
+        routingPath,
+        styleMemory: styleMemoryMeta || undefined,
+      });
     } catch (err) {
       console.error("Error in AI chat:", err);
       res.status(500).json({ message: "Failed to process AI chat" });
@@ -3563,6 +4238,54 @@ RULES:
     } catch (err) {
       console.error("Error fetching cost analytics:", err);
       res.status(500).json({ message: "Failed to fetch cost analytics" });
+    }
+  });
+
+  app.get("/api/admin/client-leads", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const { limit, offset } = parsePagination(req, { defaultLimit: 50, maxLimit: 200 });
+      const query = sanitizeInputText(req.query.q, 200);
+      const page = await storage.getCaseLeadsPage(limit, offset, query || undefined);
+      res.json(page);
+    } catch (err) {
+      console.error("Error fetching client leads:", err);
+      res.status(500).json({ message: "Failed to fetch client leads" });
+    }
+  });
+
+  app.get("/api/admin/client-leads/:id", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ message: "Lead id is required" });
+      const lead = await storage.getCaseLeadById(id);
+      if (!lead) return res.status(404).json({ message: "Lead not found" });
+      res.json(lead);
+    } catch (err) {
+      console.error("Error fetching client lead:", err);
+      res.status(500).json({ message: "Failed to fetch client lead" });
+    }
+  });
+
+  app.delete("/api/admin/client-leads/:id", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ message: "Lead id is required" });
+      const actorUserId = getUserId(req);
+      const existing = await storage.getCaseLeadById(id);
+      if (!existing) return res.status(404).json({ message: "Lead not found" });
+      await storage.deleteCaseLead(id);
+      await logAuditEvent("admin.clientLead.delete", actorUserId, null, {
+        leadId: id,
+        email: existing.email,
+        caseType: existing.caseType,
+      });
+      res.json({ deleted: true });
+    } catch (err) {
+      console.error("Error deleting client lead:", err);
+      res.status(500).json({ message: "Failed to delete client lead" });
     }
   });
 

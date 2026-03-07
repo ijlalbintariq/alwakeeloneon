@@ -1,5 +1,5 @@
 
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -54,6 +54,31 @@ export const documentFiles = pgTable("document_files", {
   etag: text("etag"),
   publicUrl: text("public_url"),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const visitorSessions = pgTable(
+  "visitor_sessions",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    ipAddress: text("ip_address").notNull(),
+    messageCount: integer("message_count").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    ipAddressUnique: uniqueIndex("visitor_sessions_ip_address_unique").on(table.ipAddress),
+  }),
+);
+
+export const caseLeads = pgTable("case_leads", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email").notNull(),
+  caseType: text("case_type").notNull(),
+  caseDescription: text("case_description").notNull(),
+  ipAddress: text("ip_address").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const bookmarks = pgTable("bookmarks", {
@@ -313,11 +338,67 @@ export const adminKnowledgeFiles = pgTable("admin_knowledge_files", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const styleMemorySettings = pgTable("style_memory_settings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  module: text("module", { enum: ["legal-drafting", "contract-drafting"] }).notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  ownershipMode: text("ownership_mode", { enum: ["user", "org", "user-org"] }).notNull().default("user-org"),
+  learningSource: text("learning_source", { enum: ["full-activity"] }).notNull().default("full-activity"),
+  coverage: text("coverage", { enum: ["generation-only"] }).notNull().default("generation-only"),
+  strictness: text("strictness", { enum: ["strict", "balanced", "flexible"] }).notNull().default("balanced"),
+  lastBackfillAt: timestamp("last_backfill_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const styleMemorySamples = pgTable("style_memory_samples", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  module: text("module", { enum: ["legal-drafting", "contract-drafting"] }).notNull(),
+  sourceType: text("source_type", { enum: ["upload", "saved-draft", "accepted-redline"] }).notNull(),
+  sourceRef: text("source_ref"),
+  title: text("title").notNull(),
+  rawText: text("raw_text").notNull(),
+  textHash: text("text_hash").notNull(),
+  status: text("status", { enum: ["active", "deleted"] }).notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const styleMemoryChunks = pgTable("style_memory_chunks", {
+  id: serial("id").primaryKey(),
+  sampleId: integer("sample_id").references(() => styleMemorySamples.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  module: text("module", { enum: ["legal-drafting", "contract-drafting"] }).notNull(),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  tokenCount: integer("token_count").notNull(),
+  // Stored as pgvector in SQL bootstrap; declared as text here for TS typing compatibility.
+  embedding: text("embedding").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const styleMemoryEvents = pgTable("style_memory_events", {
+  id: serial("id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  module: text("module", { enum: ["legal-drafting", "contract-drafting"] }).notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  metadata: jsonb("metadata").notNull().default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, summary: true, userId: true });
 export const insertDocumentFileSchema = createInsertSchema(documentFiles).omit({ id: true, createdAt: true });
+export const insertVisitorSessionSchema = createInsertSchema(visitorSessions).omit({ id: true, createdAt: true, lastMessageAt: true });
+export const insertCaseLeadSchema = createInsertSchema(caseLeads).omit({ id: true, createdAt: true });
 export const insertBookmarkSchema = createInsertSchema(bookmarks).omit({ id: true, createdAt: true });
 export const insertSearchHistorySchema = createInsertSchema(searchHistory).omit({ id: true, createdAt: true });
 export const insertStatuteSchema = createInsertSchema(statutes).omit({ id: true });
@@ -339,6 +420,10 @@ export const insertOrgInviteSchema = createInsertSchema(orgInvites).omit({ id: t
 export const insertOrgKnowledgeSchema = createInsertSchema(orgKnowledge).omit({ id: true, createdAt: true });
 export const insertAdminKnowledgeSchema = createInsertSchema(adminKnowledge).omit({ id: true, createdAt: true });
 export const insertAdminKnowledgeFileSchema = createInsertSchema(adminKnowledgeFiles).omit({ id: true, createdAt: true });
+export const insertStyleMemorySettingsSchema = createInsertSchema(styleMemorySettings).omit({ id: true, createdAt: true, updatedAt: true, lastBackfillAt: true });
+export const insertStyleMemorySampleSchema = createInsertSchema(styleMemorySamples).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertStyleMemoryChunkSchema = createInsertSchema(styleMemoryChunks).omit({ id: true, createdAt: true });
+export const insertStyleMemoryEventSchema = createInsertSchema(styleMemoryEvents).omit({ id: true, createdAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -349,6 +434,10 @@ export type Document = typeof documents.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type DocumentFile = typeof documentFiles.$inferSelect;
 export type InsertDocumentFile = z.infer<typeof insertDocumentFileSchema>;
+export type VisitorSession = typeof visitorSessions.$inferSelect;
+export type InsertVisitorSession = z.infer<typeof insertVisitorSessionSchema>;
+export type CaseLead = typeof caseLeads.$inferSelect;
+export type InsertCaseLead = z.infer<typeof insertCaseLeadSchema>;
 export type Bookmark = typeof bookmarks.$inferSelect;
 export type InsertBookmark = z.infer<typeof insertBookmarkSchema>;
 export type SearchHistory = typeof searchHistory.$inferSelect;
@@ -391,6 +480,14 @@ export type AdminKnowledge = typeof adminKnowledge.$inferSelect;
 export type InsertAdminKnowledge = z.infer<typeof insertAdminKnowledgeSchema>;
 export type AdminKnowledgeFile = typeof adminKnowledgeFiles.$inferSelect;
 export type InsertAdminKnowledgeFile = z.infer<typeof insertAdminKnowledgeFileSchema>;
+export type StyleMemorySettings = typeof styleMemorySettings.$inferSelect;
+export type InsertStyleMemorySettings = z.infer<typeof insertStyleMemorySettingsSchema>;
+export type StyleMemorySample = typeof styleMemorySamples.$inferSelect;
+export type InsertStyleMemorySample = z.infer<typeof insertStyleMemorySampleSchema>;
+export type StyleMemoryChunk = typeof styleMemoryChunks.$inferSelect;
+export type InsertStyleMemoryChunk = z.infer<typeof insertStyleMemoryChunkSchema>;
+export type StyleMemoryEvent = typeof styleMemoryEvents.$inferSelect;
+export type InsertStyleMemoryEvent = z.infer<typeof insertStyleMemoryEventSchema>;
 
 export const TIER_LIMITS: Record<string, { monthlyQueries: number; label: string; description: string }> = {
   free: { monthlyQueries: 10, label: "Free", description: "10 AI queries/month" },
