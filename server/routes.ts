@@ -101,18 +101,20 @@ Encourage the user to consult a professional lawyer.
 Always end responses by suggesting that the user may contact the chamber or hire a lawyer for professional assistance.
 
 Language policy (strict):
-- Reply only in English or Urdu.
+- Reply only in English, Urdu script, or Roman Urdu.
 - Never reply in Hindi.
 - Never use Devanagari script.
 - If user writes in Urdu script, reply in Urdu script.
-- Otherwise, reply in English.
-- Do not use Roman Urdu transliteration in responses.`;
+- If user writes in Roman Urdu, reply in Roman Urdu.
+- If user writes in English, reply in English.`;
 const PUBLIC_CHAT_CLOSING_LINES = {
   english: "For professional legal assistance, you may contact the chamber or hire a lawyer.",
+  romanUrdu: "Professional qanooni madad ke liye aap chamber se rabta karein ya lawyer hire karein.",
   urdu: "پیشہ ورانہ قانونی مدد کے لیے آپ چیمبر سے رابطہ کریں یا وکیل ہائر کریں۔",
 } as const;
 const PUBLIC_CHAT_CASE_NUDGE = {
   english: "This appears to be a legal matter that may require professional legal review. If you would like, you can submit your case details and our chamber can review it.",
+  romanUrdu: "Yeh masla professional qanooni review ka mutaliba karta hai. Agar aap chahein to apne case ki tafseel submit karein, hamara chamber is ka review karega.",
   urdu: "یہ معاملہ پیشہ ورانہ قانونی جائزے کا تقاضا کرتا ہے۔ اگر آپ چاہیں تو اپنے کیس کی تفصیل جمع کروائیں، ہمارا چیمبر اس کا جائزہ لے گا۔",
 } as const;
 
@@ -154,18 +156,20 @@ function looksLikeRomanizedSouthAsian(text: string): boolean {
   return hints.some((h) => normalized.includes(h));
 }
 
-function resolvePublicChatLanguage(input: string): "english" | "urdu" {
+function resolvePublicChatLanguage(input: string): "english" | "romanUrdu" | "urdu" {
   if (hasUrduScript(input)) return "urdu";
+  if (looksLikeRomanizedSouthAsian(input)) return "romanUrdu";
   return "english";
 }
 
-function ensurePublicChatClosingLine(text: string, language: "english" | "urdu"): string {
+function ensurePublicChatClosingLine(text: string, language: "english" | "romanUrdu" | "urdu"): string {
   const closingLine = PUBLIC_CHAT_CLOSING_LINES[language];
   const normalized = (text || "").trim();
   if (!normalized) return closingLine;
   const lowered = normalized.toLowerCase();
   if (
     (language === "english" && (lowered.includes("contact the chamber") || lowered.includes("hire a lawyer"))) ||
+    (language === "romanUrdu" && (lowered.includes("chamber se rabta") || lowered.includes("lawyer hire"))) ||
     (language === "urdu" && (normalized.includes("چیمبر") || normalized.includes("وکیل")))
   ) {
     return normalized;
@@ -175,13 +179,21 @@ function ensurePublicChatClosingLine(text: string, language: "english" | "urdu")
 
 async function rewritePublicChatOutput(args: {
   content: string;
-  targetLanguage: "english" | "urdu";
+  targetLanguage: "english" | "romanUrdu" | "urdu";
   provider: "groq" | "openrouter";
 }): Promise<string> {
   const languageLabel =
-    args.targetLanguage === "urdu"
+    args.targetLanguage === "romanUrdu"
+      ? "Roman Urdu (Latin script Urdu)"
+      : args.targetLanguage === "urdu"
         ? "Urdu script"
         : "English";
+  const scriptRule =
+    args.targetLanguage === "english"
+      ? "- Output only in English."
+      : args.targetLanguage === "urdu"
+        ? "- Output only in Urdu script."
+        : "- Output only in Roman Urdu (Latin Urdu), not Hindi transliteration.";
   const rewriteMessages = [
     {
       role: "system" as const,
@@ -190,7 +202,7 @@ async function rewritePublicChatOutput(args: {
     },
     {
       role: "user" as const,
-      content: `Rewrite the following in ${languageLabel}.\nRules:\n- Output only in ${languageLabel}.\n- No Hindi.\n- No Devanagari script.\n- No Roman Urdu transliteration.\n- Keep it concise and professional.\n- Output only rewritten text.\n\nText:\n${args.content}`,
+      content: `Rewrite the following in ${languageLabel}.\nRules:\n${scriptRule}\n- No Hindi.\n- No Devanagari script.\n- Keep it concise and professional.\n- Output only rewritten text.\n\nText:\n${args.content}`,
     },
   ];
   if (args.provider === "openrouter") {
@@ -204,16 +216,19 @@ async function rewritePublicChatOutput(args: {
   }
   const rewritten = await chatWithGroq({
     messages: rewriteMessages,
-    model: "llama-3.1-8b-instant",
+    model: "openai/gpt-oss-120b",
     maxTokens: 700,
     temperature: 0.1,
   });
   return rewritten.content || "";
 }
 
-function getPublicChatLanguageFallback(language: "english" | "urdu"): string {
+function getPublicChatLanguageFallback(language: "english" | "romanUrdu" | "urdu"): string {
   if (language === "urdu") {
     return "آپ کے سوال کے مطابق جواب اردو میں فراہم کیا جا رہا ہے۔ برائے پیشہ ورانہ قانونی مدد چیمبر سے رابطہ کریں یا وکیل ہائر کریں۔";
+  }
+  if (language === "romanUrdu") {
+    return "Aap ke sawal ke mutabiq jawab Roman Urdu mein diya ja raha hai. Professional qanooni madad ke liye chamber se rabta karein ya lawyer hire karein.";
   }
   return "Your response is being provided in English as requested. For professional legal assistance, please contact the chamber or hire a lawyer.";
 }
@@ -952,11 +967,11 @@ MOTTO: "Main hoon Al Wakeelo — not just your lawyer, your strategy partner in 
 LANGUAGE POLICY (STRICT):
 - Match the user's language. If the user chats in English, reply in English.
 - If the user writes in Urdu script, you MUST respond in Urdu script.
+- If the user writes in Roman Urdu, respond in Roman Urdu.
 - Otherwise, respond in English.
 - Maintain your sharp, witty persona in both languages.
 - Do NOT use Hindi.
 - Do NOT use Devanagari script.
-- Do NOT use Roman Urdu transliteration in responses.
 
 PERSONALITY & VOICE:
 - Bold, confident, and strategically aggressive yet always professional.
@@ -1337,12 +1352,12 @@ export async function registerRoutes(
       const preferredLanguage = resolvePublicChatLanguage(message);
 
       let provider: "groq" | "openrouter" = "groq";
-      let model = "llama-3.1-8b-instant";
+      let model = "openai/gpt-oss-120b";
       let aiReply = "";
       try {
         const primary = await chatWithGroq({
           messages: aiMessages,
-          model: "llama-3.1-8b-instant",
+          model: "openai/gpt-oss-120b",
           maxTokens: 900,
           temperature: 0.4,
         });
@@ -1366,8 +1381,9 @@ export async function registerRoutes(
       let normalizedReply = sanitizeInputText(aiReply, 6000);
       const needsLanguageRewrite =
         hasDevanagari(normalizedReply) ||
-        (preferredLanguage === "english" && looksLikeRomanizedSouthAsian(normalizedReply)) ||
-        (preferredLanguage === "urdu" && !hasUrduScript(normalizedReply));
+        (preferredLanguage === "english" && (hasUrduScript(normalizedReply) || looksLikeRomanizedSouthAsian(normalizedReply))) ||
+        (preferredLanguage === "urdu" && !hasUrduScript(normalizedReply)) ||
+        (preferredLanguage === "romanUrdu" && (hasUrduScript(normalizedReply) || !looksLikeRomanizedSouthAsian(normalizedReply)));
       if (needsLanguageRewrite) {
         try {
           normalizedReply = sanitizeInputText(
@@ -1385,8 +1401,9 @@ export async function registerRoutes(
       const stillInvalid =
         !normalizedReply ||
         hasDevanagari(normalizedReply) ||
-        (preferredLanguage === "english" && looksLikeRomanizedSouthAsian(normalizedReply)) ||
-        (preferredLanguage === "urdu" && !hasUrduScript(normalizedReply));
+        (preferredLanguage === "english" && (hasUrduScript(normalizedReply) || looksLikeRomanizedSouthAsian(normalizedReply))) ||
+        (preferredLanguage === "urdu" && !hasUrduScript(normalizedReply)) ||
+        (preferredLanguage === "romanUrdu" && (hasUrduScript(normalizedReply) || !looksLikeRomanizedSouthAsian(normalizedReply)));
       if (stillInvalid) {
         normalizedReply = getPublicChatLanguageFallback(preferredLanguage);
       }
