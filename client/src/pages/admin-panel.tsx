@@ -88,11 +88,22 @@ type SecurityEventSnapshot = {
   metadata: Record<string, unknown> | null;
 };
 
+type ClientLead = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  caseType: string;
+  caseDescription: string;
+  ipAddress: string;
+  createdAt: string;
+};
+
 export default function AdminPanelPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit" | "client-leads">("stats");
 
   if (!user?.isAdmin) {
     return <Redirect to="/dashboard" />;
@@ -122,6 +133,7 @@ export default function AdminPanelPage() {
           { id: "users" as const, label: "Users", icon: Users },
           { id: "audit" as const, label: "Audit Logs", icon: Shield },
           { id: "knowledge" as const, label: "Knowledge Vault", icon: Database },
+          { id: "client-leads" as const, label: "Client Leads", icon: FileText },
           { id: "case-law" as const, label: "Case Law", icon: Scale },
           { id: "statute-docs" as const, label: "Statute Library", icon: FileText },
         ].map((tab) => (
@@ -142,6 +154,7 @@ export default function AdminPanelPage() {
       {activeTab === "users" && <UsersSection />}
       {activeTab === "audit" && <AuditLogsSection />}
       {activeTab === "knowledge" && <KnowledgeSection />}
+      {activeTab === "client-leads" && <ClientLeadsSection />}
       {activeTab === "case-law" && <CaseLawSection />}
       {activeTab === "statute-docs" && <StatuteDocumentsSection />}
     </div>
@@ -1723,6 +1736,191 @@ function CaseLawSection() {
         </div>
       )}
       <PaginationStrip page={page} total={totalCaseLawEntries} pageSize={ADMIN_PAGE_SIZE} onPageChange={setPage} />
+    </div>
+  );
+}
+
+function ClientLeadsSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+
+  const { data: leadsPage, isLoading } = useQuery<PagedResponse<ClientLead>>({
+    queryKey: ["/api/admin/client-leads", page, ADMIN_PAGE_SIZE, search],
+    queryFn: async () => {
+      const offset = (page - 1) * ADMIN_PAGE_SIZE;
+      const q = encodeURIComponent(search.trim());
+      const res = await fetch(`/api/admin/client-leads?limit=${ADMIN_PAGE_SIZE}&offset=${offset}&q=${q}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch client leads");
+      return res.json();
+    },
+  });
+
+  const { data: selectedLead, isFetching: leadLoading } = useQuery<ClientLead>({
+    queryKey: ["/api/admin/client-leads", selectedLeadId],
+    enabled: !!selectedLeadId,
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/client-leads/${selectedLeadId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load lead details");
+      return res.json();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/admin/client-leads/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/client-leads"] });
+      setSelectedLeadId(null);
+      toast({ title: "Lead deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete lead", variant: "destructive" });
+    },
+  });
+
+  const leads = leadsPage?.items || [];
+  const totalLeads = leadsPage?.total || 0;
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  return (
+    <div className="space-y-4" data-testid="client-leads-section">
+      <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <FileText size={16} className="text-amber-500" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                Client Leads ({totalLeads})
+              </span>
+            </div>
+            <div className="w-full sm:w-72">
+              <Input
+                placeholder="Search leads..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+                data-testid="input-search-client-leads"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-2">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="animate-spin text-amber-500" size={24} />
+            </div>
+          ) : leads.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-sm text-slate-500">No leads found</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left min-w-[980px]">
+                <thead>
+                  <tr className="text-slate-500 border-b border-slate-800">
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">Lead ID</th>
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">Name</th>
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">Phone</th>
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">Email</th>
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">Case Type</th>
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">Case Description</th>
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">IP Address</th>
+                    <th className="py-2 pr-3 font-black uppercase tracking-wide">Submission Date</th>
+                    <th className="py-2 font-black uppercase tracking-wide">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leads.map((lead) => (
+                    <tr key={lead.id} className="border-b border-slate-900">
+                      <td className="py-2 pr-3 text-slate-400">{lead.id.slice(0, 8)}...</td>
+                      <td className="py-2 pr-3 text-slate-100 font-semibold">{lead.name}</td>
+                      <td className="py-2 pr-3 text-slate-300">{lead.phone}</td>
+                      <td className="py-2 pr-3 text-slate-300">{lead.email}</td>
+                      <td className="py-2 pr-3 text-amber-400">{lead.caseType}</td>
+                      <td className="py-2 pr-3 text-slate-400 max-w-[260px] truncate">{lead.caseDescription}</td>
+                      <td className="py-2 pr-3 text-slate-400">{lead.ipAddress}</td>
+                      <td className="py-2 pr-3 text-slate-400">{new Date(lead.createdAt).toLocaleString()}</td>
+                      <td className="py-2">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-amber-300 text-[10px] h-7 px-2"
+                            onClick={() => setSelectedLeadId(lead.id)}
+                            data-testid={`button-view-lead-${lead.id}`}
+                          >
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-300 text-[10px] h-7 px-2"
+                            onClick={() => deleteMutation.mutate(lead.id)}
+                            disabled={deleteMutation.isPending}
+                            data-testid={`button-delete-lead-${lead.id}`}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <PaginationStrip page={page} total={totalLeads} pageSize={ADMIN_PAGE_SIZE} onPageChange={setPage} />
+        </CardContent>
+      </Card>
+
+      {selectedLeadId && (
+        <Card className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+              Lead Details
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-slate-500"
+              onClick={() => setSelectedLeadId(null)}
+            >
+              <X size={14} />
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {leadLoading || !selectedLead ? (
+              <div className="flex items-center gap-2 text-slate-400">
+                <Loader2 size={14} className="animate-spin" /> Loading...
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <p className="text-slate-300"><span className="text-slate-500">Name:</span> {selectedLead.name}</p>
+                  <p className="text-slate-300"><span className="text-slate-500">Phone:</span> {selectedLead.phone}</p>
+                  <p className="text-slate-300"><span className="text-slate-500">Email:</span> {selectedLead.email}</p>
+                  <p className="text-slate-300"><span className="text-slate-500">Case Type:</span> {selectedLead.caseType}</p>
+                  <p className="text-slate-300"><span className="text-slate-500">IP Address:</span> {selectedLead.ipAddress}</p>
+                  <p className="text-slate-300"><span className="text-slate-500">Submitted:</span> {new Date(selectedLead.createdAt).toLocaleString()}</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#101a2b] p-3">
+                  <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wider font-bold">Case Description</p>
+                  <p className="text-slate-200 whitespace-pre-wrap text-sm">{selectedLead.caseDescription}</p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

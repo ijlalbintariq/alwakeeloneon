@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 import type { Document as StoredDocument } from "@shared/schema";
+import { StyleMemoryPanel } from "@/components/style-memory-panel";
 
 type ComplianceRisk = {
   id: string;
@@ -80,6 +81,14 @@ type RedlineItem = {
   originalSnippet: string;
   suggestedText: string;
   status: RedlineStatus;
+};
+
+type StyleMemoryMeta = {
+  applied: boolean;
+  module: "legal-drafting" | "contract-drafting" | null;
+  scopeUsed: "user" | "org" | "user-org";
+  chunksUsed: number;
+  confidence: number;
 };
 
 const CONTRACT_AUTOSAVE_KEY = "contract-drafting-workspace-v1";
@@ -547,6 +556,7 @@ export default function ContractDraftingPage() {
   const [leftRailOpen, setLeftRailOpen] = useState(true);
   const [rightRailOpen, setRightRailOpen] = useState(true);
   const [focusWritingMode, setFocusWritingMode] = useState(false);
+  const [styleMemoryMeta, setStyleMemoryMeta] = useState<StyleMemoryMeta | null>(null);
   const autoRiskScanSignatureRef = useRef<string>("");
   const leftRailVisible = leftRailOpen && !focusWritingMode;
   const rightRailVisible = rightRailOpen && !focusWritingMode;
@@ -721,6 +731,7 @@ export default function ContractDraftingPage() {
       const data = await response.json();
       const generated = (data?.content || "").trim();
       if (!generated) throw new Error("AI returned empty draft.");
+      setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
 
       setContractText(generated);
       await apiRequest("POST", "/api/search-history", {
@@ -816,6 +827,7 @@ export default function ContractDraftingPage() {
           prompt,
           draftText: contractText.slice(0, 12000),
           jurisdiction: form.jurisdiction,
+          module: "contract-drafting",
         }),
       });
       if (!response.ok) {
@@ -825,6 +837,7 @@ export default function ContractDraftingPage() {
       const data = await response.json();
       const clause = (data?.clause || "").trim();
       if (!clause) throw new Error("Clause retrieval returned empty result");
+      setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
       setContractText((prev) => `${prev.trim()}\n\n${clause}\n`);
       toast({ title: "Clause inserted" });
     } catch (err: any) {
@@ -905,6 +918,7 @@ export default function ContractDraftingPage() {
         throw new Error(text || "Redline generation failed");
       }
       const data = await response.json();
+      setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
       const parsed = parseRedlineResponse(String(data?.content || ""));
       setRedlineItems(parsed);
       toast({ title: "Counterparty redline generated", description: `${parsed.length} proposed edits ready.` });
@@ -927,6 +941,17 @@ export default function ContractDraftingPage() {
       return `${prev.trim()}\n\n${item.suggestedText}\n`;
     });
     setRedlineItems((prev) => prev.map((r) => (r.id === item.id ? { ...r, status: "accepted" } : r)));
+    void fetch("/api/style-memory/events/accepted-redline", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        module: "contract-drafting",
+        draftId: selectedDocId || form.title || item.id,
+        acceptedText: item.suggestedText,
+        beforeText: item.originalSnippet || "",
+      }),
+    }).catch(() => {});
   };
 
   const rejectRedline = (itemId: string) => {
@@ -987,6 +1012,11 @@ export default function ContractDraftingPage() {
             {isLoadingClauseSuggestions ? "Loading..." : "Refresh"}
           </button>
         </div>
+        {styleMemoryMeta && (
+          <div className="mb-2 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-100">
+            Style memory: {styleMemoryMeta.applied ? "applied" : "not applied"} · confidence {Math.round((styleMemoryMeta.confidence || 0) * 100)}%
+          </div>
+        )}
         <div className="space-y-2">
           {liveClauseSuggestions.map((item) => (
             <button
@@ -1066,6 +1096,8 @@ export default function ContractDraftingPage() {
           ))}
         </div>
       </div>
+
+      <StyleMemoryPanel module="contract-drafting" />
     </>
   );
 

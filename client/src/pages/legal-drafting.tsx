@@ -40,6 +40,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 import type { Document as DraftDocument } from "@shared/schema";
+import { StyleMemoryPanel } from "@/components/style-memory-panel";
 
 type DraftSuggestion = {
   id: string;
@@ -76,6 +77,14 @@ type MemoryItem = {
   kind: "instruction" | "clause" | "risk";
   text: string;
   ts: number;
+};
+
+type StyleMemoryMeta = {
+  applied: boolean;
+  module: "legal-drafting" | "contract-drafting" | null;
+  scopeUsed: "user" | "org" | "user-org";
+  chunksUsed: number;
+  confidence: number;
 };
 
 const AUTOSAVE_KEY = "legal-drafting-workspace-v2";
@@ -177,6 +186,7 @@ export default function LegalDraftingPage() {
   const [focusWritingMode, setFocusWritingMode] = useState(false);
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryItems, setMemoryItems] = useState<MemoryItem[]>([]);
+  const [styleMemoryMeta, setStyleMemoryMeta] = useState<StyleMemoryMeta | null>(null);
   const statuteReferences = useMemo(() => inferStatuteReferences(docText), [docText]);
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
@@ -484,11 +494,10 @@ export default function LegalDraftingPage() {
     setIsGenerating(true);
     try {
       const payload = {
-        prompt: `${prompt}${
-          memoryContextText ? `\n\nContext: ${memoryContextText.slice(0, 1200)}` : ""
-        }`,
+        prompt,
         draftText: docText.slice(0, 12000),
         jurisdiction: "Lahore",
+        module: "legal-drafting",
       };
       const response = await fetch("/api/retrieval/clauses/generate", {
         method: "POST",
@@ -505,6 +514,7 @@ export default function LegalDraftingPage() {
       const data = await response.json();
       const clause = (data?.clause || "").trim();
       if (!clause) throw new Error("No clause generated");
+      setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
 
       setDocText((prev) => `${prev.trim()}\n\n${clause}\n`);
       addMemoryItem("instruction", prompt);
@@ -992,6 +1002,11 @@ export default function LegalDraftingPage() {
           <div className="flex-1 overflow-y-auto p-4 space-y-5">
             <section>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Draft with AI</label>
+              {styleMemoryMeta && (
+                <div className="mb-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-100">
+                  Style memory: {styleMemoryMeta.applied ? "applied" : "not applied"} · confidence {Math.round((styleMemoryMeta.confidence || 0) * 100)}%
+                </div>
+              )}
               <div className="relative">
                 <Textarea
                   value={aiPrompt}
@@ -1085,62 +1100,7 @@ export default function LegalDraftingPage() {
           </div>
 
           <div className="p-4 border-t border-[hsl(var(--preview-border))]">
-            <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-slate-900/30 to-slate-800/30 p-3 shadow-[0_10px_30px_-20px_rgba(251,191,36,0.5)]">
-              <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-amber-400/20 border border-amber-300/30 flex items-center justify-center">
-                  <Brain size={18} className="text-amber-200" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[10px] font-bold text-amber-200 uppercase tracking-[0.18em]">Context Memory</div>
-                  <div className="text-xs font-medium text-slate-200">
-                    {memoryEnabled
-                      ? `Active · ${memoryItems.length} memory item(s)`
-                      : "Paused · Not applied to AI prompts"}
-                  </div>
-                </div>
-                <div className={`size-2 rounded-full ${memoryEnabled ? "bg-emerald-400" : "bg-slate-500"}`} />
-              </div>
-
-              <div className="mt-3 flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 border-amber-300/30 text-amber-100 bg-amber-500/10 hover:bg-amber-500/20"
-                  onClick={() => setMemoryEnabled((v) => !v)}
-                  data-testid="button-toggle-context-memory"
-                >
-                  {memoryEnabled ? "Pause Memory" : "Enable Memory"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 border-rose-300/30 text-rose-100 bg-rose-500/10 hover:bg-rose-500/20"
-                  onClick={() => {
-                    setMemoryItems([]);
-                    localStorage.removeItem(CONTEXT_MEMORY_KEY);
-                    toast({ title: "Context memory cleared" });
-                  }}
-                  data-testid="button-clear-context-memory"
-                >
-                  <Trash2 size={12} className="mr-1" />
-                  Clear
-                </Button>
-              </div>
-
-              {memoryItems.length > 0 && (
-                <div className="mt-3 max-h-24 overflow-y-auto space-y-1.5 pr-1">
-                  {memoryItems.slice(0, 3).map((item) => (
-                    <div key={item.id} className="text-[10px] text-slate-300 bg-slate-900/40 border border-slate-700/50 rounded-md px-2 py-1">
-                      <span className="text-amber-200 uppercase mr-1.5 tracking-wide">{item.kind}</span>
-                      {item.text}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {memoryItems.length === 0 && (
-                <p className="mt-3 text-[10px] text-slate-400">No memory captured yet in this drafting session.</p>
-              )}
-            </div>
+            <StyleMemoryPanel module="legal-drafting" />
           </div>
           </div>
         </aside>

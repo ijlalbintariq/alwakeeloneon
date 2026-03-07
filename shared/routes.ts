@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import { insertThreadSchema, insertMessageSchema, insertBookmarkSchema, insertSearchHistorySchema, threads, messages, documents } from './schema';
+import { insertThreadSchema, insertMessageSchema, insertBookmarkSchema, insertSearchHistorySchema, insertCaseLeadSchema, threads, messages, documents, caseLeads } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -183,6 +183,86 @@ export const api = {
     deleteVectors: {
       method: 'DELETE' as const,
       path: '/api/rag/documents/:documentId/vectors' as const,
+    },
+  },
+  publicChat: {
+    send: {
+      method: "POST" as const,
+      path: "/api/public-chat" as const,
+      input: z.object({
+        message: z.string().min(1),
+      }),
+    },
+    submitCase: {
+      method: "POST" as const,
+      path: "/api/public-chat/submit-case" as const,
+      input: insertCaseLeadSchema.omit({ ipAddress: true }),
+      responses: {
+        201: z.custom<typeof caseLeads.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+  },
+  admin: {
+    clientLeads: {
+      list: {
+        method: "GET" as const,
+        path: "/api/admin/client-leads" as const,
+      },
+      get: {
+        method: "GET" as const,
+        path: "/api/admin/client-leads/:id" as const,
+      },
+      delete: {
+        method: "DELETE" as const,
+        path: "/api/admin/client-leads/:id" as const,
+      },
+    },
+  },
+  styleMemory: {
+    getSettings: {
+      method: "GET" as const,
+      path: "/api/style-memory/settings" as const,
+    },
+    updateSettings: {
+      method: "PUT" as const,
+      path: "/api/style-memory/settings" as const,
+      input: z.object({
+        module: z.enum(["legal-drafting", "contract-drafting"]),
+        enabled: z.boolean().optional(),
+        ownershipMode: z.enum(["user", "org", "user-org"]).optional(),
+        strictness: z.enum(["strict", "balanced", "flexible"]).optional(),
+      }),
+    },
+    uploadSamples: {
+      method: "POST" as const,
+      path: "/api/style-memory/samples/upload" as const,
+    },
+    listSamples: {
+      method: "GET" as const,
+      path: "/api/style-memory/samples" as const,
+    },
+    deleteSample: {
+      method: "DELETE" as const,
+      path: "/api/style-memory/samples/:id" as const,
+    },
+    acceptedRedline: {
+      method: "POST" as const,
+      path: "/api/style-memory/events/accepted-redline" as const,
+      input: z.object({
+        module: z.enum(["legal-drafting", "contract-drafting"]),
+        draftId: z.union([z.number().int().positive(), z.string().min(1)]),
+        acceptedText: z.string().min(10),
+        beforeText: z.string().optional(),
+      }),
+    },
+    backfill: {
+      method: "POST" as const,
+      path: "/api/style-memory/backfill" as const,
+      input: z.object({
+        module: z.enum(["legal-drafting", "contract-drafting"]),
+        limit: z.number().int().min(1).max(200).optional(),
+      }),
     },
   },
   usage: {
