@@ -78,6 +78,8 @@ export const caseLeads = pgTable("case_leads", {
   caseType: text("case_type").notNull(),
   caseDescription: text("case_description").notNull(),
   ipAddress: text("ip_address").notNull(),
+  status: text("status", { enum: ["open", "completed"] }).notNull().default("open"),
+  statusUpdatedAt: timestamp("status_updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -398,7 +400,7 @@ export const insertMessageSchema = createInsertSchema(messages).omit({ id: true,
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, summary: true, userId: true });
 export const insertDocumentFileSchema = createInsertSchema(documentFiles).omit({ id: true, createdAt: true });
 export const insertVisitorSessionSchema = createInsertSchema(visitorSessions).omit({ id: true, createdAt: true, lastMessageAt: true });
-export const insertCaseLeadSchema = createInsertSchema(caseLeads).omit({ id: true, createdAt: true });
+export const insertCaseLeadSchema = createInsertSchema(caseLeads).omit({ id: true, createdAt: true, status: true, statusUpdatedAt: true });
 export const insertBookmarkSchema = createInsertSchema(bookmarks).omit({ id: true, createdAt: true });
 export const insertSearchHistorySchema = createInsertSchema(searchHistory).omit({ id: true, createdAt: true });
 export const insertStatuteSchema = createInsertSchema(statutes).omit({ id: true });
@@ -436,6 +438,8 @@ export type DocumentFile = typeof documentFiles.$inferSelect;
 export type InsertDocumentFile = z.infer<typeof insertDocumentFileSchema>;
 export type VisitorSession = typeof visitorSessions.$inferSelect;
 export type InsertVisitorSession = z.infer<typeof insertVisitorSessionSchema>;
+export const caseLeadStatusSchema = z.enum(["open", "completed"]);
+export type CaseLeadStatus = z.infer<typeof caseLeadStatusSchema>;
 export type CaseLead = typeof caseLeads.$inferSelect;
 export type InsertCaseLead = z.infer<typeof insertCaseLeadSchema>;
 export type Bookmark = typeof bookmarks.$inferSelect;

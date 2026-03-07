@@ -21,7 +21,7 @@ import {
   type StatuteDocumentFile, type InsertStatuteDocumentFile,
   type SavedJudgment, type InsertSavedJudgment,
   type VisitorSession, type InsertVisitorSession,
-  type CaseLead, type InsertCaseLead,
+  type CaseLead, type CaseLeadStatus, type InsertCaseLead,
   type Organization, type InsertOrganization,
   type OrgMember, type InsertOrgMember,
   type OrgInvite, type InsertOrgInvite,
@@ -210,6 +210,7 @@ export interface IStorage {
   createCaseLead(entry: InsertCaseLead): Promise<CaseLead>;
   getCaseLeadsPage(limit: number, offset: number, query?: string): Promise<PagedResult<CaseLead>>;
   getCaseLeadById(id: string): Promise<CaseLead | undefined>;
+  updateCaseLeadStatus(id: string, status: CaseLeadStatus): Promise<CaseLead | undefined>;
   deleteCaseLead(id: string): Promise<void>;
   getStyleMemorySettings(userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<StyleMemorySettingsView | null>;
   upsertStyleMemorySettings(args: {
@@ -654,6 +655,7 @@ export class DatabaseStorage implements IStorage {
         ilike(caseLeads.caseType, pattern),
         ilike(caseLeads.caseDescription, pattern),
         ilike(caseLeads.ipAddress, pattern),
+        ilike(caseLeads.status, pattern),
       )
       : undefined;
 
@@ -677,6 +679,18 @@ export class DatabaseStorage implements IStorage {
 
   async getCaseLeadById(id: string): Promise<CaseLead | undefined> {
     const [lead] = await db.select().from(caseLeads).where(eq(caseLeads.id, id)).limit(1);
+    return lead;
+  }
+
+  async updateCaseLeadStatus(id: string, status: CaseLeadStatus): Promise<CaseLead | undefined> {
+    const [lead] = await db
+      .update(caseLeads)
+      .set({
+        status,
+        statusUpdatedAt: new Date(),
+      })
+      .where(eq(caseLeads.id, id))
+      .returning();
     return lead;
   }
 
@@ -2141,6 +2155,8 @@ export async function ensureSearchIndexes(): Promise<void> {
           case_type text NOT NULL,
           case_description text NOT NULL,
           ip_address text NOT NULL,
+          status text NOT NULL DEFAULT 'open',
+          status_updated_at timestamp NOT NULL DEFAULT now(),
           created_at timestamp NOT NULL DEFAULT now()
         )
       `,
@@ -2289,6 +2305,9 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_visitor_sessions_last_message_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_visitor_sessions_last_message_at ON visitor_sessions (last_message_at)` },
     { label: "idx_case_leads_created_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_created_at ON case_leads (created_at)` },
     { label: "idx_case_leads_case_type", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_case_type ON case_leads (case_type)` },
+    { label: "idx_case_leads_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_status ON case_leads (status)` },
+    { label: "alter_case_leads_status", stmt: sql`ALTER TABLE case_leads ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'open'` },
+    { label: "alter_case_leads_status_updated_at", stmt: sql`ALTER TABLE case_leads ADD COLUMN IF NOT EXISTS status_updated_at timestamp NOT NULL DEFAULT now()` },
     { label: "alter_document_files_extracted_text_key", stmt: sql`ALTER TABLE document_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
     { label: "alter_admin_knowledge_files_extracted_text_key", stmt: sql`ALTER TABLE admin_knowledge_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
     { label: "alter_statute_document_files_extracted_text_key", stmt: sql`ALTER TABLE statute_document_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
