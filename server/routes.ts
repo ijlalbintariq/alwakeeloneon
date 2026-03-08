@@ -28,6 +28,7 @@ import { buildRagContext, deleteDocumentVectors, indexUserDocument, retrieveForQ
 import { isPdfOcrAvailable } from "./ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 import { deleteR2Object, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
+import { getEmailProviderStatus, sendResendTestEmail } from "./email";
 import {
   backfillStyleMemoryFromSavedDrafts,
   getOrCreateStyleMemorySettings,
@@ -4492,6 +4493,56 @@ RULES:
     } catch (err) {
       console.error("Error fetching cost analytics:", err);
       res.status(500).json({ message: "Failed to fetch cost analytics" });
+    }
+  });
+
+  app.get("/api/admin/email/status", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      res.json(getEmailProviderStatus());
+    } catch (err) {
+      console.error("Error fetching email provider status:", err);
+      res.status(500).json({ message: "Failed to fetch email provider status" });
+    }
+  });
+
+  app.post("/api/admin/email/test", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const actorUserId = getUserId(req);
+      if (!actorUserId) return res.status(401).json({ message: "Unauthorized" });
+
+      const providedTo = sanitizeInputText(req.body?.to, 160).toLowerCase();
+      const actor = await storage.getUserProfile(actorUserId);
+      const to = providedTo || String(actor?.email || "").toLowerCase();
+      if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+        return res.status(400).json({ message: "A valid recipient email is required." });
+      }
+
+      const sendResult = await sendResendTestEmail(to);
+      if (!sendResult.ok) {
+        return res.status(503).json({
+          message: sendResult.error || "Email provider is unavailable.",
+          status: getEmailProviderStatus(),
+        });
+      }
+
+      await logAuditEvent("admin.email.test", actorUserId, null, {
+        to,
+        provider: sendResult.provider,
+        messageId: sendResult.messageId || null,
+      });
+
+      res.json({
+        sent: true,
+        to,
+        provider: sendResult.provider,
+        messageId: sendResult.messageId || null,
+        status: getEmailProviderStatus(),
+      });
+    } catch (err) {
+      console.error("Error sending admin test email:", err);
+      res.status(500).json({ message: "Failed to send test email" });
     }
   });
 

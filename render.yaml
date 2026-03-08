@@ -28,6 +28,8 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
       - key: FROM_EMAIL
         sync: false
       - key: R2_ACCOUNT_ID

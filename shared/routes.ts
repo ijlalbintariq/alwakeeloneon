@@ -236,6 +236,28 @@ export const api = {
     },
   },
   admin: {
+    email: {
+      status: {
+        method: "GET" as const,
+        path: "/api/admin/email/status" as const,
+        responses: {
+          200: z.object({
+            provider: z.literal("resend"),
+            configured: z.boolean(),
+            hasApiKey: z.boolean(),
+            fromEmail: z.string(),
+            fromDomain: z.string().nullable(),
+          }),
+        },
+      },
+      test: {
+        method: "POST" as const,
+        path: "/api/admin/email/test" as const,
+        input: z.object({
+          to: z.string().email().optional(),
+        }).optional(),
+      },
+    },
     clientLeads: {
       list: {
         method: "GET" as const,
