@@ -204,8 +204,13 @@ app.use((req, res, next) => {
 
 (async () => {
   const { isPdfOcrAvailable } = await import("./ocr");
-  const ocrEnabled = await isPdfOcrAvailable();
-  console.log(`[Startup] PDF OCR ${ocrEnabled ? "enabled" : "disabled"} (requires tesseract + pdftoppm).`);
+  const { isCloudPdfOcrAvailable, getCloudPdfOcrProviderName } = await import("./cloud-ocr");
+  const localOcrEnabled = await isPdfOcrAvailable();
+  const cloudOcrEnabled = isCloudPdfOcrAvailable();
+  const cloudProvider = getCloudPdfOcrProviderName();
+  console.log(
+    `[Startup] PDF OCR local=${localOcrEnabled ? "enabled" : "disabled"} (requires tesseract + pdftoppm), cloud=${cloudOcrEnabled ? `enabled(${cloudProvider})` : "disabled"}.`,
+  );
 
   if (dbAvailable) {
     const { ensureSearchIndexes } = await import("./storage");
@@ -228,12 +233,24 @@ app.use((req, res, next) => {
 
   app.get("/health/ocr", async (_req, res) => {
     const { isPdfOcrAvailable } = await import("./ocr");
-    const enabled = await isPdfOcrAvailable();
+    const { isCloudPdfOcrAvailable, getCloudPdfOcrProviderName } = await import("./cloud-ocr");
+    const localEnabled = await isPdfOcrAvailable();
+    const cloudEnabled = isCloudPdfOcrAvailable();
+    const cloudProvider = getCloudPdfOcrProviderName();
+    const enabled = localEnabled || cloudEnabled;
     res.status(enabled ? 200 : 503).json({
       ok: enabled,
-      dependencies: {
-        tesseract: "required",
-        pdftoppm: "required",
+      local: {
+        ok: localEnabled,
+        dependencies: {
+          tesseract: "required",
+          pdftoppm: "required",
+        },
+      },
+      cloud: {
+        ok: cloudEnabled,
+        provider: cloudProvider,
+        apiKey: cloudEnabled ? "configured" : "missing",
       },
     });
   });
