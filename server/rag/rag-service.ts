@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { storage } from "../storage";
+import { dbAvailable, pool } from "../db";
 import { chunkTextByTokens } from "./chunker";
 import { embedTextLocal, embedTextsLocal } from "./embedding-local";
 import { cleanLegalDocumentText } from "./text-cleaner";
@@ -26,6 +27,14 @@ export type RAGIndexResult = {
 export type RAGRetrievalResult = {
   matches: RagMatch[];
   confidence: "high" | "medium" | "low";
+};
+
+export type RAGEnsureIndexResult = {
+  candidates: number;
+  alreadyIndexed: number;
+  attempted: number;
+  indexedNow: number;
+  failed: number;
 };
 
 const MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.5);
@@ -168,9 +177,89 @@ export async function retrieveForQuery(args: {
     const relaxedCutoff = Math.max(0.35, MIN_SCORE - 0.08);
     filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= relaxedCutoff).slice(0, Math.max(1, Math.min(2, TOP_K)));
   }
+  if (filtered.length === 0 && matches.length > 0) {
+    // Last-resort fallback: keep top semantic hits as low-confidence context instead of returning empty retrieval.
+    filtered = matches.slice(0, Math.max(1, Math.min(2, args.topK || TOP_K)));
+  }
 
   const confidence = resolveConfidence(filtered.map((m) => m.score));
   return { matches: filtered, confidence };
+}
+
+export async function ensureIndexedForUserDocuments(args: {
+  userId: string;
+  sourceDocumentIds?: number[];
+  maxToIndex?: number;
+}): Promise<RAGEnsureIndexResult> {
+  await ensureRagSchema();
+
+  const allDocs = await storage.getDocuments(args.userId);
+  const wantedIds = Array.isArray(args.sourceDocumentIds) && args.sourceDocumentIds.length > 0
+    ? new Set(args.sourceDocumentIds.filter((id) => Number.isInteger(id) && id > 0))
+    : null;
+  const candidates = wantedIds
+    ? allDocs.filter((doc) => wantedIds.has(doc.id))
+    : allDocs;
+
+  if (candidates.length === 0) {
+    return {
+      candidates: 0,
+      alreadyIndexed: 0,
+      attempted: 0,
+      indexedNow: 0,
+      failed: 0,
+    };
+  }
+
+  const indexedIds = new Set<number>();
+  if (dbAvailable && pool) {
+    try {
+      const ids = candidates.map((doc) => doc.id);
+      const rows = await pool.query(
+        `
+        SELECT source_document_id
+        FROM rag_documents
+        WHERE user_id = $1
+          AND status = 'indexed'
+          AND chunk_count > 0
+          AND source_document_id = ANY($2::int[])
+        `,
+        [args.userId, ids],
+      );
+      for (const row of rows.rows || []) {
+        const id = Number((row as { source_document_id?: number }).source_document_id);
+        if (Number.isInteger(id) && id > 0) indexedIds.add(id);
+      }
+    } catch {
+      // If relation is not ready yet or query fails, continue and try indexing directly.
+    }
+  }
+
+  const maxToIndex = Math.max(1, Number(args.maxToIndex || 3));
+  const pending = candidates.filter((doc) => !indexedIds.has(doc.id)).slice(0, maxToIndex);
+
+  let indexedNow = 0;
+  let failed = 0;
+  for (const doc of pending) {
+    try {
+      const result = await indexUserDocument(args.userId, doc.id);
+      if (result.chunks > 0) {
+        indexedNow += 1;
+      } else {
+        failed += 1;
+      }
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return {
+    candidates: candidates.length,
+    alreadyIndexed: indexedIds.size,
+    attempted: pending.length,
+    indexedNow,
+    failed,
+  };
 }
 
 export async function deleteDocumentVectors(sourceDocumentId: number, userId?: string): Promise<number> {

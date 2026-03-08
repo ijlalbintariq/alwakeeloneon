@@ -24,7 +24,7 @@ import { classifyDocumentMetadata, type DocumentMetadata } from "./document-clas
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
-import { buildRagContext, deleteDocumentVectors, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
+import { buildRagContext, deleteDocumentVectors, ensureIndexedForUserDocuments, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
 import { isPdfOcrAvailable } from "./ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 import { deleteR2Object, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
@@ -2516,15 +2516,38 @@ export async function registerRoutes(
         documentIds: z.array(z.number().int().positive()).optional(),
       }).parse(req.body);
 
-      const retrieval = await retrieveForQuery({
+      let retrieval = await retrieveForQuery({
         userId,
         query: parsed.query,
         documentIds: parsed.documentIds,
         topK: Number(process.env.RAG_TOP_K || 5),
       });
+      let lazyIndexSummary: {
+        candidates: number;
+        alreadyIndexed: number;
+        attempted: number;
+        indexedNow: number;
+        failed: number;
+      } | null = null;
+
+      if (retrieval.matches.length === 0) {
+        lazyIndexSummary = await ensureIndexedForUserDocuments({
+          userId,
+          sourceDocumentIds: parsed.documentIds,
+          maxToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_DOCS || 3),
+        });
+        if (lazyIndexSummary.indexedNow > 0) {
+          retrieval = await retrieveForQuery({
+            userId,
+            query: parsed.query,
+            documentIds: parsed.documentIds,
+            topK: Number(process.env.RAG_TOP_K || 5),
+          });
+        }
+      }
 
       const strictContext = String(process.env.RAG_FORCE_CONTEXT || "true").toLowerCase() !== "false";
-      if (retrieval.matches.length === 0 || (strictContext && retrieval.confidence === "low")) {
+      if (retrieval.matches.length === 0) {
         return res.json({
           answer: "I cannot answer reliably from the uploaded materials. Please upload a more relevant document or refine your question.",
           confidence: "low",
@@ -2532,7 +2555,8 @@ export async function registerRoutes(
           retrieval: {
             topK: Number(process.env.RAG_TOP_K || 5),
             matched: retrieval.matches.length,
-            threshold: Number(process.env.RAG_MIN_SCORE || 0.62),
+            threshold: Number(process.env.RAG_MIN_SCORE || 0.5),
+            lazyIndex: lazyIndexSummary,
           },
           model: { provider: "none", name: "none" },
         });
@@ -2551,6 +2575,10 @@ RAG POLICY (STRICT):
       const userPrompt = `User question:\n${parsed.query}\n\nRetrieved context:\n${ragContext}\n\nReturn a clear answer grounded only in this context.`;
       const result = await callStandardAISimple(systemPrompt, userPrompt, TOKEN_LIMITS.chat, { timeoutProfile: "search", temperature: 0.2 });
       await logUsageCost(userId, "chat", result.model, systemPrompt + userPrompt, result.text);
+      const lowConfidenceContext = strictContext && retrieval.confidence === "low";
+      const answerText = lowConfidenceContext
+        ? `Retrieved context confidence is low. Please verify key points against source text.\n\n${result.text}`
+        : result.text;
 
       const citations = retrieval.matches.slice(0, 5).map((m) => ({
         documentId: m.ragDocumentId,
@@ -2563,13 +2591,14 @@ RAG POLICY (STRICT):
 
       const provider = result.model === getGroqModelName() ? "groq" : "openrouter";
       res.json({
-        answer: result.text,
+        answer: answerText,
         confidence: retrieval.confidence,
         citations,
         retrieval: {
           topK: Number(process.env.RAG_TOP_K || 5),
           matched: retrieval.matches.length,
-          threshold: Number(process.env.RAG_MIN_SCORE || 0.62),
+          threshold: Number(process.env.RAG_MIN_SCORE || 0.5),
+          lazyIndex: lazyIndexSummary,
         },
         model: { provider, name: result.model },
       });
