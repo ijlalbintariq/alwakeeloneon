@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, Send, Loader2, MessageSquare, Book, List, ChevronRight, ChevronDown, X } from "lucide-react";
+import { ArrowLeft, Send, Loader2, MessageSquare, Book, List, ChevronRight, ChevronDown, X, FileText } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,13 @@ type StatuteDocFull = {
   content: string;
   category: string;
   createdAt: string;
+  file?: {
+    available: boolean;
+    mimeType: string | null;
+    originalFilename: string | null;
+    isPdf: boolean;
+    viewUrl: string | null;
+  };
 };
 
 type TocItem = {
@@ -66,6 +73,7 @@ export default function StatuteViewPage() {
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
   const [isTocLoading, setIsTocLoading] = useState(false);
   const [showToc, setShowToc] = useState(false);
+  const [viewMode, setViewMode] = useState<"text" | "pdf">("text");
   const [chatMessages, setChatMessages] = useState<AiMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -91,8 +99,9 @@ export default function StatuteViewPage() {
     try {
       const res = await fetch(`/api/statute-documents/${id}`);
       if (res.ok) {
-        const data = await res.json();
+        const data: StatuteDocFull = await res.json();
         setDoc(data);
+        setViewMode(data.file?.isPdf && data.file?.viewUrl ? "pdf" : "text");
         fetchToc(id);
       } else {
         setLocation("/statute-search");
@@ -262,7 +271,7 @@ export default function StatuteViewPage() {
     <div className="h-full flex flex-col fade-in">
       <div className="flex items-center justify-between gap-3 px-3 md:px-4 py-3 border-b border-slate-800 bg-[#0f172a]">
         <div className="flex items-center gap-3 min-w-0">
-          {!showToc && (
+          {viewMode === "text" && !showToc && (
             <Button size="icon" variant="ghost" onClick={() => setShowToc(true)} className="text-slate-400 flex-shrink-0 hidden md:inline-flex">
               <List size={18} />
             </Button>
@@ -277,10 +286,32 @@ export default function StatuteViewPage() {
             <p className="text-[9px] text-slate-500 uppercase tracking-wider">{doc.category}</p>
           </div>
         </div>
+        {doc.file?.isPdf && doc.file?.viewUrl && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              size="sm"
+              variant={viewMode === "pdf" ? "default" : "outline"}
+              className={viewMode === "pdf" ? "bg-amber-500 text-slate-950 hover:bg-amber-400" : "border-slate-700 text-slate-300"}
+              onClick={() => setViewMode("pdf")}
+            >
+              <FileText size={14} className="mr-1" />
+              PDF View
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === "text" ? "default" : "outline"}
+              className={viewMode === "text" ? "bg-amber-500 text-slate-950 hover:bg-amber-400" : "border-slate-700 text-slate-300"}
+              onClick={() => setViewMode("text")}
+            >
+              <List size={14} className="mr-1" />
+              Text View
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 flex flex-col xl:flex-row overflow-y-auto xl:overflow-hidden">
-        <div className={`${showToc ? "md:w-[280px] md:min-w-[280px]" : "w-0 min-w-0"} border-r border-slate-800 bg-[#0f172a] hidden md:flex flex-col overflow-hidden transition-all duration-300`}>
+        <div className={`${viewMode === "text" && showToc ? "md:w-[280px] md:min-w-[280px]" : "w-0 min-w-0"} border-r border-slate-800 bg-[#0f172a] hidden md:flex flex-col overflow-hidden transition-all duration-300`}>
           <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <List size={14} className="text-slate-500 flex-shrink-0" />
@@ -309,32 +340,42 @@ export default function StatuteViewPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-w-0">
-          <div className="max-w-4xl mx-auto px-3 sm:px-6 md:px-12 py-6 md:py-10">
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2" style={{ fontFamily: "'Libre Baskerville', serif" }}>
-              {doc.title.toUpperCase()}
-            </h1>
-            <p className="text-sm text-slate-500 mb-8">
-              {new Date(doc.createdAt).toLocaleDateString("en-CA")}
-            </p>
-
-            <div
-              ref={contentRef}
-              className="max-w-none text-slate-300 leading-relaxed"
-              style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", lineHeight: "1.9" }}
-            >
-              {renderDocContent(doc.content)}
+        <div className={`flex-1 min-w-0 ${viewMode === "pdf" ? "overflow-hidden" : "overflow-y-auto"}`}>
+          {viewMode === "pdf" && doc.file?.viewUrl ? (
+            <div className="h-full w-full bg-[#0b1220]">
+              <iframe
+                src={`${doc.file.viewUrl}#view=FitH&toolbar=1&navpanes=1`}
+                title={`PDF Viewer - ${doc.title}`}
+                className="h-full w-full border-0"
+              />
             </div>
+          ) : (
+            <div className="max-w-4xl mx-auto px-3 sm:px-6 md:px-12 py-6 md:py-10">
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2" style={{ fontFamily: "'Libre Baskerville', serif" }}>
+                {doc.title.toUpperCase()}
+              </h1>
+              <p className="text-sm text-slate-500 mb-8">
+                {new Date(doc.createdAt).toLocaleDateString("en-CA")}
+              </p>
 
-            <div className="mt-12 pt-6 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
-              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600">
-                Al Wakeelo Digital Chambers
-              </p>
-              <p className="text-[8px] text-slate-600">
-                {new Date(doc.createdAt).toLocaleDateString()}
-              </p>
+              <div
+                ref={contentRef}
+                className="max-w-none text-slate-300 leading-relaxed"
+                style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", lineHeight: "1.9" }}
+              >
+                {renderDocContent(doc.content)}
+              </div>
+
+              <div className="mt-12 pt-6 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
+                <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600">
+                  Al Wakeelo Digital Chambers
+                </p>
+                <p className="text-[8px] text-slate-600">
+                  {new Date(doc.createdAt).toLocaleDateString()}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-slate-800 bg-[#0f172a] flex flex-col max-h-[52vh] xl:max-h-none">
