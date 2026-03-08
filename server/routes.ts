@@ -760,6 +760,13 @@ function extractKeywords(text: string, limit: number = 6): string[] {
 type RawLawRef = { name?: string; section?: string; description?: string };
 type RawJudgmentRef = { citation?: string; court?: string; description?: string };
 
+function sanitizeReferenceText(value: string, maxLen: number): string {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLen);
+}
+
 async function verifyReferencesBlock(content: string): Promise<string> {
   const match = content.match(REFERENCES_BLOCK_REGEX);
   if (!match) return ensureAlWakeeloReferencesBlock(content);
@@ -775,35 +782,44 @@ async function verifyReferencesBlock(content: string): Promise<string> {
   const inputJudgments = Array.isArray(parsed.judgments) ? parsed.judgments.slice(0, 6) : [];
   const verifiedLaws: Array<{ name: string; section: string; description: string }> = [];
   const verifiedJudgments: Array<{ citation: string; court: string; description: string }> = [];
+  const seenLaws = new Set<string>();
+  const seenJudgments = new Set<string>();
 
   for (const law of inputLaws) {
-    const name = (law?.name || "").trim();
-    const section = (law?.section || "").trim();
+    const name = sanitizeReferenceText(law?.name || "", 180);
+    const section = sanitizeReferenceText(law?.section || "", 80);
+    const description = sanitizeReferenceText(law?.description || "", 320);
     if (!name && !section) continue;
 
     const query = `${name} ${section}`.trim();
     const matched = query ? await storage.searchStatutes(query, 3).catch(() => []) : [];
-    if (matched.length === 0) continue;
-
-    const primary = matched[0];
-    verifiedLaws.push({
-      name: primary.shortTitle || name || "Pakistani Statute",
-      section: section || primary.section || "",
-      description: (law?.description || "").trim() || primary.description || "",
-    });
+    const primary = matched.length > 0 ? matched[0] : null;
+    const normalizedLaw = {
+      name: sanitizeReferenceText(primary?.shortTitle || name || "Pakistani Statute", 180),
+      section: sanitizeReferenceText(section || primary?.section || "", 80),
+      description: sanitizeReferenceText(description || primary?.description || "", 320),
+    };
+    const lawKey = `${normalizedLaw.name.toLowerCase()}::${normalizedLaw.section.toLowerCase()}`;
+    if (seenLaws.has(lawKey)) continue;
+    seenLaws.add(lawKey);
+    verifiedLaws.push(normalizedLaw);
   }
 
   for (const judgment of inputJudgments) {
-    const citation = (judgment?.citation || "").trim();
+    const citation = sanitizeReferenceText(judgment?.citation || "", 140);
+    const court = sanitizeReferenceText(judgment?.court || "", 120);
+    const description = sanitizeReferenceText(judgment?.description || "", 320);
     if (!citation) continue;
     const matched = await storage.getCaseLawByCitation(citation).catch(() => undefined);
-    if (!matched) continue;
-
-    verifiedJudgments.push({
-      citation: matched.citation,
-      court: matched.court,
-      description: (judgment?.description || "").trim() || matched.summary || "",
-    });
+    const normalizedJudgment = {
+      citation: sanitizeReferenceText(matched?.citation || citation, 140),
+      court: sanitizeReferenceText(matched?.court || court || "Pakistani Courts", 120),
+      description: sanitizeReferenceText(description || matched?.summary || "", 320),
+    };
+    const judgmentKey = normalizedJudgment.citation.toLowerCase();
+    if (seenJudgments.has(judgmentKey)) continue;
+    seenJudgments.add(judgmentKey);
+    verifiedJudgments.push(normalizedJudgment);
   }
 
   const normalized = JSON.stringify({
