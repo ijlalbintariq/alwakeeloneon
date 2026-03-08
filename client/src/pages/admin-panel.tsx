@@ -6,7 +6,7 @@ import { Redirect } from "wouter";
 import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
   UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus,
-  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon
+  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,25 @@ type CostAnalytics = {
   }>;
   totalCost: string;
   totalTokens: number;
+};
+
+type SeoStatus = {
+  siteBase: string;
+  generatedAt: string;
+  healthyChecks: number;
+  totalChecks: number;
+  checks: Array<{
+    key: string;
+    label: string;
+    ok: boolean;
+    detail: string;
+  }>;
+  urls: {
+    home: string;
+    robots: string;
+    sitemap: string;
+  };
+  recommendations: string[];
 };
 
 type AdminUser = User & {
@@ -231,6 +250,11 @@ function PaginationStrip({
 function StatsSection() {
   const { data: stats, isLoading } = useQuery<SystemStats>({ queryKey: ["/api/admin/stats"] });
   const { data: costData, isLoading: costLoading } = useQuery<CostAnalytics>({ queryKey: ["/api/admin/cost-analytics"] });
+  const { data: seoStatus, isLoading: seoLoading } = useQuery<SeoStatus>({
+    queryKey: ["/api/admin/seo/status"],
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
 
   if (isLoading) {
     return (
@@ -268,6 +292,76 @@ function StatsSection() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      <div data-testid="seo-status-section">
+        <div className="flex items-center gap-3 mb-4">
+          <Globe size={16} className="text-amber-500" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            SEO Readiness
+          </span>
+        </div>
+        {seoLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="animate-spin text-amber-500" size={20} />
+          </div>
+        ) : (
+          <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-sm font-bold text-white">
+                    {(seoStatus?.healthyChecks || 0).toLocaleString()} / {(seoStatus?.totalChecks || 0).toLocaleString()} checks passed
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">{seoStatus?.siteBase || "N/A"}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <a
+                    href={seoStatus?.urls.robots || "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:border-amber-500 hover:text-amber-300"
+                  >
+                    robots.txt <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href={seoStatus?.urls.sitemap || "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:border-amber-500 hover:text-amber-300"
+                  >
+                    sitemap.xml <ExternalLink size={11} />
+                  </a>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {(seoStatus?.checks || []).map((check) => (
+                  <div key={check.key} className="rounded-xl border border-slate-800 bg-[#101a2b] px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[11px] font-bold text-slate-200">{check.label}</span>
+                      <Badge className={check.ok ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : "bg-red-500/20 text-red-300 border-red-500/30"}>
+                        {check.ok ? "Pass" : "Fix"}
+                      </Badge>
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">{check.detail}</p>
+                  </div>
+                ))}
+              </div>
+
+              {seoStatus?.recommendations && seoStatus.recommendations.length > 0 && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-widest font-black text-red-300 mb-1">
+                    Needs Attention
+                  </p>
+                  <p className="text-[11px] text-red-100 leading-relaxed">
+                    {seoStatus.recommendations.join(" • ")}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div data-testid="cost-analytics-section">
