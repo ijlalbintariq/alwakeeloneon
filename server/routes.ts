@@ -26,6 +26,7 @@ import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import { buildRagContext, deleteDocumentVectors, ensureIndexedForUserDocuments, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
 import { isPdfOcrAvailable } from "./ocr";
+import { isCloudPdfOcrAvailable, ocrPdfWithCloud } from "./cloud-ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 import { deleteR2Object, getR2ObjectBinary, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
 import { getEmailProviderStatus, sendResendTestEmail } from "./email";
@@ -4299,29 +4300,52 @@ RULES:
     file: Express.Multer.File,
     context: string,
   ): Promise<string> {
-    const ocrAvailable = await isPdfOcrAvailable();
-    if (!ocrAvailable) return "";
+    const requestedLanguage = process.env.TESSERACT_OCR_LANG || process.env.TESSERACT_LANG || "eng+urd";
+
+    const localOcrAvailable = await isPdfOcrAvailable();
+    if (localOcrAvailable) {
+      try {
+        const result = await extractPdfOcrGuarded(file.buffer, {
+          maxPages: Number(process.env.PDF_OCR_MAX_PAGES || 8),
+          dpi: Number(process.env.PDF_OCR_DPI || 220),
+          language: requestedLanguage,
+          timeoutMs: Number(process.env.PDF_OCR_TIMEOUT_MS || 120000),
+          context,
+        });
+        const text = stripNullBytes((result.text || "").trim());
+        if (text) {
+          console.log(
+            `[OCR][${context}] Extracted ${text.length} chars from ${file.originalname} using ${result.pageCount} page(s), language ${result.language}.`,
+          );
+          return text;
+        }
+      } catch (err) {
+        if (isExtractionQueueFullError(err)) {
+          throw err;
+        }
+        console.warn(`[OCR][${context}] Local OCR failed for ${file.originalname}: ${getErrorMessage(err)}`);
+      }
+    }
+
+    if (!isCloudPdfOcrAvailable()) {
+      return "";
+    }
 
     try {
-      const result = await extractPdfOcrGuarded(file.buffer, {
-        maxPages: Number(process.env.PDF_OCR_MAX_PAGES || 8),
-        dpi: Number(process.env.PDF_OCR_DPI || 220),
-        language: process.env.TESSERACT_OCR_LANG || process.env.TESSERACT_LANG || "eng+urd",
-        timeoutMs: Number(process.env.PDF_OCR_TIMEOUT_MS || 120000),
-        context,
+      const cloudResult = await ocrPdfWithCloud(file.buffer, {
+        filename: file.originalname,
+        language: requestedLanguage,
+        timeoutMs: Number(process.env.CLOUD_OCR_TIMEOUT_MS || process.env.PDF_OCR_TIMEOUT_MS || 120000),
       });
-      const text = stripNullBytes((result.text || "").trim());
+      const text = stripNullBytes((cloudResult.text || "").trim());
       if (text) {
         console.log(
-          `[OCR][${context}] Extracted ${text.length} chars from ${file.originalname} using ${result.pageCount} page(s), language ${result.language}.`,
+          `[OCR][${context}] Cloud OCR extracted ${text.length} chars from ${file.originalname} using ${cloudResult.pageCount} page(s), language ${cloudResult.language}.`,
         );
       }
       return text;
     } catch (err) {
-      if (isExtractionQueueFullError(err)) {
-        throw err;
-      }
-      console.warn(`[OCR][${context}] OCR failed for ${file.originalname}: ${getErrorMessage(err)}`);
+      console.warn(`[OCR][${context}] Cloud OCR failed for ${file.originalname}: ${getErrorMessage(err)}`);
       return "";
     }
   }
