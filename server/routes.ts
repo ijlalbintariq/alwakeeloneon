@@ -1371,6 +1371,20 @@ export async function registerRoutes(
     return res.status(403).json({ message: "Your account is suspended. Please contact support." });
   });
 
+  app.get("/api/public/platform-metrics", async (_req, res) => {
+    try {
+      const stats = await storage.getSystemStats();
+      res.set("Cache-Control", "public, max-age=15");
+      return res.json({
+        legalDocuments: Number(stats.totalKnowledge || 0),
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Error fetching public platform metrics:", err);
+      return res.status(500).json({ message: "Failed to fetch platform metrics." });
+    }
+  });
+
   app.post(api.publicChat.send.path, async (req, res) => {
     try {
       const visitorIp = getVisitorIpAddress(req);
