@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Scale, ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail, Star } from "lucide-react";
+import { Scale, ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -24,24 +24,6 @@ const CORE_FEATURES = [
   { icon: Paperclip, title: "Document Analysis", desc: "Upload legal files and get practical insights grounded in your documents.", bgClass: "bg-cyan-500/10", iconClass: "text-cyan-500" },
 ];
 
-const TESTIMONIALS = [
-  {
-    quote: "We reduced first-response time for client queries dramatically. The chamber now handles intake with more confidence.",
-    name: "Advocate, Lahore",
-    role: "Civil Litigation Practice",
-  },
-  {
-    quote: "Judgment and statute lookups are faster, and draft quality is much better before lawyer review.",
-    name: "Legal Associate, Islamabad",
-    role: "Corporate & Tax Desk",
-  },
-  {
-    quote: "Our team uses Al Wakeelo daily for research prep and draft structure. It saves meaningful billable hours.",
-    name: "Partner, Karachi",
-    role: "Chamber Operations",
-  },
-];
-
 const FAQ_ITEMS = [
   {
     q: "Can I use Al Wakeelo for Pakistani case law research?",
@@ -53,7 +35,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "How can I contact the chamber for consultation?",
-    a: "You can submit your case through the intake flow, email support@alwakeelo.com, or call 00923096875797.",
+    a: "You can use Contact Chamber or Submit Case from the consultation flows to connect with the chamber.",
   },
   {
     q: "Is my information confidential?",
@@ -293,31 +275,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-16 md:py-20 px-6 bg-[#101a2b] border-y border-slate-800/60">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">Social Proof</p>
-            <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Trusted by Legal Professionals
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {TESTIMONIALS.map((item, i) => (
-              <div key={`${item.name}-${i}`} className="rounded-2xl border border-slate-800 bg-[#1a2437] p-6">
-                <div className="flex items-center gap-1 mb-3 text-amber-400">
-                  {Array.from({ length: 5 }).map((_, idx) => (
-                    <Star key={idx} size={14} fill="currentColor" />
-                  ))}
-                </div>
-                <p className="text-sm text-slate-300 leading-relaxed mb-4">"{item.quote}"</p>
-                <p className="text-sm font-bold text-white">{item.name}</p>
-                <p className="text-xs text-slate-500">{item.role}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section id="pricing" className="py-20 md:py-28 px-6 bg-[#131c2e]">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
@@ -437,7 +394,7 @@ export default function LandingPage() {
               {user ? "Go to Dashboard" : "Start Free"} <ArrowRight size={16} />
             </a>
             <a
-              href="mailto:support@alwakeelo.com"
+              href="mailto:support@alwakeelo.com?subject=Legal%20Consultation"
               className="px-8 py-3.5 border border-slate-700 text-slate-200 rounded-2xl text-sm font-bold hover:border-amber-500 hover:text-amber-300 transition-all inline-flex items-center gap-2"
             >
               <Mail size={15} /> Email Chamber
@@ -449,9 +406,6 @@ export default function LandingPage() {
               <PhoneCall size={15} /> Call Chamber
             </a>
           </div>
-          <p className="mt-4 text-xs text-slate-500">
-            support@alwakeelo.com · 00923096875797
-          </p>
         </div>
       </section>
 
