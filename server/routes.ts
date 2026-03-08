@@ -4472,6 +4472,128 @@ RULES:
     }
   });
 
+  app.get("/api/admin/seo/status", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const siteBase = normalizeSiteBaseUrl(req);
+      const parsedBase = new URL(siteBase);
+      const hostname = parsedBase.hostname.toLowerCase();
+      const isHttps = parsedBase.protocol === "https:";
+      const isCustomDomain = !hostname.endsWith("onrender.com");
+
+      const probe = async (url: string): Promise<{ ok: boolean; status: number; body: string; error?: string }> => {
+        try {
+          const response = await fetch(url, {
+            method: "GET",
+            redirect: "follow",
+            signal: AbortSignal.timeout(7000),
+          });
+          const body = await response.text();
+          return { ok: response.ok, status: response.status, body };
+        } catch (err) {
+          return {
+            ok: false,
+            status: 0,
+            body: "",
+            error: getErrorMessage(err),
+          };
+        }
+      };
+
+      const robotsUrl = `${siteBase}/robots.txt`;
+      const sitemapUrl = `${siteBase}/sitemap.xml`;
+      const homeUrl = `${siteBase}/`;
+
+      const [robotsProbe, sitemapProbe, homeProbe] = await Promise.all([
+        probe(robotsUrl),
+        probe(sitemapUrl),
+        probe(homeUrl),
+      ]);
+
+      const robotsText = robotsProbe.body || "";
+      const sitemapText = sitemapProbe.body || "";
+      const homeHtml = homeProbe.body || "";
+
+      const sitemapMentionedInRobots = /sitemap:\s*https?:\/\/\S+/i.test(robotsText);
+      const sitemapLooksValid = sitemapProbe.ok && /<urlset[\s>]/i.test(sitemapText);
+      const noindexOnHome = /<meta[^>]+name=["']robots["'][^>]+content=["'][^"']*noindex/i.test(homeHtml);
+      const canonicalMatch = homeHtml.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
+      const canonicalUrl = canonicalMatch?.[1] || null;
+      let canonicalHost = "";
+      if (canonicalUrl) {
+        try {
+          canonicalHost = new URL(canonicalUrl).hostname.toLowerCase();
+        } catch {
+          canonicalHost = "";
+        }
+      }
+
+      const checks = [
+        {
+          key: "https",
+          label: "HTTPS enabled",
+          ok: isHttps,
+          detail: siteBase,
+        },
+        {
+          key: "custom-domain",
+          label: "Custom domain active",
+          ok: isCustomDomain,
+          detail: hostname,
+        },
+        {
+          key: "robots",
+          label: "robots.txt reachable",
+          ok: robotsProbe.ok,
+          detail: robotsProbe.ok ? `HTTP ${robotsProbe.status}` : (robotsProbe.error || `HTTP ${robotsProbe.status}`),
+        },
+        {
+          key: "robots-sitemap",
+          label: "robots includes sitemap",
+          ok: robotsProbe.ok && sitemapMentionedInRobots,
+          detail: sitemapMentionedInRobots ? "Sitemap directive found" : "Sitemap directive missing",
+        },
+        {
+          key: "sitemap",
+          label: "sitemap.xml valid",
+          ok: sitemapLooksValid,
+          detail: sitemapProbe.ok ? `HTTP ${sitemapProbe.status}` : (sitemapProbe.error || `HTTP ${sitemapProbe.status}`),
+        },
+        {
+          key: "home-indexable",
+          label: "Homepage indexable",
+          ok: homeProbe.ok && !noindexOnHome,
+          detail: noindexOnHome ? "noindex detected on homepage" : `HTTP ${homeProbe.status}`,
+        },
+        {
+          key: "canonical",
+          label: "Canonical points to active domain",
+          ok: !!canonicalUrl && canonicalHost === hostname,
+          detail: canonicalUrl || "Canonical tag not found",
+        },
+      ];
+
+      const failed = checks.filter((c) => !c.ok).map((c) => c.label);
+
+      return res.json({
+        siteBase,
+        generatedAt: new Date().toISOString(),
+        healthyChecks: checks.filter((c) => c.ok).length,
+        totalChecks: checks.length,
+        checks,
+        urls: {
+          home: homeUrl,
+          robots: robotsUrl,
+          sitemap: sitemapUrl,
+        },
+        recommendations: failed,
+      });
+    } catch (err) {
+      console.error("Error fetching SEO status:", err);
+      return res.status(500).json({ message: "Failed to fetch SEO status" });
+    }
+  });
+
   app.get("/api/admin/extraction-queue", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {

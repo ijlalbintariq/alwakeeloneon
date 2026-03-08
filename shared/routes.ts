@@ -236,6 +236,32 @@ export const api = {
     },
   },
   admin: {
+    seo: {
+      status: {
+        method: "GET" as const,
+        path: "/api/admin/seo/status" as const,
+        responses: {
+          200: z.object({
+            siteBase: z.string().url(),
+            generatedAt: z.string(),
+            healthyChecks: z.number().int().nonnegative(),
+            totalChecks: z.number().int().positive(),
+            checks: z.array(z.object({
+              key: z.string(),
+              label: z.string(),
+              ok: z.boolean(),
+              detail: z.string(),
+            })),
+            urls: z.object({
+              home: z.string().url(),
+              robots: z.string().url(),
+              sitemap: z.string().url(),
+            }),
+            recommendations: z.array(z.string()),
+          }),
+        },
+      },
+    },
     email: {
       status: {
         method: "GET" as const,
