@@ -27,7 +27,7 @@ import { citationExtractor } from "./services/citation-extractor";
 import { buildRagContext, deleteDocumentVectors, ensureIndexedForUserDocuments, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
 import { isPdfOcrAvailable } from "./ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
-import { deleteR2Object, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
+import { deleteR2Object, getR2ObjectBinary, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
 import { getEmailProviderStatus, sendResendTestEmail } from "./email";
 import {
   backfillStyleMemoryFromSavedDrafts,
@@ -2718,6 +2718,40 @@ RAG POLICY (STRICT):
     }
   });
 
+  app.get("/api/statute-documents/:id/file", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const id = parseInt(String(req.params.id));
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid document ID" });
+      const fileMeta = await storage.getStatuteDocumentFile(id);
+      if (!fileMeta) return res.status(404).json({ message: "File not found" });
+
+      if (fileMeta.provider === "r2" && fileMeta.objectKey) {
+        const binary = await getR2ObjectBinary(fileMeta.objectKey);
+        if (!binary) return res.status(404).json({ message: "File not found" });
+        const contentType = binary.contentType || fileMeta.mimeType || "application/octet-stream";
+        const safeFilename = (fileMeta.originalFilename || `statute-${id}`).replace(/[^a-zA-Z0-9._-]+/g, "_");
+        // Allow same-origin PDF embedding for in-app statute viewer mode.
+        res.setHeader("X-Frame-Options", "SAMEORIGIN");
+        res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Content-Disposition", `inline; filename="${safeFilename}"`);
+        res.setHeader("Cache-Control", "private, max-age=3600");
+        return res.send(binary.buffer);
+      }
+
+      if (fileMeta.publicUrl) {
+        return res.redirect(fileMeta.publicUrl);
+      }
+
+      return res.status(404).json({ message: "File not found" });
+    } catch (err) {
+      console.error("Error fetching statute file:", err);
+      res.status(500).json({ message: "Failed to fetch statute file" });
+    }
+  });
+
   app.get("/api/statute-documents/:id", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -2728,9 +2762,27 @@ RAG POLICY (STRICT):
       if (!doc) return res.status(404).json({ message: "Document not found" });
       const fileMeta = await storage.getStatuteDocumentFile(id);
       const fullContent = fileMeta?.extractedTextKey ? await getR2ObjectText(fileMeta.extractedTextKey) : null;
+      const lowerName = (fileMeta?.originalFilename || doc.filename || "").toLowerCase();
+      const mime = (fileMeta?.mimeType || "").toLowerCase();
+      const isPdf = mime.includes("pdf") || lowerName.endsWith(".pdf");
       res.json({
         ...doc,
         content: fullContent || doc.content,
+        file: fileMeta
+          ? {
+              available: true,
+              mimeType: fileMeta.mimeType || null,
+              originalFilename: fileMeta.originalFilename || null,
+              isPdf,
+              viewUrl: `/api/statute-documents/${id}/file`,
+            }
+          : {
+              available: false,
+              mimeType: null,
+              originalFilename: null,
+              isPdf: false,
+              viewUrl: null,
+            },
       });
     } catch (err) {
       console.error("Error fetching statute document:", err);

@@ -242,3 +242,26 @@ export async function getR2ObjectText(objectKey: string): Promise<string | null>
     return null;
   }
 }
+
+export async function getR2ObjectBinary(objectKey: string): Promise<{ buffer: Buffer; contentType: string | null } | null> {
+  if (!isR2StorageEnabled() || !objectKey) return null;
+  try {
+    const res = await signedR2Request({
+      method: "GET",
+      objectKey,
+    });
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      const reason = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status} ${res.statusText} ${reason}`.trim());
+    }
+    const arr = await res.arrayBuffer();
+    return {
+      buffer: Buffer.from(arr),
+      contentType: res.headers.get("content-type"),
+    };
+  } catch (err: any) {
+    console.warn("[R2] Failed to fetch object binary:", objectKey, err?.message || err);
+    return null;
+  }
+}
