@@ -172,6 +172,7 @@ Alwakeelo/
 | `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth client secret |
 | `MOONSHOT_API_KEY` | Optional | Kimi K2.5 (Apex models) via Moonshot API |
 | `RESEND_API_KEY` | Optional | Resend email service for password resets |
+| `RESEND_FROM_EMAIL` | Optional | Preferred sender address for Resend emails |
 | `FROM_EMAIL` | Optional | Sender address for reset emails |
 
 ---
