@@ -10,6 +10,7 @@ import { recordSecurityEvent } from "./security-monitoring";
 const app = express();
 const httpServer = createServer(app);
 app.disable("x-powered-by");
+app.set("trust proxy", 1);
 
 declare module "http" {
   interface IncomingMessage {
@@ -27,6 +28,23 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));
+
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV !== "production") return next();
+
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  const isHttps = req.secure || forwardedProto === "https";
+
+  if (isHttps) return next();
+  if (req.path.startsWith("/health")) return next();
+
+  const host = req.get("host");
+  if (!host) return next();
+  return res.redirect(308, `https://${host}${req.originalUrl}`);
+});
 
 const SAFE_HTTP_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
