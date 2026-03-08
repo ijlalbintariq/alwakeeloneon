@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, FolderOpen, Folder, PlusCircle, MoreVertical, Settings, User as UserIcon } from "lucide-react";
+import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, FolderOpen, Folder, PlusCircle, MoreVertical, User as UserIcon } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { parseReferences, ReferenceCards } from "@/components/reference-cards";
-import { useAuth } from "@/hooks/use-auth";
 
 interface ApexModelInfo {
   id: string;
@@ -76,7 +75,6 @@ interface RAGCitation {
 }
 
 export function ChatModule({ type, title, initialMessage }: { type: string; title?: string; initialMessage?: string }) {
-  const { user } = useAuth();
   const isAlWakeelo = type === "al-wakeelo";
   const stored = chatStateStore[type];
   const [messages, setMessages] = useState<ChatMessage[]>(stored?.messages || []);
@@ -1020,23 +1018,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               )}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-amber-500/10">
-              <div className="flex items-center gap-3 px-2">
-                <div className="h-10 w-10 rounded-full bg-amber-500/15 border border-amber-500/25 flex items-center justify-center overflow-hidden">
-                  {user?.profileImageUrl ? (
-                    <img src={user.profileImageUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <UserIcon size={16} className="text-amber-400" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-slate-500 uppercase tracking-[0.18em] font-bold">Account</p>
-                </div>
-                <a href="/settings" className="text-slate-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 rounded-md" data-testid="button-open-settings">
-                  <Settings size={16} />
-                </a>
-              </div>
-            </div>
+            <div className="mt-4 pt-4 border-t border-amber-500/10" />
           </div>
         </aside>
 
