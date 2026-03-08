@@ -66,29 +66,87 @@ function parseToc(content: string): TocEntry[] {
 }
 
 export function parseReferences(content: string): { cleanContent: string; references: ParsedReferences | null } {
-  const refPattern = /```references\s*\n?([\s\S]*?)\n?```/g;
-  let lastMatch: RegExpExecArray | null = null;
+  const refFencedPattern = /```references\s*\n?([\s\S]*?)\n?```/gi;
+  const genericFencedPattern = /```(?:json)?\s*\n?([\s\S]*?)\n?```/gi;
+  const parseJsonLoose = (raw: string): any | null => {
+    const text = raw.trim();
+    if (!text) return null;
+    try {
+      return JSON.parse(text);
+    } catch {
+      try {
+        return JSON.parse(text.replace(/,\s*([}\]])/g, "$1"));
+      } catch {
+        return null;
+      }
+    }
+  };
+  const normalizeLaws = (input: any): LawReference[] =>
+    (Array.isArray(input) ? input : [])
+      .map((l: any) => ({
+        name: String(l?.name || "").trim(),
+        section: String(l?.section || "").trim(),
+        description: String(l?.description || "").trim(),
+      }))
+      .filter((l: LawReference) => l.name.length > 0 || l.section.length > 0)
+      .slice(0, 10);
+  const normalizeJudgments = (input: any): JudgmentReference[] =>
+    (Array.isArray(input) ? input : [])
+      .map((j: any) => ({
+        citation: String(j?.citation || "").trim(),
+        court: String(j?.court || "").trim(),
+        description: String(j?.description || "").trim(),
+      }))
+      .filter((j: JudgmentReference) => j.citation.length > 0)
+      .slice(0, 10);
+
+  let chosenIndex = -1;
+  let chosenLength = 0;
+  let chosenPayload: any = null;
+  const tryCapture = (raw: string, index: number, fullLength: number) => {
+    const parsed = parseJsonLoose(raw);
+    if (!parsed || (!Array.isArray(parsed.laws) && !Array.isArray(parsed.judgments))) return;
+    chosenPayload = parsed;
+    chosenIndex = index;
+    chosenLength = fullLength;
+  };
+
   let match: RegExpExecArray | null;
-  while ((match = refPattern.exec(content)) !== null) {
-    lastMatch = match;
+  while ((match = refFencedPattern.exec(content)) !== null) {
+    tryCapture(match[1] || "", match.index, match[0].length);
   }
-  if (!lastMatch) {
+
+  if (!chosenPayload) {
+    while ((match = genericFencedPattern.exec(content)) !== null) {
+      tryCapture(match[1] || "", match.index, match[0].length);
+    }
+  }
+
+  if (!chosenPayload) {
+    const jsonTailPattern = /(\{[\s\S]*?"laws"\s*:\s*\[[\s\S]*?\]\s*,\s*"judgments"\s*:\s*\[[\s\S]*?\][\s\S]*?\})\s*$/i;
+    const tailMatch = content.match(jsonTailPattern);
+    if (tailMatch && typeof tailMatch.index === "number") {
+      tryCapture(tailMatch[1], tailMatch.index, tailMatch[1].length);
+    }
+  }
+
+  if (!chosenPayload) {
     return { cleanContent: content, references: null };
   }
-  const cleanContent = content.slice(0, lastMatch.index).trimEnd() +
-    content.slice(lastMatch.index + lastMatch[0].length).trimEnd();
-  try {
-    const jsonStr = lastMatch[1].trim();
-    const parsed = JSON.parse(jsonStr);
-    const refs: ParsedReferences = {
-      laws: Array.isArray(parsed.laws) ? parsed.laws.filter((l: any) => l.name) : [],
-      judgments: Array.isArray(parsed.judgments) ? parsed.judgments.filter((j: any) => j.citation) : [],
-    };
-    if (refs.laws.length === 0 && refs.judgments.length === 0) return { cleanContent, references: null };
-    return { cleanContent, references: refs };
-  } catch {
-    return { cleanContent, references: null };
+
+  const refs: ParsedReferences = {
+    laws: normalizeLaws(chosenPayload.laws),
+    judgments: normalizeJudgments(chosenPayload.judgments),
+  };
+  if (refs.laws.length === 0 && refs.judgments.length === 0) {
+    return { cleanContent: content, references: null };
   }
+
+  const cleanContent = chosenIndex >= 0
+    ? `${content.slice(0, chosenIndex).trimEnd()}${content.slice(chosenIndex + chosenLength).trimEnd()}`
+    : content;
+
+  return { cleanContent, references: refs };
 }
 
 function LawDetailPopup({ law, onClose }: { law: LawReference; onClose: () => void }) {

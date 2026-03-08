@@ -573,6 +573,34 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const latestParsed = latestAssistantMessage ? parseReferences(latestAssistantMessage.content) : null;
   const latestRefs = latestParsed?.references ?? null;
   const latestRagCitations = latestAssistantMessage?.ragCitations || [];
+  const latestStatuteFallback = useMemo(() => {
+    const statuteLike = /(?:\bact\b|\bord(?:inance)?\b|\bcode\b|\brules?\b|\bconstitution\b|\bsection\b)/i;
+    return latestRagCitations
+      .filter((c) => statuteLike.test(c.title || c.quote || ""))
+      .slice(0, 8)
+      .map((c) => ({
+        name: c.title || "Pakistani Statute",
+        section: `Chunk ${c.chunkIndex}`,
+        description: c.quote || "",
+      }));
+  }, [latestRagCitations]);
+  const latestStatutes = (latestRefs?.laws?.length || 0) > 0 ? latestRefs!.laws.slice(0, 8) : latestStatuteFallback;
+  const aiConfidence = useMemo(() => {
+    if (latestRagCitations.length > 0) {
+      const scores = latestRagCitations.map((c) => Number(c.score) || 0).filter((n) => n > 0);
+      const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0.45;
+      const pct = Math.max(35, Math.min(98, Math.round(avg * 100)));
+      const level = pct >= 80 ? "High" : pct >= 60 ? "Medium" : "Low";
+      return { pct, level, basis: "RAG retrieval score from indexed documents." };
+    }
+
+    const lawCount = latestRefs?.laws?.length || 0;
+    const judgmentCount = latestRefs?.judgments?.length || 0;
+    const total = lawCount + judgmentCount;
+    const pct = total === 0 ? 28 : Math.max(45, Math.min(90, 50 + total * 8));
+    const level = pct >= 80 ? "High" : pct >= 60 ? "Medium" : "Low";
+    return { pct, level, basis: "Current response references (laws + judgments)." };
+  }, [latestRagCitations, latestRefs]);
 
   if (!isAlWakeelo) {
     return (
@@ -1303,8 +1331,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 <Scale size={13} /> Relevant Statutes
               </h3>
               <div className="space-y-2">
-                {(latestRefs?.laws?.length || 0) > 0 ? (
-                  latestRefs!.laws.slice(0, 8).map((law, idx) => (
+                {latestStatutes.length > 0 ? (
+                  latestStatutes.map((law, idx) => (
                     <div key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-default">
                       <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
                       <div>
@@ -1327,9 +1355,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <div className="mt-auto p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
               <p className="text-[10px] font-bold text-amber-400 uppercase mb-2">AI Confidence</p>
               <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-                <div className="bg-amber-400 h-full w-[94%]" />
+                <div className="bg-amber-400 h-full transition-all duration-300" style={{ width: `${aiConfidence.pct}%` }} />
               </div>
-              <p className="text-[10px] text-slate-500 mt-2">Based on Pakistan Statutes & Case Law knowledge base.</p>
+              <p className="text-[10px] text-slate-500 mt-2">{aiConfidence.level} ({aiConfidence.pct}%) · {aiConfidence.basis}</p>
             </div>
           </div>
         </aside>
