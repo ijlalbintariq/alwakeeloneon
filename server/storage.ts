@@ -1595,25 +1595,67 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [userCount] = await db.select({ total: count() }).from(users);
-    const [threadCount] = await db.select({ total: count() }).from(threads);
-    const [messageCount] = await db.select({ total: count() }).from(messages);
-    const [documentCount] = await db.select({ total: count() }).from(documents);
-    const githubCount = await this.getGithubKnowledgeCount();
-    const [adminKnowledgeCount] = await db.select({ total: count() }).from(adminKnowledge);
-    const [cacheCount] = await db.select({ total: count() }).from(queryCache);
+    const safeCount = async (table: unknown, label: string): Promise<number> => {
+      try {
+        const [row] = await db.select({ total: count() }).from(table as any);
+        return Number(row?.total || 0);
+      } catch (err: any) {
+        if (String(err?.code || "") === "42P01") {
+          console.warn(`[Stats] Missing relation for ${label}; defaulting count to 0.`);
+          return 0;
+        }
+        throw err;
+      }
+    };
+
+    const safeGithubCount = async (): Promise<number> => {
+      try {
+        return await this.getGithubKnowledgeCount();
+      } catch (err: any) {
+        if (String(err?.code || "") === "42P01") {
+          console.warn("[Stats] Missing relation for github_knowledge; defaulting count to 0.");
+          return 0;
+        }
+        throw err;
+      }
+    };
+
+    const totalUsers = await safeCount(users, "users");
+    const totalThreads = await safeCount(threads, "threads");
+    const totalMessages = await safeCount(messages, "messages");
+    const totalDocuments = await safeCount(documents, "documents");
+    const totalGithubKnowledge = await safeGithubCount();
+    const totalAdminKnowledge = await safeCount(adminKnowledge, "admin_knowledge");
+    const totalCaseLaw = await safeCount(caseLaw, "case_law");
+    const totalStatuteDocuments = await safeCount(statuteDocuments, "statute_documents");
+    const totalCitationJudgments = await safeCount(judgments, "judgments");
+    const totalCacheEntries = await safeCount(queryCache, "query_cache");
     const [usageCount] = await db.select({ total: count() })
       .from(usageTracking)
       .where(gte(usageTracking.createdAt, startOfMonth));
 
+    const totalKnowledge =
+      totalGithubKnowledge +
+      totalAdminKnowledge +
+      totalCaseLaw +
+      totalStatuteDocuments +
+      totalCitationJudgments;
+
     return {
-      totalUsers: userCount?.total || 0,
-      totalThreads: threadCount?.total || 0,
-      totalMessages: messageCount?.total || 0,
-      totalDocuments: documentCount?.total || 0,
-      totalKnowledge: githubCount + (adminKnowledgeCount?.total || 0),
-      totalCacheEntries: cacheCount?.total || 0,
+      totalUsers,
+      totalThreads,
+      totalMessages,
+      totalDocuments,
+      totalKnowledge,
+      totalCacheEntries,
       totalUsageThisMonth: usageCount?.total || 0,
+      knowledgeBreakdown: {
+        github: totalGithubKnowledge,
+        adminKnowledge: totalAdminKnowledge,
+        caseLaw: totalCaseLaw,
+        statuteDocuments: totalStatuteDocuments,
+        citationJudgments: totalCitationJudgments,
+      },
     };
   }
 
