@@ -59,15 +59,27 @@ export function serveStatic(app: Express) {
   // fall through to index.html if the file doesn't exist
   app.use("/{*path}", (req, res) => {
     const pathname = req.path || "/";
-    const wantsHtml = (req.get("accept") || "").includes("text/html");
-    if (!wantsHtml) {
+    const method = (req.method || "GET").toUpperCase();
+    if (method !== "GET" && method !== "HEAD") {
       return res.status(404).end();
     }
 
-    if (isKnownSpaRoute(pathname)) {
+    if (pathname.startsWith("/api/")) {
+      return res.status(404).end();
+    }
+
+    const normalizedPath = pathname !== "/"
+      ? pathname.replace(/\/+$/, "") || "/"
+      : "/";
+
+    if (isKnownSpaRoute(normalizedPath)) {
       return res.sendFile(path.resolve(distPath, "index.html"));
     }
 
-    return res.status(404).sendFile(path.resolve(distPath, "index.html"));
+    const wantsHtml = (req.get("accept") || "").includes("text/html");
+    if (wantsHtml) {
+      return res.status(404).sendFile(path.resolve(distPath, "index.html"));
+    }
+    return res.status(404).end();
   });
 }
