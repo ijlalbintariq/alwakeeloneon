@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Scale, ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail } from "lucide-react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 
 function FeatureCard({ icon: Icon, title, desc, bgClass, iconClass }: { icon: any; title: string; desc: string; bgClass: string; iconClass: string }) {
@@ -47,8 +48,15 @@ export default function LandingPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { data: platformMetrics } = useQuery<{ legalDocuments: number; updatedAt: string }>({
+    queryKey: ["/api/public/platform-metrics"],
+    refetchInterval: 30000,
+    staleTime: 10000,
+  });
 
   const ctaTarget = user ? "/dashboard" : "/auth";
+  const legalDocumentsCount = Math.max(0, Number(platformMetrics?.legalDocuments || 0));
+  const legalDocumentsLabel = new Intl.NumberFormat("en-US").format(legalDocumentsCount);
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -364,7 +372,7 @@ export default function LandingPage() {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
             {[
-              { num: "350+", label: "Legal Documents" },
+              { num: legalDocumentsLabel, label: "Legal Documents" },
               { num: "AI", label: "Powered Analysis" },
               { num: "24/7", label: "Available" },
               { num: "PKR", label: "Local Currency" },

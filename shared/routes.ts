@@ -185,6 +185,18 @@ export const api = {
       path: '/api/rag/documents/:documentId/vectors' as const,
     },
   },
+  public: {
+    platformMetrics: {
+      method: "GET" as const,
+      path: "/api/public/platform-metrics" as const,
+      responses: {
+        200: z.object({
+          legalDocuments: z.number().int().nonnegative(),
+          updatedAt: z.string(),
+        }),
+      },
+    },
+  },
   publicChat: {
     send: {
       method: "POST" as const,
