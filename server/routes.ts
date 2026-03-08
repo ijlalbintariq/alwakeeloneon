@@ -78,6 +78,8 @@ const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").
 const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
 const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_TOKEN_BUDGET || 900));
 const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 1800));
+const ATTACHMENT_PROMPT_TOKEN_BUDGET = Math.max(500, Number(process.env.ATTACHMENT_PROMPT_TOKEN_BUDGET || 2200));
+const ATTACHMENT_FILE_TOKEN_BUDGET = Math.max(150, Number(process.env.ATTACHMENT_FILE_TOKEN_BUDGET || 800));
 const LEGAL_DRAFT_DOC_PREFIX = "Legal Draft:";
 const CONTRACT_DRAFT_DOC_PREFIX = "Contract Draft:";
 const PUBLIC_CHAT_MESSAGE_LIMIT = Math.max(1, Number(process.env.PUBLIC_CHAT_MESSAGE_LIMIT || 10));
@@ -3507,6 +3509,8 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
 
       const files = req.files as Express.Multer.File[] | undefined;
       let attachmentContext = "";
+      let extractedAttachmentCount = 0;
+      const failedAttachments: string[] = [];
       const allowedMimes = ["text/plain", "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
       if (files && files.length > 0) {
         const invalidFiles = files.filter(f => !allowedMimes.includes(f.mimetype));
@@ -3540,25 +3544,46 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
             return res.status(400).json({ message: `${file.originalname}: ${malwareCheck.reason || "malware detected"}` });
           }
           try {
+            let extractedText = "";
             if (file.mimetype === "text/plain") {
-              attachmentContext += `\n\n--- Attached File: ${file.originalname} ---\n${stripNullBytes(file.buffer.toString("utf-8"))}\n--- End of File ---`;
+              extractedText = stripNullBytes(file.buffer.toString("utf-8"));
             } else if (file.mimetype === "application/pdf") {
               let parsedText = await extractPdfTextSafe(file.buffer, "chat-attachment");
               if (!parsedText.trim()) {
                 parsedText = await extractPdfTextWithOcrFallback(file, "chat-attachment");
               }
-              attachmentContext += `\n\n--- Attached PDF: ${file.originalname} ---\n${stripNullBytes(parsedText)}\n--- End of PDF ---`;
+              extractedText = stripNullBytes(parsedText);
             } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
               const parsedText = await extractDocxTextSafe(file.buffer, "chat-attachment");
-              attachmentContext += `\n\n--- Attached Document: ${file.originalname} ---\n${stripNullBytes(parsedText)}\n--- End of Document ---`;
+              extractedText = stripNullBytes(parsedText);
             }
+
+            if (!extractedText.trim()) {
+              failedAttachments.push(file.originalname);
+              continue;
+            }
+
+            const boundedFileText = trimTextToTokenBudget(extractedText, ATTACHMENT_FILE_TOKEN_BUDGET);
+            const label = file.mimetype === "application/pdf"
+              ? "Attached PDF"
+              : file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                ? "Attached Document"
+                : "Attached File";
+            attachmentContext += `\n\n--- ${label}: ${file.originalname} ---\n${boundedFileText}\n--- End ---`;
+            extractedAttachmentCount += 1;
           } catch (fileErr) {
             if (isExtractionQueueFullError(fileErr)) {
               return sendExtractionBusy(res);
             }
             console.error(`Error extracting text from ${file.originalname}:`, fileErr);
-            attachmentContext += `\n\n--- Attached File: ${file.originalname} ---\n[Could not extract text from this file]\n--- End of File ---`;
+            failedAttachments.push(file.originalname);
           }
+        }
+
+        if (extractedAttachmentCount === 0) {
+          return res.status(400).json({
+            message: `Could not extract readable text from uploaded attachment(s): ${failedAttachments.join(", ")}. Upload searchable PDF/TXT/DOCX or enable OCR dependencies for scanned PDFs.`,
+          });
         }
       }
 
@@ -3588,10 +3613,25 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
         }));
 
       const knowledgeContext = (!directMode && lastUserMessage)
-        ? await gatherKnowledgeContext(lastUserMessage.content, userId)
+        ? (
+          extractedAttachmentCount > 0
+            ? ""
+            : await gatherKnowledgeContext(lastUserMessage.content, userId)
+        )
         : "";
       if (attachmentContext) {
-        systemPrompt += `\n\nATTACHED DOCUMENTS FROM USER:\nThe user has attached the following documents for your reference. Analyze them carefully and use them to inform your response.${attachmentContext}`;
+        const boundedAttachmentContext = trimTextToTokenBudget(attachmentContext, ATTACHMENT_PROMPT_TOKEN_BUDGET);
+        systemPrompt += `\n\nATTACHMENT MODE (STRICT):
+- Prioritize attached document content over general chamber knowledge.
+- Answer from attached documents first.
+- If the answer is not present in attachments, explicitly say it is not found in the provided files.
+- Do not ignore attached files.
+
+ATTACHED DOCUMENTS FROM USER:
+The user has attached the following documents for your reference. Analyze them carefully and use them to inform your response.${boundedAttachmentContext}`;
+        if (failedAttachments.length > 0) {
+          systemPrompt += `\n\nAttachment processing note: Some files could not be read and were excluded: ${failedAttachments.join(", ")}.`;
+        }
       }
       const styleModule = mapModuleTypeToStyleModule(moduleType);
       const styleEligible = STYLE_MEMORY_ENABLED && !directMode && !!lastUserMessage && !!styleModule && shouldApplyStyleForChat(moduleType, moduleIntent);
