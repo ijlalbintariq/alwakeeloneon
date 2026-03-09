@@ -9,11 +9,18 @@ import { dbAvailable, dbUnavailableReason } from "../../db";
 import { isUserBanned, logAuditEvent } from "../../security-governance";
 import { recordSecurityEvent } from "../../security-monitoring";
 
+const TERMS_VERSION = "2026-03";
+const TERMS_REQUIRED_MESSAGE = "You must agree to the Terms and Conditions to create an account.";
+
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  acceptedTerms: z.boolean().refine((value) => value === true, {
+    message: TERMS_REQUIRED_MESSAGE,
+  }),
+  termsVersion: z.string().trim().max(40).optional(),
 });
 
 const loginSchema = z.object({
@@ -117,7 +124,7 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(400).json({ message: parsed.error.errors[0].message });
       }
 
-      const { email, password, firstName, lastName } = parsed.data;
+      const { email, password, firstName, lastName, termsVersion } = parsed.data;
 
       const existingUser = await authStorage.getUserByEmail(email);
       if (existingUser) {
@@ -134,7 +141,10 @@ export function registerAuthRoutes(app: Express): void {
         authProvider: "email",
       });
 
-      await logAuditEvent("auth.register", user.id, user.id, { provider: "email" }).catch(() => {});
+      await logAuditEvent("auth.register", user.id, user.id, {
+        provider: "email",
+        termsAcceptedVersion: termsVersion || TERMS_VERSION,
+      }).catch(() => {});
       persistSession(req, res, user, 201);
     } catch (error) {
       console.error("Registration error:", error);
@@ -235,7 +245,7 @@ export function registerAuthRoutes(app: Express): void {
     try {
       if (!applyAuthRateLimit(req, res, "google-token", 20, 15 * 60 * 1000)) return;
 
-      const { credential } = req.body;
+      const { credential, acceptedTerms, termsVersion } = req.body || {};
       if (!credential) {
         return res.status(400).json({ message: "No credential provided" });
       }
@@ -274,6 +284,9 @@ export function registerAuthRoutes(app: Express): void {
           return res.status(403).json({ message: "Your account is suspended. Please contact support." });
         }
       } else {
+        if (acceptedTerms !== true) {
+          return res.status(400).json({ message: TERMS_REQUIRED_MESSAGE });
+        }
         user = await authStorage.upsertUser({
           email,
           firstName,
@@ -281,7 +294,12 @@ export function registerAuthRoutes(app: Express): void {
           profileImageUrl,
           authProvider: "google",
         });
-        await logAuditEvent("auth.register", user.id, user.id, { provider: "google" }).catch(() => {});
+        await logAuditEvent("auth.register", user.id, user.id, {
+          provider: "google",
+          termsAcceptedVersion: typeof termsVersion === "string" && termsVersion.trim()
+            ? termsVersion.trim().slice(0, 40)
+            : TERMS_VERSION,
+        }).catch(() => {});
       }
 
       await logAuditEvent("auth.login", user!.id, user!.id, { provider: "google" }).catch(() => {});
