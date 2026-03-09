@@ -75,6 +75,7 @@ const GENERAL_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(2, Number(process.env.GENERA
 const EXTRACTION_TIMEOUT_MS = Math.max(3000, Number(process.env.EXTRACTION_TIMEOUT_MS || 120000));
 const UPLOAD_QUEUE_CONCURRENCY = Math.max(1, Number(process.env.UPLOAD_QUEUE_CONCURRENCY || 2));
 const UPLOAD_QUEUE_MAX_PENDING = Math.max(UPLOAD_QUEUE_CONCURRENCY, Number(process.env.UPLOAD_QUEUE_MAX_PENDING || 32));
+const CASELAW_AUTO_SYNC_MAX = Math.max(1, Number(process.env.CASELAW_AUTO_SYNC_MAX || 500));
 const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
 const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
 const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_TOKEN_BUDGET || 900));
@@ -833,6 +834,245 @@ async function applyAlWakeeloSafetyGuardrails(content: string): Promise<string> 
   const withRefs = ensureAlWakeeloReferencesBlock(content);
   const verifiedRefs = await verifyReferencesBlock(withRefs);
   return verifiedRefs;
+}
+
+type CitationParts = { year: number; journalCode: string; page: number };
+
+function normalizeCitationToken(token: string): string {
+  return String(token || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+
+function parseCitationParts(citation: string, journalCodeMap: Map<string, string>): CitationParts | null {
+  const raw = String(citation || "").trim();
+  if (!raw) return null;
+
+  const normalized = raw
+    .replace(/[()[\],;:]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const tokens = normalized.split(" ").filter(Boolean);
+  if (tokens.length < 3) return null;
+
+  const yearIdx = tokens.findIndex((token) => /^(19|20)\d{2}$/.test(token));
+  if (yearIdx < 0) return null;
+  const year = Number(tokens[yearIdx]);
+  if (!Number.isInteger(year)) return null;
+
+  const journalCandidates = [
+    tokens[yearIdx + 1],
+    tokens[yearIdx - 1],
+    tokens[yearIdx + 2],
+    tokens[yearIdx - 2],
+  ].filter((token): token is string => typeof token === "string" && token.length > 0);
+
+  let journalCode: string | undefined;
+  for (const token of journalCandidates) {
+    const mapped = journalCodeMap.get(normalizeCitationToken(token));
+    if (mapped) {
+      journalCode = mapped;
+      break;
+    }
+  }
+  if (!journalCode) return null;
+
+  const tailTokens = tokens.slice(yearIdx + 1);
+  const pageToken = [...tailTokens]
+    .reverse()
+    .find((token) => /^\d{1,5}$/.test(token) && Number(token) > 0);
+  if (!pageToken) return null;
+  const page = Number(pageToken);
+  if (!Number.isInteger(page) || page < 1) return null;
+
+  return { year, journalCode, page };
+}
+
+function resolveCourtId(courtRaw: string, courts: Array<{ id: number; code: string; name: string }>): number | null {
+  const value = String(courtRaw || "").trim();
+  if (!value) return null;
+  const upper = value.toUpperCase();
+  const direct = courts.find((court) => court.code.toUpperCase() === upper);
+  if (direct) return direct.id;
+
+  const byName = courts.find((court) => court.name.toLowerCase() === value.toLowerCase());
+  if (byName) return byName.id;
+
+  const fuzzy = courts.find((court) => {
+    const courtName = court.name.toLowerCase();
+    const query = value.toLowerCase();
+    return courtName.includes(query) || query.includes(courtName);
+  });
+  return fuzzy?.id ?? null;
+}
+
+async function loadCaseLawSourceText(
+  entry: {
+    sourceDocId?: number | null;
+    sourceType?: string | null;
+    summary?: string | null;
+    title?: string | null;
+    citation?: string | null;
+  },
+  userId: string,
+): Promise<string> {
+  const sourceType = String(entry.sourceType || "").toLowerCase();
+  const sourceDocId = Number(entry.sourceDocId || 0);
+  let content = "";
+
+  if (sourceDocId > 0 && sourceType === "admin") {
+    const doc = await storage.getAdminKnowledgeById(sourceDocId);
+    if (doc) {
+      content = doc.content || "";
+      const fileMeta = await storage.getAdminKnowledgeFile(doc.id);
+      if (fileMeta?.extractedTextKey) {
+        const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
+        if (fullContent) content = fullContent;
+      }
+    }
+  } else if (sourceDocId > 0 && sourceType === "github") {
+    const doc = await storage.getGithubKnowledgeById(sourceDocId);
+    if (doc) content = doc.content || "";
+  } else if (sourceDocId > 0 && sourceType === "statute") {
+    const doc = await storage.getStatuteDocument(sourceDocId);
+    if (doc) {
+      content = doc.content || "";
+      const fileMeta = await storage.getStatuteDocumentFile(doc.id);
+      if (fileMeta?.extractedTextKey) {
+        const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
+        if (fullContent) content = fullContent;
+      }
+    }
+  } else if (sourceDocId > 0 && sourceType === "user") {
+    const doc = await storage.getDocumentById(sourceDocId, userId);
+    if (doc) {
+      content = doc.content || "";
+      const fileMeta = await storage.getDocumentFile(doc.id, userId);
+      if (fileMeta?.extractedTextKey) {
+        const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
+        if (fullContent) content = fullContent;
+      }
+    }
+  }
+
+  if (!content.trim()) {
+    const fallback = [entry.title || "", entry.summary || "", entry.citation || ""].filter(Boolean).join("\n\n");
+    content = fallback;
+  }
+  return content.trim();
+}
+
+async function syncCaseLawEntriesToJudgments(
+  entries: Array<{
+    id: number;
+    citation: string;
+    court: string;
+    title: string;
+    summary: string;
+    sourceDocId?: number | null;
+    sourceType?: string | null;
+  }>,
+  actorUserId: string,
+): Promise<{
+  processed: number;
+  imported: number;
+  existing: number;
+  skipped: number;
+  failed: number;
+  linked: number;
+  unresolved: number;
+  errors: string[];
+}> {
+  const journals = await storage.getLawJournals();
+  const courts = await storage.getCourtsRef();
+  const journalCodeMap = new Map<string, string>(
+    journals.map((journal) => [normalizeCitationToken(journal.code), journal.code.toUpperCase()]),
+  );
+  const journalIdByCode = new Map<string, number>(
+    journals.map((journal) => [journal.code.toUpperCase(), journal.id]),
+  );
+
+  let processed = 0;
+  let imported = 0;
+  let existing = 0;
+  let skipped = 0;
+  let failed = 0;
+  let linked = 0;
+  let unresolved = 0;
+  const errors: string[] = [];
+
+  for (const entry of entries) {
+    processed += 1;
+    try {
+      const parsed = parseCitationParts(entry.citation, journalCodeMap);
+      if (!parsed) {
+        skipped += 1;
+        continue;
+      }
+
+      const journalId = journalIdByCode.get(parsed.journalCode);
+      if (!journalId) {
+        skipped += 1;
+        continue;
+      }
+
+      const alreadyExists = await storage.searchJudgmentsByCitation({
+        year: parsed.year,
+        journalCode: parsed.journalCode,
+        page: parsed.page,
+      });
+      if (alreadyExists.length > 0) {
+        existing += 1;
+        continue;
+      }
+
+      const fullText = await loadCaseLawSourceText(entry, actorUserId);
+      if (!fullText || fullText.length < 10) {
+        skipped += 1;
+        continue;
+      }
+
+      const courtId = resolveCourtId(entry.court, courts);
+      const citationString = `${parsed.year} ${parsed.journalCode} ${parsed.page}`;
+      const created = await storage.createJudgment({
+        year: parsed.year,
+        journalId,
+        page: parsed.page,
+        citationString,
+        title: entry.title || citationString,
+        petitioner: null,
+        respondent: null,
+        courtId: courtId || undefined,
+        courtNameSnapshot: entry.court || null,
+        decisionDate: null,
+        headnotes: entry.summary || null,
+        fullText,
+        pdfUrl: null,
+        isActive: true,
+      });
+
+      imported += 1;
+      const extraction = await citationExtractor.processJudgment(created.id, fullText);
+      linked += extraction.resolved;
+      unresolved += extraction.unresolved;
+    } catch (err: any) {
+      if (String(err?.code || "") === "23505") {
+        existing += 1;
+        continue;
+      }
+      failed += 1;
+      errors.push(`#${entry.id} ${entry.citation || entry.title}: ${err?.message || "Unknown error"}`);
+    }
+  }
+
+  return {
+    processed,
+    imported,
+    existing,
+    skipped,
+    failed,
+    linked,
+    unresolved,
+    errors: errors.slice(0, 50),
+  };
 }
 
 function startsWithBytes(buffer: Buffer, signature: number[]): boolean {
@@ -5167,8 +5407,12 @@ RULES:
       }
       const keywordsArr = Array.isArray(keywords) ? keywords : (typeof keywords === "string" ? keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : []);
       const created = await storage.createCaseLaw({ citation, court, title, summary, keywords: keywordsArr });
+      const citationSync = await syncCaseLawEntriesToJudgments([created], actorUserId || "");
       await logAuditEvent("admin.caseLaw.create", actorUserId, null, { id: created.id, citation: created.citation });
-      res.status(201).json(created);
+      res.status(201).json({
+        ...created,
+        citationSync,
+      });
     } catch (err) {
       console.error("Error creating case law:", err);
       res.status(500).json({ message: "Failed to create case law" });
@@ -5256,11 +5500,70 @@ RULES:
         valid.push(entry);
       }
       const created = valid.length > 0 ? await storage.bulkCreateCaseLaw(valid) : [];
+      let citationSync: {
+        processed: number;
+        imported: number;
+        existing: number;
+        skipped: number;
+        failed: number;
+        linked: number;
+        unresolved: number;
+        errors: string[];
+      } | undefined;
+      if (created.length > 0 && actorUserId) {
+        const syncBatch = created.slice(0, CASELAW_AUTO_SYNC_MAX);
+        citationSync = await syncCaseLawEntriesToJudgments(syncBatch, actorUserId);
+      }
       await logAuditEvent("admin.caseLaw.bulkCreate", actorUserId, null, { inserted: created.length, errors: errors.length, sourceDocId: sourceDocId || null });
-      res.status(201).json({ inserted: created.length, errors });
+      res.status(201).json({
+        inserted: created.length,
+        errors,
+        citationSync,
+        citationSyncLimited: created.length > CASELAW_AUTO_SYNC_MAX,
+      });
     } catch (err) {
       console.error("Error bulk creating case law:", err);
       res.status(500).json({ message: "Failed to bulk create case law" });
+    }
+  });
+
+  app.post("/api/admin/case-law/sync-to-judgments", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const actorUserId = getUserId(req);
+      const payload = (req.body || {}) as { caseLawIds?: number[]; limit?: number };
+      const requestedIds = Array.isArray(payload.caseLawIds)
+        ? payload.caseLawIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)
+        : [];
+      const limit = Math.max(1, Math.min(5000, Number(payload.limit) || 1000));
+
+      let entries: Array<{
+        id: number;
+        citation: string;
+        court: string;
+        title: string;
+        summary: string;
+        sourceDocId?: number | null;
+        sourceType?: string | null;
+      }> = [];
+
+      if (requestedIds.length > 0) {
+        const resolved = await Promise.all(requestedIds.map((id) => storage.getCaseLawById(id)));
+        entries = resolved.filter((entry): entry is NonNullable<typeof entry> => !!entry);
+      } else {
+        const all = await storage.getAllCaseLaw();
+        entries = [...all].sort((a, b) => b.id - a.id).slice(0, limit);
+      }
+
+      const syncResult = await syncCaseLawEntriesToJudgments(entries, actorUserId || "");
+      await logAuditEvent("admin.caseLaw.syncToJudgments", actorUserId, null, {
+        requested: requestedIds.length > 0 ? requestedIds.length : limit,
+        ...syncResult,
+      });
+      res.json(syncResult);
+    } catch (err) {
+      console.error("Error syncing case law to judgments:", err);
+      res.status(500).json({ message: "Failed to sync case law to citation database" });
     }
   });
 

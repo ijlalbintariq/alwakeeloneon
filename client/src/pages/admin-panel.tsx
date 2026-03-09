@@ -1354,6 +1354,8 @@ function CaseLawSection() {
       }
       let totalInserted = 0;
       const allErrors: string[] = [];
+      const citationTotals = { processed: 0, imported: 0, existing: 0, skipped: 0, failed: 0 };
+      let citationSyncLimited = false;
       for (const [key, group] of grouped) {
         const body: any = { entries: group };
         if (key !== "none") {
@@ -1364,20 +1366,50 @@ function CaseLawSection() {
         const data = await res.json();
         totalInserted += data.inserted || 0;
         if (data.errors) allErrors.push(...data.errors);
+        if (data.citationSync) {
+          citationTotals.processed += Number(data.citationSync.processed || 0);
+          citationTotals.imported += Number(data.citationSync.imported || 0);
+          citationTotals.existing += Number(data.citationSync.existing || 0);
+          citationTotals.skipped += Number(data.citationSync.skipped || 0);
+          citationTotals.failed += Number(data.citationSync.failed || 0);
+        }
+        if (data.citationSyncLimited) citationSyncLimited = true;
       }
-      return { inserted: totalInserted, errors: allErrors };
+      return { inserted: totalInserted, errors: allErrors, citationTotals, citationSyncLimited };
     },
     onSuccess: (data: any) => {
       setPage(1);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
       const hasSource = extractedCases.some(e => e._sourceDocId);
       const docMsg = hasSource ? " (linked to source document)" : "";
-      toast({ title: `${data.inserted} case law entries saved to database${data.errors?.length ? `, ${data.errors.length} skipped` : ""}${docMsg}` });
+      const citationMsg = data.citationTotals?.processed
+        ? ` · citation import: ${data.citationTotals.imported} added, ${data.citationTotals.existing} existing`
+        : "";
+      const limitedMsg = data.citationSyncLimited ? " (partial auto-sync; use Sync Citation DB for full backfill)" : "";
+      toast({ title: `${data.inserted} case law entries saved${data.errors?.length ? `, ${data.errors.length} skipped` : ""}${docMsg}${citationMsg}${limitedMsg}` });
       setExtractedCases([]);
       setRetryExtractFiles([]);
       setShowBulkUpload(false);
     },
     onError: () => toast({ title: "Failed to save case law entries", variant: "destructive" }),
+  });
+
+  const syncCitationDbMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/case-law/sync-to-judgments", { limit: 2000 });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      const processed = Number(data?.processed || 0);
+      const imported = Number(data?.imported || 0);
+      const existing = Number(data?.existing || 0);
+      const skipped = Number(data?.skipped || 0);
+      const failed = Number(data?.failed || 0);
+      toast({
+        title: `Citation sync complete: ${imported} imported, ${existing} existing, ${skipped} skipped, ${failed} failed (processed ${processed})`,
+      });
+    },
+    onError: () => toast({ title: "Failed to sync case law into citation database", variant: "destructive" }),
   });
 
   const processCaseLawFiles = async (files: File[], append: boolean = false) => {
@@ -1584,6 +1616,16 @@ function CaseLawSection() {
           </span>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="ghost"
+            className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            onClick={() => syncCitationDbMutation.mutate()}
+            disabled={syncCitationDbMutation.isPending || isAutoScanning}
+            data-testid="button-sync-citation-db"
+          >
+            {syncCitationDbMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Database size={14} />}
+            <span>Sync Citation DB</span>
+          </Button>
           <Button
             variant="ghost"
             className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"

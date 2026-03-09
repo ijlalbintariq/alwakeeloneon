@@ -152,6 +152,14 @@ export const api = {
       method: 'GET' as const,
       path: '/api/case-law/search' as const,
     },
+    syncToJudgments: {
+      method: 'POST' as const,
+      path: '/api/admin/case-law/sync-to-judgments' as const,
+      input: z.object({
+        caseLawIds: z.array(z.number().int().positive()).optional(),
+        limit: z.number().int().min(1).max(5000).optional(),
+      }).optional(),
+    },
   },
   citation: {
     journals: {
