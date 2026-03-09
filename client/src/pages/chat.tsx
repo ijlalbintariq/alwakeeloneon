@@ -601,6 +601,83 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     const level = pct >= 80 ? "High" : pct >= 60 ? "Medium" : "Low";
     return { pct, level, basis: "Current response references (laws + judgments)." };
   }, [latestRagCitations, latestRefs]);
+  const renderInsightsCards = (compact = false) => (
+    <div className={compact ? "space-y-5" : "space-y-8"}>
+      <div>
+        <h3 className="flex items-center gap-2 text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-4">
+          <FileText size={13} /> Legal Citations
+        </h3>
+        <div className="space-y-3">
+          {(latestRagCitations?.length || 0) > 0 && latestRagCitations.slice(0, compact ? 3 : 4).map((c, idx) => (
+            <div key={`rag-${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 transition-all">
+              <div className="flex justify-between items-start mb-2 gap-2">
+                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded truncate">
+                  Doc {c.sourceDocumentId} · Chunk {c.chunkIndex}
+                </span>
+              </div>
+              <p className="text-xs font-bold text-slate-200 mb-1">{c.title}</p>
+              <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{c.quote}</p>
+            </div>
+          ))}
+          {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments.slice(0, compact ? 3 : 4).map((j, idx) => (
+            <div key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all">
+              <div className="flex justify-between items-start mb-2 gap-2">
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
+              </div>
+              <p className="text-xs font-bold text-slate-200 mb-1">{j.court || "Pakistani Courts"}</p>
+              {j.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{j.description}</p>}
+            </div>
+          ))}
+          {(latestRefs?.laws?.length || 0) > 0 && latestRefs?.laws.slice(0, compact ? 3 : 4).map((l, idx) => (
+            <div key={`${l.name}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all">
+              <div className="flex justify-between items-start mb-2 gap-2">
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{l.section || "Section"}</span>
+              </div>
+              <p className="text-xs font-bold text-slate-200 mb-1">{l.name || "Pakistani Statute"}</p>
+              {l.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{l.description}</p>}
+            </div>
+          ))}
+          {!latestRefs && (latestRagCitations?.length || 0) === 0 && (
+            <p className="text-xs text-slate-500">Citations from Al Wakeelo responses will appear here.</p>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="flex items-center gap-2 text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-4">
+          <Scale size={13} /> Relevant Statutes
+        </h3>
+        <div className="space-y-2">
+          {latestStatutes.length > 0 ? (
+            latestStatutes.slice(0, compact ? 5 : 8).map((law, idx) => (
+              <div key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-default">
+                <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
+                <div>
+                  <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
+                    {law.name || "Pakistani Statute"}
+                  </p>
+                  <p className="text-[10px] text-slate-500">{law.section || "Section reference"}</p>
+                  {law.description && (
+                    <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{law.description}</p>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-xs text-slate-500">Relevant statutes will appear here when Al Wakeelo cites them in responses.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-auto p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+        <p className="text-[10px] font-bold text-amber-400 uppercase mb-2">AI Confidence</p>
+        <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+          <div className="bg-amber-400 h-full transition-all duration-300" style={{ width: `${aiConfidence.pct}%` }} />
+        </div>
+        <p className="text-[10px] text-slate-500 mt-2">{aiConfidence.level} ({aiConfidence.pct}%) · {aiConfidence.basis}</p>
+      </div>
+    </div>
+  );
 
   if (!isAlWakeelo) {
     return (
@@ -1074,6 +1151,21 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           </header>
 
+          <section className="xl:hidden border-b border-amber-500/10 bg-[#0f172a]/55 px-3 sm:px-6 py-2">
+            <details className="group">
+              <summary className="list-none cursor-pointer flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-amber-300">
+                <span className="inline-flex items-center gap-2">
+                  <FileText size={13} />
+                  Live Legal Insights
+                </span>
+                <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="pt-3 max-h-[42vh] overflow-y-auto pr-1 scrollbar-hide">
+                {renderInsightsCards(true)}
+              </div>
+            </details>
+          </section>
+
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 scrollbar-hide">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
@@ -1286,79 +1378,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
         <aside className="w-80 shrink-0 border-l border-[hsl(var(--preview-border))] bg-[#1e293b]/70 backdrop-blur-md hidden xl:flex flex-col">
           <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide">
-            <div>
-              <h3 className="flex items-center gap-2 text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-4">
-                <FileText size={13} /> Legal Citations
-              </h3>
-              <div className="space-y-3">
-                {(latestRagCitations?.length || 0) > 0 && latestRagCitations.slice(0, 4).map((c, idx) => (
-                  <div key={`rag-${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/25 transition-all">
-                    <div className="flex justify-between items-start mb-2 gap-2">
-                      <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded truncate">
-                        Doc {c.sourceDocumentId} · Chunk {c.chunkIndex}
-                      </span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-200 mb-1">{c.title}</p>
-                    <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{c.quote}</p>
-                  </div>
-                ))}
-                {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments.slice(0, 4).map((j, idx) => (
-                  <div key={`${j.citation}-${idx}`} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all">
-                    <div className="flex justify-between items-start mb-2 gap-2">
-                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-200 mb-1">{j.court || "Pakistani Courts"}</p>
-                    {j.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{j.description}</p>}
-                  </div>
-                ))}
-                {(latestRefs?.laws?.length || 0) > 0 && latestRefs?.laws.slice(0, 4).map((l, idx) => (
-                  <div key={`${l.name}-${idx}`} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all">
-                    <div className="flex justify-between items-start mb-2 gap-2">
-                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{l.section || "Section"}</span>
-                    </div>
-                    <p className="text-xs font-bold text-slate-200 mb-1">{l.name || "Pakistani Statute"}</p>
-                    {l.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{l.description}</p>}
-                  </div>
-                ))}
-                {!latestRefs && (latestRagCitations?.length || 0) === 0 && (
-                  <p className="text-xs text-slate-500">Citations from Al Wakeelo responses will appear here.</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="flex items-center gap-2 text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-4">
-                <Scale size={13} /> Relevant Statutes
-              </h3>
-              <div className="space-y-2">
-                {latestStatutes.length > 0 ? (
-                  latestStatutes.map((law, idx) => (
-                    <div key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-default">
-                      <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
-                      <div>
-                        <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
-                          {law.name || "Pakistani Statute"}
-                        </p>
-                        <p className="text-[10px] text-slate-500">{law.section || "Section reference"}</p>
-                        {law.description && (
-                          <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{law.description}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-slate-500">Relevant statutes will appear here when Al Wakeelo cites them in responses.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-auto p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
-              <p className="text-[10px] font-bold text-amber-400 uppercase mb-2">AI Confidence</p>
-              <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-                <div className="bg-amber-400 h-full transition-all duration-300" style={{ width: `${aiConfidence.pct}%` }} />
-              </div>
-              <p className="text-[10px] text-slate-500 mt-2">{aiConfidence.level} ({aiConfidence.pct}%) · {aiConfidence.basis}</p>
-            </div>
+            {renderInsightsCards(false)}
           </div>
         </aside>
       </div>
