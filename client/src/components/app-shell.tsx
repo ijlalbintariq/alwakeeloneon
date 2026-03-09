@@ -167,6 +167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     location === "/case-documents" ||
     location === "/knowledge-vault" ||
     location === "/organization";
+  const isEdgeAttachedLayout = location === "/al-wakeelo";
 
   const style = {
     "--sidebar-width": "18.5rem",
@@ -205,7 +206,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className={cn(
-            `flex-1 overflow-y-auto bg-[#0f172a]/65 backdrop-blur-lg scrollbar-hide ${isWideChatLayout ? "p-2 sm:p-3 md:p-4" : "p-3 sm:p-4 md:p-10"}`,
+            `flex-1 overflow-y-auto bg-[#0f172a]/65 backdrop-blur-lg scrollbar-hide ${
+              isEdgeAttachedLayout
+                ? "p-0"
+                : isWideChatLayout
+                  ? "p-2 sm:p-3 md:p-4"
+                  : "p-3 sm:p-4 md:p-10"
+            }`,
             "mac-main-layer"
           )}>
             <div className={`${isWideChatLayout ? "max-w-none" : "max-w-7xl"} mx-auto h-full w-full`}>
