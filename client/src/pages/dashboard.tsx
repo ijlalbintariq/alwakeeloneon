@@ -31,7 +31,7 @@ export default function DashboardPage() {
   ];
 
   const quickActions = [
-    { label: "Judgment Search", icon: Gavel, href: "/judgment-search", desc: "Search Pakistani case law" },
+    { label: "Judgments", icon: Gavel, href: "/judgments?tab=keywords", desc: "Search Pakistani case law" },
     { label: "Statute Search", icon: Book, href: "/statute-search", desc: "Browse legal statutes" },
     { label: "Al Wakeelo Engine", icon: Scale, href: "/al-wakeelo", desc: "Consult your AI advocate" },
     { label: "Legal Drafting", icon: FileText, href: "/legal-drafting", desc: "Draft legal documents" },

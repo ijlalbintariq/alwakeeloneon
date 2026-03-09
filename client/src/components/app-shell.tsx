@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
   History, FileBadge, Sparkles, Database, LogOut,
-  User as UserIcon, Shield, Settings, Building2, Link2
+  User as UserIcon, Shield, Settings, Building2
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -23,8 +23,7 @@ import { cn } from "@/lib/utils";
 
 const NAVIGATION_ITEMS = [
   { id: "dashboard", label: "Chambers Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { id: "judgment-search", label: "Judgment Search", icon: Gavel, href: "/judgment-search" },
-  { id: "citation-search", label: "Citation Search", icon: Link2, href: "/citation-search" },
+  { id: "judgments", label: "Judgments", icon: Gavel, href: "/judgments?tab=keywords" },
   { id: "statute-search", label: "Statute Search", icon: Book, href: "/statute-search" },
   { id: "al-wakeelo", label: "Al Wakeelo Engine", icon: Scale, href: "/al-wakeelo" },
   { id: "legal-drafting", label: "Legal Drafting", icon: FileText, href: "/legal-drafting" },
@@ -70,7 +69,11 @@ function AppSidebar() {
             <SidebarMenu className="space-y-1.5">
               {NAVIGATION_ITEMS.map((item) => {
                 const Icon = item.icon;
-                const isActive = location === item.href || (item.href === "/dashboard" && location === "/");
+                const isJudgmentsItem = item.id === "judgments";
+                const isActive =
+                  (isJudgmentsItem && location.startsWith("/judgments")) ||
+                  location === item.href ||
+                  (item.href === "/dashboard" && location === "/");
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton

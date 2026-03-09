@@ -13,9 +13,8 @@ import { ThemeProvider, useTheme } from "@/hooks/use-theme";
 const LandingPage = lazy(() => import("@/pages/landing"));
 const AuthPage = lazy(() => import("@/pages/auth"));
 const DashboardPage = lazy(() => import("@/pages/dashboard"));
-const JudgmentSearchPage = lazy(() => import("@/pages/judgment-search"));
+const JudgmentsPage = lazy(() => import("@/pages/judgments"));
 const JudgmentViewPage = lazy(() => import("@/pages/judgment-view"));
-const CitationSearchPage = lazy(() => import("@/pages/citation-search"));
 const JudgmentDetailPage = lazy(() => import("@/pages/judgment-detail"));
 const StatuteSearchPage = lazy(() => import("@/pages/statute-search"));
 const StatuteViewPage = lazy(() => import("@/pages/statute-view"));
@@ -43,6 +42,20 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   if (isLoading) return null;
   if (!user) return <Redirect to="/auth" />;
   return <Component />;
+}
+
+function LegacyJudgmentSearchRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  params.set("tab", "keywords");
+  const next = params.toString();
+  return <Redirect to={next ? `/judgments?${next}` : "/judgments?tab=keywords"} />;
+}
+
+function LegacyCitationSearchRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  params.set("tab", "citation");
+  const next = params.toString();
+  return <Redirect to={next ? `/judgments?${next}` : "/judgments?tab=citation"} />;
 }
 
 function Router({ onReady }: { onReady?: () => void }) {
@@ -108,9 +121,10 @@ function Router({ onReady }: { onReady?: () => void }) {
     <AppShell>
       <Switch>
         <Route path="/dashboard" component={DashboardPage} />
-        <Route path="/judgment-search" component={JudgmentSearchPage} />
+        <Route path="/judgments" component={JudgmentsPage} />
+        <Route path="/judgment-search" component={LegacyJudgmentSearchRedirect} />
         <Route path="/judgment-view" component={JudgmentViewPage} />
-        <Route path="/citation-search" component={CitationSearchPage} />
+        <Route path="/citation-search" component={LegacyCitationSearchRedirect} />
         <Route path="/judgment/:id" component={JudgmentDetailPage} />
         <Route path="/statute-search" component={StatuteSearchPage} />
         <Route path="/statute-view/:id" component={StatuteViewPage} />
