@@ -217,7 +217,7 @@ export default function HistoryPage() {
     const encoded = encodeURIComponent(item.title);
 
     if (item.kind === "judgment") {
-      setLocation(`/judgments?tab=keywords&q=${encoded}`);
+      setLocation(`/judgments?q=${encoded}`);
       return;
     }
     if (item.kind === "statute") {
