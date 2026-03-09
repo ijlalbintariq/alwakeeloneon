@@ -462,7 +462,9 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-6">
               <a href="/privacy" onClick={(e) => { e.preventDefault(); navigate("/privacy"); }} className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Privacy Policy</a>
-              <a href="/terms" onClick={(e) => { e.preventDefault(); navigate("/terms"); }} className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Terms of Service</a>
+              <a href="/terms" onClick={(e) => { e.preventDefault(); navigate("/terms"); }} className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Terms and Conditions</a>
+              <a href="/cancellation-return-refund-policy" onClick={(e) => { e.preventDefault(); navigate("/cancellation-return-refund-policy"); }} className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Cancellation/Return/Refund Policy</a>
+              <a href="/ownership-statement" onClick={(e) => { e.preventDefault(); navigate("/ownership-statement"); }} className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Ownership Statement</a>
             </div>
             <p className="text-xs text-slate-600">
               &copy; {new Date().getFullYear()} Al Wakeelo. All rights reserved.
