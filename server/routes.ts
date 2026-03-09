@@ -1387,16 +1387,24 @@ async function checkUsageLimit(userId: string, feature: string, res: any): Promi
       return true;
     }
 
+    const userProfile = await storage.getUserProfile(userId);
+    const rawTier = String(userProfile?.subscriptionTier || "standard").toLowerCase();
+    const isFreeTier = rawTier === "free";
     const tier = normalizeTier(await storage.getUserTier(userId));
     const limits = getTierPlan(tier);
     const usedThisMonth = await storage.getMonthlyUsageCount(userId);
 
     if (usedThisMonth >= limits.monthlyQueries) {
+      const limitMessage = isFreeTier
+        ? `Your free-tier monthly AI/chat limit has ended (${limits.monthlyQueries}). Please subscribe to continue using Al Wakeelo.`
+        : `Your ${limits.label} package limit has ended for this cycle (${limits.monthlyQueries}). Please re-subscribe/renew your package to continue using the app.`;
       res.status(429).json({
-        message: `Monthly AI action limit reached (${limits.monthlyQueries} on ${limits.label} plan). Upgrade your plan for higher limits.`,
+        message: limitMessage,
         limit: limits.monthlyQueries,
         used: usedThisMonth,
         tier,
+        rawTier,
+        action: isFreeTier ? "subscribe" : "resubscribe",
       });
       return false;
     }
@@ -4716,7 +4724,7 @@ RULES:
     try {
       const currentUserId = getUserId(req);
       const targetId = req.params.id;
-      const { subscriptionTier, isAdmin: adminFlag } = req.body;
+      const { subscriptionTier, isAdmin: adminFlag, resetMonthlyQuota } = req.body;
 
       const validTiers = ["standard", "pro", "chamber", "enterprise"];
       if (subscriptionTier !== undefined && !validTiers.includes(subscriptionTier)) {
@@ -4725,27 +4733,68 @@ RULES:
       if (adminFlag !== undefined && typeof adminFlag !== "boolean") {
         return res.status(400).json({ message: "isAdmin must be a boolean" });
       }
+      if (resetMonthlyQuota !== undefined && typeof resetMonthlyQuota !== "boolean") {
+        return res.status(400).json({ message: "resetMonthlyQuota must be a boolean" });
+      }
       if (adminFlag === false && targetId === currentUserId) {
         return res.status(400).json({ message: "You cannot remove your own admin access" });
       }
 
       let updated;
+      let quotaReset: { before: number; deleted: number; after: number; windowStart: Date } | null = null;
       if (subscriptionTier !== undefined) {
         updated = await storage.updateUserTier(targetId, subscriptionTier);
+        if (updated) {
+          // Subscription renewal or plan reassignment refreshes the user's monthly quota.
+          quotaReset = await storage.resetMonthlyUsageCount(targetId);
+        }
       }
       if (adminFlag !== undefined) {
         updated = await storage.updateUserAdminStatus(targetId, adminFlag);
+      }
+      if (resetMonthlyQuota === true && subscriptionTier === undefined) {
+        updated = updated || (await storage.getUserProfile(targetId));
+        if (!updated) return res.status(404).json({ message: "User not found" });
+        quotaReset = await storage.resetMonthlyUsageCount(targetId);
       }
 
       if (!updated) return res.status(404).json({ message: "User not found" });
       await logAuditEvent("admin.user.update", currentUserId, targetId, {
         subscriptionTier: subscriptionTier ?? undefined,
         isAdmin: adminFlag ?? undefined,
+        resetMonthlyQuota: !!quotaReset,
+        quotaResetDeleted: quotaReset?.deleted ?? 0,
       });
       res.json(updated);
     } catch (err) {
       console.error("Error updating user:", err);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.post("/api/admin/users/:id/reset-monthly-quota", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const currentUserId = getUserId(req);
+      const targetId = req.params.id;
+      const target = await storage.getUserProfile(targetId);
+      if (!target) return res.status(404).json({ message: "User not found" });
+
+      const quotaReset = await storage.resetMonthlyUsageCount(targetId);
+      await logAuditEvent("admin.user.resetQuota", currentUserId, targetId, {
+        deleted: quotaReset.deleted,
+        before: quotaReset.before,
+        after: quotaReset.after,
+        windowStart: quotaReset.windowStart.toISOString(),
+      });
+
+      return res.json({
+        message: "Monthly quota reset successfully",
+        ...quotaReset,
+      });
+    } catch (err) {
+      console.error("Error resetting monthly quota:", err);
+      return res.status(500).json({ message: "Failed to reset monthly quota" });
     }
   });
 

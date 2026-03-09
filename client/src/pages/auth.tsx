@@ -23,11 +23,13 @@ declare global {
 }
 
 export default function AuthPage() {
+  const TERMS_VERSION = "2026-03";
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [, navigate] = useLocation();
@@ -44,13 +46,26 @@ export default function AuthPage() {
   });
 
   const handleGoogleCredential = useCallback(async (response: any) => {
+    if (mode === "register" && !acceptedTerms) {
+      toast({
+        title: "Terms acceptance required",
+        description: "Please agree to the Terms and Conditions before creating an account.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setGoogleLoading(true);
     try {
       const res = await fetch("/api/auth/google/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ credential: response.credential }),
+        body: JSON.stringify({
+          credential: response.credential,
+          acceptedTerms: mode === "register" ? acceptedTerms : undefined,
+          termsVersion: TERMS_VERSION,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -72,7 +87,7 @@ export default function AuthPage() {
     } finally {
       setGoogleLoading(false);
     }
-  }, [queryClient, navigate, toast]);
+  }, [acceptedTerms, mode, queryClient, navigate, toast]);
 
   useEffect(() => {
     if (!googleStatus?.available || !googleStatus?.clientId) return;
@@ -126,7 +141,14 @@ export default function AuthPage() {
 
   const registerMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/auth/register", { email, password, firstName, lastName });
+      const res = await apiRequest("POST", "/api/auth/register", {
+        email,
+        password,
+        firstName,
+        lastName,
+        acceptedTerms,
+        termsVersion: TERMS_VERSION,
+      });
       return res.json();
     },
     onSuccess: () => {
@@ -157,6 +179,7 @@ export default function AuthPage() {
   };
 
   const isPending = loginMutation.isPending || registerMutation.isPending;
+  const isRegisterReady = mode === "login" || acceptedTerms;
 
   return (
     <div className="min-h-screen preview-bg flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
@@ -244,6 +267,29 @@ export default function AuthPage() {
             </button>
           </div>
 
+          {mode === "register" && (
+            <label className="flex items-start gap-2.5 rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f172a]/55 px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-amber-500"
+                data-testid="input-accept-terms"
+              />
+              <span className="text-[11px] text-slate-300 leading-relaxed">
+                I agree to the{" "}
+                <Link href="/terms" className="text-amber-400 hover:text-amber-300 underline underline-offset-2" data-testid="link-terms-signup">
+                  Terms and Conditions
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-amber-400 hover:text-amber-300 underline underline-offset-2" data-testid="link-privacy-signup">
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+          )}
+
           {mode === "login" && (
             <div className="flex justify-end">
               <Link
@@ -258,7 +304,7 @@ export default function AuthPage() {
 
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || !isRegisterReady}
             data-testid="button-submit-auth"
             className="w-full bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black uppercase tracking-[0.22em] text-[11px] py-4 rounded-xl hover:from-amber-300 hover:to-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
           >
@@ -286,6 +332,16 @@ export default function AuthPage() {
                 <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
                 Signing in with Google...
               </div>
+            ) : mode === "register" && !acceptedTerms ? (
+              <button
+                type="button"
+                disabled
+                data-testid="button-google-terms-required"
+                className="w-full bg-[#0f172a]/70 border border-[hsl(var(--preview-border))] text-slate-400 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+              >
+                <SiGoogle size={14} />
+                Agree to Terms to continue with Google
+              </button>
             ) : (
               <div
                 ref={googleButtonRef}
@@ -317,6 +373,7 @@ export default function AuthPage() {
             onClick={() => {
               setMode(mode === "login" ? "register" : "login");
               setPassword("");
+              setAcceptedTerms(false);
             }}
             data-testid="button-toggle-auth-mode"
             className="text-xs preview-muted hover:text-amber-400 transition-colors"

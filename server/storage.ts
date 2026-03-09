@@ -305,6 +305,7 @@ export interface IStorage {
   logUsageCost(userId: string, feature: string, inputTokens: number, outputTokens: number, estimatedCost: number): Promise<void>;
   getMonthlyUsageCount(userId: string): Promise<number>;
   getMonthlyUsageCountByFeature(userId: string, feature: string): Promise<number>;
+  resetMonthlyUsageCount(userId: string): Promise<{ before: number; deleted: number; after: number; windowStart: Date }>;
   getUserTier(userId: string): Promise<string>;
   getCostAnalytics(): Promise<{ byFeature: Array<{ feature: string; totalQueries: number; totalInputTokens: number; totalOutputTokens: number; totalCost: string }>; totalCost: string; totalTokens: number }>;
 
@@ -1545,6 +1546,39 @@ export class DatabaseStorage implements IStorage {
         gte(usageTracking.createdAt, startOfMonth)
       ));
     return result?.total || 0;
+  }
+
+  async resetMonthlyUsageCount(userId: string): Promise<{ before: number; deleted: number; after: number; windowStart: Date }> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [beforeRow] = await db.select({ total: count() })
+      .from(usageTracking)
+      .where(and(
+        eq(usageTracking.userId, userId),
+        gte(usageTracking.createdAt, startOfMonth),
+      ));
+    const before = Number(beforeRow?.total || 0);
+
+    await db.delete(usageTracking).where(and(
+      eq(usageTracking.userId, userId),
+      gte(usageTracking.createdAt, startOfMonth),
+    ));
+
+    const [afterRow] = await db.select({ total: count() })
+      .from(usageTracking)
+      .where(and(
+        eq(usageTracking.userId, userId),
+        gte(usageTracking.createdAt, startOfMonth),
+      ));
+    const after = Number(afterRow?.total || 0);
+
+    return {
+      before,
+      deleted: Math.max(0, before - after),
+      after,
+      windowStart: startOfMonth,
+    };
   }
 
   async getUserTier(userId: string): Promise<string> {

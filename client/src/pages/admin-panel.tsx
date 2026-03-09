@@ -6,7 +6,7 @@ import { Redirect } from "wouter";
 import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
   UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus,
-  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink
+  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink, RotateCcw
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -522,6 +522,23 @@ function UsersSection() {
     },
   });
 
+  const resetQuotaMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("POST", `/api/admin/users/${userId}/reset-monthly-quota`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-logs"] });
+      const deleted = Number(data?.deleted || 0);
+      toast({ title: `Monthly quota reset${deleted > 0 ? ` (${deleted} actions cleared)` : ""}` });
+    },
+    onError: () => {
+      toast({ title: "Failed to reset monthly quota", variant: "destructive" });
+    },
+  });
+
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
       const res = await apiRequest("DELETE", `/api/admin/users/${userId}`);
@@ -704,7 +721,7 @@ function UsersSection() {
 
                 <Select
                   value={u.subscriptionTier}
-                  onValueChange={(val) => updateUserMutation.mutate({ userId: u.id, data: { subscriptionTier: val } })}
+                  onValueChange={(val) => updateUserMutation.mutate({ userId: u.id, data: { subscriptionTier: val, resetMonthlyQuota: true } })}
                 >
                   <SelectTrigger className="w-32 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid={`select-tier-${u.id}`}>
                     <SelectValue />
@@ -716,6 +733,18 @@ function UsersSection() {
                     <SelectItem value="enterprise">Enterprise</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-sky-300 text-[9px] uppercase tracking-widest font-black"
+                  onClick={() => resetQuotaMutation.mutate(u.id)}
+                  disabled={resetQuotaMutation.isPending}
+                  data-testid={`button-reset-quota-${u.id}`}
+                >
+                  {resetQuotaMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                  <span>Reset Quota</span>
+                </Button>
 
                 <Button
                   size="icon"

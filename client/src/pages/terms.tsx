@@ -21,14 +21,14 @@ export default function TermsOfServicePage() {
       </nav>
 
       <div className="max-w-4xl mx-auto px-3 sm:px-6 py-10 md:py-16">
-        <h1 className="text-4xl font-bold italic mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>Terms of Service</h1>
+        <h1 className="text-4xl font-bold italic mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>Terms and Conditions</h1>
         <p className="text-sm text-slate-500 mb-12">Last updated: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
 
         <div className="prose prose-invert prose-slate max-w-none space-y-8">
           <section>
             <h2 className="text-xl font-bold text-amber-500 mb-3">1. Acceptance of Terms</h2>
             <p className="text-slate-300 leading-relaxed">
-              By accessing or using Al Wakeelo ("the Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not access or use the Service. These Terms constitute a legally binding agreement between you and Al Wakeelo.
+              By accessing or using Al Wakeelo ("the Service"), you agree to be bound by these Terms and Conditions ("Terms"). If you do not agree to these Terms, you may not access or use the Service. These Terms constitute a legally binding agreement between you and Al Wakeelo.
             </p>
           </section>
 
@@ -151,7 +151,7 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-xl font-bold text-amber-500 mb-3">15. Contact Information</h2>
             <p className="text-slate-300 leading-relaxed">
-              For questions or concerns regarding these Terms of Service, please contact us at:
+              For questions or concerns regarding these Terms and Conditions, please contact us at:
             </p>
             <p className="text-amber-400 font-semibold mt-2">support@alwakeelo.com</p>
           </section>

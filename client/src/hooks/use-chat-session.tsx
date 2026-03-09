@@ -192,9 +192,12 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
 
       queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
     } catch (err: any) {
-      const isLimitError = err?.isLimit || err?.message?.includes("429");
+      const isLimitError = err?.isLimit || err?.status === 429 || err?.message?.includes("429");
+      const serverLimitMessage = typeof err?.message === "string" && err.message.trim()
+        ? err.message.trim()
+        : "Your monthly usage limit has ended. Please renew your package to continue.";
       const limitMsg = isLimitError
-        ? "Monthly AI action limit reached. Upgrade your plan to continue using Al Wakeelo."
+        ? serverLimitMessage
         : "Communication disrupted. Please try again.";
       setMessages(prev => {
         const aId = assistantIdRef.current;
@@ -207,7 +210,7 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
         }
         return prev;
       });
-      setApiError(isLimitError ? "Query limit reached" : (err?.message || "Communication disruption."));
+      setApiError(isLimitError ? serverLimitMessage : (err?.message || "Communication disruption."));
       if (isLimitError) {
         queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
       }
