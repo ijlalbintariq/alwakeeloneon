@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, FolderOpen, Folder, PlusCircle, MoreVertical, User as UserIcon } from "lucide-react";
+import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, MoreVertical, User as UserIcon } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
@@ -92,6 +92,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [ragEnabled, setRagEnabled] = useState(false);
+  const [leftRailOpen, setLeftRailOpen] = useState(true);
+  const [rightRailOpen, setRightRailOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -1069,11 +1071,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     );
   }
 
+  const leftRailVisible = leftRailOpen;
+  const rightRailVisible = rightRailOpen;
+
   return (
     <div className="h-[calc(100dvh-96px)] md:h-[calc(100vh-120px)] rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[#0f172a]/70 backdrop-blur-xl fade-in">
       <div className="flex h-full w-full">
-        <aside className="hidden lg:flex w-72 shrink-0 border-r border-[hsl(var(--preview-border))] bg-[#1e293b]/70 backdrop-blur-md flex-col">
-          <div className="p-5 flex flex-col h-full">
+        <aside
+          className={`hidden lg:flex shrink-0 transition-[width] duration-300 ease-out overflow-hidden ${
+            leftRailVisible
+              ? "w-72 border-r border-[hsl(var(--preview-border))] bg-[#1e293b]/70 backdrop-blur-md"
+              : "w-0 border-r-0"
+          }`}
+        >
+          <div className="p-5 flex flex-col h-full w-72">
             <div className="flex items-center gap-3 mb-6">
               <div className="bg-amber-500/20 p-2 rounded-lg">
                 <Scale size={26} className="text-amber-400" />
@@ -1126,6 +1137,18 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <div className="mt-4 pt-4 border-t border-amber-500/10" />
           </div>
         </aside>
+
+        <div className="hidden lg:flex items-stretch">
+          <button
+            onClick={() => setLeftRailOpen((prev) => !prev)}
+            className="h-full w-6 border-r border-amber-400/35 bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            data-testid="divider-toggle-left-chat-rail"
+            title={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
+            aria-label={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
+          >
+            {leftRailVisible ? <ChevronLeft size={15} className="drop-shadow" /> : <ChevronRight size={15} className="drop-shadow" />}
+          </button>
+        </div>
 
         <main className="flex-1 flex flex-col bg-[#0f172a]/65">
           <header className="h-16 px-3 sm:px-6 border-b border-amber-500/10 flex items-center justify-between bg-[#0f172a]/75 backdrop-blur-md">
@@ -1376,8 +1399,26 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         </main>
 
-        <aside className="w-80 shrink-0 border-l border-[hsl(var(--preview-border))] bg-[#1e293b]/70 backdrop-blur-md hidden xl:flex flex-col">
-          <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide">
+        <div className="hidden xl:flex items-stretch">
+          <button
+            onClick={() => setRightRailOpen((prev) => !prev)}
+            className="h-full w-6 border-l border-amber-400/35 bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            data-testid="divider-toggle-right-chat-rail"
+            title={rightRailVisible ? "Collapse insights panel" : "Expand insights panel"}
+            aria-label={rightRailVisible ? "Collapse insights panel" : "Expand insights panel"}
+          >
+            {rightRailVisible ? <ChevronRight size={15} className="drop-shadow" /> : <ChevronLeft size={15} className="drop-shadow" />}
+          </button>
+        </div>
+
+        <aside
+          className={`hidden xl:flex shrink-0 transition-[width] duration-300 ease-out overflow-hidden ${
+            rightRailVisible
+              ? "w-80 border-l border-[hsl(var(--preview-border))] bg-[#1e293b]/70 backdrop-blur-md"
+              : "w-0 border-l-0"
+          }`}
+        >
+          <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide w-80">
             {renderInsightsCards(false)}
           </div>
         </aside>
