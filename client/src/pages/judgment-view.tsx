@@ -158,7 +158,7 @@ export default function JudgmentViewPage() {
 
   useEffect(() => {
     if (!judgment) {
-      setLocation("/judgments?tab=keywords");
+      setLocation("/judgments");
       return;
     }
     loadSummary();
@@ -285,7 +285,7 @@ export default function JudgmentViewPage() {
   return (
     <div className="h-full flex flex-col fade-in">
       <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-3 border-b border-slate-800 bg-[#0f172a]">
-        <Button size="icon" variant="ghost" onClick={() => setLocation("/judgments?tab=keywords")} className="text-slate-400 flex-shrink-0">
+        <Button size="icon" variant="ghost" onClick={() => setLocation("/judgments")} className="text-slate-400 flex-shrink-0">
           <ArrowLeft size={18} />
         </Button>
         <div className="min-w-0 flex-1">

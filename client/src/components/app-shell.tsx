@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 const NAVIGATION_ITEMS = [
   { id: "dashboard", label: "Chambers Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { id: "judgments", label: "Judgments", icon: Gavel, href: "/judgments?tab=keywords" },
+  { id: "judgments", label: "Judgments", icon: Gavel, href: "/judgments" },
   { id: "statute-search", label: "Statute Search", icon: Book, href: "/statute-search" },
   { id: "al-wakeelo", label: "Al Wakeelo Engine", icon: Scale, href: "/al-wakeelo" },
   { id: "legal-drafting", label: "Legal Drafting", icon: FileText, href: "/legal-drafting" },

@@ -80,7 +80,7 @@ export default function JudgmentDetailPage() {
   useEffect(() => {
     async function load() {
       if (!judgmentId) {
-        setLocation("/judgments?tab=citation");
+        setLocation("/judgments");
         return;
       }
 
@@ -125,7 +125,7 @@ export default function JudgmentDetailPage() {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => setLocation("/judgments?tab=citation")}
+          onClick={() => setLocation("/judgments")}
           className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/50"
         >
           <ArrowLeft size={14} /> Back to Judgments
@@ -142,7 +142,7 @@ export default function JudgmentDetailPage() {
   return (
     <div className="space-y-7 fade-in" data-testid="judgment-detail-page">
       <button
-        onClick={() => setLocation("/judgments?tab=citation")}
+        onClick={() => setLocation("/judgments")}
         className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/50"
       >
         <ArrowLeft size={14} /> Back to Judgments

@@ -46,16 +46,14 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
 function LegacyJudgmentSearchRedirect() {
   const params = new URLSearchParams(window.location.search);
-  params.set("tab", "keywords");
   const next = params.toString();
-  return <Redirect to={next ? `/judgments?${next}` : "/judgments?tab=keywords"} />;
+  return <Redirect to={next ? `/judgments?${next}` : "/judgments"} />;
 }
 
 function LegacyCitationSearchRedirect() {
   const params = new URLSearchParams(window.location.search);
-  params.set("tab", "citation");
   const next = params.toString();
-  return <Redirect to={next ? `/judgments?${next}` : "/judgments?tab=citation"} />;
+  return <Redirect to={next ? `/judgments?${next}` : "/judgments"} />;
 }
 
 function Router({ onReady }: { onReady?: () => void }) {
