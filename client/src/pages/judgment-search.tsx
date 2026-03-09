@@ -1,6 +1,26 @@
-import { useState, useEffect } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { Search, Loader2, ExternalLink, AlertCircle, Gavel, Sparkles, ChevronDown, ChevronUp, FileText, X, BookOpen, ShieldCheck, ShieldAlert, Eye, BookmarkPlus, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowUpRight,
+  BookOpen,
+  BookmarkPlus,
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  ExternalLink,
+  FileText,
+  Gavel,
+  Loader2,
+  Scale,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
@@ -36,8 +56,62 @@ interface SavedJudgment {
   createdAt: string;
 }
 
+type Journal = {
+  id: number;
+  code: string;
+  name: string;
+};
+
+type CitationResult = {
+  id: string;
+  citation: string;
+  title: string;
+  court: string;
+  decisionDate: string | null;
+  pdfUrl: string | null;
+};
+
+type CitationSearchParams = {
+  year: number;
+  journal: string;
+  page: number;
+  court?: string;
+};
+
+function formatDecisionDate(value: string | null): string {
+  if (!value) return "Date not available";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date not available";
+  return date.toLocaleDateString("en-PK", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  });
+}
+
+function parseCitationFromText(value: string): { year: number; journal: string; page: number } | null {
+  const match = value.trim().match(/^(\d{4})\s+([A-Za-z]+)\s+(\d{1,6})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const page = Number(match[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1) return null;
+  return {
+    year,
+    journal: match[2].toUpperCase(),
+    page,
+  };
+}
+
 export default function JudgmentSearchPage() {
   const [, setLocation] = useLocation();
+  const currentYear = new Date().getFullYear();
+
+  const years = useMemo(() => {
+    const list: number[] = [];
+    for (let year = currentYear + 1; year >= 1947; year -= 1) list.push(year);
+    return list;
+  }, [currentYear]);
+
   const [query, setQuery] = useState("");
   const [autoSearchDone, setAutoSearchDone] = useState(false);
   const [localResults, setLocalResults] = useState<CaseLawResult[]>([]);
@@ -49,30 +123,38 @@ export default function JudgmentSearchPage() {
   const [summaries, setSummaries] = useState<Record<number, JudgmentSummaryData>>({});
   const [expandedSummary, setExpandedSummary] = useState<number | null>(null);
   const [showFullText, setShowFullText] = useState<Record<number, boolean>>({});
-  const [activeTab, setActiveTab] = useState<"search" | "saved">("search");
+
+  const [year, setYear] = useState<number>(currentYear);
+  const [journal, setJournal] = useState<string>("");
+  const [page, setPage] = useState<string>("");
+  const [court, setCourt] = useState<string>("");
+
+  const [journals, setJournals] = useState<Journal[]>([]);
+  const [loadingJournals, setLoadingJournals] = useState<boolean>(true);
+  const [citationSearching, setCitationSearching] = useState<boolean>(false);
+  const [citationError, setCitationError] = useState<string | null>(null);
+  const [citationResults, setCitationResults] = useState<CitationResult[]>([]);
+  const [hasCitationSearched, setHasCitationSearched] = useState<boolean>(false);
+  const [pendingAutoCitation, setPendingAutoCitation] = useState<CitationSearchParams | null>(null);
+
+  const trendingKeywords = ["Criminal Appeal", "Taxation", "Custody Matters"];
 
   const { data: savedJudgments = [], refetch: refetchSaved } = useQuery<SavedJudgment[]>({
     queryKey: ["/api/saved-judgments"],
-    enabled: activeTab === "saved",
   });
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get("q");
-    if (q && !autoSearchDone) {
-      setQuery(q);
-      setAutoSearchDone(true);
-      setTimeout(() => {
-        handleSearchWithQuery(q);
-      }, 100);
-    }
-  }, []);
+  const allResults = useMemo(
+    () => [...localResults, ...externalResults],
+    [localResults, externalResults],
+  );
 
-  const handleSearchWithQuery = async (searchQuery: string) => {
+  const citationPreview = `${year} ${journal || "JOURNAL"} ${page || "PAGE"}`;
+
+  const runKeywordSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
+
     setIsLoading(true);
     setSearchError(null);
-    setExternalResults([]);
     setSummaries({});
     setExpandedSummary(null);
 
@@ -80,57 +162,88 @@ export default function JudgmentSearchPage() {
       const localRes = await fetch(`/api/case-law/search?q=${encodeURIComponent(searchQuery)}`);
       const local = await localRes.json();
       setLocalResults(local.map((r: any) => ({ ...r, source: "internal" })));
-    } catch { setLocalResults([]); }
+    } catch {
+      setLocalResults([]);
+    }
     setIsLoading(false);
 
     setIsExternalLoading(true);
     try {
       const extRes = await apiRequest("POST", "/api/ai/search-judgments", { query: searchQuery });
       const ext = await extRes.json();
-      const items = Array.isArray(ext) ? ext : (ext.judgments || ext.results || []);
+      const items = Array.isArray(ext) ? ext : ext.judgments || ext.results || [];
       setExternalResults(items.map((r: any) => ({ ...r, source: "external" })));
     } catch (e: any) {
       console.error("[Judgment Search] AI search error:", e?.message || e);
       const isLimit = e?.message?.includes("429");
-      setSearchError(isLimit ? "Monthly query limit reached. Upgrade your plan for more searches." : "AI research feed temporarily unavailable. Please try again.");
+      setSearchError(
+        isLimit
+          ? "Monthly query limit reached. Upgrade your plan for more searches."
+          : "AI research feed temporarily unavailable. Please try again.",
+      );
       if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
+      setExternalResults([]);
     }
     setIsExternalLoading(false);
 
-    await apiRequest("POST", "/api/search-history", { type: "judgment", query: searchQuery }).catch(() => {});
+    await apiRequest("POST", "/api/search-history", {
+      type: "judgment",
+      query: searchQuery,
+    }).catch(() => {});
+  };
+
+  const runCitationSearch = async (params: CitationSearchParams) => {
+    setHasCitationSearched(true);
+    setCitationError(null);
+    setCitationSearching(true);
+
+    try {
+      const queryParams = new URLSearchParams({
+        year: String(params.year),
+        journal: params.journal,
+        page: String(params.page),
+      });
+      if (params.court?.trim()) queryParams.set("court", params.court.trim());
+
+      const res = await apiRequest("GET", `/api/citation-search?${queryParams.toString()}`);
+      const data = (await res.json()) as CitationResult[];
+      setCitationResults(data);
+    } catch (err: any) {
+      setCitationResults([]);
+      setCitationError(err?.message || "Failed to search citation");
+    } finally {
+      setCitationSearching(false);
+    }
   };
 
   const handleSearch = async () => {
-    if (!query.trim()) return;
-    setActiveTab("search");
-    setIsLoading(true);
-    setSearchError(null);
-    setExternalResults([]);
-    setSummaries({});
-    setExpandedSummary(null);
+    await runKeywordSearch(query);
+  };
 
-    try {
-      const localRes = await fetch(`/api/case-law/search?q=${encodeURIComponent(query)}`);
-      const local = await localRes.json();
-      setLocalResults(local.map((r: any) => ({ ...r, source: "internal" })));
-    } catch { setLocalResults([]); }
-    setIsLoading(false);
+  const handleTrendingClick = async (value: string) => {
+    setQuery(value);
+    await runKeywordSearch(value);
+  };
 
-    setIsExternalLoading(true);
-    try {
-      const extRes = await apiRequest("POST", "/api/ai/search-judgments", { query });
-      const ext = await extRes.json();
-      const items = Array.isArray(ext) ? ext : (ext.judgments || ext.results || []);
-      setExternalResults(items.map((r: any) => ({ ...r, source: "external" })));
-    } catch (e: any) {
-      console.error("[Judgment Search] AI search error:", e?.message || e);
-      const isLimit = e?.message?.includes("429");
-      setSearchError(isLimit ? "Monthly query limit reached. Upgrade your plan for more searches." : "AI research feed temporarily unavailable. Please try again.");
-      if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
+  const handleCitationSearch = async (event: FormEvent) => {
+    event.preventDefault();
+
+    const pageNumber = Number(page);
+    if (!journal.trim()) {
+      setCitationError("Please select a journal.");
+      return;
     }
-    setIsExternalLoading(false);
+    if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+      setCitationError("Page must be a positive number.");
+      return;
+    }
 
-    await apiRequest("POST", "/api/search-history", { type: "judgment", query }).catch(() => {});
+    await runCitationSearch({
+      year,
+      journal,
+      page: pageNumber,
+      court,
+    });
   };
 
   const handleGetSummary = async (item: CaseLawResult, idx: number) => {
@@ -139,7 +252,7 @@ export default function JudgmentSearchPage() {
       return;
     }
 
-    setSummaryLoading(prev => ({ ...prev, [idx]: true }));
+    setSummaryLoading((prev) => ({ ...prev, [idx]: true }));
     setExpandedSummary(idx);
 
     try {
@@ -150,10 +263,10 @@ export default function JudgmentSearchPage() {
         summary: item.summary,
       });
       const data = await res.json();
-      setSummaries(prev => ({ ...prev, [idx]: data }));
+      setSummaries((prev) => ({ ...prev, [idx]: data }));
     } catch (e: any) {
       const isLimit = e?.message?.includes("429");
-      setSummaries(prev => ({
+      setSummaries((prev) => ({
         ...prev,
         [idx]: {
           summary: isLimit
@@ -162,305 +275,550 @@ export default function JudgmentSearchPage() {
           fullText: null,
           source: null,
           verified: false,
-        }
+        },
       }));
       if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
     }
 
-    setSummaryLoading(prev => ({ ...prev, [idx]: false }));
+    setSummaryLoading((prev) => ({ ...prev, [idx]: false }));
   };
 
   const handleDeleteSaved = async (id: number) => {
     try {
       await apiRequest("DELETE", `/api/saved-judgments/${id}`);
       refetchSaved();
-    } catch {}
+    } catch {
+      // no-op
+    }
   };
 
-  const allResults = [...localResults, ...externalResults];
+  useEffect(() => {
+    async function loadJournals() {
+      setLoadingJournals(true);
+      setCitationError(null);
+      try {
+        const res = await fetch("/api/journals", { credentials: "include" });
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          throw new Error(payload?.message || "Failed to load journals");
+        }
+        const data = (await res.json()) as Journal[];
+        setJournals(data);
+        if (!journal && data.length > 0) {
+          setJournal(data[0].code);
+        }
+      } catch (err: any) {
+        setCitationError(err?.message || "Failed to load journals");
+      } finally {
+        setLoadingJournals(false);
+      }
+    }
+
+    void loadJournals();
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    if (q && !autoSearchDone) {
+      setQuery(q);
+      setAutoSearchDone(true);
+      setTimeout(() => {
+        void runKeywordSearch(q);
+      }, 100);
+    }
+
+    const citationValue = params.get("citation");
+    const yearParam = params.get("year");
+    const journalParam = params.get("journal");
+    const pageParam = params.get("page");
+    const courtParam = params.get("court") || "";
+
+    if (citationValue) {
+      const parsed = parseCitationFromText(citationValue);
+      if (parsed) {
+        setPendingAutoCitation({
+          year: parsed.year,
+          journal: parsed.journal,
+          page: parsed.page,
+          court: courtParam,
+        });
+      }
+      return;
+    }
+
+    if (yearParam && journalParam && pageParam) {
+      const yearValue = Number(yearParam);
+      const pageValue = Number(pageParam);
+      if (Number.isInteger(yearValue) && Number.isInteger(pageValue) && pageValue > 0) {
+        setPendingAutoCitation({
+          year: yearValue,
+          journal: journalParam.toUpperCase(),
+          page: pageValue,
+          court: courtParam,
+        });
+      }
+    }
+  }, [autoSearchDone]);
+
+  useEffect(() => {
+    if (!pendingAutoCitation || loadingJournals) return;
+
+    const matchedJournal = journals.find(
+      (j) => j.code.toUpperCase() === pendingAutoCitation.journal.toUpperCase(),
+    );
+
+    const selectedJournal = matchedJournal?.code || journals[0]?.code || pendingAutoCitation.journal;
+
+    setYear(pendingAutoCitation.year);
+    setJournal(selectedJournal);
+    setPage(String(pendingAutoCitation.page));
+    setCourt(pendingAutoCitation.court || "");
+
+    void runCitationSearch({
+      year: pendingAutoCitation.year,
+      journal: selectedJournal,
+      page: pendingAutoCitation.page,
+      court: pendingAutoCitation.court,
+    });
+
+    setPendingAutoCitation(null);
+  }, [pendingAutoCitation, loadingJournals, journals]);
 
   return (
-    <div className="space-y-7 md:space-y-10 fade-in pb-20" data-testid="judgment-search-page">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Judgment Vault
+    <div className="space-y-8 md:space-y-10 fade-in pb-20" data-testid="judgment-search-page">
+      <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-[#0f172a] p-6 md:p-10">
+        <div className="pointer-events-none absolute -top-20 right-8 h-44 w-44 rounded-full bg-amber-500/10 blur-3xl" />
+        <div className="max-w-4xl space-y-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+            Judgment <span className="text-amber-400">Vault</span>
           </h2>
-          <p className="text-slate-500 mt-2 font-medium">Verified Chambers Vaults & Grounded Pakistani Legal Search.</p>
+          <p className="text-slate-400 leading-relaxed max-w-3xl">
+            Access Pakistan case law with unified keyword and citation search, verified sources, and AI-assisted analysis for faster legal research.
+          </p>
         </div>
-        <div className="flex flex-col gap-2 w-full lg:w-[35rem]">
-          <div className="flex gap-2 sm:gap-3 bg-[#1e293b] p-2.5 sm:p-3 rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-800 shadow-2xl">
+      </section>
+
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 rounded-2xl border border-amber-500/20 bg-[#1e293b]/65 backdrop-blur-md p-5 md:p-6 shadow-2xl">
+          <div className="flex items-center gap-2 mb-4 text-amber-300">
+            <Search size={16} />
+            <h3 className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Search by Keywords
+            </h3>
+          </div>
+
+          <div className="relative">
             <input
-              className="flex-1 bg-transparent border-none px-3 sm:px-6 py-2.5 sm:py-3 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-600"
-              placeholder="Search case law, citations, keywords..."
+              className="w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3.5 pr-14 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+              placeholder="e.g. Constitutional Law, Property Rights, Writ Petition..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              onKeyDown={(e) => e.key === "Enter" && void handleSearch()}
               data-testid="input-judgment-search"
             />
             <button
-              onClick={handleSearch}
-              disabled={isLoading}
+              onClick={() => void handleSearch()}
+              disabled={isLoading || isExternalLoading}
+              className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500 text-slate-950 hover:bg-amber-400 disabled:opacity-50"
               data-testid="button-judgment-search"
-              className="p-3 sm:p-4 bg-amber-500 text-slate-950 rounded-[1rem] sm:rounded-[2rem] hover:bg-amber-400 transition-all shadow-xl active:scale-95"
             >
-              {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Search size={20} />}
+              {isLoading || isExternalLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
             </button>
           </div>
-          {searchError && (
-            <div className="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
-              <AlertCircle size={14} className="text-red-500" />
-              <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">{searchError}</span>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Trending:</span>
+            {trendingKeywords.map((item) => (
+              <button
+                key={item}
+                onClick={() => void handleTrendingClick(item)}
+                className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300 hover:bg-amber-500/20"
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          {searchError ? (
+            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300 flex items-center gap-2">
+              <AlertCircle size={14} /> {searchError}
             </div>
-          )}
+          ) : null}
         </div>
-      </div>
 
-      <div className="flex gap-4 border-b border-slate-800 pb-0">
-        <button
-          onClick={() => setActiveTab("search")}
-          className={`pb-3 px-1 text-[11px] font-black uppercase tracking-widest transition-all border-b-2 ${
-            activeTab === "search"
-              ? "text-amber-500 border-amber-500"
-              : "text-slate-500 border-transparent hover:text-slate-300"
-          }`}
+        <form
+          onSubmit={(e) => void handleCitationSearch(e)}
+          className="rounded-2xl border border-amber-500/20 bg-[#1e293b]/65 backdrop-blur-md p-5 md:p-6 shadow-2xl"
         >
-          <Search size={13} className="inline mr-2" />
-          Search Results {allResults.length > 0 && `(${allResults.length})`}
-        </button>
-        <button
-          onClick={() => { setActiveTab("saved"); refetchSaved(); }}
-          className={`pb-3 px-1 text-[11px] font-black uppercase tracking-widest transition-all border-b-2 ${
-            activeTab === "saved"
-              ? "text-amber-500 border-amber-500"
-              : "text-slate-500 border-transparent hover:text-slate-300"
-          }`}
-        >
-          <BookmarkPlus size={13} className="inline mr-2" />
-          Saved Judgments {savedJudgments.length > 0 && `(${savedJudgments.length})`}
-        </button>
-      </div>
+          <div className="flex items-center gap-2 mb-4 text-amber-300">
+            <Scale size={16} />
+            <h3 className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Search by Citation
+            </h3>
+          </div>
 
-      {activeTab === "search" && (
-        <>
-          {(allResults.length > 0 || isExternalLoading) && (
-            <div className="space-y-8">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="flex-1 h-px bg-slate-800" />
-                <h3 className="text-[11px] font-black uppercase text-slate-600 tracking-[0.5em] flex items-center gap-4">
-                  Joint Intelligence Docket ({allResults.length})
-                  {isExternalLoading && <Loader2 size={14} className="animate-spin text-amber-500" />}
-                </h3>
-                <div className="flex-1 h-px bg-slate-800" />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                {allResults.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className={`rounded-[1.5rem] md:rounded-[3rem] shadow-2xl transition-all relative border ${
-                      expandedSummary === idx ? "md:col-span-2" : ""
-                    } ${
-                      item.source === "external"
-                        ? "bg-[#1e293b]/80 border-blue-500/10 hover:border-blue-500/30"
-                        : "bg-[#1e293b] border-slate-800 hover:border-amber-500/30"
-                    }`}
-                    data-testid={`judgment-result-${idx}`}
-                  >
-                    <div className="p-4 sm:p-6 md:p-10">
-                      <div className="flex flex-wrap gap-3 mb-6">
-                        <span className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
-                          item.source === "external"
-                            ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
-                            : "bg-amber-500/10 border-amber-500/20 text-amber-500"
-                        }`}>
-                          {item.source === "external" ? "Research Feed" : "Internal Registry"}
-                        </span>
-                        <span className="px-3 py-1 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 text-[9px] font-black uppercase tracking-widest">
-                          {item.court}
-                        </span>
-                      </div>
-                      <h4 className="text-xl font-bold text-white mb-4 leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
-                        {item.title}
-                      </h4>
-                      <p className="text-[10px] text-amber-500/60 font-black uppercase tracking-widest mb-3">{item.citation}</p>
-                      <p className="text-xs leading-relaxed text-slate-500 line-clamp-4 mb-6">{item.summary}</p>
-                      <div className="flex flex-wrap items-center gap-3">
-                        {item.uri && (
-                          <a
-                            href={item.uri}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 bg-emerald-600/10 text-emerald-400 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl hover:bg-emerald-600 hover:text-white transition-all"
-                            data-testid={`link-view-source-${idx}`}
-                          >
-                            <ExternalLink size={14} /> View Source
-                          </a>
-                        )}
-                        <button
-                          onClick={() => {
-                            setJudgmentForView(item);
-                            setLocation("/judgment-view");
-                          }}
-                          data-testid={`button-open-judgment-${idx}`}
-                          className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl transition-all bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
-                        >
-                          <Eye size={14} /> Open & Chat
-                        </button>
-                        <button
-                          onClick={() => handleGetSummary(item, idx)}
-                          disabled={summaryLoading[idx]}
-                          data-testid={`button-ai-summary-${idx}`}
-                          className={`inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl transition-all ${
-                            expandedSummary === idx && summaries[idx]
-                              ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                              : "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"
-                          }`}
-                        >
-                          {summaryLoading[idx] ? (
-                            <><Loader2 size={14} className="animate-spin" /> Analyzing...</>
-                          ) : expandedSummary === idx && summaries[idx] ? (
-                            <><ChevronUp size={14} /> Hide Analysis</>
-                          ) : summaries[idx] ? (
-                            <><ChevronDown size={14} /> Show Analysis</>
-                          ) : (
-                            <><Sparkles size={14} /> AI Analysis</>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {expandedSummary === idx && (summaryLoading[idx] || summaries[idx]) && (
-                      <div className="border-t border-slate-800" data-testid={`judgment-summary-panel-${idx}`}>
-                        {summaryLoading[idx] ? (
-                          <div className="p-10 flex flex-col items-center justify-center gap-4">
-                            <div className="w-12 h-12 rounded-[1.5rem] bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                              <Sparkles size={20} className="text-amber-400 animate-pulse" />
-                            </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                              Al Wakeelo is analyzing this judgment...
-                            </p>
-                          </div>
-                        ) : summaries[idx] && (
-                          <div className="p-8 md:p-10 space-y-8">
-                            <div className="flex flex-wrap items-center justify-between gap-4">
-                              <div className="flex flex-wrap items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                                  <Sparkles size={14} className="text-amber-400" />
-                                </div>
-                                <h5 className="text-[11px] font-black uppercase tracking-widest text-amber-400">
-                                  AI Judgment Analysis
-                                </h5>
-                                {summaries[idx].verified ? (
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" data-testid={`badge-verified-${idx}`}>
-                                    <ShieldCheck size={12} /> Verified Source
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 text-amber-400" data-testid={`badge-ai-only-${idx}`}>
-                                    <ShieldAlert size={12} /> AI General Knowledge
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => setExpandedSummary(null)}
-                                className="p-2 rounded-xl text-slate-600 hover:text-slate-400 transition-colors"
-                                data-testid={`button-close-summary-${idx}`}
-                              >
-                                <X size={16} />
-                              </button>
-                            </div>
-
-                            <div className="prose prose-invert prose-sm max-w-none" data-testid={`text-judgment-summary-${idx}`}>
-                              <LegalMarkdown content={summaries[idx].summary} />
-                            </div>
-
-                            {summaries[idx].fullText && (
-                              <div className="mt-8">
-                                <button
-                                  onClick={() => setShowFullText(prev => ({ ...prev, [idx]: !prev[idx] }))}
-                                  data-testid={`button-full-text-${idx}`}
-                                  className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl hover:bg-amber-500/20 transition-all"
-                                >
-                                  <BookOpen size={14} />
-                                  {showFullText[idx] ? "Hide Full Judgment" : "View Full Judgment"}
-                                  {showFullText[idx] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                </button>
-
-                                {summaries[idx].source && (
-                                  <span className="ml-3 text-[9px] font-black uppercase tracking-widest text-emerald-500/60">
-                                    <FileText size={10} className="inline mr-1" />
-                                    Source: Knowledge Vault
-                                  </span>
-                                )}
-
-                                {showFullText[idx] && (
-                                  <div
-                                    className="mt-6 p-6 md:p-8 bg-slate-900/50 border border-slate-800 rounded-[2rem] max-h-[600px] overflow-y-auto"
-                                    data-testid={`text-full-judgment-${idx}`}
-                                  >
-                                    <pre className="whitespace-pre-wrap text-xs leading-relaxed text-slate-400 font-mono">
-                                      {summaries[idx].fullText}
-                                    </pre>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Year</span>
+              <select
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+                className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                data-testid="select-citation-year"
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
                 ))}
-              </div>
-            </div>
-          )}
+              </select>
+            </label>
 
-          {!isLoading && !isExternalLoading && allResults.length === 0 && query && (
-            <div className="py-20 text-center bg-[#1e293b]/30 border border-dashed border-slate-800 rounded-[3rem]">
-              <Gavel size={48} className="mx-auto text-slate-700 mb-6" />
-              <p className="text-slate-600 italic font-medium">No judgments found matching your query.</p>
-            </div>
-          )}
-        </>
-      )}
+            <label className="space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Journal</span>
+              <select
+                value={journal}
+                onChange={(e) => setJournal(e.target.value)}
+                className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                disabled={loadingJournals}
+                data-testid="select-citation-journal"
+              >
+                {journals.length === 0 ? <option value="">No journals available</option> : null}
+                {journals.map((j) => (
+                  <option key={j.id} value={j.code}>
+                    {j.code}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-      {activeTab === "saved" && (
-        <div className="space-y-6">
-          {savedJudgments.length === 0 ? (
-            <div className="py-20 text-center bg-[#1e293b]/30 border border-dashed border-slate-800 rounded-[3rem]">
-              <BookmarkPlus size={48} className="mx-auto text-slate-700 mb-6" />
-              <p className="text-slate-500 font-medium">No saved judgments yet.</p>
-              <p className="text-slate-600 text-sm mt-2">Search for judgments and save them to access later.</p>
+          <label className="space-y-1 mt-3 block">
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Page Number</span>
+            <input
+              type="number"
+              min={1}
+              value={page}
+              onChange={(e) => setPage(e.target.value)}
+              className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+              placeholder="e.g. 145"
+              data-testid="input-citation-page"
+            />
+          </label>
+
+          <label className="space-y-1 mt-3 block">
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Court (Optional)</span>
+            <input
+              value={court}
+              onChange={(e) => setCourt(e.target.value)}
+              className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+              placeholder="Supreme Court, Lahore High Court"
+              data-testid="input-citation-court"
+            />
+          </label>
+
+          <div className="mt-3 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2">
+            <p className="text-[9px] uppercase font-black tracking-[0.18em] text-blue-300">Citation Preview</p>
+            <p className="text-sm font-mono text-blue-200" data-testid="text-citation-preview">
+              {citationPreview}
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            disabled={citationSearching || loadingJournals}
+            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-50"
+            data-testid="button-citation-search"
+          >
+            {citationSearching ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+            Locate Citation
+          </button>
+
+          {citationError ? (
+            <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
+              {citationError}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {savedJudgments.map((saved) => (
-                <div
-                  key={saved.id}
-                  className="bg-[#1e293b] border border-slate-800 rounded-[2rem] p-8 hover:border-amber-500/30 transition-all"
-                >
-                  <div className="flex flex-wrap gap-3 mb-4">
-                    <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-amber-500">
-                      {saved.citation}
+          ) : null}
+        </form>
+      </section>
+
+      <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Recent Judgments
+            </h3>
+            <span className="text-amber-300 text-xs font-black uppercase tracking-widest">
+              {allResults.length} Result{allResults.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          {isLoading || isExternalLoading ? (
+            <div className="rounded-2xl border border-slate-800 bg-[#1e293b]/40 px-5 py-8 text-slate-400 flex items-center gap-3">
+              <Loader2 size={16} className="animate-spin text-amber-400" />
+              Searching judgments...
+            </div>
+          ) : null}
+
+          {!isLoading && !isExternalLoading && allResults.length === 0 && !query ? (
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-[#1e293b]/35 px-6 py-10 text-center text-slate-400">
+              Enter keywords above to search verified Pakistani judgments.
+            </div>
+          ) : null}
+
+          {!isLoading && !isExternalLoading && allResults.length === 0 && query ? (
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-[#1e293b]/35 px-6 py-10 text-center text-slate-400">
+              No judgments found matching your keyword query.
+            </div>
+          ) : null}
+
+          {allResults.map((item, idx) => (
+            <article
+              key={`${item.source || "internal"}-${item.citation}-${idx}`}
+              className={`rounded-xl border shadow-xl overflow-hidden ${
+                item.source === "external"
+                  ? "border-blue-500/25 bg-[#1e293b]/70"
+                  : "border-slate-700 bg-[#1e293b]/55"
+              }`}
+              data-testid={`judgment-result-${idx}`}
+            >
+              <div className="p-5 md:p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                  <div className="space-y-2">
+                    <span
+                      className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest ${
+                        item.source === "external"
+                          ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
+                          : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                      }`}
+                    >
+                      {item.court || "Court"}
                     </span>
-                    <span className="px-3 py-1 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 text-[9px] font-black uppercase tracking-widest">
-                      {saved.court}
-                    </span>
+                    <h4 className="text-xl font-bold text-white leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
+                      {item.title}
+                    </h4>
                   </div>
-                  <h4 className="text-lg font-bold text-white mb-3 leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    {saved.title}
-                  </h4>
-                  <p className="text-xs leading-relaxed text-slate-500 line-clamp-3 mb-4">{saved.summary}</p>
-                  {saved.keywords && saved.keywords.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {saved.keywords.slice(0, 5).map((kw, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-slate-800/50 border border-slate-700 rounded text-[9px] text-slate-500">
-                          {kw}
-                        </span>
-                      ))}
+                  <span className="inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-mono font-bold text-amber-300">
+                    {item.citation}
+                  </span>
+                </div>
+
+                <p className="text-sm text-slate-400 leading-relaxed mb-4 line-clamp-3">{item.summary}</p>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setJudgmentForView(item);
+                      setLocation("/judgment-view");
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-[11px] font-bold text-amber-300 hover:bg-amber-500/20"
+                    data-testid={`button-open-judgment-${idx}`}
+                  >
+                    <Eye size={13} /> Open & Chat
+                  </button>
+
+                  {item.uri ? (
+                    <a
+                      href={item.uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/20"
+                      data-testid={`link-view-source-${idx}`}
+                    >
+                      <ExternalLink size={13} /> View Source
+                    </a>
+                  ) : null}
+
+                  <button
+                    onClick={() => void handleGetSummary(item, idx)}
+                    disabled={summaryLoading[idx]}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-900/50 px-3 py-2 text-[11px] font-bold text-slate-200 hover:border-amber-400/40 hover:text-amber-200"
+                    data-testid={`button-ai-summary-${idx}`}
+                  >
+                    {summaryLoading[idx] ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" /> Analyzing...
+                      </>
+                    ) : expandedSummary === idx && summaries[idx] ? (
+                      <>
+                        <ChevronUp size={13} /> Hide Analysis
+                      </>
+                    ) : summaries[idx] ? (
+                      <>
+                        <ChevronDown size={13} /> Show Analysis
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={13} /> AI Analysis
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {expandedSummary === idx && (summaryLoading[idx] || summaries[idx]) ? (
+                <div className="border-t border-slate-700 p-5 md:p-6" data-testid={`judgment-summary-panel-${idx}`}>
+                  {summaryLoading[idx] ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-300">
+                      <Loader2 size={14} className="animate-spin text-amber-400" />
+                      Al Wakeelo is analyzing this judgment...
                     </div>
-                  )}
-                  <div className="flex items-center gap-3 mt-4">
+                  ) : summaries[idx] ? (
+                    <div className="space-y-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-amber-300">
+                            <Sparkles size={11} /> AI Judgment Analysis
+                          </span>
+                          {summaries[idx].verified ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300" data-testid={`badge-verified-${idx}`}>
+                              <ShieldCheck size={11} /> Verified Source
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-amber-300" data-testid={`badge-ai-only-${idx}`}>
+                              <ShieldAlert size={11} /> AI General Knowledge
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setExpandedSummary(null)}
+                          className="p-1.5 rounded-md text-slate-400 hover:text-white"
+                          data-testid={`button-close-summary-${idx}`}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+
+                      <div className="prose prose-invert prose-sm max-w-none" data-testid={`text-judgment-summary-${idx}`}>
+                        <LegalMarkdown content={summaries[idx].summary} />
+                      </div>
+
+                      {summaries[idx].fullText ? (
+                        <div>
+                          <button
+                            onClick={() => setShowFullText((prev) => ({ ...prev, [idx]: !prev[idx] }))}
+                            data-testid={`button-full-text-${idx}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-[11px] font-bold text-amber-300 hover:bg-amber-500/20"
+                          >
+                            <BookOpen size={13} />
+                            {showFullText[idx] ? "Hide Full Judgment" : "View Full Judgment"}
+                            {showFullText[idx] ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                          </button>
+
+                          {summaries[idx].source ? (
+                            <span className="ml-3 text-[10px] uppercase tracking-widest text-emerald-300/80">
+                              <FileText size={10} className="inline mr-1" /> Source: Knowledge Vault
+                            </span>
+                          ) : null}
+
+                          {showFullText[idx] ? (
+                            <div
+                              className="mt-4 max-h-[520px] overflow-y-auto rounded-xl border border-slate-700 bg-slate-900/50 p-4"
+                              data-testid={`text-full-judgment-${idx}`}
+                            >
+                              <pre className="whitespace-pre-wrap text-xs leading-relaxed text-slate-300 font-mono">
+                                {summaries[idx].fullText}
+                              </pre>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </article>
+          ))}
+
+          <div className="pt-3 border-t border-slate-800">
+            <h4 className="text-lg font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Citation Matches
+            </h4>
+            <p className="text-xs text-slate-500 mt-1">Exact journal/year/page lookup results.</p>
+          </div>
+
+          {citationSearching ? (
+            <div className="rounded-2xl border border-slate-800 bg-[#1e293b]/40 px-5 py-6 text-slate-400 flex items-center gap-3">
+              <Loader2 size={16} className="animate-spin text-amber-400" />
+              Looking up citation...
+            </div>
+          ) : null}
+
+          {!citationSearching && !citationError && hasCitationSearched && citationResults.length === 0 ? (
+            <div className="rounded-2xl border border-slate-800 bg-[#1e293b]/40 px-5 py-6 text-slate-400" data-testid="citation-search-empty">
+              No matching judgments found for this citation.
+            </div>
+          ) : null}
+
+          {citationResults.length > 0 ? (
+            <div className="space-y-3" data-testid="citation-search-results">
+              {citationResults.map((item) => (
+                <article key={item.id} className="rounded-xl border border-slate-700 bg-[#1e293b]/55 p-4 md:p-5 shadow-lg">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div className="space-y-2 min-w-0">
+                      <span className="inline-flex rounded-lg bg-blue-500/15 border border-blue-500/30 px-2.5 py-1 text-[11px] text-blue-200 font-mono">
+                        {item.citation}
+                      </span>
+                      <h5 className="text-base font-semibold text-white leading-snug">{item.title}</h5>
+                      <p className="text-xs text-slate-400 inline-flex items-center gap-1.5">
+                        <CalendarDays size={12} />
+                        {item.court || "Court not available"} • {formatDecisionDate(item.decisionDate)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => setLocation(`/judgment/${item.id}`)}
+                        className="rounded-lg bg-amber-500/15 border border-amber-500/30 px-3 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500/20"
+                        data-testid={`button-view-judgment-${item.id}`}
+                      >
+                        View Full Judgment →
+                      </button>
+                      {item.pdfUrl ? (
+                        <a
+                          href={item.pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20"
+                        >
+                          <ExternalLink size={13} /> PDF
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <aside className="space-y-6">
+          <section className="overflow-hidden rounded-xl border border-amber-500/25 bg-[#1e293b]/70">
+            <div className="bg-amber-500 px-4 py-3">
+              <h4 className="inline-flex items-center gap-2 text-sm font-black text-slate-950 uppercase tracking-wider">
+                <BookmarkPlus size={14} /> Saved Judgments
+              </h4>
+            </div>
+            <div className="p-4 space-y-3">
+              {savedJudgments.length === 0 ? (
+                <p className="text-xs text-slate-400">No saved judgments yet.</p>
+              ) : (
+                savedJudgments.slice(0, 6).map((saved) => (
+                  <div key={saved.id} className="rounded-lg border border-slate-700 bg-slate-900/40 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white truncate">{saved.title}</p>
+                        <p className="text-[10px] font-mono text-amber-300 mt-1">{saved.citation}</p>
+                      </div>
+                      <button
+                        onClick={() => void handleDeleteSaved(saved.id)}
+                        className="text-slate-400 hover:text-red-300"
+                        title="Remove saved judgment"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                     <button
                       onClick={() => {
                         setJudgmentForView({
@@ -474,26 +832,46 @@ export default function JudgmentSearchPage() {
                         });
                         setLocation("/judgment-view");
                       }}
-                      className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest py-2.5 px-4 rounded-xl transition-all bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
+                      className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 hover:text-amber-200"
                     >
-                      <Eye size={13} /> Open & Chat
-                    </button>
-                    <button
-                      onClick={() => handleDeleteSaved(saved.id)}
-                      className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest py-2.5 px-4 rounded-xl transition-all bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
-                    >
-                      <Trash2 size={13} /> Remove
+                      <Eye size={11} /> Open
                     </button>
                   </div>
-                  <p className="text-[8px] text-slate-600 mt-4 uppercase tracking-widest">
-                    Saved {new Date(saved.createdAt).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}
-                  </p>
-                </div>
-              ))}
+                ))
+              )}
+
+              <button
+                onClick={() => setLocation("/bookmarks")}
+                className="w-full rounded-lg border border-slate-700 bg-slate-900/35 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-amber-200 hover:border-amber-500/30"
+              >
+                View Library
+              </button>
             </div>
-          )}
-        </div>
-      )}
+          </section>
+
+          <section className="rounded-xl border border-slate-700 bg-[#1e293b]/55 p-4">
+            <h4 className="text-sm font-black uppercase tracking-wider text-slate-100 mb-3 inline-flex items-center gap-2">
+              <Gavel size={14} className="text-amber-300" /> Database Insights
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-slate-700 bg-slate-900/35 p-3">
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Total Judgments</p>
+                <p className="text-2xl font-bold text-white mt-1">{allResults.length}</p>
+              </div>
+              <div className="rounded-lg border border-slate-700 bg-slate-900/35 p-3">
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Citation Hits</p>
+                <p className="text-2xl font-bold text-white mt-1">{citationResults.length}</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">Verified Content</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Results are grounded in your internal case-law registry and connected citation database.
+              </p>
+            </div>
+          </section>
+        </aside>
+      </section>
     </div>
   );
 }
