@@ -80,7 +80,7 @@ export default function JudgmentDetailPage() {
   useEffect(() => {
     async function load() {
       if (!judgmentId) {
-        setLocation("/citation-search");
+        setLocation("/judgments?tab=citation");
         return;
       }
 
@@ -125,10 +125,10 @@ export default function JudgmentDetailPage() {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => setLocation("/citation-search")}
+          onClick={() => setLocation("/judgments?tab=citation")}
           className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/50"
         >
-          <ArrowLeft size={14} /> Back to Citation Search
+          <ArrowLeft size={14} /> Back to Judgments
         </button>
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">
           {error || "Judgment not found"}
@@ -142,10 +142,10 @@ export default function JudgmentDetailPage() {
   return (
     <div className="space-y-7 fade-in" data-testid="judgment-detail-page">
       <button
-        onClick={() => setLocation("/citation-search")}
+        onClick={() => setLocation("/judgments?tab=citation")}
         className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/50"
       >
-        <ArrowLeft size={14} /> Back to Citation Search
+        <ArrowLeft size={14} /> Back to Judgments
       </button>
 
       <section className="rounded-3xl border border-slate-800 bg-[#1e293b]/75 p-5 md:p-7 space-y-4">

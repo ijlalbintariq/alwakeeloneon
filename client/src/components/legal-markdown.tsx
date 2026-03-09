@@ -76,7 +76,7 @@ export function LegalMarkdown({ content, className }: { content: string; classNa
             if (citationPattern.test(text)) {
               const searchQuery = encodeURIComponent(text);
               return (
-                <LegalLink href={`/judgment-search?q=${searchQuery}`}>
+                <LegalLink href={`/judgments?tab=keywords&q=${searchQuery}`}>
                   <strong>{text}</strong>
                 </LegalLink>
               );
