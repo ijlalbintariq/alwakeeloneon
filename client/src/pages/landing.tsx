@@ -3,6 +3,7 @@ import { Scale, ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Z
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { SUBSCRIPTION_PLANS, type SubscriptionPlanKey } from "@/lib/subscription-plans";
 
 function FeatureCard({ icon: Icon, title, desc, bgClass, iconClass }: { icon: any; title: string; desc: string; bgClass: string; iconClass: string }) {
   return (
@@ -44,86 +45,11 @@ const FAQ_ITEMS = [
   },
 ];
 
-const PRICING_PLANS = [
-  {
-    key: "standard",
-    badge: "Standard",
-    title: "Standard",
-    price: "PKR 500/mo",
-    subtitle: "Solo starter plan",
-    cta: "Choose Standard",
-    features: [
-      "120 AI actions/month",
-      "1 user",
-      "Mode access: Standard",
-      "Output cap: Standard 900 tokens/request",
-      "Uploads: 100 files/month",
-      "PDF upload in chat: up to 50 pages/day",
-    ],
-    highlighted: false,
-  },
-  {
-    key: "pro",
-    badge: "Most Popular",
-    title: "Pro",
-    price: "PKR 1,000/mo",
-    subtitle: "For active practitioners",
-    cta: "Upgrade to Pro",
-    features: [
-      "350 AI actions/month",
-      "1 user",
-      "Mode access: Standard + Turbo",
-      "Output caps: Standard 1200, Turbo 1500",
-      "Uploads: 300 files/month",
-      "PDF upload in chat: up to 150 pages/day",
-    ],
-    highlighted: true,
-  },
-  {
-    key: "chamber",
-    badge: "Chamber",
-    title: "Chamber",
-    price: "PKR 3,000/mo",
-    subtitle: "Built for legal teams",
-    cta: "Choose Chamber",
-    features: [
-      "1,200 AI actions/month (pooled)",
-      "Up to 3 users",
-      "Mode access: Standard + Turbo + Apex",
-      "Output caps: Standard 1700, Turbo 2200, Apex 1800",
-      "Apex monthly cap: 180 requests",
-      "Uploads: 1,200 files/month",
-      "PDF upload in chat: up to 600 pages/day",
-    ],
-    highlighted: false,
-  },
-  {
-    key: "enterprise",
-    badge: "Enterprise",
-    title: "Enterprise",
-    price: "PKR 50,000/mo (custom base)",
-    subtitle: "For high-volume firms",
-    cta: "Contact Chamber",
-    features: [
-      "Custom fair-use (starts at 30,000 AI actions/month)",
-      "Custom seats",
-      "Full access + priority routing",
-      "Output caps: Standard 1700, Turbo 2200, Apex 1800",
-      "Apex monthly cap: 4,500 requests",
-      "Custom high-volume uploads",
-      "PDF upload in chat: custom volume",
-    ],
-    highlighted: false,
-  },
-] as const;
-
-type PricingPlanKey = typeof PRICING_PLANS[number]["key"];
-
 export default function LandingPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<PricingPlanKey>("pro");
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanKey>("pro");
   const { data: platformMetrics } = useQuery<{ legalDocuments: number; updatedAt: string }>({
     queryKey: ["/api/public/platform-metrics"],
     refetchInterval: 30000,
@@ -372,7 +298,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {PRICING_PLANS.map((plan) => (
+            {SUBSCRIPTION_PLANS.map((plan) => (
               <div
                 key={plan.key}
                 onClick={() => setSelectedPlan(plan.key)}
@@ -412,7 +338,7 @@ export default function LandingPage() {
                   </a>
                 ) : (
                   <a
-                    href={ctaTarget}
+                    href={`/checkout?plan=${plan.key}`}
                     className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center ${
                       plan.highlighted
                         ? "bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20"

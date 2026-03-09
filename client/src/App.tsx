@@ -35,6 +35,7 @@ const PrivacyPolicyPage = lazy(() => import("@/pages/privacy"));
 const TermsOfServicePage = lazy(() => import("@/pages/terms"));
 const OrganizationPage = lazy(() => import("@/pages/organization"));
 const InstallAppPage = lazy(() => import("@/pages/install-app"));
+const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -105,6 +106,10 @@ function Router({ onReady }: { onReady?: () => void }) {
 
   if (location === "/install") {
     return <InstallAppPage />;
+  }
+
+  if (location.startsWith("/checkout")) {
+    return <CheckoutPage />;
   }
 
   if (!user) {
