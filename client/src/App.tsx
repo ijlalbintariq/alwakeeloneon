@@ -33,6 +33,8 @@ const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
 const SharedConversationPage = lazy(() => import("@/pages/shared-conversation"));
 const PrivacyPolicyPage = lazy(() => import("@/pages/privacy"));
 const TermsOfServicePage = lazy(() => import("@/pages/terms"));
+const CancellationReturnRefundPolicyPage = lazy(() => import("@/pages/cancellation-return-refund-policy"));
+const OwnershipStatementPage = lazy(() => import("@/pages/ownership-statement"));
 const OrganizationPage = lazy(() => import("@/pages/organization"));
 const InstallAppPage = lazy(() => import("@/pages/install-app"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
@@ -102,6 +104,14 @@ function Router({ onReady }: { onReady?: () => void }) {
 
   if (location === "/terms") {
     return <TermsOfServicePage />;
+  }
+
+  if (location === "/cancellation-return-refund-policy") {
+    return <CancellationReturnRefundPolicyPage />;
+  }
+
+  if (location === "/ownership-statement") {
+    return <OwnershipStatementPage />;
   }
 
   if (location === "/install") {
