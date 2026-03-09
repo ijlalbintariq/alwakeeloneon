@@ -345,7 +345,7 @@ export default function OrganizationPage() {
     },
   });
 
-  const canCreateOrg = !!(user?.subscriptionTier === "pro" || user?.subscriptionTier === "enterprise" || user?.isAdmin);
+  const canCreateOrg = !!(user?.subscriptionTier === "pro" || user?.subscriptionTier === "chamber" || user?.subscriptionTier === "enterprise" || user?.isAdmin);
   const isOwner = !!(org && user && org.ownerId === user.id);
 
   const filteredMembers = useMemo(() => {
@@ -415,11 +415,11 @@ export default function OrganizationPage() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="text-amber-400 mt-0.5" size={20} />
                 <div>
-                  <h2 className="text-2xl font-bold text-white" style={{ fontFamily: "'Noto Serif', serif" }}>
+                  <h2 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
                     Organization Features Locked
                   </h2>
                   <p className="mt-2 text-sm text-slate-300">
-                    Upgrade to Pro or Enterprise to create and manage an organization workspace.
+                    Upgrade to Pro, Chamber, or Enterprise to create and manage an organization workspace.
                   </p>
                 </div>
               </div>
@@ -465,7 +465,7 @@ export default function OrganizationPage() {
           <header className="shrink-0 border-b border-[#3a3327] bg-[#181611]/90 backdrop-blur-md px-6 md:px-10 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Building2 className="text-amber-400" size={24} />
-              <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Noto Serif', serif" }}>Al Wakeelo</h2>
+              <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</h2>
             </div>
             <div className="text-xs text-slate-400">Organization Setup</div>
           </header>
@@ -512,7 +512,7 @@ export default function OrganizationPage() {
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-[#181611] flex items-center justify-center shadow-lg">
                       <Building2 size={24} />
                     </div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-white" style={{ fontFamily: "'Noto Serif', serif" }}>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
                       Create Private Organization
                     </h1>
                   </div>
@@ -981,7 +981,7 @@ export default function OrganizationPage() {
               <div className="h-12 w-12 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-4">
                 <UserPlus size={22} />
               </div>
-              <h3 className="text-white text-3xl font-bold" style={{ fontFamily: "'Noto Serif', serif" }}>Invite Team Member</h3>
+              <h3 className="text-white text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Invite Team Member</h3>
               <p className="text-slate-400 text-sm mt-2">Invite a colleague to collaborate on Al Wakeelo.</p>
             </div>
 

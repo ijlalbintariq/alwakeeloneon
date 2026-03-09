@@ -304,6 +304,7 @@ export interface IStorage {
   logUsage(userId: string, feature: string): Promise<UsageTracking>;
   logUsageCost(userId: string, feature: string, inputTokens: number, outputTokens: number, estimatedCost: number): Promise<void>;
   getMonthlyUsageCount(userId: string): Promise<number>;
+  getMonthlyUsageCountByFeature(userId: string, feature: string): Promise<number>;
   getUserTier(userId: string): Promise<string>;
   getCostAnalytics(): Promise<{ byFeature: Array<{ feature: string; totalQueries: number; totalInputTokens: number; totalOutputTokens: number; totalCost: string }>; totalCost: string; totalTokens: number }>;
 
@@ -1533,11 +1534,29 @@ export class DatabaseStorage implements IStorage {
     return result?.total || 0;
   }
 
+  async getMonthlyUsageCountByFeature(userId: string, feature: string): Promise<number> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [result] = await db.select({ total: count() })
+      .from(usageTracking)
+      .where(and(
+        eq(usageTracking.userId, userId),
+        eq(usageTracking.feature, feature as any),
+        gte(usageTracking.createdAt, startOfMonth)
+      ));
+    return result?.total || 0;
+  }
+
   async getUserTier(userId: string): Promise<string> {
     const [user] = await db.select({ tier: users.subscriptionTier })
       .from(users)
       .where(eq(users.id, userId));
-    return user?.tier || "free";
+    const rawTier = (user?.tier || "standard").toLowerCase();
+    if (rawTier === "free") return "standard";
+    if (rawTier === "standard" || rawTier === "pro" || rawTier === "chamber" || rawTier === "enterprise") {
+      return rawTier;
+    }
+    return "standard";
   }
 
   async getAllUsers(): Promise<User[]> {

@@ -71,7 +71,7 @@ export function isApexAvailable(): boolean {
 export function getApexModelsForTier(tier: string): Array<{ id: ApexModel; name: string; description: string }> {
   const models: Array<{ id: ApexModel; name: string; description: string }> = [];
 
-  if (tier === "pro" || tier === "enterprise") {
+  if (tier === "chamber" || tier === "enterprise") {
     models.push({
       id: "apex",
       name: "Apex",

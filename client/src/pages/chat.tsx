@@ -104,7 +104,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     queryKey: ["/api/documents"],
     enabled: isAlWakeelo,
   });
-  const canUseTurbo = usage?.tier === "pro" || usage?.tier === "enterprise";
+  const canUseTurbo = usage?.tier === "pro" || usage?.tier === "chamber" || usage?.tier === "enterprise";
   const isApexMode = aiMode !== "standard" && aiMode !== "turbo";
   const selectedApexModel = isApexMode ? aiMode : null;
   const turboMode = aiMode === "turbo";
@@ -468,7 +468,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     } catch (err: any) {
       const isLimitError = err?.isLimit || err?.message?.includes("429");
       const limitMsg = isLimitError
-        ? "Monthly query limit reached. Upgrade your plan to continue using Al Wakeelo."
+        ? "Monthly AI action limit reached. Upgrade your plan to continue using Al Wakeelo."
         : "Communication with chambers disrupted. Please try again.";
       setMessages(prev => {
         const last = prev[prev.length - 1];
@@ -868,7 +868,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <div className="flex items-center gap-2">
               <Crown size={14} className="text-amber-500" />
               <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
-                {usage.remaining} queries remaining this month
+                {usage.remaining} actions remaining this month
               </span>
             </div>
             <a href="/settings" className="flex items-center gap-1 text-[10px] font-black text-amber-500 uppercase tracking-widest hover:text-amber-400 transition-colors" data-testid="link-upgrade-warning">
@@ -882,7 +882,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <div className="flex items-center gap-2">
               <Lock size={14} className="text-red-500" />
               <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">
-                Monthly limit reached ({usage.used}/{usage.monthlyLimit} queries)
+                Monthly limit reached ({usage.used}/{usage.monthlyLimit} actions)
               </span>
             </div>
             <a href="/settings" className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-slate-950 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-colors" data-testid="link-upgrade-limit">
@@ -1395,7 +1395,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 <div className="flex items-center gap-2">
                   {usage.percentage >= 100 ? <Lock size={13} className="text-red-400" /> : <Crown size={13} className="text-amber-400" />}
                   <span className={`text-[10px] font-black uppercase tracking-wider ${usage.percentage >= 100 ? "text-red-300" : "text-amber-300"}`}>
-                    {usage.percentage >= 100 ? `Limit reached (${usage.used}/${usage.monthlyLimit})` : `${usage.remaining} queries remaining`}
+                    {usage.percentage >= 100 ? `Limit reached (${usage.used}/${usage.monthlyLimit} actions)` : `${usage.remaining} actions remaining`}
                   </span>
                 </div>
                 <a href="/settings" className="text-[10px] font-black uppercase tracking-wider text-amber-400 hover:text-amber-300 inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 rounded-md" data-testid="link-upgrade-warning">

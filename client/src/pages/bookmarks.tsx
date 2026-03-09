@@ -202,7 +202,7 @@ export default function BookmarksPage() {
               <div className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
                 <Bookmark size={18} />
               </div>
-              <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Noto Serif', serif" }}>
+              <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Al Wakeelo
               </h2>
 
@@ -241,7 +241,7 @@ export default function BookmarksPage() {
           <div className="mx-auto max-w-7xl">
             <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl" style={{ fontFamily: "'Noto Serif', serif" }}>
+                <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl" style={{ fontFamily: "'Playfair Display', serif" }}>
                   My Bookmarked Responses
                 </h1>
                 <p className="mt-2 text-base text-slate-400 md:text-lg">
@@ -321,7 +321,7 @@ export default function BookmarksPage() {
                             </button>
                           </div>
 
-                          <h3 className="line-clamp-2 text-xl font-bold leading-snug text-white" style={{ fontFamily: "'Noto Serif', serif" }}>
+                          <h3 className="line-clamp-2 text-xl font-bold leading-snug text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
                             {bookmark.title || "Untitled Bookmark"}
                           </h3>
 
@@ -409,7 +409,7 @@ export default function BookmarksPage() {
           <div className="relative flex h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0f172a] shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-700 px-4 py-4 sm:px-6">
               <div className="min-w-0">
-                <h3 className="truncate text-xl font-bold text-white sm:text-2xl" style={{ fontFamily: "'Noto Serif', serif" }}>
+                <h3 className="truncate text-xl font-bold text-white sm:text-2xl" style={{ fontFamily: "'Playfair Display', serif" }}>
                   {preview.title || "Bookmark"}
                 </h3>
                 <p className="mt-1 text-sm text-slate-400">Generated on {formatCardDate(preview.createdAt)}</p>

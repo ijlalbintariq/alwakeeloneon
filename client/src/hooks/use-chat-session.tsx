@@ -76,7 +76,7 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
   const assistantIdRef = useRef<string | null>(null);
 
   const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
-  const canUseTurbo = !!usage && (usage.tier === "pro" || usage.tier === "enterprise");
+  const canUseTurbo = !!usage && (usage.tier === "pro" || usage.tier === "chamber" || usage.tier === "enterprise");
 
   async function send(override?: string, opts?: { type?: string }) {
     const type = opts?.type || "al-wakeelo";
@@ -194,7 +194,7 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
     } catch (err: any) {
       const isLimitError = err?.isLimit || err?.message?.includes("429");
       const limitMsg = isLimitError
-        ? "Monthly query limit reached. Upgrade your plan to continue using Al Wakeelo."
+        ? "Monthly AI action limit reached. Upgrade your plan to continue using Al Wakeelo."
         : "Communication disrupted. Please try again.";
       setMessages(prev => {
         const aId = assistantIdRef.current;

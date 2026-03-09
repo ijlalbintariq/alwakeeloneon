@@ -44,6 +44,82 @@ const FAQ_ITEMS = [
   },
 ];
 
+const PRICING_PLANS = [
+  {
+    key: "standard",
+    badge: "Standard",
+    title: "Standard",
+    price: "PKR 500/mo",
+    subtitle: "Solo starter plan",
+    cta: "Choose Standard",
+    features: [
+      "120 AI actions/month",
+      "1 user",
+      "Mode access: Standard (Groq GPT-OSS)",
+      "Output cap: Standard 900 tokens/request",
+      "Uploads: 100 files/month",
+      "OCR: up to 50 pages/day",
+      "Max file size: 75MB",
+    ],
+    highlighted: false,
+  },
+  {
+    key: "pro",
+    badge: "Pro",
+    title: "Pro",
+    price: "PKR 1,000/mo",
+    subtitle: "For active practitioners",
+    cta: "Upgrade to Pro",
+    features: [
+      "350 AI actions/month",
+      "1 user",
+      "Mode access: Standard + Turbo (DeepSeek)",
+      "Output caps: Standard 1200, Turbo 1500",
+      "Uploads: 300 files/month",
+      "OCR: up to 150 pages/day",
+      "Max file size: 75MB",
+    ],
+    highlighted: false,
+  },
+  {
+    key: "chamber",
+    badge: "Most Popular",
+    title: "Chamber",
+    price: "PKR 3,000/mo",
+    subtitle: "Built for legal teams",
+    cta: "Choose Chamber",
+    features: [
+      "1,200 AI actions/month (pooled)",
+      "Up to 3 users",
+      "Mode access: Standard + Turbo + Apex (Kimi)",
+      "Output caps: Standard 1700, Turbo 2200, Apex 1800",
+      "Apex monthly cap: 180 requests",
+      "Uploads: 1,200 files/month",
+      "OCR: up to 600 pages/day",
+      "Max file size: 75MB",
+    ],
+    highlighted: true,
+  },
+  {
+    key: "enterprise",
+    badge: "Enterprise",
+    title: "Enterprise",
+    price: "PKR 50,000/mo (custom base)",
+    subtitle: "For high-volume firms",
+    cta: "Contact Chamber",
+    features: [
+      "Custom fair-use (starts at 30,000 AI actions/month)",
+      "Custom seats",
+      "Full access + priority routing",
+      "Output caps: Standard 1700, Turbo 2200, Apex 1800",
+      "Apex monthly cap: 4,500 requests",
+      "Custom high-volume uploads/OCR",
+      "Max file size: 75MB",
+    ],
+    highlighted: false,
+  },
+] as const;
+
 export default function LandingPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -99,7 +175,7 @@ export default function LandingPage() {
               href={ctaTarget}
               className="px-6 py-2.5 bg-amber-500 text-slate-950 rounded-xl text-sm font-bold hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
             >
-              {user ? <><LayoutDashboard size={16} /> Dashboard</> : "Start Free"}
+              {user ? <><LayoutDashboard size={16} /> Dashboard</> : "Start Now"}
             </a>
           </div>
         </div>
@@ -284,77 +360,74 @@ export default function LandingPage() {
       </section>
 
       <section id="pricing" className="py-20 md:py-28 px-6 bg-[#131c2e]">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">Plans</p>
             <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
               Choose Your Plan
             </h2>
             <p className="text-slate-400 mt-4 max-w-xl mx-auto">
-              Start free and upgrade as your practice grows. All plans include core AI features.
+              Transparent pricing by AI actions, model access, output caps, and upload/OCR limits.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-8 bg-[#1e293b] border border-slate-800 rounded-3xl hover:border-slate-700 transition-all">
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Starter</p>
-              <h3 className="text-3xl font-bold text-white mb-1">Free</h3>
-              <p className="text-sm text-slate-500 mb-6">Perfect for exploring</p>
-              <ul className="space-y-3 mb-8">
-                {["10 AI queries/month", "Basic judgment search", "Statute lookup", "Legal drafting", "File attachments"].map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
-                    <ChevronRight size={14} className="text-amber-500 flex-shrink-0" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href={ctaTarget}
-                className="w-full py-3.5 border border-slate-700 text-slate-300 rounded-xl text-sm font-bold hover:border-amber-500 hover:text-amber-500 transition-all flex items-center justify-center"
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            {PRICING_PLANS.map((plan) => (
+              <div
+                key={plan.key}
+                className={`p-7 rounded-3xl transition-all ${
+                  plan.highlighted
+                    ? "bg-gradient-to-b from-amber-500/10 to-[#1e293b] border-2 border-amber-500/30 shadow-xl shadow-amber-500/10"
+                    : "bg-[#1e293b] border border-slate-800 hover:border-slate-700"
+                }`}
               >
-                Get Started Free
-              </a>
-            </div>
-
-            <div className="p-8 bg-gradient-to-b from-amber-500/10 to-[#1e293b] border-2 border-amber-500/30 rounded-3xl relative shadow-xl shadow-amber-500/5">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-amber-500 text-slate-950 rounded-full text-[10px] font-black uppercase tracking-widest">
-                Most Popular
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${plan.highlighted ? "text-amber-500" : "text-slate-500"}`}>
+                  {plan.badge}
+                </p>
+                <h3 className="text-2xl font-bold text-white mb-1">{plan.title}</h3>
+                <p className="text-amber-400 text-sm font-black mb-1">{plan.price}</p>
+                <p className="text-xs text-slate-500 mb-5">{plan.subtitle}</p>
+                <ul className="space-y-2.5 mb-7">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-xs text-slate-300 leading-relaxed">
+                      <ChevronRight size={13} className="text-amber-500 flex-shrink-0 mt-0.5" /> {feature}
+                    </li>
+                  ))}
+                </ul>
+                {plan.key === "enterprise" ? (
+                  <a
+                    href="mailto:support@alwakeelo.com?subject=Enterprise%20Consultation"
+                    className="w-full py-3 border border-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest hover:border-amber-500 hover:text-amber-400 transition-all flex items-center justify-center"
+                  >
+                    {plan.cta}
+                  </a>
+                ) : (
+                  <a
+                    href={ctaTarget}
+                    className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center ${
+                      plan.highlighted
+                        ? "bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20"
+                        : "border border-slate-700 text-slate-300 hover:border-amber-500 hover:text-amber-400"
+                    }`}
+                  >
+                    {plan.cta}
+                  </a>
+                )}
               </div>
-              <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest mb-1">Pro</p>
-              <h3 className="text-3xl font-bold text-white mb-1">Pro</h3>
-              <p className="text-sm text-slate-500 mb-6">For active practitioners</p>
-              <ul className="space-y-3 mb-8">
-                {["500 AI queries/month", "Advanced judgment search", "Turbo AI mode (Pro model)", "Contract drafting", "Audio transcription", "Priority support", "Document analysis"].map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
-                    <ChevronRight size={14} className="text-amber-500 flex-shrink-0" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href={ctaTarget}
-                className="w-full py-3.5 bg-amber-500 text-slate-950 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center"
-              >
-                Upgrade to Pro
-              </a>
-            </div>
+            ))}
+          </div>
 
-            <div className="p-8 bg-[#1e293b] border border-slate-800 rounded-3xl hover:border-slate-700 transition-all">
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Enterprise</p>
-              <h3 className="text-3xl font-bold text-white mb-1">Enterprise</h3>
-              <p className="text-sm text-slate-500 mb-6">For law firms & teams</p>
-              <ul className="space-y-3 mb-8">
-                {["Unlimited AI queries", "All Pro features", "Custom knowledge base", "Team collaboration", "Admin dashboard", "Priority API access", "Dedicated support"].map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
-                    <ChevronRight size={14} className="text-amber-500 flex-shrink-0" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="mailto:support@alwakeelo.com?subject=Enterprise%20Consultation"
-                className="w-full py-3.5 border border-slate-700 text-slate-300 rounded-xl text-sm font-bold hover:border-amber-500 hover:text-amber-500 transition-all flex items-center justify-center"
-              >
-                Contact Chamber
-              </a>
+          <div className="mt-8 rounded-2xl border border-slate-800 bg-[#1b2537] p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-500 mb-3">Chamber Expansion</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-300">
+              <p>Extra seat: <span className="text-amber-300 font-bold">+PKR 1,000/month per user</span></p>
+              <p>Extra AI limit: <span className="text-amber-300 font-bold">+350 AI actions/month per user</span></p>
+              <p>Suggested upload add-on: <span className="text-amber-300 font-bold">+300 files/month per user</span></p>
+              <p>Suggested Apex add-on: <span className="text-amber-300 font-bold">+50 Apex requests/month per user</span></p>
             </div>
+            <p className="mt-3 text-[11px] text-slate-400">
+              AI action counting: 1 chat/draft/summarize request = 1 action. Audio transcription: every 2 minutes = 1 action.
+            </p>
           </div>
         </div>
       </section>
@@ -399,7 +472,7 @@ export default function LandingPage() {
               href={ctaTarget}
               className="px-8 py-3.5 bg-amber-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center gap-2 shadow-xl shadow-amber-500/20"
             >
-              {user ? "Go to Dashboard" : "Start Free"} <ArrowRight size={16} />
+              {user ? "Go to Dashboard" : "Start Now"} <ArrowRight size={16} />
             </a>
             <a
               href="mailto:support@alwakeelo.com?subject=Legal%20Consultation"

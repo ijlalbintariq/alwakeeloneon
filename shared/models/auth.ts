@@ -19,7 +19,7 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   passwordHash: varchar("password_hash"),
   authProvider: varchar("auth_provider").default("email").notNull(),
-  subscriptionTier: varchar("subscription_tier").default("free").notNull(),
+  subscriptionTier: varchar("subscription_tier").default("standard").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

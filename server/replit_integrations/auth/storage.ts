@@ -29,13 +29,25 @@ class AuthStorage implements IAuthStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    const normalizedTierRaw = String(userData.subscriptionTier || "standard").toLowerCase();
+    const normalizedTier =
+      normalizedTierRaw === "free"
+        ? "standard"
+        : (normalizedTierRaw === "standard" || normalizedTierRaw === "pro" || normalizedTierRaw === "chamber" || normalizedTierRaw === "enterprise")
+          ? normalizedTierRaw
+          : "standard";
+    const safeUserData: UpsertUser = {
+      ...userData,
+      subscriptionTier: normalizedTier,
+    };
+
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values(safeUserData)
       .onConflictDoUpdate({
         target: users.email,
         set: {
-          ...userData,
+          ...safeUserData,
           updatedAt: new Date(),
         },
       })

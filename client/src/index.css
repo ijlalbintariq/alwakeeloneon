@@ -71,6 +71,22 @@
 }
 
 @layer base {
+  html {
+    font-size: 15px;
+  }
+
+  @media (max-width: 1024px) {
+    html {
+      font-size: 14.5px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    html {
+      font-size: 14px;
+    }
+  }
+
   body {
     @apply bg-background text-foreground antialiased font-sans;
   }
@@ -79,6 +95,16 @@
     font-family: 'Playfair Display', serif;
     @apply tracking-tight;
   }
+}
+
+/* Slightly compact scale for authenticated app shell UI */
+.app-ui-compact {
+  font-size: 0.98rem;
+}
+
+.app-ui-compact .lucide {
+  width: 0.94em !important;
+  height: 0.94em !important;
 }
 
 .scrollbar-hide::-webkit-scrollbar {

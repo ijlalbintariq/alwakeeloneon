@@ -84,7 +84,7 @@ export default function DashboardPage() {
                     <span className="text-lg preview-muted font-medium"> / {usage.monthlyLimit === 999999 ? "Unlimited" : usage.monthlyLimit}</span>
                   </p>
                   <p className="text-[9px] font-black uppercase tracking-widest preview-muted mt-1">
-                    AI Queries This Month
+                    AI Actions This Month
                   </p>
                 </div>
                 <p className="text-sm font-bold preview-subtitle" data-testid="text-usage-remaining">
@@ -108,7 +108,7 @@ export default function DashboardPage() {
           {isAtLimit && (
             <div className="mt-6 p-4 bg-red-900/30 border border-red-800/30 rounded-xl" data-testid="alert-limit-reached">
               <p className="text-sm text-red-300 font-medium">
-                You have reached your monthly query limit. Upgrade your plan to continue using AI features.
+                You have reached your monthly AI action limit. Upgrade your plan to continue using AI features.
               </p>
             </div>
           )}
@@ -116,7 +116,7 @@ export default function DashboardPage() {
           {isNearLimit && !isAtLimit && (
             <div className="mt-6 p-4 bg-amber-900/30 border border-amber-800/30 rounded-xl" data-testid="alert-near-limit">
               <p className="text-sm text-amber-300 font-medium">
-                You are approaching your monthly query limit ({usage.remaining} queries remaining). Consider upgrading your plan.
+                You are approaching your monthly AI action limit ({usage.remaining} actions remaining). Consider upgrading your plan.
               </p>
             </div>
           )}

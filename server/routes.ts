@@ -67,11 +67,11 @@ const COST_PER_1K_TOKENS: Record<string, { input: number; output: number }> = {
 
 const INLINE_DB_CONTENT_LIMIT = Math.max(5000, Number(process.env.DB_INLINE_CONTENT_MAX_CHARS || 60000));
 const MB = 1024 * 1024;
-const DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(5, Number(process.env.DOCUMENT_UPLOAD_MAX_FILE_MB || 25)) * MB;
+const DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(5, Number(process.env.DOCUMENT_UPLOAD_MAX_FILE_MB || 75)) * MB;
 const DOCUMENT_UPLOAD_MAX_FILES = Math.max(1, Number(process.env.DOCUMENT_UPLOAD_MAX_FILES || 25));
-const ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(5, Number(process.env.ADMIN_UPLOAD_MAX_FILE_MB || 25)) * MB;
+const ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(5, Number(process.env.ADMIN_UPLOAD_MAX_FILE_MB || 75)) * MB;
 const ADMIN_UPLOAD_MAX_FILES = Math.max(1, Number(process.env.ADMIN_UPLOAD_MAX_FILES || 200));
-const GENERAL_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(2, Number(process.env.GENERAL_UPLOAD_MAX_FILE_MB || 25)) * MB;
+const GENERAL_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(2, Number(process.env.GENERAL_UPLOAD_MAX_FILE_MB || 75)) * MB;
 const EXTRACTION_TIMEOUT_MS = Math.max(3000, Number(process.env.EXTRACTION_TIMEOUT_MS || 120000));
 const UPLOAD_QUEUE_CONCURRENCY = Math.max(1, Number(process.env.UPLOAD_QUEUE_CONCURRENCY || 2));
 const UPLOAD_QUEUE_MAX_PENDING = Math.max(UPLOAD_QUEUE_CONCURRENCY, Number(process.env.UPLOAD_QUEUE_MAX_PENDING || 32));
@@ -670,8 +670,36 @@ async function callStandardAISimple(
 
 type ChatRouteMode = "standard" | "turbo";
 
+function normalizeTier(tierRaw: string | undefined | null): "standard" | "pro" | "chamber" | "enterprise" {
+  const tier = String(tierRaw || "standard").toLowerCase();
+  if (tier === "pro" || tier === "chamber" || tier === "enterprise") return tier;
+  if (tier === "free") return "standard";
+  return "standard";
+}
+
+function getTierPlan(tierRaw: string | undefined | null) {
+  const tier = normalizeTier(tierRaw);
+  return TIER_LIMITS[tier] || TIER_LIMITS.standard;
+}
+
+function isTurboAllowedForTier(tierRaw: string | undefined | null): boolean {
+  const tierPlan = getTierPlan(tierRaw);
+  return Boolean(tierPlan.modeAccess?.turbo);
+}
+
+function isApexAllowedForTier(tierRaw: string | undefined | null): boolean {
+  const tierPlan = getTierPlan(tierRaw);
+  return Boolean(tierPlan.modeAccess?.apex);
+}
+
+function getModeOutputCap(tierRaw: string | undefined | null, mode: "standard" | "turbo" | "apex"): number {
+  const tierPlan = getTierPlan(tierRaw);
+  const cap = tierPlan.maxOutputTokens?.[mode] || 0;
+  return Math.max(0, Number(cap) || 0);
+}
+
 function resolveModuleRoute(modePrimary: ChatRouteMode, modeFallback: ChatRouteMode, userTier: string) {
-  const turboPermitted = (userTier === "pro" || userTier === "enterprise") && isDeepSeekAvailable();
+  const turboPermitted = isTurboAllowedForTier(userTier) && isDeepSeekAvailable();
   if (modePrimary === "turbo" && !turboPermitted) {
     return { route: modeFallback, downgraded: true as const };
   }
@@ -1359,17 +1387,13 @@ async function checkUsageLimit(userId: string, feature: string, res: any): Promi
       return true;
     }
 
-    const tier = await storage.getUserTier(userId);
-    if (tier === "enterprise") {
-      return true;
-    }
-
-    const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
+    const tier = normalizeTier(await storage.getUserTier(userId));
+    const limits = getTierPlan(tier);
     const usedThisMonth = await storage.getMonthlyUsageCount(userId);
 
     if (usedThisMonth >= limits.monthlyQueries) {
       res.status(429).json({
-        message: `Monthly query limit reached (${limits.monthlyQueries} queries on ${limits.label} plan). Upgrade your plan for more queries.`,
+        message: `Monthly AI action limit reached (${limits.monthlyQueries} on ${limits.label} plan). Upgrade your plan for higher limits.`,
         limit: limits.monthlyQueries,
         used: usedThisMonth,
         tier,
@@ -3313,8 +3337,8 @@ RAG POLICY (STRICT):
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const tier = await storage.getUserTier(userId);
-      const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
+      const tier = normalizeTier(await storage.getUserTier(userId));
+      const limits = getTierPlan(tier);
       const used = await storage.getMonthlyUsageCount(userId);
       const remaining = Math.max(0, limits.monthlyQueries - used);
       const percentage = Math.min(100, Math.round((used / limits.monthlyQueries) * 100));
@@ -3544,12 +3568,13 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
             ? (requestedModeRaw as ApexModel)
             : "standard";
       const userTier = await storage.getUserTier(userId);
-      const canUsePremiumModes = userTier === "pro" || userTier === "enterprise";
-      if (requestedMode === "turbo" && !canUsePremiumModes) {
-        return res.status(403).json({ message: "Turbo transcription requires Pro or Enterprise." });
+      const canUseTurboMode = isTurboAllowedForTier(userTier);
+      const canUseApexMode = isApexAllowedForTier(userTier);
+      if (requestedMode === "turbo" && !canUseTurboMode) {
+        return res.status(403).json({ message: "Turbo transcription requires Pro, Chamber, or Enterprise." });
       }
-      if ((requestedMode === "apex" || requestedMode === "apex-pro" || requestedMode === "apex-agent") && !canUsePremiumModes) {
-        return res.status(403).json({ message: "Apex transcription requires Pro or Enterprise." });
+      if ((requestedMode === "apex" || requestedMode === "apex-pro" || requestedMode === "apex-agent") && !canUseApexMode) {
+        return res.status(403).json({ message: "Apex transcription requires Chamber or Enterprise." });
       }
 
       const resolveAudioFormat = (mimeType: string, filename: string): "wav" | "mp3" | "m4a" | "webm" | "ogg" => {
@@ -3945,7 +3970,11 @@ The user has attached the following documents for your reference. Analyze them c
       );
       let usedModel = selectedRoute === "turbo" ? getDeepSeekModelName() : getGroqModelName();
       const featureKey = moduleProfile.modelStrategy.tokenLimitKey;
-      const tokenLimit = directMode ? 128 : (TOKEN_LIMITS[featureKey] || TOKEN_LIMITS.chat);
+      const featureTokenLimit = TOKEN_LIMITS[featureKey] || TOKEN_LIMITS.chat;
+      const planModeCap = getModeOutputCap(userTier, selectedRoute);
+      const tokenLimit = directMode
+        ? 128
+        : Math.min(featureTokenLimit, planModeCap > 0 ? planModeCap : featureTokenLimit);
       const timeoutProfile: TimeoutProfile = directMode ? "search" : "default";
       const temperature = directMode ? 0 : 0.7;
       const knowledgeTokensBudget = styleContext
@@ -4689,7 +4718,7 @@ RULES:
       const targetId = req.params.id;
       const { subscriptionTier, isAdmin: adminFlag } = req.body;
 
-      const validTiers = ["free", "pro", "enterprise"];
+      const validTiers = ["standard", "pro", "chamber", "enterprise"];
       if (subscriptionTier !== undefined && !validTiers.includes(subscriptionTier)) {
         return res.status(400).json({ message: "Invalid subscription tier" });
       }
@@ -4744,7 +4773,7 @@ RULES:
         passwordHash,
         authProvider: "email",
       });
-      if (subscriptionTier && ["free", "pro", "enterprise"].includes(subscriptionTier)) {
+      if (subscriptionTier && ["standard", "pro", "chamber", "enterprise"].includes(subscriptionTier)) {
         await storage.updateUserTier(user.id, subscriptionTier);
       }
       if (makeAdmin === true) {
@@ -4752,7 +4781,7 @@ RULES:
       }
       await logAuditEvent("admin.user.create", getUserId(req), user.id, {
         email,
-        subscriptionTier: subscriptionTier || "free",
+        subscriptionTier: subscriptionTier || "standard",
         isAdmin: makeAdmin === true,
       });
       res.status(201).json({ message: "User created successfully", user });
@@ -6341,7 +6370,7 @@ Instructions:
   app.get("/api/apex/models", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
-    const tier = await storage.getUserTier(userId);
+    const tier = normalizeTier(await storage.getUserTier(userId));
     const available = isApexAvailable();
     const models = available ? getApexModelsForTier(tier) : [];
     res.json({ available, models, tier });
@@ -6350,7 +6379,8 @@ Instructions:
   app.post("/api/apex/chat", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
-    const tier = await storage.getUserTier(userId);
+    const tier = normalizeTier(await storage.getUserTier(userId));
+    const tierPlan = getTierPlan(tier);
 
     if (!isApexAvailable()) {
       return res.status(503).json({ message: "Apex AI is not configured" });
@@ -6368,6 +6398,18 @@ Instructions:
 
     const allowed = await checkUsageLimit(userId, "chat", res);
     if (!allowed) return;
+
+    const apexMonthlyCap = Math.max(0, Number(tierPlan.apexMonthlyCap || 0));
+    const apexUsedThisMonth = await storage.getMonthlyUsageCountByFeature(userId, "chat-apex");
+    if (apexMonthlyCap > 0 && apexUsedThisMonth >= apexMonthlyCap) {
+      return res.status(429).json({
+        message: `Apex monthly cap reached (${apexMonthlyCap}/${apexMonthlyCap}) on ${tierPlan.label} plan. Use Standard/Turbo or upgrade.`,
+        cap: apexMonthlyCap,
+        used: apexUsedThisMonth,
+      });
+    }
+
+    const apexRequestCap = Math.max(256, getModeOutputCap(tier, "apex") || 1800);
 
     try {
       let systemPrompt = getLegalSystemPrompt();
@@ -6423,7 +6465,7 @@ Instructions:
               () => chatWithApex({
                 model: kimi,
                 messages,
-                maxTokens: kimi === "apex" ? 4096 : 8192,
+                maxTokens: apexRequestCap,
               }),
             );
             responseContent = result.content;
@@ -6447,7 +6489,7 @@ Instructions:
             const dsResult = await withTimeout(
               "DeepSeek Pro",
               MODEL_TIMEOUT_MS.apexFallback,
-              () => chatWithDeepSeekPro({ messages, maxTokens: 8192 }),
+              () => chatWithDeepSeekPro({ messages, maxTokens: apexRequestCap }),
             );
             responseContent = dsResult.content;
             responseReasoning = undefined;
@@ -6464,7 +6506,7 @@ Instructions:
       const actualModel = responseModel;
       const safeResponseContent = await applyAlWakeeloSafetyGuardrails(responseContent).catch(() => ensureAlWakeeloReferencesBlock(responseContent));
       const inputText = messages.map(m => m.content).join("\n");
-      await logUsageCost(userId, "chat", actualModel, inputText, safeResponseContent);
+      await logUsageCost(userId, "chat-apex", actualModel, inputText, safeResponseContent);
 
       res.json({
         content: safeResponseContent,
@@ -6493,8 +6535,8 @@ Instructions:
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const user = await storage.getUserProfile(userId);
-    if (!user || (user.subscriptionTier !== "pro" && user.subscriptionTier !== "enterprise" && !user.isAdmin)) {
-      return res.status(403).json({ message: "Only Pro and Enterprise users can create organizations" });
+    if (!user || (normalizeTier(user.subscriptionTier) !== "pro" && normalizeTier(user.subscriptionTier) !== "chamber" && normalizeTier(user.subscriptionTier) !== "enterprise" && !user.isAdmin)) {
+      return res.status(403).json({ message: "Only Pro, Chamber, and Enterprise users can create organizations" });
     }
     const existing = await storage.getUserOrganization(userId);
     if (existing) return res.status(400).json({ message: "You already belong to an organization" });

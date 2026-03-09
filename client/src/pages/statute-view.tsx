@@ -202,7 +202,7 @@ export default function StatuteViewPage() {
             id={sectionId}
             data-section-heading={trimmed}
             className="text-xl font-bold text-white mt-10 mb-4 pt-4 transition-colors duration-500"
-            style={{ fontFamily: "'Libre Baskerville', serif" }}
+            style={{ fontFamily: "'Playfair Display', serif" }}
           >
             {trimmed}
           </h2>
@@ -280,7 +280,7 @@ export default function StatuteViewPage() {
             <ArrowLeft size={18} />
           </Button>
           <div className="min-w-0">
-            <h2 className="text-sm font-bold text-white truncate" style={{ fontFamily: "'Libre Baskerville', serif" }}>
+            <h2 className="text-sm font-bold text-white truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
               {doc.title}
             </h2>
             <p className="text-[9px] text-slate-500 uppercase tracking-wider">{doc.category}</p>
@@ -351,7 +351,7 @@ export default function StatuteViewPage() {
             </div>
           ) : (
             <div className="max-w-4xl mx-auto px-3 sm:px-6 md:px-12 py-6 md:py-10">
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2" style={{ fontFamily: "'Libre Baskerville', serif" }}>
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
                 {doc.title.toUpperCase()}
               </h1>
               <p className="text-sm text-slate-500 mb-8">
