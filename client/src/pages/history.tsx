@@ -259,7 +259,7 @@ export default function HistoryPage() {
             <div className="h-8 w-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center">
               <History size={18} />
             </div>
-            <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Noto Serif', serif" }}>
+            <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
               Al Wakeelo
             </h2>
           </div>
@@ -268,7 +268,7 @@ export default function HistoryPage() {
         <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-10 md:py-8">
           <div className="mx-auto w-full max-w-[1280px]">
             <div className="mb-8">
-              <h1 className="mb-6 text-4xl font-bold leading-tight text-white" style={{ fontFamily: "'Noto Serif', serif" }}>
+              <h1 className="mb-6 text-4xl font-bold leading-tight text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Search History
               </h1>
 
@@ -374,7 +374,7 @@ export default function HistoryPage() {
                               </div>
 
                               <div className="min-w-0">
-                                <h4 className="truncate text-lg font-bold text-white transition-colors group-hover:text-amber-300" style={{ fontFamily: "'Noto Serif', serif" }}>
+                                <h4 className="truncate text-lg font-bold text-white transition-colors group-hover:text-amber-300" style={{ fontFamily: "'Playfair Display', serif" }}>
                                   {item.title}
                                 </h4>
                                 <p className="mt-1 flex items-center gap-2 text-sm text-slate-400">

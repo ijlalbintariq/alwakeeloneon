@@ -1027,6 +1027,8 @@ export default function LegalDraftingPage() {
               </div>
             </section>
 
+            <StyleMemoryPanel module="legal-drafting" />
+
             <section>
               <div className="flex items-center justify-between mb-3">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Risk Analysis</label>
@@ -1097,10 +1099,6 @@ export default function LegalDraftingPage() {
                 )}
               </div>
             </section>
-          </div>
-
-          <div className="p-4 border-t border-[hsl(var(--preview-border))]">
-            <StyleMemoryPanel module="legal-drafting" />
           </div>
           </div>
         </aside>

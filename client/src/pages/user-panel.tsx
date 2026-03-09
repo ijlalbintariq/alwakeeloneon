@@ -103,12 +103,16 @@ export default function UserPanelPage() {
 
   const tierColor = profile?.subscriptionTier === "enterprise"
     ? "text-emerald-400"
+    : profile?.subscriptionTier === "chamber"
+      ? "text-violet-300"
     : profile?.subscriptionTier === "pro"
       ? "text-amber-400"
       : "text-slate-400";
 
   const tierBg = profile?.subscriptionTier === "enterprise"
     ? "bg-emerald-500/20 border-emerald-500/30"
+    : profile?.subscriptionTier === "chamber"
+      ? "bg-violet-500/20 border-violet-500/30"
     : profile?.subscriptionTier === "pro"
       ? "bg-amber-500/20 border-amber-500/30"
       : "bg-slate-800 border-slate-700";
@@ -157,7 +161,7 @@ export default function UserPanelPage() {
           </div>
           <div className="flex items-center gap-2">
             <Badge className={`${tierBg} ${tierColor} rounded-lg text-xs font-black uppercase`} data-testid="badge-tier">
-              {profile?.subscriptionTier || "free"} Plan
+              {profile?.subscriptionTier || "standard"} Plan
             </Badge>
             {profile?.isAdmin && (
               <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 rounded-lg text-[9px]">
@@ -291,14 +295,16 @@ export default function UserPanelPage() {
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
               <p className="text-xs text-slate-400">
-                {TIER_LIMITS[profile?.subscriptionTier || "free"]?.description || "10 AI queries/month"}
+                {TIER_LIMITS[profile?.subscriptionTier || "standard"]?.description || "120 AI actions/month"}
               </p>
               <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2c] px-3 py-2.5">
                 <p className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500">Model Access</p>
                 <p className="text-xs text-slate-300 mt-1">
-                  {(profile?.subscriptionTier === "pro" || profile?.subscriptionTier === "enterprise")
+                  {profile?.subscriptionTier === "chamber" || profile?.subscriptionTier === "enterprise"
                     ? "Standard, Turbo, and Apex model menu enabled."
-                    : "Standard mode enabled. Upgrade to unlock Turbo and Apex."}
+                    : profile?.subscriptionTier === "pro"
+                      ? "Standard and Turbo model menu enabled."
+                      : "Standard mode enabled. Upgrade to unlock Turbo and Apex."}
                 </p>
               </div>
             </CardContent>

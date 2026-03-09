@@ -2,7 +2,6 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
   AlertCircle,
-  ArrowUpRight,
   BookOpen,
   BookmarkPlus,
   CalendarDays,
@@ -13,7 +12,6 @@ import {
   FileText,
   Gavel,
   Loader2,
-  Scale,
   Search,
   ShieldAlert,
   ShieldCheck,
@@ -128,6 +126,8 @@ export default function JudgmentSearchPage() {
   const [journal, setJournal] = useState<string>("");
   const [page, setPage] = useState<string>("");
   const [court, setCourt] = useState<string>("");
+  const [searchMode, setSearchMode] = useState<"keyword" | "citation">("keyword");
+  const [keywordSort, setKeywordSort] = useState<"relevance" | "latest">("relevance");
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [loadingJournals, setLoadingJournals] = useState<boolean>(true);
@@ -136,8 +136,6 @@ export default function JudgmentSearchPage() {
   const [citationResults, setCitationResults] = useState<CitationResult[]>([]);
   const [hasCitationSearched, setHasCitationSearched] = useState<boolean>(false);
   const [pendingAutoCitation, setPendingAutoCitation] = useState<CitationSearchParams | null>(null);
-
-  const trendingKeywords = ["Criminal Appeal", "Taxation", "Custody Matters"];
 
   const { data: savedJudgments = [], refetch: refetchSaved } = useQuery<SavedJudgment[]>({
     queryKey: ["/api/saved-judgments"],
@@ -178,7 +176,7 @@ export default function JudgmentSearchPage() {
       const isLimit = e?.message?.includes("429");
       setSearchError(
         isLimit
-          ? "Monthly query limit reached. Upgrade your plan for more searches."
+          ? "Monthly AI action limit reached. Upgrade your plan for more searches."
           : "AI research feed temporarily unavailable. Please try again.",
       );
       if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
@@ -218,11 +216,6 @@ export default function JudgmentSearchPage() {
 
   const handleSearch = async () => {
     await runKeywordSearch(query);
-  };
-
-  const handleTrendingClick = async (value: string) => {
-    setQuery(value);
-    await runKeywordSearch(value);
   };
 
   const handleCitationSearch = async (event: FormEvent) => {
@@ -270,7 +263,7 @@ export default function JudgmentSearchPage() {
         ...prev,
         [idx]: {
           summary: isLimit
-            ? "Monthly query limit reached. Please upgrade your plan for more AI analyses."
+            ? "Monthly AI action limit reached. Please upgrade your plan for more AI analyses."
             : "Failed to generate summary. Please try again.",
           fullText: null,
           source: null,
@@ -322,6 +315,7 @@ export default function JudgmentSearchPage() {
     const q = params.get("q");
     if (q && !autoSearchDone) {
       setQuery(q);
+      setSearchMode("keyword");
       setAutoSearchDone(true);
       setTimeout(() => {
         void runKeywordSearch(q);
@@ -337,6 +331,7 @@ export default function JudgmentSearchPage() {
     if (citationValue) {
       const parsed = parseCitationFromText(citationValue);
       if (parsed) {
+        setSearchMode("citation");
         setPendingAutoCitation({
           year: parsed.year,
           journal: parsed.journal,
@@ -351,6 +346,7 @@ export default function JudgmentSearchPage() {
       const yearValue = Number(yearParam);
       const pageValue = Number(pageParam);
       if (Number.isInteger(yearValue) && Number.isInteger(pageValue) && pageValue > 0) {
+        setSearchMode("citation");
         setPendingAutoCitation({
           year: yearValue,
           journal: journalParam.toUpperCase(),
@@ -363,6 +359,7 @@ export default function JudgmentSearchPage() {
 
   useEffect(() => {
     if (!pendingAutoCitation || loadingJournals) return;
+    setSearchMode("citation");
 
     const matchedJournal = journals.find(
       (j) => j.code.toUpperCase() === pendingAutoCitation.journal.toUpperCase(),
@@ -386,161 +383,243 @@ export default function JudgmentSearchPage() {
   }, [pendingAutoCitation, loadingJournals, journals]);
 
   return (
-    <div className="space-y-8 md:space-y-10 fade-in pb-20" data-testid="judgment-search-page">
-      <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-[#0f172a] p-6 md:p-10">
-        <div className="pointer-events-none absolute -top-20 right-8 h-44 w-44 rounded-full bg-amber-500/10 blur-3xl" />
-        <div className="max-w-4xl space-y-4">
-          <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+    <div className="space-y-5 md:space-y-6 fade-in pb-14" data-testid="judgment-search-page">
+      <section className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-[#0f172a] p-3 md:p-4">
+        <div className="pointer-events-none absolute -top-12 right-5 h-24 w-24 rounded-full bg-amber-500/10 blur-3xl" />
+        <div className="max-w-2xl space-y-2">
+          <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
             Judgment <span className="text-amber-400">Vault</span>
           </h2>
-          <p className="text-slate-400 leading-relaxed max-w-3xl">
+          <p className="text-xs md:text-sm text-slate-400 leading-relaxed max-w-xl">
             Access Pakistan case law with unified keyword and citation search, verified sources, and AI-assisted analysis for faster legal research.
           </p>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-2xl border border-amber-500/20 bg-[#1e293b]/65 backdrop-blur-md p-5 md:p-6 shadow-2xl">
-          <div className="flex items-center gap-2 mb-4 text-amber-300">
-            <Search size={16} />
-            <h3 className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Search by Keywords
-            </h3>
-          </div>
-
-          <div className="relative">
-            <input
-              className="w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3.5 pr-14 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-              placeholder="e.g. Constitutional Law, Property Rights, Writ Petition..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && void handleSearch()}
-              data-testid="input-judgment-search"
-            />
+      <section className="rounded-2xl border border-slate-700/80 bg-[#070b12]/90 p-3 md:p-4 shadow-2xl">
+        <div className="mb-3 flex justify-center">
+          <div className="inline-flex rounded-xl border border-slate-700/90 bg-black/40 p-1">
             <button
-              onClick={() => void handleSearch()}
-              disabled={isLoading || isExternalLoading}
-              className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500 text-slate-950 hover:bg-amber-400 disabled:opacity-50"
-              data-testid="button-judgment-search"
+              type="button"
+              onClick={() => setSearchMode("keyword")}
+              className={`rounded-lg px-5 py-2 text-sm font-bold transition-all ${
+                searchMode === "keyword"
+                  ? "bg-amber-500 text-slate-950"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
             >
-              {isLoading || isExternalLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
+              Keyword Search
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchMode("citation")}
+              className={`rounded-lg px-5 py-2 text-sm font-bold transition-all ${
+                searchMode === "citation"
+                  ? "bg-amber-500 text-slate-950"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Citation Search
             </button>
           </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Trending:</span>
-            {trendingKeywords.map((item) => (
-              <button
-                key={item}
-                onClick={() => void handleTrendingClick(item)}
-                className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300 hover:bg-amber-500/20"
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          {searchError ? (
-            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300 flex items-center gap-2">
-              <AlertCircle size={14} /> {searchError}
-            </div>
-          ) : null}
         </div>
 
-        <form
-          onSubmit={(e) => void handleCitationSearch(e)}
-          className="rounded-2xl border border-amber-500/20 bg-[#1e293b]/65 backdrop-blur-md p-5 md:p-6 shadow-2xl"
-        >
-          <div className="flex items-center gap-2 mb-4 text-amber-300">
-            <Scale size={16} />
-            <h3 className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Search by Citation
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <label className="space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Year</span>
-              <select
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-                data-testid="select-citation-year"
+        {searchMode === "keyword" ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2.5">
+              <div className="relative">
+                <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  placeholder="Search with Keywords, Booleans or Sentences"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void handleSearch()}
+                  data-testid="input-judgment-search"
+                />
+              </div>
+              <button
+                onClick={() => void handleSearch()}
+                disabled={isLoading || isExternalLoading}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-100 px-6 text-base font-bold text-slate-950 hover:bg-white disabled:opacity-60"
+                data-testid="button-judgment-search"
               >
-                {years.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Journal</span>
-              <select
-                value={journal}
-                onChange={(e) => setJournal(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-                disabled={loadingJournals}
-                data-testid="select-citation-journal"
-              >
-                {journals.length === 0 ? <option value="">No journals available</option> : null}
-                {journals.map((j) => (
-                  <option key={j.id} value={j.code}>
-                    {j.code}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="space-y-1 mt-3 block">
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Page Number</span>
-            <input
-              type="number"
-              min={1}
-              value={page}
-              onChange={(e) => setPage(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-              placeholder="e.g. 145"
-              data-testid="input-citation-page"
-            />
-          </label>
-
-          <label className="space-y-1 mt-3 block">
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Court (Optional)</span>
-            <input
-              value={court}
-              onChange={(e) => setCourt(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-              placeholder="Supreme Court, Lahore High Court"
-              data-testid="input-citation-court"
-            />
-          </label>
-
-          <div className="mt-3 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2">
-            <p className="text-[9px] uppercase font-black tracking-[0.18em] text-blue-300">Citation Preview</p>
-            <p className="text-sm font-mono text-blue-200" data-testid="text-citation-preview">
-              {citationPreview}
-            </p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={citationSearching || loadingJournals}
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-50"
-            data-testid="button-citation-search"
-          >
-            {citationSearching ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-            Locate Citation
-          </button>
-
-          {citationError ? (
-            <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
-              {citationError}
+                {isLoading || isExternalLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={17} />}
+                Search
+              </button>
             </div>
-          ) : null}
-        </form>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5">
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Jurisdiction</span>
+                <select
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  value="Pakistan"
+                  disabled
+                >
+                  <option value="Pakistan">Pakistan</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Journal</span>
+                <select
+                  value={journal}
+                  onChange={(e) => setJournal(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  disabled={loadingJournals}
+                >
+                  <option value="">All Journals</option>
+                  {journals.map((j) => (
+                    <option key={j.id} value={j.code}>
+                      {j.code}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Court</span>
+                <input
+                  value={court}
+                  onChange={(e) => setCourt(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  placeholder="All Courts"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Filter By</span>
+                <select
+                  value={keywordSort}
+                  onChange={(e) => setKeywordSort(e.target.value as "relevance" | "latest")}
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                >
+                  <option value="relevance">Relevance</option>
+                  <option value="latest">Latest</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Year</span>
+                <select
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                >
+                  <option value={currentYear + 1}>All Years</option>
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {searchError ? (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300 flex items-center gap-2">
+                <AlertCircle size={14} /> {searchError}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <form onSubmit={(e) => void handleCitationSearch(e)} className="space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto] gap-2.5">
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Jurisdiction</span>
+                <select
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  value="Pakistan"
+                  disabled
+                >
+                  <option value="Pakistan">Pakistan</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Year</span>
+                <select
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  data-testid="select-citation-year"
+                >
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Journal</span>
+                <select
+                  value={journal}
+                  onChange={(e) => setJournal(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  disabled={loadingJournals}
+                  data-testid="select-citation-journal"
+                >
+                  {journals.length === 0 ? <option value="">No journals available</option> : null}
+                  {journals.map((j) => (
+                    <option key={j.id} value={j.code}>
+                      {j.code}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Page</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={page}
+                  onChange={(e) => setPage(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  placeholder="e.g. 123"
+                  data-testid="input-citation-page"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Court (Optional)</span>
+                <input
+                  value={court}
+                  onChange={(e) => setCourt(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  placeholder="All Courts"
+                  data-testid="input-citation-court"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={citationSearching || loadingJournals}
+                className="h-11 self-end inline-flex items-center justify-center gap-2 rounded-xl bg-slate-100 px-6 text-base font-bold text-slate-950 hover:bg-white disabled:opacity-60"
+                data-testid="button-citation-search"
+              >
+                {citationSearching ? <Loader2 size={16} className="animate-spin" /> : <Search size={17} />}
+                Search
+              </button>
+            </div>
+
+            <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5">
+              <p className="text-[9px] uppercase font-black tracking-[0.18em] text-blue-300">Citation Preview</p>
+              <p className="text-sm font-mono text-blue-200" data-testid="text-citation-preview">
+                {citationPreview}
+              </p>
+            </div>
+
+            {citationError ? (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
+                {citationError}
+              </div>
+            ) : null}
+          </form>
+        )}
       </section>
 
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">

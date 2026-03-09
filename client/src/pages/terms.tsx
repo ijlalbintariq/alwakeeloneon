@@ -67,9 +67,10 @@ export default function TermsOfServicePage() {
             <h2 className="text-xl font-bold text-amber-500 mb-3">5. Subscription Plans and Usage Limits</h2>
             <p className="text-slate-300 leading-relaxed mb-3">The Service offers multiple subscription tiers:</p>
             <ul className="list-disc list-inside text-slate-300 space-y-1 ml-4">
-              <li><strong className="text-white">Free:</strong> 10 AI queries per month with basic features</li>
-              <li><strong className="text-white">Pro:</strong> 500 AI queries per month with advanced features including Turbo AI mode</li>
-              <li><strong className="text-white">Enterprise:</strong> 2,000 AI queries per month with all features and priority support</li>
+              <li><strong className="text-white">Standard:</strong> 120 AI actions/month with Standard mode</li>
+              <li><strong className="text-white">Pro:</strong> 350 AI actions/month with Standard + Turbo mode</li>
+              <li><strong className="text-white">Chamber:</strong> 1,200 pooled AI actions/month for up to 3 users with Standard + Turbo + Apex mode</li>
+              <li><strong className="text-white">Enterprise:</strong> Custom fair-use limits with priority routing and custom seats</li>
             </ul>
             <p className="text-slate-300 leading-relaxed mt-3">
               Usage limits reset monthly. Exceeding your plan's limits will restrict access to AI features until the next billing cycle or until you upgrade your plan. We reserve the right to modify plan features and pricing with reasonable notice.

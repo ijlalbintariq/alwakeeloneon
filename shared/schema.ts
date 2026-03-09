@@ -511,10 +511,100 @@ export type InsertStyleMemoryChunk = z.infer<typeof insertStyleMemoryChunkSchema
 export type StyleMemoryEvent = typeof styleMemoryEvents.$inferSelect;
 export type InsertStyleMemoryEvent = z.infer<typeof insertStyleMemoryEventSchema>;
 
-export const TIER_LIMITS: Record<string, { monthlyQueries: number; label: string; description: string }> = {
-  free: { monthlyQueries: 10, label: "Free", description: "10 AI queries/month" },
-  pro: { monthlyQueries: 500, label: "Pro", description: "500 AI queries/month" },
-  enterprise: { monthlyQueries: 999999, label: "Enterprise", description: "Unlimited AI queries" },
+export type TierPlanConfig = {
+  monthlyQueries: number;
+  label: string;
+  description: string;
+  pricePkr: number;
+  includedUsers: number | "custom";
+  pooled: boolean;
+  modeAccess: {
+    standard: boolean;
+    turbo: boolean;
+    apex: boolean;
+  };
+  maxOutputTokens: {
+    standard: number;
+    turbo: number;
+    apex: number;
+  };
+  apexMonthlyCap: number;
+  uploadLimitPerMonth: number | "custom";
+  ocrPagesPerDay: number | "custom";
+  maxFileSizeMb: number;
+};
+
+export const TIER_LIMITS: Record<string, TierPlanConfig> = {
+  free: {
+    monthlyQueries: 120,
+    label: "Standard",
+    description: "120 AI actions/month (legacy mapped to Standard)",
+    pricePkr: 500,
+    includedUsers: 1,
+    pooled: false,
+    modeAccess: { standard: true, turbo: false, apex: false },
+    maxOutputTokens: { standard: 900, turbo: 0, apex: 0 },
+    apexMonthlyCap: 0,
+    uploadLimitPerMonth: 100,
+    ocrPagesPerDay: 50,
+    maxFileSizeMb: 75,
+  },
+  standard: {
+    monthlyQueries: 120,
+    label: "Standard",
+    description: "120 AI actions/month",
+    pricePkr: 500,
+    includedUsers: 1,
+    pooled: false,
+    modeAccess: { standard: true, turbo: false, apex: false },
+    maxOutputTokens: { standard: 900, turbo: 0, apex: 0 },
+    apexMonthlyCap: 0,
+    uploadLimitPerMonth: 100,
+    ocrPagesPerDay: 50,
+    maxFileSizeMb: 75,
+  },
+  pro: {
+    monthlyQueries: 350,
+    label: "Pro",
+    description: "350 AI actions/month",
+    pricePkr: 1000,
+    includedUsers: 1,
+    pooled: false,
+    modeAccess: { standard: true, turbo: true, apex: false },
+    maxOutputTokens: { standard: 1200, turbo: 1500, apex: 0 },
+    apexMonthlyCap: 0,
+    uploadLimitPerMonth: 300,
+    ocrPagesPerDay: 150,
+    maxFileSizeMb: 75,
+  },
+  chamber: {
+    monthlyQueries: 1200,
+    label: "Chamber",
+    description: "1,200 AI actions/month (pooled)",
+    pricePkr: 3000,
+    includedUsers: 3,
+    pooled: true,
+    modeAccess: { standard: true, turbo: true, apex: true },
+    maxOutputTokens: { standard: 1700, turbo: 2200, apex: 1800 },
+    apexMonthlyCap: 180,
+    uploadLimitPerMonth: 1200,
+    ocrPagesPerDay: 600,
+    maxFileSizeMb: 75,
+  },
+  enterprise: {
+    monthlyQueries: 30000,
+    label: "Enterprise",
+    description: "Custom fair-use limit (default 30,000 AI actions/month)",
+    pricePkr: 50000,
+    includedUsers: "custom",
+    pooled: true,
+    modeAccess: { standard: true, turbo: true, apex: true },
+    maxOutputTokens: { standard: 1700, turbo: 2200, apex: 1800 },
+    apexMonthlyCap: 4500,
+    uploadLimitPerMonth: "custom",
+    ocrPagesPerDay: "custom",
+    maxFileSizeMb: 75,
+  },
 };
 
 // API Types

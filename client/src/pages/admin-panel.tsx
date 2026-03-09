@@ -472,7 +472,7 @@ function UsersSection() {
   const [newPassword, setNewPassword] = useState("");
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
-  const [newTier, setNewTier] = useState("free");
+  const [newTier, setNewTier] = useState("standard");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [banReasons, setBanReasons] = useState<Record<string, string>>({});
 
@@ -497,7 +497,7 @@ function UsersSection() {
       setNewPassword("");
       setNewFirstName("");
       setNewLastName("");
-      setNewTier("free");
+      setNewTier("standard");
       setNewIsAdmin(false);
       toast({ title: "User created successfully" });
     },
@@ -641,8 +641,9 @@ function UsersSection() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="standard">Standard</SelectItem>
                   <SelectItem value="pro">Pro</SelectItem>
+                  <SelectItem value="chamber">Chamber</SelectItem>
                   <SelectItem value="enterprise">Enterprise</SelectItem>
                 </SelectContent>
               </Select>
@@ -709,8 +710,9 @@ function UsersSection() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="standard">Standard</SelectItem>
                     <SelectItem value="pro">Pro</SelectItem>
+                    <SelectItem value="chamber">Chamber</SelectItem>
                     <SelectItem value="enterprise">Enterprise</SelectItem>
                   </SelectContent>
                 </Select>
