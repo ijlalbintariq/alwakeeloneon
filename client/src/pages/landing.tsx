@@ -55,17 +55,16 @@ const PRICING_PLANS = [
     features: [
       "120 AI actions/month",
       "1 user",
-      "Mode access: Standard (Groq GPT-OSS)",
+      "Mode access: Standard",
       "Output cap: Standard 900 tokens/request",
       "Uploads: 100 files/month",
-      "OCR: up to 50 pages/day",
-      "Max file size: 75MB",
+      "PDF upload in chat: up to 50 pages/day",
     ],
     highlighted: false,
   },
   {
     key: "pro",
-    badge: "Pro",
+    badge: "Most Popular",
     title: "Pro",
     price: "PKR 1,000/mo",
     subtitle: "For active practitioners",
@@ -73,17 +72,16 @@ const PRICING_PLANS = [
     features: [
       "350 AI actions/month",
       "1 user",
-      "Mode access: Standard + Turbo (DeepSeek)",
+      "Mode access: Standard + Turbo",
       "Output caps: Standard 1200, Turbo 1500",
       "Uploads: 300 files/month",
-      "OCR: up to 150 pages/day",
-      "Max file size: 75MB",
+      "PDF upload in chat: up to 150 pages/day",
     ],
-    highlighted: false,
+    highlighted: true,
   },
   {
     key: "chamber",
-    badge: "Most Popular",
+    badge: "Chamber",
     title: "Chamber",
     price: "PKR 3,000/mo",
     subtitle: "Built for legal teams",
@@ -91,14 +89,13 @@ const PRICING_PLANS = [
     features: [
       "1,200 AI actions/month (pooled)",
       "Up to 3 users",
-      "Mode access: Standard + Turbo + Apex (Kimi)",
+      "Mode access: Standard + Turbo + Apex",
       "Output caps: Standard 1700, Turbo 2200, Apex 1800",
       "Apex monthly cap: 180 requests",
       "Uploads: 1,200 files/month",
-      "OCR: up to 600 pages/day",
-      "Max file size: 75MB",
+      "PDF upload in chat: up to 600 pages/day",
     ],
-    highlighted: true,
+    highlighted: false,
   },
   {
     key: "enterprise",
@@ -113,17 +110,20 @@ const PRICING_PLANS = [
       "Full access + priority routing",
       "Output caps: Standard 1700, Turbo 2200, Apex 1800",
       "Apex monthly cap: 4,500 requests",
-      "Custom high-volume uploads/OCR",
-      "Max file size: 75MB",
+      "Custom high-volume uploads",
+      "PDF upload in chat: custom volume",
     ],
     highlighted: false,
   },
 ] as const;
 
+type PricingPlanKey = typeof PRICING_PLANS[number]["key"];
+
 export default function LandingPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PricingPlanKey>("pro");
   const { data: platformMetrics } = useQuery<{ legalDocuments: number; updatedAt: string }>({
     queryKey: ["/api/public/platform-metrics"],
     refetchInterval: 30000,
@@ -375,11 +375,20 @@ export default function LandingPage() {
             {PRICING_PLANS.map((plan) => (
               <div
                 key={plan.key}
-                className={`p-7 rounded-3xl transition-all ${
+                onClick={() => setSelectedPlan(plan.key)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedPlan(plan.key);
+                  }
+                }}
+                className={`p-7 rounded-3xl transition-all cursor-pointer ${
                   plan.highlighted
                     ? "bg-gradient-to-b from-amber-500/10 to-[#1e293b] border-2 border-amber-500/30 shadow-xl shadow-amber-500/10"
                     : "bg-[#1e293b] border border-slate-800 hover:border-slate-700"
-                }`}
+                } ${selectedPlan === plan.key ? "ring-2 ring-amber-400/70" : ""}`}
               >
                 <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${plan.highlighted ? "text-amber-500" : "text-slate-500"}`}>
                   {plan.badge}
@@ -417,18 +426,20 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <div className="mt-8 rounded-2xl border border-slate-800 bg-[#1b2537] p-5">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-500 mb-3">Chamber Expansion</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-300">
-              <p>Extra seat: <span className="text-amber-300 font-bold">+PKR 1,000/month per user</span></p>
-              <p>Extra AI limit: <span className="text-amber-300 font-bold">+350 AI actions/month per user</span></p>
-              <p>Suggested upload add-on: <span className="text-amber-300 font-bold">+300 files/month per user</span></p>
-              <p>Suggested Apex add-on: <span className="text-amber-300 font-bold">+50 Apex requests/month per user</span></p>
+          {selectedPlan === "chamber" && (
+            <div className="mt-8 rounded-2xl border border-slate-800 bg-[#1b2537] p-5">
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-500 mb-3">Chamber Expansion</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-300">
+                <p>Extra seat: <span className="text-amber-300 font-bold">+PKR 1,000/month per user</span></p>
+                <p>Extra AI limit: <span className="text-amber-300 font-bold">+350 AI actions/month per user</span></p>
+                <p>Suggested upload add-on: <span className="text-amber-300 font-bold">+300 files/month per user</span></p>
+                <p>Suggested Apex add-on: <span className="text-amber-300 font-bold">+50 Apex requests/month per user</span></p>
+              </div>
+              <p className="mt-3 text-[11px] text-slate-400">
+                AI action counting: 1 chat/draft/summarize request = 1 action. Audio transcription: every 2 minutes = 1 action.
+              </p>
             </div>
-            <p className="mt-3 text-[11px] text-slate-400">
-              AI action counting: 1 chat/draft/summarize request = 1 action. Audio transcription: every 2 minutes = 1 action.
-            </p>
-          </div>
+          )}
         </div>
       </section>
 
