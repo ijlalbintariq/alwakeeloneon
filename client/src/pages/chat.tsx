@@ -1284,7 +1284,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         </main>
 
-        <aside className="w-80 shrink-0 border-l border-[hsl(var(--preview-border))] bg-[#1e293b]/70 backdrop-blur-md hidden 2xl:flex flex-col">
+        <aside className="w-80 shrink-0 border-l border-[hsl(var(--preview-border))] bg-[#1e293b]/70 backdrop-blur-md hidden xl:flex flex-col">
           <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide">
             <div>
               <h3 className="flex items-center gap-2 text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-4">
