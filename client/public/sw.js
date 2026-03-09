@@ -1,4 +1,4 @@
-const CACHE_NAME = "al-wakeelo-v2";
+const CACHE_NAME = "al-wakeelo-v3";
 const STATIC_ASSETS = [
   "/",
   "/icon-192.png",
