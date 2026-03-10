@@ -1297,6 +1297,7 @@ function CaseLawSection() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [extractedCases, setExtractedCases] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string[]; _sourceDocId?: number; _sourceFilename?: string }>>([]);
+  const [autoSaveFailed, setAutoSaveFailed] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractProgress, setExtractProgress] = useState({ current: 0, total: 0, currentFile: "" });
   const [retryExtractFiles, setRetryExtractFiles] = useState<File[]>([]);
@@ -1406,13 +1407,13 @@ function CaseLawSection() {
         }
         if (data.citationSyncLimited) citationSyncLimited = true;
       }
-      return { inserted: totalInserted, errors: allErrors, citationTotals, citationSyncLimited };
+      const hasSource = entries.some((e) => e._sourceDocId);
+      return { inserted: totalInserted, errors: allErrors, citationTotals, citationSyncLimited, hasSource };
     },
     onSuccess: (data: any) => {
       setPage(1);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
-      const hasSource = extractedCases.some(e => e._sourceDocId);
-      const docMsg = hasSource ? " (linked to source document)" : "";
+      const docMsg = data.hasSource ? " (linked to source document)" : "";
       const citationMsg = data.citationTotals?.processed
         ? ` · citation import: ${data.citationTotals.imported} added, ${data.citationTotals.existing} existing`
         : "";
@@ -1420,6 +1421,7 @@ function CaseLawSection() {
       toast({ title: `${data.inserted} case law entries saved${data.errors?.length ? `, ${data.errors.length} skipped` : ""}${docMsg}${citationMsg}${limitedMsg}` });
       setExtractedCases([]);
       setRetryExtractFiles([]);
+      setAutoSaveFailed(false);
       setShowBulkUpload(false);
     },
     onError: () => toast({ title: "Failed to save case law entries", variant: "destructive" }),
@@ -1510,21 +1512,21 @@ function CaseLawSection() {
       }
     }
 
+    let mergedForSave: typeof extractedCases = [];
     if (allCases.length > 0) {
-      setExtractedCases((prev) => {
-        if (!append) return allCases;
-        const merged = [...prev];
-        const seen = new Set(
-          merged.map((item) => `${item.citation}|${item.title}|${item._sourceDocId || "none"}`),
-        );
-        for (const item of allCases) {
+      const dedupe = (base: typeof extractedCases, incoming: typeof extractedCases) => {
+        const merged = [...base];
+        const seen = new Set(merged.map((item) => `${item.citation}|${item.title}|${item._sourceDocId || "none"}`));
+        for (const item of incoming) {
           const key = `${item.citation}|${item.title}|${item._sourceDocId || "none"}`;
           if (seen.has(key)) continue;
           seen.add(key);
           merged.push(item);
         }
         return merged;
-      });
+      };
+      mergedForSave = append ? dedupe(extractedCases, allCases) : allCases;
+      setExtractedCases(mergedForSave);
     }
 
     setRetryExtractFiles(failedFileObjects);
@@ -1532,7 +1534,13 @@ function CaseLawSection() {
     if (allCases.length > 0) {
       let msg = `Extracted ${allCases.length} cases from ${files.length - failedFileNames.length} file${files.length - failedFileNames.length !== 1 ? "s" : ""}`;
       if (failedFileNames.length > 0) msg += ` (${failedFileNames.length} file${failedFileNames.length !== 1 ? "s" : ""} failed)`;
-      toast({ title: msg });
+      toast({ title: `${msg} · saving automatically...` });
+      try {
+        setAutoSaveFailed(false);
+        await saveBulkMutation.mutateAsync(mergedForSave);
+      } catch {
+        setAutoSaveFailed(true);
+      }
     } else {
       toast({
         title: failedFileNames.length > 0
@@ -1683,7 +1691,7 @@ function CaseLawSection() {
           <Button
             variant="ghost"
             className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
-            onClick={() => { setShowBulkUpload(!showBulkUpload); setShowAddForm(false); cancelEdit(); setExtractedCases([]); setRetryExtractFiles([]); }}
+            onClick={() => { setShowBulkUpload(!showBulkUpload); setShowAddForm(false); cancelEdit(); setExtractedCases([]); setRetryExtractFiles([]); setAutoSaveFailed(false); }}
             data-testid="button-toggle-bulk-upload"
           >
             <FileUp size={14} />
@@ -1710,7 +1718,7 @@ function CaseLawSection() {
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">
                 AI-Powered Case Law Extraction
               </span>
-              <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => { setShowBulkUpload(false); setExtractedCases([]); setRetryExtractFiles([]); }} data-testid="button-cancel-bulk">
+              <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => { setShowBulkUpload(false); setExtractedCases([]); setRetryExtractFiles([]); setAutoSaveFailed(false); }} data-testid="button-cancel-bulk">
                 <X size={14} />
               </Button>
             </div>
@@ -1774,7 +1782,9 @@ function CaseLawSection() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div>
-                    <span className="text-xs text-slate-300 font-bold">{extractedCases.length} cases extracted — review and save</span>
+                    <span className="text-xs text-slate-300 font-bold">
+                      {extractedCases.length} cases extracted{autoSaveFailed ? " — auto-save failed, review and save manually" : ""}
+                    </span>
                     {extractedCases.some(e => e._sourceDocId) && (
                       <span className="block text-[10px] text-emerald-400 mt-0.5">Document saved to Knowledge Base — cases will be linked for document preview</span>
                     )}
