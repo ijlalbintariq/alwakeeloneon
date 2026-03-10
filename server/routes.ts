@@ -1131,7 +1131,7 @@ function hasSafeDocumentSignature(file: Express.Multer.File, ext: string): boole
   if (ext === ".pdf") return startsWithBytes(b, [0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
   if (ext === ".doc") return startsWithBytes(b, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]); // OLE2
   if (ext === ".docx") return startsWithBytes(b, [0x50, 0x4b, 0x03, 0x04]); // ZIP-based OpenXML
-  if (ext === ".txt" || ext === ".json" || ext === ".csv") return appearsTextLike(b);
+  if (ext === ".txt" || ext === ".md" || ext === ".json" || ext === ".csv") return appearsTextLike(b);
   return false;
 }
 
@@ -5671,11 +5671,11 @@ RULES:
 
       const ext = file.originalname.split(".").pop()?.toLowerCase();
       const extWithDot = ext ? `.${ext}` : "";
-      const signatureExt = extWithDot === ".text" ? ".txt" : extWithDot;
-      if (![".pdf", ".doc", ".docx", ".txt", ".text", ".json", ".csv"].includes(extWithDot)) {
-        return res.status(400).json({ message: "Supported formats: PDF, DOC, DOCX, TXT, JSON, CSV" });
+      const signatureExt = (extWithDot === ".text" || extWithDot === ".md") ? ".txt" : extWithDot;
+      if (![".pdf", ".doc", ".docx", ".txt", ".text", ".md", ".json", ".csv"].includes(extWithDot)) {
+        return res.status(400).json({ message: "Supported formats: PDF, DOC, DOCX, TXT, MD, JSON, CSV" });
       }
-      if (!hasSafeDocumentSignature(file, signatureExt === ".text" ? ".txt" : signatureExt)) {
+      if (!hasSafeDocumentSignature(file, signatureExt)) {
         recordSecurityEvent("upload_signature_failure", "admin-case-law-extract", {
           filename: file.originalname,
           ext: extWithDot,
@@ -5723,7 +5723,7 @@ RULES:
         if (!content) {
           return res.status(400).json({ message: "Could not extract text from Word document." });
         }
-      } else if (ext === "txt" || ext === "text") {
+      } else if (ext === "txt" || ext === "text" || ext === "md") {
         content = stripNullBytes(stableFile.buffer.toString("utf-8").trim());
       } else if (ext === "json") {
         const rawJson = stableFile.buffer.toString("utf-8").trim();
@@ -5853,7 +5853,7 @@ RULES:
         }
         content = rawCsv;
       } else {
-        return res.status(400).json({ message: "Supported formats: PDF, DOC, DOCX, TXT, JSON, CSV" });
+        return res.status(400).json({ message: "Supported formats: PDF, DOC, DOCX, TXT, MD, JSON, CSV" });
       }
 
       if (!content || content.length < 10) {
