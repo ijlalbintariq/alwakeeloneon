@@ -1723,13 +1723,13 @@ function CaseLawSection() {
               </Button>
             </div>
             <p className="text-xs text-slate-400">
-              Upload one or multiple <span className="text-amber-400 font-bold">PDF</span>, <span className="text-amber-400 font-bold">DOC/DOCX</span>, <span className="text-amber-400 font-bold">TXT</span>, <span className="text-amber-400 font-bold">JSON</span>, or <span className="text-amber-400 font-bold">CSV</span> files containing case law.
+              Upload one or multiple <span className="text-amber-400 font-bold">PDF</span>, <span className="text-amber-400 font-bold">DOC/DOCX</span>, <span className="text-amber-400 font-bold">TXT/MD</span>, <span className="text-amber-400 font-bold">JSON</span>, or <span className="text-amber-400 font-bold">CSV</span> files containing case law.
               Select multiple files at once for batch processing. The AI will extract individual cases with citations, court names, summaries, and keywords.
               JSON and CSV files with proper columns are imported instantly without AI processing.
             </p>
             <Input
               type="file"
-              accept=".pdf,.doc,.docx,.txt,.json,.csv"
+              accept=".pdf,.doc,.docx,.txt,.md,.json,.csv"
               multiple
               onChange={handleDocumentUpload}
               disabled={isExtracting}
