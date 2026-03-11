@@ -223,7 +223,7 @@ export async function sendWelcomeEmail(
 
   const sendResult = await sendEmailViaResend({
     to,
-    subject: "Welcome to Al Wakeelo",
+    subject: "Welcome to Al Wakeelo | Your Legal AI Workspace",
     html: `
 <!DOCTYPE html>
 <html lang="en">
@@ -231,46 +231,70 @@ export async function sendWelcomeEmail(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background-color:#0f172a;font-family:Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:28px 14px;">
+<body style="margin:0;padding:0;background-color:#050b18;font-family:Inter,Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#050b18;padding:28px 14px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#111827;border:1px solid #1f2937;border-radius:18px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#0b1220;border:1px solid #22304a;border-radius:20px;overflow:hidden;">
           <tr>
-            <td style="padding:32px 28px 18px 28px;text-align:center;background:linear-gradient(180deg,#111827 0%,#0b1220 100%);">
-              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 16px;border:1px solid rgba(245,158,11,0.35);" />
-              <h1 style="margin:0;color:#f8fafc;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-0.3px;">Welcome to Al Wakeelo</h1>
-              <p style="margin:8px 0 0;color:#f59e0b;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Your Digital Lawyer, Always on Duty</p>
+            <td style="padding:4px 0 0 0;background:#f4b11e;"></td>
+          </tr>
+          <tr>
+            <td style="padding:34px 28px 24px 28px;text-align:center;background:linear-gradient(180deg,#0f172a 0%,#0b1220 100%);border-bottom:1px solid #1f2b43;">
+              <p style="margin:0 0 12px;color:#f4b11e;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
+                Pakistan's First Open-Source Legal AI
+              </p>
+              <img src="${logoUrl}" alt="Al Wakeelo" width="68" height="68" style="display:block;width:68px;height:68px;border-radius:16px;margin:0 auto 16px;border:1px solid rgba(244,177,30,0.45);" />
+              <h1 style="margin:0;color:#f8fafc;font-size:30px;line-height:1.15;font-weight:800;letter-spacing:-0.3px;">Welcome to Al Wakeelo</h1>
+              <p style="margin:10px 0 0;color:#f4b11e;font-size:12px;line-height:1.5;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;">
+                Your Digital Lawyer, Always on Duty
+              </p>
             </td>
           </tr>
           <tr>
             <td style="padding:28px;">
-              <p style="margin:0 0 10px;color:#e2e8f0;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
-              <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;line-height:1.7;">
+              <p style="margin:0 0 10px;color:#e5edf9;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
+              <p style="margin:0 0 16px;color:#9fb0c8;font-size:14px;line-height:1.7;">
                 Your account is now active. You can start legal research, drafting, and AI-assisted workflows on Pakistani law.
               </p>
-              <p style="margin:0 0 20px;color:#94a3b8;font-size:14px;line-height:1.7;">
+              <p style="margin:0 0 18px;color:#9fb0c8;font-size:14px;line-height:1.7;">
                 To continue, open your workspace from the button below.
               </p>
 
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#0f1a2f;border:1px solid #253553;border-radius:12px;">
+                <tr>
+                  <td style="padding:12px 14px;">
+                    <p style="margin:0 0 8px;color:#f4b11e;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;">
+                      Quick Start
+                    </p>
+                    <p style="margin:0;color:#c6d2e5;font-size:13px;line-height:1.7;">
+                      • Search case law and citations<br/>
+                      • Draft petitions and legal notices<br/>
+                      • Generate and review contracts faster
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
                 <tr>
-                  <td align="center" bgcolor="#f59e0b" style="border-radius:12px;">
-                    <a href="${safeLoginUrl}" style="display:inline-block;padding:14px 28px;color:#0f172a;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
+                  <td align="center" bgcolor="#f4b11e" style="border-radius:12px;">
+                    <a href="${safeLoginUrl}" style="display:inline-block;padding:14px 28px;color:#0b1220;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
                       Open Al Wakeelo
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0;color:#64748b;font-size:12px;line-height:1.6;">
-                Need assistance? Contact support at <a href="mailto:support@alwakeelo.com" style="color:#fbbf24;text-decoration:none;">support@alwakeelo.com</a>.
+              <p style="margin:0;color:#7f93ad;font-size:12px;line-height:1.6;">
+                Need assistance? Contact support at
+                <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;">support@alwakeelo.com</a>.
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding:16px 28px;background:#0b1220;border-top:1px solid #1f2937;text-align:center;">
-              <p style="margin:0;color:#475569;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
+            <td style="padding:16px 28px;background:#091121;border-top:1px solid #1f2b43;text-align:center;">
+              <p style="margin:0;color:#5d7394;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
                 Al Wakeelo • Welcome Notice
               </p>
             </td>
@@ -281,7 +305,7 @@ export async function sendWelcomeEmail(
   </table>
 </body>
 </html>`,
-    text: `Assalam-o-Alaikum ${name},\n\nWelcome to Al Wakeelo.\nYour account is now active and ready for legal research, drafting, and AI-assisted Pakistani law workflows.\n\nOpen your workspace:\n${loginUrl || "https://alwakeelo.com/auth"}\n\nNeed help? support@alwakeelo.com\n\n- Al Wakeelo`,
+    text: `Assalam-o-Alaikum ${name},\n\nWelcome to Al Wakeelo.\nYour account is now active and ready for legal research, drafting, and AI-assisted Pakistani law workflows.\n\nQuick Start:\n- Search case law and citations\n- Draft petitions and legal notices\n- Generate and review contracts faster\n\nOpen your workspace:\n${loginUrl || "https://alwakeelo.com/auth"}\n\nNeed help? support@alwakeelo.com\n\n- Al Wakeelo`,
   });
 
   if (!sendResult.ok) {
