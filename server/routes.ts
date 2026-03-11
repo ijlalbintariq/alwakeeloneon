@@ -670,10 +670,9 @@ async function callStandardAISimple(
 
 type ChatRouteMode = "standard" | "turbo";
 
-function normalizeTier(tierRaw: string | undefined | null): "standard" | "pro" | "chamber" | "enterprise" {
+function normalizeTier(tierRaw: string | undefined | null): "free" | "standard" | "pro" | "chamber" | "enterprise" {
   const tier = String(tierRaw || "standard").toLowerCase();
-  if (tier === "pro" || tier === "chamber" || tier === "enterprise") return tier;
-  if (tier === "free") return "standard";
+  if (tier === "free" || tier === "pro" || tier === "chamber" || tier === "enterprise") return tier;
   return "standard";
 }
 
@@ -4726,7 +4725,7 @@ RULES:
       const targetId = req.params.id;
       const { subscriptionTier, isAdmin: adminFlag, resetMonthlyQuota } = req.body;
 
-      const validTiers = ["standard", "pro", "chamber", "enterprise"];
+      const validTiers = ["free", "standard", "pro", "chamber", "enterprise"];
       if (subscriptionTier !== undefined && !validTiers.includes(subscriptionTier)) {
         return res.status(400).json({ message: "Invalid subscription tier" });
       }
@@ -4822,7 +4821,7 @@ RULES:
         passwordHash,
         authProvider: "email",
       });
-      if (subscriptionTier && ["standard", "pro", "chamber", "enterprise"].includes(subscriptionTier)) {
+      if (subscriptionTier && ["free", "standard", "pro", "chamber", "enterprise"].includes(subscriptionTier)) {
         await storage.updateUserTier(user.id, subscriptionTier);
       }
       if (makeAdmin === true) {

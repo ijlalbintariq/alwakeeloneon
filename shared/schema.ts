@@ -537,9 +537,9 @@ export type TierPlanConfig = {
 export const TIER_LIMITS: Record<string, TierPlanConfig> = {
   free: {
     monthlyQueries: 120,
-    label: "Standard",
-    description: "120 AI actions/month (legacy mapped to Standard)",
-    pricePkr: 500,
+    label: "Free",
+    description: "120 AI actions/month (free tier)",
+    pricePkr: 0,
     includedUsers: 1,
     pooled: false,
     modeAccess: { standard: true, turbo: false, apex: false },

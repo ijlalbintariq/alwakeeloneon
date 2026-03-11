@@ -1586,8 +1586,7 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.id, userId));
     const rawTier = (user?.tier || "standard").toLowerCase();
-    if (rawTier === "free") return "standard";
-    if (rawTier === "standard" || rawTier === "pro" || rawTier === "chamber" || rawTier === "enterprise") {
+    if (rawTier === "free" || rawTier === "standard" || rawTier === "pro" || rawTier === "chamber" || rawTier === "enterprise") {
       return rawTier;
     }
     return "standard";
