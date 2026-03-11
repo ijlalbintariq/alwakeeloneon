@@ -1,9 +1,10 @@
-const CACHE_NAME = "al-wakeelo-v3";
+const CACHE_NAME = "al-wakeelo-v4";
 const STATIC_ASSETS = [
   "/",
   "/icon-192.png",
   "/icon-512.png",
   "/favicon.png",
+  "/logo.svg",
 ];
 
 self.addEventListener("install", (event) => {

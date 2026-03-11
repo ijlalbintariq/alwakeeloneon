@@ -1,4 +1,4 @@
-import { Scale, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function PrivacyPolicyPage() {
@@ -11,8 +11,8 @@ export default function PrivacyPolicyPage() {
           <button onClick={() => navigate("/")} className="flex items-center gap-3 text-slate-400 hover:text-white transition-colors">
             <ArrowLeft size={18} />
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center">
-                <Scale size={14} className="text-slate-900" />
+              <div className="w-8 h-8 rounded-lg overflow-hidden border border-amber-400/35">
+                <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
               </div>
               <span className="text-sm font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>
             </div>
