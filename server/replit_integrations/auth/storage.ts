@@ -1,12 +1,14 @@
 import { users, passwordResetTokens, type User, type UpsertUser } from "@shared/models/auth";
 import { db } from "../../db";
-import { eq, and, gt, isNull } from "drizzle-orm";
+import { eq, and, gt, isNull, sql } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  issueSingleSessionLock(userId: string, ipAddress: string): Promise<{ sessionEpoch: number; activeSessionIp: string | null }>;
+  clearSingleSessionLock(userId: string, expectedSessionEpoch?: number | null): Promise<void>;
   updateUserPassword(userId: string, passwordHash: string): Promise<void>;
   createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void>;
   getValidResetToken(token: string): Promise<{ id: string; userId: string } | undefined>;
@@ -53,6 +55,44 @@ class AuthStorage implements IAuthStorage {
       })
       .returning();
     return user;
+  }
+
+  async issueSingleSessionLock(userId: string, ipAddress: string): Promise<{ sessionEpoch: number; activeSessionIp: string | null }> {
+    const now = new Date();
+    const normalizedIp = String(ipAddress || "").trim() || "unknown";
+    const [updated] = await db
+      .update(users)
+      .set({
+        sessionEpoch: sql`${users.sessionEpoch} + 1`,
+        activeSessionIp: normalizedIp,
+        activeSessionAt: now,
+        updatedAt: now,
+      })
+      .where(eq(users.id, userId))
+      .returning({
+        sessionEpoch: users.sessionEpoch,
+        activeSessionIp: users.activeSessionIp,
+      });
+
+    return {
+      sessionEpoch: Number(updated?.sessionEpoch || 0),
+      activeSessionIp: updated?.activeSessionIp || null,
+    };
+  }
+
+  async clearSingleSessionLock(userId: string, expectedSessionEpoch?: number | null): Promise<void> {
+    const conditions = [eq(users.id, userId)];
+    if (Number.isFinite(Number(expectedSessionEpoch))) {
+      conditions.push(eq(users.sessionEpoch, Number(expectedSessionEpoch)));
+    }
+    await db
+      .update(users)
+      .set({
+        activeSessionIp: null,
+        activeSessionAt: null,
+        updatedAt: new Date(),
+      })
+      .where(and(...conditions));
   }
 
   async updateUserPassword(userId: string, passwordHash: string): Promise<void> {

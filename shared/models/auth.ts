@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 export const sessions = pgTable(
   "sessions",
@@ -21,6 +21,9 @@ export const users = pgTable("users", {
   authProvider: varchar("auth_provider").default("email").notNull(),
   subscriptionTier: varchar("subscription_tier").default("standard").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
+  sessionEpoch: integer("session_epoch").default(0).notNull(),
+  activeSessionIp: text("active_session_ip"),
+  activeSessionAt: timestamp("active_session_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

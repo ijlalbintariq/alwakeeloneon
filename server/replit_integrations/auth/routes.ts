@@ -8,9 +8,11 @@ import { sendPasswordResetEmail } from "../../email";
 import { dbAvailable, dbUnavailableReason } from "../../db";
 import { isUserBanned, logAuditEvent } from "../../security-governance";
 import { recordSecurityEvent } from "../../security-monitoring";
+import { isSingleIpEnforced, resolveRequestIp } from "./ip";
 
 const TERMS_VERSION = "2026-03";
 const TERMS_REQUIRED_MESSAGE = "You must agree to the Terms and Conditions to create an account.";
+const AUTH_SINGLE_IP_ENFORCED = isSingleIpEnforced();
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -37,8 +39,7 @@ function applyAuthRateLimit(
   maxRequests: number,
   windowMs: number
 ): boolean {
-  const forwarded = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
-  const ip = forwarded || req.ip || req.socket.remoteAddress || "unknown";
+  const ip = resolveRequestIp(req);
   const key = `${routeKey}:${ip}`;
   const now = Date.now();
   const windowStart = now - windowMs;
@@ -75,23 +76,29 @@ const authRateCleanupTimer = setInterval(() => {
 }, 30 * 60 * 1000);
 authRateCleanupTimer.unref?.();
 
-function persistSession(req: any, res: any, user: any, statusCode: number = 200): void {
-  req.session.regenerate((regenErr: any) => {
-    if (regenErr) {
-      console.error("Session regenerate error:", regenErr);
-      return res.status(500).json({ message: "Failed to create session" });
-    }
+async function persistSession(req: any, res: any, user: any, statusCode: number = 200): Promise<void> {
+  const loginIp = resolveRequestIp(req);
+  let sessionEpoch = Number(user?.sessionEpoch || 0);
+  if (AUTH_SINGLE_IP_ENFORCED) {
+    const lock = await authStorage.issueSingleSessionLock(user.id, loginIp);
+    sessionEpoch = lock.sessionEpoch;
+  }
 
-    (req.session as any).userId = user.id;
-    req.session.save((saveErr: any) => {
-      if (saveErr) {
-        console.error("Session save error:", saveErr);
-        return res.status(500).json({ message: "Failed to create session" });
-      }
-      const { passwordHash: _, ...safeUser } = user;
-      return res.status(statusCode).json(safeUser);
+  await new Promise<void>((resolve, reject) => {
+    req.session.regenerate((regenErr: any) => {
+      if (regenErr) return reject(regenErr);
+      (req.session as any).userId = user.id;
+      (req.session as any).sessionEpoch = sessionEpoch;
+      (req.session as any).loginIp = loginIp;
+      req.session.save((saveErr: any) => {
+        if (saveErr) return reject(saveErr);
+        return resolve();
+      });
     });
   });
+
+  const { passwordHash: _, ...safeUser } = user;
+  res.status(statusCode).json(safeUser);
 }
 
 function isDatabaseConnectivityError(error: unknown): boolean {
@@ -145,7 +152,8 @@ export function registerAuthRoutes(app: Express): void {
         provider: "email",
         termsAcceptedVersion: termsVersion || TERMS_VERSION,
       }).catch(() => {});
-      persistSession(req, res, user, 201);
+      await persistSession(req, res, user, 201);
+      return;
     } catch (error) {
       console.error("Registration error:", error);
       if (!dbAvailable || isDatabaseConnectivityError(error)) {
@@ -197,7 +205,8 @@ export function registerAuthRoutes(app: Express): void {
       }
 
       await logAuditEvent("auth.login", user.id, user.id, { provider: "email" }).catch(() => {});
-      persistSession(req, res, user);
+      await persistSession(req, res, user);
+      return;
     } catch (error) {
       console.error("Login error:", error);
       if (!dbAvailable || isDatabaseConnectivityError(error)) {
@@ -211,10 +220,14 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/auth/logout", (req, res) => {
+  app.post("/api/auth/logout", async (req, res) => {
     const userId = (req.session as any)?.userId as string | undefined;
+    const sessionEpoch = Number((req.session as any)?.sessionEpoch || NaN);
     if (userId) {
       logAuditEvent("auth.logout", userId, userId).catch(() => {});
+      if (AUTH_SINGLE_IP_ENFORCED) {
+        await authStorage.clearSingleSessionLock(userId, Number.isFinite(sessionEpoch) ? sessionEpoch : null).catch(() => {});
+      }
     }
     req.session.destroy((err) => {
       if (err) {
@@ -303,7 +316,8 @@ export function registerAuthRoutes(app: Express): void {
       }
 
       await logAuditEvent("auth.login", user!.id, user!.id, { provider: "google" }).catch(() => {});
-      persistSession(req, res, user!);
+      await persistSession(req, res, user!);
+      return;
     } catch (error) {
       console.error("Google token auth error:", error);
       res.status(500).json({ message: "Google sign-in failed" });
