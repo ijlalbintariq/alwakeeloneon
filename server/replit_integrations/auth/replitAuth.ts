@@ -5,6 +5,11 @@ import createMemoryStore from "memorystore";
 import { validateDatabaseUrl, validatePgHost } from "../../env-config";
 import { isUserBanned } from "../../security-governance";
 import { recordSecurityEvent } from "../../security-monitoring";
+import { authStorage } from "./storage";
+import { isSingleIpEnforced, resolveRequestIp } from "./ip";
+
+const AUTH_SINGLE_IP_ENFORCED = isSingleIpEnforced();
+const SESSION_INVALIDATED_MESSAGE = "Your session expired because your account was used from another location. Please sign in again.";
 
 function resolveSessionSecret(isProduction: boolean): string {
   const configured = process.env.SESSION_SECRET?.trim();
@@ -66,10 +71,35 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   if (req.session && (req.session as any).userId) {
     const userId = (req.session as any).userId as string;
+    const user = await authStorage.getUser(userId).catch(() => undefined);
+    if (!user) {
+      req.session.destroy(() => {});
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     if (await isUserBanned(userId)) {
       recordSecurityEvent("auth_anomaly", `banned-session:${userId}`, { path: req.path, method: req.method });
       req.session.destroy(() => {});
       return res.status(403).json({ message: "Your account is suspended. Please contact support." });
+    }
+    if (AUTH_SINGLE_IP_ENFORCED) {
+      const activeEpoch = Number(user.sessionEpoch || 0);
+      const sessionEpoch = Number((req.session as any).sessionEpoch || NaN);
+      const expectedIp = String(user.activeSessionIp || "").trim();
+      const requestIp = resolveRequestIp(req);
+      const epochMismatch = !Number.isFinite(sessionEpoch) || sessionEpoch !== activeEpoch;
+      const ipMismatch = !!expectedIp && requestIp !== expectedIp;
+      if (epochMismatch || ipMismatch) {
+        recordSecurityEvent("auth_anomaly", `single-session-mismatch:${userId}`, {
+          path: req.path,
+          method: req.method,
+          requestIp,
+          expectedIp: expectedIp || null,
+          sessionEpoch: Number.isFinite(sessionEpoch) ? sessionEpoch : null,
+          activeEpoch,
+        });
+        req.session.destroy(() => {});
+        return res.status(401).json({ message: SESSION_INVALIDATED_MESSAGE });
+      }
     }
     return next();
   }

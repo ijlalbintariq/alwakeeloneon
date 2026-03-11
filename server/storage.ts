@@ -2458,6 +2458,9 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "alter_style_memory_chunks_embedding_vector", stmt: sql`ALTER TABLE style_memory_chunks ALTER COLUMN embedding TYPE vector(384) USING embedding::vector` },
     { label: "alter_style_memory_settings_last_backfill", stmt: sql`ALTER TABLE style_memory_settings ADD COLUMN IF NOT EXISTS last_backfill_at timestamp` },
     { label: "alter_style_memory_settings_updated_at", stmt: sql`ALTER TABLE style_memory_settings ADD COLUMN IF NOT EXISTS updated_at timestamp DEFAULT now()` },
+    { label: "alter_users_session_epoch", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS session_epoch integer NOT NULL DEFAULT 0` },
+    { label: "alter_users_active_session_ip", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_ip text` },
+    { label: "alter_users_active_session_at", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_at timestamp` },
   ];
 
   for (const { label, stmt } of indexStatements) {
