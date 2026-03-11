@@ -94,6 +94,7 @@ export function PublicLegalChatWidget() {
     consentToContact: false,
   });
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const autoLaunchHandledRef = useRef(false);
 
   const shouldRender = useMemo(() => {
     if (user) return false;
@@ -106,6 +107,18 @@ export function PublicLegalChatWidget() {
     if (!scrollerRef.current) return;
     scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
   }, [isOpen, messages, showCaseForm]);
+
+  useEffect(() => {
+    if (!shouldRender || autoLaunchHandledRef.current) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search || "");
+    const hash = (window.location.hash || "").toLowerCase();
+    const shouldAutoOpen = params.get("consult") === "1" || params.get("hire") === "1" || hash === "#consult";
+    if (!shouldAutoOpen) return;
+    autoLaunchHandledRef.current = true;
+    setIsOpen(true);
+    void trackPublicEvent("widget_open", { path: location, source: "deep-link" });
+  }, [location, shouldRender]);
 
   async function trackPublicEvent(eventType: PublicFunnelEventType, metadata?: Record<string, unknown>) {
     try {

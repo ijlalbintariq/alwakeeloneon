@@ -88,6 +88,12 @@ export default function LandingPage() {
             <a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
             <a href="#about" className="text-sm text-slate-400 hover:text-white transition-colors">About</a>
             <a href="#contact" className="text-sm text-slate-400 hover:text-white transition-colors">Contact</a>
+            <a
+              href="/?consult=1#consult"
+              className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-black uppercase tracking-wider hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20"
+            >
+              Consult AI + Hire Lawyer
+            </a>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -114,6 +120,13 @@ export default function LandingPage() {
               <a href="#pricing" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Pricing</a>
               <a href="#about" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">About</a>
               <a href="#contact" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Contact</a>
+              <a
+                href="/?consult=1#consult"
+                onClick={() => setMobileNavOpen(false)}
+                className="text-sm text-amber-300 hover:text-amber-200 transition-colors font-bold"
+              >
+                Consult AI + Hire Lawyer
+              </a>
               <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-2">
                 <a href="mailto:support@alwakeelo.com" className="inline-flex items-center gap-2 text-sm text-amber-300 hover:text-amber-200 transition-colors">
                   <Mail size={14} /> support@alwakeelo.com
@@ -151,8 +164,14 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
-              href={ctaTarget}
+              href="/?consult=1#consult"
               className="w-full sm:w-auto px-8 py-4 bg-amber-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20"
+            >
+              Consult AI + Hire Lawyer <ArrowRight size={16} />
+            </a>
+            <a
+              href={ctaTarget}
+              className="w-full sm:w-auto px-8 py-4 border border-slate-700 text-slate-200 rounded-2xl text-sm font-bold hover:border-amber-500 hover:text-amber-300 transition-all flex items-center justify-center gap-2"
             >
               {user ? "Go to Dashboard" : "Get Legal Consultation"} <ArrowRight size={16} />
             </a>
@@ -400,6 +419,7 @@ export default function LandingPage() {
 
       <section id="contact" className="py-20 px-6 bg-[#131c2e]">
         <div className="max-w-3xl mx-auto text-center">
+          <div id="consult" className="h-0 w-0" />
           <h2 className="text-3xl md:text-4xl font-bold italic mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
             Ready for Professional Consultation?
           </h2>
