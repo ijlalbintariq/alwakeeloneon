@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { TIER_LIMITS } from "@shared/schema";
 import type { User } from "@shared/models/auth";
+import { getUpgradeActionLabel, getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 
 type UsageData = {
   tier: string;
@@ -116,6 +117,9 @@ export default function UserPanelPage() {
     : profile?.subscriptionTier === "pro"
       ? "bg-amber-500/20 border-amber-500/30"
       : "bg-slate-800 border-slate-700";
+  const effectiveTier = usage?.tier || profile?.subscriptionTier || "free";
+  const upgradeHref = getUpgradeCheckoutPath(effectiveTier);
+  const upgradeLabel = getUpgradeActionLabel(effectiveTier);
 
   const handleSelectAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -307,6 +311,23 @@ export default function UserPanelPage() {
                       : "Standard mode enabled. Upgrade to unlock Turbo and Apex."}
                 </p>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  asChild
+                  className="h-9 rounded-xl bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest hover:bg-amber-400"
+                  data-testid="button-upgrade-plan-profile"
+                >
+                  <a href={upgradeHref}>{upgradeLabel}</a>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="h-9 rounded-xl border-[hsl(var(--preview-border))] text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-800/60 hover:text-white"
+                  data-testid="button-compare-plans-profile"
+                >
+                  <a href="/#pricing">Compare Plans</a>
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -380,14 +401,32 @@ export default function UserPanelPage() {
             )}
 
             {isAtLimit && (
-              <p className="text-xs text-red-300 font-medium">
-                You have reached your monthly limit. Upgrade for more queries.
-              </p>
+              <div className="space-y-2">
+                <p className="text-xs text-red-300 font-medium">
+                  You have reached your monthly limit. Upgrade for more queries.
+                </p>
+                <a
+                  href={upgradeHref}
+                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-colors"
+                  data-testid="link-upgrade-limit-profile"
+                >
+                  {upgradeLabel}
+                </a>
+              </div>
             )}
             {isNearLimit && !isAtLimit && (
-              <p className="text-xs text-amber-300 font-medium">
-                You are approaching your monthly limit ({usage.percentage.toFixed(0)}% used).
-              </p>
+              <div className="space-y-2">
+                <p className="text-xs text-amber-300 font-medium">
+                  You are approaching your monthly limit ({usage.percentage.toFixed(0)}% used).
+                </p>
+                <a
+                  href={upgradeHref}
+                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 border border-amber-500/40 text-amber-300 text-[10px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-200 transition-colors"
+                  data-testid="link-upgrade-near-limit-profile"
+                >
+                  View Upgrade Options
+                </a>
+              </div>
             )}
           </CardContent>
         </Card>
