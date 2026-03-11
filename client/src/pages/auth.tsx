@@ -98,6 +98,8 @@ export default function AuthPage() {
     script.defer = true;
     script.onload = () => {
       if (window.google && googleButtonRef.current) {
+        // Prevent duplicate Google button renders when mode/state toggles.
+        googleButtonRef.current.innerHTML = "";
         window.google.accounts.id.initialize({
           client_id: googleStatus.clientId,
           callback: handleGoogleCredential,
@@ -105,11 +107,12 @@ export default function AuthPage() {
         });
         window.google.accounts.id.renderButton(googleButtonRef.current, {
           type: "standard",
-          theme: "filled_black",
+          theme: "outline",
           size: "large",
-          text: "continue_with",
+          text: mode === "register" ? "signup_with" : "signin_with",
           shape: "pill",
-          width: "100%",
+          width: Math.min(360, Math.max(280, googleButtonRef.current.clientWidth || 320)),
+          logo_alignment: "left",
         });
       }
     };
@@ -119,7 +122,7 @@ export default function AuthPage() {
       const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
       if (existingScript) existingScript.remove();
     };
-  }, [googleStatus, handleGoogleCredential]);
+  }, [googleStatus, handleGoogleCredential, mode]);
 
   const loginMutation = useMutation({
     mutationFn: async () => {
@@ -343,18 +346,20 @@ export default function AuthPage() {
                 Agree to Terms to continue with Google
               </button>
             ) : (
-              <div
-                ref={googleButtonRef}
-                className="flex justify-center [&>div]:w-full"
-                data-testid="google-signin-button"
-              />
+              <div className="mx-auto w-full max-w-[380px] rounded-xl border border-amber-400/25 bg-[#0f172a]/65 p-2 shadow-[0_0_24px_rgba(245,158,11,0.12)]">
+                <div
+                  ref={googleButtonRef}
+                  className="flex min-h-[44px] items-center justify-center"
+                  data-testid="google-signin-button"
+                />
+              </div>
             )
           ) : (
             <button
               type="button"
               disabled
               data-testid="button-google-unavailable"
-              className="w-full bg-[#0f172a]/70 border border-[hsl(var(--preview-border))] text-slate-400 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+              className="mx-auto w-full max-w-[380px] bg-[#0f172a]/70 border border-[hsl(var(--preview-border))] text-slate-400 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
             >
               <SiGoogle size={14} />
               Continue with Google
