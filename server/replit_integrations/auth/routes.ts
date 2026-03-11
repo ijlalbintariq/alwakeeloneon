@@ -4,7 +4,7 @@ import { isAuthenticated } from "./replitAuth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
-import { sendPasswordResetEmail } from "../../email";
+import { sendPasswordResetEmail, sendWelcomeEmail } from "../../email";
 import { dbAvailable, dbUnavailableReason } from "../../db";
 import { isUserBanned, logAuditEvent } from "../../security-governance";
 import { recordSecurityEvent } from "../../security-monitoring";
@@ -152,6 +152,13 @@ export function registerAuthRoutes(app: Express): void {
         provider: "email",
         termsAcceptedVersion: termsVersion || TERMS_VERSION,
       }).catch(() => {});
+
+      const host = req.get("host");
+      const loginUrl = host ? `${req.protocol}://${host}/auth` : "https://alwakeelo.com/auth";
+      void sendWelcomeEmail(email, firstName, loginUrl).catch((err) => {
+        console.warn("[Auth] Welcome email send failed (email provider):", err?.message || err);
+      });
+
       await persistSession(req, res, user, 201);
       return;
     } catch (error) {
@@ -287,6 +294,7 @@ export function registerAuthRoutes(app: Express): void {
       const profileImageUrl = payload.picture || null;
 
       let user = await authStorage.getUserByEmail(email);
+      let createdNow = false;
 
       if (user) {
         if (user.authProvider === "email") {
@@ -306,13 +314,23 @@ export function registerAuthRoutes(app: Express): void {
           lastName,
           profileImageUrl,
           authProvider: "google",
+          subscriptionTier: "free",
         });
+        createdNow = true;
         await logAuditEvent("auth.register", user.id, user.id, {
           provider: "google",
           termsAcceptedVersion: typeof termsVersion === "string" && termsVersion.trim()
             ? termsVersion.trim().slice(0, 40)
             : TERMS_VERSION,
         }).catch(() => {});
+      }
+
+      if (createdNow) {
+        const host = req.get("host");
+        const loginUrl = host ? `${req.protocol}://${host}/auth` : "https://alwakeelo.com/auth";
+        void sendWelcomeEmail(email, firstName, loginUrl).catch((err) => {
+          console.warn("[Auth] Welcome email send failed (google provider):", err?.message || err);
+        });
       }
 
       await logAuditEvent("auth.login", user!.id, user!.id, { provider: "google" }).catch(() => {});
