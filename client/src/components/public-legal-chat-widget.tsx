@@ -275,8 +275,7 @@ export function PublicLegalChatWidget() {
           data-testid="public-chat-toggle"
         >
           <MessageCircle size={16} className="mr-2" />
-          <span className="sm:hidden">Consult Now</span>
-          <span className="hidden sm:inline">Consult Al Wakeelo AI + Hire Lawyer</span>
+          <span>Ask Legal Assistant</span>
         </Button>
       </div>
 
