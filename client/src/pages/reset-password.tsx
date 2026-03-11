@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Scale, Lock, Eye, EyeOff, ArrowRight, CheckCircle, AlertTriangle } from "lucide-react";
+import { Lock, Eye, EyeOff, ArrowRight, CheckCircle, AlertTriangle } from "lucide-react";
 import { Link, useSearch } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -89,8 +89,8 @@ export default function ResetPasswordPage() {
 
       <div className="w-full max-w-md bg-[#1e293b] border border-slate-800 p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[3rem] shadow-2xl relative z-10 fade-in">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center mb-5 shadow-lg shadow-amber-500/20">
-            <Scale size={32} className="text-slate-900" />
+          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-amber-400/40 mb-5 shadow-lg shadow-amber-500/20">
+            <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-3xl font-bold text-white uppercase tracking-tighter italic" style={{ fontFamily: "'Playfair Display', serif" }}>
             Al Wakeelo

@@ -1,29 +1,49 @@
 import { useState } from "react";
-import { Scale, ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail } from "lucide-react";
+import { ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlanKey } from "@/lib/subscription-plans";
 
-function FeatureCard({ icon: Icon, title, desc, bgClass, iconClass }: { icon: any; title: string; desc: string; bgClass: string; iconClass: string }) {
+function FeatureCard({
+  icon: Icon,
+  title,
+  desc,
+  bgClass,
+  iconClass,
+  className = "",
+}: {
+  icon: any;
+  title: string;
+  desc: string;
+  bgClass: string;
+  iconClass: string;
+  className?: string;
+}) {
   return (
-    <div className="group p-7 bg-[#1e293b] border border-slate-800 rounded-2xl hover:border-slate-700 transition-all hover:shadow-xl">
+    <div className={`group h-full p-7 bg-[#1e293b] border border-slate-800 rounded-2xl hover:border-slate-700 transition-all hover:shadow-xl flex flex-col ${className}`}>
       <div className={`w-12 h-12 rounded-xl ${bgClass} flex items-center justify-center mb-4`}>
         <Icon size={22} className={iconClass} />
       </div>
-      <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
-      <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
+      <h3 className="text-lg font-bold text-white mb-2 min-h-[3.25rem]">{title}</h3>
+      <p className="text-sm text-slate-400 leading-relaxed flex-1">{desc}</p>
     </div>
   );
 }
 
 const CORE_FEATURES = [
   { icon: MessageSquare, title: "AI Legal Chat", desc: "Consult with an AI legal advisor trained on Pakistani law. Get strategy and next-step guidance fast.", bgClass: "bg-amber-500/10", iconClass: "text-amber-500" },
+  { icon: Crown, title: "Al Wakeelo Engine", desc: "Use the main legal AI workspace with grounded responses, references, and practical next-step guidance.", bgClass: "bg-amber-500/10", iconClass: "text-amber-400" },
   { icon: Search, title: "Judgment Search", desc: "Find relevant Pakistani case law with quick citation-focused search and contextual summaries.", bgClass: "bg-blue-500/10", iconClass: "text-blue-500" },
+  { icon: BookOpen, title: "Citation Search", desc: "Search directly by year, journal, and page to locate precise judgments and linked details quickly.", bgClass: "bg-indigo-500/10", iconClass: "text-indigo-400" },
   { icon: BookOpen, title: "Statute Lookup", desc: "Navigate Pakistani statutes and sections with plain-language legal explanations.", bgClass: "bg-emerald-500/10", iconClass: "text-emerald-500" },
-  { icon: FileText, title: "Legal Drafting", desc: "Prepare petitions, notices, and applications faster with drafting workflows.", bgClass: "bg-amber-500/10", iconClass: "text-amber-500" },
-  { icon: Shield, title: "Contract Drafting", desc: "Generate professional contracts with structured clauses and risk-focused review.", bgClass: "bg-red-500/10", iconClass: "text-red-500" },
-  { icon: Paperclip, title: "Document Analysis", desc: "Upload legal files and get practical insights grounded in your documents.", bgClass: "bg-cyan-500/10", iconClass: "text-cyan-500" },
+  { icon: FileText, title: "Legal Drafting", desc: "Prepare petitions, notices, applications, and legal replies with structured templates, clause-ready sections, and style-consistent drafting support.", bgClass: "bg-amber-500/10", iconClass: "text-amber-500" },
+  { icon: Users, title: "Style-Memory RAG", desc: "Train AI on your uploads, drafts, and accepted edits so output follows your legal style and preferred language.", bgClass: "bg-sky-500/10", iconClass: "text-sky-500" },
+  { icon: Shield, title: "Contract Drafting", desc: "Generate client-ready contracts with structured clause sets, risk score breakdown, redline suggestions, and cleaner final drafts for negotiation or execution.", bgClass: "bg-red-500/10", iconClass: "text-red-500" },
+  { icon: Paperclip, title: "Case Documents", desc: "Upload, review, and organize matter-specific documents with faster legal analysis support.", bgClass: "bg-cyan-500/10", iconClass: "text-cyan-500" },
+  { icon: FileText, title: "Knowledge Vault", desc: "Maintain private user documents and global admin legal resources for retrieval-grounded outputs.", bgClass: "bg-violet-500/10", iconClass: "text-violet-400" },
+  { icon: Users, title: "Organization Workspace", desc: "Support chamber and team workflows with shared access controls and collaboration-ready structure.", bgClass: "bg-teal-500/10", iconClass: "text-teal-400" },
+  { icon: Mic, title: "Audio Transcription", desc: "Convert legal voice notes and recorded audio into text for research, drafting, and case preparation.", bgClass: "bg-lime-500/10", iconClass: "text-lime-400" },
 ];
 
 const FAQ_ITEMS = [
@@ -77,8 +97,8 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0f172a]/90 backdrop-blur-xl border-b border-slate-800/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <Scale size={20} className="text-slate-900" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-amber-500/30 shadow-lg shadow-amber-500/20">
+              <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
             </div>
             <span className="text-xl font-bold italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>
           </div>
@@ -88,12 +108,6 @@ export default function LandingPage() {
             <a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
             <a href="#about" className="text-sm text-slate-400 hover:text-white transition-colors">About</a>
             <a href="#contact" className="text-sm text-slate-400 hover:text-white transition-colors">Contact</a>
-            <a
-              href="/?consult=1#consult"
-              className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-black uppercase tracking-wider hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20"
-            >
-              Start Consultation
-            </a>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -120,13 +134,6 @@ export default function LandingPage() {
               <a href="#pricing" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Pricing</a>
               <a href="#about" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">About</a>
               <a href="#contact" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Contact</a>
-              <a
-                href="/?consult=1#consult"
-                onClick={() => setMobileNavOpen(false)}
-                className="text-sm text-amber-300 hover:text-amber-200 transition-colors font-bold"
-              >
-                Start Consultation
-              </a>
               <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-2">
                 <a href="mailto:support@alwakeelo.com" className="inline-flex items-center gap-2 text-sm text-amber-300 hover:text-amber-200 transition-colors">
                   <Mail size={14} /> support@alwakeelo.com
@@ -147,19 +154,18 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full mb-8">
             <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-            <span className="text-[11px] text-amber-400 font-bold uppercase tracking-widest">Pakistan's First Open-Source AI Legal Assistant</span>
+            <span className="text-[11px] text-amber-400 font-bold uppercase tracking-widest">Pakistan's First Open-Source Legal AI Platform</span>
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
-            <span className="italic">Your Digital</span>{" "}
-            <span className="text-amber-500 italic">Lawyer,</span>
+            <span className="italic">Pakistan Legal AI Workspace</span>
             <br />
-            <span className="italic">Always on Duty</span>
+            <span className="text-amber-500 italic">for Advocates & Chambers</span>
           </h1>
 
           <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Al Wakeelo is Pakistan's first open-source AI legal assistant. Search judgments, analyze statutes,
-            draft contracts, and get expert legal guidance — all powered by advanced AI trained on Pakistani law.
+            Research case law, draft petitions and contracts, and generate client-ready legal documents in minutes
+            with AI fine-tuned for Pakistani legal practice.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -170,16 +176,19 @@ export default function LandingPage() {
               {user ? "Open Dashboard" : "Start Free"} <ArrowRight size={16} />
             </a>
             <a
-              href="#pricing"
+              href="/?consult=1#consult"
               className="w-full sm:w-auto px-8 py-4 border border-slate-700 text-slate-200 rounded-2xl text-sm font-bold hover:border-amber-500 hover:text-amber-300 transition-all flex items-center justify-center gap-2"
             >
-              View Pricing <ArrowRight size={16} />
+              Book Chamber Consultation <ArrowRight size={16} />
             </a>
+          </div>
+          <div className="mt-4">
             <a
               href="#features"
-              className="w-full sm:w-auto px-8 py-4 border border-slate-700 text-slate-300 rounded-2xl text-sm font-bold hover:border-slate-500 hover:text-white transition-all text-center"
+              className="inline-flex items-center gap-2 text-sm font-bold text-slate-300 hover:text-white transition-all"
             >
               Explore Features
+              <ArrowRight size={14} />
             </a>
           </div>
 
@@ -212,18 +221,18 @@ export default function LandingPage() {
             {[
               {
                 step: "01",
-                title: "Ask Your Legal Question",
-                desc: "Start with AI guidance for Pakistani law issues through chat and legal search.",
+                title: "Ask or Upload (2 min)",
+                desc: "Start with a legal query or upload your file to trigger focused legal analysis.",
               },
               {
                 step: "02",
-                title: "Review Drafts & Evidence",
-                desc: "Use drafting, contract, and document tools to prepare a stronger legal position.",
+                title: "Get Cited Output (3 min)",
+                desc: "Receive statutes, case references, and structured drafting output with practical direction.",
               },
               {
                 step: "03",
-                title: "Consult the Chamber",
-                desc: "Submit case details or contact the chamber for professional advocate review.",
+                title: "Export or Consult (5 min)",
+                desc: "Finalize your output, export documents, or escalate to chamber consultation.",
               },
             ].map((item) => (
               <div key={item.step} className="rounded-2xl border border-slate-800 bg-[#1a2437] p-6">
@@ -284,16 +293,29 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {CORE_FEATURES.map((item) => (
-              <FeatureCard
-                key={item.title}
-                icon={item.icon}
-                title={item.title}
-                desc={item.desc}
-                bgClass={item.bgClass}
-                iconClass={item.iconClass}
-              />
-            ))}
+            {CORE_FEATURES.map((item, index) => {
+              const isLast = index === CORE_FEATURES.length - 1;
+              const mdSingleLast = CORE_FEATURES.length % 2 === 1 && isLast;
+              const lgSingleLast = CORE_FEATURES.length % 3 === 1 && isLast;
+              const className = [
+                mdSingleLast ? "md:col-span-2" : "",
+                lgSingleLast ? "lg:col-span-1 lg:col-start-2" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+
+              return (
+                <FeatureCard
+                  key={item.title}
+                  icon={item.icon}
+                  title={item.title}
+                  desc={item.desc}
+                  bgClass={item.bgClass}
+                  iconClass={item.iconClass}
+                  className={className}
+                />
+              );
+            })}
           </div>
           <div className="mt-8 text-center">
             <a
@@ -302,6 +324,29 @@ export default function LandingPage() {
             >
               Explore Full Platform <ArrowRight size={14} />
             </a>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-14 px-6 bg-[#0f172a] border-y border-slate-800/60">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8">
+            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">Who It's For</p>
+            <h2 className="text-2xl md:text-3xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Built for Real Legal Workflows
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { title: "Independent Advocates", desc: "Faster research, drafting, and client-prep from a single workspace." },
+              { title: "Law Chambers", desc: "Shared legal operations with structured outputs and chamber-grade consistency." },
+              { title: "In-house Legal Teams", desc: "Quick legal analysis and document review for day-to-day legal operations." },
+            ].map((item) => (
+              <div key={item.title} className="rounded-2xl border border-slate-800 bg-[#1a2437] p-5">
+                <h3 className="text-white text-lg font-bold mb-2">{item.title}</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -403,10 +448,10 @@ export default function LandingPage() {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
             {[
-              { num: legalDocumentsLabel, label: "Legal Documents" },
-              { num: "AI", label: "Powered Analysis" },
-              { num: "24/7", label: "Available" },
-              { num: "PKR", label: "Local Currency" },
+              { num: legalDocumentsLabel, label: "Documents Indexed" },
+              { num: `${CORE_FEATURES.length}+`, label: "Modules Available" },
+              { num: "<10s", label: "Avg Response Time" },
+              { num: "Advocates+", label: "Used by Advocates & Chambers" },
             ].map((stat, i) => (
               <div key={i} className="p-6 bg-[#1e293b] border border-slate-800 rounded-2xl">
                 <p className="text-2xl font-bold text-amber-500 mb-1">{stat.num}</p>
@@ -477,8 +522,8 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center">
-                <Scale size={16} className="text-slate-900" />
+              <div className="w-8 h-8 rounded-lg overflow-hidden border border-amber-500/30">
+                <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
               </div>
               <span className="text-sm font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>
             </div>

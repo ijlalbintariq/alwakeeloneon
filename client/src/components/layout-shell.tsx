@@ -1,7 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { 
-  Scale, 
   MessageSquare, 
   FileText, 
   LogOut, 
@@ -33,8 +32,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b bg-card">
         <div className="flex items-center gap-2 text-primary font-heading font-bold text-xl">
-          <Scale className="h-6 w-6" />
-          <span>Al Wakeel</span>
+          <img src="/logo.svg" alt="Al Wakeelo logo" className="h-6 w-6 rounded-md object-cover" />
+          <span>Al Wakeelo</span>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
           {isMobileMenuOpen ? <X /> : <Menu />}
@@ -48,9 +47,9 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
       )}>
         <div className="h-full flex flex-col">
           <div className="p-6 flex items-center gap-3 border-b border-border/50">
-            <Scale className="h-8 w-8 text-primary" />
+            <img src="/logo.svg" alt="Al Wakeelo logo" className="h-8 w-8 rounded-lg object-cover" />
             <div>
-              <h1 className="font-heading font-bold text-xl leading-none">Al Wakeel</h1>
+              <h1 className="font-heading font-bold text-xl leading-none">Al Wakeelo</h1>
               <p className="text-xs text-muted-foreground mt-1">Digital Legal Counsel</p>
             </div>
           </div>

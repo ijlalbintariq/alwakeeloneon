@@ -48,8 +48,8 @@ function AppSidebar() {
       <SidebarHeader className="p-3 border-b border-[hsl(var(--preview-border))]">
         <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/65 backdrop-blur-lg px-2.5 py-2.5 shadow-[0_18px_34px_-26px_rgba(0,0,0,0.9)]">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 bg-gradient-to-br from-amber-300 to-amber-500 rounded-xl flex items-center justify-center text-slate-900 shadow-xl shadow-amber-500/30 flex-shrink-0">
-              <Scale size={16} />
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-400/40 shadow-xl shadow-amber-500/30 flex-shrink-0">
+              <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
             </div>
             <div className="min-w-0">
               <h1 className="text-base font-bold text-white tracking-tighter uppercase italic leading-tight truncate" style={{ fontFamily: "'Playfair Display', serif" }}>

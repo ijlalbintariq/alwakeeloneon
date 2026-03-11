@@ -11,8 +11,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Al Wakeelo" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=20260309b" />
-    <link rel="shortcut icon" href="/favicon.png?v=20260309b" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg?v=20260312a" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=20260312a" />
+    <link rel="shortcut icon" href="/favicon.png?v=20260312a" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta property="og:title" content="Al Wakeelo - Your Digital Lawyer" />
@@ -111,10 +112,10 @@
         box-shadow: 0 0 40px rgba(245, 158, 11, 0.2);
         animation: splash-icon-enter 0.8s ease-out both;
       }
-      .splash-icon-box svg {
-        width: 2.5rem;
-        height: 2.5rem;
-        color: #0f172a;
+      .splash-icon-box img {
+        width: 3rem;
+        height: 3rem;
+        object-fit: contain;
       }
       .splash-title {
         font-family: 'Playfair Display', serif;
@@ -181,13 +182,7 @@
       <div class="splash-glow-2"></div>
       <div class="splash-container">
         <div class="splash-icon-box">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
-            <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
-            <path d="M7 21h10"/>
-            <path d="M12 3v18"/>
-            <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>
-          </svg>
+          <img src="/logo.svg" alt="Al Wakeelo logo" />
         </div>
         <h1 class="splash-title">Al Wakeelo</h1>
         <p class="splash-tagline">Your Digital Lawyer, Always on Duty</p>
