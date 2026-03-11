@@ -1,9 +1,9 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Scale, Gavel, Book, FileText, Sparkles, Bookmark, History, FileBadge, Zap, TrendingUp, AlertTriangle } from "lucide-react";
+import { Scale, Gavel, Book, FileText, Sparkles, Bookmark, History, FileBadge, Zap, TrendingUp, AlertTriangle, ArrowUpRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { TIER_LIMITS } from "@shared/schema";
+import { getUpgradeActionLabel, getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 
 type UsageData = {
   tier: string;
@@ -41,6 +41,8 @@ export default function DashboardPage() {
 
   const isNearLimit = usage && usage.percentage >= 80;
   const isAtLimit = usage && usage.percentage >= 100;
+  const upgradeHref = getUpgradeCheckoutPath(usage?.tier);
+  const upgradeLabel = getUpgradeActionLabel(usage?.tier);
 
   return (
     <div className="space-y-7 md:space-y-10 fade-in" data-testid="dashboard-page">
@@ -110,6 +112,13 @@ export default function DashboardPage() {
               <p className="text-sm text-red-300 font-medium">
                 You have reached your monthly AI action limit. Upgrade your plan to continue using AI features.
               </p>
+              <a
+                href={upgradeHref}
+                className="mt-3 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-colors"
+                data-testid="link-upgrade-limit-dashboard"
+              >
+                {upgradeLabel} <ArrowUpRight size={11} />
+              </a>
             </div>
           )}
 
@@ -118,6 +127,13 @@ export default function DashboardPage() {
               <p className="text-sm text-amber-300 font-medium">
                 You are approaching your monthly AI action limit ({usage.remaining} actions remaining). Consider upgrading your plan.
               </p>
+              <a
+                href={upgradeHref}
+                className="mt-3 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-amber-500/40 text-amber-300 text-[10px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-200 transition-colors"
+                data-testid="link-upgrade-near-limit-dashboard"
+              >
+                View Upgrade Options <ArrowUpRight size={11} />
+              </a>
             </div>
           )}
         </div>

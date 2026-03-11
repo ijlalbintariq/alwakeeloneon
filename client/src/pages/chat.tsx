@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, MoreVertical, User as UserIcon } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { parseReferences, ReferenceCards } from "@/components/reference-cards";
@@ -104,6 +105,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     queryKey: ["/api/documents"],
     enabled: isAlWakeelo,
   });
+  const upgradeCheckoutHref = getUpgradeCheckoutPath(usage?.tier);
   const canUseTurbo = usage?.tier === "pro" || usage?.tier === "chamber" || usage?.tier === "enterprise";
   const isApexMode = aiMode !== "standard" && aiMode !== "turbo";
   const selectedApexModel = isApexMode ? aiMode : null;
@@ -874,7 +876,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 {usage.remaining} actions remaining this month
               </span>
             </div>
-            <a href="/settings" className="flex items-center gap-1 text-[10px] font-black text-amber-500 uppercase tracking-widest hover:text-amber-400 transition-colors" data-testid="link-upgrade-warning">
+            <a href={upgradeCheckoutHref} className="flex items-center gap-1 text-[10px] font-black text-amber-500 uppercase tracking-widest hover:text-amber-400 transition-colors" data-testid="link-upgrade-warning">
               Upgrade <ArrowUpRight size={10} />
             </a>
           </div>
@@ -888,7 +890,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 Monthly limit reached ({usage.used}/{usage.monthlyLimit} actions)
               </span>
             </div>
-            <a href="/settings" className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-slate-950 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-colors" data-testid="link-upgrade-limit">
+            <a href={upgradeCheckoutHref} className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-slate-950 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-colors" data-testid="link-upgrade-limit">
               Upgrade Now <ArrowUpRight size={10} />
             </a>
           </div>
@@ -1401,7 +1403,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     {usage.percentage >= 100 ? `Limit reached (${usage.used}/${usage.monthlyLimit} actions)` : `${usage.remaining} actions remaining`}
                   </span>
                 </div>
-                <a href="/settings" className="text-[10px] font-black uppercase tracking-wider text-amber-400 hover:text-amber-300 inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 rounded-md" data-testid="link-upgrade-warning">
+                <a href={upgradeCheckoutHref} className="text-[10px] font-black uppercase tracking-wider text-amber-400 hover:text-amber-300 inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 rounded-md" data-testid="link-upgrade-warning">
                   Upgrade <ArrowUpRight size={10} />
                 </a>
               </div>
