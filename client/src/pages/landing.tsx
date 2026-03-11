@@ -83,6 +83,7 @@ export default function LandingPage() {
             <span className="text-xl font-bold italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
+            <a href="/" className="text-sm text-slate-300 hover:text-white transition-colors">Home</a>
             <a href="#features" className="text-sm text-slate-400 hover:text-white transition-colors">Features</a>
             <a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
             <a href="#about" className="text-sm text-slate-400 hover:text-white transition-colors">About</a>
@@ -108,6 +109,7 @@ export default function LandingPage() {
         {mobileNavOpen && (
           <div className="md:hidden border-t border-slate-800/70">
             <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-3">
+              <a href="/" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-200 hover:text-white transition-colors">Home</a>
               <a href="#features" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Features</a>
               <a href="#pricing" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Pricing</a>
               <a href="#about" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">About</a>
