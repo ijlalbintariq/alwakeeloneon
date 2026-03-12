@@ -2272,6 +2272,19 @@ export async function ensureSearchIndexes(): Promise<void> {
       `,
     },
     {
+      label: "email_verification_tokens_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS email_verification_tokens (
+          id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          token varchar NOT NULL UNIQUE,
+          expires_at timestamp NOT NULL,
+          used_at timestamp,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
       label: "public_funnel_events_table",
       stmt: sql`
         CREATE TABLE IF NOT EXISTS public_funnel_events (
@@ -2431,6 +2444,8 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_case_leads_city", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_city ON case_leads (city)` },
     { label: "idx_case_leads_urgency", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_urgency ON case_leads (urgency)` },
     { label: "idx_case_leads_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_leads_status ON case_leads (status)` },
+    { label: "idx_email_verification_tokens_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens (user_id)` },
+    { label: "idx_email_verification_tokens_expires_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_expires_at ON email_verification_tokens (expires_at)` },
     { label: "idx_public_funnel_events_created_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_public_funnel_events_created_at ON public_funnel_events (created_at)` },
     { label: "idx_public_funnel_events_event_type", stmt: sql`CREATE INDEX IF NOT EXISTS idx_public_funnel_events_event_type ON public_funnel_events (event_type)` },
     { label: "idx_public_funnel_events_ip", stmt: sql`CREATE INDEX IF NOT EXISTS idx_public_funnel_events_ip ON public_funnel_events (ip_address)` },
@@ -2460,6 +2475,9 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "alter_users_session_epoch", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS session_epoch integer NOT NULL DEFAULT 0` },
     { label: "alter_users_active_session_ip", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_ip text` },
     { label: "alter_users_active_session_at", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_at timestamp` },
+    { label: "alter_users_email_verified", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false` },
+    { label: "alter_users_email_verified_at", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamp` },
+    { label: "alter_users_subscription_tier_default", stmt: sql`ALTER TABLE users ALTER COLUMN subscription_tier SET DEFAULT 'free'` },
   ];
 
   for (const { label, stmt } of indexStatements) {

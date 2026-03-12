@@ -48,17 +48,7 @@
         ]
       }
     </script>
-    <script>
-      (function () {
-        try {
-          var base = window.location.origin + "/";
-          var canonical = document.getElementById("canonical-link");
-          if (canonical) canonical.setAttribute("href", base);
-          var ogUrl = document.getElementById("og-url-meta");
-          if (ogUrl) ogUrl.setAttribute("content", base);
-        } catch (_) {}
-      })();
-    </script>
+    <script defer src="/runtime-init.js"></script>
     <style>
       #splash-screen {
         position: fixed;
@@ -196,12 +186,5 @@
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/sw.js').catch(function() {});
-        });
-      }
-    </script>
   </body>
 </html>

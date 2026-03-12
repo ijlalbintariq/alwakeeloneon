@@ -4,15 +4,19 @@ import { isAuthenticated } from "./replitAuth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
-import { sendPasswordResetEmail, sendWelcomeEmail } from "../../email";
+import { sendEmailVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from "../../email";
 import { dbAvailable, dbUnavailableReason } from "../../db";
 import { isUserBanned, logAuditEvent } from "../../security-governance";
 import { recordSecurityEvent } from "../../security-monitoring";
 import { isSingleIpEnforced, resolveRequestIp } from "./ip";
+import { verifyCaptchaToken } from "../../captcha";
 
 const TERMS_VERSION = "2026-03";
 const TERMS_REQUIRED_MESSAGE = "You must agree to the Terms and Conditions to create an account.";
 const AUTH_SINGLE_IP_ENFORCED = isSingleIpEnforced();
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+const GENERIC_FORGOT_PASSWORD_MESSAGE = "If an account with that email exists, a password reset link has been sent.";
+const GENERIC_VERIFICATION_RESEND_MESSAGE = "If an account with that email exists, a verification link has been sent.";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -76,6 +80,41 @@ const authRateCleanupTimer = setInterval(() => {
 }, 30 * 60 * 1000);
 authRateCleanupTimer.unref?.();
 
+function normalizeSiteBaseUrl(req: Request): string {
+  const configured = String(process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "").trim();
+  if (configured) return configured.replace(/\/+$/, "");
+
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0]?.trim();
+  const proto = forwardedProto || req.protocol || "https";
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0]?.trim();
+  const host = forwardedHost || req.get("host") || "localhost";
+  return `${proto}://${host}`.replace(/\/+$/, "");
+}
+
+async function requireCaptchaOrReject(req: Request, res: any, action: string): Promise<boolean> {
+  const captchaResult = await verifyCaptchaToken(req, req.body?.captchaToken, action);
+  if (captchaResult.ok) return true;
+  if (captchaResult.reason !== "captcha_disabled") {
+    recordSecurityEvent("captcha_failure", `auth:${action}:${resolveRequestIp(req)}`, {
+      action,
+      reason: captchaResult.reason || "unknown",
+    });
+  }
+  res.status(403).json({ message: "Captcha verification failed. Please try again." });
+  return false;
+}
+
+async function issueEmailVerification(user: any, req: Request, source: "register" | "resend"): Promise<void> {
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
+  await authStorage.createEmailVerificationToken(user.id, token, expiresAt);
+  const verifyUrl = `${normalizeSiteBaseUrl(req)}/auth?verify=${encodeURIComponent(token)}`;
+  await sendEmailVerificationEmail(user.email, verifyUrl, user.firstName).catch((err) => {
+    console.warn("[Auth] Verification email send failed:", err?.message || err);
+  });
+  await logAuditEvent("auth.verification.sent", user.id, user.id, { source }).catch(() => {});
+}
+
 async function persistSession(req: any, res: any, user: any, statusCode: number = 200): Promise<void> {
   const loginIp = resolveRequestIp(req);
   let sessionEpoch = Number(user?.sessionEpoch || 0);
@@ -121,6 +160,7 @@ export function registerAuthRoutes(app: Express): void {
   app.post("/api/auth/register", async (req, res) => {
     try {
       if (!applyAuthRateLimit(req, res, "register", 10, 15 * 60 * 1000)) return;
+      if (!(await requireCaptchaOrReject(req, res, "register"))) return;
 
       if (!dbAvailable) {
         return res.status(503).json({ message: "Database unavailable", code: "DB_UNAVAILABLE", reason: dbUnavailableReason });
@@ -146,6 +186,9 @@ export function registerAuthRoutes(app: Express): void {
         lastName,
         passwordHash,
         authProvider: "email",
+        subscriptionTier: "free",
+        emailVerified: false,
+        emailVerifiedAt: null,
       });
 
       await logAuditEvent("auth.register", user.id, user.id, {
@@ -153,14 +196,12 @@ export function registerAuthRoutes(app: Express): void {
         termsAcceptedVersion: termsVersion || TERMS_VERSION,
       }).catch(() => {});
 
-      const host = req.get("host");
-      const loginUrl = host ? `${req.protocol}://${host}/auth` : "https://alwakeelo.com/auth";
-      void sendWelcomeEmail(email, firstName, loginUrl).catch((err) => {
-        console.warn("[Auth] Welcome email send failed (email provider):", err?.message || err);
+      await issueEmailVerification(user, req, "register");
+      return res.status(201).json({
+        message: "Account created successfully. Please verify your email before signing in.",
+        requiresEmailVerification: true,
+        email: user.email,
       });
-
-      await persistSession(req, res, user, 201);
-      return;
     } catch (error) {
       console.error("Registration error:", error);
       if (!dbAvailable || isDatabaseConnectivityError(error)) {
@@ -177,6 +218,7 @@ export function registerAuthRoutes(app: Express): void {
   app.post("/api/auth/login", async (req, res) => {
     try {
       if (!applyAuthRateLimit(req, res, "login", 15, 15 * 60 * 1000)) return;
+      if (!(await requireCaptchaOrReject(req, res, "login"))) return;
 
       if (!dbAvailable) {
         return res.status(503).json({ message: "Database unavailable", code: "DB_UNAVAILABLE", reason: dbUnavailableReason });
@@ -203,6 +245,12 @@ export function registerAuthRoutes(app: Express): void {
       if (user.authProvider === "google") {
         recordSecurityEvent("auth_anomaly", `provider-mismatch:${email.toLowerCase()}`, { expectedProvider: "google", attemptedProvider: "email" });
         return res.status(401).json({ message: "This account uses Google sign-in. Please use the Google login button." });
+      }
+      if (!user.emailVerified) {
+        return res.status(403).json({
+          message: "Please verify your email before signing in. You can request a new verification link.",
+          requiresEmailVerification: true,
+        });
       }
 
       const isValid = await bcrypt.compare(password, user.passwordHash);
@@ -264,6 +312,7 @@ export function registerAuthRoutes(app: Express): void {
   app.post("/api/auth/google/token", async (req, res) => {
     try {
       if (!applyAuthRateLimit(req, res, "google-token", 20, 15 * 60 * 1000)) return;
+      if (!(await requireCaptchaOrReject(req, res, "google-token"))) return;
 
       const { credential, acceptedTerms, termsVersion } = req.body || {};
       if (!credential) {
@@ -315,6 +364,8 @@ export function registerAuthRoutes(app: Express): void {
           profileImageUrl,
           authProvider: "google",
           subscriptionTier: "free",
+          emailVerified: true,
+          emailVerifiedAt: new Date(),
         });
         createdNow = true;
         await logAuditEvent("auth.register", user.id, user.id, {
@@ -331,6 +382,9 @@ export function registerAuthRoutes(app: Express): void {
         void sendWelcomeEmail(email, firstName, loginUrl).catch((err) => {
           console.warn("[Auth] Welcome email send failed (google provider):", err?.message || err);
         });
+      }
+      if (!user!.emailVerified) {
+        await authStorage.markUserEmailVerified(user!.id).catch(() => {});
       }
 
       await logAuditEvent("auth.login", user!.id, user!.id, { provider: "google" }).catch(() => {});
@@ -350,6 +404,7 @@ export function registerAuthRoutes(app: Express): void {
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
       if (!applyAuthRateLimit(req, res, "forgot-password", 8, 15 * 60 * 1000)) return;
+      if (!(await requireCaptchaOrReject(req, res, "forgot-password"))) return;
 
       const schema = z.object({ email: z.string().email() });
       const parsed = schema.safeParse(req.body);
@@ -360,7 +415,7 @@ export function registerAuthRoutes(app: Express): void {
       const user = await authStorage.getUserByEmail(parsed.data.email);
 
       if (!user || user.authProvider !== "email") {
-        return res.json({ message: "If an account with that email exists, a password reset link has been sent." });
+        return res.json({ message: GENERIC_FORGOT_PASSWORD_MESSAGE });
       }
 
       const token = crypto.randomBytes(32).toString("hex");
@@ -372,21 +427,68 @@ export function registerAuthRoutes(app: Express): void {
 
       const emailSent = await sendPasswordResetEmail(parsed.data.email, resetUrl, user.firstName);
 
-      if (emailSent) {
-        return res.json({ message: "A password reset link has been sent to your email address." });
-      } else {
+      if (!emailSent) {
         console.warn(`[Auth] Password reset email could not be sent for ${parsed.data.email}.`);
-        return res.json({ message: "If an account with that email exists, a password reset link has been sent." });
       }
+      return res.json({ message: GENERIC_FORGOT_PASSWORD_MESSAGE });
     } catch (error) {
       console.error("Forgot password error:", error);
       res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
+  app.post("/api/auth/verify-email", async (req, res) => {
+    try {
+      if (!applyAuthRateLimit(req, res, "verify-email", 20, 15 * 60 * 1000)) return;
+      const schema = z.object({ token: z.string().min(1, "Verification token is required") });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0].message });
+      }
+
+      const verification = await authStorage.getValidEmailVerificationToken(parsed.data.token);
+      if (!verification) {
+        return res.status(400).json({ message: "This verification link has expired or is invalid. Please request a new one." });
+      }
+
+      await authStorage.markUserEmailVerified(verification.userId);
+      await authStorage.markEmailVerificationTokenUsed(verification.id);
+      await logAuditEvent("auth.verification.completed", verification.userId, verification.userId).catch(() => {});
+
+      return res.json({ message: "Email verified successfully. You can now sign in." });
+    } catch (error) {
+      console.error("Verify email error:", error);
+      return res.status(500).json({ message: "Could not verify email. Please try again." });
+    }
+  });
+
+  app.post("/api/auth/resend-verification", async (req, res) => {
+    try {
+      if (!applyAuthRateLimit(req, res, "resend-verification", 8, 15 * 60 * 1000)) return;
+      if (!(await requireCaptchaOrReject(req, res, "resend-verification"))) return;
+
+      const schema = z.object({ email: z.string().email() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Please provide a valid email address" });
+      }
+
+      const user = await authStorage.getUserByEmail(parsed.data.email);
+      if (user && user.authProvider === "email" && !user.emailVerified) {
+        await issueEmailVerification(user, req, "resend");
+      }
+
+      return res.json({ message: GENERIC_VERIFICATION_RESEND_MESSAGE });
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      return res.status(500).json({ message: "Could not resend verification email. Please try again." });
+    }
+  });
+
   app.post("/api/auth/reset-password", async (req, res) => {
     try {
       if (!applyAuthRateLimit(req, res, "reset-password", 10, 15 * 60 * 1000)) return;
+      if (!(await requireCaptchaOrReject(req, res, "reset-password"))) return;
 
       const schema = z.object({
         token: z.string().min(1),

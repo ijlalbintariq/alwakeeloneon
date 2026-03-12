@@ -13,7 +13,10 @@ export default function ForgotPasswordPage() {
 
   const forgotMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/auth/forgot-password", { email });
+      const res = await apiRequest("POST", "/api/auth/forgot-password", {
+        email,
+        captchaToken: (window as any).__ALWAKEELO_CAPTCHA_TOKEN || undefined,
+      });
       return res.json();
     },
     onSuccess: (data: any) => {

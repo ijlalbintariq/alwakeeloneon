@@ -165,7 +165,7 @@ export default function UserPanelPage() {
           </div>
           <div className="flex items-center gap-2">
             <Badge className={`${tierBg} ${tierColor} rounded-lg text-xs font-black uppercase`} data-testid="badge-tier">
-              {profile?.subscriptionTier || "standard"} Plan
+              {profile?.subscriptionTier || "free"} Plan
             </Badge>
             {profile?.isAdmin && (
               <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 rounded-lg text-[9px]">
@@ -299,7 +299,7 @@ export default function UserPanelPage() {
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
               <p className="text-xs text-slate-400">
-                {TIER_LIMITS[profile?.subscriptionTier || "standard"]?.description || "120 AI actions/month"}
+                {TIER_LIMITS[profile?.subscriptionTier || "free"]?.description || "10 AI chats + 1 legal draft + 1 contract draft/month"}
               </p>
               <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2c] px-3 py-2.5">
                 <p className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500">Model Access</p>
