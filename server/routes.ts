@@ -4909,8 +4909,21 @@ RULES:
       if (targetId === currentUserId) {
         return res.status(400).json({ message: "You cannot delete your own account" });
       }
+      const targetUser = await storage.getUserProfile(targetId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       await storage.deleteUser(targetId);
-      await logAuditEvent("admin.user.delete", currentUserId, targetId, {});
+
+      // Log with null target_user_id because the user row is already deleted.
+      await logAuditEvent("admin.user.delete", currentUserId, null, {
+        deletedUserId: targetId,
+        deletedEmail: targetUser.email || null,
+      }).catch((auditErr) => {
+        console.warn("Audit log failed for admin.user.delete:", auditErr);
+      });
+
       res.json({ message: "User deleted successfully" });
     } catch (err) {
       console.error("Error deleting user:", err);
