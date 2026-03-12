@@ -29,7 +29,7 @@ import {
   type StyleMemorySettings, type InsertStyleMemorySettings,
   type StyleMemorySample, type InsertStyleMemorySample
 } from "@shared/schema";
-import { users, type User } from "@shared/models/auth";
+import { users, passwordResetTokens, emailVerificationTokens, type User } from "@shared/models/auth";
 import { eq, desc, or, ilike, sql, and, lt, gte, count, inArray } from "drizzle-orm";
 
 export type DocumentInsights = {
@@ -1597,6 +1597,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(userId: string): Promise<void> {
+    // Remove auth token rows first to avoid FK failures on users(id).
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+    await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userId));
+
+    // Remove user org membership/invites and orgs owned by this user.
+    await db.delete(orgMembers).where(eq(orgMembers.userId, userId));
+    await db.delete(orgInvites).where(eq(orgInvites.invitedBy, userId));
+
+    const ownedOrgs = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.ownerId, userId));
+    const ownedOrgIds = ownedOrgs.map((o) => o.id);
+    if (ownedOrgIds.length > 0) {
+      await db.delete(orgMembers).where(inArray(orgMembers.orgId, ownedOrgIds));
+      await db.delete(orgInvites).where(inArray(orgInvites.orgId, ownedOrgIds));
+      await db.delete(orgKnowledge).where(inArray(orgKnowledge.orgId, ownedOrgIds));
+      await db.delete(organizations).where(eq(organizations.ownerId, userId));
+    }
+
     const userThreads = await db.select({ id: threads.id }).from(threads).where(eq(threads.userId, userId));
     const threadIds = userThreads.map((t: { id: number }) => t.id);
     if (threadIds.length > 0) {
@@ -1605,11 +1622,18 @@ export class DatabaseStorage implements IStorage {
       }
       await db.delete(threads).where(eq(threads.userId, userId));
     }
+
     await db.delete(documents).where(eq(documents.userId, userId));
     await db.delete(bookmarks).where(eq(bookmarks.userId, userId));
     await db.delete(searchHistory).where(eq(searchHistory.userId, userId));
+    await db.delete(savedJudgments).where(eq(savedJudgments.userId, userId));
     await db.delete(usageTracking).where(eq(usageTracking.userId, userId));
+
+    // Keep shared/admin content but detach uploader references.
+    await db.update(orgKnowledge).set({ uploadedBy: null }).where(eq(orgKnowledge.uploadedBy, userId));
     await db.update(adminKnowledge).set({ uploadedBy: null }).where(eq(adminKnowledge.uploadedBy, userId));
+    await db.update(statuteDocuments).set({ uploadedBy: null }).where(eq(statuteDocuments.uploadedBy, userId));
+
     await db.delete(users).where(eq(users.id, userId));
   }
 
