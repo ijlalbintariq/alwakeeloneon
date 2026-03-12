@@ -104,37 +104,65 @@ export default function AuthPage() {
   useEffect(() => {
     if (!googleStatus?.available || !googleStatus?.clientId) return;
 
+    const renderGoogleButton = () => {
+      if (!window.google || !googleButtonRef.current) return;
+      googleButtonRef.current.innerHTML = "";
+      window.google.accounts.id.initialize({
+        client_id: googleStatus.clientId,
+        callback: handleGoogleCredential,
+        auto_select: false,
+        ux_mode: "popup",
+        itp_support: true,
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        text: mode === "register" ? "signup_with" : "signin_with",
+        shape: "pill",
+        width: Math.min(360, Math.max(280, googleButtonRef.current.clientWidth || 320)),
+        logo_alignment: "left",
+      });
+    };
+
+    const handleScriptError = () => {
+      toast({
+        title: "Google sign-in unavailable",
+        description: "Google SDK could not be loaded. Check Google client origins and browser privacy settings.",
+        variant: "destructive",
+      });
+    };
+
+    const sdkSrc = "https://accounts.google.com/gsi/client";
+    const existingScript = document.querySelector(`script[src="${sdkSrc}"]`) as HTMLScriptElement | null;
+
+    if (window.google?.accounts?.id) {
+      renderGoogleButton();
+      return;
+    }
+
+    if (existingScript) {
+      existingScript.addEventListener("load", renderGoogleButton);
+      existingScript.addEventListener("error", handleScriptError);
+      return () => {
+        existingScript.removeEventListener("load", renderGoogleButton);
+        existingScript.removeEventListener("error", handleScriptError);
+      };
+    }
+
     const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
+    script.src = sdkSrc;
     script.async = true;
     script.defer = true;
-    script.onload = () => {
-      if (window.google && googleButtonRef.current) {
-        // Prevent duplicate Google button renders when mode/state toggles.
-        googleButtonRef.current.innerHTML = "";
-        window.google.accounts.id.initialize({
-          client_id: googleStatus.clientId,
-          callback: handleGoogleCredential,
-          auto_select: false,
-        });
-        window.google.accounts.id.renderButton(googleButtonRef.current, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          text: mode === "register" ? "signup_with" : "signin_with",
-          shape: "pill",
-          width: Math.min(360, Math.max(280, googleButtonRef.current.clientWidth || 320)),
-          logo_alignment: "left",
-        });
-      }
-    };
+    script.onload = renderGoogleButton;
+    script.onerror = handleScriptError;
     document.head.appendChild(script);
 
     return () => {
-      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-      if (existingScript) existingScript.remove();
+      script.removeEventListener("load", renderGoogleButton);
+      script.removeEventListener("error", handleScriptError);
     };
-  }, [googleStatus, handleGoogleCredential, mode]);
+  }, [googleStatus?.available, googleStatus?.clientId, handleGoogleCredential, mode, toast]);
 
   const loginMutation = useMutation({
     mutationFn: async () => {
