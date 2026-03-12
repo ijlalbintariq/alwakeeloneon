@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -69,7 +69,28 @@ export default function LandingPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanKey>("pro");
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanKey | "free">("pro");
+  const landingPlans = useMemo(() => [
+    {
+      key: "free" as const,
+      badge: "Free",
+      title: "Free",
+      price: "PKR 0/mo",
+      subtitle: "Starter access",
+      cta: "Start Free",
+      features: [
+        "10 AI chats/month",
+        "1 legal draft/month",
+        "1 contract draft/month",
+        "Mode access: Standard only",
+        "Output cap: Standard 900 tokens/request",
+        "Uploads: 100 files/month",
+        "PDF upload in chat: up to 50 pages/day",
+      ],
+      highlighted: false,
+    },
+    ...SUBSCRIPTION_PLANS,
+  ], []);
   const { data: platformMetrics } = useQuery<{ legalDocuments: number; updatedAt: string }>({
     queryKey: ["/api/public/platform-metrics"],
     refetchInterval: 30000,
@@ -363,8 +384,8 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {SUBSCRIPTION_PLANS.map((plan) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+            {landingPlans.map((plan) => (
               <div
                 key={plan.key}
                 onClick={() => setSelectedPlan(plan.key)}
@@ -398,6 +419,13 @@ export default function LandingPage() {
                 {plan.key === "enterprise" ? (
                   <a
                     href="mailto:support@alwakeelo.com?subject=Enterprise%20Consultation"
+                    className="w-full py-3 border border-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest hover:border-amber-500 hover:text-amber-400 transition-all flex items-center justify-center"
+                  >
+                    {plan.cta}
+                  </a>
+                ) : plan.key === "free" ? (
+                  <a
+                    href={user ? "/dashboard" : "/auth"}
                     className="w-full py-3 border border-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest hover:border-amber-500 hover:text-amber-400 transition-all flex items-center justify-center"
                   >
                     {plan.cta}

@@ -76,8 +76,13 @@ export default function AuthPage() {
         });
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      navigate("/");
+      const signedInUser = data?.user || data;
+      if (signedInUser?.id) {
+        queryClient.setQueryData(["/api/auth/user"], signedInUser);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      }
+      navigate("/dashboard");
     } catch {
       toast({
         title: "Google sign-in failed",
