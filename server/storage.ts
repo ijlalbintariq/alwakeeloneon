@@ -1585,11 +1585,11 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select({ tier: users.subscriptionTier })
       .from(users)
       .where(eq(users.id, userId));
-    const rawTier = (user?.tier || "standard").toLowerCase();
+    const rawTier = (user?.tier || "free").toLowerCase();
     if (rawTier === "free" || rawTier === "standard" || rawTier === "pro" || rawTier === "chamber" || rawTier === "enterprise") {
       return rawTier;
     }
-    return "standard";
+    return "free";
   }
 
   async getAllUsers(): Promise<User[]> {
