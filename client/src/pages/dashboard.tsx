@@ -104,6 +104,13 @@ export default function DashboardPage() {
               <p className="text-[9px] font-black uppercase tracking-widest preview-muted">Current Plan</p>
               <p className="text-xl font-black text-amber-500" data-testid="text-tier-label">{usage.tierLabel}</p>
               <p className="text-[10px] preview-subtitle text-center">{usage.tierDescription}</p>
+              <a
+                href={upgradeHref}
+                className="mt-1 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-amber-500/40 text-amber-300 text-[10px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-200 transition-colors"
+                data-testid="link-upgrade-from-plan-card-dashboard"
+              >
+                {upgradeLabel} <ArrowUpRight size={11} />
+              </a>
             </div>
           </div>
 

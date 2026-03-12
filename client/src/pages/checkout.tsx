@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, ChevronRight, Loader2, Mail, PhoneCall, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronRight, CreditCard, Loader2, Mail, PhoneCall, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -15,16 +15,71 @@ type CheckoutFormState = {
   organization: string;
   notes: string;
   consentToContact: boolean;
+  paymentMethod: "card" | "jazzcash" | "easypaisa";
+  cardHolderName: string;
+  cardNumber: string;
+  cardExpiry: string;
+  cardCvv: string;
+  cardAddressLine1: string;
+  cardApt: string;
+  cardState: string;
+  cardPostCode: string;
+  walletNumber: string;
+  walletTxnId: string;
 };
 
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function normalizeCardNumber(value: string): string {
+  return digitsOnly(value).slice(0, 19);
+}
+
+function formatCardNumber(value: string): string {
+  const normalized = normalizeCardNumber(value);
+  return normalized.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+}
+
+function normalizeCardExpiry(value: string): string {
+  const digits = digitsOnly(value).slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+}
+
+function isValidCardExpiry(value: string): boolean {
+  const match = value.match(/^(\d{2})\/(\d{2})$/);
+  if (!match) return false;
+  const month = Number(match[1]);
+  return month >= 1 && month <= 12;
+}
+
+function maskDigits(value: string, keepStart = 2, keepEnd = 2): string {
+  const digits = digitsOnly(value);
+  if (!digits) return "N/A";
+  if (digits.length <= keepStart + keepEnd) return `${digits.slice(0, 1)}***`;
+  return `${digits.slice(0, keepStart)}${"*".repeat(Math.max(4, digits.length - keepStart - keepEnd))}${digits.slice(-keepEnd)}`;
+}
+
 function buildCaseDescription(planLabel: string, form: CheckoutFormState): string {
+  const paymentLine =
+    form.paymentMethod === "card"
+      ? `Payment: Card | Holder: ${form.cardHolderName || "N/A"} | Number: ${maskDigits(form.cardNumber, 0, 4)} | Expiry: ${form.cardExpiry || "N/A"}`
+      : `Payment: ${form.paymentMethod === "jazzcash" ? "JazzCash" : "EasyPaisa"} | Wallet: ${maskDigits(form.walletNumber, 3, 2)} | Txn Ref: ${form.walletTxnId || "N/A"}`;
+  const billingLine =
+    form.paymentMethod === "card"
+      ? `Billing: ${form.cardAddressLine1 || "N/A"}, Apt ${form.cardApt || "-"}, ${form.cardState || "N/A"}, ${form.cardPostCode || "N/A"}`
+      : "";
+
   const lines = [
     `Subscription interest for ${planLabel} plan.`,
     `Organization: ${form.organization || "N/A"}`,
     `City: ${form.city || "N/A"}`,
     `Phone: ${form.phone || "N/A"}`,
+    paymentLine,
+    billingLine,
     `Notes: ${form.notes || "User requested subscription onboarding and plan activation support."}`,
-  ];
+  ].filter(Boolean);
   const text = lines.join("\n");
   return text.length >= 20 ? text : `${text}\nPlease contact me to activate this plan.`;
 }
@@ -48,6 +103,17 @@ export default function CheckoutPage() {
     organization: "",
     notes: "",
     consentToContact: true,
+    paymentMethod: "card",
+    cardHolderName: "",
+    cardNumber: "",
+    cardExpiry: "",
+    cardCvv: "",
+    cardAddressLine1: "",
+    cardApt: "",
+    cardState: "",
+    cardPostCode: "",
+    walletNumber: "",
+    walletTxnId: "",
   });
 
   useEffect(() => {
@@ -76,7 +142,7 @@ export default function CheckoutPage() {
         phone: form.phone.trim(),
         email: form.email.trim().toLowerCase(),
         city: form.city.trim(),
-        caseType: `Subscription - ${selectedPlanData.title}`,
+        caseType: `Subscription - ${selectedPlanData.title} (${form.paymentMethod === "card" ? "Card" : form.paymentMethod === "jazzcash" ? "JazzCash" : "EasyPaisa"})`,
         caseDescription: buildCaseDescription(selectedPlanData.title, form),
         urgency: "normal",
         preferredCallbackTime: "",
@@ -112,6 +178,33 @@ export default function CheckoutPage() {
       toast({
         title: "Consent required",
         description: "Please allow contact so the chamber can activate your subscription.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (form.paymentMethod === "card") {
+      const cardDigits = normalizeCardNumber(form.cardNumber);
+      if (
+        !form.cardHolderName.trim() ||
+        cardDigits.length < 12 ||
+        !isValidCardExpiry(form.cardExpiry) ||
+        digitsOnly(form.cardCvv).length < 3 ||
+        !form.cardAddressLine1.trim() ||
+        !form.cardState.trim() ||
+        !form.cardPostCode.trim()
+      ) {
+        toast({
+          title: "Card details incomplete",
+          description: "Please provide valid card holder, card number, expiry, CVV, and billing address details.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else if (digitsOnly(form.walletNumber).length < 10) {
+      toast({
+        title: "Wallet number required",
+        description: `Please provide a valid ${form.paymentMethod === "jazzcash" ? "JazzCash" : "EasyPaisa"} number.`,
         variant: "destructive",
       });
       return;
@@ -239,7 +332,7 @@ export default function CheckoutPage() {
                     Complete your checkout request
                   </h2>
                   <p className="text-sm text-slate-400 mt-2">
-                    We currently finalize subscriptions through chamber verification for legal-compliance onboarding.
+                    Select your payment method and submit checkout details for chamber activation.
                   </p>
                 </div>
 
@@ -312,6 +405,170 @@ export default function CheckoutPage() {
                       data-testid="checkout-input-notes"
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Payment Method</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, paymentMethod: "card" }))}
+                        className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${
+                          form.paymentMethod === "card"
+                            ? "border-amber-400 bg-amber-500/15 text-amber-200"
+                            : "border-slate-700 bg-[#0f172a] text-slate-300 hover:border-slate-500"
+                        }`}
+                        data-testid="checkout-payment-card"
+                      >
+                        <span className="inline-flex items-center gap-2"><CreditCard size={13} /> Card</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, paymentMethod: "jazzcash" }))}
+                        className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${
+                          form.paymentMethod === "jazzcash"
+                            ? "border-amber-400 bg-amber-500/15 text-amber-200"
+                            : "border-slate-700 bg-[#0f172a] text-slate-300 hover:border-slate-500"
+                        }`}
+                        data-testid="checkout-payment-jazzcash"
+                      >
+                        <span className="inline-flex items-center gap-2"><Smartphone size={13} /> JazzCash</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, paymentMethod: "easypaisa" }))}
+                        className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${
+                          form.paymentMethod === "easypaisa"
+                            ? "border-amber-400 bg-amber-500/15 text-amber-200"
+                            : "border-slate-700 bg-[#0f172a] text-slate-300 hover:border-slate-500"
+                        }`}
+                        data-testid="checkout-payment-easypaisa"
+                      >
+                        <span className="inline-flex items-center gap-2"><Smartphone size={13} /> EasyPaisa</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {form.paymentMethod === "card" ? (
+                    <div className="space-y-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Card Holder Name</label>
+                        <input
+                          value={form.cardHolderName}
+                          onChange={(e) => setForm((prev) => ({ ...prev, cardHolderName: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          required={form.paymentMethod === "card"}
+                          data-testid="checkout-input-card-holder"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Billing Address</label>
+                        <input
+                          value={form.cardAddressLine1}
+                          onChange={(e) => setForm((prev) => ({ ...prev, cardAddressLine1: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          placeholder="Street address"
+                          required={form.paymentMethod === "card"}
+                          data-testid="checkout-input-card-address"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Apt (Optional)</label>
+                          <input
+                            value={form.cardApt}
+                            onChange={(e) => setForm((prev) => ({ ...prev, cardApt: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            placeholder="Suite / Apt"
+                            data-testid="checkout-input-card-apt"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">State</label>
+                          <input
+                            value={form.cardState}
+                            onChange={(e) => setForm((prev) => ({ ...prev, cardState: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            placeholder="Punjab"
+                            required={form.paymentMethod === "card"}
+                            data-testid="checkout-input-card-state"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Post Code</label>
+                          <input
+                            value={form.cardPostCode}
+                            onChange={(e) => setForm((prev) => ({ ...prev, cardPostCode: e.target.value.slice(0, 20) }))}
+                            className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            placeholder="54000"
+                            required={form.paymentMethod === "card"}
+                            data-testid="checkout-input-card-postcode"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Card Number</label>
+                        <input
+                          value={form.cardNumber}
+                          onChange={(e) => setForm((prev) => ({ ...prev, cardNumber: formatCardNumber(e.target.value) }))}
+                          className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          placeholder="1234 5678 9012 3456"
+                          required={form.paymentMethod === "card"}
+                          data-testid="checkout-input-card-number"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Expiry (MM/YY)</label>
+                          <input
+                            value={form.cardExpiry}
+                            onChange={(e) => setForm((prev) => ({ ...prev, cardExpiry: normalizeCardExpiry(e.target.value) }))}
+                            className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            placeholder="MM/YY"
+                            required={form.paymentMethod === "card"}
+                            data-testid="checkout-input-card-expiry"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">CVV</label>
+                          <input
+                            value={form.cardCvv}
+                            onChange={(e) => setForm((prev) => ({ ...prev, cardCvv: digitsOnly(e.target.value).slice(0, 4) }))}
+                            className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            placeholder="123"
+                            required={form.paymentMethod === "card"}
+                            data-testid="checkout-input-card-cvv"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-500">For security, CVV is used for local validation only and is not stored.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                          {form.paymentMethod === "jazzcash" ? "JazzCash Number" : "EasyPaisa Number"}
+                        </label>
+                        <input
+                          value={form.walletNumber}
+                          onChange={(e) => setForm((prev) => ({ ...prev, walletNumber: digitsOnly(e.target.value).slice(0, 14) }))}
+                          className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          placeholder="03XXXXXXXXX"
+                          required={form.paymentMethod !== "card"}
+                          data-testid="checkout-input-wallet-number"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Transaction Reference (Optional)</label>
+                        <input
+                          value={form.walletTxnId}
+                          onChange={(e) => setForm((prev) => ({ ...prev, walletTxnId: e.target.value.slice(0, 80) }))}
+                          className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          placeholder="If already paid, add reference ID"
+                          data-testid="checkout-input-wallet-txn"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <label className="flex items-start gap-2 rounded-xl border border-slate-800 bg-[#0f172a] px-3 py-2.5 cursor-pointer">
                     <input
