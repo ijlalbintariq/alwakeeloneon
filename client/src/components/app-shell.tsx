@@ -39,6 +39,9 @@ const NAVIGATION_ITEMS = [
 function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const tier = String(user?.subscriptionTier || "").toLowerCase();
+  const canSeeOrganization = !!user && (user.isAdmin || tier === "chamber" || tier === "enterprise");
+  const visibleNavigationItems = NAVIGATION_ITEMS.filter((item) => item.id !== "organization" || canSeeOrganization);
 
   return (
     <Sidebar className={cn(
@@ -68,7 +71,7 @@ function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {NAVIGATION_ITEMS.map((item) => {
+              {visibleNavigationItems.map((item) => {
                 const Icon = item.icon;
                 const isJudgmentsItem = item.id === "judgments";
                 const isActive =

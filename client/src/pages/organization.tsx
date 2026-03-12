@@ -345,7 +345,7 @@ export default function OrganizationPage() {
     },
   });
 
-  const canCreateOrg = !!(user?.subscriptionTier === "pro" || user?.subscriptionTier === "chamber" || user?.subscriptionTier === "enterprise" || user?.isAdmin);
+  const canCreateOrg = !!(user?.subscriptionTier === "chamber" || user?.subscriptionTier === "enterprise" || user?.isAdmin);
   const isOwner = !!(org && user && org.ownerId === user.id);
 
   const filteredMembers = useMemo(() => {
@@ -419,7 +419,7 @@ export default function OrganizationPage() {
                     Organization Features Locked
                   </h2>
                   <p className="mt-2 text-sm text-slate-300">
-                    Upgrade to Pro, Chamber, or Enterprise to create and manage an organization workspace.
+                    Upgrade to Chamber or Enterprise to create and manage an organization workspace.
                   </p>
                 </div>
               </div>

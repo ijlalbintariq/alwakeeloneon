@@ -126,6 +126,10 @@ function Router({ onReady }: { onReady?: () => void }) {
     return <Redirect to="/auth" />;
   }
 
+  const userTier = String(user.subscriptionTier || "").toLowerCase();
+  const canAccessOrganization = !!user && (user.isAdmin || userTier === "chamber" || userTier === "enterprise");
+  const OrganizationRoute = () => (canAccessOrganization ? <OrganizationPage /> : <Redirect to="/dashboard" />);
+
   if (location === "/admin-setup") {
     return <AdminSetupPage />;
   }
@@ -148,7 +152,7 @@ function Router({ onReady }: { onReady?: () => void }) {
         <Route path="/bookmarks" component={BookmarksPage} />
         <Route path="/history" component={HistoryPage} />
         <Route path="/knowledge-vault" component={KnowledgeVaultPage} />
-        <Route path="/organization" component={OrganizationPage} />
+        <Route path="/organization" component={OrganizationRoute} />
         <Route path="/admin" component={AdminPanelPage} />
         <Route path="/settings" component={UserPanelPage} />
         <Route component={NotFound} />

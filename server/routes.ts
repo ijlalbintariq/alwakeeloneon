@@ -697,6 +697,39 @@ function getModeOutputCap(tierRaw: string | undefined | null, mode: "standard" |
   return Math.max(0, Number(cap) || 0);
 }
 
+const FREE_TIER_CHAT_BUCKET_FEATURES = ["chat", "search-judgments", "search-statutes", "summarize", "brief", "chat-apex"] as const;
+
+function resolveFreeTierLimit(featureRaw: string): {
+  limitKey: "chat" | "draft" | "contract-drafting";
+  label: string;
+  monthlyLimit: number;
+  features: string[];
+} {
+  const feature = String(featureRaw || "chat").toLowerCase();
+  if (feature === "draft") {
+    return {
+      limitKey: "draft",
+      label: "legal draft",
+      monthlyLimit: 1,
+      features: ["draft"],
+    };
+  }
+  if (feature === "contract-drafting") {
+    return {
+      limitKey: "contract-drafting",
+      label: "contract draft",
+      monthlyLimit: 1,
+      features: ["contract-drafting"],
+    };
+  }
+  return {
+    limitKey: "chat",
+    label: "AI chat",
+    monthlyLimit: 10,
+    features: [...FREE_TIER_CHAT_BUCKET_FEATURES],
+  };
+}
+
 function resolveModuleRoute(modePrimary: ChatRouteMode, modeFallback: ChatRouteMode, userTier: string) {
   const turboPermitted = isTurboAllowedForTier(userTier) && isDeepSeekAvailable();
   if (modePrimary === "turbo" && !turboPermitted) {
@@ -1386,24 +1419,40 @@ async function checkUsageLimit(userId: string, feature: string, res: any): Promi
       return true;
     }
 
-    const userProfile = await storage.getUserProfile(userId);
-    const rawTier = String(userProfile?.subscriptionTier || "standard").toLowerCase();
-    const isFreeTier = rawTier === "free";
     const tier = normalizeTier(await storage.getUserTier(userId));
+    const isFreeTier = tier === "free";
     const limits = getTierPlan(tier);
+
+    if (isFreeTier) {
+      const freeTierLimit = resolveFreeTierLimit(feature);
+      let usedThisMonth = 0;
+      for (const usageFeature of freeTierLimit.features) {
+        usedThisMonth += await storage.getMonthlyUsageCountByFeature(userId, usageFeature);
+      }
+      if (usedThisMonth >= freeTierLimit.monthlyLimit) {
+        res.status(429).json({
+          message: `Your free-tier ${freeTierLimit.label} limit has ended (${freeTierLimit.monthlyLimit}/month). Please subscribe to continue using Al Wakeelo.`,
+          limit: freeTierLimit.monthlyLimit,
+          used: usedThisMonth,
+          tier,
+          action: "subscribe",
+          freeLimitKey: freeTierLimit.limitKey,
+        });
+        return false;
+      }
+      return true;
+    }
+
     const usedThisMonth = await storage.getMonthlyUsageCount(userId);
 
     if (usedThisMonth >= limits.monthlyQueries) {
-      const limitMessage = isFreeTier
-        ? `Your free-tier monthly AI/chat limit has ended (${limits.monthlyQueries}). Please subscribe to continue using Al Wakeelo.`
-        : `Your ${limits.label} package limit has ended for this cycle (${limits.monthlyQueries}). Please re-subscribe/renew your package to continue using the app.`;
+      const limitMessage = `Your ${limits.label} package limit has ended for this cycle (${limits.monthlyQueries}). Please re-subscribe/renew your package to continue using the app.`;
       res.status(429).json({
         message: limitMessage,
         limit: limits.monthlyQueries,
         used: usedThisMonth,
         tier,
-        rawTier,
-        action: isFreeTier ? "subscribe" : "resubscribe",
+        action: "resubscribe",
       });
       return false;
     }
@@ -3397,7 +3446,7 @@ RAG POLICY (STRICT):
       const canUseAiFallback = isGroqAvailable() || isOpenRouterAvailable();
 
       if (shouldAiFallback && canUseAiFallback) {
-        const allowed = await checkUsageLimit(userId, "draft", res);
+        const allowed = await checkUsageLimit(userId, "contract-drafting", res);
         if (!allowed) return;
 
         const sysInstruction = `You are a Pakistani legal drafting assistant.
@@ -3499,7 +3548,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       const canUseAiFallback = isGroqAvailable() || isOpenRouterAvailable();
 
       if ((shouldAiFallback || shouldStyleRewrite) && canUseAiFallback) {
-        const allowed = await checkUsageLimit(userId, "draft", res);
+        const allowed = await checkUsageLimit(userId, "contract-drafting", res);
         if (!allowed) return;
 
         const sysInstruction = shouldStyleRewrite
@@ -3774,9 +3823,6 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const allowed = await checkUsageLimit(userId, "chat", res);
-      if (!allowed) return;
-
       let body = req.body;
       if (typeof body.messages === "string") {
         try {
@@ -3785,12 +3831,20 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
           return res.status(400).json({ message: "Invalid messages payload" });
         }
       }
+      const moduleType: ModuleType = normalizeModuleType(body?.type);
+      const limitFeature = moduleType === "draft"
+        ? "draft"
+        : moduleType === "contract-drafting"
+          ? "contract-drafting"
+          : "chat";
+      const allowed = await checkUsageLimit(userId, limitFeature, res);
+      if (!allowed) return;
+
       const {
         messages: userMessages,
         type,
         moduleIntent: moduleIntentRaw,
       } = body as { messages: Array<{ role: string; content: string }>; type?: string; moduleIntent?: string };
-      const moduleType: ModuleType = normalizeModuleType(type);
       const moduleProfile = getModuleProfile(type);
       const moduleIntent = typeof moduleIntentRaw === "string" ? (moduleIntentRaw as ModuleIntent) : undefined;
       const requestedStream = body.stream === true || body.stream === "true";
@@ -6583,8 +6637,8 @@ Instructions:
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const user = await storage.getUserProfile(userId);
-    if (!user || (normalizeTier(user.subscriptionTier) !== "pro" && normalizeTier(user.subscriptionTier) !== "chamber" && normalizeTier(user.subscriptionTier) !== "enterprise" && !user.isAdmin)) {
-      return res.status(403).json({ message: "Only Pro, Chamber, and Enterprise users can create organizations" });
+    if (!user || (normalizeTier(user.subscriptionTier) !== "chamber" && normalizeTier(user.subscriptionTier) !== "enterprise" && !user.isAdmin)) {
+      return res.status(403).json({ message: "Only Chamber and Enterprise users can create organizations" });
     }
     const existing = await storage.getUserOrganization(userId);
     if (existing) return res.status(400).json({ message: "You already belong to an organization" });
