@@ -28,7 +28,7 @@ function resolveFromEmail(): string {
 }
 
 function resolveBrandLogoUrl(): string {
-  return String(process.env.EMAIL_BRAND_LOGO_URL || "https://alwakeelo.com/icon-192.png").trim();
+  return String(process.env.EMAIL_BRAND_LOGO_URL || "https://alwakeelo.com/icon-192.png?v=20260312b").trim();
 }
 
 function extractAddress(raw: string): string {
