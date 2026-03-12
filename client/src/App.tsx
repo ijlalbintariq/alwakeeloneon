@@ -76,6 +76,7 @@ function Router({ onReady }: { onReady?: () => void }) {
   }
 
   if (location === "/") {
+    if (user) return <Redirect to="/dashboard" />;
     return <LandingPage />;
   }
 

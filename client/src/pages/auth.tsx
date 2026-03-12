@@ -143,13 +143,10 @@ export default function AuthPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      navigate("/");
+      navigate("/dashboard");
     },
     onError: (error: any) => {
       const message = typeof error?.message === "string" ? error.message : "Invalid email or password";
-      if (message.toLowerCase().includes("verify")) {
-        setVerificationHintEmail(email.trim().toLowerCase());
-      }
       toast({
         title: "Login failed",
         description: message,
@@ -415,7 +412,7 @@ export default function AuthPage() {
           </button>
         </form>
 
-        {mode === "login" && (verificationHintEmail || email) && (
+        {mode === "login" && verificationHintEmail && (
           <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
             <p className="text-[10px] uppercase tracking-wider font-black text-amber-300 mb-1">Email Verification</p>
             <p className="text-[11px] text-slate-300 leading-relaxed mb-2">
