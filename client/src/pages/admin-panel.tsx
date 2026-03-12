@@ -6,7 +6,7 @@ import { Redirect } from "wouter";
 import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
   UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus,
-  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink, RotateCcw
+  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink, RotateCcw, Download
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -472,9 +472,10 @@ function UsersSection() {
   const [newPassword, setNewPassword] = useState("");
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
-  const [newTier, setNewTier] = useState("standard");
+  const [newTier, setNewTier] = useState("free");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [banReasons, setBanReasons] = useState<Record<string, string>>({});
+  const [isExportingUsersCsv, setIsExportingUsersCsv] = useState(false);
 
   const addUserMutation = useMutation({
     mutationFn: async () => {
@@ -497,7 +498,7 @@ function UsersSection() {
       setNewPassword("");
       setNewFirstName("");
       setNewLastName("");
-      setNewTier("standard");
+      setNewTier("free");
       setNewIsAdmin(false);
       toast({ title: "User created successfully" });
     },
@@ -542,7 +543,13 @@ function UsersSection() {
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
       const res = await apiRequest("DELETE", `/api/admin/users/${userId}`);
-      return res.json();
+      const text = await res.text();
+      if (!text) return null;
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { message: text };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -586,6 +593,68 @@ function UsersSection() {
     },
   });
 
+  const csvField = (value: unknown) => {
+    const text = value == null ? "" : String(value);
+    return `"${text.replace(/"/g, "\"\"").replace(/\r?\n/g, " ")}"`;
+  };
+
+  const exportUsersCsv = () => {
+    try {
+      setIsExportingUsersCsv(true);
+      const users = allUsers || [];
+      if (users.length === 0) {
+        toast({ title: "No users to export" });
+        return;
+      }
+
+      const headers = [
+        "user_id",
+        "email",
+        "first_name",
+        "last_name",
+        "subscription_tier",
+        "is_admin",
+        "is_banned",
+        "ban_reason",
+        "banned_at",
+        "created_at",
+        "updated_at",
+      ];
+
+      const rows = users.map((u) => [
+        u.id,
+        u.email || "",
+        u.firstName || "",
+        u.lastName || "",
+        u.subscriptionTier || "",
+        u.isAdmin ? "yes" : "no",
+        u.isBanned ? "yes" : "no",
+        u.banReason || "",
+        u.bannedAt || "",
+        u.createdAt || "",
+        u.updatedAt || "",
+      ]);
+
+      const csv = "\uFEFF" + [headers.map(csvField).join(","), ...rows.map((row) => row.map(csvField).join(","))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      link.href = objectUrl;
+      link.download = `users-${stamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+
+      toast({ title: `CSV downloaded (${users.length} users)` });
+    } catch {
+      toast({ title: "Failed to download users CSV", variant: "destructive" });
+    } finally {
+      setIsExportingUsersCsv(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -603,15 +672,26 @@ function UsersSection() {
             {allUsers?.length || 0} Registered Users
           </span>
         </div>
-        <Button
-          variant={showAddForm ? "ghost" : "default"}
-          className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-slate-400" : "bg-amber-500 text-slate-950"}`}
-          onClick={() => setShowAddForm(!showAddForm)}
-          data-testid="button-toggle-add-user"
-        >
-          <Plus size={14} />
-          <span>{showAddForm ? "Cancel" : "Add User"}</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={exportUsersCsv}
+            disabled={isExportingUsersCsv}
+            className="bg-amber-500 text-slate-950 hover:bg-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            data-testid="button-export-users-csv"
+          >
+            {isExportingUsersCsv ? <Loader2 size={12} className="animate-spin mr-1" /> : <Download size={12} className="mr-1" />}
+            <span>{isExportingUsersCsv ? "Exporting..." : "Download CSV"}</span>
+          </Button>
+          <Button
+            variant={showAddForm ? "ghost" : "default"}
+            className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-slate-400" : "bg-amber-500 text-slate-950"}`}
+            onClick={() => setShowAddForm(!showAddForm)}
+            data-testid="button-toggle-add-user"
+          >
+            <Plus size={14} />
+            <span>{showAddForm ? "Cancel" : "Add User"}</span>
+          </Button>
+        </div>
       </div>
 
       {showAddForm && (
@@ -658,6 +738,7 @@ function UsersSection() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="free">Free</SelectItem>
                   <SelectItem value="standard">Standard</SelectItem>
                   <SelectItem value="pro">Pro</SelectItem>
                   <SelectItem value="chamber">Chamber</SelectItem>
@@ -727,6 +808,7 @@ function UsersSection() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="free">Free</SelectItem>
                     <SelectItem value="standard">Standard</SelectItem>
                     <SelectItem value="pro">Pro</SelectItem>
                     <SelectItem value="chamber">Chamber</SelectItem>
@@ -1929,6 +2011,7 @@ function ClientLeadsSection() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
 
   const { data: leadsPage, isLoading } = useQuery<PagedResponse<ClientLead>>({
     queryKey: ["/api/admin/client-leads", page, ADMIN_PAGE_SIZE, search],
@@ -1991,6 +2074,90 @@ function ClientLeadsSection() {
     setPage(1);
   }, [search]);
 
+  const csvField = (value: unknown) => {
+    const text = value == null ? "" : String(value);
+    return `"${text.replace(/"/g, "\"\"").replace(/\r?\n/g, " ")}"`;
+  };
+
+  const exportAllClientLeadsCsv = async () => {
+    try {
+      setIsExportingCsv(true);
+      const q = encodeURIComponent(search.trim());
+      const exportPageSize = 200;
+      let offset = 0;
+      const allLeads: ClientLead[] = [];
+
+      while (true) {
+        const res = await fetch(`/api/admin/client-leads?limit=${exportPageSize}&offset=${offset}&q=${q}`, {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to fetch leads for CSV export");
+        const data = (await res.json()) as PagedResponse<ClientLead>;
+        const items = data?.items || [];
+        allLeads.push(...items);
+        if (!data.hasMore || items.length === 0) break;
+        offset += exportPageSize;
+      }
+
+      if (allLeads.length === 0) {
+        toast({ title: "No leads to export" });
+        return;
+      }
+
+      const headers = [
+        "lead_id",
+        "name",
+        "phone",
+        "email",
+        "case_type",
+        "city",
+        "urgency",
+        "status",
+        "case_description",
+        "ip_address",
+        "preferred_callback_time",
+        "consent_to_contact",
+        "submitted_at",
+        "status_updated_at",
+      ];
+
+      const rows = allLeads.map((lead) => [
+        lead.id,
+        lead.name,
+        lead.phone,
+        lead.email,
+        lead.caseType,
+        lead.city || "",
+        lead.urgency,
+        lead.status,
+        lead.caseDescription,
+        lead.ipAddress,
+        lead.preferredCallbackTime || "",
+        lead.consentToContact ? "yes" : "no",
+        lead.createdAt,
+        lead.statusUpdatedAt,
+      ]);
+
+      const csv = "\uFEFF" + [headers.map(csvField).join(","), ...rows.map((row) => row.map(csvField).join(","))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      link.href = objectUrl;
+      link.download = `client-leads-${stamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+
+      toast({ title: `CSV downloaded (${allLeads.length} leads)` });
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to download leads CSV", variant: "destructive" });
+    } finally {
+      setIsExportingCsv(false);
+    }
+  };
+
   return (
     <div className="space-y-4" data-testid="client-leads-section">
       <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
@@ -2002,14 +2169,23 @@ function ClientLeadsSection() {
                 Client Leads ({totalLeads})
               </span>
             </div>
-            <div className="w-full sm:w-72">
+            <div className="w-full sm:w-auto flex items-center gap-2">
               <Input
                 placeholder="Search leads..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+                className="w-full sm:w-72 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
                 data-testid="input-search-client-leads"
               />
+              <Button
+                onClick={exportAllClientLeadsCsv}
+                disabled={isExportingCsv}
+                className="bg-amber-500 text-slate-950 hover:bg-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                data-testid="button-export-client-leads-csv"
+              >
+                {isExportingCsv ? <Loader2 size={12} className="animate-spin mr-1" /> : <Download size={12} className="mr-1" />}
+                <span>{isExportingCsv ? "Exporting..." : "Download CSV"}</span>
+              </Button>
             </div>
           </div>
         </CardHeader>
