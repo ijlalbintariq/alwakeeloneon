@@ -3,7 +3,9 @@ type SecurityEventType =
   | "upload_signature_failure"
   | "malware_detected"
   | "malware_scan_error"
-  | "csrf_block";
+  | "csrf_block"
+  | "captcha_failure"
+  | "payment_anomaly";
 
 export interface SecurityEventSnapshot {
   id: number;
@@ -115,4 +117,3 @@ export function getSecurityEvents(limit: number = 200): SecurityEventSnapshot[] 
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 200));
   return events.slice(0, safeLimit);
 }
-

@@ -19,7 +19,9 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   passwordHash: varchar("password_hash"),
   authProvider: varchar("auth_provider").default("email").notNull(),
-  subscriptionTier: varchar("subscription_tier").default("standard").notNull(),
+  subscriptionTier: varchar("subscription_tier").default("free").notNull(),
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  emailVerifiedAt: timestamp("email_verified_at"),
   isAdmin: boolean("is_admin").default(false).notNull(),
   sessionEpoch: integer("session_epoch").default(0).notNull(),
   activeSessionIp: text("active_session_ip"),
@@ -29,6 +31,15 @@ export const users = pgTable("users", {
 });
 
 export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const emailVerificationTokens = pgTable("email_verification_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
   token: varchar("token").notNull().unique(),

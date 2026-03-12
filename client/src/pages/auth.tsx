@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
-import { useLocation, Link } from "wouter";
+import { useLocation, Link, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,9 @@ declare global {
 
 export default function AuthPage() {
   const TERMS_VERSION = "2026-03";
+  const searchString = useSearch();
+  const params = new URLSearchParams(searchString);
+  const verifyToken = params.get("verify");
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,10 +35,13 @@ export default function AuthPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [verificationHintEmail, setVerificationHintEmail] = useState("");
+  const [verificationPending, setVerificationPending] = useState(false);
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  const getCaptchaToken = () => (window as any).__ALWAKEELO_CAPTCHA_TOKEN || undefined;
 
   const { data: googleStatus } = useQuery<{ available: boolean; clientId: string }>({
     queryKey: ["/api/auth/google/status"],
@@ -65,6 +71,7 @@ export default function AuthPage() {
           credential: response.credential,
           acceptedTerms: mode === "register" ? acceptedTerms : undefined,
           termsVersion: TERMS_VERSION,
+          captchaToken: getCaptchaToken(),
         }),
       });
       const data = await res.json();
@@ -131,7 +138,7 @@ export default function AuthPage() {
 
   const loginMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/auth/login", { email, password });
+      const res = await apiRequest("POST", "/api/auth/login", { email, password, captchaToken: getCaptchaToken() });
       return res.json();
     },
     onSuccess: () => {
@@ -139,9 +146,13 @@ export default function AuthPage() {
       navigate("/");
     },
     onError: (error: any) => {
+      const message = typeof error?.message === "string" ? error.message : "Invalid email or password";
+      if (message.toLowerCase().includes("verify")) {
+        setVerificationHintEmail(email.trim().toLowerCase());
+      }
       toast({
         title: "Login failed",
-        description: error.message || "Invalid email or password",
+        description: message,
         variant: "destructive",
       });
     },
@@ -156,12 +167,18 @@ export default function AuthPage() {
         lastName,
         acceptedTerms,
         termsVersion: TERMS_VERSION,
+        captchaToken: getCaptchaToken(),
       });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      navigate("/");
+    onSuccess: (data: any) => {
+      setMode("login");
+      setPassword("");
+      setVerificationHintEmail(String(data?.email || email || "").trim());
+      toast({
+        title: "Verify your email",
+        description: "Account created. Please verify your email before signing in.",
+      });
     },
     onError: (error: any) => {
       const message = typeof error?.message === "string" ? error.message : "Could not create account";
@@ -176,6 +193,77 @@ export default function AuthPage() {
       });
     },
   });
+
+  const resendVerificationMutation = useMutation({
+    mutationFn: async () => {
+      const targetEmail = verificationHintEmail || email;
+      const res = await apiRequest("POST", "/api/auth/resend-verification", { email: targetEmail, captchaToken: getCaptchaToken() });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Verification email sent",
+        description: "If your account exists, a fresh verification link has been sent.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Resend failed",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (!verifyToken || verificationPending) return;
+    let cancelled = false;
+    setVerificationPending(true);
+    fetch("/api/auth/verify-email", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: verifyToken }),
+    })
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok) {
+          toast({
+            title: "Email verified",
+            description: body?.message || "Your email is now verified. Please sign in.",
+          });
+          setMode("login");
+        } else {
+          toast({
+            title: "Verification failed",
+            description: body?.message || "This verification link is invalid or expired.",
+            variant: "destructive",
+          });
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        toast({
+          title: "Verification failed",
+          description: "Could not verify email right now. Please try again.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setVerificationPending(false);
+          if (typeof window !== "undefined") {
+            const cleanUrl = `${window.location.pathname}${window.location.hash || ""}`;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [verifyToken, verificationPending, toast]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -326,6 +414,24 @@ export default function AuthPage() {
             )}
           </button>
         </form>
+
+        {mode === "login" && (verificationHintEmail || email) && (
+          <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wider font-black text-amber-300 mb-1">Email Verification</p>
+            <p className="text-[11px] text-slate-300 leading-relaxed mb-2">
+              If you have not received your verification link, request a new one.
+            </p>
+            <button
+              type="button"
+              onClick={() => resendVerificationMutation.mutate()}
+              disabled={resendVerificationMutation.isPending}
+              className="text-[10px] font-black uppercase tracking-wider text-amber-300 hover:text-amber-200 disabled:opacity-60"
+              data-testid="button-resend-verification"
+            >
+              {resendVerificationMutation.isPending ? "Sending..." : "Resend Verification Email"}
+            </button>
+          </div>
+        )}
 
         <>
           <div className="flex items-center gap-3 my-5">

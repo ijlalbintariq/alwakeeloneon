@@ -30,6 +30,7 @@ import { isCloudPdfOcrAvailable, ocrPdfWithCloud } from "./cloud-ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 import { deleteR2Object, getR2ObjectBinary, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
 import { getEmailProviderStatus, sendResendTestEmail } from "./email";
+import { verifyCaptchaToken } from "./captcha";
 import {
   backfillStyleMemoryFromSavedDrafts,
   getOrCreateStyleMemorySettings,
@@ -146,6 +147,15 @@ function sanitizeInputText(value: unknown, maxLen: number): string {
     .slice(0, Math.max(1, maxLen));
 }
 
+function normalizeSiteBaseUrl(req: Request): string {
+  const configured = String(process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "").trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0]?.trim() || req.protocol || "https";
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0]?.trim();
+  const host = forwardedHost || req.get("host") || "localhost";
+  return `${forwardedProto}://${host}`.replace(/\/+$/, "");
+}
+
 function sanitizeTelemetryMetadata(input: unknown): Record<string, string | number | boolean | null> {
   if (!input || typeof input !== "object" || Array.isArray(input)) return {};
   const out: Record<string, string | number | boolean | null> = {};
@@ -168,18 +178,6 @@ function sanitizeTelemetryMetadata(input: unknown): Record<string, string | numb
     out[key] = rawValue == null ? null : sanitizeInputText(String(rawValue), 240);
   }
   return out;
-}
-
-function normalizeSiteBaseUrl(req: Request): string {
-  const configured = String(process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "").trim();
-  if (configured) {
-    return configured.replace(/\/+$/, "");
-  }
-  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0]?.trim();
-  const proto = forwardedProto || req.protocol || "https";
-  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0]?.trim();
-  const host = forwardedHost || req.get("host") || "localhost";
-  return `${proto}://${host}`.replace(/\/+$/, "");
 }
 
 function hasDevanagari(text: string): boolean {
@@ -671,7 +669,7 @@ async function callStandardAISimple(
 type ChatRouteMode = "standard" | "turbo";
 
 function normalizeTier(tierRaw: string | undefined | null): "free" | "standard" | "pro" | "chamber" | "enterprise" {
-  const tier = String(tierRaw || "standard").toLowerCase();
+  const tier = String(tierRaw || "free").toLowerCase();
   if (tier === "free" || tier === "pro" || tier === "chamber" || tier === "enterprise") return tier;
   return "standard";
 }
@@ -1738,6 +1736,10 @@ export async function registerRoutes(
       if (!message || message.length < 2) {
         return res.status(400).json({ message: "Message is required." });
       }
+      const captchaCheck = await verifyCaptchaToken(req, req.body?.captchaToken, "public-chat");
+      if (!captchaCheck.ok && captchaCheck.reason !== "captcha_disabled") {
+        return res.status(403).json({ message: "Captcha verification failed. Please try again." });
+      }
 
       const stats = await storage.getVisitorSessionStats(
         visitorIp,
@@ -1876,6 +1878,10 @@ export async function registerRoutes(
   app.post(api.publicChat.submitCase.path, async (req, res) => {
     try {
       const visitorIp = getVisitorIpAddress(req);
+      const captchaCheck = await verifyCaptchaToken(req, req.body?.captchaToken, "public-case-submit");
+      if (!captchaCheck.ok && captchaCheck.reason !== "captcha_disabled") {
+        return res.status(403).json({ message: "Captcha verification failed. Please try again." });
+      }
       const name = sanitizeInputText(req.body?.name, 120);
       const phone = sanitizeInputText(req.body?.phone, 40);
       const email = sanitizeInputText(req.body?.email, 160).toLowerCase();
@@ -4874,6 +4880,8 @@ RULES:
         lastName,
         passwordHash,
         authProvider: "email",
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
       });
       if (subscriptionTier && ["free", "standard", "pro", "chamber", "enterprise"].includes(subscriptionTier)) {
         await storage.updateUserTier(user.id, subscriptionTier);
@@ -4883,7 +4891,7 @@ RULES:
       }
       await logAuditEvent("admin.user.create", getUserId(req), user.id, {
         email,
-        subscriptionTier: subscriptionTier || "standard",
+        subscriptionTier: subscriptionTier || "free",
         isAdmin: makeAdmin === true,
       });
       res.status(201).json({ message: "User created successfully", user });

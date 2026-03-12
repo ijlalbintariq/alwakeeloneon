@@ -206,6 +206,95 @@ export async function sendPasswordResetEmail(
   return true;
 }
 
+export async function sendEmailVerificationEmail(
+  to: string,
+  verifyUrl: string,
+  firstName?: string | null,
+): Promise<boolean> {
+  if (!getResendClient()) {
+    console.log(`[Email] Resend not configured. Verification link for ${to}: ${verifyUrl}`);
+    return false;
+  }
+
+  const name = firstName || "there";
+  const safeName = escapeHtml(name);
+  const safeVerifyUrl = escapeHtml(verifyUrl);
+  const logoUrl = escapeHtml(resolveBrandLogoUrl());
+
+  const sendResult = await sendEmailViaResend({
+    to,
+    subject: "Verify Your Email - Al Wakeelo",
+    html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#0a1222;font-family:Inter,Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a1222;padding:28px 14px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#101b31;border:1px solid #2a3a56;border-radius:20px;overflow:hidden;">
+          <tr>
+            <td style="padding:4px 0 0 0;background:#f4b11e;"></td>
+          </tr>
+          <tr>
+            <td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#0f172a 0%,#0b1427 100%);border-bottom:1px solid #24344f;">
+              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(244,177,30,0.45);" />
+              <h1 style="margin:0;color:#f8fafc;font-size:28px;line-height:1.15;font-weight:800;">Verify Your Email</h1>
+              <p style="margin:10px 0 0;color:#f4b11e;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
+                Al Wakeelo Account Activation
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 10px;color:#e8eefb;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
+              <p style="margin:0 0 16px;color:#b6c4d9;font-size:14px;line-height:1.7;">
+                Please verify your email to activate your Al Wakeelo account and start using your legal workspace.
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
+                <tr>
+                  <td align="center" bgcolor="#f4b11e" style="border-radius:12px;box-shadow:0 12px 24px rgba(244,177,30,0.24);">
+                    <a href="${safeVerifyUrl}" style="display:inline-block;padding:14px 28px;color:#0d172a;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
+                      Verify Email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 10px;color:#9bb0cc;font-size:12px;line-height:1.6;">
+                This verification link expires in 24 hours.
+              </p>
+              <p style="margin:0;word-break:break-word;">
+                <a href="${safeVerifyUrl}" style="color:#f4b11e;font-size:12px;line-height:1.6;text-decoration:underline;">${safeVerifyUrl}</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #24344f;text-align:center;">
+              <p style="margin:0;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
+                Al Wakeelo • Verification Notice
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+    text: `Assalam-o-Alaikum ${name},\n\nPlease verify your email to activate your Al Wakeelo account.\n\nVerify link:\n${verifyUrl}\n\nThis link expires in 24 hours.\n\n- Al Wakeelo`,
+  });
+
+  if (!sendResult.ok) {
+    console.error("[Email] Failed to send verification email:", sendResult.error);
+    return false;
+  }
+  console.log(`[Email] Verification email sent to ${to}`);
+  return true;
+}
+
 export async function sendWelcomeEmail(
   to: string,
   firstName?: string | null,

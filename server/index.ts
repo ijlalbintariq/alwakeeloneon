@@ -95,7 +95,7 @@ function buildContentSecurityPolicy(isProduction: boolean): string {
     "frame-ancestors 'none'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https://fonts.gstatic.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
     "worker-src 'self' blob:",
     "frame-src 'self' https://accounts.google.com",
     "form-action 'self'",
@@ -302,6 +302,10 @@ app.use((req, res, next) => {
     }
   });
 
+  app.use("/api", (_req, res) => {
+    return res.status(404).json({ message: "API route not found." });
+  });
+
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     if (isRequestAbortedError(err) || req.aborted) {
       console.warn(
@@ -321,9 +325,15 @@ app.use((req, res, next) => {
       if (res.headersSent) return next(err);
       return res.status(400).json({ message: "Too many files were uploaded in one request." });
     }
+    if (err instanceof SyntaxError && err && "body" in err) {
+      if (res.headersSent) return next(err);
+      return res.status(400).json({ message: "Malformed JSON payload." });
+    }
 
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const message = status >= 500
+      ? "Internal Server Error"
+      : (typeof err?.message === "string" && err.message.trim() ? err.message : "Request failed");
 
     console.error("Internal Server Error:", err);
 

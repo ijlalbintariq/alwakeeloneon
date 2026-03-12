@@ -1,4 +1,4 @@
-import { users, passwordResetTokens, type User, type UpsertUser } from "@shared/models/auth";
+import { users, passwordResetTokens, emailVerificationTokens, type User, type UpsertUser } from "@shared/models/auth";
 import { db } from "../../db";
 import { eq, and, gt, isNull, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -13,6 +13,10 @@ export interface IAuthStorage {
   createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void>;
   getValidResetToken(token: string): Promise<{ id: string; userId: string } | undefined>;
   markResetTokenUsed(tokenId: string): Promise<void>;
+  createEmailVerificationToken(userId: string, token: string, expiresAt: Date): Promise<void>;
+  getValidEmailVerificationToken(token: string): Promise<{ id: string; userId: string } | undefined>;
+  markEmailVerificationTokenUsed(tokenId: string): Promise<void>;
+  markUserEmailVerified(userId: string): Promise<void>;
 }
 
 class AuthStorage implements IAuthStorage {
@@ -31,11 +35,11 @@ class AuthStorage implements IAuthStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const normalizedTierRaw = String(userData.subscriptionTier || "standard").toLowerCase();
+    const normalizedTierRaw = String(userData.subscriptionTier || "free").toLowerCase();
     const normalizedTier =
       (normalizedTierRaw === "free" || normalizedTierRaw === "standard" || normalizedTierRaw === "pro" || normalizedTierRaw === "chamber" || normalizedTierRaw === "enterprise")
           ? normalizedTierRaw
-          : "standard";
+          : "free";
     const safeUserData: UpsertUser = {
       ...userData,
       subscriptionTier: normalizedTier,
@@ -119,6 +123,45 @@ class AuthStorage implements IAuthStorage {
 
   async markResetTokenUsed(tokenId: string): Promise<void> {
     await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, tokenId));
+  }
+
+  async createEmailVerificationToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+    const tokenHash = this.hashResetToken(token);
+    await db
+      .update(emailVerificationTokens)
+      .set({ usedAt: new Date() })
+      .where(and(eq(emailVerificationTokens.userId, userId), isNull(emailVerificationTokens.usedAt)));
+    await db.insert(emailVerificationTokens).values({ userId, token: tokenHash, expiresAt });
+  }
+
+  async getValidEmailVerificationToken(token: string): Promise<{ id: string; userId: string } | undefined> {
+    const tokenHash = this.hashResetToken(token);
+    const [result] = await db
+      .select({ id: emailVerificationTokens.id, userId: emailVerificationTokens.userId })
+      .from(emailVerificationTokens)
+      .where(
+        and(
+          eq(emailVerificationTokens.token, tokenHash),
+          gt(emailVerificationTokens.expiresAt, new Date()),
+          isNull(emailVerificationTokens.usedAt),
+        ),
+      );
+    return result;
+  }
+
+  async markEmailVerificationTokenUsed(tokenId: string): Promise<void> {
+    await db.update(emailVerificationTokens).set({ usedAt: new Date() }).where(eq(emailVerificationTokens.id, tokenId));
+  }
+
+  async markUserEmailVerified(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
   }
 }
 

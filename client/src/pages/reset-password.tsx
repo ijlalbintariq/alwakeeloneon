@@ -18,7 +18,11 @@ export default function ResetPasswordPage() {
 
   const resetMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/auth/reset-password", { token, password });
+      const res = await apiRequest("POST", "/api/auth/reset-password", {
+        token,
+        password,
+        captchaToken: (window as any).__ALWAKEELO_CAPTCHA_TOKEN || undefined,
+      });
       return res.json();
     },
     onSuccess: () => {
