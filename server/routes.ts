@@ -529,6 +529,14 @@ async function uploadStatuteDocumentFileToR2(args: {
   }
 }
 
+function runInBackground(label: string, task: () => Promise<void>) {
+  setImmediate(() => {
+    void task().catch((err: any) => {
+      console.warn(`[Background Task] ${label} failed:`, err?.message || err);
+    });
+  });
+}
+
 function buildMessages(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>): Array<{ role: "system" | "user" | "assistant"; content: string }> {
   return [
     { role: "system", content: systemPrompt },
@@ -5834,15 +5842,17 @@ RULES:
                 const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : rawJson;
                 const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: persistedContent, category: "case-law", uploadedBy: uid });
                 jsonDocId = savedDoc.id;
-                await uploadAdminKnowledgeFileToR2({
-                  docId: savedDoc.id,
-                  userId: uid,
-                  buffer: stableFile.buffer,
-                  fileName: file.originalname,
-                  mimeType: file.mimetype,
-                  sizeBytes: file.size,
-                  source: "admin-case-law-extract",
-                  extractedTextKey,
+                runInBackground(`case-law-json-r2:${savedDoc.id}`, async () => {
+                  await uploadAdminKnowledgeFileToR2({
+                    docId: savedDoc.id,
+                    userId: uid,
+                    buffer: stableFile.buffer,
+                    fileName: file.originalname,
+                    mimeType: file.mimetype,
+                    sizeBytes: file.size,
+                    source: "admin-case-law-extract",
+                    extractedTextKey,
+                  });
                 });
                 console.log(`[Case Law Extract] Saved JSON document as admin_knowledge id=${jsonDocId}`);
               } catch (saveErr) {
@@ -5907,15 +5917,17 @@ RULES:
                 const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : rawCsv;
                 const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: persistedContent, category: "case-law", uploadedBy: uid });
                 csvDocId = savedDoc.id;
-                await uploadAdminKnowledgeFileToR2({
-                  docId: savedDoc.id,
-                  userId: uid,
-                  buffer: stableFile.buffer,
-                  fileName: file.originalname,
-                  mimeType: file.mimetype,
-                  sizeBytes: file.size,
-                  source: "admin-case-law-extract",
-                  extractedTextKey,
+                runInBackground(`case-law-csv-r2:${savedDoc.id}`, async () => {
+                  await uploadAdminKnowledgeFileToR2({
+                    docId: savedDoc.id,
+                    userId: uid,
+                    buffer: stableFile.buffer,
+                    fileName: file.originalname,
+                    mimeType: file.mimetype,
+                    sizeBytes: file.size,
+                    source: "admin-case-law-extract",
+                    extractedTextKey,
+                  });
                 });
                 console.log(`[Case Law Extract] Saved CSV document as admin_knowledge id=${csvDocId}`);
               } catch (saveErr) {
@@ -5960,26 +5972,32 @@ RULES:
           uploadedBy: userId,
         });
         savedDocId = savedDoc.id;
-        await uploadAdminKnowledgeFileToR2({
-          docId: savedDoc.id,
-          userId,
-          buffer: stableFile.buffer,
-          fileName: file.originalname,
-          mimeType: file.mimetype,
-          sizeBytes: file.size,
-          source: "admin-case-law-extract",
-          extractedTextKey,
+        runInBackground(`case-law-r2:${savedDoc.id}`, async () => {
+          await uploadAdminKnowledgeFileToR2({
+            docId: savedDoc.id,
+            userId,
+            buffer: stableFile.buffer,
+            fileName: file.originalname,
+            mimeType: file.mimetype,
+            sizeBytes: file.size,
+            source: "admin-case-law-extract",
+            extractedTextKey,
+          });
         });
         console.log(`[Case Law Extract] Saved document as admin_knowledge id=${savedDocId}: "${docTitle}"`);
-        queueAutoExtraction(content, `admin-knowledge:${file.originalname}`, {
-          sourceDocId: savedDocId,
-          sourceType: "admin",
-          sourceFilename: file.originalname,
+        runInBackground(`case-law-autoextract:${savedDoc.id}`, async () => {
+          queueAutoExtraction(content, `admin-knowledge:${file.originalname}`, {
+            sourceDocId: savedDoc.id,
+            sourceType: "admin",
+            sourceFilename: file.originalname,
+          });
         });
-        await logAuditEvent("admin.caseLaw.extract", userId, null, {
-          filename: file.originalname,
-          savedDocId,
-          extractedLength: content.length,
+        runInBackground(`case-law-audit:${savedDoc.id}`, async () => {
+          await logAuditEvent("admin.caseLaw.extract", userId, null, {
+            filename: file.originalname,
+            savedDocId: savedDoc.id,
+            extractedLength: content.length,
+          });
         });
       } catch (saveErr) {
         console.error("[Case Law Extract] Failed to save document to knowledge base:", saveErr);
