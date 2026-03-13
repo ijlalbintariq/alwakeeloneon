@@ -22,7 +22,9 @@ export interface FileScanConfig {
 const DEFAULT_SCAN_BIN = "clamscan";
 const DEFAULT_SCAN_ARGS = ["--no-summary"];
 const DEFAULT_SCAN_TIMEOUT_MS = 20000;
+const DEFAULT_UNAVAILABLE_COOLDOWN_MS = 300000;
 const warnedMessages = new Set<string>();
+let scannerUnavailableUntil = 0;
 
 function parseMode(raw: string | undefined): FileScanMode {
   const normalized = (raw || "optional").trim().toLowerCase();
@@ -44,6 +46,12 @@ function parseTimeout(raw: string | undefined): number {
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_SCAN_TIMEOUT_MS;
   return Math.max(1000, Math.min(120000, parsed));
+}
+
+function parseUnavailableCooldown(raw: string | undefined): number {
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) return DEFAULT_UNAVAILABLE_COOLDOWN_MS;
+  return Math.max(0, Math.min(60 * 60 * 1000, parsed));
 }
 
 export function getFileScanConfig(): FileScanConfig {
@@ -116,6 +124,12 @@ export async function scanUploadedBuffer(buffer: Buffer, filename: string): Prom
     return { allowed: true };
   }
 
+  // When scanner is unavailable in optional mode, avoid repeated expensive
+  // spawn/temp-file attempts for every upload until cooldown expires.
+  if (config.mode === "optional" && scannerUnavailableUntil > Date.now()) {
+    return { allowed: true };
+  }
+
   const tempPath = makeTempPath(filename);
   try {
     await fs.writeFile(tempPath, buffer, { mode: 0o600 });
@@ -137,6 +151,7 @@ export async function scanUploadedBuffer(buffer: Buffer, filename: string): Prom
     recordSecurityEvent("malware_scan_error", config.bin, {
       mode: config.mode,
     });
+    scannerUnavailableUntil = Date.now() + parseUnavailableCooldown(process.env.FILE_SCAN_UNAVAILABLE_COOLDOWN_MS);
 
     warnOnce(
       `scan_unavailable:${config.bin}`,
