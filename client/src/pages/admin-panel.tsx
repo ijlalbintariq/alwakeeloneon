@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@shared/models/auth";
+import { extractCaseLawInBrowser } from "@/lib/case-law-client-extractor";
 
 type SystemStats = {
   totalUsers: number;
@@ -1357,6 +1358,7 @@ type CaseLawEntry = {
 function CaseLawSection() {
   const CASELAW_EXTRACT_TIMEOUT_MS = 180000;
   const CASELAW_EXTRACT_MAX_RETRIES = 2;
+  const CASELAW_CLIENT_EXTRACT_MAX_BYTES = 8 * 1024 * 1024;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -1538,10 +1540,47 @@ function CaseLawSection() {
     const allCases: typeof extractedCases = [];
     const failedFileNames: string[] = [];
     const failedFileObjects: File[] = [];
+    let clientExtractedFiles = 0;
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       setExtractProgress({ current: i + 1, total: files.length, currentFile: file.name });
+
+      try {
+        const clientExtract = await extractCaseLawInBrowser(file, CASELAW_CLIENT_EXTRACT_MAX_BYTES);
+        if (clientExtract.supported && clientExtract.content && clientExtract.cases.length > 0) {
+          const clientRes = await fetch("/api/admin/case-law/extract-client", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              content: clientExtract.content,
+              cases: clientExtract.cases,
+              sourceType: "browser-hybrid",
+            }),
+          });
+          if (clientRes.ok) {
+            const clientData = await clientRes.json();
+            if (Array.isArray(clientData.cases) && clientData.cases.length > 0) {
+              const validCases = clientData.cases
+                .filter((c: any) => c.citation && c.title)
+                .map((c: any) => ({
+                  ...c,
+                  _sourceDocId: clientData.savedDocId || undefined,
+                  _sourceFilename: clientData.savedFilename || file.name,
+                }));
+              allCases.push(...validCases);
+            }
+            clientExtractedFiles += 1;
+            continue;
+          }
+        }
+      } catch {
+        // Fall through to server extraction path.
+      }
 
       let succeeded = false;
       for (let attempt = 1; attempt <= CASELAW_EXTRACT_MAX_RETRIES; attempt++) {
@@ -1616,6 +1655,7 @@ function CaseLawSection() {
     if (allCases.length > 0) {
       let msg = `Extracted ${allCases.length} cases from ${files.length - failedFileNames.length} file${files.length - failedFileNames.length !== 1 ? "s" : ""}`;
       if (failedFileNames.length > 0) msg += ` (${failedFileNames.length} file${failedFileNames.length !== 1 ? "s" : ""} failed)`;
+      if (clientExtractedFiles > 0) msg += ` · ${clientExtractedFiles} via browser extraction`;
       toast({ title: `${msg} · saving automatically...` });
       try {
         setAutoSaveFailed(false);
