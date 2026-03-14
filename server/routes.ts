@@ -6,7 +6,7 @@ import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, threads, TIER_LIMITS } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { db, dbAvailable } from "./db";
+import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
 import { syncGithubKnowledge } from "./github-sync";
 import { queueAutoExtraction, nlpExtractCases } from "./auto-extract-caselaw";
@@ -2856,6 +2856,105 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/rag/reindex-all", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!dbAvailable || !pool) {
+      return res.status(503).json({ message: "Database unavailable" });
+    }
+
+    try {
+      const parsed = z.object({
+        limit: z.number().int().min(1).max(300).optional(),
+        offset: z.number().int().min(0).optional(),
+        userId: z.string().min(1).max(200).optional(),
+      }).parse(req.body || {});
+
+      const limit = parsed.limit ?? 50;
+      const offset = parsed.offset ?? 0;
+      const filterUserId = parsed.userId?.trim() || null;
+
+      const rows = filterUserId
+        ? await pool.query(
+          `SELECT id, user_id FROM documents WHERE user_id = $1 ORDER BY id ASC LIMIT $2 OFFSET $3`,
+          [filterUserId, limit, offset],
+        )
+        : await pool.query(
+          `SELECT id, user_id FROM documents ORDER BY id ASC LIMIT $1 OFFSET $2`,
+          [limit, offset],
+        );
+
+      const totalRow = filterUserId
+        ? await pool.query(`SELECT COUNT(*)::int AS total FROM documents WHERE user_id = $1`, [filterUserId])
+        : await pool.query(`SELECT COUNT(*)::int AS total FROM documents`);
+
+      const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+      let indexed = 0;
+      let failed = 0;
+      const failures: Array<{ documentId: number; userId: string; reason: string }> = [];
+
+      for (const row of rows.rows || []) {
+        const documentId = Number((row as any).id);
+        const userId = String((row as any).user_id || "");
+        if (!documentId || !userId) continue;
+        try {
+          const result = await indexUserDocument(userId, documentId);
+          if (result.chunks > 0) {
+            indexed += 1;
+          } else {
+            failed += 1;
+            if (failures.length < 20) {
+              failures.push({ documentId, userId, reason: "No chunks generated" });
+            }
+          }
+        } catch (err: any) {
+          failed += 1;
+          if (failures.length < 20) {
+            failures.push({
+              documentId,
+              userId,
+              reason: sanitizeInputText(err?.message || "Indexing failed", 300),
+            });
+          }
+        }
+      }
+
+      const processed = rows.rowCount || 0;
+      const nextOffset = offset + processed;
+      const remaining = Math.max(0, totalDocuments - nextOffset);
+      const actorUserId = getUserId(req);
+      await logAuditEvent("admin.rag.reindexAll", actorUserId, null, {
+        processed,
+        indexed,
+        failed,
+        offset,
+        nextOffset,
+        limit,
+        remaining,
+        userId: filterUserId,
+      });
+
+      res.json({
+        processed,
+        indexed,
+        failed,
+        failures,
+        limit,
+        offset,
+        nextOffset,
+        remaining,
+        totalDocuments,
+        hasMore: remaining > 0,
+        filteredByUser: filterUserId,
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error reindexing RAG globally:", err);
+      res.status(500).json({ message: "Failed to reindex documents for RAG" });
+    }
+  });
+
   app.post("/api/rag/ask", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -5639,13 +5738,14 @@ RULES:
         content?: string;
         sourceType?: string;
         fileHash?: string;
+        confidence?: number;
         cases?: Array<{ citation?: string; court?: string; title?: string; summary?: string; keywords?: string[] | string }>;
       };
 
       const filename = sanitizeInputText(body.filename || "browser-upload.txt", 180);
       const ext = filename.split(".").pop()?.toLowerCase() || "txt";
-      if (!["txt", "text", "md", "json", "csv"].includes(ext)) {
-        return res.status(400).json({ message: "Client extraction supports TXT, MD, JSON, and CSV files." });
+      if (!["txt", "text", "md", "json", "csv", "pdf"].includes(ext)) {
+        return res.status(400).json({ message: "Client extraction supports TXT, MD, JSON, CSV, and PDF text-only payloads." });
       }
 
       const content = stripNullBytes(String(body.content || "").trim());
@@ -5725,6 +5825,7 @@ RULES:
             savedDocId: savedDoc.id,
             extractedLength: content.length,
             sourceType: sanitizeInputText(body.sourceType || "browser-hybrid", 64),
+            confidence: Number.isFinite(Number(body.confidence)) ? Number(body.confidence) : null,
             fileHash: sanitizeInputText(body.fileHash || "", 128) || null,
             caseCount: validCases.length,
           });
