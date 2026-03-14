@@ -5630,6 +5630,124 @@ RULES:
     }
   });
 
+  app.post("/api/admin/case-law/extract-client", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const userId = getUserId(req)!;
+      const body = (req.body || {}) as {
+        filename?: string;
+        content?: string;
+        sourceType?: string;
+        fileHash?: string;
+        cases?: Array<{ citation?: string; court?: string; title?: string; summary?: string; keywords?: string[] | string }>;
+      };
+
+      const filename = sanitizeInputText(body.filename || "browser-upload.txt", 180);
+      const ext = filename.split(".").pop()?.toLowerCase() || "txt";
+      if (!["txt", "text", "md", "json", "csv"].includes(ext)) {
+        return res.status(400).json({ message: "Client extraction supports TXT, MD, JSON, and CSV files." });
+      }
+
+      const content = stripNullBytes(String(body.content || "").trim());
+      if (!content || content.length < 10) {
+        return res.status(400).json({ message: "Client-extracted content is empty or too short." });
+      }
+      if (content.length > 2_500_000) {
+        return res.status(413).json({ message: "Client-extracted content exceeds limit (2.5M chars)." });
+      }
+
+      const incomingCases = Array.isArray(body.cases) ? body.cases : [];
+      const validCases: Array<{ citation: string; court: string; title: string; summary: string; keywords: string[] }> = [];
+      const seen = new Set<string>();
+      for (const row of incomingCases.slice(0, 5000)) {
+        const citation = sanitizeInputText(row?.citation || "", 140);
+        const title = sanitizeInputText(row?.title || "", 260);
+        if (!citation || !title) continue;
+        const key = `${citation.toLowerCase()}|${title.toLowerCase()}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const keywords = Array.isArray(row?.keywords)
+          ? row!.keywords.map((k) => sanitizeInputText(String(k), 64)).filter(Boolean).slice(0, 12)
+          : (typeof row?.keywords === "string"
+            ? row.keywords.split(",").map((k) => sanitizeInputText(k, 64)).filter(Boolean).slice(0, 12)
+            : []);
+        validCases.push({
+          citation,
+          court: sanitizeInputText(row?.court || "", 160),
+          title,
+          summary: sanitizeInputText(row?.summary || "", 5000),
+          keywords,
+        });
+      }
+
+      let savedDocId: number | null = null;
+      const savedFilename = filename;
+      try {
+        const docTitle = filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
+        const compacted = compactContentForDb(content);
+        const extractedTextKey = compacted.wasTruncated
+          ? await uploadExtractedTextToR2({
+            text: content,
+            fileName: filename,
+            prefix: `admin-knowledge-text/${userId}`,
+            metadata: {
+              user_id: userId,
+              source: "admin-case-law-client-extracted",
+            },
+          })
+          : null;
+        const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : content;
+        const savedDoc = await storage.addAdminKnowledge({
+          title: docTitle,
+          filename,
+          content: persistedContent,
+          category: "case-law",
+          uploadedBy: userId,
+        });
+        savedDocId = savedDoc.id;
+
+        runInBackground(`case-law-client-r2:${savedDoc.id}`, async () => {
+          await uploadAdminKnowledgeFileToR2({
+            docId: savedDoc.id,
+            userId,
+            buffer: Buffer.from(content, "utf-8"),
+            fileName: filename,
+            mimeType: "text/plain; charset=utf-8",
+            sizeBytes: Buffer.byteLength(content, "utf-8"),
+            source: "admin-case-law-extract-client",
+            extractedTextKey,
+          });
+        });
+
+        runInBackground(`case-law-client-audit:${savedDoc.id}`, async () => {
+          await logAuditEvent("admin.caseLaw.extractClient", userId, null, {
+            filename,
+            savedDocId: savedDoc.id,
+            extractedLength: content.length,
+            sourceType: sanitizeInputText(body.sourceType || "browser-hybrid", 64),
+            fileHash: sanitizeInputText(body.fileHash || "", 128) || null,
+            caseCount: validCases.length,
+          });
+        });
+      } catch (saveErr) {
+        console.error("[Case Law Client Extract] Failed to save document:", saveErr);
+      }
+
+      return res.json({
+        extracted: validCases.length,
+        truncated: false,
+        originalLength: content.length,
+        cases: validCases,
+        savedDocId,
+        savedFilename,
+        source: "client",
+      });
+    } catch (err) {
+      console.error("Error in client-side case law extraction ingest:", err);
+      return res.status(500).json({ message: "Failed to ingest client-side extracted case law" });
+    }
+  });
+
   app.post("/api/admin/case-law/bulk", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
