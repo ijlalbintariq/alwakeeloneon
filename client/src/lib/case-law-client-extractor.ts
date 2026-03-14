@@ -6,11 +6,19 @@ export type ClientExtractedCase = {
   keywords: string[];
 };
 
+export type ClientExtractOptions = {
+  enablePdfFastPath?: boolean;
+  pdfMaxPages?: number;
+  pdfMinConfidence?: number;
+};
+
 type ClientExtractResult = {
   supported: boolean;
   reason?: string;
   content?: string;
   cases: ClientExtractedCase[];
+  confidence?: number;
+  sourceType?: "browser-hybrid" | "browser-pdf-text";
 };
 
 const REPORT_ABBRS = "PLD|SCMR|YLR|MLD|CLC|PCRLJ|PCr\\.?LJ|PLJ|PLC|NLR|CLD|PTD|PTCL";
@@ -27,6 +35,11 @@ function normalizeCitation(raw: string): string {
     .replace(/[()]/g, "")
     .replace(/PCr\.?LJ/gi, "PCRLJ")
     .trim();
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
 }
 
 function inferCourt(citation: string): string {
@@ -142,18 +155,73 @@ function dedupeCases(cases: ClientExtractedCase[]): ClientExtractedCase[] {
   return out;
 }
 
-export async function extractCaseLawInBrowser(file: File, maxBytes: number = 8 * 1024 * 1024): Promise<ClientExtractResult> {
+async function extractPdfTextOnlyInBrowser(file: File, maxPages: number): Promise<{
+  content: string;
+  confidence: number;
+  cases: ClientExtractedCase[];
+}> {
+  const { extractText } = await import("unpdf");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const extracted = await extractText(bytes, { mergePages: false });
+  const pages = Array.isArray(extracted?.text) ? extracted.text : [];
+  const pageLimit = Math.max(1, Math.min(maxPages, pages.length || 1));
+  const textByPage: string[] = [];
+  let pagesWithText = 0;
+
+  for (const rawPageText of pages.slice(0, pageLimit)) {
+    const pageText = String(rawPageText || "").replace(/\s+/g, " ").trim();
+    if (pageText.length >= 30) {
+      pagesWithText += 1;
+      textByPage.push(pageText);
+    }
+  }
+
+  const content = textByPage.join("\n\n").trim();
+  const cases = content ? dedupeCases(extractCasesFromFreeText(content)) : [];
+  const pageCoverage = pagesWithText / pageLimit;
+  const charDensity = clamp(content.length / (pageLimit * 1300), 0, 1);
+  const citationSignal = clamp(cases.length / 10, 0, 1);
+  const confidence = clamp((pageCoverage * 0.45) + (charDensity * 0.4) + (citationSignal * 0.15), 0, 1);
+
+  return { content, confidence, cases };
+}
+
+export async function extractCaseLawInBrowser(
+  file: File,
+  maxBytes: number = 8 * 1024 * 1024,
+  options: ClientExtractOptions = {},
+): Promise<ClientExtractResult> {
   const ext = (file.name.split(".").pop() || "").toLowerCase();
-  if (!["txt", "text", "md", "json", "csv"].includes(ext)) {
+  const supportsPdfFastPath = Boolean(options.enablePdfFastPath);
+  const allowedExtensions = supportsPdfFastPath
+    ? ["txt", "text", "md", "json", "csv", "pdf"]
+    : ["txt", "text", "md", "json", "csv"];
+  if (!allowedExtensions.includes(ext)) {
     return { supported: false, reason: "unsupported-extension", cases: [] };
   }
   if (file.size > maxBytes) {
     return { supported: false, reason: "file-too-large", cases: [] };
   }
 
+  if (ext === "pdf") {
+    try {
+      const { content, confidence, cases } = await extractPdfTextOnlyInBrowser(file, Math.max(1, options.pdfMaxPages || 20));
+      const minConfidence = clamp(options.pdfMinConfidence ?? 0.45, 0, 1);
+      if (!content || content.length < 120) {
+        return { supported: true, reason: "pdf-empty-text", cases: [], content, confidence, sourceType: "browser-pdf-text" };
+      }
+      if (confidence < minConfidence || cases.length === 0) {
+        return { supported: true, reason: "pdf-low-confidence", cases, content, confidence, sourceType: "browser-pdf-text" };
+      }
+      return { supported: true, content, cases, confidence, sourceType: "browser-pdf-text" };
+    } catch {
+      return { supported: false, reason: "pdf-parse-failed", cases: [] };
+    }
+  }
+
   const content = (await file.text()).replace(/\x00/g, "").trim();
   if (!content || content.length < 10) {
-    return { supported: true, reason: "empty-content", cases: [], content };
+    return { supported: true, reason: "empty-content", cases: [], content, confidence: 0, sourceType: "browser-hybrid" };
   }
 
   try {
@@ -165,7 +233,7 @@ export async function extractCaseLawInBrowser(file: File, maxBytes: number = 8 *
     } else {
       cases = extractCasesFromFreeText(content);
     }
-    return { supported: true, content, cases: dedupeCases(cases) };
+    return { supported: true, content, cases: dedupeCases(cases), confidence: 1, sourceType: "browser-hybrid" };
   } catch {
     return { supported: false, reason: "parse-failed", cases: [] };
   }

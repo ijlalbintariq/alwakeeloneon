@@ -1359,6 +1359,10 @@ function CaseLawSection() {
   const CASELAW_EXTRACT_TIMEOUT_MS = 180000;
   const CASELAW_EXTRACT_MAX_RETRIES = 2;
   const CASELAW_CLIENT_EXTRACT_MAX_BYTES = 8 * 1024 * 1024;
+  const CASELAW_CLIENT_PARALLEL_BATCH = 2;
+  const CASELAW_PDF_FAST_PATH_ENABLED = String(import.meta.env.VITE_CASELAW_PDF_FAST_PATH || "true").toLowerCase() !== "false";
+  const CASELAW_PDF_FAST_PATH_MAX_PAGES = Math.max(1, Number(import.meta.env.VITE_CASELAW_PDF_FAST_PATH_MAX_PAGES || 20));
+  const CASELAW_CLIENT_MIN_CONFIDENCE = Math.max(0, Number(import.meta.env.VITE_CASELAW_CLIENT_MIN_CONFIDENCE || 0.45));
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -1542,13 +1546,20 @@ function CaseLawSection() {
     const failedFileObjects: File[] = [];
     let clientExtractedFiles = 0;
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      setExtractProgress({ current: i + 1, total: files.length, currentFile: file.name });
-
+    const processSingleFile = async (file: File): Promise<{
+      cases: typeof extractedCases;
+      failed: boolean;
+      usedClientExtraction: boolean;
+    }> => {
       try {
-        const clientExtract = await extractCaseLawInBrowser(file, CASELAW_CLIENT_EXTRACT_MAX_BYTES);
-        if (clientExtract.supported && clientExtract.content && clientExtract.cases.length > 0) {
+        const clientExtract = await extractCaseLawInBrowser(file, CASELAW_CLIENT_EXTRACT_MAX_BYTES, {
+          enablePdfFastPath: CASELAW_PDF_FAST_PATH_ENABLED,
+          pdfMaxPages: CASELAW_PDF_FAST_PATH_MAX_PAGES,
+          pdfMinConfidence: CASELAW_CLIENT_MIN_CONFIDENCE,
+        });
+        const confidence = typeof clientExtract.confidence === "number" ? clientExtract.confidence : 1;
+        const confidentEnough = confidence >= CASELAW_CLIENT_MIN_CONFIDENCE;
+        if (clientExtract.supported && confidentEnough && clientExtract.content && clientExtract.cases.length > 0) {
           const clientRes = await fetch("/api/admin/case-law/extract-client", {
             method: "POST",
             credentials: "include",
@@ -1559,30 +1570,32 @@ function CaseLawSection() {
               filename: file.name,
               content: clientExtract.content,
               cases: clientExtract.cases,
-              sourceType: "browser-hybrid",
+              sourceType: clientExtract.sourceType || "browser-hybrid",
+              confidence,
             }),
           });
           if (clientRes.ok) {
             const clientData = await clientRes.json();
-            if (Array.isArray(clientData.cases) && clientData.cases.length > 0) {
-              const validCases = clientData.cases
+            const validCases = Array.isArray(clientData.cases)
+              ? clientData.cases
                 .filter((c: any) => c.citation && c.title)
                 .map((c: any) => ({
                   ...c,
                   _sourceDocId: clientData.savedDocId || undefined,
                   _sourceFilename: clientData.savedFilename || file.name,
-                }));
-              allCases.push(...validCases);
-            }
-            clientExtractedFiles += 1;
-            continue;
+                }))
+              : [];
+            return {
+              cases: validCases,
+              failed: false,
+              usedClientExtraction: true,
+            };
           }
         }
       } catch {
         // Fall through to server extraction path.
       }
 
-      let succeeded = false;
       for (let attempt = 1; attempt <= CASELAW_EXTRACT_MAX_RETRIES; attempt++) {
         const formDataUpload = new FormData();
         formDataUpload.append("file", file);
@@ -1599,37 +1612,62 @@ function CaseLawSection() {
 
           if (!res.ok) {
             if (attempt === CASELAW_EXTRACT_MAX_RETRIES) {
-              failedFileNames.push(file.name);
-              failedFileObjects.push(file);
+              return { cases: [], failed: true, usedClientExtraction: false };
             }
             continue;
           }
 
           const data = await res.json();
-          if (data.cases && data.cases.length > 0) {
-            const validCases = data.cases
+          const validCases = data.cases && data.cases.length > 0
+            ? data.cases
               .filter((c: any) => c.citation && c.title)
               .map((c: any) => ({
                 ...c,
                 _sourceDocId: data.savedDocId || undefined,
                 _sourceFilename: data.savedFilename || file.name,
-              }));
-            allCases.push(...validCases);
-          }
-          succeeded = true;
-          break;
+              }))
+            : [];
+          return {
+            cases: validCases,
+            failed: false,
+            usedClientExtraction: false,
+          };
         } catch {
           if (attempt === CASELAW_EXTRACT_MAX_RETRIES) {
-            failedFileNames.push(file.name);
-            failedFileObjects.push(file);
+            return { cases: [], failed: true, usedClientExtraction: false };
           }
         } finally {
           window.clearTimeout(timeoutId);
         }
       }
 
-      if (!succeeded) {
-        // Continue with remaining files; do not block full upload flow on one stuck file.
+      return { cases: [], failed: true, usedClientExtraction: false };
+    };
+
+    let completed = 0;
+    for (let i = 0; i < files.length; i += CASELAW_CLIENT_PARALLEL_BATCH) {
+      const batch = files.slice(i, i + CASELAW_CLIENT_PARALLEL_BATCH);
+      const results = await Promise.all(
+        batch.map(async (file) => {
+          const result = await processSingleFile(file);
+          completed += 1;
+          setExtractProgress({ current: completed, total: files.length, currentFile: file.name });
+          return { file, result };
+        }),
+      );
+
+      for (const { file, result } of results) {
+        if (result.usedClientExtraction) {
+          clientExtractedFiles += 1;
+        }
+        if (result.failed) {
+          failedFileNames.push(file.name);
+          failedFileObjects.push(file);
+          continue;
+        }
+        if (result.cases.length > 0) {
+          allCases.push(...result.cases);
+        }
       }
     }
 

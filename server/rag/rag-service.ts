@@ -43,6 +43,15 @@ const VECTOR_WEIGHT_RAW = Number(process.env.RAG_VECTOR_WEIGHT || 0.72);
 const KEYWORD_WEIGHT_RAW = Number(process.env.RAG_KEYWORD_WEIGHT || 0.28);
 const INDEX_BATCH_SIZE = Math.max(1, Number(process.env.RAG_INDEX_BATCH_SIZE || (process.env.NODE_ENV === "production" ? 8 : 16)));
 const MAX_CHUNKS_PER_DOC = Math.max(10, Number(process.env.RAG_MAX_CHUNKS_PER_DOC || 600));
+const RERANK_POOL_CAP = Math.max(6, Number(process.env.RAG_RERANK_POOL_CAP || 24));
+const RERANK_DOC_PENALTY = clamp(Number(process.env.RAG_RERANK_DOC_PENALTY || 0.045), 0.01, 0.15);
+const RERANK_MIN_QUERY_TOKEN_LEN = Math.max(2, Number(process.env.RAG_RERANK_MIN_QUERY_TOKEN_LEN || 3));
+const STOP_TOKENS = new Set([
+  "the", "and", "for", "that", "with", "from", "this", "have", "your", "will", "shall", "into", "under",
+  "where", "there", "about", "what", "when", "which", "whose", "their", "were", "been", "is", "are", "was",
+  "to", "of", "in", "on", "a", "an", "or", "at", "by", "as", "it", "be", "if", "than", "then", "also", "any",
+  "law", "legal", "case", "section",
+]);
 
 function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
@@ -71,6 +80,102 @@ function resolveConfidence(scores: number[]): "high" | "medium" | "low" {
   if (top1 >= 0.78 && avg >= 0.64) return "high";
   if (top1 >= 0.62) return "medium";
   return "low";
+}
+
+function normalizeCitationToken(input: string): string {
+  return String(input || "")
+    .toUpperCase()
+    .replace(/[()]/g, " ")
+    .replace(/PCr\.?LJ/g, "PCRLJ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function tokenize(text: string, maxTokens: number = 120): string[] {
+  const source = cleanLegalDocumentText(text || "").toLowerCase();
+  if (!source) return [];
+  const tokens = source
+    .split(/[^a-z0-9]+/g)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= RERANK_MIN_QUERY_TOKEN_LEN && !STOP_TOKENS.has(t));
+  return tokens.slice(0, maxTokens);
+}
+
+function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: number): RagMatch[] {
+  if (matches.length <= 1) return matches.slice(0, limit);
+
+  const queryTokens = tokenize(queryText, 28);
+  const queryTokenSet = new Set(queryTokens);
+  const normalizedQuery = cleanLegalDocumentText(queryText || "").toLowerCase();
+  const citationToken = normalizeCitationToken(queryText);
+
+  const rescored = matches.map((m) => {
+    const chunkTokens = tokenize(`${m.title} ${m.chunkText}`, 180);
+    const chunkSet = new Set(chunkTokens);
+    let overlap = 0;
+    for (const token of queryTokenSet) {
+      if (chunkSet.has(token)) overlap += 1;
+    }
+    const tokenCoverage = queryTokenSet.size > 0 ? overlap / queryTokenSet.size : 0;
+
+    const normalizedChunk = cleanLegalDocumentText(`${m.title} ${m.chunkText}`).toLowerCase();
+    const phraseMatch = normalizedQuery.length >= 12 && normalizedChunk.includes(normalizedQuery) ? 1 : 0;
+
+    const normalizedCitationScope = normalizeCitationToken(`${m.title} ${m.chunkText}`);
+    const citationMatch = citationToken && /(?:\b(?:PLD|SCMR|CLC|MLD|YLR|PCRLJ|PLJ|NLR|CLD|PTD|PLC)\b\s*\d{1,5}|\d{4}\s+\b(?:PLD|SCMR|CLC|MLD|YLR|PCRLJ|PLJ|NLR|CLD|PTD|PLC)\b)/.test(citationToken)
+      ? (normalizedCitationScope.includes(citationToken) ? 1 : 0)
+      : 0;
+
+    const titleCoverage = (() => {
+      const titleTokens = new Set(tokenize(m.title, 30));
+      if (queryTokenSet.size === 0 || titleTokens.size === 0) return 0;
+      let hit = 0;
+      for (const token of queryTokenSet) {
+        if (titleTokens.has(token)) hit += 1;
+      }
+      return hit / queryTokenSet.size;
+    })();
+
+    const rerankedScore = clamp(
+      (m.score * 0.62) +
+      (m.vectorScore * 0.08) +
+      (Math.min(1, m.keywordScore) * 0.08) +
+      (tokenCoverage * 0.14) +
+      (titleCoverage * 0.04) +
+      (phraseMatch * 0.04) +
+      (citationMatch * 0.1),
+      0,
+      1,
+    );
+
+    return {
+      ...m,
+      score: rerankedScore,
+    };
+  });
+
+  const pool = rescored.sort((a, b) => b.score - a.score);
+  const selected: RagMatch[] = [];
+  const perDoc = new Map<number, number>();
+
+  while (pool.length > 0 && selected.length < limit) {
+    let bestIdx = 0;
+    let bestScore = -Infinity;
+    for (let i = 0; i < pool.length; i++) {
+      const candidate = pool[i];
+      const existing = perDoc.get(candidate.sourceDocumentId) || 0;
+      const adjusted = candidate.score - (existing * RERANK_DOC_PENALTY);
+      if (adjusted > bestScore) {
+        bestScore = adjusted;
+        bestIdx = i;
+      }
+    }
+    const [picked] = pool.splice(bestIdx, 1);
+    selected.push(picked);
+    perDoc.set(picked.sourceDocumentId, (perDoc.get(picked.sourceDocumentId) || 0) + 1);
+  }
+
+  return selected;
 }
 
 export async function indexUserDocument(userId: string, sourceDocumentId: number): Promise<RAGIndexResult> {
@@ -159,6 +264,7 @@ export async function retrieveForQuery(args: {
     return { matches: [], confidence: "low" };
   }
 
+  const requestedTopK = Math.max(1, args.topK || TOP_K);
   const queryEmbedding = await embedTextLocal(queryText);
   const { vectorWeight, keywordWeight } = resolveHybridWeights();
   const matches = await similaritySearch({
@@ -166,7 +272,7 @@ export async function retrieveForQuery(args: {
     queryEmbedding,
     queryText,
     sourceDocumentIds: args.documentIds,
-    topK: Math.max(1, args.topK || TOP_K),
+    topK: Math.min(RERANK_POOL_CAP, Math.max(requestedTopK, requestedTopK * 4)),
     vectorWeight,
     keywordWeight,
   });
@@ -175,15 +281,16 @@ export async function retrieveForQuery(args: {
   if (filtered.length === 0 && matches.length > 0) {
     // Soft fallback to avoid false negatives on short/simple legal queries.
     const relaxedCutoff = Math.max(0.35, MIN_SCORE - 0.08);
-    filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= relaxedCutoff).slice(0, Math.max(1, Math.min(2, TOP_K)));
+    filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= relaxedCutoff).slice(0, Math.max(1, Math.min(2, requestedTopK)));
   }
   if (filtered.length === 0 && matches.length > 0) {
     // Last-resort fallback: keep top semantic hits as low-confidence context instead of returning empty retrieval.
-    filtered = matches.slice(0, Math.max(1, Math.min(2, args.topK || TOP_K)));
+    filtered = matches.slice(0, Math.max(1, Math.min(2, requestedTopK)));
   }
 
-  const confidence = resolveConfidence(filtered.map((m) => m.score));
-  return { matches: filtered, confidence };
+  const reranked = rerankAndDiversify(filtered, queryText, requestedTopK);
+  const confidence = resolveConfidence(reranked.map((m) => m.score));
+  return { matches: reranked, confidence };
 }
 
 export async function ensureIndexedForUserDocuments(args: {
