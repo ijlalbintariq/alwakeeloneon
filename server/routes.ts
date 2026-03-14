@@ -24,7 +24,16 @@ import { classifyDocumentMetadata, type DocumentMetadata } from "./document-clas
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
-import { buildRagContext, deleteDocumentVectors, ensureIndexedForUserDocuments, indexUserDocument, retrieveForQuery } from "./rag/rag-service";
+import {
+  GLOBAL_CASELAW_RAG_USER_ID,
+  buildRagContext,
+  deleteDocumentVectors,
+  ensureIndexedForGlobalCaseLaw,
+  ensureIndexedForUserDocuments,
+  indexAdminCaseLawDocument,
+  indexUserDocument,
+  retrieveForQuery,
+} from "./rag/rag-service";
 import { isPdfOcrAvailable } from "./ocr";
 import { isCloudPdfOcrAvailable, ocrPdfWithCloud } from "./cloud-ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
@@ -534,6 +543,20 @@ function runInBackground(label: string, task: () => Promise<void>) {
     void task().catch((err: any) => {
       console.warn(`[Background Task] ${label} failed:`, err?.message || err);
     });
+  });
+}
+
+function maybeIndexAdminCaseLawInBackground(args: { adminKnowledgeId: number; category?: string | null }) {
+  if (String(args.category || "").toLowerCase() !== "case-law") return;
+  runInBackground(`rag-admin-case-law:${args.adminKnowledgeId}`, async () => {
+    try {
+      await indexAdminCaseLawDocument(args.adminKnowledgeId);
+    } catch (err: any) {
+      console.warn(
+        `[RAG] Could not index admin case-law ${args.adminKnowledgeId}:`,
+        sanitizeInputText(err?.message || "unknown", 220),
+      );
+    }
   });
 }
 
@@ -2955,6 +2978,99 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/rag/reindex-case-law", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!dbAvailable || !pool) {
+      return res.status(503).json({ message: "Database unavailable" });
+    }
+
+    try {
+      const parsed = z.object({
+        limit: z.number().int().min(1).max(300).optional(),
+        offset: z.number().int().min(0).optional(),
+      }).parse(req.body || {});
+
+      const limit = parsed.limit ?? 50;
+      const offset = parsed.offset ?? 0;
+
+      const rows = await pool.query(
+        `
+        SELECT id
+        FROM admin_knowledge
+        WHERE lower(coalesce(category, '')) = 'case-law'
+        ORDER BY id ASC
+        LIMIT $1 OFFSET $2
+        `,
+        [limit, offset],
+      );
+      const totalRow = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE lower(coalesce(category, '')) = 'case-law'`,
+      );
+      const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+
+      let indexed = 0;
+      let failed = 0;
+      const failures: Array<{ adminKnowledgeId: number; reason: string }> = [];
+
+      for (const row of rows.rows || []) {
+        const adminKnowledgeId = Number((row as any).id);
+        if (!Number.isInteger(adminKnowledgeId) || adminKnowledgeId < 1) continue;
+        try {
+          const result = await indexAdminCaseLawDocument(adminKnowledgeId);
+          if (result.chunks > 0) {
+            indexed += 1;
+          } else {
+            failed += 1;
+            if (failures.length < 20) {
+              failures.push({ adminKnowledgeId, reason: "No chunks generated" });
+            }
+          }
+        } catch (err: any) {
+          failed += 1;
+          if (failures.length < 20) {
+            failures.push({
+              adminKnowledgeId,
+              reason: sanitizeInputText(err?.message || "Indexing failed", 300),
+            });
+          }
+        }
+      }
+
+      const processed = rows.rowCount || 0;
+      const nextOffset = offset + processed;
+      const remaining = Math.max(0, totalDocuments - nextOffset);
+      const actorUserId = getUserId(req);
+      await logAuditEvent("admin.rag.reindexCaseLaw", actorUserId, null, {
+        processed,
+        indexed,
+        failed,
+        offset,
+        nextOffset,
+        limit,
+        remaining,
+      });
+
+      res.json({
+        processed,
+        indexed,
+        failed,
+        failures,
+        limit,
+        offset,
+        nextOffset,
+        remaining,
+        totalDocuments,
+        hasMore: remaining > 0,
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error reindexing global case-law RAG:", err);
+      res.status(500).json({ message: "Failed to reindex case-law for RAG" });
+    }
+  });
+
   app.post("/api/rag/ask", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -2981,6 +3097,13 @@ export async function registerRoutes(
         indexedNow: number;
         failed: number;
       } | null = null;
+      let lazyGlobalCaseLawSummary: {
+        candidates: number;
+        alreadyIndexed: number;
+        attempted: number;
+        indexedNow: number;
+        failed: number;
+      } | null = null;
 
       if (retrieval.matches.length === 0) {
         lazyIndexSummary = await ensureIndexedForUserDocuments({
@@ -2988,7 +3111,12 @@ export async function registerRoutes(
           sourceDocumentIds: parsed.documentIds,
           maxToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_DOCS || 3),
         });
-        if (lazyIndexSummary.indexedNow > 0) {
+        if (!parsed.documentIds || parsed.documentIds.length === 0) {
+          lazyGlobalCaseLawSummary = await ensureIndexedForGlobalCaseLaw({
+            maxToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_CASELAW || 5),
+          });
+        }
+        if (lazyIndexSummary.indexedNow > 0 || (lazyGlobalCaseLawSummary?.indexedNow || 0) > 0) {
           retrieval = await retrieveForQuery({
             userId,
             query: parsed.query,
@@ -3009,6 +3137,7 @@ export async function registerRoutes(
             matched: retrieval.matches.length,
             threshold: Number(process.env.RAG_MIN_SCORE || 0.5),
             lazyIndex: lazyIndexSummary,
+            lazyGlobalCaseLaw: lazyGlobalCaseLawSummary,
           },
           model: { provider: "none", name: "none" },
         });
@@ -3035,6 +3164,8 @@ RAG POLICY (STRICT):
       const citations = retrieval.matches.slice(0, 5).map((m) => ({
         documentId: m.ragDocumentId,
         sourceDocumentId: m.sourceDocumentId,
+        sourceScope: m.metadata?.sourceType === "admin-case-law" ? "global-case-law" : "user-document",
+        sourceUserId: m.metadata?.sourceType === "admin-case-law" ? GLOBAL_CASELAW_RAG_USER_ID : userId,
         title: m.title,
         chunkIndex: m.chunkIndex,
         score: Number(m.score.toFixed(4)),
@@ -3051,6 +3182,7 @@ RAG POLICY (STRICT):
           matched: retrieval.matches.length,
           threshold: Number(process.env.RAG_MIN_SCORE || 0.5),
           lazyIndex: lazyIndexSummary,
+          lazyGlobalCaseLaw: lazyGlobalCaseLawSummary,
         },
         model: { provider, name: result.model },
       });
@@ -5534,6 +5666,10 @@ RULES:
             category: category || "general",
             uploadedBy: userId,
           });
+          maybeIndexAdminCaseLawInBackground({
+            adminKnowledgeId: doc.id,
+            category: category || "general",
+          });
           await uploadAdminKnowledgeFileToR2({
             docId: doc.id,
             userId,
@@ -5567,6 +5703,10 @@ RULES:
           content,
           category: category || "general",
           uploadedBy: userId,
+        });
+        maybeIndexAdminCaseLawInBackground({
+          adminKnowledgeId: doc.id,
+          category: category || "general",
         });
         results.push(doc);
         await logAuditEvent("admin.knowledge.upload", userId, null, {
@@ -5609,12 +5749,16 @@ RULES:
     try {
       const actorUserId = getUserId(req);
       const id = Number(req.params.id);
+      const knowledgeDoc = await storage.getAdminKnowledgeById(id);
       const fileMeta = await storage.getAdminKnowledgeFile(id);
       if (fileMeta?.provider === "r2") {
         const keys = [fileMeta.objectKey, fileMeta.extractedTextKey].filter((k): k is string => !!k);
         await Promise.allSettled(keys.map((key) => deleteR2Object(key)));
       }
       await storage.deleteAdminKnowledge(id);
+      if (String(knowledgeDoc?.category || "").toLowerCase() === "case-law") {
+        await deleteDocumentVectors(id, GLOBAL_CASELAW_RAG_USER_ID);
+      }
       await logAuditEvent("admin.knowledge.delete", actorUserId, null, { id });
       res.sendStatus(204);
     } catch (err) {
@@ -5627,8 +5771,13 @@ RULES:
     if (!(await isAdmin(req, res))) return;
     try {
       const actorUserId = getUserId(req);
+      const allKnowledge = await storage.getAllAdminKnowledge();
       const fileMetas = await storage.getAdminKnowledgeFiles();
       const count = await storage.deleteAllAdminKnowledge();
+      const caseLawIds = allKnowledge
+        .filter((doc) => String(doc.category || "").toLowerCase() === "case-law")
+        .map((doc) => doc.id);
+      await Promise.allSettled(caseLawIds.map((id) => deleteDocumentVectors(id, GLOBAL_CASELAW_RAG_USER_ID)));
       await Promise.allSettled(
         fileMetas
           .filter((item) => item.provider === "r2")
@@ -5805,6 +5954,10 @@ RULES:
           uploadedBy: userId,
         });
         savedDocId = savedDoc.id;
+        maybeIndexAdminCaseLawInBackground({
+          adminKnowledgeId: savedDoc.id,
+          category: "case-law",
+        });
 
         runInBackground(`case-law-client-r2:${savedDoc.id}`, async () => {
           await uploadAdminKnowledgeFileToR2({
@@ -6061,6 +6214,10 @@ RULES:
                 const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : rawJson;
                 const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: persistedContent, category: "case-law", uploadedBy: uid });
                 jsonDocId = savedDoc.id;
+                maybeIndexAdminCaseLawInBackground({
+                  adminKnowledgeId: savedDoc.id,
+                  category: "case-law",
+                });
                 runInBackground(`case-law-json-r2:${savedDoc.id}`, async () => {
                   await uploadAdminKnowledgeFileToR2({
                     docId: savedDoc.id,
@@ -6136,6 +6293,10 @@ RULES:
                 const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : rawCsv;
                 const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: persistedContent, category: "case-law", uploadedBy: uid });
                 csvDocId = savedDoc.id;
+                maybeIndexAdminCaseLawInBackground({
+                  adminKnowledgeId: savedDoc.id,
+                  category: "case-law",
+                });
                 runInBackground(`case-law-csv-r2:${savedDoc.id}`, async () => {
                   await uploadAdminKnowledgeFileToR2({
                     docId: savedDoc.id,
@@ -6191,6 +6352,10 @@ RULES:
           uploadedBy: userId,
         });
         savedDocId = savedDoc.id;
+        maybeIndexAdminCaseLawInBackground({
+          adminKnowledgeId: savedDoc.id,
+          category: "case-law",
+        });
         runInBackground(`case-law-r2:${savedDoc.id}`, async () => {
           await uploadAdminKnowledgeFileToR2({
             docId: savedDoc.id,

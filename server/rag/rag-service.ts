@@ -37,6 +37,8 @@ export type RAGEnsureIndexResult = {
   failed: number;
 };
 
+export const GLOBAL_CASELAW_RAG_USER_ID = "global-admin-case-law";
+
 const MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.5);
 const TOP_K = Number(process.env.RAG_TOP_K || 5);
 const VECTOR_WEIGHT_RAW = Number(process.env.RAG_VECTOR_WEIGHT || 0.72);
@@ -251,6 +253,89 @@ export async function indexUserDocument(userId: string, sourceDocumentId: number
   };
 }
 
+export async function indexAdminCaseLawDocument(adminKnowledgeId: number): Promise<RAGIndexResult> {
+  await ensureRagSchema();
+
+  const doc = await storage.getAdminKnowledgeById(adminKnowledgeId);
+  if (!doc) {
+    throw new Error("Admin case law document not found");
+  }
+  if (String(doc.category || "").toLowerCase() !== "case-law") {
+    throw new Error("Admin knowledge document is not in case-law category");
+  }
+
+  const raw = doc.content || "";
+  let sourceText = raw;
+  let mimeType: string | null = null;
+  let fileName: string | null = doc.filename || null;
+  try {
+    const fileMeta = await storage.getAdminKnowledgeFile(doc.id);
+    if (fileMeta) {
+      mimeType = fileMeta.mimeType || null;
+      fileName = fileMeta.originalFilename || fileName;
+    }
+    if (fileMeta?.extractedTextKey) {
+      const fullText = await getR2ObjectText(fileMeta.extractedTextKey);
+      if (fullText) {
+        sourceText = fullText;
+      }
+    }
+  } catch {
+    console.warn("[RAG] Could not load full admin case-law text from R2, using inline DB content.");
+  }
+
+  const cleaned = cleanLegalDocumentText(sourceText);
+  if (!cleaned) {
+    throw new Error("Admin case law document has no indexable text content");
+  }
+
+  const contentHash = sha256(cleaned);
+  const ragDoc = await upsertRagDocument({
+    userId: GLOBAL_CASELAW_RAG_USER_ID,
+    sourceDocumentId: doc.id,
+    title: doc.title || `Case Law ${doc.id}`,
+    fileName,
+    mimeType,
+    contentHash,
+    status: "pending",
+  });
+
+  const chunks = chunkTextByTokens(cleaned).slice(0, MAX_CHUNKS_PER_DOC);
+  await resetDocumentChunks(ragDoc.id);
+
+  let inserted = 0;
+  for (let start = 0; start < chunks.length; start += INDEX_BATCH_SIZE) {
+    const batch = chunks.slice(start, start + INDEX_BATCH_SIZE);
+    const embeddings = await embedTextsLocal(batch.map((c) => c.text));
+    const entries = batch.map((chunk, idx) => ({
+      ragDocumentId: ragDoc.id,
+      userId: GLOBAL_CASELAW_RAG_USER_ID,
+      sourceDocumentId: doc.id,
+      chunkIndex: chunk.chunkIndex,
+      tokenCount: chunk.tokenCount,
+      chunkText: chunk.text,
+      embedding: embeddings[idx],
+      metadata: {
+        sourceType: "admin-case-law",
+        category: "case-law",
+        adminKnowledgeId: doc.id,
+        filename: fileName,
+      },
+    }));
+    inserted += await insertDocumentChunkBatch(entries);
+  }
+
+  await markRagDocumentIndexed(ragDoc.id, inserted);
+
+  return {
+    ragDocumentId: ragDoc.id,
+    sourceDocumentId: doc.id,
+    title: doc.title || `Case Law ${doc.id}`,
+    chunks: inserted,
+    status: "indexed",
+  };
+}
+
 export async function retrieveForQuery(args: {
   userId: string;
   query: string;
@@ -267,15 +352,32 @@ export async function retrieveForQuery(args: {
   const requestedTopK = Math.max(1, args.topK || TOP_K);
   const queryEmbedding = await embedTextLocal(queryText);
   const { vectorWeight, keywordWeight } = resolveHybridWeights();
-  const matches = await similaritySearch({
-    userId: args.userId,
-    queryEmbedding,
-    queryText,
-    sourceDocumentIds: args.documentIds,
-    topK: Math.min(RERANK_POOL_CAP, Math.max(requestedTopK, requestedTopK * 4)),
-    vectorWeight,
-    keywordWeight,
-  });
+  const candidateTopK = Math.min(RERANK_POOL_CAP, Math.max(requestedTopK, requestedTopK * 4));
+  const includeGlobalCaseLaw = !args.documentIds || args.documentIds.length === 0;
+  const [userMatches, globalMatches] = await Promise.all([
+    similaritySearch({
+      userId: args.userId,
+      queryEmbedding,
+      queryText,
+      sourceDocumentIds: args.documentIds,
+      topK: candidateTopK,
+      vectorWeight,
+      keywordWeight,
+    }),
+    includeGlobalCaseLaw
+      ? similaritySearch({
+        userId: GLOBAL_CASELAW_RAG_USER_ID,
+        queryEmbedding,
+        queryText,
+        topK: candidateTopK,
+        vectorWeight,
+        keywordWeight,
+      })
+      : Promise.resolve([] as RagMatch[]),
+  ]);
+  const matches = [...userMatches, ...globalMatches]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.max(candidateTopK, requestedTopK));
 
   let filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= MIN_SCORE);
   if (filtered.length === 0 && matches.length > 0) {
@@ -350,6 +452,97 @@ export async function ensureIndexedForUserDocuments(args: {
   for (const doc of pending) {
     try {
       const result = await indexUserDocument(args.userId, doc.id);
+      if (result.chunks > 0) {
+        indexedNow += 1;
+      } else {
+        failed += 1;
+      }
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return {
+    candidates: candidates.length,
+    alreadyIndexed: indexedIds.size,
+    attempted: pending.length,
+    indexedNow,
+    failed,
+  };
+}
+
+export async function ensureIndexedForGlobalCaseLaw(args: {
+  maxToIndex?: number;
+}): Promise<RAGEnsureIndexResult> {
+  await ensureRagSchema();
+
+  let candidates: Array<{ id: number }> = [];
+  if (dbAvailable && pool) {
+    try {
+      const rows = await pool.query(
+        `
+        SELECT id
+        FROM admin_knowledge
+        WHERE lower(coalesce(category, '')) = 'case-law'
+        ORDER BY id ASC
+        `,
+      );
+      candidates = (rows.rows || [])
+        .map((row: any) => ({ id: Number(row.id) }))
+        .filter((row) => Number.isInteger(row.id) && row.id > 0);
+    } catch {
+      // Fallback below when direct query fails.
+    }
+  }
+  if (candidates.length === 0) {
+    const allDocs = await storage.getAllAdminKnowledge();
+    candidates = allDocs
+      .filter((doc) => String(doc.category || "").toLowerCase() === "case-law")
+      .map((doc) => ({ id: doc.id }));
+  }
+
+  if (candidates.length === 0) {
+    return {
+      candidates: 0,
+      alreadyIndexed: 0,
+      attempted: 0,
+      indexedNow: 0,
+      failed: 0,
+    };
+  }
+
+  const indexedIds = new Set<number>();
+  if (dbAvailable && pool) {
+    try {
+      const ids = candidates.map((doc) => doc.id);
+      const rows = await pool.query(
+        `
+        SELECT source_document_id
+        FROM rag_documents
+        WHERE user_id = $1
+          AND status = 'indexed'
+          AND chunk_count > 0
+          AND source_document_id = ANY($2::int[])
+        `,
+        [GLOBAL_CASELAW_RAG_USER_ID, ids],
+      );
+      for (const row of rows.rows || []) {
+        const id = Number((row as { source_document_id?: number }).source_document_id);
+        if (Number.isInteger(id) && id > 0) indexedIds.add(id);
+      }
+    } catch {
+      // If relation is not ready yet or query fails, continue and try indexing directly.
+    }
+  }
+
+  const maxToIndex = Math.max(1, Number(args.maxToIndex || 3));
+  const pending = candidates.filter((doc) => !indexedIds.has(doc.id)).slice(0, maxToIndex);
+
+  let indexedNow = 0;
+  let failed = 0;
+  for (const doc of pending) {
+    try {
+      const result = await indexAdminCaseLawDocument(doc.id);
       if (result.chunks > 0) {
         indexedNow += 1;
       } else {
