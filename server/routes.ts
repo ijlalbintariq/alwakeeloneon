@@ -546,6 +546,114 @@ function runInBackground(label: string, task: () => Promise<void>) {
   });
 }
 
+type CaseLawReindexJobState = {
+  running: boolean;
+  shouldStop: boolean;
+  batchSize: number;
+  nextOffset: number;
+  totalDocuments: number;
+  totalProcessed: number;
+  totalIndexed: number;
+  totalFailed: number;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  lastError: string | null;
+};
+
+const caseLawReindexJob: CaseLawReindexJobState = {
+  running: false,
+  shouldStop: false,
+  batchSize: 300,
+  nextOffset: 0,
+  totalDocuments: 0,
+  totalProcessed: 0,
+  totalIndexed: 0,
+  totalFailed: 0,
+  startedAt: null,
+  finishedAt: null,
+  lastError: null,
+};
+
+function snapshotCaseLawReindexJob() {
+  return {
+    ...caseLawReindexJob,
+    startedAt: caseLawReindexJob.startedAt ? caseLawReindexJob.startedAt.toISOString() : null,
+    finishedAt: caseLawReindexJob.finishedAt ? caseLawReindexJob.finishedAt.toISOString() : null,
+  };
+}
+
+async function reindexCaseLawBatch(limit: number, offset: number): Promise<{
+  processed: number;
+  indexed: number;
+  failed: number;
+  failures: Array<{ adminKnowledgeId: number; reason: string }>;
+  nextOffset: number;
+  remaining: number;
+  totalDocuments: number;
+  hasMore: boolean;
+}> {
+  if (!dbAvailable || !pool) {
+    throw new Error("Database unavailable");
+  }
+
+  const rows = await pool.query(
+    `
+    SELECT id
+    FROM admin_knowledge
+    WHERE lower(coalesce(category, '')) = 'case-law'
+    ORDER BY id ASC
+    LIMIT $1 OFFSET $2
+    `,
+    [limit, offset],
+  );
+  const totalRow = await pool.query(
+    `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE lower(coalesce(category, '')) = 'case-law'`,
+  );
+  const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+
+  let indexed = 0;
+  let failed = 0;
+  const failures: Array<{ adminKnowledgeId: number; reason: string }> = [];
+
+  for (const row of rows.rows || []) {
+    const adminKnowledgeId = Number((row as any).id);
+    if (!Number.isInteger(adminKnowledgeId) || adminKnowledgeId < 1) continue;
+    try {
+      const result = await indexAdminCaseLawDocument(adminKnowledgeId);
+      if (result.chunks > 0) {
+        indexed += 1;
+      } else {
+        failed += 1;
+        if (failures.length < 20) {
+          failures.push({ adminKnowledgeId, reason: "No chunks generated" });
+        }
+      }
+    } catch (err: any) {
+      failed += 1;
+      if (failures.length < 20) {
+        failures.push({
+          adminKnowledgeId,
+          reason: sanitizeInputText(err?.message || "Indexing failed", 300),
+        });
+      }
+    }
+  }
+
+  const processed = rows.rowCount || 0;
+  const nextOffset = offset + processed;
+  const remaining = Math.max(0, totalDocuments - nextOffset);
+  return {
+    processed,
+    indexed,
+    failed,
+    failures,
+    nextOffset,
+    remaining,
+    totalDocuments,
+    hasMore: remaining > 0,
+  };
+}
+
 function maybeIndexAdminCaseLawInBackground(args: { adminKnowledgeId: number; category?: string | null }) {
   if (String(args.category || "").toLowerCase() !== "case-law") return;
   runInBackground(`rag-admin-case-law:${args.adminKnowledgeId}`, async () => {
@@ -2992,75 +3100,29 @@ export async function registerRoutes(
 
       const limit = parsed.limit ?? 50;
       const offset = parsed.offset ?? 0;
-
-      const rows = await pool.query(
-        `
-        SELECT id
-        FROM admin_knowledge
-        WHERE lower(coalesce(category, '')) = 'case-law'
-        ORDER BY id ASC
-        LIMIT $1 OFFSET $2
-        `,
-        [limit, offset],
-      );
-      const totalRow = await pool.query(
-        `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE lower(coalesce(category, '')) = 'case-law'`,
-      );
-      const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
-
-      let indexed = 0;
-      let failed = 0;
-      const failures: Array<{ adminKnowledgeId: number; reason: string }> = [];
-
-      for (const row of rows.rows || []) {
-        const adminKnowledgeId = Number((row as any).id);
-        if (!Number.isInteger(adminKnowledgeId) || adminKnowledgeId < 1) continue;
-        try {
-          const result = await indexAdminCaseLawDocument(adminKnowledgeId);
-          if (result.chunks > 0) {
-            indexed += 1;
-          } else {
-            failed += 1;
-            if (failures.length < 20) {
-              failures.push({ adminKnowledgeId, reason: "No chunks generated" });
-            }
-          }
-        } catch (err: any) {
-          failed += 1;
-          if (failures.length < 20) {
-            failures.push({
-              adminKnowledgeId,
-              reason: sanitizeInputText(err?.message || "Indexing failed", 300),
-            });
-          }
-        }
-      }
-
-      const processed = rows.rowCount || 0;
-      const nextOffset = offset + processed;
-      const remaining = Math.max(0, totalDocuments - nextOffset);
+      const batch = await reindexCaseLawBatch(limit, offset);
       const actorUserId = getUserId(req);
       await logAuditEvent("admin.rag.reindexCaseLaw", actorUserId, null, {
-        processed,
-        indexed,
-        failed,
+        processed: batch.processed,
+        indexed: batch.indexed,
+        failed: batch.failed,
         offset,
-        nextOffset,
+        nextOffset: batch.nextOffset,
         limit,
-        remaining,
+        remaining: batch.remaining,
       });
 
       res.json({
-        processed,
-        indexed,
-        failed,
-        failures,
+        processed: batch.processed,
+        indexed: batch.indexed,
+        failed: batch.failed,
+        failures: batch.failures,
         limit,
         offset,
-        nextOffset,
-        remaining,
-        totalDocuments,
-        hasMore: remaining > 0,
+        nextOffset: batch.nextOffset,
+        remaining: batch.remaining,
+        totalDocuments: batch.totalDocuments,
+        hasMore: batch.hasMore,
       });
     } catch (err: any) {
       if (err instanceof z.ZodError) {
@@ -3069,6 +3131,120 @@ export async function registerRoutes(
       console.error("Error reindexing global case-law RAG:", err);
       res.status(500).json({ message: "Failed to reindex case-law for RAG" });
     }
+  });
+
+  app.post("/api/admin/rag/reindex-case-law/start", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!dbAvailable || !pool) {
+      return res.status(503).json({ message: "Database unavailable" });
+    }
+
+    try {
+      const parsed = z.object({
+        batchSize: z.number().int().min(1).max(300).optional(),
+        startOffset: z.number().int().min(0).optional(),
+      }).parse(req.body || {});
+
+      if (caseLawReindexJob.running) {
+        return res.status(409).json({
+          message: "Case-law reindex is already running",
+          status: snapshotCaseLawReindexJob(),
+        });
+      }
+
+      const batchSize = parsed.batchSize ?? 300;
+      const startOffset = parsed.startOffset ?? 0;
+      caseLawReindexJob.running = true;
+      caseLawReindexJob.shouldStop = false;
+      caseLawReindexJob.batchSize = batchSize;
+      caseLawReindexJob.nextOffset = startOffset;
+      caseLawReindexJob.totalDocuments = 0;
+      caseLawReindexJob.totalProcessed = 0;
+      caseLawReindexJob.totalIndexed = 0;
+      caseLawReindexJob.totalFailed = 0;
+      caseLawReindexJob.startedAt = new Date();
+      caseLawReindexJob.finishedAt = null;
+      caseLawReindexJob.lastError = null;
+
+      const actorUserId = getUserId(req);
+      await logAuditEvent("admin.rag.reindexCaseLaw.start", actorUserId, null, {
+        batchSize,
+        startOffset,
+      });
+
+      runInBackground("rag-case-law-full-reindex", async () => {
+        try {
+          while (!caseLawReindexJob.shouldStop) {
+            const batch = await reindexCaseLawBatch(caseLawReindexJob.batchSize, caseLawReindexJob.nextOffset);
+            caseLawReindexJob.totalDocuments = batch.totalDocuments;
+            caseLawReindexJob.totalProcessed += batch.processed;
+            caseLawReindexJob.totalIndexed += batch.indexed;
+            caseLawReindexJob.totalFailed += batch.failed;
+            caseLawReindexJob.nextOffset = batch.nextOffset;
+
+            if (!batch.hasMore || batch.processed <= 0) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 150));
+          }
+        } catch (err: any) {
+          caseLawReindexJob.lastError = sanitizeInputText(err?.message || "Unknown error", 500);
+        } finally {
+          caseLawReindexJob.running = false;
+          caseLawReindexJob.finishedAt = new Date();
+          try {
+            await logAuditEvent("admin.rag.reindexCaseLaw.finish", actorUserId, null, {
+              totalDocuments: caseLawReindexJob.totalDocuments,
+              totalProcessed: caseLawReindexJob.totalProcessed,
+              totalIndexed: caseLawReindexJob.totalIndexed,
+              totalFailed: caseLawReindexJob.totalFailed,
+              stopped: caseLawReindexJob.shouldStop,
+              lastError: caseLawReindexJob.lastError,
+            });
+          } catch (auditErr) {
+            console.warn("[RAG] Failed to write reindexCaseLaw.finish audit log");
+          }
+          caseLawReindexJob.shouldStop = false;
+        }
+      });
+
+      return res.json({
+        ok: true,
+        message: "Case-law reindex started in background",
+        status: snapshotCaseLawReindexJob(),
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error starting global case-law RAG reindex:", err);
+      return res.status(500).json({ message: "Failed to start case-law reindex job" });
+    }
+  });
+
+  app.get("/api/admin/rag/reindex-case-law/status", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    res.json({
+      ok: true,
+      status: snapshotCaseLawReindexJob(),
+    });
+  });
+
+  app.post("/api/admin/rag/reindex-case-law/stop", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!caseLawReindexJob.running) {
+      return res.json({
+        ok: true,
+        message: "No running case-law reindex job",
+        status: snapshotCaseLawReindexJob(),
+      });
+    }
+    caseLawReindexJob.shouldStop = true;
+    return res.json({
+      ok: true,
+      message: "Stop signal sent. Job will stop after current batch.",
+      status: snapshotCaseLawReindexJob(),
+    });
   });
 
   app.post("/api/rag/ask", async (req, res) => {
