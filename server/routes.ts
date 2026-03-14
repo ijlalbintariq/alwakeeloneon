@@ -576,6 +576,19 @@ type ReindexBatchResult = {
   hasMore: boolean;
 };
 
+type ReindexBatchProgress = {
+  totalDocuments: number;
+  processed: number;
+  indexed: number;
+  failed: number;
+  nextOffset: number;
+};
+
+type ReindexBatchHooks = {
+  onMeta?: (meta: { totalDocuments: number }) => void;
+  onProgress?: (progress: ReindexBatchProgress) => void;
+};
+
 type GlobalAdminRagSourceKey = "case-law" | "statute-docs" | "knowledge-vault";
 
 type GlobalAdminRagSourceState = {
@@ -720,7 +733,7 @@ async function withOperationTimeout<T>(promise: Promise<T>, timeoutMs: number, t
   }
 }
 
-async function reindexCaseLawBatch(limit: number, offset: number): Promise<ReindexBatchResult> {
+async function reindexCaseLawBatch(limit: number, offset: number, hooks?: ReindexBatchHooks): Promise<ReindexBatchResult> {
   if (!dbAvailable || !pool) {
     throw new Error("Database unavailable");
   }
@@ -739,7 +752,9 @@ async function reindexCaseLawBatch(limit: number, offset: number): Promise<Reind
     `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE ${ADMIN_CASELAW_CATEGORY_SQL} = 'caselaw'`,
   );
   const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  hooks?.onMeta?.({ totalDocuments });
 
+  let processed = 0;
   let indexed = 0;
   let failed = 0;
   const failures: Array<{ sourceId: number; reason: string }> = [];
@@ -770,9 +785,16 @@ async function reindexCaseLawBatch(limit: number, offset: number): Promise<Reind
         });
       }
     }
+    processed += 1;
+    hooks?.onProgress?.({
+      totalDocuments,
+      processed,
+      indexed,
+      failed,
+      nextOffset: offset + processed,
+    });
   }
 
-  const processed = rows.rowCount || 0;
   const nextOffset = offset + processed;
   const remaining = Math.max(0, totalDocuments - nextOffset);
   return {
@@ -787,7 +809,7 @@ async function reindexCaseLawBatch(limit: number, offset: number): Promise<Reind
   };
 }
 
-async function reindexStatuteBatch(limit: number, offset: number): Promise<ReindexBatchResult> {
+async function reindexStatuteBatch(limit: number, offset: number, hooks?: ReindexBatchHooks): Promise<ReindexBatchResult> {
   if (!dbAvailable || !pool) {
     throw new Error("Database unavailable");
   }
@@ -805,7 +827,9 @@ async function reindexStatuteBatch(limit: number, offset: number): Promise<Reind
     `SELECT COUNT(*)::int AS total FROM statute_documents`,
   );
   const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  hooks?.onMeta?.({ totalDocuments });
 
+  let processed = 0;
   let indexed = 0;
   let failed = 0;
   const failures: Array<{ sourceId: number; reason: string }> = [];
@@ -836,9 +860,16 @@ async function reindexStatuteBatch(limit: number, offset: number): Promise<Reind
         });
       }
     }
+    processed += 1;
+    hooks?.onProgress?.({
+      totalDocuments,
+      processed,
+      indexed,
+      failed,
+      nextOffset: offset + processed,
+    });
   }
 
-  const processed = rows.rowCount || 0;
   const nextOffset = offset + processed;
   const remaining = Math.max(0, totalDocuments - nextOffset);
   return {
@@ -853,7 +884,7 @@ async function reindexStatuteBatch(limit: number, offset: number): Promise<Reind
   };
 }
 
-async function reindexAdminKnowledgeBatch(limit: number, offset: number): Promise<ReindexBatchResult> {
+async function reindexAdminKnowledgeBatch(limit: number, offset: number, hooks?: ReindexBatchHooks): Promise<ReindexBatchResult> {
   if (!dbAvailable || !pool) {
     throw new Error("Database unavailable");
   }
@@ -872,7 +903,9 @@ async function reindexAdminKnowledgeBatch(limit: number, offset: number): Promis
     `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE ${ADMIN_CASELAW_CATEGORY_SQL} <> 'caselaw'`,
   );
   const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  hooks?.onMeta?.({ totalDocuments });
 
+  let processed = 0;
   let indexed = 0;
   let failed = 0;
   const failures: Array<{ sourceId: number; reason: string }> = [];
@@ -903,9 +936,16 @@ async function reindexAdminKnowledgeBatch(limit: number, offset: number): Promis
         });
       }
     }
+    processed += 1;
+    hooks?.onProgress?.({
+      totalDocuments,
+      processed,
+      indexed,
+      failed,
+      nextOffset: offset + processed,
+    });
   }
 
-  const processed = rows.rowCount || 0;
   const nextOffset = offset + processed;
   const remaining = Math.max(0, totalDocuments - nextOffset);
   return {
@@ -3590,16 +3630,49 @@ export async function registerRoutes(
               continue;
             }
 
+            const baseProcessed = sourceState.processed;
+            const baseIndexed = sourceState.indexed;
+            const baseFailed = sourceState.failed;
             const batch = sourceKey === "case-law"
-              ? await reindexCaseLawBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset)
+              ? await reindexCaseLawBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset, {
+                onMeta: ({ totalDocuments }) => {
+                  sourceState.totalDocuments = totalDocuments;
+                },
+                onProgress: ({ processed, indexed, failed, nextOffset }) => {
+                  sourceState.processed = baseProcessed + processed;
+                  sourceState.indexed = baseIndexed + indexed;
+                  sourceState.failed = baseFailed + failed;
+                  sourceState.nextOffset = nextOffset;
+                },
+              })
               : sourceKey === "statute-docs"
-                ? await reindexStatuteBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset)
-                : await reindexAdminKnowledgeBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset);
+                ? await reindexStatuteBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset, {
+                  onMeta: ({ totalDocuments }) => {
+                    sourceState.totalDocuments = totalDocuments;
+                  },
+                  onProgress: ({ processed, indexed, failed, nextOffset }) => {
+                    sourceState.processed = baseProcessed + processed;
+                    sourceState.indexed = baseIndexed + indexed;
+                    sourceState.failed = baseFailed + failed;
+                    sourceState.nextOffset = nextOffset;
+                  },
+                })
+                : await reindexAdminKnowledgeBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset, {
+                  onMeta: ({ totalDocuments }) => {
+                    sourceState.totalDocuments = totalDocuments;
+                  },
+                  onProgress: ({ processed, indexed, failed, nextOffset }) => {
+                    sourceState.processed = baseProcessed + processed;
+                    sourceState.indexed = baseIndexed + indexed;
+                    sourceState.failed = baseFailed + failed;
+                    sourceState.nextOffset = nextOffset;
+                  },
+                });
 
             sourceState.totalDocuments = batch.totalDocuments;
-            sourceState.processed += batch.processed;
-            sourceState.indexed += batch.indexed;
-            sourceState.failed += batch.failed;
+            sourceState.processed = baseProcessed + batch.processed;
+            sourceState.indexed = baseIndexed + batch.indexed;
+            sourceState.failed = baseFailed + batch.failed;
             sourceState.nextOffset = batch.nextOffset;
             if (batch.failures.length > 0) {
               sourceState.lastError = batch.failures[0].reason;
