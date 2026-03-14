@@ -92,6 +92,7 @@ const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_
 const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 1800));
 const ATTACHMENT_PROMPT_TOKEN_BUDGET = Math.max(500, Number(process.env.ATTACHMENT_PROMPT_TOKEN_BUDGET || 2200));
 const ATTACHMENT_FILE_TOKEN_BUDGET = Math.max(150, Number(process.env.ATTACHMENT_FILE_TOKEN_BUDGET || 800));
+const CASELAW_RAG_INDEX_DOC_TIMEOUT_MS = Math.max(5000, Number(process.env.CASELAW_RAG_INDEX_DOC_TIMEOUT_MS || 45000));
 const LEGAL_DRAFT_DOC_PREFIX = "Legal Draft:";
 const CONTRACT_DRAFT_DOC_PREFIX = "Contract Draft:";
 const PUBLIC_CHAT_MESSAGE_LIMIT = Math.max(1, Number(process.env.PUBLIC_CHAT_MESSAGE_LIMIT || 10));
@@ -615,11 +616,29 @@ async function reindexCaseLawBatch(limit: number, offset: number): Promise<{
   let failed = 0;
   const failures: Array<{ adminKnowledgeId: number; reason: string }> = [];
 
+  const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, timeoutLabel: string): Promise<T> => {
+    let timer: NodeJS.Timeout | null = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(timeoutLabel)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
+
   for (const row of rows.rows || []) {
     const adminKnowledgeId = Number((row as any).id);
     if (!Number.isInteger(adminKnowledgeId) || adminKnowledgeId < 1) continue;
     try {
-      const result = await indexAdminCaseLawDocument(adminKnowledgeId);
+      const result = await withTimeout(
+        indexAdminCaseLawDocument(adminKnowledgeId),
+        CASELAW_RAG_INDEX_DOC_TIMEOUT_MS,
+        `Index timeout after ${CASELAW_RAG_INDEX_DOC_TIMEOUT_MS}ms`,
+      );
       if (result.chunks > 0) {
         indexed += 1;
       } else {
