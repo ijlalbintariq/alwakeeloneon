@@ -125,6 +125,36 @@ type ClientLead = {
   createdAt: string;
 };
 
+type GlobalRagReindexSourceStatus = {
+  key: "case-law" | "statute-docs" | "knowledge-vault";
+  label: string;
+  nextOffset: number;
+  totalDocuments: number;
+  processed: number;
+  indexed: number;
+  failed: number;
+  done: boolean;
+  lastError: string | null;
+};
+
+type GlobalRagReindexStatus = {
+  running: boolean;
+  shouldStop: boolean;
+  batchSize: number;
+  activeSource: "case-law" | "statute-docs" | "knowledge-vault" | null;
+  activeSourceLabel: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  lastError: string | null;
+  aggregate: {
+    totalDocuments: number;
+    processed: number;
+    indexed: number;
+    failed: number;
+  };
+  sources: GlobalRagReindexSourceStatus[];
+};
+
 export default function AdminPanelPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -248,6 +278,154 @@ function PaginationStrip({
   );
 }
 
+function GlobalRagIndexCard() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: reindexStatusResponse, isLoading } = useQuery<{ ok: boolean; status: GlobalRagReindexStatus }>({
+    queryKey: ["/api/admin/rag/reindex-global/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/rag/reindex-global/status", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch global RAG reindex status");
+      }
+      return res.json();
+    },
+    refetchInterval: 2500,
+  });
+
+  const startMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/rag/reindex-global/start", { batchSize: 50 });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: data?.message || "Global RAG indexing started" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/rag/reindex-global/status"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: err?.message || "Failed to start global RAG indexing",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const stopMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/rag/reindex-global/stop", {});
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: data?.message || "Stop signal sent" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/rag/reindex-global/status"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: err?.message || "Failed to stop global RAG indexing",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const status = reindexStatusResponse?.status;
+
+  return (
+    <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]" data-testid="global-rag-index-card">
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.3em] font-black text-amber-500">
+              Global RAG Indexing
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Indexes Case Law, Statute Library, and Admin Knowledge Vault automatically in batches of 50.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {status?.running ? (
+              <Button
+                variant="ghost"
+                className="text-red-300 border border-red-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                onClick={() => stopMutation.mutate()}
+                disabled={stopMutation.isPending}
+                data-testid="button-stop-global-rag-index"
+              >
+                {stopMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <X size={14} />}
+                <span>Stop</span>
+              </Button>
+            ) : (
+              <Button
+                className="bg-amber-500 text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                onClick={() => startMutation.mutate()}
+                disabled={startMutation.isPending || isLoading}
+                data-testid="button-start-global-rag-index"
+              >
+                {startMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+                <span>Index All (Batch 50)</span>
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-slate-400 text-xs">
+            <Loader2 className="animate-spin" size={14} />
+            <span>Loading status...</span>
+          </div>
+        ) : status ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="rounded-xl border border-slate-700 bg-[#101a2b] px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Total Docs</p>
+                <p className="text-sm font-bold text-white">{(status.aggregate.totalDocuments || 0).toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-slate-700 bg-[#101a2b] px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Processed</p>
+                <p className="text-sm font-bold text-blue-300">{(status.aggregate.processed || 0).toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-slate-700 bg-[#101a2b] px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Indexed</p>
+                <p className="text-sm font-bold text-emerald-300">{(status.aggregate.indexed || 0).toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-slate-700 bg-[#101a2b] px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Failed</p>
+                <p className="text-sm font-bold text-red-300">{(status.aggregate.failed || 0).toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-[11px] text-slate-400">
+              <span className={status.running ? "text-amber-300 font-bold" : "text-slate-300 font-bold"}>
+                {status.running ? "Running" : "Idle"}
+              </span>
+              <span>•</span>
+              <span>Active Source: {status.activeSourceLabel || "None"}</span>
+            </div>
+
+            <div className="space-y-2">
+              {(status.sources || []).map((source) => (
+                <div key={source.key} className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-bold text-slate-200">{source.label}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {source.processed.toLocaleString()} / {source.totalDocuments.toLocaleString()}
+                    </p>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Indexed {source.indexed.toLocaleString()} • Failed {source.failed.toLocaleString()} • Next offset {source.nextOffset.toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 function StatsSection() {
   const { data: stats, isLoading } = useQuery<SystemStats>({ queryKey: ["/api/admin/stats"] });
   const { data: costData, isLoading: costLoading } = useQuery<CostAnalytics>({ queryKey: ["/api/admin/cost-analytics"] });
@@ -277,6 +455,8 @@ function StatsSection() {
 
   return (
     <div className="space-y-8">
+      <GlobalRagIndexCard />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4" data-testid="stats-grid">
         {statItems.map((item) => (
           <Card key={item.label} className="bg-[#1e293b] border-slate-800 rounded-[2rem]">

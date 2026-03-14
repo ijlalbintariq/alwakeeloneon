@@ -25,10 +25,14 @@ import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-lib
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import {
+  GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
   GLOBAL_CASELAW_RAG_USER_ID,
+  GLOBAL_STATUTE_RAG_USER_ID,
   buildRagContext,
   deleteDocumentVectors,
-  ensureIndexedForGlobalCaseLaw,
+  ensureIndexedForGlobalAdminSources,
+  indexAdminKnowledgeDocument,
+  indexAdminStatuteDocument,
   ensureIndexedForUserDocuments,
   indexAdminCaseLawDocument,
   indexUserDocument,
@@ -561,6 +565,86 @@ type CaseLawReindexJobState = {
   lastError: string | null;
 };
 
+type ReindexBatchResult = {
+  processed: number;
+  indexed: number;
+  failed: number;
+  failures: Array<{ sourceId: number; reason: string }>;
+  nextOffset: number;
+  remaining: number;
+  totalDocuments: number;
+  hasMore: boolean;
+};
+
+type GlobalAdminRagSourceKey = "case-law" | "statute-docs" | "knowledge-vault";
+
+type GlobalAdminRagSourceState = {
+  key: GlobalAdminRagSourceKey;
+  label: string;
+  nextOffset: number;
+  totalDocuments: number;
+  processed: number;
+  indexed: number;
+  failed: number;
+  done: boolean;
+  lastError: string | null;
+};
+
+type GlobalAdminRagReindexJobState = {
+  running: boolean;
+  shouldStop: boolean;
+  batchSize: number;
+  activeSourceIndex: number;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  lastError: string | null;
+  sources: Record<GlobalAdminRagSourceKey, GlobalAdminRagSourceState>;
+};
+
+const GLOBAL_ADMIN_RAG_SOURCE_ORDER: GlobalAdminRagSourceKey[] = [
+  "case-law",
+  "statute-docs",
+  "knowledge-vault",
+];
+
+const ADMIN_CASELAW_CATEGORY_SQL = "replace(replace(replace(lower(coalesce(category, '')), '-', ''), ' ', ''), '_', '')";
+
+function createGlobalAdminRagSourceState(key: GlobalAdminRagSourceKey): GlobalAdminRagSourceState {
+  const labelByKey: Record<GlobalAdminRagSourceKey, string> = {
+    "case-law": "Case Law",
+    "statute-docs": "Statute Library",
+    "knowledge-vault": "Admin Knowledge Vault",
+  };
+  return {
+    key,
+    label: labelByKey[key],
+    nextOffset: 0,
+    totalDocuments: 0,
+    processed: 0,
+    indexed: 0,
+    failed: 0,
+    done: false,
+    lastError: null,
+  };
+}
+
+function createGlobalAdminRagReindexJobState(): GlobalAdminRagReindexJobState {
+  return {
+    running: false,
+    shouldStop: false,
+    batchSize: 50,
+    activeSourceIndex: 0,
+    startedAt: null,
+    finishedAt: null,
+    lastError: null,
+    sources: {
+      "case-law": createGlobalAdminRagSourceState("case-law"),
+      "statute-docs": createGlobalAdminRagSourceState("statute-docs"),
+      "knowledge-vault": createGlobalAdminRagSourceState("knowledge-vault"),
+    },
+  };
+}
+
 const caseLawReindexJob: CaseLawReindexJobState = {
   running: false,
   shouldStop: false,
@@ -575,6 +659,8 @@ const caseLawReindexJob: CaseLawReindexJobState = {
   lastError: null,
 };
 
+const globalAdminRagReindexJob: GlobalAdminRagReindexJobState = createGlobalAdminRagReindexJobState();
+
 function snapshotCaseLawReindexJob() {
   return {
     ...caseLawReindexJob,
@@ -583,16 +669,58 @@ function snapshotCaseLawReindexJob() {
   };
 }
 
-async function reindexCaseLawBatch(limit: number, offset: number): Promise<{
-  processed: number;
-  indexed: number;
-  failed: number;
-  failures: Array<{ adminKnowledgeId: number; reason: string }>;
-  nextOffset: number;
-  remaining: number;
-  totalDocuments: number;
-  hasMore: boolean;
-}> {
+function snapshotGlobalAdminRagReindexJob() {
+  const sourceStates = Object.values(globalAdminRagReindexJob.sources);
+  const aggregate = sourceStates.reduce(
+    (acc, source) => {
+      acc.totalDocuments += source.totalDocuments;
+      acc.processed += source.processed;
+      acc.indexed += source.indexed;
+      acc.failed += source.failed;
+      return acc;
+    },
+    { totalDocuments: 0, processed: 0, indexed: 0, failed: 0 },
+  );
+
+  return {
+    running: globalAdminRagReindexJob.running,
+    shouldStop: globalAdminRagReindexJob.shouldStop,
+    batchSize: globalAdminRagReindexJob.batchSize,
+    activeSource: GLOBAL_ADMIN_RAG_SOURCE_ORDER[globalAdminRagReindexJob.activeSourceIndex] || null,
+    activeSourceLabel: GLOBAL_ADMIN_RAG_SOURCE_ORDER[globalAdminRagReindexJob.activeSourceIndex]
+      ? globalAdminRagReindexJob.sources[GLOBAL_ADMIN_RAG_SOURCE_ORDER[globalAdminRagReindexJob.activeSourceIndex]].label
+      : null,
+    startedAt: globalAdminRagReindexJob.startedAt ? globalAdminRagReindexJob.startedAt.toISOString() : null,
+    finishedAt: globalAdminRagReindexJob.finishedAt ? globalAdminRagReindexJob.finishedAt.toISOString() : null,
+    lastError: globalAdminRagReindexJob.lastError,
+    aggregate,
+    sources: GLOBAL_ADMIN_RAG_SOURCE_ORDER.map((key) => ({ ...globalAdminRagReindexJob.sources[key] })),
+  };
+}
+
+function normalizeAdminKnowledgeCategory(value: string | null | undefined): string {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function isAdminKnowledgeCaseLawCategory(value: string | null | undefined): boolean {
+  return normalizeAdminKnowledgeCategory(value) === "caselaw";
+}
+
+async function withOperationTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutLabel: string): Promise<T> {
+  let timer: NodeJS.Timeout | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(timeoutLabel)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function reindexCaseLawBatch(limit: number, offset: number): Promise<ReindexBatchResult> {
   if (!dbAvailable || !pool) {
     throw new Error("Database unavailable");
   }
@@ -601,40 +729,26 @@ async function reindexCaseLawBatch(limit: number, offset: number): Promise<{
     `
     SELECT id
     FROM admin_knowledge
-    WHERE lower(coalesce(category, '')) = 'case-law'
+    WHERE ${ADMIN_CASELAW_CATEGORY_SQL} = 'caselaw'
     ORDER BY id ASC
     LIMIT $1 OFFSET $2
     `,
     [limit, offset],
   );
   const totalRow = await pool.query(
-    `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE lower(coalesce(category, '')) = 'case-law'`,
+    `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE ${ADMIN_CASELAW_CATEGORY_SQL} = 'caselaw'`,
   );
   const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
 
   let indexed = 0;
   let failed = 0;
-  const failures: Array<{ adminKnowledgeId: number; reason: string }> = [];
-
-  const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, timeoutLabel: string): Promise<T> => {
-    let timer: NodeJS.Timeout | null = null;
-    try {
-      return await Promise.race([
-        promise,
-        new Promise<T>((_, reject) => {
-          timer = setTimeout(() => reject(new Error(timeoutLabel)), timeoutMs);
-        }),
-      ]);
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-  };
+  const failures: Array<{ sourceId: number; reason: string }> = [];
 
   for (const row of rows.rows || []) {
     const adminKnowledgeId = Number((row as any).id);
     if (!Number.isInteger(adminKnowledgeId) || adminKnowledgeId < 1) continue;
     try {
-      const result = await withTimeout(
+      const result = await withOperationTimeout(
         indexAdminCaseLawDocument(adminKnowledgeId),
         CASELAW_RAG_INDEX_DOC_TIMEOUT_MS,
         `Index timeout after ${CASELAW_RAG_INDEX_DOC_TIMEOUT_MS}ms`,
@@ -644,14 +758,147 @@ async function reindexCaseLawBatch(limit: number, offset: number): Promise<{
       } else {
         failed += 1;
         if (failures.length < 20) {
-          failures.push({ adminKnowledgeId, reason: "No chunks generated" });
+          failures.push({ sourceId: adminKnowledgeId, reason: "No chunks generated" });
         }
       }
     } catch (err: any) {
       failed += 1;
       if (failures.length < 20) {
         failures.push({
-          adminKnowledgeId,
+          sourceId: adminKnowledgeId,
+          reason: sanitizeInputText(err?.message || "Indexing failed", 300),
+        });
+      }
+    }
+  }
+
+  const processed = rows.rowCount || 0;
+  const nextOffset = offset + processed;
+  const remaining = Math.max(0, totalDocuments - nextOffset);
+  return {
+    processed,
+    indexed,
+    failed,
+    failures,
+    nextOffset,
+    remaining,
+    totalDocuments,
+    hasMore: remaining > 0,
+  };
+}
+
+async function reindexStatuteBatch(limit: number, offset: number): Promise<ReindexBatchResult> {
+  if (!dbAvailable || !pool) {
+    throw new Error("Database unavailable");
+  }
+
+  const rows = await pool.query(
+    `
+    SELECT id
+    FROM statute_documents
+    ORDER BY id ASC
+    LIMIT $1 OFFSET $2
+    `,
+    [limit, offset],
+  );
+  const totalRow = await pool.query(
+    `SELECT COUNT(*)::int AS total FROM statute_documents`,
+  );
+  const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+
+  let indexed = 0;
+  let failed = 0;
+  const failures: Array<{ sourceId: number; reason: string }> = [];
+
+  for (const row of rows.rows || []) {
+    const statuteDocumentId = Number((row as any).id);
+    if (!Number.isInteger(statuteDocumentId) || statuteDocumentId < 1) continue;
+    try {
+      const result = await withOperationTimeout(
+        indexAdminStatuteDocument(statuteDocumentId),
+        CASELAW_RAG_INDEX_DOC_TIMEOUT_MS,
+        `Index timeout after ${CASELAW_RAG_INDEX_DOC_TIMEOUT_MS}ms`,
+      );
+      if (result.chunks > 0) {
+        indexed += 1;
+      } else {
+        failed += 1;
+        if (failures.length < 20) {
+          failures.push({ sourceId: statuteDocumentId, reason: "No chunks generated" });
+        }
+      }
+    } catch (err: any) {
+      failed += 1;
+      if (failures.length < 20) {
+        failures.push({
+          sourceId: statuteDocumentId,
+          reason: sanitizeInputText(err?.message || "Indexing failed", 300),
+        });
+      }
+    }
+  }
+
+  const processed = rows.rowCount || 0;
+  const nextOffset = offset + processed;
+  const remaining = Math.max(0, totalDocuments - nextOffset);
+  return {
+    processed,
+    indexed,
+    failed,
+    failures,
+    nextOffset,
+    remaining,
+    totalDocuments,
+    hasMore: remaining > 0,
+  };
+}
+
+async function reindexAdminKnowledgeBatch(limit: number, offset: number): Promise<ReindexBatchResult> {
+  if (!dbAvailable || !pool) {
+    throw new Error("Database unavailable");
+  }
+
+  const rows = await pool.query(
+    `
+    SELECT id
+    FROM admin_knowledge
+    WHERE ${ADMIN_CASELAW_CATEGORY_SQL} <> 'caselaw'
+    ORDER BY id ASC
+    LIMIT $1 OFFSET $2
+    `,
+    [limit, offset],
+  );
+  const totalRow = await pool.query(
+    `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE ${ADMIN_CASELAW_CATEGORY_SQL} <> 'caselaw'`,
+  );
+  const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+
+  let indexed = 0;
+  let failed = 0;
+  const failures: Array<{ sourceId: number; reason: string }> = [];
+
+  for (const row of rows.rows || []) {
+    const adminKnowledgeId = Number((row as any).id);
+    if (!Number.isInteger(adminKnowledgeId) || adminKnowledgeId < 1) continue;
+    try {
+      const result = await withOperationTimeout(
+        indexAdminKnowledgeDocument(adminKnowledgeId),
+        CASELAW_RAG_INDEX_DOC_TIMEOUT_MS,
+        `Index timeout after ${CASELAW_RAG_INDEX_DOC_TIMEOUT_MS}ms`,
+      );
+      if (result.chunks > 0) {
+        indexed += 1;
+      } else {
+        failed += 1;
+        if (failures.length < 20) {
+          failures.push({ sourceId: adminKnowledgeId, reason: "No chunks generated" });
+        }
+      }
+    } catch (err: any) {
+      failed += 1;
+      if (failures.length < 20) {
+        failures.push({
+          sourceId: adminKnowledgeId,
           reason: sanitizeInputText(err?.message || "Indexing failed", 300),
         });
       }
@@ -674,13 +921,31 @@ async function reindexCaseLawBatch(limit: number, offset: number): Promise<{
 }
 
 function maybeIndexAdminCaseLawInBackground(args: { adminKnowledgeId: number; category?: string | null }) {
-  if (String(args.category || "").toLowerCase() !== "case-law") return;
-  runInBackground(`rag-admin-case-law:${args.adminKnowledgeId}`, async () => {
+  const isCaseLaw = isAdminKnowledgeCaseLawCategory(args.category);
+  const label = isCaseLaw ? "case-law" : "knowledge";
+  runInBackground(`rag-admin-${label}:${args.adminKnowledgeId}`, async () => {
     try {
-      await indexAdminCaseLawDocument(args.adminKnowledgeId);
+      if (isCaseLaw) {
+        await indexAdminCaseLawDocument(args.adminKnowledgeId);
+      } else {
+        await indexAdminKnowledgeDocument(args.adminKnowledgeId);
+      }
     } catch (err: any) {
       console.warn(
-        `[RAG] Could not index admin case-law ${args.adminKnowledgeId}:`,
+        `[RAG] Could not index admin ${label} ${args.adminKnowledgeId}:`,
+        sanitizeInputText(err?.message || "unknown", 220),
+      );
+    }
+  });
+}
+
+function maybeIndexStatuteDocumentInBackground(args: { statuteDocumentId: number }) {
+  runInBackground(`rag-admin-statute:${args.statuteDocumentId}`, async () => {
+    try {
+      await indexAdminStatuteDocument(args.statuteDocumentId);
+    } catch (err: any) {
+      console.warn(
+        `[RAG] Could not index statute document ${args.statuteDocumentId}:`,
         sanitizeInputText(err?.message || "unknown", 220),
       );
     }
@@ -3135,7 +3400,10 @@ export async function registerRoutes(
         processed: batch.processed,
         indexed: batch.indexed,
         failed: batch.failed,
-        failures: batch.failures,
+        failures: batch.failures.map((failure) => ({
+          adminKnowledgeId: failure.sourceId,
+          reason: failure.reason,
+        })),
         limit,
         offset,
         nextOffset: batch.nextOffset,
@@ -3168,6 +3436,12 @@ export async function registerRoutes(
         return res.status(409).json({
           message: "Case-law reindex is already running",
           status: snapshotCaseLawReindexJob(),
+        });
+      }
+      if (globalAdminRagReindexJob.running) {
+        return res.status(409).json({
+          message: "Global admin RAG reindex is running. Stop it before starting case-law-only reindex.",
+          status: snapshotGlobalAdminRagReindexJob(),
         });
       }
 
@@ -3266,6 +3540,138 @@ export async function registerRoutes(
     });
   });
 
+  app.post("/api/admin/rag/reindex-global/start", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!dbAvailable || !pool) {
+      return res.status(503).json({ message: "Database unavailable" });
+    }
+
+    try {
+      const parsed = z.object({
+        batchSize: z.number().int().min(1).max(100).optional(),
+      }).parse(req.body || {});
+
+      if (globalAdminRagReindexJob.running) {
+        return res.status(409).json({
+          message: "Global admin RAG reindex is already running",
+          status: snapshotGlobalAdminRagReindexJob(),
+        });
+      }
+      if (caseLawReindexJob.running) {
+        return res.status(409).json({
+          message: "Case-law-only reindex is running. Stop it before starting global reindex.",
+          status: snapshotCaseLawReindexJob(),
+        });
+      }
+
+      const batchSize = parsed.batchSize ?? 50;
+      const freshState = createGlobalAdminRagReindexJobState();
+      freshState.running = true;
+      freshState.batchSize = batchSize;
+      freshState.startedAt = new Date();
+      freshState.finishedAt = null;
+
+      Object.assign(globalAdminRagReindexJob, freshState);
+
+      const actorUserId = getUserId(req);
+      await logAuditEvent("admin.rag.reindexGlobal.start", actorUserId, null, {
+        batchSize,
+      });
+
+      runInBackground("rag-admin-global-full-reindex", async () => {
+        try {
+          while (!globalAdminRagReindexJob.shouldStop) {
+            const sourceKey = GLOBAL_ADMIN_RAG_SOURCE_ORDER[globalAdminRagReindexJob.activeSourceIndex];
+            if (!sourceKey) break;
+
+            const sourceState = globalAdminRagReindexJob.sources[sourceKey];
+            if (sourceState.done) {
+              globalAdminRagReindexJob.activeSourceIndex += 1;
+              continue;
+            }
+
+            const batch = sourceKey === "case-law"
+              ? await reindexCaseLawBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset)
+              : sourceKey === "statute-docs"
+                ? await reindexStatuteBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset)
+                : await reindexAdminKnowledgeBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset);
+
+            sourceState.totalDocuments = batch.totalDocuments;
+            sourceState.processed += batch.processed;
+            sourceState.indexed += batch.indexed;
+            sourceState.failed += batch.failed;
+            sourceState.nextOffset = batch.nextOffset;
+            if (batch.failures.length > 0) {
+              sourceState.lastError = batch.failures[0].reason;
+            }
+
+            if (!batch.hasMore || batch.processed <= 0) {
+              sourceState.done = true;
+              globalAdminRagReindexJob.activeSourceIndex += 1;
+              continue;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 120));
+          }
+        } catch (err: any) {
+          globalAdminRagReindexJob.lastError = sanitizeInputText(err?.message || "Unknown error", 500);
+        } finally {
+          globalAdminRagReindexJob.running = false;
+          globalAdminRagReindexJob.finishedAt = new Date();
+          try {
+            const snapshot = snapshotGlobalAdminRagReindexJob();
+            await logAuditEvent("admin.rag.reindexGlobal.finish", actorUserId, null, {
+              stopped: globalAdminRagReindexJob.shouldStop,
+              lastError: globalAdminRagReindexJob.lastError,
+              aggregate: snapshot.aggregate,
+              sources: snapshot.sources,
+            });
+          } catch {
+            console.warn("[RAG] Failed to write reindexGlobal.finish audit log");
+          }
+          globalAdminRagReindexJob.shouldStop = false;
+        }
+      });
+
+      return res.json({
+        ok: true,
+        message: "Global admin RAG reindex started in background",
+        status: snapshotGlobalAdminRagReindexJob(),
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error starting global admin RAG reindex:", err);
+      return res.status(500).json({ message: "Failed to start global admin reindex job" });
+    }
+  });
+
+  app.get("/api/admin/rag/reindex-global/status", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    res.json({
+      ok: true,
+      status: snapshotGlobalAdminRagReindexJob(),
+    });
+  });
+
+  app.post("/api/admin/rag/reindex-global/stop", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!globalAdminRagReindexJob.running) {
+      return res.json({
+        ok: true,
+        message: "No running global admin reindex job",
+        status: snapshotGlobalAdminRagReindexJob(),
+      });
+    }
+    globalAdminRagReindexJob.shouldStop = true;
+    return res.json({
+      ok: true,
+      message: "Stop signal sent. Global job will stop after current batch.",
+      status: snapshotGlobalAdminRagReindexJob(),
+    });
+  });
+
   app.post("/api/rag/ask", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -3292,12 +3698,29 @@ export async function registerRoutes(
         indexedNow: number;
         failed: number;
       } | null = null;
-      let lazyGlobalCaseLawSummary: {
-        candidates: number;
-        alreadyIndexed: number;
-        attempted: number;
+      let lazyGlobalAdminSummary: {
+        caseLaw: {
+          candidates: number;
+          alreadyIndexed: number;
+          attempted: number;
+          indexedNow: number;
+          failed: number;
+        };
+        statutes: {
+          candidates: number;
+          alreadyIndexed: number;
+          attempted: number;
+          indexedNow: number;
+          failed: number;
+        };
+        adminKnowledge: {
+          candidates: number;
+          alreadyIndexed: number;
+          attempted: number;
+          indexedNow: number;
+          failed: number;
+        };
         indexedNow: number;
-        failed: number;
       } | null = null;
 
       if (retrieval.matches.length === 0) {
@@ -3307,11 +3730,13 @@ export async function registerRoutes(
           maxToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_DOCS || 3),
         });
         if (!parsed.documentIds || parsed.documentIds.length === 0) {
-          lazyGlobalCaseLawSummary = await ensureIndexedForGlobalCaseLaw({
-            maxToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_CASELAW || 5),
+          lazyGlobalAdminSummary = await ensureIndexedForGlobalAdminSources({
+            maxCaseLawToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_CASELAW || 5),
+            maxStatuteToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_STATUTES || 3),
+            maxKnowledgeToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_ADMIN_KNOWLEDGE || 3),
           });
         }
-        if (lazyIndexSummary.indexedNow > 0 || (lazyGlobalCaseLawSummary?.indexedNow || 0) > 0) {
+        if (lazyIndexSummary.indexedNow > 0 || (lazyGlobalAdminSummary?.indexedNow || 0) > 0) {
           retrieval = await retrieveForQuery({
             userId,
             query: parsed.query,
@@ -3332,7 +3757,8 @@ export async function registerRoutes(
             matched: retrieval.matches.length,
             threshold: Number(process.env.RAG_MIN_SCORE || 0.5),
             lazyIndex: lazyIndexSummary,
-            lazyGlobalCaseLaw: lazyGlobalCaseLawSummary,
+            lazyGlobalCaseLaw: lazyGlobalAdminSummary?.caseLaw || null,
+            lazyGlobalAdmin: lazyGlobalAdminSummary,
           },
           model: { provider: "none", name: "none" },
         });
@@ -3359,8 +3785,20 @@ RAG POLICY (STRICT):
       const citations = retrieval.matches.slice(0, 5).map((m) => ({
         documentId: m.ragDocumentId,
         sourceDocumentId: m.sourceDocumentId,
-        sourceScope: m.metadata?.sourceType === "admin-case-law" ? "global-case-law" : "user-document",
-        sourceUserId: m.metadata?.sourceType === "admin-case-law" ? GLOBAL_CASELAW_RAG_USER_ID : userId,
+        sourceScope: m.metadata?.sourceType === "admin-case-law"
+          ? "global-case-law"
+          : m.metadata?.sourceType === "admin-statute"
+            ? "global-statute"
+            : m.metadata?.sourceType === "admin-knowledge"
+              ? "global-knowledge"
+              : "user-document",
+        sourceUserId: m.metadata?.sourceType === "admin-case-law"
+          ? GLOBAL_CASELAW_RAG_USER_ID
+          : m.metadata?.sourceType === "admin-statute"
+            ? GLOBAL_STATUTE_RAG_USER_ID
+            : m.metadata?.sourceType === "admin-knowledge"
+              ? GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID
+              : userId,
         title: m.title,
         chunkIndex: m.chunkIndex,
         score: Number(m.score.toFixed(4)),
@@ -3377,7 +3815,8 @@ RAG POLICY (STRICT):
           matched: retrieval.matches.length,
           threshold: Number(process.env.RAG_MIN_SCORE || 0.5),
           lazyIndex: lazyIndexSummary,
-          lazyGlobalCaseLaw: lazyGlobalCaseLawSummary,
+          lazyGlobalCaseLaw: lazyGlobalAdminSummary?.caseLaw || null,
+          lazyGlobalAdmin: lazyGlobalAdminSummary,
         },
         model: { provider, name: result.model },
       });
@@ -5951,9 +6390,10 @@ RULES:
         await Promise.allSettled(keys.map((key) => deleteR2Object(key)));
       }
       await storage.deleteAdminKnowledge(id);
-      if (String(knowledgeDoc?.category || "").toLowerCase() === "case-law") {
-        await deleteDocumentVectors(id, GLOBAL_CASELAW_RAG_USER_ID);
-      }
+      const sourceUserId = isAdminKnowledgeCaseLawCategory(knowledgeDoc?.category)
+        ? GLOBAL_CASELAW_RAG_USER_ID
+        : GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID;
+      await deleteDocumentVectors(id, sourceUserId);
       await logAuditEvent("admin.knowledge.delete", actorUserId, null, { id });
       res.sendStatus(204);
     } catch (err) {
@@ -5970,9 +6410,15 @@ RULES:
       const fileMetas = await storage.getAdminKnowledgeFiles();
       const count = await storage.deleteAllAdminKnowledge();
       const caseLawIds = allKnowledge
-        .filter((doc) => String(doc.category || "").toLowerCase() === "case-law")
+        .filter((doc) => isAdminKnowledgeCaseLawCategory(doc.category))
         .map((doc) => doc.id);
-      await Promise.allSettled(caseLawIds.map((id) => deleteDocumentVectors(id, GLOBAL_CASELAW_RAG_USER_ID)));
+      const nonCaseLawIds = allKnowledge
+        .filter((doc) => !isAdminKnowledgeCaseLawCategory(doc.category))
+        .map((doc) => doc.id);
+      await Promise.allSettled([
+        ...caseLawIds.map((id) => deleteDocumentVectors(id, GLOBAL_CASELAW_RAG_USER_ID)),
+        ...nonCaseLawIds.map((id) => deleteDocumentVectors(id, GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID)),
+      ]);
       await Promise.allSettled(
         fileMetas
           .filter((item) => item.provider === "r2")
@@ -6716,6 +7162,7 @@ RULES:
           category,
           uploadedBy: userId,
         });
+        maybeIndexStatuteDocumentInBackground({ statuteDocumentId: doc.id });
         await uploadStatuteDocumentFileToR2({
           docId: doc.id,
           userId,
@@ -6773,6 +7220,7 @@ RULES:
         await Promise.allSettled(keys.map((key) => deleteR2Object(key)));
       }
       await storage.deleteStatuteDocument(id);
+      await deleteDocumentVectors(id, GLOBAL_STATUTE_RAG_USER_ID);
       await logAuditEvent("admin.statuteDocs.delete", actorUserId, null, { id });
       res.sendStatus(204);
     } catch (err) {
@@ -6786,7 +7234,9 @@ RULES:
     try {
       const actorUserId = getUserId(req);
       const fileMetas = await storage.getStatuteDocumentFiles();
+      const allStatutes = await storage.getAllStatuteDocuments();
       const count = await storage.deleteAllStatuteDocuments();
+      await Promise.allSettled(allStatutes.map((doc) => deleteDocumentVectors(doc.id, GLOBAL_STATUTE_RAG_USER_ID)));
       await Promise.allSettled(
         fileMetas
           .filter((item) => item.provider === "r2")
