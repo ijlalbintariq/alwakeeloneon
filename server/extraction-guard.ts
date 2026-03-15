@@ -141,7 +141,10 @@ async function ocrPdf(filePath, options) {
   const dpi = Math.min(Math.max(120, Number(options.dpi || 220)), 600);
   const timeoutMs = Math.min(Math.max(3000, Number(options.timeoutMs || 120000)), 600000);
   const language = String(options.language || "eng+urd").trim() || "eng+urd";
-  const tempDir = path.join(os.tmpdir(), \`alwakeelo-worker-ocr-\${Date.now()}-\${crypto.randomUUID()}\`);
+  const tempDir = path.join(
+    os.tmpdir(),
+    "alwakeelo-worker-ocr-" + Date.now() + "-" + crypto.randomUUID(),
+  );
   const imagePrefix = path.join(tempDir, "page");
   await fs.mkdir(tempDir, { recursive: true });
 
@@ -188,7 +191,7 @@ async function main() {
   } else if (kind === "pdf-ocr") {
     payload = await ocrPdf(inputPath, options);
   } else {
-    throw new Error(\`Unknown extraction worker task kind: \${kind}\`);
+    throw new Error("Unknown extraction worker task kind: " + kind);
   }
 
   process.stdout.write(JSON.stringify({ ok: true, payload }));
