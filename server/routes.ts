@@ -4664,6 +4664,75 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
     },
   };
 
+  const LEGAL_DRAFTING_HEADING_ORDER: Record<LegalDraftingDocType, string[]> = {
+    "civil-suit-plaint": [
+      "Cause Title (Court, Parties, Suit Title)",
+      "Facts Constituting Cause of Action (chronological, numbered)",
+      "Jurisdiction",
+      "Valuation and Court Fee",
+      "Limitation (if relevant)",
+      "Prayer",
+      "Verification",
+      "Annexures/List of Documents (if applicable)",
+    ],
+    "civil-misc-application": [
+      "Cause Title and Main Case Reference",
+      "Application Title (under correct section/order)",
+      "Brief Background Facts",
+      "Grounds",
+      "Urgency/Interim Necessity (if any)",
+      "Prayer",
+      "Verification",
+    ],
+    "sessions-bail-application": [
+      "Cause Title and Bail Provision Invoked",
+      "FIR Details (No., Date, Police Station, Sections)",
+      "Accused Role and Brief Facts",
+      "Grounds for Bail (numbered)",
+      "Undertaking to Join Trial / Surety Readiness",
+      "Prayer",
+      "Verification",
+    ],
+    "high-court-writ-petition": [
+      "Cause Title (Constitutional Petition under Article 199)",
+      "Parties and Jurisdiction",
+      "Brief Facts in Chronology",
+      "Maintainability and Alternate Remedy Position",
+      "Grounds (without lawful authority / no legal effect, etc.)",
+      "Interim Relief (if required)",
+      "Main Prayer and Any Other Relief",
+      "Verification",
+    ],
+    "high-court-civil-appeal": [
+      "Cause Title and Memorandum of Civil Appeal",
+      "Impugned Judgment/Decree Details",
+      "Limitation Statement",
+      "Brief Facts",
+      "Grounds of Appeal (concise, numbered, non-argumentative)",
+      "Prayer",
+      "Verification",
+      "Annexures/Certified Copy Reference",
+    ],
+    "supreme-court-cpla": [
+      "Cause Title (Supreme Court of Pakistan)",
+      "Civil Petition for Leave to Appeal (CPLA)",
+      "Impugned Judgment/Order Details",
+      "Questions of Law of Public Importance",
+      "Grounds (concise, numbered)",
+      "Prayer for Grant of Leave (and interim relief if needed)",
+      "Verification/Affidavit Placeholder",
+      "Annexures/List of Filed Documents",
+    ],
+  };
+
+  const PAKISTANI_JUDICIAL_FORMAT_GUIDANCE = `PAKISTANI JUDICIAL FORMAT ANCHORS (apply strictly):
+- Civil Suit (Plaint): align pleadings with Order VII Rule 1 CPC essentials (court, parties, cause of action, jurisdiction, valuation/court fee, relief, verification).
+- High Court Civil Appeal: align memorandum structure with Order XLI Rules 1-2 CPC (impugned decree details, concise numbered grounds, clear relief, avoid argument-heavy narrative in grounds).
+- High Court Writ: structure as Article 199 constitutional petition with jurisdiction/maintainability, impugned action, legal grounds, and precise prayer.
+- Sessions Bail: draft under Section 497/498 Cr.P.C as applicable; include FIR particulars, custody and bail grounds (further inquiry/parity/delay), and undertaking to attend trial.
+- Supreme Court CPLA: follow modern Supreme Court leave-petition structure (questions of law/public importance, concise grounds, prayer for leave, annexure discipline).
+- Use formal Pakistani court drafting style: numbered paragraphs, neutral legal tone, precise statutory references, and placeholders for missing facts.`;
+
   function normalizeLegalDraftingDocType(
     raw: string | undefined | null,
     prompt: string,
@@ -4849,6 +4918,9 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
 
         const selectedDocType = normalizeLegalDraftingDocType(documentType, safePrompt);
         const profile = LEGAL_DRAFTING_DOC_TYPES[selectedDocType];
+        const headingOrder = LEGAL_DRAFTING_HEADING_ORDER[selectedDocType]
+          .map((heading, index) => `${index + 1}) ${heading}`)
+          .join("\n");
 
         const sysInstruction = `${getLegalSystemPrompt()}
 
@@ -4869,9 +4941,15 @@ TARGET FILING: ${profile.label}
 DRAFTING CHECKLIST:
 ${profile.checklist}
 
+${PAKISTANI_JUDICIAL_FORMAT_GUIDANCE}
+
+MANDATORY HEADING ORDER (use this order unless user provides court-specific variation):
+${headingOrder}
+
 OUTPUT REQUIREMENTS:
 - Formal Pakistani court style.
 - Proper headings, numbered grounds/facts, and clear prayer.
+- Follow court-ready pleading format, not advisory prose.
 - Use placeholders where facts are missing (e.g., [Date], [Court], [Party Name]).
 - Return plain text only.`;
 
