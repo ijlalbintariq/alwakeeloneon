@@ -1196,6 +1196,82 @@ async function callStandardAISimple(
   return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens, options);
 }
 
+async function callApexAIWithFallback(
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+  preferredModel: ApexModel | null,
+  allowedModels: ApexModel[],
+  maxTokens: number,
+): Promise<{ text: string; reasoning?: string; model: string }> {
+  if (!isApexAvailable()) {
+    throw new Error("Apex AI is not configured");
+  }
+  if (allowedModels.length === 0) {
+    throw new Error("No Apex models are available for this tier");
+  }
+
+  const primaryModel = preferredModel && allowedModels.includes(preferredModel)
+    ? preferredModel
+    : allowedModels[0];
+  const primaryCandidates = Array.from(new Set([primaryModel, ...allowedModels])) as ApexModel[];
+
+  let responseContent = "";
+  let responseReasoning: string | undefined;
+  let responseModel = "";
+  let lastKimiError: unknown;
+  let primarySucceeded = false;
+  const apexStartedAt = Date.now();
+
+  for (let i = 0; i < primaryCandidates.length; i++) {
+    const kimi = primaryCandidates[i];
+    try {
+      const result = await withTimeout(
+        `Kimi(${kimi})`,
+        MODEL_TIMEOUT_MS.apexPrimary,
+        () => chatWithApex({
+          model: kimi,
+          messages,
+          maxTokens,
+        }),
+      );
+      responseContent = result.content;
+      responseReasoning = result.reasoning;
+      responseModel = result.model;
+      primarySucceeded = true;
+      console.log(`[AI Routing][apex] Primary Kimi(${kimi}) succeeded in ${Date.now() - apexStartedAt}ms`);
+      break;
+    } catch (kimiErr) {
+      lastKimiError = kimiErr;
+      const nextKimi = primaryCandidates[i + 1];
+      if (nextKimi) {
+        logModelSwitch("apex", `Kimi(${kimi})`, `Kimi(${nextKimi})`, kimiErr);
+      }
+    }
+  }
+
+  if (!primarySucceeded) {
+    if (isDeepSeekAvailable()) {
+      logModelSwitch("apex", "Kimi", "DeepSeek Pro", lastKimiError);
+      const dsResult = await withTimeout(
+        "DeepSeek Pro",
+        MODEL_TIMEOUT_MS.apexFallback,
+        () => chatWithDeepSeekPro({ messages, maxTokens }),
+      );
+      responseContent = dsResult.content;
+      responseReasoning = undefined;
+      responseModel = dsResult.model;
+      console.log(`[AI Routing][apex] Fallback DeepSeek Pro succeeded in ${Date.now() - apexStartedAt}ms`);
+    } else {
+      throw lastKimiError || new Error("All Kimi models failed and DeepSeek Pro fallback is unavailable.");
+    }
+  }
+
+  return {
+    text: responseContent,
+    reasoning: responseReasoning,
+    model: responseModel,
+  };
+}
+
 type ChatRouteMode = "standard" | "turbo";
 
 function normalizeTier(tierRaw: string | undefined | null): "free" | "standard" | "pro" | "chamber" | "enterprise" {
@@ -4883,11 +4959,26 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
         messages: userMessages,
         type,
         moduleIntent: moduleIntentRaw,
-      } = body as { messages: Array<{ role: string; content: string }>; type?: string; moduleIntent?: string };
+        aiMode: aiModeRaw,
+        apexModel: apexModelRaw,
+        turbo: turboRaw,
+      } = body as {
+        messages: Array<{ role: string; content: string }>;
+        type?: string;
+        moduleIntent?: string;
+        aiMode?: string;
+        apexModel?: string;
+        turbo?: boolean | string;
+      };
       const moduleProfile = getModuleProfile(type);
       const moduleIntent = typeof moduleIntentRaw === "string" ? (moduleIntentRaw as ModuleIntent) : undefined;
       const requestedStream = body.stream === true || body.stream === "true";
-      const useStream = requestedStream && moduleProfile.modelStrategy.stream;
+      const requestedAiMode = typeof aiModeRaw === "string" ? aiModeRaw.trim().toLowerCase() : "";
+      const requestedTurbo = requestedAiMode === "turbo" || turboRaw === true || turboRaw === "true";
+      const rawApexModel = typeof apexModelRaw === "string" ? apexModelRaw.trim().toLowerCase() : "";
+      const requestedApexModelRaw = ["apex", "apex-pro", "apex-agent"].includes(rawApexModel)
+        ? rawApexModel
+        : (["apex", "apex-pro", "apex-agent"].includes(requestedAiMode) ? requestedAiMode : "");
 
       const files = req.files as Express.Multer.File[] | undefined;
       let attachmentContext = "";
@@ -5081,15 +5172,70 @@ The user has attached the following documents for your reference. Analyze them c
           console.warn("[StyleMemory] Retrieval failed for chat route:", getErrorMessage(styleErr));
         }
       }
-      const { route: selectedRoute, downgraded } = resolveModuleRoute(
+      const moduleRoute = resolveModuleRoute(
         moduleProfile.modelStrategy.primary,
         moduleProfile.modelStrategy.fallback,
         userTier,
       );
-      let usedModel = selectedRoute === "turbo" ? getDeepSeekModelName() : getGroqModelName();
+      let selectedRoute: ChatRouteMode | "apex" = moduleRoute.route;
+      let downgraded = moduleRoute.downgraded;
+      let selectedApexModel: ApexModel | null = null;
+      const normalizedTier = normalizeTier(userTier);
+
+      if (requestedApexModelRaw) {
+        if (!isApexAllowedForTier(userTier)) {
+          return res.status(403).json({ message: `Your ${normalizedTier} plan does not include Apex mode` });
+        }
+        if (!isApexAvailable()) {
+          return res.status(503).json({ message: "Apex AI is not configured" });
+        }
+        const allowedApexModels = getApexModelsForTier(normalizedTier).map((m) => m.id as ApexModel);
+        if (allowedApexModels.length === 0) {
+          return res.status(403).json({ message: `No Apex models are available for your ${normalizedTier} plan` });
+        }
+        if (requestedApexModelRaw === "apex") {
+          selectedApexModel = allowedApexModels[0];
+        } else if (allowedApexModels.includes(requestedApexModelRaw as ApexModel)) {
+          selectedApexModel = requestedApexModelRaw as ApexModel;
+        } else {
+          return res.status(403).json({ message: `Your ${normalizedTier} plan does not include access to this Apex model` });
+        }
+
+        const tierPlan = getTierPlan(normalizedTier);
+        const apexMonthlyCap = Math.max(0, Number(tierPlan.apexMonthlyCap || 0));
+        const apexUsedThisMonth = await storage.getMonthlyUsageCountByFeature(userId, "chat-apex");
+        if (apexMonthlyCap > 0 && apexUsedThisMonth >= apexMonthlyCap) {
+          return res.status(429).json({
+            message: `Apex monthly cap reached (${apexMonthlyCap}/${apexMonthlyCap}) on ${tierPlan.label} plan. Use Standard/Turbo or upgrade.`,
+            cap: apexMonthlyCap,
+            used: apexUsedThisMonth,
+          });
+        }
+
+        selectedRoute = "apex";
+        downgraded = false;
+      } else if (requestedAiMode === "standard") {
+        selectedRoute = "standard";
+        downgraded = false;
+      } else if (requestedTurbo) {
+        if (isTurboAllowedForTier(userTier)) {
+          selectedRoute = "turbo";
+          downgraded = false;
+        } else {
+          downgraded = true;
+        }
+      }
+
+      let usedModel = selectedRoute === "apex"
+        ? (selectedApexModel || "apex")
+        : selectedRoute === "turbo"
+          ? getDeepSeekModelName()
+          : getGroqModelName();
       const featureKey = moduleProfile.modelStrategy.tokenLimitKey;
       const featureTokenLimit = TOKEN_LIMITS[featureKey] || TOKEN_LIMITS.chat;
-      const planModeCap = getModeOutputCap(userTier, selectedRoute);
+      const planModeCap = selectedRoute === "apex"
+        ? getModeOutputCap(userTier, "apex")
+        : getModeOutputCap(userTier, selectedRoute);
       const tokenLimit = directMode
         ? 128
         : Math.min(featureTokenLimit, planModeCap > 0 ? planModeCap : featureTokenLimit);
@@ -5100,15 +5246,19 @@ The user has attached the following documents for your reference. Analyze them c
         : KNOWLEDGE_PROMPT_TOKEN_BUDGET;
       const boundedKnowledgeContext = trimTextToTokenBudget(knowledgeContext, knowledgeTokensBudget);
       const systemPromptFull = systemPrompt + boundedKnowledgeContext + (styleContext ? `\n\nPERSONAL STYLE MEMORY (generation-only):\n${styleContext}` : "");
-      const routingPath: string[] = [`profile:${moduleType}`, `route:${selectedRoute}`];
+      const useStream = requestedStream && moduleProfile.modelStrategy.stream && selectedRoute !== "apex";
+      const routeLabel = selectedRoute === "apex" ? `apex:${selectedApexModel || "auto"}` : selectedRoute;
+      const routingPath: string[] = [`profile:${moduleType}`, `route:${routeLabel}`];
+      if (selectedRoute === "apex" && selectedApexModel) routingPath.push(`apexModel:${selectedApexModel}`);
       if (downgraded) routingPath.push("policy-fallback:true");
       if (directMode) routingPath.push("direct-mode:true");
 
       const cacheRaw = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
       const styleCacheTag = styleContext ? hashQuery("style-context", styleContext).slice(0, 12) : "none";
-      const cacheKey = `${cacheRaw}::type=${featureKey}::intent=${moduleIntent || "none"}::profile=${moduleType}::route=${selectedRoute}::direct=${directMode ? "1" : "0"}::style=${styleCacheTag}`;
+      const cacheKey = `${cacheRaw}::type=${featureKey}::intent=${moduleIntent || "none"}::profile=${moduleType}::route=${routeLabel}::direct=${directMode ? "1" : "0"}::style=${styleCacheTag}`;
       const normalized = normalizeQuery(cacheKey);
       const hash = hashQuery("ai-chat", normalized);
+      const usageFeatureKey = selectedRoute === "apex" ? "chat-apex" : featureKey;
 
       try {
         const cached = await storage.getCachedResponse("ai-chat", hash);
@@ -5210,7 +5360,7 @@ The user has attached the following documents for your reference. Analyze them c
 
         if (fullContent) {
           const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
-          await logUsageCost(userId, featureKey, usedModel, inputText, fullContent);
+          await logUsageCost(userId, usageFeatureKey, usedModel, inputText, fullContent);
           try {
             await storage.setCachedResponse({
               endpoint: "ai-chat",
@@ -5223,8 +5373,27 @@ The user has attached the following documents for your reference. Analyze them c
         return;
       }
 
-      const aiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
-      const result = await aiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
+      let result: { text: string; model: string };
+      if (selectedRoute === "apex") {
+        const allowedApexModels = getApexModelsForTier(normalizedTier).map((m) => m.id as ApexModel);
+        if (!selectedApexModel) {
+          selectedApexModel = allowedApexModels[0] || null;
+        }
+        if (!selectedApexModel) {
+          return res.status(403).json({ message: `No Apex models are available for your ${normalizedTier} plan` });
+        }
+        const apexMessages = buildMessages(systemPromptFull, geminiContents);
+        const apexResult = await callApexAIWithFallback(
+          apexMessages,
+          selectedApexModel,
+          allowedApexModels,
+          tokenLimit,
+        );
+        result = { text: apexResult.text, model: apexResult.model };
+      } else {
+        const baseAiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
+        result = await baseAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
+      }
       usedModel = result.model;
       routingPath.push(`model:${usedModel}`);
       let completion = result.text;
@@ -5241,11 +5410,12 @@ The user has attached the following documents for your reference. Analyze them c
       if (moduleType === "contract-drafting" && (moduleIntent === "contract.clauseSuggest" || moduleIntent === "contract.redline")) {
         let normalizedContractJson = normalizeStrictContractJson(moduleIntent, completion);
         if (!normalizedContractJson.valid) {
+          const repairAiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
           const repairPrompt =
             moduleIntent === "contract.clauseSuggest"
               ? `Repair the response into STRICT JSON format: {"suggestions":[{"title":"...","subtitle":"...","prompt":"..."}]}. Return ONLY JSON.\n\nOriginal output:\n${completion}`
               : `Repair the response into STRICT JSON format: {"edits":[{"title":"...","rationale":"...","originalSnippet":"...","suggestedText":"..."}]}. Return ONLY JSON.\n\nOriginal output:\n${completion}`;
-          const repairResult = await aiCall(systemPromptFull, [{ role: "user", parts: [{ text: repairPrompt }] }], tokenLimit, { timeoutProfile: "analysis", temperature: 0.2 });
+          const repairResult = await repairAiCall(systemPromptFull, [{ role: "user", parts: [{ text: repairPrompt }] }], tokenLimit, { timeoutProfile: "analysis", temperature: 0.2 });
           usedModel = repairResult.model;
           routingPath.push(`repair:${usedModel}`);
           normalizedContractJson = normalizeStrictContractJson(moduleIntent, repairResult.text);
@@ -5254,7 +5424,7 @@ The user has attached the following documents for your reference. Analyze them c
       }
 
       const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
-      await logUsageCost(userId, featureKey, usedModel, inputText, completion);
+      await logUsageCost(userId, usageFeatureKey, usedModel, inputText, completion);
       try {
         await storage.setCachedResponse({
           endpoint: "ai-chat",

@@ -342,22 +342,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         return;
       }
 
-      if (selectedApexModel && apexData?.available) {
-        response = await fetch("/api/apex/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            model: selectedApexModel,
-            message: text,
-          }),
-        });
-      } else if (currentFiles.length > 0) {
+      const requestedMode = isApexMode
+        ? "apex"
+        : (turboMode && canUseTurbo ? "turbo" : "standard");
+
+      if (currentFiles.length > 0) {
         const formData = new FormData();
         formData.append("messages", JSON.stringify(updated.map((m) => ({ role: m.role, content: m.content }))));
         formData.append("type", type);
         formData.append("moduleIntent", "chat.general");
         formData.append("turbo", String(turboMode && canUseTurbo));
+        formData.append("aiMode", requestedMode);
+        if (selectedApexModel) {
+          formData.append("apexModel", selectedApexModel);
+        }
         formData.append("stream", "true");
         currentFiles.forEach(file => formData.append("attachments", file));
         response = await fetch("/api/ai/chat", {
@@ -375,6 +373,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             type,
             moduleIntent: "chat.general",
             turbo: turboMode && canUseTurbo,
+            aiMode: requestedMode,
+            apexModel: selectedApexModel || undefined,
             stream: true,
           }),
         });
