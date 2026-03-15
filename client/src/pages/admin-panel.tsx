@@ -1540,6 +1540,7 @@ function CaseLawSection() {
   const CASELAW_EXTRACT_MAX_RETRIES = 2;
   const CASELAW_CLIENT_EXTRACT_MAX_BYTES = 8 * 1024 * 1024;
   const CASELAW_CLIENT_PARALLEL_BATCH = 2;
+  const CASELAW_SAVE_BULK_BATCH = 120;
   const CASELAW_PDF_FAST_PATH_ENABLED = String(import.meta.env.VITE_CASELAW_PDF_FAST_PATH || "true").toLowerCase() !== "false";
   const CASELAW_PDF_FAST_PATH_MAX_PAGES = Math.max(1, Number(import.meta.env.VITE_CASELAW_PDF_FAST_PATH_MAX_PAGES || 20));
   const CASELAW_CLIENT_MIN_CONFIDENCE = Math.max(0, Number(import.meta.env.VITE_CASELAW_CLIENT_MIN_CONFIDENCE || 0.45));
@@ -1657,23 +1658,33 @@ function CaseLawSection() {
       const citationTotals = { processed: 0, imported: 0, existing: 0, skipped: 0, failed: 0 };
       let citationSyncLimited = false;
       for (const [key, group] of grouped) {
-        const body: any = { entries: group };
-        if (key !== "none") {
-          body.sourceDocId = key;
-          body.sourceFilename = group[0]._sourceFilename || "";
+        for (let i = 0; i < group.length; i += CASELAW_SAVE_BULK_BATCH) {
+          const chunk = group.slice(i, i + CASELAW_SAVE_BULK_BATCH);
+          const body: any = { entries: chunk };
+          if (key !== "none") {
+            body.sourceDocId = key;
+            body.sourceFilename = group[0]._sourceFilename || "";
+          }
+          try {
+            const res = await apiRequest("POST", "/api/admin/case-law/bulk", body);
+            const data = await res.json();
+            totalInserted += data.inserted || 0;
+            if (data.errors) allErrors.push(...data.errors);
+            if (data.citationSync) {
+              citationTotals.processed += Number(data.citationSync.processed || 0);
+              citationTotals.imported += Number(data.citationSync.imported || 0);
+              citationTotals.existing += Number(data.citationSync.existing || 0);
+              citationTotals.skipped += Number(data.citationSync.skipped || 0);
+              citationTotals.failed += Number(data.citationSync.failed || 0);
+            }
+            if (data.citationSyncLimited) citationSyncLimited = true;
+          } catch (err: any) {
+            allErrors.push(`Batch ${Math.floor(i / CASELAW_SAVE_BULK_BATCH) + 1}: ${err?.message || "save failed"}`);
+          }
         }
-        const res = await apiRequest("POST", "/api/admin/case-law/bulk", body);
-        const data = await res.json();
-        totalInserted += data.inserted || 0;
-        if (data.errors) allErrors.push(...data.errors);
-        if (data.citationSync) {
-          citationTotals.processed += Number(data.citationSync.processed || 0);
-          citationTotals.imported += Number(data.citationSync.imported || 0);
-          citationTotals.existing += Number(data.citationSync.existing || 0);
-          citationTotals.skipped += Number(data.citationSync.skipped || 0);
-          citationTotals.failed += Number(data.citationSync.failed || 0);
-        }
-        if (data.citationSyncLimited) citationSyncLimited = true;
+      }
+      if (totalInserted === 0 && allErrors.length > 0) {
+        throw new Error(allErrors[0]);
       }
       const hasSource = entries.some((e) => e._sourceDocId);
       return { inserted: totalInserted, errors: allErrors, citationTotals, citationSyncLimited, hasSource };
@@ -1692,7 +1703,7 @@ function CaseLawSection() {
       setAutoSaveFailed(false);
       setShowBulkUpload(false);
     },
-    onError: () => toast({ title: "Failed to save case law entries", variant: "destructive" }),
+    onError: (err: any) => toast({ title: err?.message || "Failed to save case law entries", variant: "destructive" }),
   });
 
   const syncCitationDbMutation = useMutation({

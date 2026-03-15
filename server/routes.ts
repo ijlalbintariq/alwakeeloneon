@@ -6818,15 +6818,42 @@ RULES:
         return res.status(400).json({ message: "Entries array is required" });
       }
       const errors: string[] = [];
-      const valid: Array<{ citation: string; court: string; title: string; summary: string; keywords: string[]; sourceDocId?: number; sourceType?: string; sourceFilename?: string }> = [];
+      const valid: Array<{
+        citation: string;
+        court: string;
+        title: string;
+        summary: string;
+        keywords: string[];
+        sourceDocId?: number;
+        sourceType?: string;
+        sourceFilename?: string;
+        _rowNumber: number;
+      }> = [];
+      const seen = new Set<string>();
       for (let i = 0; i < entries.length; i++) {
         const e = entries[i];
-        if (!e.citation || !e.title) {
+        const rowNumber = i + 1;
+        const citation = sanitizeInputText(stripNullBytes(String(e?.citation || "").trim()), 220);
+        const title = sanitizeInputText(stripNullBytes(String(e?.title || "").trim()), 500);
+        const court = sanitizeInputText(stripNullBytes(String(e?.court || "").trim()), 180);
+        const summary = sanitizeInputText(stripNullBytes(String(e?.summary || "").trim()), 20000);
+        if (!citation || !title) {
           errors.push(`Row ${i + 1}: Missing required fields (citation and title)`);
           continue;
         }
-        const kw = Array.isArray(e.keywords) ? e.keywords : (typeof e.keywords === "string" ? e.keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : []);
-        const entry: any = { citation: e.citation.trim(), court: (e.court || "").trim(), title: e.title.trim(), summary: (e.summary || "").trim(), keywords: kw };
+        const dedupeKey = `${citation.toLowerCase()}|${title.toLowerCase()}|${sourceDocId || 0}`;
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        const kw = Array.isArray(e.keywords)
+          ? e.keywords
+          : (typeof e.keywords === "string"
+            ? e.keywords.split(",")
+            : []);
+        const keywords = kw
+          .map((k: string) => sanitizeInputText(stripNullBytes(String(k || "").trim()), 64))
+          .filter(Boolean)
+          .slice(0, 30);
+        const entry: any = { citation, court, title, summary, keywords, _rowNumber: rowNumber };
         if (sourceDocId) {
           entry.sourceDocId = sourceDocId;
           entry.sourceType = "admin";
@@ -6834,7 +6861,37 @@ RULES:
         }
         valid.push(entry);
       }
-      const created = valid.length > 0 ? await storage.bulkCreateCaseLaw(valid) : [];
+      const created: Array<{
+        id: number;
+        citation: string;
+        court: string;
+        title: string;
+        summary: string;
+        sourceDocId?: number | null;
+        sourceType?: string | null;
+      }> = [];
+
+      const insertBatchSize = 150;
+      for (let i = 0; i < valid.length; i += insertBatchSize) {
+        const chunk = valid.slice(i, i + insertBatchSize);
+        const chunkForInsert = chunk.map(({ _rowNumber, ...rest }) => rest);
+        try {
+          const insertedChunk = await storage.bulkCreateCaseLaw(chunkForInsert as any);
+          created.push(...insertedChunk);
+        } catch (chunkErr: any) {
+          // Fallback to row-level insert so one bad row does not fail the whole save request.
+          for (const row of chunk) {
+            const { _rowNumber, ...entry } = row;
+            try {
+              const inserted = await storage.createCaseLaw(entry as any);
+              created.push(inserted as any);
+            } catch (rowErr: any) {
+              errors.push(`Row ${_rowNumber}: ${sanitizeInputText(rowErr?.message || "Insert failed", 300)}`);
+            }
+          }
+          console.warn("[Case Law Bulk] Batch fallback activated:", sanitizeInputText(chunkErr?.message || "Unknown error", 300));
+        }
+      }
       let citationSync: {
         processed: number;
         imported: number;
