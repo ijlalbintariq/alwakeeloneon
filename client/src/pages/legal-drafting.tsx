@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
@@ -24,6 +24,7 @@ import {
   Trash2,
   Save,
   FolderOpen,
+  Paperclip,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -93,42 +94,173 @@ const DRAFT_TITLE_PREFIX = "Legal Draft:";
 
 const DEFAULT_DOC = "";
 const LEGACY_DEFAULT_DOC_PREFIX = "IN THE COURT OF THE CIVIL JUDGE";
-const PROPERTY_SALE_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
-Civil District, Islamabad, Pakistan
+const CIVIL_SUIT_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
+[District], Pakistan
 
-Suit No. ______ of 2024
+Civil Suit No. ______ of 20__
 
 IN THE MATTER OF:
 Plaintiff: ____________________
 VERSUS
 Defendant: ____________________
 
-AGREEMENT FOR SALE OF IMMOVABLE PROPERTY
+SUIT FOR DECLARATION, PERMANENT INJUNCTION, AND CONSEQUENTIAL RELIEF
 
-This AGREEMENT FOR SALE is made and executed at Islamabad on this ____ day of ________, 2024, by and between the parties mentioned above.
+Respectfully submitted:
+1. That the Plaintiff is lawfully entitled to the relief claimed.
+2. That the Defendant has acted in violation of the Plaintiff's legal rights.
+3. That cause of action accrued on ____________.
+4. That this Hon'ble Court has territorial and pecuniary jurisdiction.
 
-1. CONSIDERATION:
-The total sale price of the said property is fixed at PKR ____________/- of which a sum of PKR ____________ has been paid as earnest money.
+PRAYER:
+It is respectfully prayed that this Hon'ble Court may kindly:
+a) declare ____________________;
+b) permanently restrain the Defendant from ____________________;
+c) grant any other relief deemed just and proper.
+`;
 
-2. TRANSFER OF TITLE:
-The Vendor covenants with the Vendee that the property is free from encumbrances, liens, charges, and legal disputes.
+const CIVIL_MISC_APPLICATION_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
+[District], Pakistan
+
+Civil Misc. Application No. ______ of 20__
+in
+Civil Suit No. ______ of 20__
+
+Applicant: ____________________
+VERSUS
+Respondent: ____________________
+
+APPLICATION UNDER SECTION 151 CPC FOR INTERIM RELIEF
+
+Most respectfully submitted:
+1. That the accompanying suit is pending before this Hon'ble Court.
+2. That immediate interim protection is required because ____________________.
+3. That balance of convenience lies in favour of the Applicant and irreparable loss will be caused otherwise.
+
+PRAYER:
+It is prayed that interim relief may kindly be granted till final decision of the suit.
+`;
+
+const SESSIONS_BAIL_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE
+[District], Pakistan
+
+Criminal Bail Application No. ______ of 20__
+
+Applicant/Accused: ____________________
+VERSUS
+The State
+
+APPLICATION FOR POST-ARREST BAIL UNDER SECTION 497 Cr.P.C.
+
+Respectfully submitted:
+1. FIR No. ______ dated ______ under sections ______ P.P.C. was registered at P.S. ______.
+2. That the Applicant is innocent and has been falsely implicated.
+3. That further inquiry is made out and no useful purpose will be served by continued detention.
+4. That the Applicant undertakes to join trial and comply with all directions.
+
+PRAYER:
+It is prayed that post-arrest bail may kindly be granted in the interest of justice.
+`;
+
+const HIGH_COURT_WRIT_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
+
+Writ Petition No. ______ of 20__
+
+Petitioner: ____________________
+VERSUS
+Respondents: ____________________
+
+CONSTITUTIONAL PETITION UNDER ARTICLE 199 OF THE CONSTITUTION OF ISLAMIC REPUBLIC OF PAKISTAN, 1973
+
+Respectfully submitted:
+1. That the Petitioner is aggrieved by order/action dated ______ passed by Respondent No. ___.
+2. That the impugned action is without lawful authority and of no legal effect.
+3. That no efficacious alternate remedy is available.
+4. That this Hon'ble Court has constitutional jurisdiction.
+
+PRAYER:
+It is prayed that this Hon'ble Court may kindly set aside the impugned order and grant consequential relief.
+`;
+
+const HIGH_COURT_APPEAL_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
+
+Civil Appeal No. ______ of 20__
+
+Appellant: ____________________
+VERSUS
+Respondent: ____________________
+
+MEMORANDUM OF CIVIL APPEAL
+
+The Appellant respectfully submits:
+1. That the judgment and decree dated ______ passed by learned ______ is against law and facts.
+2. That material evidence was misread/non-read.
+3. That findings are perverse and liable to be set aside.
+
+GROUNDS OF APPEAL:
+a) ____________________
+b) ____________________
+c) ____________________
+
+PRAYER:
+It is prayed that the impugned judgment/decree may kindly be set aside and appeal be accepted.
+`;
+
+const SUPREME_CPLA_TEMPLATE = `IN THE SUPREME COURT OF PAKISTAN
+[Appellate Jurisdiction]
+
+Civil Petition for Leave to Appeal No. ______ of 20__
+
+Petitioner: ____________________
+VERSUS
+Respondent: ____________________
+
+PETITION FOR LEAVE TO APPEAL
+
+The Petitioner respectfully submits:
+1. That the impugned judgment dated ______ passed by the High Court suffers from legal infirmities.
+2. That questions of public importance and legal significance arise for determination.
+3. That substantial miscarriage of justice has occurred.
+
+GROUNDS:
+a) ____________________
+b) ____________________
+c) ____________________
+
+PRAYER:
+Leave to appeal may kindly be granted and the impugned judgment be set aside in the interest of justice.
 `;
 
 const TEMPLATES: DraftTemplate[] = [
   {
-    id: "property-sale",
-    title: "Property Sale Agreement",
-    body: PROPERTY_SALE_TEMPLATE,
+    id: "civil-suit",
+    title: "Civil Suit (Plaint)",
+    body: CIVIL_SUIT_TEMPLATE,
   },
   {
-    id: "rental",
-    title: "Rental Agreement",
-    body: `RENTAL AGREEMENT\n\nThis Rental Agreement is made on ____ day of ________, 2024 between:\nLandlord: ____________________\nTenant: ______________________\n\n1. Premises\nThe Landlord rents to the Tenant the property located at ____________________.\n\n2. Rent\nMonthly rent shall be PKR ____________, payable on or before the 5th day of each month.\n\n3. Term\nThe term of this Agreement shall be ____ months commencing from ____________.\n\n4. Governing Law\nThis Agreement shall be governed by the laws of Pakistan.\n`,
+    id: "civil-misc-application",
+    title: "Civil Misc. Application",
+    body: CIVIL_MISC_APPLICATION_TEMPLATE,
   },
   {
-    id: "nda",
-    title: "Non-Disclosure Agreement",
-    body: `NON-DISCLOSURE AGREEMENT\n\nThis Non-Disclosure Agreement ("Agreement") is made on ____________ between:\nDisclosing Party: ____________________\nReceiving Party: ____________________\n\n1. Confidential Information\nConfidential Information includes non-public business, legal, and technical information disclosed in oral or written form.\n\n2. Obligations\nThe Receiving Party shall keep the Confidential Information confidential and shall not disclose it without prior written consent.\n\n3. Term\nThis Agreement remains effective for ____ years from the Effective Date.\n\n4. Governing Law and Jurisdiction\nThis Agreement is governed by the laws of Pakistan and subject to courts of Islamabad.\n`,
+    id: "sessions-bail",
+    title: "Sessions Court Bail Application",
+    body: SESSIONS_BAIL_TEMPLATE,
+  },
+  {
+    id: "high-court-writ",
+    title: "High Court Writ Petition",
+    body: HIGH_COURT_WRIT_TEMPLATE,
+  },
+  {
+    id: "high-court-appeal",
+    title: "High Court Civil Appeal",
+    body: HIGH_COURT_APPEAL_TEMPLATE,
+  },
+  {
+    id: "supreme-cpla",
+    title: "Supreme Court CPLA",
+    body: SUPREME_CPLA_TEMPLATE,
   },
 ];
 
@@ -171,6 +303,7 @@ export default function LegalDraftingPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const aiContextInputRef = useRef<HTMLInputElement | null>(null);
 
   const [docText, setDocText] = useState(DEFAULT_DOC);
   const [draftTitle, setDraftTitle] = useState("Untitled Draft");
@@ -180,6 +313,7 @@ export default function LegalDraftingPage() {
   const [isSavedLocal, setIsSavedLocal] = useState(true);
   const [riskLoading, setRiskLoading] = useState(false);
   const [riskResults, setRiskResults] = useState<DraftSuggestion[]>([]);
+  const [aiContextFiles, setAiContextFiles] = useState<File[]>([]);
   const [activeLeftTool, setActiveLeftTool] = useState<"drafts" | "templates" | "collab" | "archive">("drafts");
   const [leftRailOpen, setLeftRailOpen] = useState(true);
   const [rightRailOpen, setRightRailOpen] = useState(true);
@@ -488,23 +622,58 @@ export default function LegalDraftingPage() {
     runRiskAnalysis();
   };
 
+  const onAiContextFilesSelected = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const incoming = Array.from(files);
+    const allowed = incoming.filter((file) => {
+      const name = file.name.toLowerCase();
+      return name.endsWith(".pdf") || name.endsWith(".docx") || name.endsWith(".txt");
+    });
+    const rejected = incoming.length - allowed.length;
+    if (rejected > 0) {
+      toast({
+        title: "Some files were ignored",
+        description: "Only PDF, DOCX, and TXT files are supported.",
+        variant: "destructive",
+      });
+    }
+    setAiContextFiles((prev) => [...prev, ...allowed].slice(0, 5));
+    e.currentTarget.value = "";
+  };
+
   const generateClause = async (promptOverride?: string) => {
     const prompt = (promptOverride ?? aiPrompt).trim();
     if (!prompt) return;
     setIsGenerating(true);
     try {
-      const payload = {
-        prompt,
-        draftText: docText.slice(0, 12000),
-        jurisdiction: "Lahore",
-        module: "legal-drafting",
-      };
-      const response = await fetch("/api/retrieval/clauses/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
+      let response: Response;
+      if (aiContextFiles.length > 0) {
+        const form = new FormData();
+        form.append("prompt", prompt);
+        form.append("draftText", docText.slice(0, 12000));
+        form.append("jurisdiction", "Lahore");
+        form.append("module", "legal-drafting");
+        aiContextFiles.forEach((file) => form.append("attachments", file));
+        response = await fetch("/api/retrieval/clauses/generate", {
+          method: "POST",
+          credentials: "include",
+          body: form,
+        });
+      } else {
+        const payload = {
+          prompt,
+          draftText: docText.slice(0, 12000),
+          jurisdiction: "Lahore",
+          module: "legal-drafting",
+        };
+        response = await fetch("/api/retrieval/clauses/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+      }
 
       if (!response.ok) {
         const t = await response.text();
@@ -520,6 +689,8 @@ export default function LegalDraftingPage() {
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
       setAiPrompt("");
+      setAiContextFiles([]);
+      if (aiContextInputRef.current) aiContextInputRef.current.value = "";
       toast({ title: "Clause inserted" });
 
       await apiRequest("POST", "/api/search-history", {
@@ -1024,6 +1195,43 @@ export default function LegalDraftingPage() {
                 >
                   {isGenerating ? <Search size={15} className="animate-spin" /> : <ArrowRight size={16} />}
                 </button>
+              </div>
+              <div className="mt-3">
+                <input
+                  ref={aiContextInputRef}
+                  type="file"
+                  accept=".pdf,.docx,.txt"
+                  multiple
+                  className="hidden"
+                  onChange={onAiContextFilesSelected}
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => aiContextInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-700 bg-[#1e293b]/40 text-[11px] text-slate-200 hover:border-amber-500/40 hover:text-amber-200"
+                  >
+                    <Paperclip size={12} />
+                    Attach Context Files
+                  </button>
+                  <span className="text-[10px] text-slate-500">PDF, DOCX, TXT · up to 5 files</span>
+                </div>
+                {aiContextFiles.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {aiContextFiles.map((file, idx) => (
+                      <div key={`${file.name}-${idx}`} className="flex items-center justify-between rounded-md border border-slate-700/70 bg-[#0f172a]/70 px-2 py-1">
+                        <span className="text-[11px] text-slate-300 truncate pr-2">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setAiContextFiles((prev) => prev.filter((_, i) => i !== idx))}
+                          className="text-[10px] text-rose-300 hover:text-rose-200"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
 
