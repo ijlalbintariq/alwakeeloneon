@@ -11,6 +11,9 @@ import { requireDatabase } from "./middleware/db-guard";
 import { syncGithubKnowledge } from "./github-sync";
 import { queueAutoExtraction, nlpExtractCases } from "./auto-extract-caselaw";
 import crypto from "crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, type ApexModel } from "./apex-ai";
 import { chatWithOpenRouter, streamWithOpenRouter, isOpenRouterAvailable, getOpenRouterModelName } from "./openrouter";
@@ -81,6 +84,9 @@ const COST_PER_1K_TOKENS: Record<string, { input: number; output: number }> = {
 
 const INLINE_DB_CONTENT_LIMIT = Math.max(5000, Number(process.env.DB_INLINE_CONTENT_MAX_CHARS || 60000));
 const MB = 1024 * 1024;
+const UPLOAD_STORAGE_MODE = String(process.env.UPLOAD_STORAGE_MODE || "memory").trim().toLowerCase();
+const USE_DISK_UPLOAD_STORAGE = UPLOAD_STORAGE_MODE === "disk";
+const UPLOAD_TEMP_DIR = String(process.env.UPLOAD_TEMP_DIR || os.tmpdir()).trim() || os.tmpdir();
 const DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(5, Number(process.env.DOCUMENT_UPLOAD_MAX_FILE_MB || 75)) * MB;
 const DOCUMENT_UPLOAD_MAX_FILES = Math.max(1, Number(process.env.DOCUMENT_UPLOAD_MAX_FILES || 25));
 const ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(5, Number(process.env.ADMIN_UPLOAD_MAX_FILE_MB || 75)) * MB;
@@ -302,10 +308,71 @@ function normalizeTextForStorage(text: string): string {
 }
 
 function cloneUploadFile(file: Express.Multer.File): Express.Multer.File {
+  const sourceBuffer = getUploadBufferOrThrow(file);
   return {
     ...file,
-    buffer: Buffer.from(file.buffer),
+    buffer: Buffer.from(sourceBuffer),
   };
+}
+
+function getUploadBufferOrThrow(file: Express.Multer.File): Buffer {
+  const existing = (file as any).buffer;
+  if (Buffer.isBuffer(existing)) return existing;
+  const filePath = typeof (file as any).path === "string" ? (file as any).path.trim() : "";
+  if (!filePath) {
+    throw new Error(`Upload buffer is unavailable for ${file.originalname || "upload.bin"}`);
+  }
+  const loaded = fs.readFileSync(filePath);
+  (file as any).buffer = loaded;
+  return loaded;
+}
+
+function createUploadStorage(prefix: string): multer.StorageEngine {
+  if (!USE_DISK_UPLOAD_STORAGE) return multer.memoryStorage();
+  const safePrefix = sanitizeInputText(prefix, 40).replace(/[^a-z0-9-_]/gi, "-").toLowerCase() || "upload";
+  return multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOAD_TEMP_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || "").toLowerCase().slice(0, 12);
+      cb(null, `${safePrefix}-${Date.now()}-${crypto.randomUUID()}${ext}`);
+    },
+  });
+}
+
+function getRequestUploadFiles(req: Request): Express.Multer.File[] {
+  const files: Express.Multer.File[] = [];
+  const single = (req as any).file;
+  if (single) files.push(single as Express.Multer.File);
+  const many = (req as any).files;
+  if (Array.isArray(many)) {
+    files.push(...(many as Express.Multer.File[]));
+  } else if (many && typeof many === "object") {
+    for (const value of Object.values(many as Record<string, unknown>)) {
+      if (Array.isArray(value)) {
+        files.push(...(value as Express.Multer.File[]));
+      }
+    }
+  }
+  return files;
+}
+
+function cleanupDiskUploadFilesAfterResponse(req: Request, res: any, next: NextFunction) {
+  if (!USE_DISK_UPLOAD_STORAGE) return next();
+  const uploadedFiles = getRequestUploadFiles(req);
+  if (uploadedFiles.length === 0) return next();
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    for (const file of uploadedFiles) {
+      const filePath = typeof (file as any).path === "string" ? (file as any).path : "";
+      if (!filePath) continue;
+      fs.unlink(filePath, () => {});
+    }
+  };
+  res.once("finish", cleanup);
+  res.once("close", cleanup);
+  next();
 }
 
 function estimateTokens(text: string): number {
@@ -1620,7 +1687,12 @@ function appearsTextLike(buffer: Buffer): boolean {
 }
 
 function hasSafeDocumentSignature(file: Express.Multer.File, ext: string): boolean {
-  const b = file.buffer;
+  let b: Buffer;
+  try {
+    b = getUploadBufferOrThrow(file);
+  } catch {
+    return false;
+  }
   if (ext === ".pdf") return startsWithBytes(b, [0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
   if (ext === ".doc") return startsWithBytes(b, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]); // OLE2
   if (ext === ".docx") return startsWithBytes(b, [0x50, 0x4b, 0x03, 0x04]); // ZIP-based OpenXML
@@ -1629,7 +1701,12 @@ function hasSafeDocumentSignature(file: Express.Multer.File, ext: string): boole
 }
 
 function hasSafeImageSignature(file: Express.Multer.File): boolean {
-  const b = file.buffer;
+  let b: Buffer;
+  try {
+    b = getUploadBufferOrThrow(file);
+  } catch {
+    return false;
+  }
   const mime = file.mimetype;
   if (mime === "image/jpeg") return startsWithBytes(b, [0xff, 0xd8, 0xff]);
   if (mime === "image/png") return startsWithBytes(b, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -1645,7 +1722,13 @@ function hasSafeImageSignature(file: Express.Multer.File): boolean {
 async function passesMalwareScan(
   file: Express.Multer.File,
 ): Promise<{ ok: boolean; reason?: string }> {
-  const scan = await scanUploadedBuffer(file.buffer, file.originalname || "upload.bin");
+  let scanBuffer: Buffer;
+  try {
+    scanBuffer = getUploadBufferOrThrow(file);
+  } catch (err: any) {
+    return { ok: false, reason: err?.message || "Unable to read uploaded file for malware scan." };
+  }
+  const scan = await scanUploadedBuffer(scanBuffer, file.originalname || "upload.bin");
   if (scan.allowed) return { ok: true };
   return { ok: false, reason: scan.reason || "File failed malware scan." };
 }
@@ -2129,6 +2212,9 @@ export async function registerRoutes(
   const uploadGuards = getUploadQueueStats();
   console.log(
     `[Upload Guards] concurrency=${uploadGuards.concurrency} maxPending=${uploadGuards.maxPending} documentFileMax=${toMbText(DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES)} adminFileMax=${toMbText(ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES)}`,
+  );
+  console.log(
+    `[Upload Storage] mode=${USE_DISK_UPLOAD_STORAGE ? "disk" : "memory"} tempDir=${USE_DISK_UPLOAD_STORAGE ? UPLOAD_TEMP_DIR : "n/a"}`,
   );
   await setupAuth(app);
   registerAuthRoutes(app);
@@ -2689,7 +2775,7 @@ export async function registerRoutes(
   const guardedUploadQueue = createUploadQueueMiddleware("upload-processing");
 
   const styleMemoryUpload = multer({
-    storage: multer.memoryStorage(),
+    storage: createUploadStorage("style-memory"),
     limits: {
       fileSize: DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES,
       files: Math.max(1, Math.min(20, DOCUMENT_UPLOAD_MAX_FILES)),
@@ -2789,7 +2875,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/style-memory/samples/upload", guardedUploadQueue, styleMemoryUpload.array("files", 20), async (req, res) => {
+  app.post("/api/style-memory/samples/upload", guardedUploadQueue, styleMemoryUpload.array("files", 20), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
@@ -2828,11 +2914,11 @@ export async function registerRoutes(
           rejected.push({ file: original, reason: "unsupported format (allowed: .txt, .pdf, .docx)" });
           continue;
         }
-        if (!hasSafeDocumentSignature(file, ext)) {
+        if (!hasSafeDocumentSignature(stableFile, ext)) {
           rejected.push({ file: original, reason: "file signature mismatch" });
           continue;
         }
-        const malwareCheck = await passesMalwareScan(file);
+        const malwareCheck = await passesMalwareScan(stableFile);
         if (!malwareCheck.ok) {
           rejected.push({ file: original, reason: malwareCheck.reason || "malware detected" });
           continue;
@@ -3003,7 +3089,7 @@ export async function registerRoutes(
   });
 
   const documentUpload = multer({
-    storage: multer.memoryStorage(),
+    storage: createUploadStorage("documents"),
     limits: {
       fileSize: DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES,
       files: DOCUMENT_UPLOAD_MAX_FILES,
@@ -3050,7 +3136,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/documents/upload", guardedUploadQueue, documentUpload.array("files", 25), async (req, res) => {
+  app.post("/api/documents/upload", guardedUploadQueue, documentUpload.array("files", 25), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
@@ -3079,7 +3165,7 @@ export async function registerRoutes(
           continue;
         }
 
-        if (!hasSafeDocumentSignature(file, ext)) {
+        if (!hasSafeDocumentSignature(stableFile, ext)) {
           recordSecurityEvent("upload_signature_failure", `user-doc:${userId}`, {
             filename: original,
             ext,
@@ -3088,7 +3174,7 @@ export async function registerRoutes(
           errors.push(`${original}: file signature does not match declared format`);
           continue;
         }
-        const malwareCheck = await passesMalwareScan(file);
+        const malwareCheck = await passesMalwareScan(stableFile);
         if (!malwareCheck.ok) {
           recordSecurityEvent("malware_detected", `user-doc:${userId}`, {
             filename: original,
@@ -4541,25 +4627,26 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
   });
 
   const upload = multer({
-    storage: multer.memoryStorage(),
+    storage: createUploadStorage("general"),
     limits: {
       fileSize: GENERAL_UPLOAD_MAX_FILE_SIZE_BYTES,
       files: ADMIN_UPLOAD_MAX_FILES,
     },
   });
 
-  app.post("/api/ai/transcribe", guardedUploadQueue, upload.single("audio"), async (req, res) => {
+  app.post("/api/ai/transcribe", guardedUploadQueue, upload.single("audio"), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
       const file = req.file;
       if (!file) return res.status(400).json({ message: "No audio file provided" });
+      const stableFile = cloneUploadFile(file);
 
       const allowedAudio = ["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a", "audio/webm", "audio/ogg", "audio/mp3"];
       if (!allowedAudio.some(t => file.mimetype.startsWith("audio/") || allowedAudio.includes(file.mimetype))) {
         return res.status(400).json({ message: "Unsupported audio format. Use MP3, WAV, M4A, or WebM." });
       }
-      const transcribeMalwareCheck = await passesMalwareScan(file);
+      const transcribeMalwareCheck = await passesMalwareScan(stableFile);
       if (!transcribeMalwareCheck.ok) {
         recordSecurityEvent("malware_detected", `audio-upload:${userId}`, {
           filename: file.originalname,
@@ -4598,7 +4685,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
       const commonPrompt =
         "Transcribe this audio accurately. Return only the transcription text. If the audio is in Urdu or another language, transcribe it in that language.";
       const audioFormat = resolveAudioFormat(file.mimetype, file.originalname);
-      const base64Audio = file.buffer.toString("base64");
+      const base64Audio = stableFile.buffer.toString("base64");
 
       let transcription = "";
       let provider = "groq";
@@ -4611,7 +4698,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
         if (!isGroqAvailable()) return false;
         try {
           const fallback = await transcribeWithGroq({
-            audioBuffer: file.buffer,
+            audioBuffer: stableFile.buffer,
             filename: file.originalname,
             mimeType: file.mimetype,
             model: "whisper-large-v3-turbo",
@@ -4638,7 +4725,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
         if (!isWhisperCppConfigured()) return false;
         try {
           const localResult = await transcribeWithWhisperCpp({
-            audioBuffer: file.buffer,
+            audioBuffer: stableFile.buffer,
             filename: file.originalname,
           });
           const text = (localResult.text || "").trim();
@@ -4728,7 +4815,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
         if (isGroqAvailable()) {
           try {
             const result = await transcribeWithGroq({
-              audioBuffer: file.buffer,
+              audioBuffer: stableFile.buffer,
               filename: file.originalname,
               mimeType: file.mimetype,
               model: "whisper-large-v3-turbo",
@@ -4771,7 +4858,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
     }
   });
 
-  app.post(api.ai.chat.path, guardedUploadQueue, upload.array("attachments", 5), async (req, res) => {
+  app.post(api.ai.chat.path, guardedUploadQueue, upload.array("attachments", 5), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
@@ -4813,6 +4900,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
           return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, and DOCX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
         }
         for (const file of files) {
+          const stableFile = cloneUploadFile(file);
           const ext = file.originalname.includes(".")
             ? file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase()
             : "";
@@ -4822,7 +4910,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
               : file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 ? ".docx"
                 : ".txt";
-          if ((ext && ![".txt", ".pdf", ".docx"].includes(ext)) || !hasSafeDocumentSignature(file, signatureExt)) {
+          if ((ext && ![".txt", ".pdf", ".docx"].includes(ext)) || !hasSafeDocumentSignature(stableFile, signatureExt)) {
             recordSecurityEvent("upload_signature_failure", `chat-attachment:${userId}`, {
               filename: file.originalname,
               ext,
@@ -4830,7 +4918,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
             });
             return res.status(400).json({ message: `Unsafe or invalid attachment detected: ${file.originalname}` });
           }
-          const malwareCheck = await passesMalwareScan(file);
+          const malwareCheck = await passesMalwareScan(stableFile);
           if (!malwareCheck.ok) {
             recordSecurityEvent("malware_detected", `chat-attachment:${userId}`, {
               filename: file.originalname,
@@ -4841,15 +4929,15 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
           try {
             let extractedText = "";
             if (file.mimetype === "text/plain") {
-              extractedText = stripNullBytes(file.buffer.toString("utf-8"));
+              extractedText = stripNullBytes(stableFile.buffer.toString("utf-8"));
             } else if (file.mimetype === "application/pdf") {
-              let parsedText = await extractPdfTextSafe(file.buffer, "chat-attachment");
+              let parsedText = await extractPdfTextSafe(stableFile.buffer, "chat-attachment");
               if (!parsedText.trim()) {
-                parsedText = await extractPdfTextWithOcrFallback(file, "chat-attachment");
+                parsedText = await extractPdfTextWithOcrFallback(stableFile, "chat-attachment");
               }
               extractedText = stripNullBytes(parsedText);
             } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-              const parsedText = await extractDocxTextSafe(file.buffer, "chat-attachment");
+              const parsedText = await extractDocxTextSafe(stableFile.buffer, "chat-attachment");
               extractedText = stripNullBytes(parsedText);
             }
 
@@ -5598,12 +5686,13 @@ RULES:
     file: Express.Multer.File,
     context: string,
   ): Promise<string> {
+    const sourceBuffer = getUploadBufferOrThrow(file);
     const requestedLanguage = process.env.TESSERACT_OCR_LANG || process.env.TESSERACT_LANG || "eng+urd";
 
     const localOcrAvailable = await isPdfOcrAvailable();
     if (localOcrAvailable) {
       try {
-        const result = await extractPdfOcrGuarded(file.buffer, {
+        const result = await extractPdfOcrGuarded(sourceBuffer, {
           maxPages: Number(process.env.PDF_OCR_MAX_PAGES || 8),
           dpi: Number(process.env.PDF_OCR_DPI || 220),
           language: requestedLanguage,
@@ -5630,7 +5719,7 @@ RULES:
     }
 
     try {
-      const cloudResult = await ocrPdfWithCloud(file.buffer, {
+      const cloudResult = await ocrPdfWithCloud(sourceBuffer, {
         filename: file.originalname,
         language: requestedLanguage,
         timeoutMs: Number(process.env.CLOUD_OCR_TIMEOUT_MS || process.env.PDF_OCR_TIMEOUT_MS || 120000),
@@ -6264,7 +6353,7 @@ RULES:
     }
   });
 
-  app.post("/api/admin/knowledge", guardedUploadQueue, upload.array("files", Math.min(2000, ADMIN_UPLOAD_MAX_FILES)), async (req, res) => {
+  app.post("/api/admin/knowledge", guardedUploadQueue, upload.array("files", Math.min(2000, ADMIN_UPLOAD_MAX_FILES)), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const userId = getUserId(req)!;
@@ -6291,7 +6380,7 @@ RULES:
             errors.push(`${file.originalname}: unsupported format (use .txt, .json, .csv, .pdf, or .docx)`);
             continue;
           }
-          if (!hasSafeDocumentSignature(file, ext)) {
+          if (!hasSafeDocumentSignature(stableFile, ext)) {
             recordSecurityEvent("upload_signature_failure", `admin-knowledge:${userId}`, {
               filename: file.originalname,
               ext,
@@ -6300,7 +6389,7 @@ RULES:
             errors.push(`${file.originalname}: file signature does not match declared format`);
             continue;
           }
-          const malwareCheck = await passesMalwareScan(file);
+          const malwareCheck = await passesMalwareScan(stableFile);
           if (!malwareCheck.ok) {
             recordSecurityEvent("malware_detected", `admin-knowledge:${userId}`, {
               filename: file.originalname,
@@ -6825,7 +6914,7 @@ RULES:
     }
   });
 
-  app.post("/api/admin/case-law/extract", guardedUploadQueue, upload.single("file"), async (req, res) => {
+  app.post("/api/admin/case-law/extract", guardedUploadQueue, upload.single("file"), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const file = req.file;
@@ -6843,7 +6932,7 @@ RULES:
       if (![".pdf", ".doc", ".docx", ".txt", ".text", ".md", ".json", ".csv"].includes(extWithDot)) {
         return res.status(400).json({ message: "Supported formats: PDF, DOC, DOCX, TXT, MD, JSON, CSV" });
       }
-      if (!hasSafeDocumentSignature(file, signatureExt)) {
+      if (!hasSafeDocumentSignature(stableFile, signatureExt)) {
         recordSecurityEvent("upload_signature_failure", "admin-case-law-extract", {
           filename: file.originalname,
           ext: extWithDot,
@@ -6851,7 +6940,7 @@ RULES:
         });
         return res.status(400).json({ message: "File signature does not match declared format" });
       }
-      const extractMalwareCheck = await passesMalwareScan(file);
+      const extractMalwareCheck = await passesMalwareScan(stableFile);
       if (!extractMalwareCheck.ok) {
         recordSecurityEvent("malware_detected", "admin-case-law-extract", {
           filename: file.originalname,
@@ -7132,7 +7221,7 @@ RULES:
     }
   });
 
-  app.post("/api/admin/statute-documents", guardedUploadQueue, upload.array("files", Math.min(500, ADMIN_UPLOAD_MAX_FILES)), async (req, res) => {
+  app.post("/api/admin/statute-documents", guardedUploadQueue, upload.array("files", Math.min(500, ADMIN_UPLOAD_MAX_FILES)), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const userId = getUserId(req)!;
@@ -7158,7 +7247,7 @@ RULES:
           errors.push(`${file.originalname}: unsupported format (use .txt, .json, .csv, .pdf)`);
           continue;
         }
-        if (!hasSafeDocumentSignature(file, extWithDot)) {
+        if (!hasSafeDocumentSignature(stableFile, extWithDot)) {
           recordSecurityEvent("upload_signature_failure", `admin-statute:${userId}`, {
             filename: file.originalname,
             ext: extWithDot,
@@ -7167,7 +7256,7 @@ RULES:
           errors.push(`${file.originalname}: file signature does not match declared format`);
           continue;
         }
-        const statuteMalwareCheck = await passesMalwareScan(file);
+        const statuteMalwareCheck = await passesMalwareScan(stableFile);
         if (!statuteMalwareCheck.ok) {
           recordSecurityEvent("malware_detected", `admin-statute:${userId}`, {
             filename: file.originalname,
@@ -7369,26 +7458,27 @@ RULES:
     }
   });
 
-  app.post("/api/profile/avatar", guardedUploadQueue, upload.single("avatar"), async (req, res) => {
+  app.post("/api/profile/avatar", guardedUploadQueue, upload.single("avatar"), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
 
     try {
       const file = req.file;
       if (!file) return res.status(400).json({ message: "Avatar file is required" });
+      const stableFile = cloneUploadFile(file);
 
       const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
       if (!allowedTypes.has(file.mimetype)) {
         return res.status(400).json({ message: "Unsupported image format. Use JPG, PNG, WEBP, or GIF." });
       }
-      if (!hasSafeImageSignature(file)) {
+      if (!hasSafeImageSignature(stableFile)) {
         recordSecurityEvent("upload_signature_failure", `avatar:${userId}`, {
           filename: file.originalname,
           mimetype: file.mimetype,
         });
         return res.status(400).json({ message: "Image signature does not match declared format." });
       }
-      const avatarMalwareCheck = await passesMalwareScan(file);
+      const avatarMalwareCheck = await passesMalwareScan(stableFile);
       if (!avatarMalwareCheck.ok) {
         recordSecurityEvent("malware_detected", `avatar:${userId}`, {
           filename: file.originalname,
@@ -7402,7 +7492,7 @@ RULES:
         return res.status(400).json({ message: "Image too large. Maximum size is 2MB." });
       }
 
-      const dataUrl = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+      const dataUrl = `data:${file.mimetype};base64,${stableFile.buffer.toString("base64")}`;
       const updated = await storage.updateUserProfile(userId, { profileImageUrl: dataUrl });
       if (!updated) return res.status(404).json({ message: "Profile not found" });
 
@@ -7894,14 +7984,14 @@ Instructions:
   });
 
   const orgKnowledgeUpload = multer({
-    storage: multer.memoryStorage(),
+    storage: createUploadStorage("org-knowledge"),
     limits: {
       fileSize: DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES,
       files: DOCUMENT_UPLOAD_MAX_FILES,
     },
   });
 
-  app.post("/api/org/:id/knowledge", guardedUploadQueue, orgKnowledgeUpload.single("file"), async (req, res) => {
+  app.post("/api/org/:id/knowledge", guardedUploadQueue, orgKnowledgeUpload.single("file"), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const orgId = parseInt(String(req.params.id));
@@ -7910,6 +8000,7 @@ Instructions:
 
     const file = req.file;
     if (!file) return res.status(400).json({ message: "No file uploaded" });
+    const stableFile = cloneUploadFile(file);
     if (file.size > DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES) {
       return res.status(413).json({ message: `File exceeds max size (${toMbText(DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES)})` });
     }
@@ -7919,7 +8010,7 @@ Instructions:
 
     try {
       if (filename.endsWith(".txt")) {
-        if (!hasSafeDocumentSignature(file, ".txt")) {
+        if (!hasSafeDocumentSignature(stableFile, ".txt")) {
           recordSecurityEvent("upload_signature_failure", `org-knowledge:${orgId}`, {
             filename: file.originalname,
             ext: ".txt",
@@ -7927,9 +8018,9 @@ Instructions:
           });
           return res.status(400).json({ message: "File signature does not match .txt format." });
         }
-        content = file.buffer.toString("utf-8");
+        content = stableFile.buffer.toString("utf-8");
       } else if (filename.endsWith(".pdf")) {
-        if (!hasSafeDocumentSignature(file, ".pdf")) {
+        if (!hasSafeDocumentSignature(stableFile, ".pdf")) {
           recordSecurityEvent("upload_signature_failure", `org-knowledge:${orgId}`, {
             filename: file.originalname,
             ext: ".pdf",
@@ -7937,12 +8028,12 @@ Instructions:
           });
           return res.status(400).json({ message: "File signature does not match .pdf format." });
         }
-        content = await extractPdfTextSafe(file.buffer, "org-knowledge-upload");
+        content = await extractPdfTextSafe(stableFile.buffer, "org-knowledge-upload");
         if (!content.trim()) {
-          content = await extractPdfTextWithOcrFallback(file, "org-knowledge-upload");
+          content = await extractPdfTextWithOcrFallback(stableFile, "org-knowledge-upload");
         }
       } else if (filename.endsWith(".docx")) {
-        if (!hasSafeDocumentSignature(file, ".docx")) {
+        if (!hasSafeDocumentSignature(stableFile, ".docx")) {
           recordSecurityEvent("upload_signature_failure", `org-knowledge:${orgId}`, {
             filename: file.originalname,
             ext: ".docx",
@@ -7950,12 +8041,12 @@ Instructions:
           });
           return res.status(400).json({ message: "File signature does not match .docx format." });
         }
-        content = await extractDocxTextSafe(file.buffer, "org-knowledge-upload");
+        content = await extractDocxTextSafe(stableFile.buffer, "org-knowledge-upload");
       } else {
         return res.status(400).json({ message: "Unsupported file type. Use TXT, PDF, or DOCX." });
       }
 
-      const orgMalwareCheck = await passesMalwareScan(file);
+      const orgMalwareCheck = await passesMalwareScan(stableFile);
       if (!orgMalwareCheck.ok) {
         recordSecurityEvent("malware_detected", `org-knowledge:${orgId}`, {
           filename: file.originalname,
