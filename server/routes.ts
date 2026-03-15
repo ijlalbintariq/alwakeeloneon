@@ -5743,7 +5743,7 @@ RULES:
         filename: file.originalname,
         language: requestedLanguage,
         timeoutMs: Number(process.env.CLOUD_OCR_TIMEOUT_MS || process.env.PDF_OCR_TIMEOUT_MS || 120000),
-        maxPages: Number(process.env.CLOUD_OCR_MAX_PAGES || process.env.PDF_OCR_MAX_PAGES || 8),
+        maxPages: Number(process.env.CLOUD_OCR_MAX_PAGES || 3),
       });
       const text = stripNullBytes((cloudResult.text || "").trim());
       if (text) {
