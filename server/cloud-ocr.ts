@@ -59,6 +59,7 @@ export async function ocrPdfWithCloud(
     filename?: string;
     language?: string;
     timeoutMs?: number;
+    maxPages?: number;
   } = {},
 ): Promise<OcrPdfResult> {
   if (CLOUD_OCR_PROVIDER !== "ocrspace") {
@@ -74,60 +75,77 @@ export async function ocrPdfWithCloud(
 
   try {
     const languageCandidates = resolveLanguageCandidates(options.language);
+    const requestedMaxPages = Number(options.maxPages || process.env.CLOUD_OCR_MAX_PAGES || 0);
+    const maxPages = Number.isFinite(requestedMaxPages) && requestedMaxPages > 0
+      ? Math.min(Math.floor(requestedMaxPages), 1000)
+      : 0;
+    const configuredEngine = cleanText(OCRSPACE_ENGINE);
+    const engineCandidates = Array.from(
+      new Set(
+        [configuredEngine, "2", "1"]
+          .map((engine) => cleanText(engine))
+          .filter(Boolean),
+      ),
+    );
     const errors: string[] = [];
 
     for (const language of languageCandidates) {
-      const form = new FormData();
-      form.append("apikey", OCRSPACE_API_KEY);
-      form.append("isOverlayRequired", "false");
-      form.append("language", language);
-      form.append("OCREngine", OCRSPACE_ENGINE);
-      form.append("scale", "true");
-      form.append("detectOrientation", "true");
-      form.append(
-        "file",
-        new Blob([pdfBuffer], { type: "application/pdf" }),
-        options.filename || "document.pdf",
-      );
+      for (const engine of engineCandidates) {
+        const form = new FormData();
+        form.append("apikey", OCRSPACE_API_KEY);
+        form.append("isOverlayRequired", "false");
+        form.append("language", language);
+        form.append("OCREngine", engine);
+        form.append("scale", "true");
+        form.append("detectOrientation", "true");
+        if (maxPages > 0) {
+          form.append("pages", `1-${maxPages}`);
+        }
+        form.append(
+          "file",
+          new Blob([pdfBuffer], { type: "application/pdf" }),
+          options.filename || "document.pdf",
+        );
 
-      const res = await fetch(OCRSPACE_ENDPOINT, {
-        method: "POST",
-        body: form,
-        signal: controller.signal,
-      });
+        const res = await fetch(OCRSPACE_ENDPOINT, {
+          method: "POST",
+          body: form,
+          signal: controller.signal,
+        });
 
-      const body = await res.text();
-      if (!res.ok) {
-        errors.push(`${language}: HTTP ${res.status} ${body.slice(0, 120)}`);
-        continue;
+        const body = await res.text();
+        if (!res.ok) {
+          errors.push(`${language}/engine-${engine}: HTTP ${res.status} ${body.slice(0, 120)}`);
+          continue;
+        }
+
+        let parsed: any = null;
+        try {
+          parsed = JSON.parse(body);
+        } catch {
+          errors.push(`${language}/engine-${engine}: non-JSON response`);
+          continue;
+        }
+
+        const pageTexts = Array.isArray(parsed?.ParsedResults)
+          ? parsed.ParsedResults.map((item: any) => cleanText(String(item?.ParsedText || ""))).filter(Boolean)
+          : [];
+        const text = cleanText(pageTexts.join("\n\n"));
+
+        if (text) {
+          return {
+            text,
+            pageCount: pageTexts.length,
+            language,
+          };
+        }
+
+        const errMsg =
+          (Array.isArray(parsed?.ErrorMessage) ? parsed.ErrorMessage.join("; ") : parsed?.ErrorMessage) ||
+          parsed?.ErrorDetails ||
+          "empty OCR text";
+        errors.push(`${language}/engine-${engine}: ${String(errMsg).slice(0, 180)}`);
       }
-
-      let parsed: any = null;
-      try {
-        parsed = JSON.parse(body);
-      } catch {
-        errors.push(`${language}: non-JSON response`);
-        continue;
-      }
-
-      const pageTexts = Array.isArray(parsed?.ParsedResults)
-        ? parsed.ParsedResults.map((item: any) => cleanText(String(item?.ParsedText || ""))).filter(Boolean)
-        : [];
-      const text = cleanText(pageTexts.join("\n\n"));
-
-      if (text) {
-        return {
-          text,
-          pageCount: pageTexts.length,
-          language,
-        };
-      }
-
-      const errMsg =
-        (Array.isArray(parsed?.ErrorMessage) ? parsed.ErrorMessage.join("; ") : parsed?.ErrorMessage) ||
-        parsed?.ErrorDetails ||
-        "empty OCR text";
-      errors.push(`${language}: ${String(errMsg).slice(0, 180)}`);
     }
 
     throw new Error(`Cloud OCR returned no text. Attempts: ${errors.join(" | ")}`);
