@@ -4608,15 +4608,89 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
     },
   });
 
+  type LegalDraftingDocType =
+    | "civil-suit-plaint"
+    | "civil-misc-application"
+    | "sessions-bail-application"
+    | "high-court-writ-petition"
+    | "high-court-civil-appeal"
+    | "supreme-court-cpla";
+
+  const LEGAL_DRAFTING_DOC_TYPES: Record<
+    LegalDraftingDocType,
+    { label: string; checklist: string; skeleton: string }
+  > = {
+    "civil-suit-plaint": {
+      label: "Civil Suit (Plaint)",
+      checklist:
+        "- Cause title and parties\n- Jurisdiction and valuation\n- Material facts and cause of action\n- Relief/prayer with court fee statement\n- Verification",
+      skeleton:
+        "IN THE COURT OF ______\nCivil Suit No. ____ of ____\n\nPlaintiff: ____\nVersus\nDefendant: ____\n\nSUIT FOR ____\n\nFacts:\n1. ...\n2. ...\n\nJurisdiction:\n...\n\nPrayer:\na) ...\nb) ...\n\nVerification:\n...",
+    },
+    "civil-misc-application": {
+      label: "Civil Misc. Application",
+      checklist:
+        "- Main case reference\n- Statutory provision invoked\n- Urgency/interim grounds\n- Specific interim prayer",
+      skeleton:
+        "IN THE COURT OF ______\nCMA No. ____ of ____ in Civil Suit/Appeal No. ____\n\nApplicant: ____\nVersus\nRespondent: ____\n\nAPPLICATION UNDER SECTION ____ / ORDER ____ CPC\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
+    "sessions-bail-application": {
+      label: "Sessions Court Bail Application",
+      checklist:
+        "- FIR details, offences, police station\n- Bail grounds (further inquiry, delay, etc.)\n- Undertaking to join trial\n- Prayer under correct Cr.P.C section",
+      skeleton:
+        "IN THE COURT OF THE SESSIONS JUDGE ______\nBail Application No. ____ of ____\n\nApplicant/Accused: ____\nVersus\nThe State\n\nAPPLICATION FOR BAIL UNDER SECTION ____ Cr.P.C.\n\nFIR details:\n...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
+    "high-court-writ-petition": {
+      label: "High Court Writ Petition",
+      checklist:
+        "- Article 199 jurisdiction\n- Impugned order/action details\n- Grounds: without lawful authority/no legal effect\n- Maintainability and alternate remedy stance\n- Prayer with interim relief if needed",
+      skeleton:
+        "IN THE HIGH COURT OF ______\nConstitutional Petition No. ____ of ____\n\nPetitioner: ____\nVersus\nRespondents: ____\n\nPETITION UNDER ARTICLE 199 OF THE CONSTITUTION\n\nFacts:\n...\n\nGrounds:\n...\n\nPrayer:\n...",
+    },
+    "high-court-civil-appeal": {
+      label: "High Court Civil Appeal",
+      checklist:
+        "- Impugned judgment/decree details\n- Limitation statement\n- Numbered grounds of appeal\n- Clear relief sought",
+      skeleton:
+        "IN THE HIGH COURT OF ______\nCivil Appeal No. ____ of ____\n\nAppellant: ____\nVersus\nRespondent: ____\n\nMEMORANDUM OF CIVIL APPEAL\n\nImpugned judgment:\n...\n\nGrounds of appeal:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
+    "supreme-court-cpla": {
+      label: "Supreme Court CPLA",
+      checklist:
+        "- Jurisdictional basis and maintainability\n- Questions of law/public importance\n- Concise but strong grounds\n- Prayer for leave and interim relief (if any)",
+      skeleton:
+        "IN THE SUPREME COURT OF PAKISTAN\nCivil Petition for Leave to Appeal No. ____ of ____\n\nPetitioner: ____\nVersus\nRespondent: ____\n\nPETITION FOR LEAVE TO APPEAL\n\nQuestions of law:\n1. ...\n2. ...\n\nGrounds:\n...\n\nPrayer:\n...",
+    },
+  };
+
+  function normalizeLegalDraftingDocType(
+    raw: string | undefined | null,
+    prompt: string,
+  ): LegalDraftingDocType {
+    const value = String(raw || "").trim().toLowerCase();
+    if (value in LEGAL_DRAFTING_DOC_TYPES) {
+      return value as LegalDraftingDocType;
+    }
+    const text = prompt.toLowerCase();
+    if (/(cpla|leave to appeal|supreme court)/.test(text)) return "supreme-court-cpla";
+    if (/(writ|article\s*199|constitutional petition|high court writ)/.test(text)) return "high-court-writ-petition";
+    if (/(high court.*appeal|civil appeal)/.test(text)) return "high-court-civil-appeal";
+    if (/(bail|497|498|sessions court|criminal bail)/.test(text)) return "sessions-bail-application";
+    if (/(civil misc|cma|interim relief|151\s*cpc)/.test(text)) return "civil-misc-application";
+    return "civil-suit-plaint";
+  }
+
   app.post("/api/retrieval/clauses/generate", guardedUploadQueue, retrievalAttachmentUpload.array("attachments", 5), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const { prompt, draftText, jurisdiction, module } = req.body as {
+      const { prompt, draftText, jurisdiction, module, documentType } = req.body as {
         prompt?: string;
         draftText?: string;
         jurisdiction?: string;
         module?: string;
+        documentType?: string;
       };
       const safePrompt = (prompt || "").trim();
       if (!safePrompt) {
@@ -4767,6 +4841,70 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         } catch (styleErr) {
           console.warn("[StyleMemory] Could not retrieve clause style context:", getErrorMessage(styleErr));
         }
+      }
+
+      if (String(module || "").toLowerCase() === "legal-drafting") {
+        const allowed = await checkUsageLimit(userId, "draft", res);
+        if (!allowed) return;
+
+        const selectedDocType = normalizeLegalDraftingDocType(documentType, safePrompt);
+        const profile = LEGAL_DRAFTING_DOC_TYPES[selectedDocType];
+
+        const sysInstruction = `${getLegalSystemPrompt()}
+
+You are a Pakistani litigation drafting assistant.
+STRICT SCOPE:
+- Draft only court/litigation filings.
+- Allowed categories only:
+  1) Civil Suit (Plaint)
+  2) Civil Misc. Application
+  3) Sessions Court Bail Application
+  4) High Court Writ Petition
+  5) High Court Civil Appeal
+  6) Supreme Court CPLA
+- Do NOT draft contracts, rent deeds, NDAs, sale deeds, employment contracts, or any agreement format.
+- If user asks for contract-like drafting, explicitly say it belongs to Contract Drafting Module.
+
+TARGET FILING: ${profile.label}
+DRAFTING CHECKLIST:
+${profile.checklist}
+
+OUTPUT REQUIREMENTS:
+- Formal Pakistani court style.
+- Proper headings, numbered grounds/facts, and clear prayer.
+- Use placeholders where facts are missing (e.g., [Date], [Court], [Party Name]).
+- Return plain text only.`;
+
+        const userInput = `User instruction:
+${safePrompt}
+
+Jurisdiction/Forum (if provided): ${jurisdiction || "Pakistan"}
+
+Current draft / case history context:
+${draftContextForGeneration || "[No draft/context provided]"}
+
+Reference skeleton (adapt to facts):
+${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
+
+        const aiResult = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.draft, {
+          timeoutProfile: "analysis",
+          temperature: 0.25,
+        });
+        await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
+        const draftedText = normalizeDraftingText(aiResult.text);
+        if (!draftedText) {
+          return res.status(502).json({ message: "AI returned empty legal draft text" });
+        }
+
+        return res.json({
+          clause: draftedText,
+          sourceId: `legal-${selectedDocType}`,
+          confidence: 0.86,
+          method: "ai-legal-drafting",
+          documentType: selectedDocType,
+          attachmentsUsed: files?.length || 0,
+          styleMemory: styleMemoryMeta || undefined,
+        });
       }
 
       const generated = generateClauseFromPrompt({
