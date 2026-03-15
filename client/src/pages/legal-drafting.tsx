@@ -68,6 +68,14 @@ type DraftTemplate = {
   body: string;
 };
 
+type LegalDocumentType =
+  | "civil-suit-plaint"
+  | "civil-misc-application"
+  | "sessions-bail-application"
+  | "high-court-writ-petition"
+  | "high-court-civil-appeal"
+  | "supreme-court-cpla";
+
 type StatuteReference = {
   label: string;
   href: string;
@@ -264,6 +272,15 @@ const TEMPLATES: DraftTemplate[] = [
   },
 ];
 
+const LEGAL_DOCUMENT_TYPE_OPTIONS: Array<{ value: LegalDocumentType; label: string }> = [
+  { value: "civil-suit-plaint", label: "Civil Suit (Plaint)" },
+  { value: "civil-misc-application", label: "Civil Misc. Application" },
+  { value: "sessions-bail-application", label: "Sessions Court Bail Application" },
+  { value: "high-court-writ-petition", label: "High Court Writ Petition" },
+  { value: "high-court-civil-appeal", label: "High Court Civil Appeal" },
+  { value: "supreme-court-cpla", label: "Supreme Court CPLA" },
+];
+
 function inferStatuteReferences(draft: string): StatuteReference[] {
   const text = draft.toLowerCase();
   if (!text.trim()) return [];
@@ -314,6 +331,7 @@ export default function LegalDraftingPage() {
   const [riskLoading, setRiskLoading] = useState(false);
   const [riskResults, setRiskResults] = useState<DraftSuggestion[]>([]);
   const [aiContextFiles, setAiContextFiles] = useState<File[]>([]);
+  const [legalDocumentType, setLegalDocumentType] = useState<LegalDocumentType>("civil-suit-plaint");
   const [activeLeftTool, setActiveLeftTool] = useState<"drafts" | "templates" | "collab" | "archive">("drafts");
   const [leftRailOpen, setLeftRailOpen] = useState(true);
   const [rightRailOpen, setRightRailOpen] = useState(true);
@@ -654,6 +672,7 @@ export default function LegalDraftingPage() {
         form.append("draftText", docText.slice(0, 12000));
         form.append("jurisdiction", "Lahore");
         form.append("module", "legal-drafting");
+        form.append("documentType", legalDocumentType);
         aiContextFiles.forEach((file) => form.append("attachments", file));
         response = await fetch("/api/retrieval/clauses/generate", {
           method: "POST",
@@ -666,6 +685,7 @@ export default function LegalDraftingPage() {
           draftText: docText.slice(0, 12000),
           jurisdiction: "Lahore",
           module: "legal-drafting",
+          documentType: legalDocumentType,
         };
         response = await fetch("/api/retrieval/clauses/generate", {
           method: "POST",
@@ -691,7 +711,7 @@ export default function LegalDraftingPage() {
       setAiPrompt("");
       setAiContextFiles([]);
       if (aiContextInputRef.current) aiContextInputRef.current.value = "";
-      toast({ title: "Clause inserted" });
+      toast({ title: "Legal draft content inserted" });
 
       await apiRequest("POST", "/api/search-history", {
         type: "draft",
@@ -1178,12 +1198,26 @@ export default function LegalDraftingPage() {
                   Style memory: {styleMemoryMeta.applied ? "applied" : "not applied"} · confidence {Math.round((styleMemoryMeta.confidence || 0) * 100)}%
                 </div>
               )}
+              <div className="mb-3">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Court Filing Type</label>
+                <select
+                  value={legalDocumentType}
+                  onChange={(e) => setLegalDocumentType(e.target.value as LegalDocumentType)}
+                  className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-100 focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none"
+                >
+                  {LEGAL_DOCUMENT_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="relative">
                 <Textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-xl p-3 text-sm focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none resize-none placeholder:text-slate-600"
-                  placeholder="e.g., Write a force majeure clause for Pakistan"
+                  placeholder="e.g., Draft grounds for High Court Civil Appeal against dismissal of injunction application"
                   rows={4}
                   data-testid="textarea-ai-draft-prompt"
                 />
