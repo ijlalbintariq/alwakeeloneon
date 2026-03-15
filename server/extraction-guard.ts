@@ -226,10 +226,30 @@ async function runWorkerTask<T>(kind: WorkerKind, buffer: Buffer, timeoutMs: num
     }
     return parsed.payload as T;
   } catch (err: any) {
+    const stdoutText = typeof err?.stdout === "string"
+      ? err.stdout
+      : Buffer.isBuffer(err?.stdout)
+        ? err.stdout.toString("utf-8")
+        : "";
+    if (stdoutText.trim()) {
+      try {
+        const parsed = JSON.parse(stdoutText) as { ok?: boolean; payload?: T; error?: string };
+        if (parsed.ok) {
+          return parsed.payload as T;
+        }
+        if (parsed.error) {
+          throw new Error(parsed.error);
+        }
+      } catch (parseErr) {
+        if (parseErr instanceof Error && parseErr.message) {
+          throw parseErr;
+        }
+      }
+    }
     if (String(err?.message || "").includes("timed out")) {
       throw new Error(`Extraction worker timed out for ${kind} after ${timeoutMs}ms`);
     }
-    throw err;
+    throw new Error(err?.message || `Extraction worker failed for ${kind}`);
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
   }
@@ -243,8 +263,13 @@ export async function extractPdfTextGuarded(
   const label = `pdf-parse:${options?.context || "default"}`;
   return await enqueueExtractionTask(label, async () => {
     if (EXTRACTION_WORKER_ENABLED) {
-      const result = await runWorkerTask<{ text: string }>("pdf-parse", buffer, timeoutMs);
-      return cleanText(result.text || "");
+      try {
+        const result = await runWorkerTask<{ text: string }>("pdf-parse", buffer, timeoutMs);
+        return cleanText(result.text || "");
+      } catch (workerErr) {
+        // Safety fallback: keep extraction working even if worker subprocess fails.
+        console.warn(`[ExtractionWorker][pdf-parse] ${options?.context || "default"} failed, using inline parser:`, workerErr);
+      }
     }
     return await parsePdfInline(buffer);
   });
@@ -258,8 +283,12 @@ export async function extractDocxTextGuarded(
   const label = `docx-parse:${options?.context || "default"}`;
   return await enqueueExtractionTask(label, async () => {
     if (EXTRACTION_WORKER_ENABLED) {
-      const result = await runWorkerTask<{ text: string }>("docx-parse", buffer, timeoutMs);
-      return cleanText(result.text || "");
+      try {
+        const result = await runWorkerTask<{ text: string }>("docx-parse", buffer, timeoutMs);
+        return cleanText(result.text || "");
+      } catch (workerErr) {
+        console.warn(`[ExtractionWorker][docx-parse] ${options?.context || "default"} failed, using inline parser:`, workerErr);
+      }
     }
     return await parseDocxInline(buffer);
   });
@@ -273,17 +302,21 @@ export async function extractPdfOcrGuarded(
   const label = `pdf-ocr:${options.context || "default"}`;
   return await enqueueExtractionTask(label, async () => {
     if (EXTRACTION_WORKER_ENABLED) {
-      const result = await runWorkerTask<OcrPdfResult>("pdf-ocr", buffer, timeoutMs, {
-        maxPages: options.maxPages,
-        dpi: options.dpi,
-        language: options.language,
-        timeoutMs,
-      });
-      return {
-        text: cleanText(result.text || ""),
-        pageCount: Number(result.pageCount || 0),
-        language: result.language || String(options.language || "eng+urd"),
-      };
+      try {
+        const result = await runWorkerTask<OcrPdfResult>("pdf-ocr", buffer, timeoutMs, {
+          maxPages: options.maxPages,
+          dpi: options.dpi,
+          language: options.language,
+          timeoutMs,
+        });
+        return {
+          text: cleanText(result.text || ""),
+          pageCount: Number(result.pageCount || 0),
+          language: result.language || String(options.language || "eng+urd"),
+        };
+      } catch (workerErr) {
+        console.warn(`[ExtractionWorker][pdf-ocr] ${options.context || "default"} failed, using inline OCR:`, workerErr);
+      }
     }
     return await ocrPdfWithTesseract(buffer, {
       maxPages: options.maxPages,

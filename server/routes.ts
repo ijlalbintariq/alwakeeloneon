@@ -5034,7 +5034,17 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
             if (signatureExt === ".txt") {
               extractedText = stripNullBytes(stableFile.buffer.toString("utf-8"));
             } else if (signatureExt === ".pdf") {
-              let parsedText = await extractPdfTextSafe(stableFile.buffer, "chat-attachment");
+              let parsedText = "";
+              try {
+                parsedText = await extractPdfTextSafe(stableFile.buffer, "chat-attachment");
+              } catch (pdfParseErr) {
+                if (isExtractionQueueFullError(pdfParseErr)) {
+                  throw pdfParseErr;
+                }
+                console.warn(
+                  `[OCR][chat-attachment] PDF parse failed for ${file.originalname}, continuing to OCR fallback: ${getErrorMessage(pdfParseErr)}`,
+                );
+              }
               if (!parsedText.trim()) {
                 parsedText = await extractPdfTextWithOcrFallback(stableFile, "chat-attachment");
               }
