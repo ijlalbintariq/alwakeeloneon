@@ -5268,7 +5268,7 @@ The user has attached the following documents for your reference. Analyze them c
       const cacheKey = `${cacheRaw}::type=${featureKey}::intent=${moduleIntent || "none"}::profile=${moduleType}::route=${routeLabel}::direct=${directMode ? "1" : "0"}::style=${styleCacheTag}`;
       const normalized = normalizeQuery(cacheKey);
       const hash = hashQuery("ai-chat", normalized);
-      const usageFeatureKey = selectedRoute === "apex" ? "chat-apex" : featureKey;
+      let usageFeatureKey = selectedRoute === "apex" ? "chat-apex" : featureKey;
 
       try {
         const cached = await storage.getCachedResponse("ai-chat", hash);
@@ -5392,14 +5392,27 @@ The user has attached the following documents for your reference. Analyze them c
         if (!selectedApexModel) {
           return res.status(403).json({ message: `No Apex models are available for your ${normalizedTier} plan` });
         }
-        const apexMessages = buildMessages(systemPromptFull, geminiContents);
-        const apexResult = await callApexAIWithFallback(
-          apexMessages,
-          selectedApexModel,
-          allowedApexModels,
-          tokenLimit,
-        );
-        result = { text: apexResult.text, model: apexResult.model };
+        try {
+          const apexMessages = buildMessages(systemPromptFull, geminiContents);
+          const apexResult = await callApexAIWithFallback(
+            apexMessages,
+            selectedApexModel,
+            allowedApexModels,
+            tokenLimit,
+          );
+          result = { text: apexResult.text, model: apexResult.model };
+        } catch (apexErr) {
+          const fallbackRoute: ChatRouteMode = isTurboAllowedForTier(userTier) ? "turbo" : "standard";
+          const fallbackAiCall = fallbackRoute === "turbo" ? callTurboAI : callStandardAI;
+          console.warn(
+            `[AI Chat] Apex route failed for ${moduleType}${extractedAttachmentCount > 0 ? " (with attachments)" : ""}; falling back to ${fallbackRoute}: ${getErrorMessage(apexErr)}`,
+          );
+          routingPath.push(`apex-runtime-fallback:${fallbackRoute}`);
+          downgraded = true;
+          usageFeatureKey = featureKey;
+          const fallbackResult = await fallbackAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
+          result = { text: fallbackResult.text, model: fallbackResult.model };
+        }
       } else {
         const baseAiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
         result = await baseAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
