@@ -5691,6 +5691,46 @@ RULES:
     return stripNullBytes(text);
   }
 
+  async function refineChatOcrTextWithStandardAI(rawText: string, filename: string): Promise<string> {
+    const cleanedRaw = stripNullBytes(rawText || "").trim();
+    if (!cleanedRaw) return "";
+
+    const enabled = !/^(0|false|no|off)$/i.test(String(process.env.CHAT_OCR_STANDARD_AI_ENABLED || "true"));
+    if (!enabled) return cleanedRaw;
+
+    try {
+      const boundedRaw = trimTextToTokenBudget(cleanedRaw, 3500);
+      const systemPrompt = `${getLegalSystemPrompt()}
+
+You are an OCR cleanup assistant for legal text.
+- Clean OCR noise and obvious recognition artifacts.
+- Preserve legal meaning, citations, section numbers, party names, and dates exactly.
+- Do not summarize, add, or remove substantive content.
+- Return plain text only (no markdown).`;
+
+      const userPrompt = `Filename: ${filename}
+
+Clean this OCR text while preserving legal content exactly:
+${boundedRaw}`;
+
+      const result = await callStandardAISimple(systemPrompt, userPrompt, 3500, {
+        timeoutProfile: "analysis",
+        temperature: 0,
+      });
+
+      const refined = stripNullBytes((result.text || "").trim());
+      if (!refined) return cleanedRaw;
+      // Guardrail: if model output is suspiciously short, keep original OCR text.
+      if (refined.length < Math.max(120, Math.floor(cleanedRaw.length * 0.45))) {
+        return cleanedRaw;
+      }
+      return refined;
+    } catch (err) {
+      console.warn(`[OCR][chat-attachment] Standard AI cleanup failed for ${filename}: ${getErrorMessage(err)}`);
+      return cleanedRaw;
+    }
+  }
+
   async function extractDocxTextSafe(sourceBuffer: Buffer, context: string = "docx-parse"): Promise<string> {
     const text = await extractDocxTextGuarded(sourceBuffer, {
       timeoutMs: EXTRACTION_TIMEOUT_MS,
@@ -5722,6 +5762,10 @@ RULES:
           console.log(
             `[OCR][${context}] Extracted ${text.length} chars from ${file.originalname} using ${result.pageCount} page(s), language ${result.language}.`,
           );
+          if (context === "chat-attachment") {
+            const refined = await refineChatOcrTextWithStandardAI(text, file.originalname);
+            return stripNullBytes(refined);
+          }
           return text;
         }
         lastOcrError = new Error("Local OCR returned empty text.");
@@ -5750,6 +5794,10 @@ RULES:
         console.log(
           `[OCR][${context}] Cloud OCR extracted ${text.length} chars from ${file.originalname} using ${cloudResult.pageCount} page(s), language ${cloudResult.language}.`,
         );
+        if (context === "chat-attachment") {
+          const refined = await refineChatOcrTextWithStandardAI(text, file.originalname);
+          return stripNullBytes(refined);
+        }
       } else {
         lastOcrError = new Error("Cloud OCR returned empty text.");
       }
