@@ -314,7 +314,7 @@ export function registerAuthRoutes(app: Express): void {
       if (!applyAuthRateLimit(req, res, "google-token", 20, 15 * 60 * 1000)) return;
       if (!(await requireCaptchaOrReject(req, res, "google-token"))) return;
 
-      const { credential, acceptedTerms, termsVersion } = req.body || {};
+      const { credential } = req.body || {};
       if (!credential) {
         return res.status(400).json({ message: "No credential provided" });
       }
@@ -338,12 +338,7 @@ export function registerAuthRoutes(app: Express): void {
       }
 
       const email = payload.email;
-      const firstName = payload.given_name || payload.name?.split(" ")[0] || "";
-      const lastName = payload.family_name || payload.name?.split(" ").slice(1).join(" ") || "";
-      const profileImageUrl = payload.picture || null;
-
-      let user = await authStorage.getUserByEmail(email);
-      let createdNow = false;
+      const user = await authStorage.getUserByEmail(email);
 
       if (user) {
         if (user.authProvider === "email") {
@@ -354,33 +349,8 @@ export function registerAuthRoutes(app: Express): void {
           return res.status(403).json({ message: "Your account is suspended. Please contact support." });
         }
       } else {
-        if (acceptedTerms !== true) {
-          return res.status(400).json({ message: TERMS_REQUIRED_MESSAGE });
-        }
-        user = await authStorage.upsertUser({
-          email,
-          firstName,
-          lastName,
-          profileImageUrl,
-          authProvider: "google",
-          subscriptionTier: "free",
-          emailVerified: true,
-          emailVerifiedAt: new Date(),
-        });
-        createdNow = true;
-        await logAuditEvent("auth.register", user.id, user.id, {
-          provider: "google",
-          termsAcceptedVersion: typeof termsVersion === "string" && termsVersion.trim()
-            ? termsVersion.trim().slice(0, 40)
-            : TERMS_VERSION,
-        }).catch(() => {});
-      }
-
-      if (createdNow) {
-        const host = req.get("host");
-        const loginUrl = host ? `${req.protocol}://${host}/auth` : "https://alwakeelo.com/auth";
-        void sendWelcomeEmail(email, firstName, loginUrl).catch((err) => {
-          console.warn("[Auth] Welcome email send failed (google provider):", err?.message || err);
+        return res.status(404).json({
+          message: "No account found for this Google email. Please sign up first, then use Google sign-in.",
         });
       }
       if (!user!.emailVerified) {

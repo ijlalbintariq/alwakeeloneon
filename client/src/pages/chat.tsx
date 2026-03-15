@@ -98,6 +98,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
   const { data: threads = [] } = useQuery<ThreadSummary[]>({ queryKey: ["/api/threads"] });
@@ -200,6 +201,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       handleSend(initialMessage);
     }
   }, []);
+
+  const resizePromptInput = useCallback(() => {
+    const inputEl = promptInputRef.current;
+    if (!inputEl) return;
+    const maxHeightPx = 176;
+    inputEl.style.height = "auto";
+    const nextHeight = Math.min(inputEl.scrollHeight, maxHeightPx);
+    inputEl.style.height = `${Math.max(nextHeight, 44)}px`;
+    inputEl.style.overflowY = inputEl.scrollHeight > maxHeightPx ? "auto" : "hidden";
+  }, []);
+
+  useEffect(() => {
+    resizePromptInput();
+  }, [input, resizePromptInput]);
 
   const bookmarkMutation = useMutation({
     mutationFn: async (msg: ChatMessage) => {
@@ -1015,7 +1030,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           )}
 
-          <div className="flex gap-2 bg-[#1e293b] border border-slate-700 p-2 rounded-[2rem] shadow-2xl items-center">
+          <div className="flex gap-2 bg-[#1e293b] border border-slate-700 p-2 rounded-[2rem] shadow-2xl items-end">
             <input
               type="file"
               ref={fileInputRef}
@@ -1054,12 +1069,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               <Mic size={18} />
             </button>
 
-            <input
-              className="flex-1 bg-transparent border-none px-3 py-3 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-600"
+            <textarea
+              ref={promptInputRef}
+              rows={1}
+              className="flex-1 min-h-[44px] max-h-44 resize-none overflow-y-auto bg-transparent border-none px-3 py-2 text-sm text-white leading-6 focus:ring-0 focus:outline-none placeholder:text-slate-600"
               placeholder="Consult Al Wakeelo..."
               value={input}
+              onInput={resizePromptInput}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               data-testid="input-chat"
             />
             <button
@@ -1305,7 +1328,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             )}
 
             <div className="w-full bg-[#1e293b]/80 border border-amber-500/20 rounded-2xl shadow-2xl p-2">
-              <div className="flex items-center gap-2 p-1.5 sm:p-2 flex-wrap">
+              <div className="flex items-end gap-2 p-1.5 sm:p-2 flex-wrap">
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple className="hidden" />
                 <input type="file" ref={audioInputRef} onChange={handleAudioSelect} accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" className="hidden" />
 
@@ -1329,12 +1352,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   </button>
                 )}
 
-                <input
-                  className="flex-1 min-w-[180px] bg-transparent border-none focus:ring-0 text-slate-100 placeholder:text-slate-500 px-2"
+                <textarea
+                  ref={promptInputRef}
+                  rows={1}
+                  className="flex-1 min-w-[180px] min-h-[42px] max-h-44 resize-none overflow-y-auto bg-transparent border-none focus:ring-0 text-slate-100 placeholder:text-slate-500 px-2 py-2 leading-6"
                   placeholder="Ask Al Wakeelo about Pakistan Law..."
                   value={input}
+                  onInput={resizePromptInput}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
                   data-testid="input-chat"
                 />
 
