@@ -9,9 +9,9 @@ function cleanText(value: string): string {
   return String(value || "").replace(/\x00/g, "").trim();
 }
 
-function resolveLanguage(requested?: string): string {
+function resolveLanguageCandidates(requested?: string): string[] {
   const raw = String(requested || process.env.CLOUD_OCR_LANG || "eng").toLowerCase().trim();
-  if (!raw) return "eng";
+  if (!raw) return ["eng"];
 
   const tokens = raw
     .split(/[^a-z]+/g)
@@ -20,20 +20,25 @@ function resolveLanguage(requested?: string): string {
 
   const hasEnglish = tokens.some((token) => token === "eng" || token === "en" || token === "english");
   const hasUrdu = tokens.some((token) => token === "urd" || token === "ur" || token === "urdu");
+  const candidates: string[] = [];
 
-  // OCR.space accepts a single language code for this flow.
-  // For mixed language requests (e.g. "eng+urd"), prefer English to avoid empty OCR on English judgments.
-  if (hasEnglish) return "eng";
-  if (hasUrdu) return "ara";
+  // OCR.space accepts one language per call.
+  // Prefer English first for Pakistani judgments, then Urdu/Arabic fallback.
+  if (hasEnglish) candidates.push("eng");
+  if (hasUrdu) candidates.push("ara");
 
-  if (raw === "english") return "eng";
-  if (raw === "urdu") return "ara";
-  if (raw === "arabic") return "ara";
+  if (raw === "english") candidates.push("eng");
+  if (raw === "urdu" || raw === "arabic") candidates.push("ara");
 
   // Allow explicit 3-letter OCR.space language codes to pass through.
-  if (/^[a-z]{3}$/.test(raw)) return raw;
+  if (/^[a-z]{3}$/.test(raw)) candidates.push(raw);
 
-  return "eng";
+  // Always keep an English fallback so scanned English PDFs don't fail due language mismatch.
+  candidates.push("eng");
+  // Keep Urdu/Arabic fallback for Urdu judgments.
+  candidates.push("ara");
+
+  return Array.from(new Set(candidates.filter(Boolean)));
 }
 
 export function getCloudPdfOcrProviderName(): string {
@@ -68,56 +73,64 @@ export async function ocrPdfWithCloud(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const language = resolveLanguage(options.language);
-    const form = new FormData();
-    form.append("apikey", OCRSPACE_API_KEY);
-    form.append("isOverlayRequired", "false");
-    form.append("language", language);
-    form.append("OCREngine", OCRSPACE_ENGINE);
-    form.append("scale", "true");
-    form.append("detectOrientation", "true");
-    form.append(
-      "file",
-      new Blob([pdfBuffer], { type: "application/pdf" }),
-      options.filename || "document.pdf",
-    );
+    const languageCandidates = resolveLanguageCandidates(options.language);
+    const errors: string[] = [];
 
-    const res = await fetch(OCRSPACE_ENDPOINT, {
-      method: "POST",
-      body: form,
-      signal: controller.signal,
-    });
+    for (const language of languageCandidates) {
+      const form = new FormData();
+      form.append("apikey", OCRSPACE_API_KEY);
+      form.append("isOverlayRequired", "false");
+      form.append("language", language);
+      form.append("OCREngine", OCRSPACE_ENGINE);
+      form.append("scale", "true");
+      form.append("detectOrientation", "true");
+      form.append(
+        "file",
+        new Blob([pdfBuffer], { type: "application/pdf" }),
+        options.filename || "document.pdf",
+      );
 
-    const body = await res.text();
-    if (!res.ok) {
-      throw new Error(`OCR.space HTTP ${res.status}: ${body.slice(0, 240)}`);
-    }
+      const res = await fetch(OCRSPACE_ENDPOINT, {
+        method: "POST",
+        body: form,
+        signal: controller.signal,
+      });
 
-    let parsed: any = null;
-    try {
-      parsed = JSON.parse(body);
-    } catch {
-      throw new Error(`OCR.space returned non-JSON response: ${body.slice(0, 240)}`);
-    }
+      const body = await res.text();
+      if (!res.ok) {
+        errors.push(`${language}: HTTP ${res.status} ${body.slice(0, 120)}`);
+        continue;
+      }
 
-    const pageTexts = Array.isArray(parsed?.ParsedResults)
-      ? parsed.ParsedResults.map((item: any) => cleanText(String(item?.ParsedText || ""))).filter(Boolean)
-      : [];
-    const text = cleanText(pageTexts.join("\n\n"));
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        errors.push(`${language}: non-JSON response`);
+        continue;
+      }
 
-    if (!text) {
+      const pageTexts = Array.isArray(parsed?.ParsedResults)
+        ? parsed.ParsedResults.map((item: any) => cleanText(String(item?.ParsedText || ""))).filter(Boolean)
+        : [];
+      const text = cleanText(pageTexts.join("\n\n"));
+
+      if (text) {
+        return {
+          text,
+          pageCount: pageTexts.length,
+          language,
+        };
+      }
+
       const errMsg =
         (Array.isArray(parsed?.ErrorMessage) ? parsed.ErrorMessage.join("; ") : parsed?.ErrorMessage) ||
         parsed?.ErrorDetails ||
-        "Cloud OCR returned empty text.";
-      throw new Error(String(errMsg));
+        "empty OCR text";
+      errors.push(`${language}: ${String(errMsg).slice(0, 180)}`);
     }
 
-    return {
-      text,
-      pageCount: pageTexts.length,
-      language,
-    };
+    throw new Error(`Cloud OCR returned no text. Attempts: ${errors.join(" | ")}`);
   } catch (err: any) {
     if (err?.name === "AbortError") {
       throw new Error(`Cloud OCR timed out after ${timeoutMs}ms`);
