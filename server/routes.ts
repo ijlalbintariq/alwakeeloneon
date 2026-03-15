@@ -4600,7 +4600,15 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
     }
   });
 
-  app.post("/api/retrieval/clauses/generate", async (req, res) => {
+  const retrievalAttachmentUpload = multer({
+    storage: createUploadStorage("general"),
+    limits: {
+      fileSize: GENERAL_UPLOAD_MAX_FILE_SIZE_BYTES,
+      files: 5,
+    },
+  });
+
+  app.post("/api/retrieval/clauses/generate", guardedUploadQueue, retrievalAttachmentUpload.array("attachments", 5), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
@@ -4614,6 +4622,117 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       if (!safePrompt) {
         return res.status(400).json({ message: "Prompt is required" });
       }
+
+      const files = req.files as Express.Multer.File[] | undefined;
+      let attachmentContext = "";
+      const failedAttachments: string[] = [];
+      const failedAttachmentReasons: string[] = [];
+      const allowedExts = [".txt", ".pdf", ".docx"];
+      const allowedMimes = [
+        "text/plain",
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+
+      if (files && files.length > 0) {
+        const invalidFiles = files.filter((f) => {
+          const ext = f.originalname.includes(".")
+            ? f.originalname.substring(f.originalname.lastIndexOf(".")).toLowerCase()
+            : "";
+          const normalizedExt = ext === ".text" ? ".txt" : ext;
+          const mime = (f.mimetype || "").toLowerCase();
+          return !allowedExts.includes(normalizedExt) && !allowedMimes.includes(mime);
+        });
+        if (invalidFiles.length > 0) {
+          return res.status(400).json({
+            message: `Unsupported file type. Only TXT, PDF, and DOCX are allowed. Rejected: ${invalidFiles.map((f) => f.originalname).join(", ")}`,
+          });
+        }
+
+        for (const file of files) {
+          const stableFile = cloneUploadFile(file);
+          const ext = file.originalname.includes(".")
+            ? file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase()
+            : "";
+          const normalizedExt = ext === ".text" ? ".txt" : ext;
+          const mime = (file.mimetype || "").toLowerCase();
+          const signatureExt = allowedExts.includes(normalizedExt)
+            ? normalizedExt
+            : mime === "application/pdf"
+              ? ".pdf"
+              : mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                ? ".docx"
+                : ".txt";
+
+          if (!hasSafeDocumentSignature(stableFile, signatureExt)) {
+            failedAttachments.push(file.originalname);
+            failedAttachmentReasons.push(`${file.originalname}: invalid signature`);
+            continue;
+          }
+          const malwareCheck = await passesMalwareScan(stableFile);
+          if (!malwareCheck.ok) {
+            failedAttachments.push(file.originalname);
+            failedAttachmentReasons.push(`${file.originalname}: ${malwareCheck.reason || "malware detected"}`);
+            continue;
+          }
+
+          try {
+            let extractedText = "";
+            if (signatureExt === ".txt") {
+              extractedText = stripNullBytes(stableFile.buffer.toString("utf-8"));
+            } else if (signatureExt === ".pdf") {
+              let parsedText = "";
+              try {
+                parsedText = await extractPdfTextSafe(stableFile.buffer, "retrieval-clause-generate");
+              } catch (pdfErr) {
+                if (isExtractionQueueFullError(pdfErr)) return sendExtractionBusy(res);
+                console.warn(
+                  `[Retrieval Clause] PDF parse failed for ${file.originalname}, using OCR fallback: ${getErrorMessage(pdfErr)}`,
+                );
+              }
+              if (!parsedText.trim()) {
+                parsedText = await extractPdfTextWithOcrFallback(stableFile, "retrieval-clause-generate");
+              }
+              extractedText = stripNullBytes(parsedText);
+            } else {
+              extractedText = await extractDocxTextSafe(stableFile.buffer, "retrieval-clause-generate");
+              extractedText = stripNullBytes(extractedText);
+            }
+
+            if (!extractedText.trim()) {
+              failedAttachments.push(file.originalname);
+              failedAttachmentReasons.push(`${file.originalname}: extracted text was empty`);
+              continue;
+            }
+
+            const bounded = trimTextToTokenBudget(extractedText, 2200);
+            const label = signatureExt === ".pdf"
+              ? "Context PDF"
+              : signatureExt === ".docx"
+                ? "Context DOCX"
+                : "Context TXT";
+            attachmentContext += `\n\n--- ${label}: ${file.originalname} ---\n${bounded}\n--- End ---`;
+          } catch (extractErr) {
+            if (isExtractionQueueFullError(extractErr)) return sendExtractionBusy(res);
+            failedAttachments.push(file.originalname);
+            failedAttachmentReasons.push(`${file.originalname}: ${getErrorMessage(extractErr)}`);
+          }
+        }
+
+        if (!attachmentContext.trim()) {
+          const failureDetail = failedAttachmentReasons.length > 0
+            ? ` Details: ${failedAttachmentReasons.slice(0, 3).join(" | ")}`
+            : "";
+          return res.status(400).json({
+            message: `Could not extract readable text from context attachment(s): ${failedAttachments.join(", ")}.${failureDetail}`,
+          });
+        }
+      }
+
+      const draftContextForGeneration = trimTextToTokenBudget(
+        `${(draftText || "").trim()}${attachmentContext}`,
+        12000,
+      );
 
       let styleMemoryMeta: {
         applied: boolean;
@@ -4632,7 +4751,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
             module: styleModule,
             orgId: userOrg?.id ?? null,
             userPrompt: safePrompt,
-            draftText: draftText || "",
+            draftText: draftContextForGeneration,
           });
           styleMemoryMeta = {
             applied: false,
@@ -4652,7 +4771,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
 
       const generated = generateClauseFromPrompt({
         prompt: safePrompt,
-        draftText: draftText || "",
+        draftText: draftContextForGeneration,
         jurisdiction: jurisdiction || "Lahore",
       });
 
@@ -4675,7 +4794,7 @@ Return only clause text. No markdown. No bullet list. No JSON.`;
         const userInput = `${shouldStyleRewrite ? `Base Clause:\n${generated.clause}\n\n` : ""}Instruction: ${safePrompt}
 Jurisdiction: ${jurisdiction || "Lahore"}
 Current Draft Excerpt:
-${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
+${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
         try {
           const aiResult = await callStandardAISimple(sysInstruction, userInput, 1400, { timeoutProfile: "analysis", temperature: 0.3 });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
@@ -4687,6 +4806,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
               confidence: Math.max(generated.confidence, 0.72),
               retrievalConfidence: generated.confidence,
               method: shouldStyleRewrite ? "style-rewrite" : "ai-fallback",
+              attachmentsUsed: files?.length || 0,
               styleMemory: styleMemoryMeta || undefined,
             });
           }
@@ -4695,7 +4815,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
         }
       }
 
-      res.json({ ...generated, styleMemory: styleMemoryMeta || undefined });
+      res.json({ ...generated, attachmentsUsed: files?.length || 0, styleMemory: styleMemoryMeta || undefined });
     } catch (err) {
       console.error("Error generating retrieval clause:", err);
       res.status(500).json({ message: "Failed to generate clause" });
