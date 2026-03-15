@@ -178,9 +178,11 @@ async function ocrPdf(filePath, options) {
 }
 
 async function main() {
-  const kind = process.argv[2];
-  const inputPath = process.argv[3];
-  const optionsRaw = process.argv[4];
+  // node -e shifts argv compared to file execution, so read from tail.
+  const argvTail = process.argv.slice(-3);
+  const kind = argvTail[0];
+  const inputPath = argvTail[1];
+  const optionsRaw = argvTail[2];
   const options = optionsRaw ? JSON.parse(optionsRaw) : {};
 
   let payload;
