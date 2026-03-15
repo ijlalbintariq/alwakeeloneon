@@ -4893,6 +4893,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
       let attachmentContext = "";
       let extractedAttachmentCount = 0;
       const failedAttachments: string[] = [];
+      const failedAttachmentReasons: string[] = [];
       const allowedExts = [".txt", ".pdf", ".docx"];
       const allowedMimes = ["text/plain", "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
       if (files && files.length > 0) {
@@ -4954,6 +4955,7 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
 
             if (!extractedText.trim()) {
               failedAttachments.push(file.originalname);
+              failedAttachmentReasons.push(`${file.originalname}: extracted text was empty after parse/OCR.`);
               continue;
             }
 
@@ -4971,12 +4973,16 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
             }
             console.error(`Error extracting text from ${file.originalname}:`, fileErr);
             failedAttachments.push(file.originalname);
+            failedAttachmentReasons.push(`${file.originalname}: ${getErrorMessage(fileErr)}`);
           }
         }
 
         if (extractedAttachmentCount === 0) {
+          const failureDetail = failedAttachmentReasons.length > 0
+            ? ` Details: ${failedAttachmentReasons.slice(0, 3).join(" | ")}`
+            : "";
           return res.status(400).json({
-            message: `Could not extract readable text from uploaded attachment(s): ${failedAttachments.join(", ")}. Upload searchable PDF/TXT/DOCX or enable OCR dependencies for scanned PDFs.`,
+            message: `Could not extract readable text from uploaded attachment(s): ${failedAttachments.join(", ")}. Upload searchable PDF/TXT/DOCX or enable OCR dependencies for scanned PDFs.${failureDetail}`,
           });
         }
       }
@@ -5699,6 +5705,7 @@ RULES:
   ): Promise<string> {
     const sourceBuffer = getUploadBufferOrThrow(file);
     const requestedLanguage = process.env.TESSERACT_OCR_LANG || process.env.TESSERACT_LANG || "eng+urd";
+    let lastOcrError: unknown = null;
 
     const localOcrAvailable = await isPdfOcrAvailable();
     if (localOcrAvailable) {
@@ -5717,10 +5724,12 @@ RULES:
           );
           return text;
         }
+        lastOcrError = new Error("Local OCR returned empty text.");
       } catch (err) {
         if (isExtractionQueueFullError(err)) {
           throw err;
         }
+        lastOcrError = err;
         console.warn(`[OCR][${context}] Local OCR failed for ${file.originalname}: ${getErrorMessage(err)}`);
       }
     }
@@ -5734,18 +5743,27 @@ RULES:
         filename: file.originalname,
         language: requestedLanguage,
         timeoutMs: Number(process.env.CLOUD_OCR_TIMEOUT_MS || process.env.PDF_OCR_TIMEOUT_MS || 120000),
+        maxPages: Number(process.env.CLOUD_OCR_MAX_PAGES || process.env.PDF_OCR_MAX_PAGES || 8),
       });
       const text = stripNullBytes((cloudResult.text || "").trim());
       if (text) {
         console.log(
           `[OCR][${context}] Cloud OCR extracted ${text.length} chars from ${file.originalname} using ${cloudResult.pageCount} page(s), language ${cloudResult.language}.`,
         );
+      } else {
+        lastOcrError = new Error("Cloud OCR returned empty text.");
       }
       return text;
     } catch (err) {
+      lastOcrError = err;
       console.warn(`[OCR][${context}] Cloud OCR failed for ${file.originalname}: ${getErrorMessage(err)}`);
-      return "";
     }
+
+    if (lastOcrError) {
+      throw new Error(`OCR fallback failed: ${getErrorMessage(lastOcrError)}`);
+    }
+
+    return "";
   }
 
   async function isAdmin(req: any, res: any): Promise<boolean> {
