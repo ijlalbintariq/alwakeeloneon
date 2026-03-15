@@ -4893,9 +4893,17 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
       let attachmentContext = "";
       let extractedAttachmentCount = 0;
       const failedAttachments: string[] = [];
+      const allowedExts = [".txt", ".pdf", ".docx"];
       const allowedMimes = ["text/plain", "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
       if (files && files.length > 0) {
-        const invalidFiles = files.filter(f => !allowedMimes.includes(f.mimetype));
+        const invalidFiles = files.filter((f) => {
+          const ext = f.originalname.includes(".")
+            ? f.originalname.substring(f.originalname.lastIndexOf(".")).toLowerCase()
+            : "";
+          const normalizedExt = ext === ".text" ? ".txt" : ext;
+          const mime = (f.mimetype || "").toLowerCase();
+          return !allowedExts.includes(normalizedExt) && !allowedMimes.includes(mime);
+        });
         if (invalidFiles.length > 0) {
           return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, and DOCX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
         }
@@ -4904,16 +4912,19 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
           const ext = file.originalname.includes(".")
             ? file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase()
             : "";
-          const signatureExt =
-            file.mimetype === "application/pdf"
+          const normalizedExt = ext === ".text" ? ".txt" : ext;
+          const mime = (file.mimetype || "").toLowerCase();
+          const signatureExt = allowedExts.includes(normalizedExt)
+            ? normalizedExt
+            : mime === "application/pdf"
               ? ".pdf"
-              : file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              : mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 ? ".docx"
                 : ".txt";
-          if ((ext && ![".txt", ".pdf", ".docx"].includes(ext)) || !hasSafeDocumentSignature(stableFile, signatureExt)) {
+          if (!hasSafeDocumentSignature(stableFile, signatureExt)) {
             recordSecurityEvent("upload_signature_failure", `chat-attachment:${userId}`, {
               filename: file.originalname,
-              ext,
+              ext: normalizedExt || null,
               mimetype: file.mimetype,
             });
             return res.status(400).json({ message: `Unsafe or invalid attachment detected: ${file.originalname}` });
@@ -4928,15 +4939,15 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
           }
           try {
             let extractedText = "";
-            if (file.mimetype === "text/plain") {
+            if (signatureExt === ".txt") {
               extractedText = stripNullBytes(stableFile.buffer.toString("utf-8"));
-            } else if (file.mimetype === "application/pdf") {
+            } else if (signatureExt === ".pdf") {
               let parsedText = await extractPdfTextSafe(stableFile.buffer, "chat-attachment");
               if (!parsedText.trim()) {
                 parsedText = await extractPdfTextWithOcrFallback(stableFile, "chat-attachment");
               }
               extractedText = stripNullBytes(parsedText);
-            } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+            } else if (signatureExt === ".docx") {
               const parsedText = await extractDocxTextSafe(stableFile.buffer, "chat-attachment");
               extractedText = stripNullBytes(parsedText);
             }
@@ -4947,9 +4958,9 @@ ${(draftText || "").slice(0, 12000) || "[No draft text provided]"}${styleContext
             }
 
             const boundedFileText = trimTextToTokenBudget(extractedText, ATTACHMENT_FILE_TOKEN_BUDGET);
-            const label = file.mimetype === "application/pdf"
+            const label = signatureExt === ".pdf"
               ? "Attached PDF"
-              : file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              : signatureExt === ".docx"
                 ? "Attached Document"
                 : "Attached File";
             attachmentContext += `\n\n--- ${label}: ${file.originalname} ---\n${boundedFileText}\n--- End ---`;
