@@ -5447,7 +5447,12 @@ The user has attached the following documents for your reference. Analyze them c
       }
 
       const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
-      await logUsageCost(userId, usageFeatureKey, usedModel, inputText, completion);
+      try {
+        await logUsageCost(userId, usageFeatureKey, usedModel, inputText, completion);
+      } catch (usageErr) {
+        // Do not fail user-facing chat if analytics logging is temporarily unavailable.
+        console.warn("[AI Chat] Usage logging failed:", getErrorMessage(usageErr));
+      }
       try {
         await storage.setCachedResponse({
           endpoint: "ai-chat",
@@ -5465,8 +5470,18 @@ The user has attached the following documents for your reference. Analyze them c
         styleMemory: styleMemoryMeta || undefined,
       });
     } catch (err) {
+      const detail = getErrorMessage(err);
       console.error("Error in AI chat:", err);
-      res.status(500).json({ message: "Failed to process AI chat" });
+      if (isExtractionQueueFullError(err)) {
+        return sendExtractionBusy(res);
+      }
+      if (/apex monthly cap reached/i.test(detail)) {
+        return res.status(429).json({ message: detail });
+      }
+      if (/apex ai is not configured|no apex models are available|timed out|timeout|temporarily unavailable|service unavailable/i.test(detail)) {
+        return res.status(503).json({ message: detail });
+      }
+      res.status(500).json({ message: `Failed to process AI chat: ${detail}` });
     }
   });
 
