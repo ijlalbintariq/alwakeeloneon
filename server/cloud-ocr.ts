@@ -10,10 +10,30 @@ function cleanText(value: string): string {
 }
 
 function resolveLanguage(requested?: string): string {
-  const raw = String(requested || process.env.CLOUD_OCR_LANG || "eng").toLowerCase();
-  if (raw.includes("urd")) return "ara";
-  if (raw.includes("english") || raw.includes("eng")) return "eng";
-  return raw || "eng";
+  const raw = String(requested || process.env.CLOUD_OCR_LANG || "eng").toLowerCase().trim();
+  if (!raw) return "eng";
+
+  const tokens = raw
+    .split(/[^a-z]+/g)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  const hasEnglish = tokens.some((token) => token === "eng" || token === "en" || token === "english");
+  const hasUrdu = tokens.some((token) => token === "urd" || token === "ur" || token === "urdu");
+
+  // OCR.space accepts a single language code for this flow.
+  // For mixed language requests (e.g. "eng+urd"), prefer English to avoid empty OCR on English judgments.
+  if (hasEnglish) return "eng";
+  if (hasUrdu) return "ara";
+
+  if (raw === "english") return "eng";
+  if (raw === "urdu") return "ara";
+  if (raw === "arabic") return "ara";
+
+  // Allow explicit 3-letter OCR.space language codes to pass through.
+  if (/^[a-z]{3}$/.test(raw)) return raw;
+
+  return "eng";
 }
 
 export function getCloudPdfOcrProviderName(): string {
@@ -107,4 +127,3 @@ export async function ocrPdfWithCloud(
     clearTimeout(timeoutId);
   }
 }
-
