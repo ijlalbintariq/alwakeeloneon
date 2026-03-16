@@ -1238,14 +1238,39 @@ async function callLegalDraftingAI(
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, [{ role: "user", parts: [{ text: userText }] }]);
   const startedAt = Date.now();
-  if (!isDeepSeekAvailable()) {
-    throw new Error("Legal drafting requires DeepSeek. Set DEEPSEEK_API_KEY.");
+  const groqFallbackModel = "openai/gpt-oss-120b";
+  let deepSeekError: unknown = null;
+
+  if (isDeepSeekAvailable()) {
+    try {
+      const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () =>
+        chatWithDeepSeek({ messages, maxTokens, temperature }),
+      );
+      console.log(`[AI Routing][legal-drafting] DeepSeek succeeded in ${Date.now() - startedAt}ms`);
+      return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
+    } catch (err) {
+      deepSeekError = err;
+      console.log("[AI Routing][legal-drafting] DeepSeek failed:", getErrorMessage(err));
+    }
+  } else {
+    deepSeekError = new Error("DeepSeek is not configured");
   }
-  const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () =>
-    chatWithDeepSeek({ messages, maxTokens, temperature }),
-  );
-  console.log(`[AI Routing][legal-drafting] DeepSeek succeeded in ${Date.now() - startedAt}ms`);
-  return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
+
+  if (isGroqAvailable()) {
+    try {
+      logModelSwitch("legal-drafting", "DeepSeek", `Groq(${groqFallbackModel})`, deepSeekError || "DeepSeek unavailable");
+      const fallback = await withTimeout("Groq", timeoutConfig.standardFallback, () =>
+        chatWithGroq({ messages, maxTokens, temperature, model: groqFallbackModel }),
+      );
+      console.log(`[AI Routing][legal-drafting] Groq fallback (${groqFallbackModel}) succeeded in ${Date.now() - startedAt}ms`);
+      return { text: enforcePakistanLawOnlyOutput(fallback.content), model: fallback.model };
+    } catch (groqErr) {
+      console.log("[AI Routing][legal-drafting] Groq fallback failed:", getErrorMessage(groqErr));
+      throw groqErr;
+    }
+  }
+
+  throw new Error("Legal drafting requires DeepSeek or Groq fallback. Configure DEEPSEEK_API_KEY (preferred) or GROQ_API_KEY.");
 }
 
 async function callApexAIWithFallback(
