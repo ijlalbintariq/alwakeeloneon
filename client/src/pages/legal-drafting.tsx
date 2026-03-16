@@ -176,26 +176,49 @@ PRAYER:
 It is prayed that interim relief may kindly be granted till final decision of the suit.
 `;
 
-const CRIMINAL_MISC_APPLICATION_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE / MAGISTRATE
-[District], Pakistan
+const CRIMINAL_MISC_APPLICATION_TEMPLATE = `IN THE COURT OF THE JUSTICE OF PEACE / EX-OFFICIO JUSTICE OF PEACE
+AT [District], Pakistan
 
-Criminal Misc. Application No. ______ of 20__
-in
-FIR No. ______ / Case No. ______
+CRIMINAL MISCELLANEOUS APPLICATION NO. ______ OF 20__
 
-Applicant/Petitioner: ____________________
+IN RE:
+[Applicant/Complainant Name], [Parentage], resident of [Address]
+... APPLICANT/COMPLAINANT
+
 VERSUS
-The State / Respondent: ____________________
 
-CRIMINAL MISC. APPLICATION UNDER SECTION ______ Cr.P.C.
+1. THE STATE THROUGH SHO, POLICE STATION [______]
+2. [Proposed Accused Name], [Parentage], resident of [Address]
+... RESPONDENTS
 
-Respectfully submitted:
-1. That the above criminal case/FIR is pending before the learned court.
-2. That the Applicant seeks relief of ____________________ on lawful grounds.
-3. That immediate intervention is necessary because ____________________.
+APPLICATION UNDER SECTIONS 22-A & 22-B Cr.P.C. READ WITH SECTION 154 Cr.P.C. FOR REGISTRATION OF FIR
 
-PRAYER:
-It is respectfully prayed that this Criminal Misc. Application may kindly be allowed and relief as prayed be granted.
+RESPECTFULLY SHEWETH:
+
+BRIEF FACTS
+1. That ____________________________________________.
+2. That ____________________________________________.
+3. That ____________________________________________.
+
+GROUNDS
+A. That ____________________________________________.
+B. That ____________________________________________.
+C. That ____________________________________________.
+
+PRAYER
+In view of the above, it is respectfully prayed that this Honourable Court may kindly:
+a. direct registration of FIR in accordance with law;
+b. direct fair and lawful investigation by the police;
+c. grant any other relief deemed just and proper.
+
+VERIFICATION
+Verified on oath at [City] on this ___ day of ______, 20__ that contents of this application are true and correct to the best of my knowledge and belief.
+
+APPLICANT/COMPLAINANT
+THROUGH COUNSEL
+
+PLACE: [City]
+DATE: [______]
 `;
 
 const TEMPORARY_INJUNCTION_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE

@@ -1872,24 +1872,75 @@ function normalizeDraftingText(content: string): string {
 }
 
 function normalizeCourtReadyDraftingText(content: string): string {
-  const base = normalizeDraftingText(content).replace(/\r\n?/g, "\n");
+  const base = normalizeDraftingText(content)
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .replace(/[“”]/g, "\"")
+    .replace(/[‘’]/g, "'")
+    .replace(/[–—]/g, "-")
+    .replace(/\u2026/g, "...");
   const lines = base.split("\n").map((line) => {
     let out = line.trimEnd();
     if (/^\s*([-*_]\s*){3,}$/.test(out)) return "";
+    out = out.replace(/\t+/g, " ");
     out = out.replace(/^\s{0,3}#{1,6}\s+/, "");
     out = out.replace(/^\s*>\s?/, "");
-    out = out.replace(/^\s*[-*+]\s+/, "");
+    out = out.replace(/^\s*[-*+•●▪]\s+/, "");
     out = out.replace(/\*\*([^*]+)\*\*/g, "$1");
     out = out.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1$2");
     out = out.replace(/`([^`]+)`/g, "$1");
+    out = out.replace(/ {2,}/g, " ");
+    const trimmed = out.trim();
+    if (/^respectfully\s+(submitted|sheweth)\s*:?\s*$/i.test(trimmed)) return "RESPECTFULLY SHEWETH:";
+    if (/^brief\s+facts\s*:?\s*$/i.test(trimmed)) return "BRIEF FACTS";
+    if (/^grounds(\s+of\s+(appeal|application))?\s*:?\s*$/i.test(trimmed)) return "GROUNDS";
+    if (/^legal\s+authorities\s*:?\s*$/i.test(trimmed)) return "LEGAL AUTHORITIES";
+    if (/^prayer\s*:?\s*$/i.test(trimmed)) return "PRAYER";
+    if (/^interim\s+relief\s*:?\s*$/i.test(trimmed)) return "INTERIM RELIEF";
+    if (/^verification\s*:?\s*$/i.test(trimmed)) return "VERIFICATION";
+    if (/^annexures?\s*:?\s*$/i.test(trimmed)) return "ANNEXURES";
     return out;
   });
 
-  return lines
+  const normalized = lines
     .join("\n")
+    .replace(/\n\s*versus\s*\n/gi, "\nVERSUS\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  const sectionHeadings = new Set([
+    "RESPECTFULLY SHEWETH:",
+    "BRIEF FACTS",
+    "GROUNDS",
+    "LEGAL AUTHORITIES",
+    "PRAYER",
+    "INTERIM RELIEF",
+    "VERIFICATION",
+    "ANNEXURES",
+  ]);
+
+  const rawLines = normalized.split("\n");
+  const out: string[] = [];
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i].trimEnd();
+    if (!line.trim()) {
+      if (out.length > 0 && out[out.length - 1] !== "") out.push("");
+      continue;
+    }
+
+    const upper = line.trim().toUpperCase();
+    if (sectionHeadings.has(upper)) {
+      if (out.length > 0 && out[out.length - 1] !== "") out.push("");
+      out.push(upper === "RESPECTFULLY SHEWETH" ? "RESPECTFULLY SHEWETH:" : upper);
+      if (i + 1 < rawLines.length && rawLines[i + 1].trim() !== "") out.push("");
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 function clamp01(value: number): number {
@@ -4723,9 +4774,9 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
     "criminal-misc-application": {
       label: "Criminal Misc. Application",
       checklist:
-        "- Criminal case/FIR reference and court title\n- Cr.P.C. section(s) invoked\n- Factual basis and legal necessity of relief sought\n- Specific interim/final prayer",
+        "- Proper forum/caption (Justice of Peace / Ex-Officio Justice of Peace where FIR registration is sought)\n- Correct respondent block (State through SHO and proposed accused, where applicable)\n- Cr.P.C. section(s) invoked with clear jurisdictional basis (22-A, 22-B, 154 Cr.P.C. when applicable)\n- Chronological facts including complaint/refusal details\n- Specific prayer for registration/investigation or other criminal relief sought\n- Verification and annexures",
       skeleton:
-        "IN THE COURT OF ______\nCriminal Misc. Application No. ____ of ____\nIn Re: Case/FIR No. ____\n\nApplicant/Petitioner: ____\nVersus\nThe State / Respondent: ____\n\nAPPLICATION UNDER SECTION ____ Cr.P.C.\n\nBrief facts:\n1. ...\n2. ...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+        "IN THE COURT OF THE JUSTICE OF PEACE / EX-OFFICIO JUSTICE OF PEACE, DISTRICT ______\nAT ______\n\nCRIMINAL MISCELLANEOUS APPLICATION NO. ____ OF ____\n\nIN RE:\n[APPLICANT/COMPLAINANT NAME], [parentage], resident of [address]\n... APPLICANT/COMPLAINANT\n\nVERSUS\n\n1. THE STATE THROUGH SHO, POLICE STATION ______\n2. [PROPOSED ACCUSED NAME], [parentage], resident of [address]\n... RESPONDENTS\n\nAPPLICATION UNDER SECTIONS 22-A & 22-B Cr.P.C. READ WITH SECTION 154 Cr.P.C. FOR REGISTRATION OF FIR\n\nRESPECTFULLY SHEWETH:\n\nBRIEF FACTS\n1. ...\n2. ...\n3. ...\n\nGROUNDS\nA. ...\nB. ...\nC. ...\n\nPRAYER\nIn view of the above, it is respectfully prayed that this Honourable Court may kindly:\na. Direct registration of FIR on applicant's complaint in accordance with law.\nb. Direct fair and lawful investigation by the police.\nc. Grant any other relief deemed just and proper.\n\nVERIFICATION\nVerified on oath at ______ on this ___ day of ______ 20__ that contents of this application are true and correct to the best of my knowledge and belief.\n\nAPPLICANT/COMPLAINANT\nTHROUGH COUNSEL\n\nPLACE: ______\nDATE: ______\n\nANNEXURES\nA. Copy of complaint to SHO\nB. Supporting documents",
     },
     "temporary-injunction-application": {
       label: "Temporary Injunction Application",
@@ -4848,13 +4899,13 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       "Verification",
     ],
     "criminal-misc-application": [
-      "Cause Title and Criminal Case/FIR Reference",
-      "Application Title under Relevant Cr.P.C. Provision",
-      "Brief Facts",
-      "Grounds for Relief (numbered)",
-      "Urgency/Interim Necessity (if any)",
+      "Cause Title (Forum + Parties + FIR/Case Reference)",
+      "Application Title under Relevant Cr.P.C. Provision (22-A, 22-B, 154 where applicable)",
+      "BRIEF FACTS (chronological, numbered)",
+      "GROUNDS (alphabetical/legal)",
+      "Relief Sought from Justice of Peace / Criminal Court",
       "Prayer",
-      "Verification/Affidavit",
+      "Verification/Affidavit and Annexures",
     ],
     "temporary-injunction-application": [
       "Cause Title and Main Suit Reference",
@@ -4985,6 +5036,193 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       "Annexures/List of Filed Documents",
     ],
   };
+
+  type LegalDraftTypeRule = {
+    forumHeading: string;
+    filingCaption: string;
+    requiredInHeader: Array<{ regex: RegExp; label: string }>;
+  };
+
+  const LEGAL_DRAFTING_TYPE_RULES: Record<LegalDraftingDocType, LegalDraftTypeRule> = {
+    "civil-suit-plaint": {
+      forumHeading: "IN THE COURT OF [CIVIL COURT/JUDGE] AT [CITY]",
+      filingCaption: "CIVIL SUIT NO. ____ OF ____ / SUIT FOR ____",
+      requiredInHeader: [
+        { regex: /IN THE COURT OF/i, label: "Civil Court heading" },
+        { regex: /CIVIL SUIT/i, label: "Civil Suit caption" },
+      ],
+    },
+    "civil-misc-application": {
+      forumHeading: "IN THE COURT OF [CIVIL COURT/JUDGE] AT [CITY]",
+      filingCaption: "CIVIL MISC. APPLICATION / CMA",
+      requiredInHeader: [
+        { regex: /IN THE COURT OF/i, label: "Civil Court heading" },
+        { regex: /(CIVIL\s+MISC|CMA)/i, label: "Civil Misc. caption" },
+        { regex: /APPLICATION UNDER/i, label: "Application title" },
+      ],
+    },
+    "criminal-misc-application": {
+      forumHeading: "IN THE COURT OF THE JUSTICE OF PEACE / EX-OFFICIO JUSTICE OF PEACE AT [CITY]",
+      filingCaption: "CRIMINAL MISCELLANEOUS APPLICATION UNDER RELEVANT Cr.P.C. PROVISION",
+      requiredInHeader: [
+        { regex: /(JUSTICE OF PEACE|SESSIONS JUDGE|MAGISTRATE)/i, label: "Criminal forum heading" },
+        { regex: /CRIMINAL\s+MISC/i, label: "Criminal Misc. caption" },
+        { regex: /APPLICATION UNDER/i, label: "Application title" },
+      ],
+    },
+    "temporary-injunction-application": {
+      forumHeading: "IN THE COURT OF [CIVIL COURT/JUDGE] AT [CITY]",
+      filingCaption: "APPLICATION UNDER ORDER XXXIX RULES 1 & 2 CPC",
+      requiredInHeader: [
+        { regex: /IN THE COURT OF/i, label: "Civil Court heading" },
+        { regex: /(ORDER\s*XXXIX|TEMPORARY\s+INJUNCTION)/i, label: "Injunction caption" },
+      ],
+    },
+    "execution-application": {
+      forumHeading: "IN THE COURT OF [CIVIL COURT/JUDGE] AT [CITY]",
+      filingCaption: "EXECUTION APPLICATION UNDER ORDER XXI CPC",
+      requiredInHeader: [
+        { regex: /IN THE COURT OF/i, label: "Civil Court heading" },
+        { regex: /(EXECUTION\s+APPLICATION|ORDER\s*XXI)/i, label: "Execution caption" },
+      ],
+    },
+    "sessions-bail-application": {
+      forumHeading: "IN THE COURT OF THE SESSIONS JUDGE AT [CITY]",
+      filingCaption: "APPLICATION FOR POST-ARREST BAIL UNDER SECTION 497 Cr.P.C.",
+      requiredInHeader: [
+        { regex: /SESSIONS JUDGE/i, label: "Sessions Court heading" },
+        { regex: /(BAIL APPLICATION|APPLICATION FOR BAIL)/i, label: "Bail caption" },
+      ],
+    },
+    "sessions-pre-arrest-bail": {
+      forumHeading: "IN THE COURT OF THE SESSIONS JUDGE AT [CITY]",
+      filingCaption: "APPLICATION FOR PRE-ARREST BAIL UNDER SECTION 498 Cr.P.C.",
+      requiredInHeader: [
+        { regex: /SESSIONS JUDGE/i, label: "Sessions Court heading" },
+        { regex: /(PRE-ARREST|BEFORE ARREST)/i, label: "Pre-arrest caption" },
+        { regex: /498\s*Cr\.?P\.?C/i, label: "Section 498 Cr.P.C reference" },
+      ],
+    },
+    "sessions-criminal-appeal": {
+      forumHeading: "IN THE COURT OF THE SESSIONS JUDGE AT [CITY]",
+      filingCaption: "CRIMINAL APPEAL NO. ____ OF ____",
+      requiredInHeader: [
+        { regex: /SESSIONS JUDGE/i, label: "Sessions Court heading" },
+        { regex: /CRIMINAL APPEAL/i, label: "Criminal Appeal caption" },
+      ],
+    },
+    "sessions-criminal-revision": {
+      forumHeading: "IN THE COURT OF THE SESSIONS JUDGE AT [CITY]",
+      filingCaption: "CRIMINAL REVISION NO. ____ OF ____",
+      requiredInHeader: [
+        { regex: /SESSIONS JUDGE/i, label: "Sessions Court heading" },
+        { regex: /CRIMINAL REVISION/i, label: "Criminal Revision caption" },
+      ],
+    },
+    "family-suit-petition": {
+      forumHeading: "IN THE FAMILY COURT AT [CITY]",
+      filingCaption: "FAMILY SUIT / FAMILY PETITION",
+      requiredInHeader: [
+        { regex: /FAMILY COURT/i, label: "Family Court heading" },
+        { regex: /(FAMILY\s+SUIT|FAMILY\s+PETITION|SUIT\/PETITION)/i, label: "Family caption" },
+      ],
+    },
+    "high-court-writ-petition": {
+      forumHeading: "IN THE HONOURABLE [NAME] HIGH COURT AT [CITY]",
+      filingCaption: "CONSTITUTIONAL PETITION UNDER ARTICLE 199",
+      requiredInHeader: [
+        { regex: /HIGH COURT/i, label: "High Court heading" },
+        { regex: /(ARTICLE\s*199|CONSTITUTIONAL PETITION)/i, label: "Article 199/Writ caption" },
+      ],
+    },
+    "high-court-civil-appeal": {
+      forumHeading: "IN THE HONOURABLE [NAME] HIGH COURT AT [CITY]",
+      filingCaption: "CIVIL APPEAL NO. ____ OF ____",
+      requiredInHeader: [
+        { regex: /HIGH COURT/i, label: "High Court heading" },
+        { regex: /CIVIL APPEAL/i, label: "Civil Appeal caption" },
+      ],
+    },
+    "high-court-criminal-appeal": {
+      forumHeading: "IN THE HONOURABLE [NAME] HIGH COURT AT [CITY]",
+      filingCaption: "CRIMINAL APPEAL NO. ____ OF ____",
+      requiredInHeader: [
+        { regex: /HIGH COURT/i, label: "High Court heading" },
+        { regex: /CRIMINAL APPEAL/i, label: "Criminal Appeal caption" },
+      ],
+    },
+    "high-court-criminal-revision": {
+      forumHeading: "IN THE HONOURABLE [NAME] HIGH COURT AT [CITY]",
+      filingCaption: "CRIMINAL REVISION NO. ____ OF ____",
+      requiredInHeader: [
+        { regex: /HIGH COURT/i, label: "High Court heading" },
+        { regex: /CRIMINAL REVISION/i, label: "Criminal Revision caption" },
+      ],
+    },
+    "high-court-bail-before-arrest": {
+      forumHeading: "IN THE HONOURABLE [NAME] HIGH COURT AT [CITY]",
+      filingCaption: "CRIMINAL BAIL BEFORE ARREST UNDER SECTION 498 Cr.P.C.",
+      requiredInHeader: [
+        { regex: /HIGH COURT/i, label: "High Court heading" },
+        { regex: /(BAIL BEFORE ARREST|PRE-ARREST BAIL)/i, label: "Bail Before Arrest caption" },
+        { regex: /498\s*Cr\.?P\.?C/i, label: "Section 498 Cr.P.C reference" },
+      ],
+    },
+    "supreme-court-cpla": {
+      forumHeading: "IN THE SUPREME COURT OF PAKISTAN",
+      filingCaption: "CIVIL PETITION FOR LEAVE TO APPEAL (CPLA)",
+      requiredInHeader: [
+        { regex: /SUPREME COURT OF PAKISTAN/i, label: "Supreme Court heading" },
+        { regex: /(CPLA|CIVIL PETITION FOR LEAVE TO APPEAL)/i, label: "CPLA caption" },
+      ],
+    },
+    "supreme-court-criminal-petition": {
+      forumHeading: "IN THE SUPREME COURT OF PAKISTAN",
+      filingCaption: "CRIMINAL PETITION FOR LEAVE TO APPEAL",
+      requiredInHeader: [
+        { regex: /SUPREME COURT OF PAKISTAN/i, label: "Supreme Court heading" },
+        { regex: /CRIMINAL PETITION FOR LEAVE TO APPEAL/i, label: "Criminal Petition caption" },
+      ],
+    },
+  };
+
+  function buildStrictTypeLockInstruction(docType: LegalDraftingDocType, label: string): string {
+    const rule = LEGAL_DRAFTING_TYPE_RULES[docType];
+    const headings = LEGAL_DRAFTING_HEADING_ORDER[docType] || [];
+    const headingOrder = headings.length
+      ? headings.map((item, index) => `${index + 1}. ${item}`).join("\n")
+      : "1. Cause title\n2. Facts\n3. Grounds\n4. Prayer\n5. Verification";
+    return `Selected filing type lock (non-negotiable):
+- You are drafting ONLY: ${label}
+- Keep forum/court heading strictly aligned to: ${rule.forumHeading}
+- Keep filing caption/title strictly aligned to: ${rule.filingCaption}
+- Do not switch to any other court/forum or filing category.
+- If user facts are incomplete, use placeholders [______] but keep this filing type unchanged.
+
+Mandatory section flow (in this order):
+${headingOrder}`;
+  }
+
+  function validateDraftForSelectedType(content: string, docType: LegalDraftingDocType): { ok: boolean; issues: string[] } {
+    const text = normalizeCourtReadyDraftingText(content || "");
+    const headerBlock = text.split("\n").slice(0, 40).join("\n");
+    const issues: string[] = [];
+    const rule = LEGAL_DRAFTING_TYPE_RULES[docType];
+
+    for (const check of rule.requiredInHeader) {
+      if (!check.regex.test(headerBlock)) issues.push(`Missing or incorrect ${check.label}.`);
+    }
+
+    if (!/^\s*RESPECTFULLY SHEWETH:\s*$/im.test(text)) issues.push("Missing heading: RESPECTFULLY SHEWETH:");
+    if (!/^\s*PRAYER\s*$/im.test(text)) issues.push("Missing heading: PRAYER");
+    if (!/^\s*VERIFICATION\s*$/im.test(text)) issues.push("Missing heading: VERIFICATION");
+    if (!/^\s*VERSUS\s*$/im.test(text) && !/^\s*IN RE:\s*$/im.test(text)) {
+      issues.push("Missing party separator line: VERSUS (or IN RE where appropriate).");
+    }
+    if (!/(^|\n)\s*1\.\s+/m.test(text)) issues.push("Facts/grounds are not in numbered court format.");
+
+    return { ok: issues.length === 0, issues };
+  }
 
   const PAKISTANI_JUDICIAL_FORMAT_GUIDANCE = `You are a highly skilled Pakistani litigation lawyer with extensive experience drafting pleadings before Civil Courts, Family Courts, Sessions Courts, High Courts, and the Supreme Court of Pakistan.
 
@@ -5405,6 +5643,13 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
             }
           : LEGAL_DRAFTING_DOC_TYPES[selectedDocType];
 
+        const typeLockInstruction = selectedDocType
+          ? buildStrictTypeLockInstruction(selectedDocType, profile.label)
+          : `Selected filing type lock (non-negotiable):
+- You are drafting ONLY: ${profile.label}
+- Do not change the selected filing type.
+- Keep proper Pakistani court forum heading, cause title, numbered facts, legal grounds, prayer, verification, and annexures (if needed).`;
+
         const sysInstruction = PAKISTANI_JUDICIAL_FORMAT_GUIDANCE;
 
         const userInput = `User instruction:
@@ -5416,10 +5661,25 @@ ${profile.label}
 Drafting checklist:
 ${profile.checklist}
 
-Formatting requirements:
+Court-ready formatting requirements (mandatory):
 - Output plain court pleading text only.
 - Do not use markdown symbols such as *, **, #, -, backticks, or bullet markers.
 - Keep professional Pakistani court format with clean headings and paragraphs.
+- Use uppercase captions for core headings: court title, case title, RESPECTFULLY SHEWETH:, BRIEF FACTS, GROUNDS, PRAYER, VERIFICATION, ANNEXURES.
+- Use "VERSUS" on its own line between party blocks.
+- Use numbered facts (1., 2., 3.) and alphabetic legal grounds (A., B., C.).
+- Keep prayer specific to this filing type and facts; avoid generic/contract wording.
+- Do not invent facts, dates, orders, or citations; use placeholders like [______] where details are missing.
+- End with signature block (party/counsel) and place/date.
+- Keep spacing court-ready: no trailing spaces, no markdown bullets, and exactly clean paragraph breaks between sections.
+
+${typeLockInstruction}
+
+${selectedDocType === "criminal-misc-application" ? `Criminal Misc. filing focus:
+- If facts show police refusal to register FIR, draft as Justice of Peace application under Sections 22-A and 22-B Cr.P.C. read with Section 154 Cr.P.C.
+- Include Respondent No.1 as "The State through SHO, Police Station ______".
+- Keep relief focused on registration of FIR and lawful investigation.
+- Do not convert this format into a constitutional petition under Article 199.` : ""}
 
 ${useCustomDocType ? `Custom filing instruction:\n- Draft specifically as: ${customDocType}\n- Keep this strictly in Pakistani court/litigation drafting format.\n` : ""}
 
@@ -5436,7 +5696,36 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
           temperature: 0.25,
         });
         await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
-        const draftedText = normalizeCourtReadyDraftingText(aiResult.text);
+        let draftedText = normalizeCourtReadyDraftingText(aiResult.text);
+        if (selectedDocType) {
+          const validation = validateDraftForSelectedType(draftedText, selectedDocType);
+          if (!validation.ok) {
+            const repairInput = `You must repair and reformat the following legal draft so it STRICTLY follows this selected filing type:
+${profile.label}
+
+Type lock rules:
+${typeLockInstruction}
+
+Validation issues detected:
+${validation.issues.map((item, idx) => `${idx + 1}. ${item}`).join("\n")}
+
+Repair instructions:
+- Rewrite the full pleading in proper Pakistani court-ready format.
+- Keep the same legal objective and facts; do not invent new facts.
+- Keep clean spacing and section breaks; no markdown symbols.
+- Return plain pleading text only.
+
+Original draft:
+${draftedText}`;
+
+            const repaired = await callLegalDraftingAI(sysInstruction, repairInput, TOKEN_LIMITS.draft, {
+              timeoutProfile: "analysis",
+              temperature: 0.15,
+            });
+            await logUsageCost(userId, "draft", repaired.model, sysInstruction + repairInput, repaired.text);
+            draftedText = normalizeCourtReadyDraftingText(repaired.text);
+          }
+        }
         if (!draftedText) {
           return res.status(502).json({ message: "AI returned empty legal draft text" });
         }
