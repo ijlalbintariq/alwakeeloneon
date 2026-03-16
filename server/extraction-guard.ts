@@ -90,6 +90,20 @@ function cleanText(value: string): string {
   return (value || "").replace(/\x00/g, "").trim();
 }
 
+function htmlToText(value: string): string {
+  return cleanText(
+    String(value || "")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/\s+/g, " "),
+  );
+}
+
 async function parsePdfInline(buffer: Buffer): Promise<string> {
   const parseBuffer = Buffer.from(buffer);
   const uint8 = new Uint8Array(parseBuffer.buffer, parseBuffer.byteOffset, parseBuffer.byteLength);
@@ -101,8 +115,17 @@ async function parsePdfInline(buffer: Buffer): Promise<string> {
 }
 
 async function parseDocxInline(buffer: Buffer): Promise<string> {
-  const result = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
-  return cleanText(String(result?.value || ""));
+  const source = Buffer.from(buffer);
+  const raw = await mammoth.extractRawText({ buffer: source });
+  const rawText = cleanText(String(raw?.value || ""));
+  if (rawText.length >= 40) return rawText;
+  try {
+    const html = await mammoth.convertToHtml({ buffer: source });
+    const htmlText = htmlToText(String(html?.value || ""));
+    return htmlText.length > rawText.length ? htmlText : rawText;
+  } catch {
+    return rawText;
+  }
 }
 
 type WorkerKind = "pdf-parse" | "docx-parse" | "pdf-ocr";
@@ -132,8 +155,26 @@ async function parsePdf(filePath) {
 async function parseDocx(filePath) {
   const mammoth = require("mammoth");
   const source = await fs.readFile(filePath);
-  const result = await mammoth.extractRawText({ buffer: source });
-  return cleanText(result?.value || "");
+  const raw = await mammoth.extractRawText({ buffer: source });
+  const rawText = cleanText(raw?.value || "");
+  if (rawText.length >= 40) return rawText;
+  try {
+    const html = await mammoth.convertToHtml({ buffer: source });
+    const htmlText = cleanText(
+      String(html?.value || "")
+        .replace(/<style[\s\S]*?<\/style>/gi, " ")
+        .replace(/<script[\s\S]*?<\/script>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/\s+/g, " "),
+    );
+    return htmlText.length > rawText.length ? htmlText : rawText;
+  } catch {
+    return rawText;
+  }
 }
 
 async function ocrPdf(filePath, options) {

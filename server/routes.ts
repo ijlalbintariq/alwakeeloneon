@@ -1776,6 +1776,28 @@ function hasSafeDocumentSignature(file: Express.Multer.File, ext: string): boole
   return false;
 }
 
+const DOCX_COMPAT_EXTS = [".docx", ".docm", ".dotx"] as const;
+const DOCX_COMPAT_MIMES = [
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-word.document.macroenabled.12",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
+] as const;
+
+function normalizeAttachmentExt(rawExt: string): string {
+  const ext = (rawExt || "").toLowerCase();
+  if (ext === ".text") return ".txt";
+  return ext;
+}
+
+function resolveAttachmentSignatureExt(normalizedExt: string, mime: string): ".txt" | ".pdf" | ".docx" | null {
+  if (normalizedExt === ".txt") return ".txt";
+  if (normalizedExt === ".pdf") return ".pdf";
+  if ((DOCX_COMPAT_EXTS as readonly string[]).includes(normalizedExt)) return ".docx";
+  if (mime === "application/pdf") return ".pdf";
+  if ((DOCX_COMPAT_MIMES as readonly string[]).includes(mime)) return ".docx";
+  return null;
+}
+
 function hasSafeImageSignature(file: Express.Multer.File): boolean {
   let b: Buffer;
   try {
@@ -4894,16 +4916,215 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
     ],
   };
 
-  const PAKISTANI_JUDICIAL_FORMAT_GUIDANCE = `PAKISTANI JUDICIAL FORMAT ANCHORS (apply strictly):
-- Civil Suit (Plaint): align pleadings with Order VII Rule 1 CPC essentials (court, parties, cause of action, jurisdiction, valuation/court fee, relief, verification).
-- High Court Civil Appeal: align memorandum structure with Order XLI Rules 1-2 CPC (impugned decree details, concise numbered grounds, clear relief, avoid argument-heavy narrative in grounds).
-- Temporary Injunction: align structure with Order XXXIX Rules 1 & 2 CPC tests (prima facie case, balance of convenience, irreparable loss).
-- Execution Application: align with Order XXI CPC execution discipline (decree details, amount/relief due, and mode of execution sought).
-- High Court Writ: structure as Article 199 constitutional petition with jurisdiction/maintainability, impugned action, legal grounds, and precise prayer.
-- Sessions Bail: draft under Section 497/498 Cr.P.C as applicable; include FIR particulars, custody and bail grounds (further inquiry/parity/delay), and undertaking to attend trial.
-- Criminal Appeals/Revisions: keep concise challenge grounds to impugned order/judgment, limitation/maintainability statement, and clear relief.
-- Supreme Court CPLA: follow modern Supreme Court leave-petition structure (questions of law/public importance, concise grounds, prayer for leave, annexure discipline).
-- Use formal Pakistani court drafting style: numbered paragraphs, neutral legal tone, precise statutory references, and placeholders for missing facts.`;
+  const PAKISTANI_JUDICIAL_FORMAT_GUIDANCE = `You are a highly skilled Pakistani litigation lawyer with extensive experience drafting pleadings before Civil Courts, Family Courts, Sessions Courts, High Courts, and the Supreme Court of Pakistan.
+
+You must draft legal documents exactly in the professional format used by Pakistani advocates. Your drafting style must resemble real pleadings filed in Pakistani courts, particularly those used in High Courts and Sessions Courts.
+
+Your expertise includes Pakistani procedural and substantive law including the Civil Procedure Code 1908, Criminal Procedure Code 1898, Pakistan Penal Code 1860, Negotiable Instruments Act 1881, Family Courts Act 1964, Specific Relief Act 1877, Qanun-e-Shahadat Order 1984, Limitation Act 1908, and the Constitution of Pakistan 1973.
+
+You must also reference relevant Pakistani case law where appropriate such as PLD, SCMR, YLR, MLD, and CLD citations.
+
+Your task is to convert the user’s facts into a court-ready legal pleading suitable for filing in Pakistani courts.
+
+WRITING STYLE
+
+Always use the formal legal language used by Pakistani lawyers.
+
+Use expressions such as:
+
+Respectfully Sheweth
+It is respectfully submitted
+The learned trial court gravely erred
+The impugned judgment suffers from misreading and non-reading of evidence
+The petitioner has no other adequate remedy except to approach this Honourable Court
+
+Avoid casual or conversational language.
+
+DOCUMENT FORMAT
+
+All drafts must follow this structure.
+
+COURT HEADING
+
+Start with the court heading written in capital letters.
+
+Examples:
+
+IN THE HONOURABLE [NAME] HIGH COURT
+AT [CITY]
+
+or
+
+IN THE COURT OF [CIVIL JUDGE / ADDITIONAL DISTRICT JUDGE / SESSIONS JUDGE]
+AT [CITY]
+
+or
+
+IN THE SUPREME COURT OF PAKISTAN
+(APPELLATE JURISDICTION)
+
+CASE TITLE
+
+After the heading provide the case number and parties.
+
+Example format:
+
+Civil Suit No ______ / 20__
+
+[NAME]
+S/o ______
+Resident of ______
+
+… PLAINTIFF / PETITIONER / APPELLANT
+
+VERSUS
+
+[NAME]
+S/o ______
+Resident of ______
+
+… DEFENDANT / RESPONDENT
+
+TITLE OF PETITION OR APPEAL
+
+Clearly state the nature of proceedings.
+
+Examples:
+
+REGULAR FIRST APPEAL UNDER SECTION 96 OF THE CODE OF CIVIL PROCEDURE, 1908
+
+CONSTITUTIONAL PETITION UNDER ARTICLE 199 OF THE CONSTITUTION OF ISLAMIC REPUBLIC OF PAKISTAN, 1973
+
+APPLICATION FOR POST ARREST BAIL UNDER SECTION 497 Cr.P.C.
+
+OPENING STATEMENT
+
+All pleadings must begin with:
+
+Respectfully Sheweth:
+
+BRIEF FACTS
+
+Provide a structured factual narrative using roman numbering.
+
+Example structure:
+
+BRIEF FACTS:
+
+i.
+ii.
+iii.
+iv.
+
+Facts must be chronological and legally relevant.
+
+GROUNDS OF APPEAL OR GROUNDS
+
+Legal grounds must be structured alphabetically.
+
+Example structure:
+
+GROUNDS OF APPEAL:
+
+A. MISAPPLICATION OF LAW
+B. MISREADING AND NON-READING OF EVIDENCE
+C. ILLEGAL EXERCISE OF JURISDICTION
+D. FAILURE TO CONSIDER MATERIAL EVIDENCE
+
+Each ground must contain a heading, the legal principle, explanation of the error, and where appropriate reference to statute or precedent.
+
+LEGAL AUTHORITIES
+
+Where relevant cite Pakistani case law such as:
+
+PLD 2018 SC 806
+2014 SCMR 1365
+2024 CLD 105
+2022 CLD 900
+
+Authorities should support the legal argument presented.
+
+PRAYER
+
+Every draft must end with a prayer clause.
+
+Example structure:
+
+PRAYER:
+
+In view of the above, it is most respectfully prayed that this Honourable Court may graciously be pleased to:
+
+a. Accept the present petition or appeal.
+b. Set aside the impugned judgment or order dated ______.
+c. Grant the relief as prayed for.
+d. Pass any other order deemed just and proper in the circumstances of the case.
+
+INTERIM RELIEF
+
+Where appropriate include interim relief.
+
+Example:
+
+INTERIM RELIEF:
+
+Pending final decision of the present petition or appeal, it is respectfully prayed that the operation of the impugned order may kindly be suspended.
+
+VERIFICATION
+
+Where required include verification.
+
+Example:
+
+VERIFICATION:
+
+Verified on oath at [CITY] on this ___ day of ______ that the contents of the above petition are true and correct to the best of my knowledge and belief.
+
+PLACEHOLDERS
+
+If the user does not provide full information use placeholders such as:
+
+[Name of Court]
+[Case Number]
+[Petitioner Name]
+[Respondent Name]
+[FIR Number]
+[Police Station]
+[Date]
+
+SUPPORTED DOCUMENT TYPES
+
+The assistant must be able to draft the following documents according to Pakistani legal practice:
+
+Civil Suit (Plaint)
+Civil Miscellaneous Application
+Temporary Injunction Application
+Execution Application
+
+Sessions Court Bail Application
+Sessions Pre-Arrest Bail
+Sessions Criminal Appeal
+Sessions Criminal Revision
+
+Family Suit or Petition
+
+High Court Writ Petition
+High Court Civil Appeal
+High Court Criminal Appeal
+High Court Criminal Revision
+High Court Bail Before Arrest
+
+Supreme Court Civil Petition for Leave to Appeal (CPLA)
+Supreme Court Criminal Petition for Leave to Appeal
+
+OUTPUT RULE
+
+Whenever the user selects a document type or provides facts, generate the complete legal draft in full structured court format.
+
+Do not summarize the draft.
+
+Do not provide explanations unless explicitly requested.
+
+Always produce a complete court-ready pleading following Pakistani legal drafting practice.`;
 
   function normalizeLegalDraftingDocType(
     raw: string | undefined | null,
@@ -4953,25 +5174,21 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       let attachmentContext = "";
       const failedAttachments: string[] = [];
       const failedAttachmentReasons: string[] = [];
-      const allowedExts = [".txt", ".pdf", ".docx"];
-      const allowedMimes = [
-        "text/plain",
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ];
+      const allowedExts = [".txt", ".pdf", ...DOCX_COMPAT_EXTS];
+      const allowedMimes = ["text/plain", "application/pdf", ...DOCX_COMPAT_MIMES];
 
       if (files && files.length > 0) {
         const invalidFiles = files.filter((f) => {
           const ext = f.originalname.includes(".")
             ? f.originalname.substring(f.originalname.lastIndexOf(".")).toLowerCase()
             : "";
-          const normalizedExt = ext === ".text" ? ".txt" : ext;
+          const normalizedExt = normalizeAttachmentExt(ext);
           const mime = (f.mimetype || "").toLowerCase();
           return !allowedExts.includes(normalizedExt) && !allowedMimes.includes(mime);
         });
         if (invalidFiles.length > 0) {
           return res.status(400).json({
-            message: `Unsupported file type. Only TXT, PDF, and DOCX are allowed. Rejected: ${invalidFiles.map((f) => f.originalname).join(", ")}`,
+            message: `Unsupported file type. Only TXT, PDF, DOCX/DOCM/DOTX are allowed. Rejected: ${invalidFiles.map((f) => f.originalname).join(", ")}`,
           });
         }
 
@@ -4980,15 +5197,14 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
           const ext = file.originalname.includes(".")
             ? file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase()
             : "";
-          const normalizedExt = ext === ".text" ? ".txt" : ext;
+          const normalizedExt = normalizeAttachmentExt(ext);
           const mime = (file.mimetype || "").toLowerCase();
-          const signatureExt = allowedExts.includes(normalizedExt)
-            ? normalizedExt
-            : mime === "application/pdf"
-              ? ".pdf"
-              : mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                ? ".docx"
-                : ".txt";
+          const signatureExt = resolveAttachmentSignatureExt(normalizedExt, mime);
+          if (!signatureExt) {
+            failedAttachments.push(file.originalname);
+            failedAttachmentReasons.push(`${file.originalname}: unsupported extension or MIME type`);
+            continue;
+          }
 
           if (!hasSafeDocumentSignature(stableFile, signatureExt)) {
             failedAttachments.push(file.originalname);
@@ -5117,52 +5333,16 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
             }
           : LEGAL_DRAFTING_DOC_TYPES[selectedDocType];
 
-        const headingOrder = (useCustomDocType
-          ? [
-              "Cause Title (Court, Parties, Case Title)",
-              "Jurisdiction / Provision Invoked",
-              "Facts in Chronology",
-              "Grounds (concise, numbered)",
-              "Prayer (specific and executable)",
-              "Verification / Affidavit placeholder",
-              "Annexures (if applicable)",
-            ]
-          : LEGAL_DRAFTING_HEADING_ORDER[selectedDocType]
-        )
-          .map((heading, index) => `${index + 1}) ${heading}`)
-          .join("\n");
-        const allowedCategories = Object.values(LEGAL_DRAFTING_DOC_TYPES)
-          .map((item, index) => `  ${index + 1}) ${item.label}`)
-          .join("\n")
-          + "\n  * Custom (user-provided court filing type; litigation filings only)";
-
         const sysInstruction = `${getLegalSystemPrompt()}
 
-You are a Pakistani litigation drafting assistant.
-STRICT SCOPE:
-- Draft only court/litigation filings.
-- Allowed categories only:
-${allowedCategories}
-- Do NOT draft contracts, rent deeds, NDAs, sale deeds, employment contracts, or any agreement format.
-- If user asks for contract-like drafting, explicitly say it belongs to Contract Drafting Module.
+${PAKISTANI_JUDICIAL_FORMAT_GUIDANCE}
 
 TARGET FILING: ${profile.label}
 DRAFTING CHECKLIST:
 ${profile.checklist}
 
-${PAKISTANI_JUDICIAL_FORMAT_GUIDANCE}
-
-MANDATORY HEADING ORDER (use this order unless user provides court-specific variation):
-${headingOrder}
-
 ${useCustomDocType ? `CUSTOM FILING INSTRUCTION:\n- Draft specifically as: ${customDocType}\n- Keep this strictly in Pakistani court/litigation drafting format.` : ""}
-
-OUTPUT REQUIREMENTS:
-- Formal Pakistani court style.
-- Proper headings, numbered grounds/facts, and clear prayer.
-- Follow court-ready pleading format, not advisory prose.
-- Use placeholders where facts are missing (e.g., [Date], [Court], [Party Name]).
-- Return plain text only.`;
+`;
 
         const userInput = `User instruction:
 ${safePrompt}
@@ -5533,34 +5713,31 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       let extractedAttachmentCount = 0;
       const failedAttachments: string[] = [];
       const failedAttachmentReasons: string[] = [];
-      const allowedExts = [".txt", ".pdf", ".docx"];
-      const allowedMimes = ["text/plain", "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+      const allowedExts = [".txt", ".pdf", ...DOCX_COMPAT_EXTS];
+      const allowedMimes = ["text/plain", "application/pdf", ...DOCX_COMPAT_MIMES];
       if (files && files.length > 0) {
         const invalidFiles = files.filter((f) => {
           const ext = f.originalname.includes(".")
             ? f.originalname.substring(f.originalname.lastIndexOf(".")).toLowerCase()
             : "";
-          const normalizedExt = ext === ".text" ? ".txt" : ext;
+          const normalizedExt = normalizeAttachmentExt(ext);
           const mime = (f.mimetype || "").toLowerCase();
           return !allowedExts.includes(normalizedExt) && !allowedMimes.includes(mime);
         });
         if (invalidFiles.length > 0) {
-          return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, and DOCX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
+          return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, DOCX/DOCM/DOTX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
         }
         for (const file of files) {
           const stableFile = cloneUploadFile(file);
           const ext = file.originalname.includes(".")
             ? file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase()
             : "";
-          const normalizedExt = ext === ".text" ? ".txt" : ext;
+          const normalizedExt = normalizeAttachmentExt(ext);
           const mime = (file.mimetype || "").toLowerCase();
-          const signatureExt = allowedExts.includes(normalizedExt)
-            ? normalizedExt
-            : mime === "application/pdf"
-              ? ".pdf"
-              : mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                ? ".docx"
-                : ".txt";
+          const signatureExt = resolveAttachmentSignatureExt(normalizedExt, mime);
+          if (!signatureExt) {
+            return res.status(400).json({ message: `Unsupported file type. Rejected: ${file.originalname}` });
+          }
           if (!hasSafeDocumentSignature(stableFile, signatureExt)) {
             recordSecurityEvent("upload_signature_failure", `chat-attachment:${userId}`, {
               filename: file.originalname,

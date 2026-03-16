@@ -917,17 +917,35 @@ export default function LegalDraftingPage() {
     const incoming = Array.from(files);
     const allowed = incoming.filter((file) => {
       const name = file.name.toLowerCase();
-      return name.endsWith(".pdf") || name.endsWith(".docx") || name.endsWith(".txt");
+      return (
+        name.endsWith(".pdf") ||
+        name.endsWith(".docx") ||
+        name.endsWith(".docm") ||
+        name.endsWith(".dotx") ||
+        name.endsWith(".txt")
+      );
     });
     const rejected = incoming.length - allowed.length;
     if (rejected > 0) {
       toast({
         title: "Some files were ignored",
-        description: "Only PDF, DOCX, and TXT files are supported.",
+        description: "Only PDF, DOCX/DOCM/DOTX, and TXT files are supported.",
         variant: "destructive",
       });
     }
-    setAiContextFiles((prev) => [...prev, ...allowed].slice(0, 5));
+    setAiContextFiles((prev) => {
+      const combined = [...prev, ...allowed];
+      const limited = combined.slice(0, 5);
+      const dropped = combined.length - limited.length;
+      if (dropped > 0) {
+        toast({
+          title: "Attachment limit reached",
+          description: "You can attach up to 5 context files at a time.",
+          variant: "destructive",
+        });
+      }
+      return limited;
+    });
     e.currentTarget.value = "";
   };
 
@@ -1531,7 +1549,7 @@ export default function LegalDraftingPage() {
                 <input
                   ref={aiContextInputRef}
                   type="file"
-                  accept=".pdf,.docx,.txt"
+                  accept=".pdf,.docx,.docm,.dotx,.txt"
                   multiple
                   className="hidden"
                   onChange={onAiContextFilesSelected}
@@ -1545,7 +1563,7 @@ export default function LegalDraftingPage() {
                     <Paperclip size={12} />
                     Attach Context Files
                   </button>
-                  <span className="text-[10px] text-slate-500">PDF, DOCX, TXT · up to 5 files</span>
+                  <span className="text-[10px] text-slate-500">PDF, DOCX/DOCM/DOTX, TXT · up to 5 files</span>
                 </div>
                 {aiContextFiles.length > 0 && (
                   <div className="mt-2 space-y-1.5">
