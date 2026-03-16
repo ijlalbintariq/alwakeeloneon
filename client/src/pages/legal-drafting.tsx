@@ -71,10 +71,21 @@ type DraftTemplate = {
 type LegalDocumentType =
   | "civil-suit-plaint"
   | "civil-misc-application"
+  | "temporary-injunction-application"
+  | "execution-application"
   | "sessions-bail-application"
+  | "sessions-pre-arrest-bail"
+  | "sessions-criminal-appeal"
+  | "sessions-criminal-revision"
+  | "family-suit-petition"
   | "high-court-writ-petition"
   | "high-court-civil-appeal"
-  | "supreme-court-cpla";
+  | "high-court-criminal-appeal"
+  | "high-court-criminal-revision"
+  | "high-court-bail-before-arrest"
+  | "supreme-court-cpla"
+  | "supreme-court-criminal-petition"
+  | "custom-input";
 
 type StatuteReference = {
   label: string;
@@ -149,6 +160,48 @@ PRAYER:
 It is prayed that interim relief may kindly be granted till final decision of the suit.
 `;
 
+const TEMPORARY_INJUNCTION_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
+[District], Pakistan
+
+Civil Misc. Application No. ______ of 20__
+in
+Civil Suit No. ______ of 20__
+
+Applicant/Plaintiff: ____________________
+VERSUS
+Respondent/Defendant: ____________________
+
+APPLICATION UNDER ORDER XXXIX RULES 1 & 2 CPC FOR TEMPORARY INJUNCTION
+
+Respectfully submitted:
+1. That the Plaintiff has a prima facie case on merits.
+2. That balance of convenience lies in favour of the Plaintiff.
+3. That irreparable loss will be caused if interim restraint is not granted.
+
+PRAYER:
+It is prayed that Defendant may be restrained from ____________________ till decision of the suit.
+`;
+
+const EXECUTION_APPLICATION_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
+[District], Pakistan
+
+Execution Application No. ______ of 20__
+
+Decree Holder: ____________________
+VERSUS
+Judgment Debtor: ____________________
+
+APPLICATION FOR EXECUTION OF DECREE UNDER ORDER XXI CPC
+
+Respectfully submitted:
+1. That decree dated ______ was passed in Civil Suit No. ______.
+2. That the Judgment Debtor has failed to satisfy the decree.
+3. That execution is sought through ____________________.
+
+PRAYER:
+It is prayed that decree may kindly be executed in accordance with law.
+`;
+
 const SESSIONS_BAIL_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE
 [District], Pakistan
 
@@ -168,6 +221,85 @@ Respectfully submitted:
 
 PRAYER:
 It is prayed that post-arrest bail may kindly be granted in the interest of justice.
+`;
+
+const SESSIONS_PRE_ARREST_BAIL_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE
+[District], Pakistan
+
+Pre-Arrest Bail Application No. ______ of 20__
+
+Applicant/Accused: ____________________
+VERSUS
+The State
+
+APPLICATION FOR PRE-ARREST BAIL UNDER SECTION 498 Cr.P.C.
+
+Respectfully submitted:
+1. FIR No. ______ dated ______ under sections ______ P.P.C. at P.S. ______.
+2. Applicant apprehends arrest due to mala fide and false implication.
+3. Applicant undertakes full cooperation in investigation/trial.
+
+PRAYER:
+It is prayed that pre-arrest bail may kindly be confirmed till final decision of the case.
+`;
+
+const SESSIONS_CRIMINAL_APPEAL_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE
+[District], Pakistan
+
+Criminal Appeal No. ______ of 20__
+
+Appellant: ____________________
+VERSUS
+The State / Respondent: ____________________
+
+MEMORANDUM OF CRIMINAL APPEAL
+
+Respectfully submitted:
+1. That judgment dated ______ passed by learned ______ is contrary to law and facts.
+2. That material evidence has been misread/non-read.
+3. That findings are unsustainable.
+
+PRAYER:
+It is prayed that conviction/order may kindly be set aside and appeal be accepted.
+`;
+
+const SESSIONS_CRIMINAL_REVISION_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE
+[District], Pakistan
+
+Criminal Revision No. ______ of 20__
+
+Petitioner: ____________________
+VERSUS
+Respondent: ____________________
+
+CRIMINAL REVISION PETITION
+
+Respectfully submitted:
+1. That impugned order dated ______ suffers from jurisdictional and legal defects.
+2. That grave miscarriage of justice has occurred.
+3. That revisional interference is warranted.
+
+PRAYER:
+It is prayed that impugned order may kindly be set aside/modified in the interest of justice.
+`;
+
+const FAMILY_SUIT_TEMPLATE = `IN THE FAMILY COURT AT [District], Pakistan
+
+Family Suit/Petition No. ______ of 20__
+
+Plaintiff/Petitioner: ____________________
+VERSUS
+Defendant/Respondent: ____________________
+
+SUIT/PETITION FOR ____________________
+
+Respectfully submitted:
+1. That parties are related as ____________________.
+2. That cause of action accrued on ______.
+3. That this Hon'ble Family Court has jurisdiction.
+
+PRAYER:
+It is prayed that relief of ____________________ may kindly be granted.
 `;
 
 const HIGH_COURT_WRIT_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
@@ -214,6 +346,63 @@ PRAYER:
 It is prayed that the impugned judgment/decree may kindly be set aside and appeal be accepted.
 `;
 
+const HIGH_COURT_CRIMINAL_APPEAL_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
+
+Criminal Appeal No. ______ of 20__
+
+Appellant: ____________________
+VERSUS
+The State / Respondent: ____________________
+
+MEMORANDUM OF CRIMINAL APPEAL
+
+Respectfully submitted:
+1. That conviction/order dated ______ is illegal and unsustainable.
+2. That evidence has been misappreciated by learned trial court.
+3. That Appellant is entitled to acquittal/benefit under law.
+
+PRAYER:
+It is prayed that appeal may kindly be accepted and impugned judgment/order set aside.
+`;
+
+const HIGH_COURT_CRIMINAL_REVISION_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
+
+Criminal Revision No. ______ of 20__
+
+Petitioner: ____________________
+VERSUS
+Respondent: ____________________
+
+CRIMINAL REVISION PETITION
+
+Respectfully submitted:
+1. That impugned order dated ______ suffers from patent illegality.
+2. That findings are arbitrary and without lawful justification.
+3. That revisional jurisdiction may kindly be exercised.
+
+PRAYER:
+It is prayed that impugned order may kindly be set aside/modified.
+`;
+
+const HIGH_COURT_BBA_TEMPLATE = `IN THE HIGH COURT OF [Province], [Bench]
+
+Criminal Bail Before Arrest No. ______ of 20__
+
+Petitioner/Accused: ____________________
+VERSUS
+The State
+
+PETITION FOR BAIL BEFORE ARREST UNDER SECTION 498 Cr.P.C.
+
+Respectfully submitted:
+1. FIR No. ______ dated ______ at P.S. ______ under sections ______.
+2. Petitioner is innocent and implicated with mala fide intent.
+3. Petitioner undertakes to join investigation/trial.
+
+PRAYER:
+It is prayed that bail before arrest may kindly be granted/confirmed in the interest of justice.
+`;
+
 const SUPREME_CPLA_TEMPLATE = `IN THE SUPREME COURT OF PAKISTAN
 [Appellate Jurisdiction]
 
@@ -239,6 +428,26 @@ PRAYER:
 Leave to appeal may kindly be granted and the impugned judgment be set aside in the interest of justice.
 `;
 
+const SUPREME_CRIMINAL_PETITION_TEMPLATE = `IN THE SUPREME COURT OF PAKISTAN
+[Appellate Jurisdiction]
+
+Criminal Petition for Leave to Appeal No. ______ of 20__
+
+Petitioner: ____________________
+VERSUS
+Respondent: ____________________
+
+CRIMINAL PETITION FOR LEAVE TO APPEAL
+
+Respectfully submitted:
+1. That impugned High Court judgment/order dated ______ suffers from legal infirmities.
+2. That important questions of law arise for determination.
+3. That grave miscarriage of justice has occurred.
+
+PRAYER:
+Leave to appeal may kindly be granted and impugned judgment/order be set aside.
+`;
+
 const TEMPLATES: DraftTemplate[] = [
   {
     id: "civil-suit",
@@ -251,9 +460,39 @@ const TEMPLATES: DraftTemplate[] = [
     body: CIVIL_MISC_APPLICATION_TEMPLATE,
   },
   {
+    id: "temporary-injunction-application",
+    title: "Temporary Injunction Application",
+    body: TEMPORARY_INJUNCTION_TEMPLATE,
+  },
+  {
+    id: "execution-application",
+    title: "Execution Application",
+    body: EXECUTION_APPLICATION_TEMPLATE,
+  },
+  {
     id: "sessions-bail",
     title: "Sessions Court Bail Application",
     body: SESSIONS_BAIL_TEMPLATE,
+  },
+  {
+    id: "sessions-pre-arrest-bail",
+    title: "Sessions Pre-Arrest Bail",
+    body: SESSIONS_PRE_ARREST_BAIL_TEMPLATE,
+  },
+  {
+    id: "sessions-criminal-appeal",
+    title: "Sessions Criminal Appeal",
+    body: SESSIONS_CRIMINAL_APPEAL_TEMPLATE,
+  },
+  {
+    id: "sessions-criminal-revision",
+    title: "Sessions Criminal Revision",
+    body: SESSIONS_CRIMINAL_REVISION_TEMPLATE,
+  },
+  {
+    id: "family-suit-petition",
+    title: "Family Suit / Petition",
+    body: FAMILY_SUIT_TEMPLATE,
   },
   {
     id: "high-court-writ",
@@ -266,19 +505,50 @@ const TEMPLATES: DraftTemplate[] = [
     body: HIGH_COURT_APPEAL_TEMPLATE,
   },
   {
+    id: "high-court-criminal-appeal",
+    title: "High Court Criminal Appeal",
+    body: HIGH_COURT_CRIMINAL_APPEAL_TEMPLATE,
+  },
+  {
+    id: "high-court-criminal-revision",
+    title: "High Court Criminal Revision",
+    body: HIGH_COURT_CRIMINAL_REVISION_TEMPLATE,
+  },
+  {
+    id: "high-court-bba",
+    title: "High Court Bail Before Arrest",
+    body: HIGH_COURT_BBA_TEMPLATE,
+  },
+  {
     id: "supreme-cpla",
     title: "Supreme Court CPLA",
     body: SUPREME_CPLA_TEMPLATE,
   },
+  {
+    id: "supreme-criminal-petition",
+    title: "Supreme Court Criminal Petition for Leave to Appeal",
+    body: SUPREME_CRIMINAL_PETITION_TEMPLATE,
+  },
 ];
 
 const LEGAL_DOCUMENT_TYPE_OPTIONS: Array<{ value: LegalDocumentType; label: string }> = [
+  { value: "custom-input", label: "Custom (Type Your Own Filing Type)" },
   { value: "civil-suit-plaint", label: "Civil Suit (Plaint)" },
   { value: "civil-misc-application", label: "Civil Misc. Application" },
+  { value: "temporary-injunction-application", label: "Temporary Injunction Application" },
+  { value: "execution-application", label: "Execution Application" },
   { value: "sessions-bail-application", label: "Sessions Court Bail Application" },
+  { value: "sessions-pre-arrest-bail", label: "Sessions Pre-Arrest Bail" },
+  { value: "sessions-criminal-appeal", label: "Sessions Criminal Appeal" },
+  { value: "sessions-criminal-revision", label: "Sessions Criminal Revision" },
+  { value: "family-suit-petition", label: "Family Suit / Petition" },
   { value: "high-court-writ-petition", label: "High Court Writ Petition" },
   { value: "high-court-civil-appeal", label: "High Court Civil Appeal" },
+  { value: "high-court-criminal-appeal", label: "High Court Criminal Appeal" },
+  { value: "high-court-criminal-revision", label: "High Court Criminal Revision" },
+  { value: "high-court-bail-before-arrest", label: "High Court Bail Before Arrest" },
   { value: "supreme-court-cpla", label: "Supreme Court CPLA" },
+  { value: "supreme-court-criminal-petition", label: "Supreme Court Criminal Petition for Leave to Appeal" },
 ];
 
 function inferStatuteReferences(draft: string): StatuteReference[] {
@@ -332,6 +602,7 @@ export default function LegalDraftingPage() {
   const [riskResults, setRiskResults] = useState<DraftSuggestion[]>([]);
   const [aiContextFiles, setAiContextFiles] = useState<File[]>([]);
   const [legalDocumentType, setLegalDocumentType] = useState<LegalDocumentType>("civil-suit-plaint");
+  const [customLegalDocumentType, setCustomLegalDocumentType] = useState("");
   const [activeLeftTool, setActiveLeftTool] = useState<"drafts" | "templates" | "collab" | "archive">("drafts");
   const [leftRailOpen, setLeftRailOpen] = useState(true);
   const [rightRailOpen, setRightRailOpen] = useState(true);
@@ -663,6 +934,14 @@ export default function LegalDraftingPage() {
   const generateClause = async (promptOverride?: string) => {
     const prompt = (promptOverride ?? aiPrompt).trim();
     if (!prompt) return;
+    if (legalDocumentType === "custom-input" && !customLegalDocumentType.trim()) {
+      toast({
+        title: "Custom filing type required",
+        description: "Please enter the custom court filing type first.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsGenerating(true);
     try {
       let response: Response;
@@ -673,6 +952,9 @@ export default function LegalDraftingPage() {
         form.append("jurisdiction", "Lahore");
         form.append("module", "legal-drafting");
         form.append("documentType", legalDocumentType);
+        if (legalDocumentType === "custom-input") {
+          form.append("customDocumentType", customLegalDocumentType.trim());
+        }
         aiContextFiles.forEach((file) => form.append("attachments", file));
         response = await fetch("/api/retrieval/clauses/generate", {
           method: "POST",
@@ -686,6 +968,7 @@ export default function LegalDraftingPage() {
           jurisdiction: "Lahore",
           module: "legal-drafting",
           documentType: legalDocumentType,
+          customDocumentType: legalDocumentType === "custom-input" ? customLegalDocumentType.trim() : undefined,
         };
         response = await fetch("/api/retrieval/clauses/generate", {
           method: "POST",
@@ -1212,6 +1495,20 @@ export default function LegalDraftingPage() {
                   ))}
                 </select>
               </div>
+              {legalDocumentType === "custom-input" && (
+                <div className="mb-3">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                    Custom Filing Type
+                  </label>
+                  <input
+                    value={customLegalDocumentType}
+                    onChange={(e) => setCustomLegalDocumentType(e.target.value)}
+                    className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-100 focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none"
+                    placeholder="e.g., Guardian Petition, Succession Application, Rent Controller Appeal"
+                    data-testid="input-custom-filing-type"
+                  />
+                </div>
+              )}
               <div className="relative">
                 <Textarea
                   value={aiPrompt}
