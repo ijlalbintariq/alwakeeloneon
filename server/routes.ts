@@ -1196,6 +1196,35 @@ async function callStandardAISimple(
   return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens, options);
 }
 
+async function callLegalDraftingAI(
+  systemPrompt: string,
+  userText: string,
+  maxTokens: number,
+  options?: { timeoutProfile?: TimeoutProfile; temperature?: number },
+): Promise<{ text: string; model: string }> {
+  const timeoutConfig = MODEL_TIMEOUT_PROFILES[options?.timeoutProfile || "default"] || MODEL_TIMEOUT_PROFILES.default;
+  const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
+  const messages = buildMessages(systemPrompt, [{ role: "user", parts: [{ text: userText }] }]);
+  const startedAt = Date.now();
+  try {
+    const result = await withTimeout("Groq", timeoutConfig.standardPrimary, () => chatWithGroq({ messages, maxTokens, temperature }));
+    console.log(`[AI Routing][legal-drafting] Primary Groq succeeded in ${Date.now() - startedAt}ms`);
+    return { text: result.content, model: result.model };
+  } catch (groqErr) {
+    if (isDeepSeekAvailable()) {
+      try {
+        logModelSwitch("legal-drafting", "Groq", "DeepSeek", groqErr);
+        const result = await withTimeout("DeepSeek", timeoutConfig.standardFallback, () => chatWithDeepSeek({ messages, maxTokens, temperature }));
+        console.log(`[AI Routing][legal-drafting] Fallback DeepSeek succeeded in ${Date.now() - startedAt}ms`);
+        return { text: result.content, model: result.model };
+      } catch (dsErr) {
+        console.log("[AI Routing][legal-drafting] DeepSeek fallback failed:", getErrorMessage(dsErr));
+      }
+    }
+    throw groqErr;
+  }
+}
+
 async function callApexAIWithFallback(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
   preferredModel: ApexModel | null,
@@ -1839,6 +1868,27 @@ function normalizeDraftingText(content: string): string {
     .replace(/```references[\s\S]*?```/gi, "")
     .replace(/```[a-zA-Z]*\s*/g, "")
     .replace(/```/g, "")
+    .trim();
+}
+
+function normalizeCourtReadyDraftingText(content: string): string {
+  const base = normalizeDraftingText(content).replace(/\r\n?/g, "\n");
+  const lines = base.split("\n").map((line) => {
+    let out = line.trimEnd();
+    if (/^\s*([-*_]\s*){3,}$/.test(out)) return "";
+    out = out.replace(/^\s{0,3}#{1,6}\s+/, "");
+    out = out.replace(/^\s*>\s?/, "");
+    out = out.replace(/^\s*[-*+]\s+/, "");
+    out = out.replace(/\*\*([^*]+)\*\*/g, "$1");
+    out = out.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1$2");
+    out = out.replace(/`([^`]+)`/g, "$1");
+    return out;
+  });
+
+  return lines
+    .join("\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -5366,6 +5416,11 @@ ${profile.label}
 Drafting checklist:
 ${profile.checklist}
 
+Formatting requirements:
+- Output plain court pleading text only.
+- Do not use markdown symbols such as *, **, #, -, backticks, or bullet markers.
+- Keep professional Pakistani court format with clean headings and paragraphs.
+
 ${useCustomDocType ? `Custom filing instruction:\n- Draft specifically as: ${customDocType}\n- Keep this strictly in Pakistani court/litigation drafting format.\n` : ""}
 
 Jurisdiction/Forum (if provided): ${jurisdiction || "Pakistan"}
@@ -5376,12 +5431,12 @@ ${draftContextForGeneration || "[No draft/context provided]"}
 Reference skeleton (adapt to facts):
 ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
 
-        const aiResult = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.draft, {
+        const aiResult = await callLegalDraftingAI(sysInstruction, userInput, TOKEN_LIMITS.draft, {
           timeoutProfile: "analysis",
           temperature: 0.25,
         });
         await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
-        const draftedText = normalizeDraftingText(aiResult.text);
+        const draftedText = normalizeCourtReadyDraftingText(aiResult.text);
         if (!draftedText) {
           return res.status(502).json({ message: "AI returned empty legal draft text" });
         }
@@ -6171,7 +6226,7 @@ The user has attached the following documents for your reference. Analyze them c
         completion = await applyAlWakeeloSafetyGuardrails(completion).catch(() => ensureAlWakeeloReferencesBlock(completion));
       }
       if (moduleType === "draft" && moduleIntent?.startsWith("draft.")) {
-        completion = normalizeDraftingText(completion);
+        completion = normalizeCourtReadyDraftingText(completion);
       }
       if (moduleType === "contract-drafting" && moduleIntent === "contract.generateDraft") {
         completion = normalizeDraftingText(completion);
@@ -6628,6 +6683,117 @@ RULES:
     } catch (err) {
       console.error("Error generating draft risk analysis:", err);
       res.status(500).json({ message: "Failed to analyze drafting risks" });
+    }
+  });
+
+  app.post("/api/ai/draft-recommendations", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+
+    try {
+      const allowed = await checkUsageLimit(userId, "draft", res);
+      if (!allowed) return;
+
+      const { title, content, maxEdits } = req.body as { title?: string; content?: string; maxEdits?: number };
+      const draftText = (content || "").trim();
+      if (!draftText) {
+        return res.json({ edits: [] });
+      }
+
+      const draftTitle = (title || "Untitled Draft").trim();
+      const safeMaxEdits = Math.max(1, Math.min(10, Number(maxEdits) || 6));
+      const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 16000)}\nmax:${safeMaxEdits}`;
+
+      const { content: responseText, fromCache } = await getCachedOrCall("draft-recommendations", cacheKey, async () => {
+        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
+        const sysInstruction = `You are a Pakistani court drafting redline assistant.
+
+TASK:
+Review the user's legal draft and propose concrete, court-ready improvements.
+Focus on pleading quality, legal precision, clarity, structure, jurisdictional framing, and prayer language.
+
+OUTPUT FORMAT (STRICT):
+Return ONLY valid JSON with this exact shape:
+{
+  "edits": [
+    {
+      "id": "short-stable-id",
+      "title": "Short edit title",
+      "reason": "Why this change improves the pleading",
+      "originalSnippet": "Exact excerpt from user's draft to replace (can be empty if adding new text)",
+      "suggestedText": "Improved replacement text in clean court-ready format",
+      "impact": "high" | "medium" | "low"
+    }
+  ]
+}
+
+RULES:
+- Return 1 to ${safeMaxEdits} edits when meaningful improvements exist; otherwise return {"edits":[]}.
+- Use plain legal text only inside snippets and suggested text (no markdown symbols).
+- Keep originalSnippet short and exact.
+- Keep suggestedText specific and filing-ready for Pakistani court drafting.
+- Do not include markdown, code fences, or extra keys.${knowledgeContext}`;
+
+        const userInput = `Draft Title: ${draftTitle}\n\nDraft Content:\n${draftText.slice(0, 16000)}`;
+        const result = await callLegalDraftingAI(sysInstruction, userInput, TOKEN_LIMITS.draft, { timeoutProfile: "analysis", temperature: 0.2 });
+        await logUsageCost(userId, "draft", result.model, sysInstruction + userInput, result.text);
+        return result.text;
+      });
+
+      let parsed: any = null;
+      const cleaned = responseText.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        const start = cleaned.indexOf("{");
+        const end = cleaned.lastIndexOf("}");
+        if (start >= 0 && end > start) {
+          try {
+            parsed = JSON.parse(cleaned.slice(start, end + 1));
+          } catch {
+            parsed = null;
+          }
+        }
+      }
+
+      const rawEdits = Array.isArray(parsed?.edits) ? parsed.edits : [];
+      const seen = new Set<string>();
+      const edits = rawEdits
+        .slice(0, safeMaxEdits)
+        .map((edit: any, idx: number) => {
+          const titleText = typeof edit?.title === "string" && edit.title.trim()
+            ? edit.title.trim()
+            : `Recommended change ${idx + 1}`;
+          const reasonText = typeof edit?.reason === "string" && edit.reason.trim()
+            ? edit.reason.trim()
+            : "Improves clarity and legal quality of the pleading.";
+          const originalSnippet = typeof edit?.originalSnippet === "string" ? edit.originalSnippet.trim().slice(0, 1000) : "";
+          const suggestedText = typeof edit?.suggestedText === "string" ? edit.suggestedText.trim().slice(0, 2000) : "";
+          const impact = edit?.impact === "high" || edit?.impact === "low" ? edit.impact : "medium";
+          const idText = typeof edit?.id === "string" && edit.id.trim()
+            ? edit.id.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 48)
+            : `edit-${idx + 1}`;
+          return {
+            id: idText || `edit-${idx + 1}`,
+            title: titleText,
+            reason: reasonText,
+            originalSnippet,
+            suggestedText,
+            impact,
+          };
+        })
+        .filter((edit: any) => {
+          if (!edit.suggestedText) return false;
+          const dedupeKey = `${edit.originalSnippet}::${edit.suggestedText}`.toLowerCase();
+          if (seen.has(dedupeKey)) return false;
+          seen.add(dedupeKey);
+          return true;
+        });
+
+      res.json({ edits, fromCache });
+    } catch (err) {
+      console.error("Error generating draft recommendations:", err);
+      res.status(500).json({ message: "Failed to generate draft recommendations" });
     }
   });
 

@@ -51,6 +51,15 @@ type DraftSuggestion = {
   prompt: string;
 };
 
+type DraftRecommendation = {
+  id: string;
+  title: string;
+  reason: string;
+  originalSnippet: string;
+  suggestedText: string;
+  impact: "high" | "medium" | "low";
+};
+
 type Org = {
   id: number;
   name: string;
@@ -629,6 +638,8 @@ export default function LegalDraftingPage() {
   const [isSavedLocal, setIsSavedLocal] = useState(true);
   const [riskLoading, setRiskLoading] = useState(false);
   const [riskResults, setRiskResults] = useState<DraftSuggestion[]>([]);
+  const [recommendLoading, setRecommendLoading] = useState(false);
+  const [recommendations, setRecommendations] = useState<DraftRecommendation[]>([]);
   const [aiContextFiles, setAiContextFiles] = useState<File[]>([]);
   const [legalDocumentType, setLegalDocumentType] = useState<LegalDocumentType>("civil-suit-plaint");
   const [customLegalDocumentType, setCustomLegalDocumentType] = useState("");
@@ -864,6 +875,90 @@ export default function LegalDraftingPage() {
     }
   };
 
+  const applyRecommendedChange = (edit: DraftRecommendation) => {
+    const replacement = edit.suggestedText.trim();
+    if (!replacement) return;
+
+    setDocText((prev) => {
+      const source = prev || "";
+      const target = edit.originalSnippet.trim();
+      if (!target) {
+        return `${source.trim()}\n\n${replacement}\n`;
+      }
+
+      if (source.includes(target)) {
+        return source.replace(target, replacement);
+      }
+
+      const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+      const softMatch = source.match(new RegExp(escaped, "m"));
+      if (softMatch && typeof softMatch.index === "number") {
+        const found = softMatch[0];
+        return source.slice(0, softMatch.index) + replacement + source.slice(softMatch.index + found.length);
+      }
+
+      return `${source.trim()}\n\n${replacement}\n`;
+    });
+
+    addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
+    setRecommendations((prev) => prev.filter((item) => item.id !== edit.id));
+    toast({ title: "Recommended change applied" });
+  };
+
+  const runDraftRecommendations = async () => {
+    if (!docText.trim()) {
+      setRecommendations([]);
+      setRecommendLoading(false);
+      return;
+    }
+
+    setRecommendLoading(true);
+    try {
+      const response = await fetch("/api/ai/draft-recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: draftTitle,
+          content: docText,
+          maxEdits: 6,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(errText || "Recommendation review failed");
+      }
+
+      const data = await response.json();
+      const editsRaw = Array.isArray(data?.edits) ? data.edits : [];
+      const normalized: DraftRecommendation[] = editsRaw.slice(0, 10).map((edit: any, idx: number) => ({
+        id: typeof edit?.id === "string" && edit.id.trim() ? edit.id : `edit-${idx + 1}`,
+        title: typeof edit?.title === "string" && edit.title.trim() ? edit.title : `Recommended change ${idx + 1}`,
+        reason: typeof edit?.reason === "string" && edit.reason.trim() ? edit.reason : "Improves pleading quality and legal clarity.",
+        originalSnippet: typeof edit?.originalSnippet === "string" ? edit.originalSnippet.trim() : "",
+        suggestedText: typeof edit?.suggestedText === "string" ? edit.suggestedText.trim() : "",
+        impact: edit?.impact === "high" || edit?.impact === "low" ? edit.impact : "medium",
+      })).filter((edit) => edit.suggestedText.length > 0);
+
+      setRecommendations(normalized);
+      if (normalized.length > 0) {
+        addMemoryItem(
+          "risk",
+          `AI recommendations generated ${normalized.length} change(s): ${normalized.slice(0, 3).map((e) => e.title).join("; ")}`
+        );
+      }
+    } catch (err: any) {
+      toast({
+        title: "Recommendation review failed",
+        description: err?.message || "Could not generate draft recommendations.",
+        variant: "destructive",
+      });
+    } finally {
+      setRecommendLoading(false);
+    }
+  };
+
   const saveDraftMutation = useMutation({
     mutationFn: async ({
       id,
@@ -1050,6 +1145,7 @@ export default function LegalDraftingPage() {
       }).catch(() => {});
 
       runRiskAnalysis();
+      runDraftRecommendations();
     } catch (err: any) {
       toast({
         title: "Failed to generate clause",
@@ -1654,6 +1750,63 @@ export default function LegalDraftingPage() {
                       <p className="text-[11px] text-slate-400 leading-normal">{risk.detail}</p>
                       <div className="mt-2 text-amber-400 text-[10px] font-bold">Fix with AI</div>
                     </button>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">AI Recommended Changes</label>
+                <button
+                  onClick={runDraftRecommendations}
+                  className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold"
+                  data-testid="button-refresh-recommendations"
+                >
+                  {recommendLoading ? "Reviewing..." : `${recommendations.length} Changes`}
+                </button>
+              </div>
+              <div className="space-y-3">
+                {recommendations.length === 0 ? (
+                  <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                    <p className="text-[11px] text-amber-200">No AI text changes suggested yet.</p>
+                  </div>
+                ) : (
+                  recommendations.map((edit) => (
+                    <div
+                      key={edit.id}
+                      className="w-full p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
+                      data-testid={`recommendation-item-${edit.id}`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <h4 className="text-xs font-bold text-slate-200">{edit.title}</h4>
+                        <span
+                          className={`text-[10px] font-bold uppercase ${
+                            edit.impact === "high" ? "text-red-300" : edit.impact === "low" ? "text-emerald-300" : "text-amber-300"
+                          }`}
+                        >
+                          {edit.impact} impact
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-normal">{edit.reason}</p>
+                      {edit.originalSnippet ? (
+                        <div className="mt-2 rounded border border-slate-700/70 bg-[#0f172a]/70 p-2">
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Replace this</p>
+                          <p className="text-[11px] text-slate-300 whitespace-pre-wrap line-clamp-3">{edit.originalSnippet}</p>
+                        </div>
+                      ) : null}
+                      <div className="mt-2 rounded border border-slate-700/70 bg-[#0f172a]/70 p-2">
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Suggested text</p>
+                        <p className="text-[11px] text-slate-200 whitespace-pre-wrap line-clamp-4">{edit.suggestedText}</p>
+                      </div>
+                      <button
+                        onClick={() => applyRecommendedChange(edit)}
+                        className="mt-2 px-2 py-1 rounded bg-amber-500 text-slate-950 text-[10px] font-bold hover:bg-amber-400"
+                        data-testid={`button-apply-recommendation-${edit.id}`}
+                      >
+                        Apply Change
+                      </button>
+                    </div>
                   ))
                 )}
               </div>
