@@ -112,6 +112,12 @@ const PUBLIC_LEAD_MAX_DESCRIPTION_CHARS = Math.max(500, Number(process.env.PUBLI
 const PUBLIC_LEAD_MAX_CITY_CHARS = Math.max(20, Number(process.env.PUBLIC_LEAD_MAX_CITY_CHARS || 80));
 const PUBLIC_LEAD_MAX_CALLBACK_CHARS = Math.max(20, Number(process.env.PUBLIC_LEAD_MAX_CALLBACK_CHARS || 120));
 const PUBLIC_CHAT_LIMIT_MESSAGE = "You have reached the free AI consultation limit. For professional legal assistance you can contact our chamber or hire a lawyer.";
+const PAKISTAN_LAW_ONLY_POLICY = `PAKISTAN LAW ONLY POLICY (ABSOLUTE):
+- Restrict all legal analysis, drafting, citations, and recommendations to Pakistani law only.
+- Never cite, quote, or rely on Indian law or non-Pakistani legal authorities.
+- Disallowed references include: IPC, Indian Penal Code, CrPC 1973, Constitution of India, Indian Evidence Act, SCC, AIR, and Indian Supreme/High Court precedents.
+- If a user asks for non-Pakistani law, briefly refuse and ask them to reframe under Pakistani law.
+- Prefer Pakistani authorities such as PPC, Cr.P.C. 1898, C.P.C. 1908, Constitution of Islamic Republic of Pakistan 1973, and PLD/SCMR/YLR/MLD/CLC/CLD/PCRLJ citations.`;
 const PUBLIC_CHAT_SYSTEM_PROMPT = `You are the AI legal intake assistant for AlWakeelo Law Chamber.
 
 Your responsibilities are:
@@ -134,7 +140,9 @@ Language policy (strict):
 - Never use Devanagari script.
 - If user writes in Urdu script, reply in Urdu script.
 - If user writes in Roman Urdu, reply in Roman Urdu.
-- If user writes in English, reply in English.`;
+- If user writes in English, reply in English.
+
+${PAKISTAN_LAW_ONLY_POLICY}`;
 const PUBLIC_CHAT_CLOSING_LINES = {
   english: "For professional legal assistance, you may contact the chamber or hire a lawyer.",
   romanUrdu: "Professional qanooni madad ke liye aap chamber se rabta karein ya lawyer hire karein.",
@@ -165,6 +173,29 @@ function sanitizeInputText(value: unknown, maxLen: number): string {
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
     .trim()
     .slice(0, Math.max(1, maxLen));
+}
+
+function withPakistanLawOnlyPolicy(systemPrompt: string): string {
+  const base = String(systemPrompt || "").trim();
+  if (!base) return PAKISTAN_LAW_ONLY_POLICY;
+  if (base.includes("PAKISTAN LAW ONLY POLICY (ABSOLUTE):")) return base;
+  return `${base}\n\n${PAKISTAN_LAW_ONLY_POLICY}`;
+}
+
+function enforcePakistanLawOnlyOutput(text: string): string {
+  if (!text) return "";
+  return String(text)
+    .replace(/\bsection\s+(\d+[A-Za-z-]*)\s+of\s+ipc\b/gi, "Section $1 PPC")
+    .replace(/\bIndian Penal Code(?:,\s*1860)?\b/gi, "Pakistan Penal Code, 1860")
+    .replace(/\bIPC\b/gi, "PPC")
+    .replace(/\bCode of Criminal Procedure,\s*1973\b/gi, "Code of Criminal Procedure, 1898")
+    .replace(/\bCrPC\s*1973\b/gi, "Cr.P.C. 1898")
+    .replace(/\bConstitution of India\b/gi, "Constitution of Islamic Republic of Pakistan, 1973")
+    .replace(/\bIndian Evidence Act(?:,\s*1872)?\b/gi, "Qanun-e-Shahadat Order, 1984")
+    .replace(/\bSupreme Court of India\b/gi, "Supreme Court of Pakistan")
+    .replace(/\bIndian High Court\b/gi, "Pakistani High Court")
+    .replace(/\b(?:\d{4}\s*)?\(?\d+\)?\s+SCC\s+\d+\b/gi, "[Pakistani case citation required]")
+    .replace(/\bAIR\s+\d{4}\s+[A-Za-z.\s]+\s+\d+\b/gi, "[Pakistani case citation required]");
 }
 
 function normalizeSiteBaseUrl(req: Request): string {
@@ -1060,8 +1091,9 @@ function maybeIndexStatuteDocumentInBackground(args: { statuteDocumentId: number
 }
 
 function buildMessages(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>): Array<{ role: "system" | "user" | "assistant"; content: string }> {
+  const scopedSystemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
   return [
-    { role: "system", content: systemPrompt },
+    { role: "system", content: scopedSystemPrompt },
     ...contents.map(c => ({
       role: (c.role === "model" ? "assistant" : "user") as "user" | "assistant",
       content: c.parts.map(p => p.text).join("\n"),
@@ -1146,14 +1178,14 @@ async function callStandardAI(
   try {
     const result = await withTimeout("Groq", timeoutConfig.standardPrimary, () => chatWithGroq({ messages, maxTokens, temperature }));
     console.log(`[AI Routing][standard] Primary Groq succeeded in ${Date.now() - startedAt}ms`);
-    return { text: result.content, model: result.model };
+    return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
   } catch (groqErr) {
     if (isOpenRouterAvailable()) {
       try {
         logModelSwitch("standard", "Groq", "OpenRouter", groqErr);
         const result = await withTimeout("OpenRouter", timeoutConfig.standardFallback, () => chatWithOpenRouter({ messages, maxTokens, temperature }));
         console.log(`[AI Routing][standard] Fallback OpenRouter succeeded in ${Date.now() - startedAt}ms`);
-        return { text: result.content, model: result.model };
+        return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
       } catch (orErr) {
         console.log("[AI Routing][standard] OpenRouter fallback failed:", getErrorMessage(orErr));
       }
@@ -1175,13 +1207,13 @@ async function callTurboAI(
   try {
     const result = await withTimeout("DeepSeek", timeoutConfig.turboPrimary, () => chatWithDeepSeek({ messages, maxTokens, temperature }));
     console.log(`[AI Routing][turbo] Primary DeepSeek succeeded in ${Date.now() - startedAt}ms`);
-    return { text: result.content, model: result.model };
+    return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
   } catch (dsErr) {
     if (isGroqAvailable()) {
       logModelSwitch("turbo", "DeepSeek", "Groq", dsErr);
       const result = await withTimeout("Groq", timeoutConfig.turboFallback, () => chatWithGroq({ messages, maxTokens, temperature }));
       console.log(`[AI Routing][turbo] Fallback Groq succeeded in ${Date.now() - startedAt}ms`);
-      return { text: result.content, model: result.model };
+      return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
     }
     throw dsErr;
   }
@@ -1209,14 +1241,14 @@ async function callLegalDraftingAI(
   try {
     const result = await withTimeout("Groq", timeoutConfig.standardPrimary, () => chatWithGroq({ messages, maxTokens, temperature }));
     console.log(`[AI Routing][legal-drafting] Primary Groq succeeded in ${Date.now() - startedAt}ms`);
-    return { text: result.content, model: result.model };
+    return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
   } catch (groqErr) {
     if (isDeepSeekAvailable()) {
       try {
         logModelSwitch("legal-drafting", "Groq", "DeepSeek", groqErr);
         const result = await withTimeout("DeepSeek", timeoutConfig.standardFallback, () => chatWithDeepSeek({ messages, maxTokens, temperature }));
         console.log(`[AI Routing][legal-drafting] Fallback DeepSeek succeeded in ${Date.now() - startedAt}ms`);
-        return { text: result.content, model: result.model };
+        return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
       } catch (dsErr) {
         console.log("[AI Routing][legal-drafting] DeepSeek fallback failed:", getErrorMessage(dsErr));
       }
@@ -1295,7 +1327,7 @@ async function callApexAIWithFallback(
   }
 
   return {
-    text: responseContent,
+    text: enforcePakistanLawOnlyOutput(responseContent),
     reasoning: responseReasoning,
     model: responseModel,
   };
@@ -2932,7 +2964,7 @@ export async function registerRoutes(
       }
 
       const aiMessages = [
-        { role: "system" as const, content: PUBLIC_CHAT_SYSTEM_PROMPT },
+        { role: "system" as const, content: withPakistanLawOnlyPolicy(PUBLIC_CHAT_SYSTEM_PROMPT) },
         { role: "user" as const, content: message },
       ];
       const preferredLanguage = resolvePublicChatLanguage(message);
@@ -2984,6 +3016,7 @@ export async function registerRoutes(
           console.warn("[Public Chat] Language rewrite failed:", getErrorMessage(rewriteErr));
         }
       }
+      normalizedReply = sanitizeInputText(enforcePakistanLawOnlyOutput(normalizedReply), 6000);
       const stillInvalid =
         !normalizedReply ||
         hasDevanagari(normalizedReply) ||
@@ -6818,8 +6851,9 @@ The user has attached the following documents for your reference. Analyze them c
           const cachedContent = moduleType === "al-wakeelo" && !directMode
             ? await applyAlWakeeloSafetyGuardrails(cached.response).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
             : cached.response;
+          const scopedCachedContent = enforcePakistanLawOnlyOutput(cachedContent);
           return res.json({
-            content: cachedContent,
+            content: scopedCachedContent,
             model: usedModel,
             fromCache: true,
             moduleProfile: moduleProfile.id,
@@ -6901,6 +6935,12 @@ The user has attached the following documents for your reference. Analyze them c
             res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
             res.write(`data: ${JSON.stringify({ text: adjusted })}\n\n`);
           }
+        }
+        const scopedFullContent = enforcePakistanLawOnlyOutput(fullContent);
+        if (scopedFullContent !== fullContent) {
+          fullContent = scopedFullContent;
+          res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+          res.write(`data: ${JSON.stringify({ text: scopedFullContent })}\n\n`);
         }
 
         routingPath.push(`model:${usedModel}`);
@@ -6986,6 +7026,7 @@ The user has attached the following documents for your reference. Analyze them c
         }
         completion = normalizedContractJson.normalized;
       }
+      completion = enforcePakistanLawOnlyOutput(completion);
 
       const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
       try {
@@ -9767,6 +9808,7 @@ Instructions:
 
       const knowledgeContext = await gatherKnowledgeContext(message, userId);
       systemPrompt += knowledgeContext;
+      systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
         { role: "system", content: systemPrompt },
