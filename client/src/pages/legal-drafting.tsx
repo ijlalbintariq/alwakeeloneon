@@ -878,31 +878,45 @@ export default function LegalDraftingPage() {
   const applyRecommendedChange = (edit: DraftRecommendation) => {
     const replacement = edit.suggestedText.trim();
     if (!replacement) return;
+    const source = docText || "";
+    const target = edit.originalSnippet.trim();
+    if (!target) {
+      toast({
+        title: "Could not auto-apply",
+        description: "AI did not provide an exact snippet to replace. No new text was added.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    setDocText((prev) => {
-      const source = prev || "";
-      const target = edit.originalSnippet.trim();
-      if (!target) {
-        return `${source.trim()}\n\n${replacement}\n`;
-      }
-
-      if (source.includes(target)) {
-        return source.replace(target, replacement);
-      }
-
+    let nextText: string | null = null;
+    if (source.includes(target)) {
+      nextText = source.replace(target, replacement);
+    } else {
       const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
       const softMatch = source.match(new RegExp(escaped, "m"));
       if (softMatch && typeof softMatch.index === "number") {
         const found = softMatch[0];
-        return source.slice(0, softMatch.index) + replacement + source.slice(softMatch.index + found.length);
+        nextText = source.slice(0, softMatch.index) + replacement + source.slice(softMatch.index + found.length);
       }
+    }
 
-      return `${source.trim()}\n\n${replacement}\n`;
-    });
+    if (!nextText) {
+      toast({
+        title: "Snippet not found",
+        description: "No matching text found in current draft. No new text was added.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDocText(nextText);
 
     addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
     setRecommendations((prev) => prev.filter((item) => item.id !== edit.id));
     toast({ title: "Recommended change applied" });
+    runRiskAnalysis();
+    runDraftRecommendations();
   };
 
   const runDraftRecommendations = async () => {
@@ -1131,13 +1145,13 @@ export default function LegalDraftingPage() {
       if (!clause) throw new Error("No clause generated");
       setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
 
-      setDocText((prev) => `${prev.trim()}\n\n${clause}\n`);
+      setDocText(`${clause}\n`);
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
       setAiPrompt("");
       setAiContextFiles([]);
       if (aiContextInputRef.current) aiContextInputRef.current.value = "";
-      toast({ title: "Legal draft content inserted" });
+      toast({ title: "Legal draft updated" });
 
       await apiRequest("POST", "/api/search-history", {
         type: "draft",
