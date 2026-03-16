@@ -98,9 +98,6 @@ export async function ocrPdfWithCloud(
         form.append("OCREngine", engine);
         form.append("scale", "true");
         form.append("detectOrientation", "true");
-        if (maxPages > 0) {
-          form.append("pages", `1-${maxPages}`);
-        }
         form.append(
           "file",
           new Blob([pdfBuffer], { type: "application/pdf" }),
@@ -127,9 +124,12 @@ export async function ocrPdfWithCloud(
           continue;
         }
 
-        const pageTexts = Array.isArray(parsed?.ParsedResults)
+        const pageTextsRaw = Array.isArray(parsed?.ParsedResults)
           ? parsed.ParsedResults.map((item: any) => cleanText(String(item?.ParsedText || ""))).filter(Boolean)
           : [];
+        // OCR.space endpoint currently rejects "pages" parameter on this route.
+        // Keep local maxPages limiting by trimming parsed page results.
+        const pageTexts = maxPages > 0 ? pageTextsRaw.slice(0, maxPages) : pageTextsRaw;
         const text = cleanText(pageTexts.join("\n\n"));
 
         if (text) {
