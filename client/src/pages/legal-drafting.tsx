@@ -999,8 +999,7 @@ export default function LegalDraftingPage() {
     addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
     setRecommendations((prev) => prev.filter((item) => item.id !== edit.id));
     toast({ title: "Recommended change applied" });
-    runRiskAnalysis();
-    runDraftRecommendations();
+    runDraftReview();
   };
 
   const runDraftRecommendations = async () => {
@@ -1055,6 +1054,10 @@ export default function LegalDraftingPage() {
     } finally {
       setRecommendLoading(false);
     }
+  };
+
+  const runDraftReview = async () => {
+    await Promise.all([runRiskAnalysis(), runDraftRecommendations()]);
   };
 
   const saveDraftMutation = useMutation({
@@ -1132,7 +1135,7 @@ export default function LegalDraftingPage() {
     setSelectedDraftId(null);
     setActiveLeftTool("drafts");
     toast({ title: `Template applied: ${template.title}` });
-    runRiskAnalysis();
+    runDraftReview();
   };
 
   const onAiContextFilesSelected = (e: ChangeEvent<HTMLInputElement>) => {
@@ -1252,8 +1255,7 @@ export default function LegalDraftingPage() {
         query: prompt.slice(0, 120),
       }).catch(() => {});
 
-      runRiskAnalysis();
-      runDraftRecommendations();
+      runDraftReview();
     } catch (err: any) {
       toast({
         title: "Failed to generate clause",
@@ -1312,7 +1314,7 @@ export default function LegalDraftingPage() {
   };
 
   useEffect(() => {
-    runRiskAnalysis();
+    runDraftReview();
   }, []);
 
   return (
@@ -1848,101 +1850,104 @@ export default function LegalDraftingPage() {
 
             <section>
               <div className="flex items-center justify-between mb-3">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Risk Analysis</label>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Draft Review</label>
                 <button
-                  onClick={runRiskAnalysis}
-                  className="px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold"
-                  data-testid="button-refresh-risk-analysis"
-                >
-                  {riskLoading ? "Scanning..." : `${riskResults.length} Alerts`}
-                </button>
-              </div>
-              <div className="space-y-3">
-                {riskResults.length === 0 ? (
-                  <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                    <p className="text-[11px] text-emerald-300">No obvious drafting risks detected.</p>
-                  </div>
-                ) : (
-                  riskResults.map((risk) => (
-                    <button
-                      key={risk.id}
-                      onClick={() => generateClause(risk.prompt)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        risk.severity === "danger"
-                          ? "bg-red-500/5 border-red-500/20 hover:bg-red-500/10"
-                          : "bg-orange-500/5 border-orange-500/20 hover:bg-orange-500/10"
-                      }`}
-                      data-testid={`risk-item-${risk.id}`}
-                    >
-                      <div className="flex items-start gap-2 mb-1">
-                        <AlertTriangle
-                          size={14}
-                          className={risk.severity === "danger" ? "text-red-400 mt-0.5" : "text-orange-400 mt-0.5"}
-                        />
-                        <h4 className="text-xs font-bold text-slate-200">{risk.title}</h4>
-                      </div>
-                      <p className="text-[11px] text-slate-400 leading-normal">{risk.detail}</p>
-                      <div className="mt-2 text-amber-400 text-[10px] font-bold">Fix with AI</div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </section>
-
-            <section>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">AI Recommended Changes</label>
-                <button
-                  onClick={runDraftRecommendations}
+                  onClick={runDraftReview}
                   className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold"
-                  data-testid="button-refresh-recommendations"
+                  data-testid="button-refresh-draft-review"
                 >
-                  {recommendLoading ? "Reviewing..." : `${recommendations.length} Changes`}
+                  {riskLoading || recommendLoading ? "Reviewing..." : `${riskResults.length} Alerts · ${recommendations.length} Changes`}
                 </button>
               </div>
+
               <div className="space-y-3">
-                {recommendations.length === 0 ? (
-                  <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                    <p className="text-[11px] text-amber-200">No AI text changes suggested yet.</p>
+                <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-2">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-orange-300">Risk Alerts</p>
+                    <span className="text-[10px] font-bold text-orange-300">{riskResults.length}</span>
                   </div>
-                ) : (
-                  recommendations.map((edit) => (
-                    <div
-                      key={edit.id}
-                      className="w-full p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
-                      data-testid={`recommendation-item-${edit.id}`}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <h4 className="text-xs font-bold text-slate-200">{edit.title}</h4>
-                        <span
-                          className={`text-[10px] font-bold uppercase ${
-                            edit.impact === "high" ? "text-red-300" : edit.impact === "low" ? "text-emerald-300" : "text-amber-300"
+                  <div className="space-y-2">
+                    {riskResults.length === 0 ? (
+                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                        <p className="text-[11px] text-emerald-300">No obvious drafting risks detected.</p>
+                      </div>
+                    ) : (
+                      riskResults.map((risk) => (
+                        <button
+                          key={risk.id}
+                          onClick={() => generateClause(risk.prompt)}
+                          className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                            risk.severity === "danger"
+                              ? "bg-red-500/5 border-red-500/20 hover:bg-red-500/10"
+                              : "bg-orange-500/5 border-orange-500/20 hover:bg-orange-500/10"
                           }`}
+                          data-testid={`risk-item-${risk.id}`}
                         >
-                          {edit.impact} impact
-                        </span>
+                          <div className="flex items-start gap-2 mb-1">
+                            <AlertTriangle
+                              size={14}
+                              className={risk.severity === "danger" ? "text-red-400 mt-0.5" : "text-orange-400 mt-0.5"}
+                            />
+                            <h4 className="text-xs font-bold text-slate-200">{risk.title}</h4>
+                          </div>
+                          <p className="text-[11px] text-slate-400 leading-normal">{risk.detail}</p>
+                          <div className="mt-2 text-amber-400 text-[10px] font-bold">Fix with AI</div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300">AI Recommended Changes</p>
+                    <span className="text-[10px] font-bold text-amber-300">{recommendations.length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {recommendations.length === 0 ? (
+                      <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                        <p className="text-[11px] text-amber-200">No AI text changes suggested yet.</p>
                       </div>
-                      <p className="text-[11px] text-slate-400 leading-normal">{edit.reason}</p>
-                      {edit.originalSnippet ? (
-                        <div className="mt-2 rounded border border-slate-700/70 bg-[#0f172a]/70 p-2">
-                          <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Replace this</p>
-                          <p className="text-[11px] text-slate-300 whitespace-pre-wrap line-clamp-3">{edit.originalSnippet}</p>
+                    ) : (
+                      recommendations.map((edit) => (
+                        <div
+                          key={edit.id}
+                          className="w-full p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
+                          data-testid={`recommendation-item-${edit.id}`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <h4 className="text-xs font-bold text-slate-200">{edit.title}</h4>
+                            <span
+                              className={`text-[10px] font-bold uppercase ${
+                                edit.impact === "high" ? "text-red-300" : edit.impact === "low" ? "text-emerald-300" : "text-amber-300"
+                              }`}
+                            >
+                              {edit.impact} impact
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 leading-normal">{edit.reason}</p>
+                          {edit.originalSnippet ? (
+                            <div className="mt-2 rounded border border-slate-700/70 bg-[#0f172a]/70 p-2">
+                              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Replace this</p>
+                              <p className="text-[11px] text-slate-300 whitespace-pre-wrap line-clamp-3">{edit.originalSnippet}</p>
+                            </div>
+                          ) : null}
+                          <div className="mt-2 rounded border border-slate-700/70 bg-[#0f172a]/70 p-2">
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Suggested text</p>
+                            <p className="text-[11px] text-slate-200 whitespace-pre-wrap line-clamp-4">{edit.suggestedText}</p>
+                          </div>
+                          <button
+                            onClick={() => applyRecommendedChange(edit)}
+                            className="mt-2 px-2 py-1 rounded bg-amber-500 text-slate-950 text-[10px] font-bold hover:bg-amber-400"
+                            data-testid={`button-apply-recommendation-${edit.id}`}
+                          >
+                            Apply Change
+                          </button>
                         </div>
-                      ) : null}
-                      <div className="mt-2 rounded border border-slate-700/70 bg-[#0f172a]/70 p-2">
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Suggested text</p>
-                        <p className="text-[11px] text-slate-200 whitespace-pre-wrap line-clamp-4">{edit.suggestedText}</p>
-                      </div>
-                      <button
-                        onClick={() => applyRecommendedChange(edit)}
-                        className="mt-2 px-2 py-1 rounded bg-amber-500 text-slate-950 text-[10px] font-bold hover:bg-amber-400"
-                        data-testid={`button-apply-recommendation-${edit.id}`}
-                      >
-                        Apply Change
-                      </button>
-                    </div>
-                  ))
-                )}
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             </section>
 
