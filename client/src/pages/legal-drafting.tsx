@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
@@ -46,23 +46,6 @@ import { DocumentViewer } from "@/components/document-viewer";
 
 type DraftRecommendation = {
   id: string;
-  title: string;
-  reason: string;
-  originalSnippet: string;
-  suggestedText: string;
-  impact: "high" | "medium" | "low";
-};
-
-type DraftHighlight = {
-  id: string;
-  start: number;
-  end: number;
-  tone?: "applied" | "suggestion";
-  recommendationId?: string;
-};
-
-type DraftSuggestionMarker = DraftHighlight & {
-  recommendationId: string;
   title: string;
   reason: string;
   originalSnippet: string;
@@ -732,63 +715,6 @@ const LEGAL_DOCUMENT_TYPE_OPTIONS: Array<{ value: LegalDocumentType; label: stri
   { value: "supreme-court-criminal-petition", label: "Supreme Court Criminal Petition for Leave to Appeal" },
 ];
 
-function normalizeHighlightRanges(textLength: number, ranges: DraftHighlight[]): DraftHighlight[] {
-  const normalized = ranges
-    .map((range) => ({
-      ...range,
-      start: Math.max(0, Math.min(textLength, Math.floor(range.start))),
-      end: Math.max(0, Math.min(textLength, Math.floor(range.end))),
-    }))
-    .filter((range) => range.end > range.start)
-    .sort((a, b) => a.start - b.start);
-
-  const merged: DraftHighlight[] = [];
-  for (const range of normalized) {
-    const last = merged[merged.length - 1];
-    if (
-      !last ||
-      range.start > last.end ||
-      last.tone !== range.tone ||
-      last.recommendationId !== range.recommendationId
-    ) {
-      merged.push({ ...range });
-      continue;
-    }
-    last.end = Math.max(last.end, range.end);
-  }
-  return merged;
-}
-
-function renderHighlightedDraftText(text: string, ranges: DraftHighlight[], activeRecommendationId: string | null): ReactNode[] {
-  if (!text) return [];
-  const clipped = normalizeHighlightRanges(text.length, ranges);
-  if (clipped.length === 0) return [text];
-
-  const nodes: ReactNode[] = [];
-  let cursor = 0;
-  clipped.forEach((range, idx) => {
-    if (range.start > cursor) {
-      nodes.push(<span key={`n-${idx}`}>{text.slice(cursor, range.start)}</span>);
-    }
-    const isActiveSuggestion = range.tone === "suggestion" && !!range.recommendationId && range.recommendationId === activeRecommendationId;
-    const className = isActiveSuggestion
-      ? "text-sky-200 underline decoration-sky-300/80 decoration-2 underline-offset-2 font-semibold"
-      : range.tone === "suggestion"
-        ? "text-emerald-200 underline decoration-emerald-300/70 decoration-1 underline-offset-2"
-        : "text-emerald-200/95";
-    nodes.push(
-      <mark key={`h-${idx}`} className={className}>
-        {text.slice(range.start, range.end)}
-      </mark>,
-    );
-    cursor = range.end;
-  });
-  if (cursor < text.length) {
-    nodes.push(<span key="n-tail">{text.slice(cursor)}</span>);
-  }
-  return nodes;
-}
-
 function findSnippetRange(source: string, targetSnippet: string): { start: number; end: number } | null {
   const target = targetSnippet.trim();
   if (!source || !target) return null;
@@ -812,7 +738,6 @@ export default function LegalDraftingPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
-  const highlightLayerRef = useRef<HTMLPreElement | null>(null);
   const aiContextInputRef = useRef<HTMLInputElement | null>(null);
 
   const [docText, setDocText] = useState(DEFAULT_DOC);
@@ -833,9 +758,7 @@ export default function LegalDraftingPage() {
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryItems, setMemoryItems] = useState<MemoryItem[]>([]);
   const [styleMemoryMeta, setStyleMemoryMeta] = useState<StyleMemoryMeta | null>(null);
-  const [aiHighlights, setAiHighlights] = useState<DraftHighlight[]>([]);
   const [expandedRecommendationId, setExpandedRecommendationId] = useState<string | null>(null);
-  const [activeRecommendationId, setActiveRecommendationId] = useState<string | null>(null);
   const [draftReferences, setDraftReferences] = useState<LegalDraftReferencesPayload>(() => createEmptyLegalDraftReferences());
   const [isResolvingReferences, setIsResolvingReferences] = useState(false);
   const [activeCaseSourceId, setActiveCaseSourceId] = useState<number | null>(null);
@@ -1010,71 +933,15 @@ export default function LegalDraftingPage() {
     });
   };
 
-  const handleEditorScroll = () => {
-    if (!editorRef.current || !highlightLayerRef.current) return;
-    highlightLayerRef.current.scrollTop = editorRef.current.scrollTop;
-    highlightLayerRef.current.scrollLeft = editorRef.current.scrollLeft;
-  };
-
-  const recommendationMarkers = useMemo<DraftSuggestionMarker[]>(() => {
-    if (!docText || recommendations.length === 0) return [];
-    const markers: DraftSuggestionMarker[] = [];
-    for (const rec of recommendations) {
-      const range = findSnippetRange(docText, rec.originalSnippet);
-      if (!range) continue;
-      markers.push({
-        id: `suggestion-${rec.id}`,
-        recommendationId: rec.id,
-        title: rec.title,
-        reason: rec.reason,
-        originalSnippet: rec.originalSnippet,
-        suggestedText: rec.suggestedText,
-        impact: rec.impact,
-        start: range.start,
-        end: range.end,
-        tone: "suggestion",
-      });
-    }
-    return markers;
-  }, [docText, recommendations]);
-
-  const displayedHighlights = useMemo<DraftHighlight[]>(
-    () => [...recommendationMarkers, ...aiHighlights],
-    [recommendationMarkers, aiHighlights]
-  );
-
-  const activeSuggestion = useMemo(
-    () => recommendationMarkers.find((m) => m.recommendationId === activeRecommendationId) || null,
-    [recommendationMarkers, activeRecommendationId]
-  );
-
-  const updateActiveRecommendationFromCursor = () => {
-    const el = editorRef.current;
-    if (!el || recommendationMarkers.length === 0) {
-      setActiveRecommendationId(null);
-      return;
-    }
-    const cursor = Math.max(0, el.selectionStart ?? 0);
-    const marker = recommendationMarkers.find((m) => cursor >= m.start && cursor <= m.end) || null;
-    setActiveRecommendationId(marker?.recommendationId || null);
-  };
-
   const handleDraftTextChange = (value: string) => {
     setDocText(value);
-    if (aiHighlights.length > 0) {
-      setAiHighlights([]);
-    }
-    setActiveRecommendationId(null);
   };
 
   useEffect(() => {
-    if (activeRecommendationId && !recommendations.some((item) => item.id === activeRecommendationId)) {
-      setActiveRecommendationId(null);
-    }
     if (expandedRecommendationId && !recommendations.some((item) => item.id === expandedRecommendationId)) {
       setExpandedRecommendationId(null);
     }
-  }, [recommendations, activeRecommendationId, expandedRecommendationId]);
+  }, [recommendations, expandedRecommendationId]);
 
   useEffect(() => {
     const currentText = docText.trim();
@@ -1188,18 +1055,9 @@ export default function LegalDraftingPage() {
     const nextText = source.slice(0, range.start) + replacement + source.slice(range.end);
 
     setDocText(nextText);
-    setAiHighlights([
-      {
-        id: `${edit.id}-${Date.now()}`,
-        start: range.start,
-        end: range.start + replacement.length,
-        tone: "applied",
-      },
-    ]);
 
     addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
     setRecommendations((prev) => prev.filter((item) => item.id !== edit.id));
-    setActiveRecommendationId(null);
     setExpandedRecommendationId((prev) => (prev === edit.id ? null : prev));
     toast({ title: "Recommended change applied" });
     runDraftReview();
@@ -1207,7 +1065,6 @@ export default function LegalDraftingPage() {
 
   const dismissRecommendation = (id: string) => {
     setRecommendations((prev) => prev.filter((item) => item.id !== id));
-    setActiveRecommendationId((prev) => (prev === id ? null : prev));
     setExpandedRecommendationId((prev) => (prev === id ? null : prev));
   };
 
@@ -1249,7 +1106,6 @@ export default function LegalDraftingPage() {
 
       setRecommendations(normalized);
       setExpandedRecommendationId(normalized[0]?.id || null);
-      setActiveRecommendationId(null);
       if (normalized.length > 0) {
         addMemoryItem(
           "risk",
@@ -1449,15 +1305,6 @@ export default function LegalDraftingPage() {
       setDraftReferences(normalizeLegalDraftReferences(data?.references));
 
       setDocText(`${clause}\n`);
-      setAiHighlights([
-        {
-          id: `ai-generate-${Date.now()}`,
-          start: 0,
-          end: clause.length,
-          tone: "applied",
-        },
-      ]);
-      setActiveRecommendationId(null);
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
       setAiPrompt("");
@@ -1900,82 +1747,15 @@ export default function LegalDraftingPage() {
           <div className="flex-1 overflow-hidden p-2 md:p-4 lg:p-5">
             <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl">
               <div className="h-full overflow-hidden p-3 md:p-5 lg:p-7">
-                <div className="relative h-full">
-                  {displayedHighlights.length > 0 && (
-                    <pre
-                      ref={highlightLayerRef}
-                      aria-hidden="true"
-                      className="legal-draft-font pointer-events-none absolute inset-0 z-20 overflow-auto whitespace-pre-wrap break-words text-transparent leading-8 text-[16px]"
-                    >
-                      {renderHighlightedDraftText(docText, displayedHighlights, activeRecommendationId)}
-                    </pre>
-                  )}
+                <div className="h-full">
                   <Textarea
                     ref={editorRef}
                     value={docText}
                     onChange={(e) => handleDraftTextChange(e.target.value)}
-                    onScroll={handleEditorScroll}
-                    onClick={updateActiveRecommendationFromCursor}
-                    onKeyUp={updateActiveRecommendationFromCursor}
-                    onSelect={updateActiveRecommendationFromCursor}
-                    className="legal-draft-font relative z-10 w-full h-full min-h-[72vh] md:min-h-[76vh] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-100 leading-8 text-[16px]"
+                    className="legal-draft-font w-full h-full min-h-[72vh] md:min-h-[76vh] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-100 leading-8 text-[16px]"
                     data-testid="textarea-legal-draft"
                   />
                 </div>
-                {displayedHighlights.length > 0 && (
-                  <p className="pt-2 text-[11px] text-slate-300">
-                    Colored text indicates AI suggestions/fixes. Move cursor into highlighted text to review and apply.
-                  </p>
-                )}
-                {activeSuggestion && (
-                  <div className="mt-3 rounded-lg border border-sky-400/40 bg-sky-500/10 p-3 shadow-[0_0_24px_rgba(56,189,248,0.14)]">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-sky-200">AI Suggested Change</p>
-                      <span
-                        className={`text-[10px] font-bold uppercase ${
-                          activeSuggestion.impact === "high"
-                            ? "text-red-300"
-                            : activeSuggestion.impact === "low"
-                              ? "text-emerald-300"
-                              : "text-sky-300"
-                        }`}
-                      >
-                        {activeSuggestion.impact} impact
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-100 mt-1">{activeSuggestion.title}</p>
-                    <p className="text-[11px] text-slate-300 mt-1">{activeSuggestion.reason}</p>
-                    <div className="mt-2 grid gap-2 lg:grid-cols-2">
-                      <div className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-rose-200">Before</p>
-                        <p className="text-[11px] text-slate-300 whitespace-pre-wrap line-clamp-4">{activeSuggestion.originalSnippet}</p>
-                      </div>
-                      <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-200">After</p>
-                        <p className="text-[11px] text-emerald-100 whitespace-pre-wrap line-clamp-4">{activeSuggestion.suggestedText}</p>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          const hit = recommendations.find((r) => r.id === activeSuggestion.recommendationId);
-                          if (hit) applyRecommendedChange(hit);
-                        }}
-                        className="px-2.5 py-1.5 rounded bg-amber-400 text-slate-950 text-[10px] font-bold hover:bg-amber-300"
-                        data-testid="button-accept-active-suggestion"
-                      >
-                        OK, Apply Change
-                      </button>
-                      <button
-                        onClick={() => dismissRecommendation(activeSuggestion.recommendationId)}
-                        className="px-2.5 py-1.5 rounded border border-slate-600 text-slate-300 text-[10px] font-bold hover:border-amber-400/40 hover:text-amber-200"
-                        data-testid="button-dismiss-active-suggestion"
-                      >
-                        Not Okay
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -2140,7 +1920,6 @@ export default function LegalDraftingPage() {
                             type="button"
                             onClick={() => {
                               setExpandedRecommendationId((prev) => (prev === edit.id ? null : edit.id));
-                              setActiveRecommendationId(edit.id);
                             }}
                             className="w-full text-left"
                             data-testid={`button-toggle-recommendation-${edit.id}`}
