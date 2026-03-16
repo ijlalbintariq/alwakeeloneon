@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
@@ -58,6 +58,12 @@ type DraftRecommendation = {
   originalSnippet: string;
   suggestedText: string;
   impact: "high" | "medium" | "low";
+};
+
+type DraftHighlight = {
+  id: string;
+  start: number;
+  end: number;
 };
 
 type Org = {
@@ -623,11 +629,58 @@ function inferStatuteReferences(draft: string): StatuteReference[] {
   return refs.slice(0, 5);
 }
 
+function normalizeHighlightRanges(textLength: number, ranges: DraftHighlight[]): DraftHighlight[] {
+  const normalized = ranges
+    .map((range) => ({
+      ...range,
+      start: Math.max(0, Math.min(textLength, Math.floor(range.start))),
+      end: Math.max(0, Math.min(textLength, Math.floor(range.end))),
+    }))
+    .filter((range) => range.end > range.start)
+    .sort((a, b) => a.start - b.start);
+
+  const merged: DraftHighlight[] = [];
+  for (const range of normalized) {
+    const last = merged[merged.length - 1];
+    if (!last || range.start > last.end) {
+      merged.push({ ...range });
+      continue;
+    }
+    last.end = Math.max(last.end, range.end);
+  }
+  return merged;
+}
+
+function renderHighlightedDraftText(text: string, ranges: DraftHighlight[]): ReactNode[] {
+  if (!text) return [];
+  const clipped = normalizeHighlightRanges(text.length, ranges);
+  if (clipped.length === 0) return [text];
+
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  clipped.forEach((range, idx) => {
+    if (range.start > cursor) {
+      nodes.push(<span key={`n-${idx}`}>{text.slice(cursor, range.start)}</span>);
+    }
+    nodes.push(
+      <mark key={`h-${idx}`} className="bg-emerald-400/25 text-transparent rounded-sm">
+        {text.slice(range.start, range.end)}
+      </mark>,
+    );
+    cursor = range.end;
+  });
+  if (cursor < text.length) {
+    nodes.push(<span key="n-tail">{text.slice(cursor)}</span>);
+  }
+  return nodes;
+}
+
 export default function LegalDraftingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const highlightLayerRef = useRef<HTMLPreElement | null>(null);
   const aiContextInputRef = useRef<HTMLInputElement | null>(null);
 
   const [docText, setDocText] = useState(DEFAULT_DOC);
@@ -650,6 +703,8 @@ export default function LegalDraftingPage() {
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryItems, setMemoryItems] = useState<MemoryItem[]>([]);
   const [styleMemoryMeta, setStyleMemoryMeta] = useState<StyleMemoryMeta | null>(null);
+  const [aiHighlights, setAiHighlights] = useState<DraftHighlight[]>([]);
+  const [showAiHighlights, setShowAiHighlights] = useState(true);
   const statuteReferences = useMemo(() => inferStatuteReferences(docText), [docText]);
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
@@ -821,6 +876,19 @@ export default function LegalDraftingPage() {
     });
   };
 
+  const handleEditorScroll = () => {
+    if (!editorRef.current || !highlightLayerRef.current) return;
+    highlightLayerRef.current.scrollTop = editorRef.current.scrollTop;
+    highlightLayerRef.current.scrollLeft = editorRef.current.scrollLeft;
+  };
+
+  const handleDraftTextChange = (value: string) => {
+    setDocText(value);
+    if (aiHighlights.length > 0) {
+      setAiHighlights([]);
+    }
+  };
+
   const runRiskAnalysis = async () => {
     if (!docText.trim()) {
       setRiskResults([]);
@@ -890,13 +958,17 @@ export default function LegalDraftingPage() {
     }
 
     let nextText: string | null = null;
+    let highlightStart = -1;
     if (source.includes(target)) {
-      nextText = source.replace(target, replacement);
+      const start = source.indexOf(target);
+      highlightStart = start;
+      nextText = source.slice(0, start) + replacement + source.slice(start + target.length);
     } else {
       const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
       const softMatch = source.match(new RegExp(escaped, "m"));
       if (softMatch && typeof softMatch.index === "number") {
         const found = softMatch[0];
+        highlightStart = softMatch.index;
         nextText = source.slice(0, softMatch.index) + replacement + source.slice(softMatch.index + found.length);
       }
     }
@@ -911,6 +983,18 @@ export default function LegalDraftingPage() {
     }
 
     setDocText(nextText);
+    if (highlightStart >= 0) {
+      setAiHighlights([
+        {
+          id: `${edit.id}-${Date.now()}`,
+          start: highlightStart,
+          end: highlightStart + replacement.length,
+        },
+      ]);
+      setShowAiHighlights(true);
+    } else {
+      setAiHighlights([]);
+    }
 
     addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
     setRecommendations((prev) => prev.filter((item) => item.id !== edit.id));
@@ -1037,12 +1121,14 @@ export default function LegalDraftingPage() {
     setSelectedDraftId(doc.id);
     setDraftTitle(doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "") || "Draft");
     setDocText(doc.content || "");
+    setAiHighlights([]);
     toast({ title: "Draft loaded" });
   };
 
   const applyTemplate = (template: DraftTemplate) => {
     setDraftTitle(template.title);
     setDocText(template.body);
+    setAiHighlights([]);
     setSelectedDraftId(null);
     setActiveLeftTool("drafts");
     toast({ title: `Template applied: ${template.title}` });
@@ -1146,6 +1232,14 @@ export default function LegalDraftingPage() {
       setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
 
       setDocText(`${clause}\n`);
+      setAiHighlights([
+        {
+          id: `ai-generate-${Date.now()}`,
+          start: 0,
+          end: clause.length,
+        },
+      ]);
+      setShowAiHighlights(true);
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
       setAiPrompt("");
@@ -1545,6 +1639,15 @@ export default function LegalDraftingPage() {
             <div className="flex items-center gap-2 ml-auto">
               <Button
                 variant="outline"
+                className="h-8 px-2 md:px-3 border-emerald-500/30 bg-emerald-500/5 text-emerald-300 text-[11px] md:text-xs font-bold"
+                onClick={() => setShowAiHighlights((prev) => !prev)}
+                disabled={aiHighlights.length === 0}
+                data-testid="button-toggle-ai-highlights"
+              >
+                {showAiHighlights ? "Hide AI Fix" : "Show AI Fix"}
+              </Button>
+              <Button
+                variant="outline"
                 className="h-8 px-2 md:px-3 border-amber-500/20 bg-amber-500/5 text-amber-300 text-[11px] md:text-xs font-bold"
                 onClick={() =>
                   generateClause(
@@ -1588,14 +1691,31 @@ export default function LegalDraftingPage() {
 
           <div className="flex-1 overflow-hidden p-2 md:p-4 lg:p-5">
             <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl">
-              <div className="h-full overflow-y-auto p-3 md:p-5 lg:p-7">
-                <Textarea
-                  ref={editorRef}
-                  value={docText}
-                  onChange={(e) => setDocText(e.target.value)}
-                  className="legal-draft-font w-full h-full min-h-[72vh] md:min-h-[76vh] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-100 leading-8 text-[16px]"
-                  data-testid="textarea-legal-draft"
-                />
+              <div className="h-full overflow-hidden p-3 md:p-5 lg:p-7">
+                <div className="relative h-full">
+                  {showAiHighlights && aiHighlights.length > 0 && (
+                    <pre
+                      ref={highlightLayerRef}
+                      aria-hidden="true"
+                      className="legal-draft-font pointer-events-none absolute inset-0 z-0 overflow-auto whitespace-pre-wrap break-words text-transparent leading-8 text-[16px]"
+                    >
+                      {renderHighlightedDraftText(docText, aiHighlights)}
+                    </pre>
+                  )}
+                  <Textarea
+                    ref={editorRef}
+                    value={docText}
+                    onChange={(e) => handleDraftTextChange(e.target.value)}
+                    onScroll={handleEditorScroll}
+                    className="legal-draft-font relative z-10 w-full h-full min-h-[72vh] md:min-h-[76vh] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-100 leading-8 text-[16px]"
+                    data-testid="textarea-legal-draft"
+                  />
+                </div>
+                {showAiHighlights && aiHighlights.length > 0 && (
+                  <p className="pt-2 text-[11px] text-emerald-300">
+                    Highlighted text shows the latest AI-applied fix.
+                  </p>
+                )}
               </div>
             </div>
           </div>
