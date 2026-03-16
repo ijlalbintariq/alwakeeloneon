@@ -164,6 +164,7 @@ type StyleMemoryMeta = {
 
 const AUTOSAVE_KEY = "legal-drafting-workspace-v2";
 const CONTEXT_MEMORY_KEY = "legal-drafting-context-memory-v1";
+const STYLE_MEMORY_BACKFILL_KEY = "legal-drafting-style-backfill-v1";
 const DRAFT_TITLE_PREFIX = "Legal Draft:";
 
 const DEFAULT_DOC = "";
@@ -1133,6 +1134,17 @@ export default function LegalDraftingPage() {
     if (remaining === 0) {
       setRiskResults([]);
     }
+    fetch("/api/style-memory/events/accepted-redline", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        module: "legal-drafting",
+        draftId: selectedDraftId ?? "workspace",
+        acceptedText: replacement.slice(0, 12000),
+        beforeText: (edit.originalSnippet || "").slice(0, 12000),
+      }),
+    }).catch(() => {});
     toast({ title: "Recommended change applied" });
   };
 
@@ -1494,6 +1506,34 @@ export default function LegalDraftingPage() {
 
   useEffect(() => {
     runDraftReview();
+  }, []);
+
+  useEffect(() => {
+    const runBackfill = async () => {
+      try {
+        const lastRunRaw = localStorage.getItem(STYLE_MEMORY_BACKFILL_KEY);
+        const lastRun = lastRunRaw ? Number(lastRunRaw) : 0;
+        const now = Date.now();
+        // Run at most once every 24h per browser profile.
+        if (Number.isFinite(lastRun) && now - lastRun < 24 * 60 * 60 * 1000) return;
+        const response = await fetch("/api/style-memory/backfill", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            module: "legal-drafting",
+            scope: "user",
+            limit: 50,
+          }),
+        });
+        if (response.ok) {
+          localStorage.setItem(STYLE_MEMORY_BACKFILL_KEY, String(now));
+        }
+      } catch {
+        // Silent bootstrap path; user-facing drafting should not be interrupted.
+      }
+    };
+    runBackfill();
   }, []);
 
   return (
