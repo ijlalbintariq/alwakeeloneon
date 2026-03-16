@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
   ArrowRight,
+  Loader2,
   Brain,
   Bold,
   BookOpen,
@@ -42,6 +43,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 import type { Document as DraftDocument } from "@shared/schema";
 import { StyleMemoryPanel } from "@/components/style-memory-panel";
+import { DocumentViewer } from "@/components/document-viewer";
 
 type DraftSuggestion = {
   id: string;
@@ -64,6 +66,17 @@ type DraftHighlight = {
   id: string;
   start: number;
   end: number;
+  tone?: "applied" | "suggestion";
+  recommendationId?: string;
+};
+
+type DraftSuggestionMarker = DraftHighlight & {
+  recommendationId: string;
+  title: string;
+  reason: string;
+  originalSnippet: string;
+  suggestedText: string;
+  impact: "high" | "medium" | "low";
 };
 
 type Org = {
@@ -103,9 +116,52 @@ type LegalDocumentType =
   | "supreme-court-criminal-petition"
   | "custom-input";
 
-type StatuteReference = {
-  label: string;
-  href: string;
+type LegalDraftCaseReference = {
+  id: number;
+  citation: string;
+  court: string;
+  title: string;
+  summary: string;
+  hasSource: boolean;
+  sourceType: string | null;
+  sourceFilename: string | null;
+};
+
+type LegalDraftStatuteReference = {
+  statuteName: string;
+  section: string;
+  sectionLabel: string;
+  statuteId: number | null;
+  description: string | null;
+  punishment: string | null;
+  statuteDocId: number | null;
+  statuteDocTitle: string | null;
+  statuteDocFilename: string | null;
+  statuteDocCategory: string | null;
+  viewUrl: string | null;
+};
+
+type LegalDraftUnresolvedStatute = {
+  statuteName: string;
+  section: string;
+  sectionLabel: string;
+};
+
+type LegalDraftReferencesPayload = {
+  caseLaw: LegalDraftCaseReference[];
+  statutes: LegalDraftStatuteReference[];
+  removedCaseCitations: string[];
+  unresolvedStatutes: LegalDraftUnresolvedStatute[];
+};
+
+type CaseLawSourceDocument = {
+  found: boolean;
+  title?: string;
+  content?: string;
+  filename?: string;
+  sourceType?: string;
+  citation?: string;
+  message?: string;
 };
 
 type MemoryItem = {
@@ -129,6 +185,73 @@ const DRAFT_TITLE_PREFIX = "Legal Draft:";
 
 const DEFAULT_DOC = "";
 const LEGACY_DEFAULT_DOC_PREFIX = "IN THE COURT OF THE CIVIL JUDGE";
+
+function createEmptyLegalDraftReferences(): LegalDraftReferencesPayload {
+  return {
+    caseLaw: [],
+    statutes: [],
+    removedCaseCitations: [],
+    unresolvedStatutes: [],
+  };
+}
+
+function normalizeLegalDraftReferences(input: unknown): LegalDraftReferencesPayload {
+  const empty = createEmptyLegalDraftReferences();
+  if (!input || typeof input !== "object") return empty;
+  const value = input as Partial<LegalDraftReferencesPayload>;
+  const caseLaw = Array.isArray(value.caseLaw)
+    ? value.caseLaw
+        .map((item) => ({
+          id: Number((item as any)?.id),
+          citation: String((item as any)?.citation || "").trim(),
+          court: String((item as any)?.court || "").trim(),
+          title: String((item as any)?.title || "").trim(),
+          summary: String((item as any)?.summary || "").trim(),
+          hasSource: Boolean((item as any)?.hasSource),
+          sourceType: (item as any)?.sourceType ? String((item as any).sourceType) : null,
+          sourceFilename: (item as any)?.sourceFilename ? String((item as any).sourceFilename) : null,
+        }))
+        .filter((item) => Number.isFinite(item.id) && item.id > 0 && item.citation.length > 0)
+    : [];
+
+  const statutes = Array.isArray(value.statutes)
+    ? value.statutes
+        .map((item) => ({
+          statuteName: String((item as any)?.statuteName || "").trim(),
+          section: String((item as any)?.section || "").trim(),
+          sectionLabel: String((item as any)?.sectionLabel || "").trim(),
+          statuteId: Number.isFinite(Number((item as any)?.statuteId)) ? Number((item as any).statuteId) : null,
+          description: (item as any)?.description ? String((item as any).description) : null,
+          punishment: (item as any)?.punishment ? String((item as any).punishment) : null,
+          statuteDocId: Number.isFinite(Number((item as any)?.statuteDocId)) ? Number((item as any).statuteDocId) : null,
+          statuteDocTitle: (item as any)?.statuteDocTitle ? String((item as any).statuteDocTitle) : null,
+          statuteDocFilename: (item as any)?.statuteDocFilename ? String((item as any).statuteDocFilename) : null,
+          statuteDocCategory: (item as any)?.statuteDocCategory ? String((item as any).statuteDocCategory) : null,
+          viewUrl: (item as any)?.viewUrl ? String((item as any).viewUrl) : null,
+        }))
+        .filter((item) => item.statuteName.length > 0 && item.sectionLabel.length > 0)
+    : [];
+
+  const removedCaseCitations = Array.isArray(value.removedCaseCitations)
+    ? value.removedCaseCitations.map((item) => String(item || "").trim()).filter((item) => item.length > 0)
+    : [];
+  const unresolvedStatutes = Array.isArray(value.unresolvedStatutes)
+    ? value.unresolvedStatutes
+        .map((item) => ({
+          statuteName: String((item as any)?.statuteName || "").trim(),
+          section: String((item as any)?.section || "").trim(),
+          sectionLabel: String((item as any)?.sectionLabel || "").trim(),
+        }))
+        .filter((item) => item.statuteName.length > 0 && item.sectionLabel.length > 0)
+    : [];
+
+  return {
+    caseLaw,
+    statutes,
+    removedCaseCitations,
+    unresolvedStatutes,
+  };
+}
 const CIVIL_SUIT_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
 [District], Pakistan
 
@@ -618,40 +741,6 @@ const LEGAL_DOCUMENT_TYPE_OPTIONS: Array<{ value: LegalDocumentType; label: stri
   { value: "supreme-court-criminal-petition", label: "Supreme Court Criminal Petition for Leave to Appeal" },
 ];
 
-function inferStatuteReferences(draft: string): StatuteReference[] {
-  const text = draft.toLowerCase();
-  if (!text.trim()) return [];
-
-  const patterns: Array<{ key: string; name: string; regex: RegExp }> = [
-    { key: "constitution", name: "Constitution of Pakistan, 1973", regex: /\bconstitution\b/i },
-    { key: "ppc", name: "Pakistan Penal Code, 1860", regex: /\b(pakistan penal code|ppc)\b/i },
-    { key: "crpc", name: "Code of Criminal Procedure, 1898", regex: /\b(code of criminal procedure|crpc)\b/i },
-    { key: "cpc", name: "Code of Civil Procedure, 1908", regex: /\b(code of civil procedure|cpc)\b/i },
-    { key: "contract", name: "Contract Act, 1872", regex: /\b(contract act|contracts? act)\b/i },
-    { key: "property", name: "Transfer of Property Act, 1882", regex: /\b(transfer of property act|property transfer)\b/i },
-    { key: "registration", name: "Registration Act, 1908", regex: /\bregistration act\b/i },
-    { key: "evidence", name: "Qanun-e-Shahadat Order, 1984", regex: /\b(qanun[-\s]?e[-\s]?shahadat|evidence law)\b/i },
-    { key: "family", name: "Family Courts Act, 1964", regex: /\b(family courts? act|family court)\b/i },
-  ];
-
-  const sectionMatches = Array.from(
-    draft.matchAll(/\b(?:section|sec\.?|s\.)\s*(\d+[a-zA-Z-]*)\b/gi),
-  ).map((m) => m[1]).slice(0, 6);
-
-  const refs: StatuteReference[] = [];
-  for (const item of patterns) {
-    if (!item.regex.test(text)) continue;
-    const sectionSuffix = sectionMatches.length > 0 ? ` — Section ${sectionMatches[0]}` : "";
-    const q = encodeURIComponent(`${item.name} ${sectionMatches[0] || ""}`.trim());
-    refs.push({
-      label: `${item.name}${sectionSuffix}`,
-      href: `/statute-search?q=${q}`,
-    });
-  }
-
-  return refs.slice(0, 5);
-}
-
 function normalizeHighlightRanges(textLength: number, ranges: DraftHighlight[]): DraftHighlight[] {
   const normalized = ranges
     .map((range) => ({
@@ -665,7 +754,12 @@ function normalizeHighlightRanges(textLength: number, ranges: DraftHighlight[]):
   const merged: DraftHighlight[] = [];
   for (const range of normalized) {
     const last = merged[merged.length - 1];
-    if (!last || range.start > last.end) {
+    if (
+      !last ||
+      range.start > last.end ||
+      last.tone !== range.tone ||
+      last.recommendationId !== range.recommendationId
+    ) {
       merged.push({ ...range });
       continue;
     }
@@ -674,7 +768,7 @@ function normalizeHighlightRanges(textLength: number, ranges: DraftHighlight[]):
   return merged;
 }
 
-function renderHighlightedDraftText(text: string, ranges: DraftHighlight[]): ReactNode[] {
+function renderHighlightedDraftText(text: string, ranges: DraftHighlight[], activeRecommendationId: string | null): ReactNode[] {
   if (!text) return [];
   const clipped = normalizeHighlightRanges(text.length, ranges);
   if (clipped.length === 0) return [text];
@@ -685,8 +779,14 @@ function renderHighlightedDraftText(text: string, ranges: DraftHighlight[]): Rea
     if (range.start > cursor) {
       nodes.push(<span key={`n-${idx}`}>{text.slice(cursor, range.start)}</span>);
     }
+    const isActiveSuggestion = range.tone === "suggestion" && !!range.recommendationId && range.recommendationId === activeRecommendationId;
+    const className = isActiveSuggestion
+      ? "bg-amber-400/35 text-amber-100 rounded-sm shadow-[0_0_0_1px_rgba(251,191,36,0.55)]"
+      : range.tone === "suggestion"
+        ? "bg-emerald-500/28 text-emerald-200 rounded-sm shadow-[0_0_0_1px_rgba(16,185,129,0.35)]"
+        : "bg-emerald-400/24 text-emerald-100 rounded-sm";
     nodes.push(
-      <mark key={`h-${idx}`} className="bg-emerald-400/25 text-transparent rounded-sm">
+      <mark key={`h-${idx}`} className={className}>
         {text.slice(range.start, range.end)}
       </mark>,
     );
@@ -696,6 +796,24 @@ function renderHighlightedDraftText(text: string, ranges: DraftHighlight[]): Rea
     nodes.push(<span key="n-tail">{text.slice(cursor)}</span>);
   }
   return nodes;
+}
+
+function findSnippetRange(source: string, targetSnippet: string): { start: number; end: number } | null {
+  const target = targetSnippet.trim();
+  if (!source || !target) return null;
+  if (source.includes(target)) {
+    const start = source.indexOf(target);
+    return { start, end: start + target.length };
+  }
+
+  const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+  const softMatch = source.match(new RegExp(escaped, "m"));
+  if (softMatch && typeof softMatch.index === "number") {
+    const found = softMatch[0];
+    return { start: softMatch.index, end: softMatch.index + found.length };
+  }
+
+  return null;
 }
 
 export default function LegalDraftingPage() {
@@ -728,7 +846,12 @@ export default function LegalDraftingPage() {
   const [styleMemoryMeta, setStyleMemoryMeta] = useState<StyleMemoryMeta | null>(null);
   const [aiHighlights, setAiHighlights] = useState<DraftHighlight[]>([]);
   const [showAiHighlights, setShowAiHighlights] = useState(true);
-  const statuteReferences = useMemo(() => inferStatuteReferences(docText), [docText]);
+  const [expandedRecommendationId, setExpandedRecommendationId] = useState<string | null>(null);
+  const [activeRecommendationId, setActiveRecommendationId] = useState<string | null>(null);
+  const [draftReferences, setDraftReferences] = useState<LegalDraftReferencesPayload>(() => createEmptyLegalDraftReferences());
+  const [isResolvingReferences, setIsResolvingReferences] = useState(false);
+  const [activeCaseSourceId, setActiveCaseSourceId] = useState<number | null>(null);
+  const [caseSourceDoc, setCaseSourceDoc] = useState<CaseLawSourceDocument | null>(null);
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
   const rightRailVisible = rightRailOpen && !focusWritingMode;
@@ -905,11 +1028,151 @@ export default function LegalDraftingPage() {
     highlightLayerRef.current.scrollLeft = editorRef.current.scrollLeft;
   };
 
+  const recommendationMarkers = useMemo<DraftSuggestionMarker[]>(() => {
+    if (!docText || recommendations.length === 0) return [];
+    const markers: DraftSuggestionMarker[] = [];
+    for (const rec of recommendations) {
+      const range = findSnippetRange(docText, rec.originalSnippet);
+      if (!range) continue;
+      markers.push({
+        id: `suggestion-${rec.id}`,
+        recommendationId: rec.id,
+        title: rec.title,
+        reason: rec.reason,
+        originalSnippet: rec.originalSnippet,
+        suggestedText: rec.suggestedText,
+        impact: rec.impact,
+        start: range.start,
+        end: range.end,
+        tone: "suggestion",
+      });
+    }
+    return markers;
+  }, [docText, recommendations]);
+
+  const displayedHighlights = useMemo<DraftHighlight[]>(
+    () => [...recommendationMarkers, ...aiHighlights],
+    [recommendationMarkers, aiHighlights]
+  );
+
+  const activeSuggestion = useMemo(
+    () => recommendationMarkers.find((m) => m.recommendationId === activeRecommendationId) || null,
+    [recommendationMarkers, activeRecommendationId]
+  );
+
+  const updateActiveRecommendationFromCursor = () => {
+    const el = editorRef.current;
+    if (!el || recommendationMarkers.length === 0) {
+      setActiveRecommendationId(null);
+      return;
+    }
+    const cursor = Math.max(0, el.selectionStart ?? 0);
+    const marker = recommendationMarkers.find((m) => cursor >= m.start && cursor <= m.end) || null;
+    setActiveRecommendationId(marker?.recommendationId || null);
+  };
+
   const handleDraftTextChange = (value: string) => {
     setDocText(value);
     if (aiHighlights.length > 0) {
       setAiHighlights([]);
     }
+    setActiveRecommendationId(null);
+  };
+
+  useEffect(() => {
+    if (activeRecommendationId && !recommendations.some((item) => item.id === activeRecommendationId)) {
+      setActiveRecommendationId(null);
+    }
+    if (expandedRecommendationId && !recommendations.some((item) => item.id === expandedRecommendationId)) {
+      setExpandedRecommendationId(null);
+    }
+  }, [recommendations, activeRecommendationId, expandedRecommendationId]);
+
+  useEffect(() => {
+    const currentText = docText.trim();
+    if (!currentText) {
+      setDraftReferences(createEmptyLegalDraftReferences());
+      setIsResolvingReferences(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setIsResolvingReferences(true);
+      try {
+        const response = await fetch("/api/legal-drafting/references", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          signal: controller.signal,
+          body: JSON.stringify({ draftText: currentText.slice(0, 80000) }),
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!controller.signal.aborted) {
+          setDraftReferences(normalizeLegalDraftReferences(data?.references));
+        }
+      } catch {
+        // Silent background refresh failure.
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsResolvingReferences(false);
+        }
+      }
+    }, 650);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [docText]);
+
+  const openCaseSourceDocument = async (reference: LegalDraftCaseReference) => {
+    if (!reference.id || !reference.hasSource) {
+      toast({
+        title: "Source unavailable",
+        description: "This citation is not linked to an internal source document yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setActiveCaseSourceId(reference.id);
+    try {
+      const response = await fetch(`/api/case-law/${reference.id}/source`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Could not open case source document.");
+      }
+      const data = (await response.json()) as CaseLawSourceDocument;
+      if (!data?.found || !data.content) {
+        throw new Error(data?.message || "Source document not found for this citation.");
+      }
+      setCaseSourceDoc(data);
+    } catch (err: any) {
+      toast({
+        title: "Failed to open source",
+        description: err?.message || "Could not load the original judgment document.",
+        variant: "destructive",
+      });
+    } finally {
+      setActiveCaseSourceId(null);
+    }
+  };
+
+  const openStatuteReference = (reference: LegalDraftStatuteReference) => {
+    const viewUrl = reference.viewUrl;
+    if (!viewUrl) {
+      toast({
+        title: "Statute source unavailable",
+        description: "This section was detected but no matching statute document was found in the library.",
+        variant: "destructive",
+      });
+      return;
+    }
+    window.location.assign(viewUrl);
   };
 
   const runRiskAnalysis = async () => {
@@ -970,8 +1233,7 @@ export default function LegalDraftingPage() {
     const replacement = edit.suggestedText.trim();
     if (!replacement) return;
     const source = docText || "";
-    const target = edit.originalSnippet.trim();
-    if (!target) {
+    if (!edit.originalSnippet.trim()) {
       toast({
         title: "Could not auto-apply",
         description: "AI did not provide an exact snippet to replace. No new text was added.",
@@ -979,24 +1241,8 @@ export default function LegalDraftingPage() {
       });
       return;
     }
-
-    let nextText: string | null = null;
-    let highlightStart = -1;
-    if (source.includes(target)) {
-      const start = source.indexOf(target);
-      highlightStart = start;
-      nextText = source.slice(0, start) + replacement + source.slice(start + target.length);
-    } else {
-      const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
-      const softMatch = source.match(new RegExp(escaped, "m"));
-      if (softMatch && typeof softMatch.index === "number") {
-        const found = softMatch[0];
-        highlightStart = softMatch.index;
-        nextText = source.slice(0, softMatch.index) + replacement + source.slice(softMatch.index + found.length);
-      }
-    }
-
-    if (!nextText) {
+    const range = findSnippetRange(source, edit.originalSnippet);
+    if (!range) {
       toast({
         title: "Snippet not found",
         description: "No matching text found in current draft. No new text was added.",
@@ -1005,24 +1251,31 @@ export default function LegalDraftingPage() {
       return;
     }
 
+    const nextText = source.slice(0, range.start) + replacement + source.slice(range.end);
+
     setDocText(nextText);
-    if (highlightStart >= 0) {
-      setAiHighlights([
-        {
-          id: `${edit.id}-${Date.now()}`,
-          start: highlightStart,
-          end: highlightStart + replacement.length,
-        },
-      ]);
-      setShowAiHighlights(true);
-    } else {
-      setAiHighlights([]);
-    }
+    setAiHighlights([
+      {
+        id: `${edit.id}-${Date.now()}`,
+        start: range.start,
+        end: range.start + replacement.length,
+        tone: "applied",
+      },
+    ]);
+    setShowAiHighlights(true);
 
     addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
     setRecommendations((prev) => prev.filter((item) => item.id !== edit.id));
+    setActiveRecommendationId(null);
+    setExpandedRecommendationId((prev) => (prev === edit.id ? null : prev));
     toast({ title: "Recommended change applied" });
     runDraftReview();
+  };
+
+  const dismissRecommendation = (id: string) => {
+    setRecommendations((prev) => prev.filter((item) => item.id !== id));
+    setActiveRecommendationId((prev) => (prev === id ? null : prev));
+    setExpandedRecommendationId((prev) => (prev === id ? null : prev));
   };
 
   const runDraftRecommendations = async () => {
@@ -1062,6 +1315,9 @@ export default function LegalDraftingPage() {
       })).filter((edit) => edit.suggestedText.length > 0);
 
       setRecommendations(normalized);
+      setExpandedRecommendationId(normalized[0]?.id || null);
+      setActiveRecommendationId(null);
+      if (normalized.length > 0) setShowAiHighlights(true);
       if (normalized.length > 0) {
         addMemoryItem(
           "risk",
@@ -1148,6 +1404,7 @@ export default function LegalDraftingPage() {
     setDraftTitle(doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "") || "Draft");
     setDocText(doc.content || "");
     setAiHighlights([]);
+    setDraftReferences(createEmptyLegalDraftReferences());
     toast({ title: "Draft loaded" });
   };
 
@@ -1155,6 +1412,7 @@ export default function LegalDraftingPage() {
     setDraftTitle(template.title);
     setDocText(template.body);
     setAiHighlights([]);
+    setDraftReferences(createEmptyLegalDraftReferences());
     setSelectedDraftId(null);
     setActiveLeftTool("drafts");
     toast({ title: `Template applied: ${template.title}` });
@@ -1256,6 +1514,7 @@ export default function LegalDraftingPage() {
       const clause = (data?.clause || "").trim();
       if (!clause) throw new Error("No clause generated");
       setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
+      setDraftReferences(normalizeLegalDraftReferences(data?.references));
 
       setDocText(`${clause}\n`);
       setAiHighlights([
@@ -1263,9 +1522,11 @@ export default function LegalDraftingPage() {
           id: `ai-generate-${Date.now()}`,
           start: 0,
           end: clause.length,
+          tone: "applied",
         },
       ]);
       setShowAiHighlights(true);
+      setActiveRecommendationId(null);
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
       setAiPrompt("");
@@ -1666,10 +1927,10 @@ export default function LegalDraftingPage() {
                 variant="outline"
                 className="h-8 px-2 md:px-3 border-emerald-500/30 bg-emerald-500/5 text-emerald-300 text-[11px] md:text-xs font-bold"
                 onClick={() => setShowAiHighlights((prev) => !prev)}
-                disabled={aiHighlights.length === 0}
+                disabled={displayedHighlights.length === 0}
                 data-testid="button-toggle-ai-highlights"
               >
-                {showAiHighlights ? "Hide AI Fix" : "Show AI Fix"}
+                {showAiHighlights ? "Hide AI Changes" : "Show AI Changes"}
               </Button>
               <Button
                 variant="outline"
@@ -1718,13 +1979,13 @@ export default function LegalDraftingPage() {
             <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl">
               <div className="h-full overflow-hidden p-3 md:p-5 lg:p-7">
                 <div className="relative h-full">
-                  {showAiHighlights && aiHighlights.length > 0 && (
+                  {showAiHighlights && displayedHighlights.length > 0 && (
                     <pre
                       ref={highlightLayerRef}
                       aria-hidden="true"
-                      className="legal-draft-font pointer-events-none absolute inset-0 z-0 overflow-auto whitespace-pre-wrap break-words text-transparent leading-8 text-[16px]"
+                      className="legal-draft-font pointer-events-none absolute inset-0 z-20 overflow-auto whitespace-pre-wrap break-words text-transparent leading-8 text-[16px]"
                     >
-                      {renderHighlightedDraftText(docText, aiHighlights)}
+                      {renderHighlightedDraftText(docText, displayedHighlights, activeRecommendationId)}
                     </pre>
                   )}
                   <Textarea
@@ -1732,14 +1993,66 @@ export default function LegalDraftingPage() {
                     value={docText}
                     onChange={(e) => handleDraftTextChange(e.target.value)}
                     onScroll={handleEditorScroll}
+                    onClick={updateActiveRecommendationFromCursor}
+                    onKeyUp={updateActiveRecommendationFromCursor}
+                    onSelect={updateActiveRecommendationFromCursor}
                     className="legal-draft-font relative z-10 w-full h-full min-h-[72vh] md:min-h-[76vh] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-100 leading-8 text-[16px]"
                     data-testid="textarea-legal-draft"
                   />
                 </div>
-                {showAiHighlights && aiHighlights.length > 0 && (
+                {showAiHighlights && displayedHighlights.length > 0 && (
                   <p className="pt-2 text-[11px] text-emerald-300">
-                    Highlighted text shows the latest AI-applied fix.
+                    Green blocks show AI suggestions/fixes. Move cursor into a highlighted block to review and apply.
                   </p>
+                )}
+                {activeSuggestion && (
+                  <div className="mt-3 rounded-lg border border-amber-400/45 bg-amber-500/12 p-3 shadow-[0_0_24px_rgba(251,191,36,0.18)]">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-amber-200">AI Suggested Change</p>
+                      <span
+                        className={`text-[10px] font-bold uppercase ${
+                          activeSuggestion.impact === "high"
+                            ? "text-red-300"
+                            : activeSuggestion.impact === "low"
+                              ? "text-emerald-300"
+                              : "text-amber-300"
+                        }`}
+                      >
+                        {activeSuggestion.impact} impact
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-amber-100 mt-1">{activeSuggestion.title}</p>
+                    <p className="text-[11px] text-slate-300 mt-1">{activeSuggestion.reason}</p>
+                    <div className="mt-2 grid gap-2 lg:grid-cols-2">
+                      <div className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-rose-200">Before</p>
+                        <p className="text-[11px] text-slate-300 whitespace-pre-wrap line-clamp-4">{activeSuggestion.originalSnippet}</p>
+                      </div>
+                      <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-200">After</p>
+                        <p className="text-[11px] text-emerald-100 whitespace-pre-wrap line-clamp-4">{activeSuggestion.suggestedText}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const hit = recommendations.find((r) => r.id === activeSuggestion.recommendationId);
+                          if (hit) applyRecommendedChange(hit);
+                        }}
+                        className="px-2.5 py-1.5 rounded bg-amber-400 text-slate-950 text-[10px] font-bold hover:bg-amber-300"
+                        data-testid="button-accept-active-suggestion"
+                      >
+                        OK, Apply Change
+                      </button>
+                      <button
+                        onClick={() => dismissRecommendation(activeSuggestion.recommendationId)}
+                        className="px-2.5 py-1.5 rounded border border-slate-600 text-slate-300 text-[10px] font-bold hover:border-amber-400/40 hover:text-amber-200"
+                        data-testid="button-dismiss-active-suggestion"
+                      >
+                        Not Okay
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -1914,7 +2227,7 @@ export default function LegalDraftingPage() {
                             <h4 className="text-xs font-bold text-slate-200">{risk.title}</h4>
                           </div>
                           <p className="text-[11px] text-slate-400 leading-normal">{risk.detail}</p>
-                          <div className="mt-2 text-amber-400 text-[10px] font-bold">Fix with AI</div>
+                          <div className="mt-2 text-amber-300 text-[10px] font-bold">Review AI Fix Suggestion</div>
                         </button>
                       ))
                     )}
@@ -1938,34 +2251,57 @@ export default function LegalDraftingPage() {
                           className="w-full p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
                           data-testid={`recommendation-item-${edit.id}`}
                         >
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <h4 className="text-xs font-bold text-slate-200">{edit.title}</h4>
-                            <span
-                              className={`text-[10px] font-bold uppercase ${
-                                edit.impact === "high" ? "text-red-300" : edit.impact === "low" ? "text-emerald-300" : "text-amber-300"
-                              }`}
-                            >
-                              {edit.impact} impact
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-400 leading-normal">{edit.reason}</p>
-                          {edit.originalSnippet ? (
-                            <div className="mt-2 rounded border border-slate-700/70 bg-[#0f172a]/70 p-2">
-                              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Replace this</p>
-                              <p className="text-[11px] text-slate-300 whitespace-pre-wrap line-clamp-3">{edit.originalSnippet}</p>
-                            </div>
-                          ) : null}
-                          <div className="mt-2 rounded border border-slate-700/70 bg-[#0f172a]/70 p-2">
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Suggested text</p>
-                            <p className="text-[11px] text-slate-200 whitespace-pre-wrap line-clamp-4">{edit.suggestedText}</p>
-                          </div>
                           <button
-                            onClick={() => applyRecommendedChange(edit)}
-                            className="mt-2 px-2 py-1 rounded bg-amber-500 text-slate-950 text-[10px] font-bold hover:bg-amber-400"
-                            data-testid={`button-apply-recommendation-${edit.id}`}
+                            type="button"
+                            onClick={() => {
+                              setExpandedRecommendationId((prev) => (prev === edit.id ? null : edit.id));
+                              setActiveRecommendationId(edit.id);
+                            }}
+                            className="w-full text-left"
+                            data-testid={`button-toggle-recommendation-${edit.id}`}
                           >
-                            Apply Change
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="text-xs font-bold text-slate-200">{edit.title}</h4>
+                              <span
+                                className={`text-[10px] font-bold uppercase ${
+                                  edit.impact === "high" ? "text-red-300" : edit.impact === "low" ? "text-emerald-300" : "text-amber-300"
+                                }`}
+                              >
+                                {edit.impact} impact
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400 leading-normal mt-1">{edit.reason}</p>
                           </button>
+                          {expandedRecommendationId === edit.id && (
+                            <>
+                              {edit.originalSnippet ? (
+                                <div className="mt-2 rounded border border-rose-500/30 bg-rose-500/10 p-2">
+                                  <p className="text-[10px] font-bold text-rose-200 uppercase tracking-wider mb-1">Before</p>
+                                  <p className="text-[11px] text-slate-300 whitespace-pre-wrap">{edit.originalSnippet}</p>
+                                </div>
+                              ) : null}
+                              <div className="mt-2 rounded border border-emerald-500/30 bg-emerald-500/10 p-2">
+                                <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-wider mb-1">After</p>
+                                <p className="text-[11px] text-emerald-100 whitespace-pre-wrap">{edit.suggestedText}</p>
+                              </div>
+                              <div className="mt-2 flex items-center gap-2">
+                                <button
+                                  onClick={() => applyRecommendedChange(edit)}
+                                  className="px-2 py-1 rounded bg-amber-500 text-slate-950 text-[10px] font-bold hover:bg-amber-400"
+                                  data-testid={`button-apply-recommendation-${edit.id}`}
+                                >
+                                  OK, Apply Change
+                                </button>
+                                <button
+                                  onClick={() => dismissRecommendation(edit.id)}
+                                  className="px-2 py-1 rounded border border-slate-600 text-slate-300 text-[10px] font-bold hover:border-amber-500/35 hover:text-amber-200"
+                                  data-testid={`button-dismiss-recommendation-${edit.id}`}
+                                >
+                                  Not Okay
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))
                     )}
@@ -1975,29 +2311,95 @@ export default function LegalDraftingPage() {
             </section>
 
             <section>
-              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Statute Reference</label>
-              <div className="space-y-2">
-                {statuteReferences.length === 0 ? (
-                  <div className="p-3 rounded-lg bg-[#1e293b]/20 border border-slate-700">
-                    <p className="text-[11px] text-slate-400">
-                      No statute references detected in this draft yet.
+              <div className="mb-3 flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Verified References</label>
+                {isResolvingReferences && <Loader2 size={12} className="animate-spin text-amber-300" />}
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-lg border border-slate-700/70 bg-[#1e293b]/20 p-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-300 mb-2">Statute References</p>
+                  {draftReferences.statutes.length === 0 ? (
+                    <p className="text-[11px] text-slate-400">No verified statute sections found in this draft yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {draftReferences.statutes.map((item, idx) => (
+                        <button
+                          key={`${item.statuteName}-${item.sectionLabel}-${idx}`}
+                          type="button"
+                          onClick={() => openStatuteReference(item)}
+                          className="w-full flex items-center justify-between rounded-lg border border-slate-700 bg-[#0f172a]/70 px-2.5 py-2 text-left hover:border-amber-500/30 transition-colors disabled:opacity-60"
+                          disabled={!item.viewUrl}
+                          data-testid={`statute-ref-${item.statuteName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${idx}`}
+                        >
+                          <div className="min-w-0 flex items-center gap-2">
+                            <BookOpen size={14} className="text-amber-200 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-semibold text-slate-100 truncate">{item.statuteName}</p>
+                              <p className="text-[10px] text-amber-300 truncate">{item.sectionLabel}</p>
+                            </div>
+                          </div>
+                          <ArrowRight size={12} className="text-slate-500 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-slate-700/70 bg-[#1e293b]/20 p-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-300 mb-2">Case Law Citations</p>
+                  {draftReferences.caseLaw.length === 0 ? (
+                    <p className="text-[11px] text-slate-400">No verified case citations linked to internal judgments yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {draftReferences.caseLaw.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => openCaseSourceDocument(item)}
+                          disabled={!item.hasSource || activeCaseSourceId === item.id}
+                          className="w-full flex items-center justify-between rounded-lg border border-slate-700 bg-[#0f172a]/70 px-2.5 py-2 text-left hover:border-amber-500/30 transition-colors disabled:opacity-60"
+                          data-testid={`case-ref-${item.id}`}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold text-slate-100 truncate">{item.citation}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{item.title}</p>
+                          </div>
+                          {activeCaseSourceId === item.id ? (
+                            <Loader2 size={12} className="animate-spin text-amber-300 shrink-0" />
+                          ) : (
+                            <ArrowRight size={12} className="text-slate-500 shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {draftReferences.removedCaseCitations.length > 0 && (
+                  <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-rose-200 mb-1">Blocked Citations</p>
+                    <p className="text-[11px] text-rose-100">
+                      Removed because they were not found in the internal Knowledge Base:
+                    </p>
+                    <p className="text-[10px] text-rose-200 mt-1 break-words">
+                      {draftReferences.removedCaseCitations.join(" | ")}
                     </p>
                   </div>
-                ) : (
-                  statuteReferences.map((item) => (
-                    <a
-                      key={item.label}
-                      href={item.href}
-                      className="flex items-center justify-between p-3 rounded-lg bg-[#1e293b]/30 border border-slate-700 hover:border-amber-500/20 transition-all"
-                      data-testid={`statute-ref-${item.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <BookOpen size={16} className="text-slate-400" />
-                        <span className="text-xs font-medium">{item.label}</span>
-                      </div>
-                      <ArrowRight size={13} className="text-slate-500" />
-                    </a>
-                  ))
+                )}
+
+                {draftReferences.unresolvedStatutes.length > 0 && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-200 mb-1">Unresolved Statutes</p>
+                    <p className="text-[11px] text-amber-100">
+                      Detected in text but not yet linked to a statute document:
+                    </p>
+                    <p className="text-[10px] text-amber-200 mt-1 break-words">
+                      {draftReferences.unresolvedStatutes
+                        .map((item) => `${item.sectionLabel} (${item.statuteName})`)
+                        .join(" | ")}
+                    </p>
+                  </div>
                 )}
               </div>
             </section>
@@ -2005,6 +2407,16 @@ export default function LegalDraftingPage() {
           </div>
         </aside>
       </div>
+
+      {caseSourceDoc?.found && caseSourceDoc.content && (
+        <DocumentViewer
+          title={caseSourceDoc.title || "Case Law Source"}
+          filename={caseSourceDoc.filename}
+          content={caseSourceDoc.content}
+          sourceLabel="Knowledge Base Source"
+          onClose={() => setCaseSourceDoc(null)}
+        />
+      )}
     </div>
   );
 }
