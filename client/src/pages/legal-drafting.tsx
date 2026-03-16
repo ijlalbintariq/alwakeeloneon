@@ -1365,9 +1365,12 @@ export default function LegalDraftingPage() {
       selectionStart = Math.min(selectionStart, draftTextForAi.length);
       selectionEnd = Math.min(selectionEnd, draftTextForAi.length);
       let selectedSnippet = draftTextForAi.slice(selectionStart, selectionEnd);
+      const hasExplicitSelection = selectionEnd > selectionStart && selectedSnippet.trim().length > 0;
 
-      // If no text is selected, fall back to the paragraph under the caret for targeted edits.
-      if (!selectedSnippet.trim() && draftTextForAi.trim().length > 0) {
+      // If no text is selected, fall back to the paragraph under the caret only for prompt-only edits.
+      // For attachment-based drafting, default to full-draft update unless user explicitly selects text.
+      const allowCursorParagraphTarget = aiContextFiles.length === 0;
+      if (!hasExplicitSelection && allowCursorParagraphTarget && draftTextForAi.trim().length > 0) {
         const cursor = selectionStart;
         const paragraphStartIdx = draftTextForAi.lastIndexOf("\n\n", Math.max(0, cursor - 1));
         const paragraphEndIdx = draftTextForAi.indexOf("\n\n", cursor);
@@ -1391,7 +1394,7 @@ export default function LegalDraftingPage() {
         if (legalDocumentType === "custom-input") {
           form.append("customDocumentType", customLegalDocumentType.trim());
         }
-        if (selectedSnippet.trim()) {
+        if (hasExplicitSelection && selectedSnippet.trim()) {
           form.append("selectedSnippet", selectedSnippet.slice(0, 8000));
           form.append("selectedSnippetStart", String(selectionStart));
           form.append("selectedSnippetEnd", String(selectionEnd));
