@@ -77,6 +77,7 @@ export default function StatuteViewPage() {
   const [chatMessages, setChatMessages] = useState<AiMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [focusSectionHint, setFocusSectionHint] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -89,10 +90,30 @@ export default function StatuteViewPage() {
   }, [docId]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sectionHint = (params.get("section") || "").trim();
+    setFocusSectionHint(sectionHint);
+  }, [docId]);
+
+  useEffect(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [chatMessages]);
+
+  useEffect(() => {
+    if (!doc || !focusSectionHint || viewMode !== "text") return;
+    const timer = window.setTimeout(() => {
+      scrollToSection(focusSectionHint);
+      if (!/^section\s+/i.test(focusSectionHint)) {
+        scrollToSection(`Section ${focusSectionHint}`);
+      }
+      if (!/^article\s+/i.test(focusSectionHint)) {
+        scrollToSection(`Article ${focusSectionHint}`);
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [doc?.id, focusSectionHint, viewMode]);
 
   async function loadDocument(id: number) {
     setIsLoading(true);
@@ -169,6 +190,16 @@ export default function StatuteViewPage() {
       if (bestMatch && bestScore >= Math.min(2, tocWords.length)) {
         bestMatch.scrollIntoView({ behavior: "smooth", block: "start" });
         highlightElement(bestMatch);
+        return;
+      }
+    }
+
+    const bodyLines = Array.from(contentRef.current.querySelectorAll("[data-line-idx]"));
+    for (const line of bodyLines) {
+      const text = normalize(line.textContent || "");
+      if (text.includes(tocNorm) || tocNorm.includes(text)) {
+        (line as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+        highlightElement(line as HTMLElement);
         return;
       }
     }

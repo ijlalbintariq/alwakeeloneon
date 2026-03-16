@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, threads, TIER_LIMITS } from "@shared/schema";
+import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, threads, TIER_LIMITS, type CaseLaw } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
@@ -1941,6 +1941,429 @@ function normalizeCourtReadyDraftingText(content: string): string {
   }
 
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+type LegalDraftCaseReference = {
+  id: number;
+  citation: string;
+  court: string;
+  title: string;
+  summary: string;
+  hasSource: boolean;
+  sourceType: string | null;
+  sourceFilename: string | null;
+};
+
+type LegalDraftStatuteReference = {
+  statuteName: string;
+  section: string;
+  sectionLabel: string;
+  statuteId: number | null;
+  description: string | null;
+  punishment: string | null;
+  statuteDocId: number | null;
+  statuteDocTitle: string | null;
+  statuteDocFilename: string | null;
+  statuteDocCategory: string | null;
+  viewUrl: string | null;
+};
+
+type LegalDraftUnresolvedStatute = {
+  statuteName: string;
+  section: string;
+  sectionLabel: string;
+};
+
+type LegalDraftReferencePayload = {
+  caseLaw: LegalDraftCaseReference[];
+  statutes: LegalDraftStatuteReference[];
+  removedCaseCitations: string[];
+  unresolvedStatutes: LegalDraftUnresolvedStatute[];
+};
+
+type DraftReferenceResolutionResult = {
+  cleanedText: string;
+  references: LegalDraftReferencePayload;
+};
+
+type DraftStatuteMention = {
+  statuteName: string;
+  section: string;
+  sectionLabel: string;
+};
+
+function createEmptyLegalDraftReferencePayload(): LegalDraftReferencePayload {
+  return {
+    caseLaw: [],
+    statutes: [],
+    removedCaseCitations: [],
+    unresolvedStatutes: [],
+  };
+}
+
+function normalizeSpaces(value: string): string {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeCitationForMatch(value: string): string {
+  return String(value || "")
+    .toUpperCase()
+    .replace(/\bP\.?\s*CR\.?\s*LJ\b/g, "PCRLJ")
+    .replace(/\bSUPREME\s+COURT\b/g, "SC")
+    .replace(/\bFEDERAL\s+SHARIAT(?:\s+COURT)?\b/g, "FSC")
+    .replace(/\bLAHORE\b/g, "LAH")
+    .replace(/\bKARACHI\b/g, "KAR")
+    .replace(/\bPESHAWAR\b/g, "PESH")
+    .replace(/\bISLAMABAD\b/g, "IHC")
+    .replace(/\bSINDH\b/g, "SHC")
+    .replace(/\bBALOCHISTAN\b/g, "BHC")
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function extractCaseCitationCandidates(text: string): string[] {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+  const patterns = [
+    /\b\d{4}\s+(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PCr\.?LJ|PLJ|NLR|CLD|PTD|PLC|PSC|GBLR|KLR|SLR)\s+\d{1,5}\b/gi,
+    /\b(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PCr\.?LJ|PLJ|NLR|CLD|PTD|PLC|PSC|GBLR|KLR|SLR)\s+\d{4}\s+(?:SC|Lah\.?|Lahore|Kar\.?|Karachi|Peshawar|Islamabad|Sindh|Balochistan|FSC|Federal\s+Shariat(?:\s+Court)?|Supreme\s+Court)\s+\d{1,5}\b/gi,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      const raw = normalizeSpaces(match[0] || "");
+      if (!raw) continue;
+      const key = normalizeCitationForMatch(raw);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      candidates.push(raw);
+    }
+  }
+
+  return candidates;
+}
+
+function extractCitationVariants(value: string): string[] {
+  const extracted = extractCaseCitationCandidates(value);
+  if (extracted.length > 0) return extracted;
+  return value
+    .split(/(?:\s*&\s*|;|,)/g)
+    .map((item) => normalizeSpaces(item))
+    .filter((item) => item.length > 0);
+}
+
+function caseCitationMatches(candidateCitation: string, rowCitation: string): boolean {
+  const normalizedCandidate = normalizeCitationForMatch(candidateCitation);
+  if (!normalizedCandidate) return false;
+  const variants = extractCitationVariants(rowCitation);
+  for (const variant of variants) {
+    const normalizedVariant = normalizeCitationForMatch(variant);
+    if (!normalizedVariant) continue;
+    if (
+      normalizedVariant === normalizedCandidate ||
+      normalizedVariant.includes(normalizedCandidate) ||
+      normalizedCandidate.includes(normalizedVariant)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const STATUTE_ALIAS_MAP: Array<{ regex: RegExp; canonical: string }> = [
+  { regex: /\bcr\.?\s*p\.?\s*c\.?\b|\bcode of criminal procedure\b|\bcrpc\b/i, canonical: "Code of Criminal Procedure, 1898" },
+  { regex: /\bc\.?\s*p\.?\s*c\.?\b|\bcode of civil procedure\b/i, canonical: "Code of Civil Procedure, 1908" },
+  { regex: /\bppc\b|\bpakistan penal code\b/i, canonical: "Pakistan Penal Code, 1860" },
+  { regex: /\bconstitution(?: of pakistan)?\b/i, canonical: "Constitution of the Islamic Republic of Pakistan, 1973" },
+  { regex: /\bqanun[-\s]?e[-\s]?shahadat(?: order)?\b/i, canonical: "Qanun-e-Shahadat Order, 1984" },
+  { regex: /\bfamily courts?\s*act\b/i, canonical: "Family Courts Act, 1964" },
+  { regex: /\bnegotiable instruments act\b/i, canonical: "Negotiable Instruments Act, 1881" },
+  { regex: /\bspecific relief act\b/i, canonical: "Specific Relief Act, 1877" },
+  { regex: /\blimitation act\b/i, canonical: "Limitation Act, 1908" },
+];
+
+function canonicalizeStatuteName(value: string): string {
+  const clean = normalizeSpaces(value);
+  if (!clean) return "";
+  for (const alias of STATUTE_ALIAS_MAP) {
+    if (alias.regex.test(clean)) return alias.canonical;
+  }
+  return clean.replace(/\bthe\b/gi, "").replace(/\s+/g, " ").trim();
+}
+
+function normalizeTextForMatch(value: string): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeSectionForMatch(value: string): string {
+  return String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function splitSectionTokens(raw: string): string[] {
+  return String(raw || "")
+    .split(/(?:,|&|and|\/)/gi)
+    .map((part) => normalizeSpaces(part).replace(/[^A-Za-z0-9.-]/g, ""))
+    .filter((part) => part.length > 0);
+}
+
+function extractStatuteMentions(text: string): DraftStatuteMention[] {
+  const mentions: DraftStatuteMention[] = [];
+  const seen = new Set<string>();
+  const pushMention = (statuteNameRaw: string, sectionRaw: string, labelPrefix: "Section" | "Article" | "Provision") => {
+    const statuteName = canonicalizeStatuteName(statuteNameRaw);
+    if (!statuteName) return;
+    const tokens = splitSectionTokens(sectionRaw);
+    if (tokens.length === 0) return;
+    for (const token of tokens) {
+      const sectionLabel = labelPrefix === "Provision" ? token : `${labelPrefix} ${token}`;
+      const key = `${normalizeTextForMatch(statuteName)}::${normalizeSectionForMatch(sectionLabel)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      mentions.push({
+        statuteName,
+        section: token,
+        sectionLabel,
+      });
+    }
+  };
+
+  const explicitPattern =
+    /\b(section|sec\.?|s\.|article|art\.?)\s*([0-9A-Za-z-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z-]+)*)\s+of\s+(?:the\s+)?([A-Z][A-Za-z0-9(),.'\-\/\s]{3,140}?)(?=[\n,.;:]|$)/gi;
+  for (const match of text.matchAll(explicitPattern)) {
+    const head = (match[1] || "").toLowerCase();
+    const prefix: "Section" | "Article" = head.startsWith("art") ? "Article" : "Section";
+    pushMention(match[3] || "", match[2] || "", prefix);
+  }
+
+  const shorthandPattern =
+    /\b(section|sec\.?|s\.|article|art\.?)\s*([0-9A-Za-z-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z-]+)*)\s*(?:of\s+)?(Cr\.?\s*P\.?\s*C\.?|C\.?\s*P\.?\s*C\.?|P\.?\s*P\.?\s*C\.?|Constitution(?:\s+of\s+Pakistan)?|Qanun[-\s]?e[-\s]?Shahadat(?:\s+Order)?|Family Courts?\s*Act|Specific Relief Act|Limitation Act|Negotiable Instruments Act)\b/gi;
+  for (const match of text.matchAll(shorthandPattern)) {
+    const head = (match[1] || "").toLowerCase();
+    const prefix: "Section" | "Article" = head.startsWith("art") ? "Article" : "Section";
+    pushMention(match[3] || "", match[2] || "", prefix);
+  }
+
+  const cpcOrderPattern =
+    /\b(Order\s+[IVXLCDM0-9]+(?:\s+Rules?\s+[0-9A-Za-z,&\s-]+)?)\s*(?:of\s+)?(C\.?\s*P\.?\s*C\.?|Code of Civil Procedure)\b/gi;
+  for (const match of text.matchAll(cpcOrderPattern)) {
+    const statuteName = canonicalizeStatuteName(match[2] || "");
+    const sectionLabel = normalizeSpaces(match[1] || "");
+    if (!statuteName || !sectionLabel) continue;
+    const key = `${normalizeTextForMatch(statuteName)}::${normalizeSectionForMatch(sectionLabel)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    mentions.push({
+      statuteName,
+      section: sectionLabel,
+      sectionLabel,
+    });
+  }
+
+  return mentions;
+}
+
+function chooseBestStatuteDocument(
+  docs: Array<{ id: number; title: string; filename: string; category: string; content: string }>,
+  statuteName: string,
+  sectionLabel: string,
+): { id: number; title: string; filename: string; category: string; content: string } | null {
+  const statuteNameNorm = normalizeTextForMatch(statuteName);
+  const sectionNorm = normalizeSectionForMatch(sectionLabel);
+  const statuteNameTokens = statuteNameNorm.split(" ").filter((token) => token.length > 2);
+  let best: { id: number; title: string; filename: string; category: string; content: string } | null = null;
+  let bestScore = -1;
+  for (const doc of docs) {
+    const titleNorm = normalizeTextForMatch(doc.title);
+    const fileNorm = normalizeTextForMatch(doc.filename);
+    const contentNorm = normalizeSectionForMatch(doc.content.slice(0, 30000));
+    let score = 0;
+    if (titleNorm.includes(statuteNameNorm) || statuteNameNorm.includes(titleNorm)) score += 7;
+    for (const token of statuteNameTokens) {
+      if (titleNorm.includes(token)) score += 1;
+      if (fileNorm.includes(token)) score += 0.5;
+    }
+    if (sectionNorm && contentNorm.includes(sectionNorm)) score += 4;
+    if (score > bestScore) {
+      bestScore = score;
+      best = doc;
+    }
+  }
+  return bestScore > 0 ? best : null;
+}
+
+async function resolveCaseCitationFromKnowledgeBase(candidate: string): Promise<LegalDraftCaseReference | null> {
+  const normalizedCandidate = normalizeCitationForMatch(candidate);
+  if (!normalizedCandidate) return null;
+
+  const poolRows: CaseLaw[] = [];
+  const seen = new Set<number>();
+  const direct = await storage.getCaseLawByCitation(candidate).catch(() => undefined);
+  if (direct?.id && !seen.has(direct.id)) {
+    seen.add(direct.id);
+    poolRows.push(direct);
+  }
+  const searchHits = await storage.searchCaseLaw(candidate, 25).catch(() => []);
+  for (const hit of searchHits) {
+    if (!seen.has(hit.id)) {
+      seen.add(hit.id);
+      poolRows.push(hit);
+    }
+  }
+
+  for (const row of poolRows) {
+    if (!caseCitationMatches(candidate, row.citation)) continue;
+    const hasSource = !!(row.sourceDocId && row.sourceType);
+    if (!hasSource) continue;
+    return {
+      id: row.id,
+      citation: normalizeSpaces(row.citation),
+      court: row.court,
+      title: row.title,
+      summary: row.summary,
+      hasSource: true,
+      sourceType: row.sourceType || null,
+      sourceFilename: row.sourceFilename || null,
+    };
+  }
+
+  return null;
+}
+
+async function resolveStatuteMentionFromLibrary(mention: DraftStatuteMention): Promise<{
+  resolved: LegalDraftStatuteReference | null;
+  unresolved: LegalDraftUnresolvedStatute | null;
+}> {
+  const statuteRows = await storage.searchStatutes(`${mention.statuteName} ${mention.section}`, 30).catch(() => []);
+  const statuteNameNorm = normalizeTextForMatch(mention.statuteName);
+  const sectionNorm = normalizeSectionForMatch(mention.section);
+  let bestRow: (typeof statuteRows)[number] | null = null;
+  let bestRowScore = -1;
+
+  for (const row of statuteRows) {
+    const rowNameNorm = normalizeTextForMatch(row.shortTitle);
+    const rowSectionNorm = normalizeSectionForMatch(row.section);
+    let score = 0;
+    if (rowNameNorm.includes(statuteNameNorm) || statuteNameNorm.includes(rowNameNorm)) score += 6;
+    if (sectionNorm && rowSectionNorm === sectionNorm) score += 7;
+    else if (sectionNorm && (rowSectionNorm.includes(sectionNorm) || sectionNorm.includes(rowSectionNorm))) score += 4;
+    if (score > bestRowScore) {
+      bestRowScore = score;
+      bestRow = row;
+    }
+  }
+
+  const preferredStatuteName = bestRow?.shortTitle || mention.statuteName;
+  let statuteDocs = await storage.searchStatuteDocuments(preferredStatuteName, 20).catch(() => []);
+  if (statuteDocs.length === 0 && preferredStatuteName !== mention.statuteName) {
+    statuteDocs = await storage.searchStatuteDocuments(mention.statuteName, 20).catch(() => []);
+  }
+
+  const bestDoc = chooseBestStatuteDocument(statuteDocs, preferredStatuteName, mention.sectionLabel);
+  if (!bestDoc) {
+    return {
+      resolved: null,
+      unresolved: {
+        statuteName: preferredStatuteName,
+        section: mention.section,
+        sectionLabel: mention.sectionLabel,
+      },
+    };
+  }
+
+  return {
+    resolved: {
+      statuteName: preferredStatuteName,
+      section: mention.section,
+      sectionLabel: mention.sectionLabel,
+      statuteId: bestRow?.id || null,
+      description: bestRow?.description || null,
+      punishment: bestRow?.punishment || null,
+      statuteDocId: bestDoc.id,
+      statuteDocTitle: bestDoc.title,
+      statuteDocFilename: bestDoc.filename,
+      statuteDocCategory: bestDoc.category,
+      viewUrl: `/statute-view/${bestDoc.id}?section=${encodeURIComponent(mention.sectionLabel)}`,
+    },
+    unresolved: null,
+  };
+}
+
+async function resolveLegalDraftReferences(
+  text: string,
+  options?: { stripUnverifiedCaseCitations?: boolean },
+): Promise<DraftReferenceResolutionResult> {
+  const payload = createEmptyLegalDraftReferencePayload();
+  const stripUnverifiedCaseCitations = options?.stripUnverifiedCaseCitations === true;
+  let cleanedText = String(text || "");
+  if (!cleanedText.trim()) return { cleanedText: "", references: payload };
+
+  const caseCandidates = extractCaseCitationCandidates(cleanedText);
+  const verifiedCaseRefs: LegalDraftCaseReference[] = [];
+  const seenCaseIds = new Set<number>();
+  const unresolvedCaseCitations: string[] = [];
+  for (const citation of caseCandidates) {
+    const resolved = await resolveCaseCitationFromKnowledgeBase(citation);
+    if (resolved) {
+      if (!seenCaseIds.has(resolved.id)) {
+        seenCaseIds.add(resolved.id);
+        verifiedCaseRefs.push(resolved);
+      }
+      continue;
+    }
+    unresolvedCaseCitations.push(citation);
+  }
+
+  if (stripUnverifiedCaseCitations && unresolvedCaseCitations.length > 0) {
+    const uniqueByLength = Array.from(new Set(unresolvedCaseCitations.map((item) => normalizeSpaces(item))))
+      .filter((item) => item.length > 0)
+      .sort((a, b) => b.length - a.length);
+    for (const raw of uniqueByLength) {
+      const pattern = new RegExp(escapeRegExp(raw), "gi");
+      cleanedText = cleanedText.replace(pattern, "[CASE CITATION REMOVED - NOT FOUND IN INTERNAL KNOWLEDGE BASE]");
+    }
+  }
+
+  payload.caseLaw = verifiedCaseRefs;
+  payload.removedCaseCitations = Array.from(new Set(unresolvedCaseCitations.map((item) => normalizeSpaces(item)).filter(Boolean)));
+
+  const mentions = extractStatuteMentions(cleanedText);
+  const statuteResults = await Promise.all(mentions.map((mention) => resolveStatuteMentionFromLibrary(mention)));
+  const statuteRefs: LegalDraftStatuteReference[] = [];
+  const unresolvedStatutes: LegalDraftUnresolvedStatute[] = [];
+  const seenStatuteKeys = new Set<string>();
+  for (const result of statuteResults) {
+    if (result.resolved) {
+      const key = `${normalizeTextForMatch(result.resolved.statuteName)}::${normalizeSectionForMatch(result.resolved.sectionLabel)}`;
+      if (!seenStatuteKeys.has(key)) {
+        seenStatuteKeys.add(key);
+        statuteRefs.push(result.resolved);
+      }
+      continue;
+    }
+    if (result.unresolved) {
+      const unresolvedKey = `${normalizeTextForMatch(result.unresolved.statuteName)}::${normalizeSectionForMatch(result.unresolved.sectionLabel)}`;
+      if (!seenStatuteKeys.has(unresolvedKey)) {
+        seenStatuteKeys.add(unresolvedKey);
+        unresolvedStatutes.push(result.unresolved);
+      }
+    }
+  }
+  payload.statutes = statuteRefs;
+  payload.unresolvedStatutes = unresolvedStatutes;
+
+  return {
+    cleanedText: normalizeCourtReadyDraftingText(cleanedText),
+    references: payload,
+  };
 }
 
 function clamp01(value: number): number {
@@ -5670,6 +6093,8 @@ Court-ready formatting requirements (mandatory):
 - Use numbered facts (1., 2., 3.) and alphabetic legal grounds (A., B., C.).
 - Keep prayer specific to this filing type and facts; avoid generic/contract wording.
 - Do not invent facts, dates, orders, or citations; use placeholders like [______] where details are missing.
+- Case law citation rule (strict): include only citations that are real and verifiable from Al Wakeelo internal Knowledge Base; if unsure, use [CASE CITATION REQUIRED].
+- Statute citation rule (strict): cite only authentic Pakistani statute provisions; do not invent section/article numbers.
 - End with signature block (party/counsel) and place/date.
 - Keep spacing court-ready: no trailing spaces, no markdown bullets, and exactly clean paragraph breaks between sections.
 
@@ -5730,6 +6155,14 @@ ${draftedText}`;
           return res.status(502).json({ message: "AI returned empty legal draft text" });
         }
 
+        const referenceResolution = await resolveLegalDraftReferences(draftedText, {
+          stripUnverifiedCaseCitations: true,
+        });
+        draftedText = referenceResolution.cleanedText;
+        if (!draftedText) {
+          return res.status(502).json({ message: "AI draft failed citation integrity checks" });
+        }
+
         return res.json({
           clause: draftedText,
           sourceId: `legal-${selectedDocType || "custom-input"}`,
@@ -5738,6 +6171,7 @@ ${draftedText}`;
           documentType: selectedDocType || "custom-input",
           customDocumentType: useCustomDocType ? customDocType : undefined,
           attachmentsUsed: files?.length || 0,
+          references: referenceResolution.references,
           styleMemory: styleMemoryMeta || undefined,
         });
       }
@@ -5792,6 +6226,23 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
     } catch (err) {
       console.error("Error generating retrieval clause:", err);
       res.status(500).json({ message: "Failed to generate clause" });
+    }
+  });
+
+  app.post("/api/legal-drafting/references", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const rawDraftText = sanitizeInputText(req.body?.draftText, 120000);
+      if (!rawDraftText.trim()) {
+        return res.json({ references: createEmptyLegalDraftReferencePayload() });
+      }
+      const bounded = trimTextToTokenBudget(rawDraftText, 16000);
+      const resolved = await resolveLegalDraftReferences(bounded, { stripUnverifiedCaseCitations: false });
+      res.json({ references: resolved.references });
+    } catch (err) {
+      console.error("Error resolving legal drafting references:", err);
+      res.status(500).json({ message: "Failed to resolve legal drafting references" });
     }
   });
 
