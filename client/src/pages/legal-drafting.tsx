@@ -781,10 +781,10 @@ function renderHighlightedDraftText(text: string, ranges: DraftHighlight[], acti
     }
     const isActiveSuggestion = range.tone === "suggestion" && !!range.recommendationId && range.recommendationId === activeRecommendationId;
     const className = isActiveSuggestion
-      ? "bg-amber-400/35 text-amber-100 rounded-sm shadow-[0_0_0_1px_rgba(251,191,36,0.55)]"
+      ? "text-sky-200 underline decoration-sky-300/80 decoration-2 underline-offset-2 font-semibold"
       : range.tone === "suggestion"
-        ? "bg-emerald-500/28 text-emerald-200 rounded-sm shadow-[0_0_0_1px_rgba(16,185,129,0.35)]"
-        : "bg-emerald-400/24 text-emerald-100 rounded-sm";
+        ? "text-emerald-200 underline decoration-emerald-300/70 decoration-1 underline-offset-2"
+        : "text-emerald-200/95";
     nodes.push(
       <mark key={`h-${idx}`} className={className}>
         {text.slice(range.start, range.end)}
@@ -1925,7 +1925,11 @@ export default function LegalDraftingPage() {
             <div className="flex items-center gap-2 ml-auto">
               <Button
                 variant="outline"
-                className="h-8 px-2 md:px-3 border-emerald-500/30 bg-emerald-500/5 text-emerald-300 text-[11px] md:text-xs font-bold"
+                className={`h-8 px-2 md:px-3 text-[11px] md:text-xs font-bold ${
+                  showAiHighlights
+                    ? "border-sky-500/35 bg-sky-500/10 text-sky-200"
+                    : "border-slate-600 bg-slate-700/20 text-slate-200"
+                }`}
                 onClick={() => setShowAiHighlights((prev) => !prev)}
                 disabled={displayedHighlights.length === 0}
                 data-testid="button-toggle-ai-highlights"
@@ -2001,27 +2005,27 @@ export default function LegalDraftingPage() {
                   />
                 </div>
                 {showAiHighlights && displayedHighlights.length > 0 && (
-                  <p className="pt-2 text-[11px] text-emerald-300">
-                    Green blocks show AI suggestions/fixes. Move cursor into a highlighted block to review and apply.
+                  <p className="pt-2 text-[11px] text-slate-300">
+                    Colored text indicates AI suggestions/fixes. Move cursor into highlighted text to review and apply.
                   </p>
                 )}
                 {activeSuggestion && (
-                  <div className="mt-3 rounded-lg border border-amber-400/45 bg-amber-500/12 p-3 shadow-[0_0_24px_rgba(251,191,36,0.18)]">
+                  <div className="mt-3 rounded-lg border border-sky-400/40 bg-sky-500/10 p-3 shadow-[0_0_24px_rgba(56,189,248,0.14)]">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-amber-200">AI Suggested Change</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-sky-200">AI Suggested Change</p>
                       <span
                         className={`text-[10px] font-bold uppercase ${
                           activeSuggestion.impact === "high"
                             ? "text-red-300"
                             : activeSuggestion.impact === "low"
                               ? "text-emerald-300"
-                              : "text-amber-300"
+                              : "text-sky-300"
                         }`}
                       >
                         {activeSuggestion.impact} impact
                       </span>
                     </div>
-                    <p className="text-[11px] text-amber-100 mt-1">{activeSuggestion.title}</p>
+                    <p className="text-[11px] text-slate-100 mt-1">{activeSuggestion.title}</p>
                     <p className="text-[11px] text-slate-300 mt-1">{activeSuggestion.reason}</p>
                     <div className="mt-2 grid gap-2 lg:grid-cols-2">
                       <div className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2">
