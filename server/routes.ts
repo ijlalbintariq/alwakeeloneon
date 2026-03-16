@@ -1778,6 +1778,7 @@ function hasSafeDocumentSignature(file: Express.Multer.File, ext: string): boole
 
 const DOCX_COMPAT_EXTS = [".docx", ".docm", ".dotx"] as const;
 const DOCX_COMPAT_MIMES = [
+  "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-word.document.macroenabled.12",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
@@ -1789,11 +1790,13 @@ function normalizeAttachmentExt(rawExt: string): string {
   return ext;
 }
 
-function resolveAttachmentSignatureExt(normalizedExt: string, mime: string): ".txt" | ".pdf" | ".docx" | null {
+function resolveAttachmentSignatureExt(normalizedExt: string, mime: string): ".txt" | ".pdf" | ".doc" | ".docx" | null {
   if (normalizedExt === ".txt") return ".txt";
   if (normalizedExt === ".pdf") return ".pdf";
+  if (normalizedExt === ".doc") return ".doc";
   if ((DOCX_COMPAT_EXTS as readonly string[]).includes(normalizedExt)) return ".docx";
   if (mime === "application/pdf") return ".pdf";
+  if (mime === "application/msword") return ".doc";
   if ((DOCX_COMPAT_MIMES as readonly string[]).includes(mime)) return ".docx";
   return null;
 }
@@ -5174,7 +5177,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
       let attachmentContext = "";
       const failedAttachments: string[] = [];
       const failedAttachmentReasons: string[] = [];
-      const allowedExts = [".txt", ".pdf", ...DOCX_COMPAT_EXTS];
+      const allowedExts = [".txt", ".pdf", ".doc", ...DOCX_COMPAT_EXTS];
       const allowedMimes = ["text/plain", "application/pdf", ...DOCX_COMPAT_MIMES];
 
       if (files && files.length > 0) {
@@ -5188,7 +5191,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
         });
         if (invalidFiles.length > 0) {
           return res.status(400).json({
-            message: `Unsupported file type. Only TXT, PDF, DOCX/DOCM/DOTX are allowed. Rejected: ${invalidFiles.map((f) => f.originalname).join(", ")}`,
+            message: `Unsupported file type. Only TXT, PDF, DOC/DOCX/DOCM/DOTX are allowed. Rejected: ${invalidFiles.map((f) => f.originalname).join(", ")}`,
           });
         }
 
@@ -5250,8 +5253,8 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
             const bounded = trimTextToTokenBudget(extractedText, 2200);
             const label = signatureExt === ".pdf"
               ? "Context PDF"
-              : signatureExt === ".docx"
-                ? "Context DOCX"
+              : (signatureExt === ".docx" || signatureExt === ".doc")
+                ? "Context DOC/DOCX"
                 : "Context TXT";
             attachmentContext += `\n\n--- ${label}: ${file.originalname} ---\n${bounded}\n--- End ---`;
           } catch (extractErr) {
@@ -5713,7 +5716,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       let extractedAttachmentCount = 0;
       const failedAttachments: string[] = [];
       const failedAttachmentReasons: string[] = [];
-      const allowedExts = [".txt", ".pdf", ...DOCX_COMPAT_EXTS];
+      const allowedExts = [".txt", ".pdf", ".doc", ...DOCX_COMPAT_EXTS];
       const allowedMimes = ["text/plain", "application/pdf", ...DOCX_COMPAT_MIMES];
       if (files && files.length > 0) {
         const invalidFiles = files.filter((f) => {
@@ -5725,7 +5728,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           return !allowedExts.includes(normalizedExt) && !allowedMimes.includes(mime);
         });
         if (invalidFiles.length > 0) {
-          return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, DOCX/DOCM/DOTX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
+          return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, DOC/DOCX/DOCM/DOTX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
         }
         for (const file of files) {
           const stableFile = cloneUploadFile(file);
@@ -5774,7 +5777,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
                 parsedText = await extractPdfTextWithOcrFallback(stableFile, "chat-attachment");
               }
               extractedText = stripNullBytes(parsedText);
-            } else if (signatureExt === ".docx") {
+            } else if (signatureExt === ".docx" || signatureExt === ".doc") {
               const parsedText = await extractDocxTextSafe(stableFile.buffer, "chat-attachment");
               extractedText = stripNullBytes(parsedText);
             }
@@ -5788,8 +5791,8 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
             const boundedFileText = trimTextToTokenBudget(extractedText, ATTACHMENT_FILE_TOKEN_BUDGET);
             const label = signatureExt === ".pdf"
               ? "Attached PDF"
-              : signatureExt === ".docx"
-                ? "Attached Document"
+              : (signatureExt === ".docx" || signatureExt === ".doc")
+                ? "Attached DOC/DOCX"
                 : "Attached File";
             attachmentContext += `\n\n--- ${label}: ${file.originalname} ---\n${boundedFileText}\n--- End ---`;
             extractedAttachmentCount += 1;
@@ -5808,7 +5811,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
             ? ` Details: ${failedAttachmentReasons.slice(0, 3).join(" | ")}`
             : "";
           return res.status(400).json({
-            message: `Could not extract readable text from uploaded attachment(s): ${failedAttachments.join(", ")}. Upload searchable PDF/TXT/DOCX or enable OCR dependencies for scanned PDFs.${failureDetail}`,
+            message: `Could not extract readable text from uploaded attachment(s): ${failedAttachments.join(", ")}. Upload searchable PDF/TXT/DOC/DOCX or enable OCR dependencies for scanned PDFs.${failureDetail}`,
           });
         }
       }

@@ -919,6 +919,7 @@ export default function LegalDraftingPage() {
       const name = file.name.toLowerCase();
       return (
         name.endsWith(".pdf") ||
+        name.endsWith(".doc") ||
         name.endsWith(".docx") ||
         name.endsWith(".docm") ||
         name.endsWith(".dotx") ||
@@ -929,7 +930,7 @@ export default function LegalDraftingPage() {
     if (rejected > 0) {
       toast({
         title: "Some files were ignored",
-        description: "Only PDF, DOCX/DOCM/DOTX, and TXT files are supported.",
+        description: "Only PDF, DOC/DOCX/DOCM/DOTX, and TXT files are supported.",
         variant: "destructive",
       });
     }
@@ -1549,7 +1550,7 @@ export default function LegalDraftingPage() {
                 <input
                   ref={aiContextInputRef}
                   type="file"
-                  accept=".pdf,.docx,.docm,.dotx,.txt"
+                  accept=".pdf,.doc,.docx,.docm,.dotx,.txt"
                   multiple
                   className="hidden"
                   onChange={onAiContextFilesSelected}
@@ -1563,7 +1564,7 @@ export default function LegalDraftingPage() {
                     <Paperclip size={12} />
                     Attach Context Files
                   </button>
-                  <span className="text-[10px] text-slate-500">PDF, DOCX/DOCM/DOTX, TXT · up to 5 files</span>
+                  <span className="text-[10px] text-slate-500">PDF, DOC/DOCX/DOCM/DOTX, TXT · up to 5 files</span>
                 </div>
                 {aiContextFiles.length > 0 && (
                   <div className="mt-2 space-y-1.5">
