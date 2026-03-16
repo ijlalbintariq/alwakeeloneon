@@ -771,6 +771,8 @@ export default function LegalDraftingPage() {
   const [memoryItems, setMemoryItems] = useState<MemoryItem[]>([]);
   const [styleMemoryMeta, setStyleMemoryMeta] = useState<StyleMemoryMeta | null>(null);
   const [expandedRecommendationId, setExpandedRecommendationId] = useState<string | null>(null);
+  const [selectedDraftRange, setSelectedDraftRange] = useState<{ start: number; end: number } | null>(null);
+  const [selectedDraftSnippet, setSelectedDraftSnippet] = useState("");
   const [draftReferences, setDraftReferences] = useState<LegalDraftReferencesPayload>(() => createEmptyLegalDraftReferences());
   const [isResolvingReferences, setIsResolvingReferences] = useState(false);
   const [activeCaseSourceId, setActiveCaseSourceId] = useState<number | null>(null);
@@ -861,6 +863,20 @@ export default function LegalDraftingPage() {
     localStorage.setItem(CONTEXT_MEMORY_KEY, JSON.stringify(memoryItems.slice(0, 30)));
   }, [memoryItems]);
 
+  useEffect(() => {
+    if (!selectedDraftSnippet.trim()) return;
+    if (selectedDraftRange) {
+      const current = docText.slice(selectedDraftRange.start, selectedDraftRange.end);
+      if (current === selectedDraftSnippet) return;
+    }
+    const remapped = findSnippetRange(docText, selectedDraftSnippet);
+    if (remapped) {
+      setSelectedDraftRange(remapped);
+      return;
+    }
+    clearSelectedDraftText();
+  }, [docText, selectedDraftRange, selectedDraftSnippet]);
+
   const collaborators = useMemo(() => {
     if (orgMembers.length > 0) {
       return orgMembers
@@ -894,6 +910,35 @@ export default function LegalDraftingPage() {
         },
         ...prev,
       ].slice(0, 30);
+    });
+  };
+
+  const syncSelectedDraftText = () => {
+    const el = editorRef.current;
+    if (!el) return;
+    const start = Math.max(0, Math.min(el.selectionStart ?? 0, docText.length));
+    const end = Math.max(start, Math.min(el.selectionEnd ?? start, docText.length));
+    if (end <= start) return;
+    const snippet = docText.slice(start, end);
+    if (!snippet.trim()) return;
+    setSelectedDraftRange({ start, end });
+    setSelectedDraftSnippet(snippet);
+  };
+
+  const clearSelectedDraftText = () => {
+    setSelectedDraftRange(null);
+    setSelectedDraftSnippet("");
+  };
+
+  const reselectDraftText = () => {
+    if (!selectedDraftRange) return;
+    const el = editorRef.current;
+    if (!el) return;
+    const start = Math.max(0, Math.min(selectedDraftRange.start, docText.length));
+    const end = Math.max(start, Math.min(selectedDraftRange.end, docText.length));
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start, end);
     });
   };
 
@@ -1288,6 +1333,7 @@ export default function LegalDraftingPage() {
     setSelectedDraftId(doc.id);
     setDraftTitle(doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "") || "Draft");
     setDocText(doc.content || "");
+    clearSelectedDraftText();
     setRecommendations([]);
     setRiskResults([]);
     setDraftReferences(createEmptyLegalDraftReferences());
@@ -1297,6 +1343,7 @@ export default function LegalDraftingPage() {
   const applyTemplate = (template: DraftTemplate) => {
     setDraftTitle(template.title);
     setDocText(template.body);
+    clearSelectedDraftText();
     setRecommendations([]);
     setRiskResults([]);
     setDraftReferences(createEmptyLegalDraftReferences());
@@ -1365,7 +1412,20 @@ export default function LegalDraftingPage() {
       selectionStart = Math.min(selectionStart, draftTextForAi.length);
       selectionEnd = Math.min(selectionEnd, draftTextForAi.length);
       let selectedSnippet = draftTextForAi.slice(selectionStart, selectionEnd);
-      const hasExplicitSelection = selectionEnd > selectionStart && selectedSnippet.trim().length > 0;
+      let hasExplicitSelection = selectionEnd > selectionStart && selectedSnippet.trim().length > 0;
+
+      // Preserve explicit user-selected text even if focus moves to the AI panel.
+      if (!hasExplicitSelection && selectedDraftRange && selectedDraftSnippet.trim()) {
+        const preservedStart = Math.max(0, Math.min(selectedDraftRange.start, draftTextForAi.length));
+        const preservedEnd = Math.max(preservedStart, Math.min(selectedDraftRange.end, draftTextForAi.length));
+        const preservedSnippet = draftTextForAi.slice(preservedStart, preservedEnd);
+        if (preservedEnd > preservedStart && preservedSnippet.trim() && preservedSnippet === selectedDraftSnippet) {
+          selectionStart = preservedStart;
+          selectionEnd = preservedEnd;
+          selectedSnippet = preservedSnippet;
+          hasExplicitSelection = true;
+        }
+      }
 
       // If no text is selected, fall back to the paragraph under the caret only for prompt-only edits.
       // For attachment-based drafting, default to full-draft update unless user explicitly selects text.
@@ -1669,6 +1729,7 @@ export default function LegalDraftingPage() {
                 setDocText(DEFAULT_DOC);
                 setDraftTitle("Untitled Draft");
                 setSelectedDraftId(null);
+                clearSelectedDraftText();
               }}
             >
               <Plus size={12} className="shrink-0" />
@@ -1890,7 +1951,10 @@ export default function LegalDraftingPage() {
                     ref={editorRef}
                     value={docText}
                     onChange={(e) => handleDraftTextChange(e.target.value)}
-                    className="legal-draft-font w-full h-full min-h-[72vh] md:min-h-[76vh] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-100 leading-8 text-[16px]"
+                    onSelect={syncSelectedDraftText}
+                    onMouseUp={syncSelectedDraftText}
+                    onKeyUp={syncSelectedDraftText}
+                    className="legal-draft-font w-full h-full min-h-[72vh] md:min-h-[76vh] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-100 leading-8 text-[16px] selection:bg-blue-500 selection:text-white"
                     data-testid="textarea-legal-draft"
                   />
                 </div>
@@ -1935,6 +1999,32 @@ export default function LegalDraftingPage() {
               {styleMemoryMeta && (
                 <div className="mb-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-100">
                   Style memory: {styleMemoryMeta.applied ? "applied" : "not applied"} · confidence {Math.round((styleMemoryMeta.confidence || 0) * 100)}%
+                </div>
+              )}
+              {selectedDraftSnippet.trim() && (
+                <div className="mb-3 rounded-lg border border-blue-400/35 bg-blue-500/10 p-2.5">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-200">Selected Text</p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={reselectDraftText}
+                        className="rounded px-1.5 py-0.5 text-[10px] font-bold text-blue-100 bg-blue-500/25 hover:bg-blue-500/35"
+                      >
+                        Re-select
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearSelectedDraftText}
+                        className="rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-200 bg-slate-700/70 hover:bg-slate-600/80"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-blue-100 whitespace-pre-wrap">
+                    {selectedDraftSnippet.length > 260 ? `${selectedDraftSnippet.slice(0, 260)}...` : selectedDraftSnippet}
+                  </p>
                 </div>
               )}
               <div className="mb-3">
