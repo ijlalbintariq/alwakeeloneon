@@ -1238,23 +1238,14 @@ async function callLegalDraftingAI(
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, [{ role: "user", parts: [{ text: userText }] }]);
   const startedAt = Date.now();
-  try {
-    const result = await withTimeout("Groq", timeoutConfig.standardPrimary, () => chatWithGroq({ messages, maxTokens, temperature }));
-    console.log(`[AI Routing][legal-drafting] Primary Groq succeeded in ${Date.now() - startedAt}ms`);
-    return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
-  } catch (groqErr) {
-    if (isDeepSeekAvailable()) {
-      try {
-        logModelSwitch("legal-drafting", "Groq", "DeepSeek", groqErr);
-        const result = await withTimeout("DeepSeek", timeoutConfig.standardFallback, () => chatWithDeepSeek({ messages, maxTokens, temperature }));
-        console.log(`[AI Routing][legal-drafting] Fallback DeepSeek succeeded in ${Date.now() - startedAt}ms`);
-        return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
-      } catch (dsErr) {
-        console.log("[AI Routing][legal-drafting] DeepSeek fallback failed:", getErrorMessage(dsErr));
-      }
-    }
-    throw groqErr;
+  if (!isDeepSeekAvailable()) {
+    throw new Error("Legal drafting requires DeepSeek. Set DEEPSEEK_API_KEY.");
   }
+  const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () =>
+    chatWithDeepSeek({ messages, maxTokens, temperature }),
+  );
+  console.log(`[AI Routing][legal-drafting] DeepSeek succeeded in ${Date.now() - startedAt}ms`);
+  return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
 }
 
 async function callApexAIWithFallback(
@@ -7518,7 +7509,10 @@ RULES:
 - Do not include markdown, code fences, or extra keys.${knowledgeContext}`;
 
         const userInput = `Draft Title: ${draftTitle}\n\nDraft Content:\n${draftText.slice(0, 14000)}`;
-        const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.draft, { timeoutProfile: "analysis", temperature: 0.25 });
+        const result = await callLegalDraftingAI(sysInstruction, userInput, TOKEN_LIMITS.draft, {
+          timeoutProfile: "analysis",
+          temperature: 0.25,
+        });
         await logUsageCost(userId, "draft", result.model, sysInstruction + userInput, result.text);
         return result.text;
       });
