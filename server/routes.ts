@@ -4611,10 +4611,20 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
   type LegalDraftingDocType =
     | "civil-suit-plaint"
     | "civil-misc-application"
+    | "temporary-injunction-application"
+    | "execution-application"
     | "sessions-bail-application"
+    | "sessions-pre-arrest-bail"
+    | "sessions-criminal-appeal"
+    | "sessions-criminal-revision"
+    | "family-suit-petition"
     | "high-court-writ-petition"
     | "high-court-civil-appeal"
-    | "supreme-court-cpla";
+    | "high-court-criminal-appeal"
+    | "high-court-criminal-revision"
+    | "high-court-bail-before-arrest"
+    | "supreme-court-cpla"
+    | "supreme-court-criminal-petition";
 
   const LEGAL_DRAFTING_DOC_TYPES: Record<
     LegalDraftingDocType,
@@ -4634,12 +4644,54 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       skeleton:
         "IN THE COURT OF ______\nCMA No. ____ of ____ in Civil Suit/Appeal No. ____\n\nApplicant: ____\nVersus\nRespondent: ____\n\nAPPLICATION UNDER SECTION ____ / ORDER ____ CPC\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
     },
+    "temporary-injunction-application": {
+      label: "Temporary Injunction Application",
+      checklist:
+        "- Main suit reference\n- Prima facie case, balance of convenience, irreparable loss\n- Specific restraint sought with property/subject details\n- Prayer for ad-interim relief",
+      skeleton:
+        "IN THE COURT OF ______\nCMA No. ____ of ____ in Civil Suit No. ____\n\nApplicant/Plaintiff: ____\nVersus\nRespondent/Defendant: ____\n\nAPPLICATION UNDER ORDER XXXIX RULES 1 & 2 CPC\n\nFacts:\n1. ...\n\nGrounds:\n1. Prima facie case ...\n2. Balance of convenience ...\n3. Irreparable loss ...\n\nPrayer:\n...",
+    },
+    "execution-application": {
+      label: "Execution Application",
+      checklist:
+        "- Decree/judgment details with date\n- Executing court jurisdiction\n- Mode of execution sought\n- Amount/property particulars",
+      skeleton:
+        "IN THE COURT OF ______\nExecution Application No. ____ of ____\n\nDecree Holder: ____\nVersus\nJudgment Debtor: ____\n\nAPPLICATION FOR EXECUTION OF DECREE UNDER ORDER XXI CPC\n\nDecree details:\n...\n\nAmount/Relief due:\n...\n\nMode of execution sought:\n...\n\nPrayer:\n...",
+    },
     "sessions-bail-application": {
       label: "Sessions Court Bail Application",
       checklist:
         "- FIR details, offences, police station\n- Bail grounds (further inquiry, delay, etc.)\n- Undertaking to join trial\n- Prayer under correct Cr.P.C section",
       skeleton:
         "IN THE COURT OF THE SESSIONS JUDGE ______\nBail Application No. ____ of ____\n\nApplicant/Accused: ____\nVersus\nThe State\n\nAPPLICATION FOR BAIL UNDER SECTION ____ Cr.P.C.\n\nFIR details:\n...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
+    "sessions-pre-arrest-bail": {
+      label: "Sessions Pre-Arrest Bail",
+      checklist:
+        "- FIR details and accusation summary\n- Mala fide/ulterior motive grounds\n- Apprehension of arrest and cooperation undertaking\n- Prayer under Section 498 Cr.P.C.",
+      skeleton:
+        "IN THE COURT OF THE SESSIONS JUDGE ______\nPre-Arrest Bail Application No. ____ of ____\n\nApplicant/Accused: ____\nVersus\nThe State\n\nAPPLICATION FOR PRE-ARREST BAIL UNDER SECTION 498 Cr.P.C.\n\nFIR details:\n...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
+    "sessions-criminal-appeal": {
+      label: "Sessions Criminal Appeal",
+      checklist:
+        "- Impugned conviction/order details\n- Limitation and maintainability\n- Concise grounds of challenge\n- Clear relief (acquittal/reduction/remand)",
+      skeleton:
+        "IN THE COURT OF THE SESSIONS JUDGE ______\nCriminal Appeal No. ____ of ____\n\nAppellant: ____\nVersus\nThe State / Respondent: ____\n\nMEMORANDUM OF CRIMINAL APPEAL\n\nImpugned judgment/order:\n...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
+    "sessions-criminal-revision": {
+      label: "Sessions Criminal Revision",
+      checklist:
+        "- Challenged order and forum details\n- Jurisdictional/legal defects in order\n- Brief facts and prejudice caused\n- Prayer for setting aside/modification",
+      skeleton:
+        "IN THE COURT OF THE SESSIONS JUDGE ______\nCriminal Revision No. ____ of ____\n\nPetitioner: ____\nVersus\nRespondent: ____\n\nCRIMINAL REVISION PETITION UNDER Cr.P.C.\n\nImpugned order:\n...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
+    "family-suit-petition": {
+      label: "Family Suit / Petition",
+      checklist:
+        "- Relationship and family court jurisdiction\n- Cause of action with dates/events\n- Relief specifics (maintenance, custody, dissolution, etc.)\n- Prayer and verification",
+      skeleton:
+        "IN THE FAMILY COURT AT ______\nFamily Suit/Petition No. ____ of ____\n\nPlaintiff/Petitioner: ____\nVersus\nDefendant/Respondent: ____\n\nSUIT/PETITION FOR ______\n\nFacts:\n1. ...\n2. ...\n\nJurisdiction:\n...\n\nPrayer:\n...\n\nVerification:\n...",
     },
     "high-court-writ-petition": {
       label: "High Court Writ Petition",
@@ -4655,12 +4707,40 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       skeleton:
         "IN THE HIGH COURT OF ______\nCivil Appeal No. ____ of ____\n\nAppellant: ____\nVersus\nRespondent: ____\n\nMEMORANDUM OF CIVIL APPEAL\n\nImpugned judgment:\n...\n\nGrounds of appeal:\n1. ...\n2. ...\n\nPrayer:\n...",
     },
+    "high-court-criminal-appeal": {
+      label: "High Court Criminal Appeal",
+      checklist:
+        "- Trial court conviction/order details\n- Limitation and custody/sentence status\n- Concise legal and factual grounds\n- Prayer for acquittal/modification/suspension",
+      skeleton:
+        "IN THE HIGH COURT OF ______\nCriminal Appeal No. ____ of ____\n\nAppellant: ____\nVersus\nThe State / Respondent: ____\n\nMEMORANDUM OF CRIMINAL APPEAL\n\nImpugned judgment:\n...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
+    "high-court-criminal-revision": {
+      label: "High Court Criminal Revision",
+      checklist:
+        "- Impugned order details\n- Revisional jurisdiction basis\n- Jurisdictional/legal errors and miscarriage of justice\n- Prayer for setting aside/modification",
+      skeleton:
+        "IN THE HIGH COURT OF ______\nCriminal Revision No. ____ of ____\n\nPetitioner: ____\nVersus\nRespondent: ____\n\nCRIMINAL REVISION PETITION\n\nImpugned order:\n...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
+    "high-court-bail-before-arrest": {
+      label: "High Court Bail Before Arrest",
+      checklist:
+        "- FIR details and accusations\n- Grounds of mala fide / abuse of process\n- Prior proceedings (if any)\n- Prayer under Section 498 Cr.P.C.",
+      skeleton:
+        "IN THE HIGH COURT OF ______\nCriminal Bail Before Arrest No. ____ of ____\n\nPetitioner/Accused: ____\nVersus\nThe State\n\nPETITION FOR BAIL BEFORE ARREST UNDER SECTION 498 Cr.P.C.\n\nFIR details:\n...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
     "supreme-court-cpla": {
       label: "Supreme Court CPLA",
       checklist:
         "- Jurisdictional basis and maintainability\n- Questions of law/public importance\n- Concise but strong grounds\n- Prayer for leave and interim relief (if any)",
       skeleton:
         "IN THE SUPREME COURT OF PAKISTAN\nCivil Petition for Leave to Appeal No. ____ of ____\n\nPetitioner: ____\nVersus\nRespondent: ____\n\nPETITION FOR LEAVE TO APPEAL\n\nQuestions of law:\n1. ...\n2. ...\n\nGrounds:\n...\n\nPrayer:\n...",
+    },
+    "supreme-court-criminal-petition": {
+      label: "Supreme Court Criminal Petition for Leave to Appeal",
+      checklist:
+        "- Impugned High Court order/judgment details\n- Questions of law/public importance in criminal context\n- Concise grounds for leave\n- Prayer for grant of leave and interim relief (if needed)",
+      skeleton:
+        "IN THE SUPREME COURT OF PAKISTAN\nCriminal Petition for Leave to Appeal No. ____ of ____\n\nPetitioner: ____\nVersus\nRespondent: ____\n\nCRIMINAL PETITION FOR LEAVE TO APPEAL\n\nImpugned judgment/order:\n...\n\nQuestions of law:\n1. ...\n2. ...\n\nGrounds:\n...\n\nPrayer:\n...",
     },
   };
 
@@ -4684,12 +4764,65 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       "Prayer",
       "Verification",
     ],
+    "temporary-injunction-application": [
+      "Cause Title and Main Suit Reference",
+      "Application under Order XXXIX Rules 1 & 2 CPC",
+      "Brief Facts",
+      "Prima Facie Case",
+      "Balance of Convenience",
+      "Irreparable Loss",
+      "Interim + Final Prayer",
+      "Verification",
+    ],
+    "execution-application": [
+      "Cause Title (Decree Holder vs Judgment Debtor)",
+      "Decree Details (date, case no., court)",
+      "Amount/Relief Outstanding",
+      "Mode of Execution Sought",
+      "Property/Asset Particulars (if any)",
+      "Prayer",
+      "Verification",
+    ],
     "sessions-bail-application": [
       "Cause Title and Bail Provision Invoked",
       "FIR Details (No., Date, Police Station, Sections)",
       "Accused Role and Brief Facts",
       "Grounds for Bail (numbered)",
       "Undertaking to Join Trial / Surety Readiness",
+      "Prayer",
+      "Verification",
+    ],
+    "sessions-pre-arrest-bail": [
+      "Cause Title and Section 498 Cr.P.C. Invocation",
+      "FIR Details",
+      "Apprehension of Arrest",
+      "Mala Fide / False Implication Grounds",
+      "Cooperation and Undertaking",
+      "Prayer",
+      "Verification",
+    ],
+    "sessions-criminal-appeal": [
+      "Cause Title and Appeal Title",
+      "Impugned Judgment/Order Details",
+      "Limitation and Maintainability",
+      "Concise Numbered Grounds",
+      "Prayer",
+      "Verification",
+    ],
+    "sessions-criminal-revision": [
+      "Cause Title and Revision Title",
+      "Impugned Order Details",
+      "Revisional Jurisdiction Basis",
+      "Concise Numbered Grounds",
+      "Prayer",
+      "Verification",
+    ],
+    "family-suit-petition": [
+      "Cause Title (Family Court)",
+      "Parties and Relationship Background",
+      "Material Facts in Chronology",
+      "Jurisdiction and Maintainability",
+      "Relief Claimed",
       "Prayer",
       "Verification",
     ],
@@ -4713,6 +4846,32 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       "Verification",
       "Annexures/Certified Copy Reference",
     ],
+    "high-court-criminal-appeal": [
+      "Cause Title and Criminal Appeal Heading",
+      "Impugned Conviction/Order Details",
+      "Sentence/Custody Status",
+      "Concise Numbered Grounds",
+      "Prayer",
+      "Verification",
+      "Annexures",
+    ],
+    "high-court-criminal-revision": [
+      "Cause Title and Criminal Revision Heading",
+      "Impugned Order Details",
+      "Revisional Jurisdiction Basis",
+      "Concise Numbered Grounds",
+      "Prayer",
+      "Verification",
+      "Annexures",
+    ],
+    "high-court-bail-before-arrest": [
+      "Cause Title and Section 498 Cr.P.C. Invocation",
+      "FIR Details",
+      "Mala Fide/False Implication Grounds",
+      "Urgency + Apprehension of Arrest",
+      "Prayer",
+      "Verification",
+    ],
     "supreme-court-cpla": [
       "Cause Title (Supreme Court of Pakistan)",
       "Civil Petition for Leave to Appeal (CPLA)",
@@ -4723,13 +4882,26 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       "Verification/Affidavit Placeholder",
       "Annexures/List of Filed Documents",
     ],
+    "supreme-court-criminal-petition": [
+      "Cause Title (Supreme Court of Pakistan)",
+      "Criminal Petition for Leave to Appeal",
+      "Impugned Judgment/Order Details",
+      "Questions of Law / Public Importance",
+      "Grounds (concise, numbered)",
+      "Prayer for Leave (and interim relief if needed)",
+      "Verification/Affidavit Placeholder",
+      "Annexures/List of Filed Documents",
+    ],
   };
 
   const PAKISTANI_JUDICIAL_FORMAT_GUIDANCE = `PAKISTANI JUDICIAL FORMAT ANCHORS (apply strictly):
 - Civil Suit (Plaint): align pleadings with Order VII Rule 1 CPC essentials (court, parties, cause of action, jurisdiction, valuation/court fee, relief, verification).
 - High Court Civil Appeal: align memorandum structure with Order XLI Rules 1-2 CPC (impugned decree details, concise numbered grounds, clear relief, avoid argument-heavy narrative in grounds).
+- Temporary Injunction: align structure with Order XXXIX Rules 1 & 2 CPC tests (prima facie case, balance of convenience, irreparable loss).
+- Execution Application: align with Order XXI CPC execution discipline (decree details, amount/relief due, and mode of execution sought).
 - High Court Writ: structure as Article 199 constitutional petition with jurisdiction/maintainability, impugned action, legal grounds, and precise prayer.
 - Sessions Bail: draft under Section 497/498 Cr.P.C as applicable; include FIR particulars, custody and bail grounds (further inquiry/parity/delay), and undertaking to attend trial.
+- Criminal Appeals/Revisions: keep concise challenge grounds to impugned order/judgment, limitation/maintainability statement, and clear relief.
 - Supreme Court CPLA: follow modern Supreme Court leave-petition structure (questions of law/public importance, concise grounds, prayer for leave, annexure discipline).
 - Use formal Pakistani court drafting style: numbered paragraphs, neutral legal tone, precise statutory references, and placeholders for missing facts.`;
 
@@ -4742,10 +4914,20 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       return value as LegalDraftingDocType;
     }
     const text = prompt.toLowerCase();
-    if (/(cpla|leave to appeal|supreme court)/.test(text)) return "supreme-court-cpla";
+    if (/(criminal petition|criminal leave to appeal|supreme court.*criminal)/.test(text)) return "supreme-court-criminal-petition";
+    if (/(cpla|civil petition for leave to appeal|supreme court.*civil)/.test(text)) return "supreme-court-cpla";
+    if (/(bail before arrest|pre[-\s]?arrest.*high court|high court.*498)/.test(text)) return "high-court-bail-before-arrest";
+    if (/(high court.*criminal revision|criminal revision.*high court)/.test(text)) return "high-court-criminal-revision";
+    if (/(high court.*criminal appeal|criminal appeal.*high court)/.test(text)) return "high-court-criminal-appeal";
     if (/(writ|article\s*199|constitutional petition|high court writ)/.test(text)) return "high-court-writ-petition";
     if (/(high court.*appeal|civil appeal)/.test(text)) return "high-court-civil-appeal";
+    if (/(family suit|family petition|custody|maintenance|khula|dissolution of marriage)/.test(text)) return "family-suit-petition";
+    if (/(criminal revision|revision petition)/.test(text)) return "sessions-criminal-revision";
+    if (/(criminal appeal|appeal against conviction)/.test(text)) return "sessions-criminal-appeal";
+    if (/(pre[-\s]?arrest bail|before arrest bail|498\s*cr\.?p\.?c)/.test(text)) return "sessions-pre-arrest-bail";
     if (/(bail|497|498|sessions court|criminal bail)/.test(text)) return "sessions-bail-application";
+    if (/(execution|decree holder|order\s*xxi)/.test(text)) return "execution-application";
+    if (/(temporary injunction|ad[-\s]?interim|order\s*xxxix|39\s*rules?\s*1\s*&?\s*2)/.test(text)) return "temporary-injunction-application";
     if (/(civil misc|cma|interim relief|151\s*cpc)/.test(text)) return "civil-misc-application";
     return "civil-suit-plaint";
   }
@@ -4760,6 +4942,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         jurisdiction?: string;
         module?: string;
         documentType?: string;
+        customDocumentType?: string;
       };
       const safePrompt = (prompt || "").trim();
       if (!safePrompt) {
@@ -4916,11 +5099,42 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         const allowed = await checkUsageLimit(userId, "draft", res);
         if (!allowed) return;
 
-        const selectedDocType = normalizeLegalDraftingDocType(documentType, safePrompt);
-        const profile = LEGAL_DRAFTING_DOC_TYPES[selectedDocType];
-        const headingOrder = LEGAL_DRAFTING_HEADING_ORDER[selectedDocType]
+        const rawDocType = String(documentType || "").trim().toLowerCase();
+        const customDocType = String((req.body as any)?.customDocumentType || "").trim();
+        const useCustomDocType = rawDocType === "custom-input" && customDocType.length > 0;
+
+        const selectedDocType = useCustomDocType
+          ? null
+          : normalizeLegalDraftingDocType(documentType, safePrompt);
+
+        const profile = useCustomDocType
+          ? {
+              label: `Custom Court Filing (${customDocType})`,
+              checklist:
+                "- Court/forum and parties\n- Statutory provision/jurisdiction basis\n- Chronological facts\n- Concise legal grounds\n- Specific prayer and verification",
+              skeleton:
+                "IN THE COURT OF ______\nCase No. ____ of ____\n\nPetitioner/Plaintiff/Appellant: ____\nVersus\nRespondent/Defendant: ____\n\nTITLE: ____\n\nFacts:\n1. ...\n2. ...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...\n\nVerification:\n...",
+            }
+          : LEGAL_DRAFTING_DOC_TYPES[selectedDocType];
+
+        const headingOrder = (useCustomDocType
+          ? [
+              "Cause Title (Court, Parties, Case Title)",
+              "Jurisdiction / Provision Invoked",
+              "Facts in Chronology",
+              "Grounds (concise, numbered)",
+              "Prayer (specific and executable)",
+              "Verification / Affidavit placeholder",
+              "Annexures (if applicable)",
+            ]
+          : LEGAL_DRAFTING_HEADING_ORDER[selectedDocType]
+        )
           .map((heading, index) => `${index + 1}) ${heading}`)
           .join("\n");
+        const allowedCategories = Object.values(LEGAL_DRAFTING_DOC_TYPES)
+          .map((item, index) => `  ${index + 1}) ${item.label}`)
+          .join("\n")
+          + "\n  * Custom (user-provided court filing type; litigation filings only)";
 
         const sysInstruction = `${getLegalSystemPrompt()}
 
@@ -4928,12 +5142,7 @@ You are a Pakistani litigation drafting assistant.
 STRICT SCOPE:
 - Draft only court/litigation filings.
 - Allowed categories only:
-  1) Civil Suit (Plaint)
-  2) Civil Misc. Application
-  3) Sessions Court Bail Application
-  4) High Court Writ Petition
-  5) High Court Civil Appeal
-  6) Supreme Court CPLA
+${allowedCategories}
 - Do NOT draft contracts, rent deeds, NDAs, sale deeds, employment contracts, or any agreement format.
 - If user asks for contract-like drafting, explicitly say it belongs to Contract Drafting Module.
 
@@ -4945,6 +5154,8 @@ ${PAKISTANI_JUDICIAL_FORMAT_GUIDANCE}
 
 MANDATORY HEADING ORDER (use this order unless user provides court-specific variation):
 ${headingOrder}
+
+${useCustomDocType ? `CUSTOM FILING INSTRUCTION:\n- Draft specifically as: ${customDocType}\n- Keep this strictly in Pakistani court/litigation drafting format.` : ""}
 
 OUTPUT REQUIREMENTS:
 - Formal Pakistani court style.
@@ -4976,10 +5187,11 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
 
         return res.json({
           clause: draftedText,
-          sourceId: `legal-${selectedDocType}`,
+          sourceId: `legal-${selectedDocType || "custom-input"}`,
           confidence: 0.86,
           method: "ai-legal-drafting",
-          documentType: selectedDocType,
+          documentType: selectedDocType || "custom-input",
+          customDocumentType: useCustomDocType ? customDocType : undefined,
           attachmentsUsed: files?.length || 0,
           styleMemory: styleMemoryMeta || undefined,
         });
