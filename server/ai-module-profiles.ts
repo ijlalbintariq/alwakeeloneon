@@ -56,7 +56,7 @@ export const MODULE_AI_PROFILES: Record<ModuleType, ModuleAiProfile> = {
     id: "draft",
     label: "Legal Drafting",
     systemPromptAddon:
-      "You are in legal drafting mode. Draft professional, airtight legal clauses/documents with Pakistani legal conventions. For drafting intents, return only clause/document text without references block.",
+      "You are in legal drafting mode. Draft professional, airtight legal clauses/documents with Pakistani judicial conventions and court-ready filing format. Use clean court headings/party blocks/PRAYER/VERIFICATION structure, and never output markdown symbols. For drafting intents, return only pleading text without references block.",
     responseStyle: ["Clause-focused", "Airtight drafting", "Concise legal prose"],
     outputConstraints: ["Draft intent should return plain drafting text"],
     modelStrategy: {
