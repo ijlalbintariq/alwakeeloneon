@@ -7430,6 +7430,22 @@ RULES:
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
 
+    const normalizePakistaniLawOnlyText = (value: string): string => {
+      if (!value) return "";
+      return value
+        .replace(/\bsection\s+(\d+[A-Za-z-]*)\s+of\s+ipc\b/gi, "Section $1 PPC")
+        .replace(/\bIndian Penal Code\b/gi, "Pakistan Penal Code, 1860")
+        .replace(/\bIPC\b/gi, "PPC")
+        .replace(/\bCode of Criminal Procedure,\s*1973\b/gi, "Code of Criminal Procedure, 1898")
+        .replace(/\bCrPC\b/gi, "Cr.P.C.")
+        .replace(/\bCr\.?\s*P\.?\s*C\.?\s*1973\b/gi, "Cr.P.C.")
+        .replace(/\bIndian Evidence Act\b/gi, "Qanun-e-Shahadat Order, 1984")
+        .replace(/\bConstitution of India\b/gi, "Constitution of Islamic Republic of Pakistan, 1973")
+        .replace(/\bSupreme Court of India\b/gi, "Supreme Court of Pakistan")
+        .replace(/\bHigh Courts? of India\b/gi, "High Courts of Pakistan")
+        .trim();
+    };
+
     try {
       const allowed = await checkUsageLimit(userId, "draft", res);
       if (!allowed) return;
@@ -7472,6 +7488,9 @@ RULES:
 - Use plain legal text only inside snippets and suggested text (no markdown symbols).
 - Keep originalSnippet short and exact.
 - Keep suggestedText specific and filing-ready for Pakistani court drafting.
+- Use Pakistan law only. Never cite or rely on Indian law, IPC, Indian Penal Code, CrPC 1973, Constitution of India, SCC, or AIR.
+- Use Pakistani legal references only (for example: PPC, Cr.P.C., Constitution of Islamic Republic of Pakistan 1973, PLD, SCMR, YLR, MLD, CLC, CLD, PCRLJ).
+- If a safe Pakistani equivalent is unclear, use a neutral placeholder like [Pakistani legal provision required] instead of inventing or using Indian citations.
 - Do not include markdown, code fences, or extra keys.${knowledgeContext}`;
 
         const userInput = `Draft Title: ${draftTitle}\n\nDraft Content:\n${draftText.slice(0, 16000)}`;
@@ -7502,13 +7521,15 @@ RULES:
         .slice(0, safeMaxEdits)
         .map((edit: any, idx: number) => {
           const titleText = typeof edit?.title === "string" && edit.title.trim()
-            ? edit.title.trim()
+            ? normalizePakistaniLawOnlyText(edit.title.trim())
             : `Recommended change ${idx + 1}`;
           const reasonText = typeof edit?.reason === "string" && edit.reason.trim()
-            ? edit.reason.trim()
+            ? normalizePakistaniLawOnlyText(edit.reason.trim())
             : "Improves clarity and legal quality of the pleading.";
           const originalSnippet = typeof edit?.originalSnippet === "string" ? edit.originalSnippet.trim().slice(0, 1000) : "";
-          const suggestedText = typeof edit?.suggestedText === "string" ? edit.suggestedText.trim().slice(0, 2000) : "";
+          const suggestedText = typeof edit?.suggestedText === "string"
+            ? normalizePakistaniLawOnlyText(edit.suggestedText.trim().slice(0, 2000))
+            : "";
           const impact = edit?.impact === "high" || edit?.impact === "low" ? edit.impact : "medium";
           const idText = typeof edit?.id === "string" && edit.id.trim()
             ? edit.id.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 48)

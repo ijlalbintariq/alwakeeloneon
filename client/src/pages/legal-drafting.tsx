@@ -20,7 +20,6 @@ import {
   Type,
   Underline,
   Users,
-  AlertTriangle,
   Plus,
   Trash2,
   Save,
@@ -44,14 +43,6 @@ import { api } from "@shared/routes";
 import type { Document as DraftDocument } from "@shared/schema";
 import { StyleMemoryPanel } from "@/components/style-memory-panel";
 import { DocumentViewer } from "@/components/document-viewer";
-
-type DraftSuggestion = {
-  id: string;
-  title: string;
-  detail: string;
-  severity: "warning" | "danger";
-  prompt: string;
-};
 
 type DraftRecommendation = {
   id: string;
@@ -830,8 +821,6 @@ export default function LegalDraftingPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavedLocal, setIsSavedLocal] = useState(true);
-  const [riskLoading, setRiskLoading] = useState(false);
-  const [riskResults, setRiskResults] = useState<DraftSuggestion[]>([]);
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<DraftRecommendation[]>([]);
   const [aiContextFiles, setAiContextFiles] = useState<File[]>([]);
@@ -845,7 +834,6 @@ export default function LegalDraftingPage() {
   const [memoryItems, setMemoryItems] = useState<MemoryItem[]>([]);
   const [styleMemoryMeta, setStyleMemoryMeta] = useState<StyleMemoryMeta | null>(null);
   const [aiHighlights, setAiHighlights] = useState<DraftHighlight[]>([]);
-  const [showAiHighlights, setShowAiHighlights] = useState(true);
   const [expandedRecommendationId, setExpandedRecommendationId] = useState<string | null>(null);
   const [activeRecommendationId, setActiveRecommendationId] = useState<string | null>(null);
   const [draftReferences, setDraftReferences] = useState<LegalDraftReferencesPayload>(() => createEmptyLegalDraftReferences());
@@ -1175,60 +1163,6 @@ export default function LegalDraftingPage() {
     window.location.assign(viewUrl);
   };
 
-  const runRiskAnalysis = async () => {
-    if (!docText.trim()) {
-      setRiskResults([]);
-      setRiskLoading(false);
-      return;
-    }
-
-    setRiskLoading(true);
-    try {
-      const response = await fetch("/api/ai/draft-risk-analysis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          title: draftTitle,
-          content: docText,
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(errText || "Risk analysis failed");
-      }
-
-      const data = await response.json();
-      const risksRaw = Array.isArray(data?.risks) ? data.risks : [];
-      const normalized: DraftSuggestion[] = risksRaw.slice(0, 8).map((risk: any, idx: number) => ({
-        id: typeof risk?.id === "string" && risk.id.trim() ? risk.id : `risk-${idx + 1}`,
-        title: typeof risk?.title === "string" && risk.title.trim() ? risk.title : `Risk ${idx + 1}`,
-        detail: typeof risk?.detail === "string" && risk.detail.trim() ? risk.detail : "Potential drafting issue detected.",
-        severity: risk?.severity === "danger" ? "danger" : "warning",
-        prompt: typeof risk?.prompt === "string" && risk.prompt.trim()
-          ? risk.prompt
-          : "Draft a corrective clause to fix this risk under Pakistani law.",
-      }));
-
-      setRiskResults(normalized);
-      if (normalized.length > 0) {
-        addMemoryItem(
-          "risk",
-          `Risk scan found ${normalized.length} item(s): ${normalized.slice(0, 3).map((r) => r.title).join("; ")}`
-        );
-      }
-    } catch (err: any) {
-      toast({
-        title: "Risk analysis failed",
-        description: err?.message || "Could not analyze this draft.",
-        variant: "destructive",
-      });
-    } finally {
-      setRiskLoading(false);
-    }
-  };
-
   const applyRecommendedChange = (edit: DraftRecommendation) => {
     const replacement = edit.suggestedText.trim();
     if (!replacement) return;
@@ -1262,7 +1196,6 @@ export default function LegalDraftingPage() {
         tone: "applied",
       },
     ]);
-    setShowAiHighlights(true);
 
     addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
     setRecommendations((prev) => prev.filter((item) => item.id !== edit.id));
@@ -1317,7 +1250,6 @@ export default function LegalDraftingPage() {
       setRecommendations(normalized);
       setExpandedRecommendationId(normalized[0]?.id || null);
       setActiveRecommendationId(null);
-      if (normalized.length > 0) setShowAiHighlights(true);
       if (normalized.length > 0) {
         addMemoryItem(
           "risk",
@@ -1336,7 +1268,7 @@ export default function LegalDraftingPage() {
   };
 
   const runDraftReview = async () => {
-    await Promise.all([runRiskAnalysis(), runDraftRecommendations()]);
+    await runDraftRecommendations();
   };
 
   const saveDraftMutation = useMutation({
@@ -1525,7 +1457,6 @@ export default function LegalDraftingPage() {
           tone: "applied",
         },
       ]);
-      setShowAiHighlights(true);
       setActiveRecommendationId(null);
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
@@ -1925,19 +1856,6 @@ export default function LegalDraftingPage() {
             <div className="flex items-center gap-2 ml-auto">
               <Button
                 variant="outline"
-                className={`h-8 px-2 md:px-3 text-[11px] md:text-xs font-bold ${
-                  showAiHighlights
-                    ? "border-sky-500/35 bg-sky-500/10 text-sky-200"
-                    : "border-slate-600 bg-slate-700/20 text-slate-200"
-                }`}
-                onClick={() => setShowAiHighlights((prev) => !prev)}
-                disabled={displayedHighlights.length === 0}
-                data-testid="button-toggle-ai-highlights"
-              >
-                {showAiHighlights ? "Hide AI Changes" : "Show AI Changes"}
-              </Button>
-              <Button
-                variant="outline"
                 className="h-8 px-2 md:px-3 border-amber-500/20 bg-amber-500/5 text-amber-300 text-[11px] md:text-xs font-bold"
                 onClick={() =>
                   generateClause(
@@ -1983,7 +1901,7 @@ export default function LegalDraftingPage() {
             <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl">
               <div className="h-full overflow-hidden p-3 md:p-5 lg:p-7">
                 <div className="relative h-full">
-                  {showAiHighlights && displayedHighlights.length > 0 && (
+                  {displayedHighlights.length > 0 && (
                     <pre
                       ref={highlightLayerRef}
                       aria-hidden="true"
@@ -2004,7 +1922,7 @@ export default function LegalDraftingPage() {
                     data-testid="textarea-legal-draft"
                   />
                 </div>
-                {showAiHighlights && displayedHighlights.length > 0 && (
+                {displayedHighlights.length > 0 && (
                   <p className="pt-2 text-[11px] text-slate-300">
                     Colored text indicates AI suggestions/fixes. Move cursor into highlighted text to review and apply.
                   </p>
@@ -2196,48 +2114,11 @@ export default function LegalDraftingPage() {
                   className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold"
                   data-testid="button-refresh-draft-review"
                 >
-                  {riskLoading || recommendLoading ? "Reviewing..." : `${riskResults.length} Alerts · ${recommendations.length} Changes`}
+                  {recommendLoading ? "Reviewing..." : `${recommendations.length} Changes`}
                 </button>
               </div>
 
               <div className="space-y-3">
-                <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-2">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-orange-300">Risk Alerts</p>
-                    <span className="text-[10px] font-bold text-orange-300">{riskResults.length}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {riskResults.length === 0 ? (
-                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                        <p className="text-[11px] text-emerald-300">No obvious drafting risks detected.</p>
-                      </div>
-                    ) : (
-                      riskResults.map((risk) => (
-                        <button
-                          key={risk.id}
-                          onClick={() => generateClause(risk.prompt)}
-                          className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                            risk.severity === "danger"
-                              ? "bg-red-500/5 border-red-500/20 hover:bg-red-500/10"
-                              : "bg-orange-500/5 border-orange-500/20 hover:bg-orange-500/10"
-                          }`}
-                          data-testid={`risk-item-${risk.id}`}
-                        >
-                          <div className="flex items-start gap-2 mb-1">
-                            <AlertTriangle
-                              size={14}
-                              className={risk.severity === "danger" ? "text-red-400 mt-0.5" : "text-orange-400 mt-0.5"}
-                            />
-                            <h4 className="text-xs font-bold text-slate-200">{risk.title}</h4>
-                          </div>
-                          <p className="text-[11px] text-slate-400 leading-normal">{risk.detail}</p>
-                          <div className="mt-2 text-amber-300 text-[10px] font-bold">Review AI Fix Suggestion</div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300">AI Recommended Changes</p>
