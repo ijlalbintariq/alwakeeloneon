@@ -5336,19 +5336,18 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
             }
           : LEGAL_DRAFTING_DOC_TYPES[selectedDocType];
 
-        const sysInstruction = `${getLegalSystemPrompt()}
-
-${PAKISTANI_JUDICIAL_FORMAT_GUIDANCE}
-
-TARGET FILING: ${profile.label}
-DRAFTING CHECKLIST:
-${profile.checklist}
-
-${useCustomDocType ? `CUSTOM FILING INSTRUCTION:\n- Draft specifically as: ${customDocType}\n- Keep this strictly in Pakistani court/litigation drafting format.` : ""}
-`;
+        const sysInstruction = PAKISTANI_JUDICIAL_FORMAT_GUIDANCE;
 
         const userInput = `User instruction:
 ${safePrompt}
+
+Target filing:
+${profile.label}
+
+Drafting checklist:
+${profile.checklist}
+
+${useCustomDocType ? `Custom filing instruction:\n- Draft specifically as: ${customDocType}\n- Keep this strictly in Pakistani court/litigation drafting format.\n` : ""}
 
 Jurisdiction/Forum (if provided): ${jurisdiction || "Pakistan"}
 
