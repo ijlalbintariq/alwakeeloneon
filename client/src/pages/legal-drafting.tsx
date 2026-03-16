@@ -71,6 +71,7 @@ type DraftTemplate = {
 type LegalDocumentType =
   | "civil-suit-plaint"
   | "civil-misc-application"
+  | "criminal-misc-application"
   | "temporary-injunction-application"
   | "execution-application"
   | "sessions-bail-application"
@@ -158,6 +159,28 @@ Most respectfully submitted:
 
 PRAYER:
 It is prayed that interim relief may kindly be granted till final decision of the suit.
+`;
+
+const CRIMINAL_MISC_APPLICATION_TEMPLATE = `IN THE COURT OF THE SESSIONS JUDGE / MAGISTRATE
+[District], Pakistan
+
+Criminal Misc. Application No. ______ of 20__
+in
+FIR No. ______ / Case No. ______
+
+Applicant/Petitioner: ____________________
+VERSUS
+The State / Respondent: ____________________
+
+CRIMINAL MISC. APPLICATION UNDER SECTION ______ Cr.P.C.
+
+Respectfully submitted:
+1. That the above criminal case/FIR is pending before the learned court.
+2. That the Applicant seeks relief of ____________________ on lawful grounds.
+3. That immediate intervention is necessary because ____________________.
+
+PRAYER:
+It is respectfully prayed that this Criminal Misc. Application may kindly be allowed and relief as prayed be granted.
 `;
 
 const TEMPORARY_INJUNCTION_TEMPLATE = `IN THE COURT OF THE CIVIL JUDGE
@@ -460,6 +483,11 @@ const TEMPLATES: DraftTemplate[] = [
     body: CIVIL_MISC_APPLICATION_TEMPLATE,
   },
   {
+    id: "criminal-misc-application",
+    title: "Criminal Misc. Application",
+    body: CRIMINAL_MISC_APPLICATION_TEMPLATE,
+  },
+  {
     id: "temporary-injunction-application",
     title: "Temporary Injunction Application",
     body: TEMPORARY_INJUNCTION_TEMPLATE,
@@ -535,6 +563,7 @@ const LEGAL_DOCUMENT_TYPE_OPTIONS: Array<{ value: LegalDocumentType; label: stri
   { value: "custom-input", label: "Custom (Type Your Own Filing Type)" },
   { value: "civil-suit-plaint", label: "Civil Suit (Plaint)" },
   { value: "civil-misc-application", label: "Civil Misc. Application" },
+  { value: "criminal-misc-application", label: "Criminal Misc. Application" },
   { value: "temporary-injunction-application", label: "Temporary Injunction Application" },
   { value: "execution-application", label: "Execution Application" },
   { value: "sessions-bail-application", label: "Sessions Court Bail Application" },
