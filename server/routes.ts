@@ -4636,6 +4636,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
   type LegalDraftingDocType =
     | "civil-suit-plaint"
     | "civil-misc-application"
+    | "criminal-misc-application"
     | "temporary-injunction-application"
     | "execution-application"
     | "sessions-bail-application"
@@ -4668,6 +4669,13 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         "- Main case reference\n- Statutory provision invoked\n- Urgency/interim grounds\n- Specific interim prayer",
       skeleton:
         "IN THE COURT OF ______\nCMA No. ____ of ____ in Civil Suit/Appeal No. ____\n\nApplicant: ____\nVersus\nRespondent: ____\n\nAPPLICATION UNDER SECTION ____ / ORDER ____ CPC\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+    },
+    "criminal-misc-application": {
+      label: "Criminal Misc. Application",
+      checklist:
+        "- Criminal case/FIR reference and court title\n- Cr.P.C. section(s) invoked\n- Factual basis and legal necessity of relief sought\n- Specific interim/final prayer",
+      skeleton:
+        "IN THE COURT OF ______\nCriminal Misc. Application No. ____ of ____\nIn Re: Case/FIR No. ____\n\nApplicant/Petitioner: ____\nVersus\nThe State / Respondent: ____\n\nAPPLICATION UNDER SECTION ____ Cr.P.C.\n\nBrief facts:\n1. ...\n2. ...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
     },
     "temporary-injunction-application": {
       label: "Temporary Injunction Application",
@@ -4788,6 +4796,15 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       "Urgency/Interim Necessity (if any)",
       "Prayer",
       "Verification",
+    ],
+    "criminal-misc-application": [
+      "Cause Title and Criminal Case/FIR Reference",
+      "Application Title under Relevant Cr.P.C. Provision",
+      "Brief Facts",
+      "Grounds for Relief (numbered)",
+      "Urgency/Interim Necessity (if any)",
+      "Prayer",
+      "Verification/Affidavit",
     ],
     "temporary-injunction-application": [
       "Cause Title and Main Suit Reference",
@@ -5100,6 +5117,7 @@ The assistant must be able to draft the following documents according to Pakista
 
 Civil Suit (Plaint)
 Civil Miscellaneous Application
+Criminal Miscellaneous Application
 Temporary Injunction Application
 Execution Application
 
@@ -5146,6 +5164,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
     if (/(writ|article\s*199|constitutional petition|high court writ)/.test(text)) return "high-court-writ-petition";
     if (/(high court.*appeal|civil appeal)/.test(text)) return "high-court-civil-appeal";
     if (/(family suit|family petition|custody|maintenance|khula|dissolution of marriage)/.test(text)) return "family-suit-petition";
+    if (/(criminal\s*(misc|misc\.?|miscellaneous)|crl\.?\s*misc|crm\.?\s*misc)/.test(text)) return "criminal-misc-application";
     if (/(criminal revision|revision petition)/.test(text)) return "sessions-criminal-revision";
     if (/(criminal appeal|appeal against conviction)/.test(text)) return "sessions-criminal-appeal";
     if (/(pre[-\s]?arrest bail|before arrest bail|498\s*cr\.?p\.?c)/.test(text)) return "sessions-pre-arrest-bail";
