@@ -5919,6 +5919,53 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
     return "civil-suit-plaint";
   }
 
+  const FULL_REWRITE_PROMPT_PATTERN =
+    /\b(full|complete|entire|whole)\s+(rewrite|redraft|regenerate|draft|version)\b|\bfrom\s+scratch\b|\bstart\s+over\b|\brewrite\s+everything\b|\bregenerate\s+everything\b|\bfresh\s+draft\b/i;
+
+  function isFullLegalRewriteRequested(prompt: string): boolean {
+    return FULL_REWRITE_PROMPT_PATTERN.test(String(prompt || ""));
+  }
+
+  function parseOptionalSelectionIndex(value: unknown): number | null {
+    const parsed = Number.parseInt(String(value ?? ""), 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function applyTargetedLegalDraftEdit(params: {
+    draftText: string;
+    selectedSnippet: string;
+    selectedStart: number | null;
+    selectedEnd: number | null;
+    replacementText: string;
+  }): { ok: true; text: string } | { ok: false; reason: string } {
+    const source = String(params.draftText || "");
+    const replacement = String(params.replacementText || "").trim();
+    if (!source.trim()) return { ok: false, reason: "Current draft is empty." };
+    if (!replacement) return { ok: false, reason: "AI returned empty replacement text." };
+
+    const start = params.selectedStart;
+    const end = params.selectedEnd;
+    if (typeof start === "number" && typeof end === "number" && start >= 0 && end > start && end <= source.length) {
+      return {
+        ok: true,
+        text: `${source.slice(0, start)}${replacement}${source.slice(end)}`,
+      };
+    }
+
+    const snippet = String(params.selectedSnippet || "");
+    if (!snippet.trim()) {
+      return { ok: false, reason: "No selected snippet was provided for targeted editing." };
+    }
+    const index = source.indexOf(snippet);
+    if (index < 0) {
+      return { ok: false, reason: "Selected snippet was not found in current draft." };
+    }
+    return {
+      ok: true,
+      text: `${source.slice(0, index)}${replacement}${source.slice(index + snippet.length)}`,
+    };
+  }
+
   app.post("/api/retrieval/clauses/generate", guardedUploadQueue, retrievalAttachmentUpload.array("attachments", 5), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -5930,6 +5977,9 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
         module?: string;
         documentType?: string;
         customDocumentType?: string;
+        selectedSnippet?: string;
+        selectedSnippetStart?: string | number;
+        selectedSnippetEnd?: string | number;
       };
       const safePrompt = (prompt || "").trim();
       if (!safePrompt) {
@@ -6037,10 +6087,8 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
         }
       }
 
-      const draftContextForGeneration = trimTextToTokenBudget(
-        `${(draftText || "").trim()}${attachmentContext}`,
-        12000,
-      );
+      const baseDraftText = trimTextToTokenBudget((draftText || "").trim(), 12000);
+      const draftContextForGeneration = trimTextToTokenBudget(`${baseDraftText}${attachmentContext}`, 12000);
 
       let styleMemoryMeta: {
         applied: boolean;
@@ -6097,7 +6145,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
               skeleton:
                 "IN THE COURT OF ______\nCase No. ____ of ____\n\nPetitioner/Plaintiff/Appellant: ____\nVersus\nRespondent/Defendant: ____\n\nTITLE: ____\n\nFacts:\n1. ...\n2. ...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...\n\nVerification:\n...",
             }
-          : LEGAL_DRAFTING_DOC_TYPES[selectedDocType];
+          : LEGAL_DRAFTING_DOC_TYPES[selectedDocType as LegalDraftingDocType];
 
         const typeLockInstruction = selectedDocType
           ? buildStrictTypeLockInstruction(selectedDocType, profile.label)
@@ -6107,8 +6155,64 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
 - Keep proper Pakistani court forum heading, cause title, numbered facts, legal grounds, prayer, verification, and annexures (if needed).`;
 
         const sysInstruction = PAKISTANI_JUDICIAL_FORMAT_GUIDANCE;
+        const selectedSnippetRaw = String((req.body as any)?.selectedSnippet || "");
+        const selectedSnippet = selectedSnippetRaw.slice(0, 8000);
+        const selectedSnippetStart = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetStart);
+        const selectedSnippetEnd = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetEnd);
+        const targetedEditMode =
+          selectedSnippet.trim().length > 0 &&
+          baseDraftText.trim().length > 0 &&
+          !isFullLegalRewriteRequested(safePrompt);
 
-        const userInput = `User instruction:
+        let draftedText = "";
+        if (targetedEditMode) {
+          const targetedInput = `User instruction:
+${safePrompt}
+
+Target filing:
+${profile.label}
+
+${typeLockInstruction}
+
+Targeted edit mode (strict):
+- Edit ONLY the selected excerpt.
+- Keep all other draft text unchanged.
+- Return only the replacement text for the selected excerpt.
+- Do not repeat the full pleading.
+- No markdown symbols, no bullets, no JSON, no explanations.
+- Keep Pakistani court drafting language and formatting.
+- Do not invent facts, citations, or statutory sections.
+
+Selected excerpt to replace:
+${selectedSnippet}
+
+Current full draft context:
+${baseDraftText}
+
+Additional context files (if any):
+${attachmentContext || "[No attachment context provided]"}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
+
+          const targetedResult = await callLegalDraftingAI(sysInstruction, targetedInput, Math.min(TOKEN_LIMITS.draft, 1800), {
+            timeoutProfile: "analysis",
+            temperature: 0.2,
+          });
+          await logUsageCost(userId, "draft", targetedResult.model, sysInstruction + targetedInput, targetedResult.text);
+          const replacementText = normalizeCourtReadyDraftingText(targetedResult.text);
+          const patched = applyTargetedLegalDraftEdit({
+            draftText: baseDraftText,
+            selectedSnippet,
+            selectedStart: selectedSnippetStart,
+            selectedEnd: selectedSnippetEnd,
+            replacementText,
+          });
+          if (!patched.ok) {
+            return res.status(400).json({
+              message: `Could not apply targeted AI edit. ${patched.reason} Select the exact section and try again, or request a full rewrite.`,
+            });
+          }
+          draftedText = normalizeCourtReadyDraftingText(patched.text);
+        } else {
+          const userInput = `User instruction:
 ${safePrompt}
 
 Target filing:
@@ -6149,16 +6253,16 @@ ${draftContextForGeneration || "[No draft/context provided]"}
 Reference skeleton (adapt to facts):
 ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
 
-        const aiResult = await callLegalDraftingAI(sysInstruction, userInput, TOKEN_LIMITS.draft, {
-          timeoutProfile: "analysis",
-          temperature: 0.25,
-        });
-        await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
-        let draftedText = normalizeCourtReadyDraftingText(aiResult.text);
-        if (selectedDocType) {
-          const validation = validateDraftForSelectedType(draftedText, selectedDocType);
-          if (!validation.ok) {
-            const repairInput = `You must repair and reformat the following legal draft so it STRICTLY follows this selected filing type:
+          const aiResult = await callLegalDraftingAI(sysInstruction, userInput, TOKEN_LIMITS.draft, {
+            timeoutProfile: "analysis",
+            temperature: 0.25,
+          });
+          await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
+          draftedText = normalizeCourtReadyDraftingText(aiResult.text);
+          if (selectedDocType) {
+            const validation = validateDraftForSelectedType(draftedText, selectedDocType);
+            if (!validation.ok) {
+              const repairInput = `You must repair and reformat the following legal draft so it STRICTLY follows this selected filing type:
 ${profile.label}
 
 Type lock rules:
@@ -6176,12 +6280,13 @@ Repair instructions:
 Original draft:
 ${draftedText}`;
 
-            const repaired = await callLegalDraftingAI(sysInstruction, repairInput, TOKEN_LIMITS.draft, {
-              timeoutProfile: "analysis",
-              temperature: 0.15,
-            });
-            await logUsageCost(userId, "draft", repaired.model, sysInstruction + repairInput, repaired.text);
-            draftedText = normalizeCourtReadyDraftingText(repaired.text);
+              const repaired = await callLegalDraftingAI(sysInstruction, repairInput, TOKEN_LIMITS.draft, {
+                timeoutProfile: "analysis",
+                temperature: 0.15,
+              });
+              await logUsageCost(userId, "draft", repaired.model, sysInstruction + repairInput, repaired.text);
+              draftedText = normalizeCourtReadyDraftingText(repaired.text);
+            }
           }
         }
         if (!draftedText) {

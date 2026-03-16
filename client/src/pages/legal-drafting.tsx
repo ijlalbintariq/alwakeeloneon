@@ -20,6 +20,7 @@ import {
   Type,
   Underline,
   Users,
+  AlertTriangle,
   Plus,
   Trash2,
   Save,
@@ -51,6 +52,14 @@ type DraftRecommendation = {
   originalSnippet: string;
   suggestedText: string;
   impact: "high" | "medium" | "low";
+};
+
+type DraftSuggestion = {
+  id: string;
+  title: string;
+  detail: string;
+  severity: "warning" | "danger";
+  prompt: string;
 };
 
 type Org = {
@@ -746,6 +755,8 @@ export default function LegalDraftingPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavedLocal, setIsSavedLocal] = useState(true);
+  const [riskLoading, setRiskLoading] = useState(false);
+  const [riskResults, setRiskResults] = useState<DraftSuggestion[]>([]);
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<DraftRecommendation[]>([]);
   const [aiContextFiles, setAiContextFiles] = useState<File[]>([]);
@@ -763,6 +774,7 @@ export default function LegalDraftingPage() {
   const [isResolvingReferences, setIsResolvingReferences] = useState(false);
   const [activeCaseSourceId, setActiveCaseSourceId] = useState<number | null>(null);
   const [caseSourceDoc, setCaseSourceDoc] = useState<CaseLawSourceDocument | null>(null);
+  const showDraftReviewPanel = riskLoading || recommendLoading || riskResults.length > 0 || recommendations.length > 0;
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
   const rightRailVisible = rightRailOpen && !focusWritingMode;
@@ -1030,6 +1042,60 @@ export default function LegalDraftingPage() {
     window.location.assign(viewUrl);
   };
 
+  const runRiskAnalysis = async () => {
+    if (!docText.trim()) {
+      setRiskResults([]);
+      setRiskLoading(false);
+      return;
+    }
+
+    setRiskLoading(true);
+    try {
+      const response = await fetch("/api/ai/draft-risk-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: draftTitle,
+          content: docText,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(errText || "Risk analysis failed");
+      }
+
+      const data = await response.json();
+      const risksRaw = Array.isArray(data?.risks) ? data.risks : [];
+      const normalized: DraftSuggestion[] = risksRaw.slice(0, 8).map((risk: any, idx: number) => ({
+        id: typeof risk?.id === "string" && risk.id.trim() ? risk.id : `risk-${idx + 1}`,
+        title: typeof risk?.title === "string" && risk.title.trim() ? risk.title : `Risk ${idx + 1}`,
+        detail: typeof risk?.detail === "string" && risk.detail.trim() ? risk.detail : "Potential drafting issue detected.",
+        severity: risk?.severity === "danger" ? "danger" : "warning",
+        prompt: typeof risk?.prompt === "string" && risk.prompt.trim()
+          ? risk.prompt.trim()
+          : "Draft a corrective clause to fix this risk under Pakistani law.",
+      }));
+
+      setRiskResults(normalized);
+      if (normalized.length > 0) {
+        addMemoryItem(
+          "risk",
+          `Risk scan found ${normalized.length} item(s): ${normalized.slice(0, 3).map((r) => r.title).join("; ")}`
+        );
+      }
+    } catch (err: any) {
+      toast({
+        title: "Risk analysis failed",
+        description: err?.message || "Could not analyze this draft.",
+        variant: "destructive",
+      });
+    } finally {
+      setRiskLoading(false);
+    }
+  };
+
   const applyRecommendedChange = (edit: DraftRecommendation) => {
     const replacement = edit.suggestedText.trim();
     if (!replacement) return;
@@ -1057,15 +1123,34 @@ export default function LegalDraftingPage() {
     setDocText(nextText);
 
     addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
-    setRecommendations((prev) => prev.filter((item) => item.id !== edit.id));
+    let remaining = 0;
+    setRecommendations((prev) => {
+      const next = prev.filter((item) => item.id !== edit.id);
+      remaining = next.length;
+      return next;
+    });
     setExpandedRecommendationId((prev) => (prev === edit.id ? null : prev));
+    if (remaining === 0) {
+      setRiskResults([]);
+    }
     toast({ title: "Recommended change applied" });
-    runDraftReview();
   };
 
   const dismissRecommendation = (id: string) => {
-    setRecommendations((prev) => prev.filter((item) => item.id !== id));
+    let remaining = 0;
+    setRecommendations((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      remaining = next.length;
+      return next;
+    });
     setExpandedRecommendationId((prev) => (prev === id ? null : prev));
+    if (remaining === 0) {
+      setRiskResults([]);
+    }
+  };
+
+  const dismissRisk = (id: string) => {
+    setRiskResults((prev) => prev.filter((item) => item.id !== id));
   };
 
   const runDraftRecommendations = async () => {
@@ -1102,7 +1187,7 @@ export default function LegalDraftingPage() {
         originalSnippet: typeof edit?.originalSnippet === "string" ? edit.originalSnippet.trim() : "",
         suggestedText: typeof edit?.suggestedText === "string" ? edit.suggestedText.trim() : "",
         impact: edit?.impact === "high" || edit?.impact === "low" ? edit.impact : "medium",
-      })).filter((edit) => edit.suggestedText.length > 0);
+      })).filter((edit: DraftRecommendation) => edit.suggestedText.length > 0);
 
       setRecommendations(normalized);
       setExpandedRecommendationId(normalized[0]?.id || null);
@@ -1124,7 +1209,7 @@ export default function LegalDraftingPage() {
   };
 
   const runDraftReview = async () => {
-    await runDraftRecommendations();
+    await Promise.all([runRiskAnalysis(), runDraftRecommendations()]);
   };
 
   const saveDraftMutation = useMutation({
@@ -1191,7 +1276,8 @@ export default function LegalDraftingPage() {
     setSelectedDraftId(doc.id);
     setDraftTitle(doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "") || "Draft");
     setDocText(doc.content || "");
-    setAiHighlights([]);
+    setRecommendations([]);
+    setRiskResults([]);
     setDraftReferences(createEmptyLegalDraftReferences());
     toast({ title: "Draft loaded" });
   };
@@ -1199,7 +1285,8 @@ export default function LegalDraftingPage() {
   const applyTemplate = (template: DraftTemplate) => {
     setDraftTitle(template.title);
     setDocText(template.body);
-    setAiHighlights([]);
+    setRecommendations([]);
+    setRiskResults([]);
     setDraftReferences(createEmptyLegalDraftReferences());
     setSelectedDraftId(null);
     setActiveLeftTool("drafts");
@@ -1259,16 +1346,43 @@ export default function LegalDraftingPage() {
     }
     setIsGenerating(true);
     try {
+      const draftTextForAi = docText.slice(0, 12000);
+      const editor = editorRef.current;
+      let selectionStart = editor ? Math.max(0, editor.selectionStart ?? 0) : 0;
+      let selectionEnd = editor ? Math.max(selectionStart, editor.selectionEnd ?? selectionStart) : 0;
+      selectionStart = Math.min(selectionStart, draftTextForAi.length);
+      selectionEnd = Math.min(selectionEnd, draftTextForAi.length);
+      let selectedSnippet = draftTextForAi.slice(selectionStart, selectionEnd);
+
+      // If no text is selected, fall back to the paragraph under the caret for targeted edits.
+      if (!selectedSnippet.trim() && draftTextForAi.trim().length > 0) {
+        const cursor = selectionStart;
+        const paragraphStartIdx = draftTextForAi.lastIndexOf("\n\n", Math.max(0, cursor - 1));
+        const paragraphEndIdx = draftTextForAi.indexOf("\n\n", cursor);
+        const blockStart = paragraphStartIdx >= 0 ? paragraphStartIdx + 2 : 0;
+        const blockEnd = paragraphEndIdx >= 0 ? paragraphEndIdx : draftTextForAi.length;
+        const paragraphSnippet = draftTextForAi.slice(blockStart, blockEnd);
+        if (paragraphSnippet.trim().length >= 40) {
+          selectionStart = blockStart;
+          selectionEnd = blockEnd;
+          selectedSnippet = paragraphSnippet;
+        }
+      }
       let response: Response;
       if (aiContextFiles.length > 0) {
         const form = new FormData();
         form.append("prompt", prompt);
-        form.append("draftText", docText.slice(0, 12000));
+        form.append("draftText", draftTextForAi);
         form.append("jurisdiction", "Lahore");
         form.append("module", "legal-drafting");
         form.append("documentType", legalDocumentType);
         if (legalDocumentType === "custom-input") {
           form.append("customDocumentType", customLegalDocumentType.trim());
+        }
+        if (selectedSnippet.trim()) {
+          form.append("selectedSnippet", selectedSnippet.slice(0, 8000));
+          form.append("selectedSnippetStart", String(selectionStart));
+          form.append("selectedSnippetEnd", String(selectionEnd));
         }
         aiContextFiles.forEach((file) => form.append("attachments", file));
         response = await fetch("/api/retrieval/clauses/generate", {
@@ -1279,7 +1393,10 @@ export default function LegalDraftingPage() {
       } else {
         const payload = {
           prompt,
-          draftText: docText.slice(0, 12000),
+          draftText: draftTextForAi,
+          selectedSnippet: selectedSnippet.trim() ? selectedSnippet.slice(0, 8000) : undefined,
+          selectedSnippetStart: selectedSnippet.trim() ? selectionStart : undefined,
+          selectedSnippetEnd: selectedSnippet.trim() ? selectionEnd : undefined,
           jurisdiction: "Lahore",
           module: "legal-drafting",
           documentType: legalDocumentType,
@@ -1304,7 +1421,7 @@ export default function LegalDraftingPage() {
       setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
       setDraftReferences(normalizeLegalDraftReferences(data?.references));
 
-      setDocText(`${clause}\n`);
+      setDocText(clause);
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
       setAiPrompt("");
@@ -1700,28 +1817,6 @@ export default function LegalDraftingPage() {
                 <Type size={16} />
               </button>
             </div>
-            <div className="flex items-center gap-2 ml-auto">
-              <Button
-                variant="outline"
-                className="h-8 px-2 md:px-3 border-amber-500/20 bg-amber-500/5 text-amber-300 text-[11px] md:text-xs font-bold"
-                onClick={() =>
-                  generateClause(
-                    "Insert properly formatted Pakistani legal citations relevant to this current draft and include section references."
-                  )
-                }
-                data-testid="button-insert-citation"
-              >
-                Insert Citation
-              </Button>
-              <Button
-                className="h-8 px-2 md:px-3 bg-amber-500 text-slate-950 text-[11px] md:text-xs font-bold hover:bg-amber-400"
-                onClick={() => generateClause()}
-                disabled={isGenerating || !aiPrompt.trim()}
-                data-testid="button-generate-clause"
-              >
-                Generate Clause
-              </Button>
-            </div>
           </div>
 
           <div className="px-3 md:px-8 pt-3 flex items-center gap-2 flex-wrap">
@@ -1881,98 +1976,164 @@ export default function LegalDraftingPage() {
                     ))}
                   </div>
                 )}
+                <button
+                  type="button"
+                  onClick={runDraftReview}
+                  disabled={riskLoading || recommendLoading || !docText.trim()}
+                  className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 text-[11px] text-amber-200 hover:bg-amber-500/20 disabled:opacity-60"
+                  data-testid="button-run-draft-review"
+                >
+                  <Search size={12} />
+                  {riskLoading || recommendLoading ? "Reviewing..." : "Run Draft Review"}
+                </button>
               </div>
             </section>
 
             <StyleMemoryPanel module="legal-drafting" />
 
-            <section>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Draft Review</label>
-                <button
-                  onClick={runDraftReview}
-                  className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold"
-                  data-testid="button-refresh-draft-review"
-                >
-                  {recommendLoading ? "Reviewing..." : `${recommendations.length} Changes`}
-                </button>
-              </div>
+            {showDraftReviewPanel && (
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Draft Review</label>
+                  <button
+                    onClick={runDraftReview}
+                    className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold"
+                    data-testid="button-refresh-draft-review"
+                  >
+                    {riskLoading || recommendLoading ? "Reviewing..." : `${riskResults.length} Alerts · ${recommendations.length} Changes`}
+                  </button>
+                </div>
 
-              <div className="space-y-3">
-                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300">AI Recommended Changes</p>
-                    <span className="text-[10px] font-bold text-amber-300">{recommendations.length}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {recommendations.length === 0 ? (
-                      <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                        <p className="text-[11px] text-amber-200">No AI text changes suggested yet.</p>
-                      </div>
-                    ) : (
-                      recommendations.map((edit) => (
-                        <div
-                          key={edit.id}
-                          className="w-full p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
-                          data-testid={`recommendation-item-${edit.id}`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setExpandedRecommendationId((prev) => (prev === edit.id ? null : edit.id));
-                            }}
-                            className="w-full text-left"
-                            data-testid={`button-toggle-recommendation-${edit.id}`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <h4 className="text-xs font-bold text-slate-200">{edit.title}</h4>
-                              <span
-                                className={`text-[10px] font-bold uppercase ${
-                                  edit.impact === "high" ? "text-red-300" : edit.impact === "low" ? "text-emerald-300" : "text-amber-300"
-                                }`}
-                              >
-                                {edit.impact} impact
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-slate-400 leading-normal mt-1">{edit.reason}</p>
-                          </button>
-                          {expandedRecommendationId === edit.id && (
-                            <>
-                              {edit.originalSnippet ? (
-                                <div className="mt-2 rounded border border-rose-500/30 bg-rose-500/10 p-2">
-                                  <p className="text-[10px] font-bold text-rose-200 uppercase tracking-wider mb-1">Before</p>
-                                  <p className="text-[11px] text-slate-300 whitespace-pre-wrap">{edit.originalSnippet}</p>
-                                </div>
-                              ) : null}
-                              <div className="mt-2 rounded border border-emerald-500/30 bg-emerald-500/10 p-2">
-                                <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-wider mb-1">After</p>
-                                <p className="text-[11px] text-emerald-100 whitespace-pre-wrap">{edit.suggestedText}</p>
-                              </div>
-                              <div className="mt-2 flex items-center gap-2">
-                                <button
-                                  onClick={() => applyRecommendedChange(edit)}
-                                  className="px-2 py-1 rounded bg-amber-500 text-slate-950 text-[10px] font-bold hover:bg-amber-400"
-                                  data-testid={`button-apply-recommendation-${edit.id}`}
-                                >
-                                  OK, Apply Change
-                                </button>
-                                <button
-                                  onClick={() => dismissRecommendation(edit.id)}
-                                  className="px-2 py-1 rounded border border-slate-600 text-slate-300 text-[10px] font-bold hover:border-amber-500/35 hover:text-amber-200"
-                                  data-testid={`button-dismiss-recommendation-${edit.id}`}
-                                >
-                                  Not Okay
-                                </button>
-                              </div>
-                            </>
-                          )}
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-2">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-orange-300">Risk Alerts</p>
+                      <span className="text-[10px] font-bold text-orange-300">{riskResults.length}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {riskResults.length === 0 ? (
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                          <p className="text-[11px] text-emerald-300">No obvious drafting risks detected.</p>
                         </div>
-                      ))
-                    )}
+                      ) : (
+                        riskResults.map((risk) => (
+                          <div
+                            key={risk.id}
+                            className={`w-full text-left p-3 rounded-lg border ${
+                              risk.severity === "danger"
+                                ? "bg-red-500/5 border-red-500/20"
+                                : "bg-orange-500/5 border-orange-500/20"
+                            }`}
+                            data-testid={`risk-item-${risk.id}`}
+                          >
+                            <div className="flex items-start gap-2 mb-1">
+                              <AlertTriangle
+                                size={14}
+                                className={risk.severity === "danger" ? "text-red-400 mt-0.5" : "text-orange-400 mt-0.5"}
+                              />
+                              <h4 className="text-xs font-bold text-slate-200">{risk.title}</h4>
+                            </div>
+                            <p className="text-[11px] text-slate-400 leading-normal">{risk.detail}</p>
+                            <div className="mt-2 flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  dismissRisk(risk.id);
+                                  generateClause(risk.prompt);
+                                }}
+                                className="px-2 py-1 rounded bg-amber-500 text-slate-950 text-[10px] font-bold hover:bg-amber-400"
+                              >
+                                Fix with AI
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => dismissRisk(risk.id)}
+                                className="px-2 py-1 rounded border border-slate-600 text-slate-300 text-[10px] font-bold hover:border-amber-500/35 hover:text-amber-200"
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300">AI Recommended Changes</p>
+                      <span className="text-[10px] font-bold text-amber-300">{recommendations.length}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {recommendations.length === 0 ? (
+                        <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                          <p className="text-[11px] text-amber-200">No AI text changes suggested yet.</p>
+                        </div>
+                      ) : (
+                        recommendations.map((edit) => (
+                          <div
+                            key={edit.id}
+                            className="w-full p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
+                            data-testid={`recommendation-item-${edit.id}`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExpandedRecommendationId((prev) => (prev === edit.id ? null : edit.id));
+                              }}
+                              className="w-full text-left"
+                              data-testid={`button-toggle-recommendation-${edit.id}`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <h4 className="text-xs font-bold text-slate-200">{edit.title}</h4>
+                                <span
+                                  className={`text-[10px] font-bold uppercase ${
+                                    edit.impact === "high" ? "text-red-300" : edit.impact === "low" ? "text-emerald-300" : "text-amber-300"
+                                  }`}
+                                >
+                                  {edit.impact} impact
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-400 leading-normal mt-1">{edit.reason}</p>
+                            </button>
+                            {expandedRecommendationId === edit.id && (
+                              <>
+                                {edit.originalSnippet ? (
+                                  <div className="mt-2 rounded border border-rose-500/30 bg-rose-500/10 p-2">
+                                    <p className="text-[10px] font-bold text-rose-200 uppercase tracking-wider mb-1">Before</p>
+                                    <p className="text-[11px] text-slate-300 whitespace-pre-wrap">{edit.originalSnippet}</p>
+                                  </div>
+                                ) : null}
+                                <div className="mt-2 rounded border border-emerald-500/30 bg-emerald-500/10 p-2">
+                                  <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-wider mb-1">After</p>
+                                  <p className="text-[11px] text-emerald-100 whitespace-pre-wrap">{edit.suggestedText}</p>
+                                </div>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <button
+                                    onClick={() => applyRecommendedChange(edit)}
+                                    className="px-2 py-1 rounded bg-amber-500 text-slate-950 text-[10px] font-bold hover:bg-amber-400"
+                                    data-testid={`button-apply-recommendation-${edit.id}`}
+                                  >
+                                    OK, Apply Change
+                                  </button>
+                                  <button
+                                    onClick={() => dismissRecommendation(edit.id)}
+                                    className="px-2 py-1 rounded border border-slate-600 text-slate-300 text-[10px] font-bold hover:border-amber-500/35 hover:text-amber-200"
+                                    data-testid={`button-dismiss-recommendation-${edit.id}`}
+                                  >
+                                    Not Okay
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             <section>
               <div className="mb-3 flex items-center justify-between">
