@@ -2347,10 +2347,16 @@ async function resolveStatuteMentionFromLibrary(mention: DraftStatuteMention): P
 
 async function resolveLegalDraftReferences(
   text: string,
-  options?: { stripUnverifiedCaseCitations?: boolean },
+  options?: {
+    stripUnverifiedCaseCitations?: boolean;
+    unresolvedCaseCitationPlaceholder?: string;
+  },
 ): Promise<DraftReferenceResolutionResult> {
   const payload = createEmptyLegalDraftReferencePayload();
   const stripUnverifiedCaseCitations = options?.stripUnverifiedCaseCitations === true;
+  const unresolvedCaseCitationPlaceholder = normalizeSpaces(
+    String(options?.unresolvedCaseCitationPlaceholder || "[CASE CITATION REQUIRED]"),
+  );
   let cleanedText = String(text || "");
   if (!cleanedText.trim()) return { cleanedText: "", references: payload };
 
@@ -2376,7 +2382,7 @@ async function resolveLegalDraftReferences(
       .sort((a, b) => b.length - a.length);
     for (const raw of uniqueByLength) {
       const pattern = new RegExp(escapeRegExp(raw), "gi");
-      cleanedText = cleanedText.replace(pattern, "[CASE CITATION REMOVED - NOT FOUND IN INTERNAL KNOWLEDGE BASE]");
+      cleanedText = cleanedText.replace(pattern, unresolvedCaseCitationPlaceholder || "[CASE CITATION REQUIRED]");
     }
   }
 
@@ -6163,6 +6169,24 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
             }
           : LEGAL_DRAFTING_DOC_TYPES[selectedDocType as LegalDraftingDocType];
 
+        const legalKnowledgeQuery = trimTextToTokenBudget(
+          [
+            safePrompt,
+            profile.label,
+            jurisdiction || "",
+            baseDraftText.slice(0, 2200),
+            attachmentContext.slice(0, 2200),
+          ]
+            .filter((part) => String(part || "").trim().length > 0)
+            .join("\n"),
+          2600,
+        );
+        const legalKnowledgeContextRaw = await gatherKnowledgeContext(legalKnowledgeQuery, userId);
+        const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 3200);
+        const legalKnowledgeContextBlock = legalKnowledgeContext
+          ? legalKnowledgeContext
+          : "\n\nREFERENCE MATERIALS:\n- No high-confidence internal matches were found for this prompt.\n- If a citation is needed, use [CASE CITATION REQUIRED] instead of inventing one.";
+
         const typeLockInstruction = selectedDocType
           ? buildStrictTypeLockInstruction(selectedDocType, profile.label)
           : `Selected filing type lock (non-negotiable):
@@ -6198,6 +6222,8 @@ Targeted edit mode (strict):
 - No markdown symbols, no bullets, no JSON, no explanations.
 - Keep Pakistani court drafting language and formatting.
 - Do not invent facts, citations, or statutory sections.
+- Case law citation lock (absolute): use only citations found in the INTERNAL DATABASE REFERENCES block below.
+- If an internal citation is unavailable, use [CASE CITATION REQUIRED].
 
 Selected excerpt to replace:
 ${selectedSnippet}
@@ -6206,7 +6232,10 @@ Current full draft context:
 ${baseDraftText}
 
 Additional context files (if any):
-${attachmentContext || "[No attachment context provided]"}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
+${attachmentContext || "[No attachment context provided]"}
+
+INTERNAL DATABASE REFERENCES (AUTO-LOADED):
+${legalKnowledgeContextBlock}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
 
           const targetedResult = await callLegalDraftingAI(sysInstruction, targetedInput, Math.min(TOKEN_LIMITS.draft, 1800), {
             timeoutProfile: "analysis",
@@ -6248,6 +6277,7 @@ Court-ready formatting requirements (mandatory):
 - Do not invent facts, dates, orders, or citations; use placeholders like [______] where details are missing.
 - Case law citation rule (strict): include only citations that are real and verifiable from Al Wakeelo internal Knowledge Base; if unsure, use [CASE CITATION REQUIRED].
 - Statute citation rule (strict): cite only authentic Pakistani statute provisions; do not invent section/article numbers.
+- Use only citations available in the INTERNAL DATABASE REFERENCES block below. Do not cite any authority outside that block.
 - End with signature block (party/counsel) and place/date.
 - Keep spacing court-ready: no trailing spaces, no markdown bullets, and exactly clean paragraph breaks between sections.
 
@@ -6265,6 +6295,9 @@ Jurisdiction/Forum (if provided): ${jurisdiction || "Pakistan"}
 
 Current draft / case history context:
 ${draftContextForGeneration || "[No draft/context provided]"}
+
+INTERNAL DATABASE REFERENCES (AUTO-LOADED):
+${legalKnowledgeContextBlock}
 
 Reference skeleton (adapt to facts):
 ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
@@ -6291,7 +6324,11 @@ Repair instructions:
 - Rewrite the full pleading in proper Pakistani court-ready format.
 - Keep the same legal objective and facts; do not invent new facts.
 - Keep clean spacing and section breaks; no markdown symbols.
+- Keep citations restricted to INTERNAL DATABASE REFERENCES only; if unavailable use [CASE CITATION REQUIRED].
 - Return plain pleading text only.
+
+INTERNAL DATABASE REFERENCES (AUTO-LOADED):
+${legalKnowledgeContextBlock}
 
 Original draft:
 ${draftedText}`;
@@ -6311,6 +6348,7 @@ ${draftedText}`;
 
         const referenceResolution = await resolveLegalDraftReferences(draftedText, {
           stripUnverifiedCaseCitations: true,
+          unresolvedCaseCitationPlaceholder: "[CASE CITATION REQUIRED]",
         });
         draftedText = referenceResolution.cleanedText;
         if (!draftedText) {
