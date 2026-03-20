@@ -76,6 +76,18 @@ export default function AuthPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 404 && (data?.code === "google_account_not_found" || typeof data?.message === "string")) {
+          setMode("register");
+          setPassword("");
+          if (typeof data?.email === "string" && data.email.trim()) {
+            setEmail(data.email.trim());
+          }
+          toast({
+            title: "Sign up required",
+            description: "No account exists for this Google email yet. Please complete sign up first.",
+          });
+          return;
+        }
         toast({
           title: "Google sign-in failed",
           description: data.message || "Something went wrong",
