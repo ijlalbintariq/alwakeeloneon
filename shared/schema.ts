@@ -127,6 +127,9 @@ export const statutes = pgTable("statutes", {
 export const caseLaw = pgTable("case_law", {
   id: serial("id").primaryKey(),
   citation: text("citation").notNull(),
+  citationYear: integer("citation_year"),
+  citationReport: text("citation_report"),
+  citationPage: integer("citation_page"),
   court: text("court").notNull(),
   title: text("title").notNull(),
   summary: text("summary").notNull(),

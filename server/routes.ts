@@ -1578,6 +1578,7 @@ async function applyAlWakeeloSafetyGuardrails(content: string): Promise<string> 
 }
 
 type CitationParts = { year: number; journalCode: string; page: number };
+type CaseLawCitationQueryParts = { year: number; report: string; page: number };
 
 function normalizeCitationToken(token: string): string {
   return String(token || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
@@ -1625,6 +1626,35 @@ function parseCitationParts(citation: string, journalCodeMap: Map<string, string
   if (!Number.isInteger(page) || page < 1) return null;
 
   return { year, journalCode, page };
+}
+
+function parseCaseLawCitationQuery(query: string): CaseLawCitationQueryParts | null {
+  const raw = String(query || "").trim();
+  if (!raw) return null;
+  const normalized = raw
+    .replace(/[()[\],;:]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const yearFirst =
+    normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9]{1,12})(?:\s+[A-Za-z.]{2,15}){0,2}\s+(\d{1,6})\b/i);
+  if (yearFirst) {
+    const year = Number(yearFirst[1]);
+    const page = Number(yearFirst[3]);
+    const report = normalizeCitationToken(yearFirst[2]);
+    if (Number.isInteger(year) && Number.isInteger(page) && page > 0 && report) {
+      return { year, report, page };
+    }
+  }
+
+  const reportFirst =
+    normalized.match(/\b([A-Za-z][A-Za-z0-9]{1,12})\s+((?:19|20)\d{2})(?:\s+[A-Za-z.]{2,15}){0,2}\s+(\d{1,6})\b/i);
+  if (!reportFirst) return null;
+  const report = normalizeCitationToken(reportFirst[1]);
+  const year = Number(reportFirst[2]);
+  const page = Number(reportFirst[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1 || !report) return null;
+  return { year, report, page };
 }
 
 function resolveCourtId(courtRaw: string, courts: Array<{ id: number; code: string; name: string }>): number | null {
@@ -4852,10 +4882,36 @@ RAG POLICY (STRICT):
     if (!userId) return res.sendStatus(401);
     try {
       const query = ((req.query.q as string) || "").trim();
-      if (!query) return res.json([]);
       const limitRaw = Number(req.query.limit);
       const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, Math.floor(limitRaw))) : 25;
-      const results = await storage.searchCaseLaw(query, limit);
+      const yearRaw = Number(req.query.year);
+      const pageRaw = Number(req.query.page);
+      const reportRaw = normalizeCitationToken(String(req.query.report || req.query.journal || "").trim());
+      const courtRaw = String(req.query.court || "").trim();
+      const sortRaw = String(req.query.sort || "").trim().toLowerCase();
+      const parsedCitation = parseCaseLawCitationQuery(query);
+
+      const year = Number.isInteger(yearRaw) && yearRaw >= 1900 && yearRaw <= 2200
+        ? yearRaw
+        : (parsedCitation?.year ?? undefined);
+      const page = Number.isInteger(pageRaw) && pageRaw > 0
+        ? pageRaw
+        : (parsedCitation?.page ?? undefined);
+      const report = reportRaw || parsedCitation?.report || undefined;
+      const sort = sortRaw === "latest" ? "latest" : "relevance";
+
+      if (!query && !year && !report && !page && !courtRaw) {
+        return res.json([]);
+      }
+
+      const results = await storage.searchCaseLaw(query, limit, {
+        year,
+        report,
+        page,
+        court: courtRaw || undefined,
+        sort,
+        parsedCitation,
+      });
       res.json(results);
     } catch (err) {
       console.error("Error searching case law:", err);
@@ -7233,13 +7289,36 @@ The user has attached the following documents for your reference. Analyze them c
       const allowed = await checkUsageLimit(userId, "search-judgments", res);
       if (!allowed) return;
 
-      const { query } = req.body as { query: string };
-      const safeQuery = (query || "").trim();
-      if (!safeQuery) {
-        return res.status(400).json({ message: "Query is required" });
+      const body = (req.body || {}) as Record<string, unknown>;
+      const safeQuery = String(body.query || "").trim();
+      const yearRaw = Number(body.year);
+      const pageRaw = Number(body.page);
+      const reportRaw = normalizeCitationToken(String(body.report || body.journal || "").trim());
+      const courtRaw = String(body.court || "").trim();
+      const sortRaw = String(body.sort || "").trim().toLowerCase();
+      const parsedCitation = parseCaseLawCitationQuery(safeQuery);
+
+      const year = Number.isInteger(yearRaw) && yearRaw >= 1900 && yearRaw <= 2200
+        ? yearRaw
+        : (parsedCitation?.year ?? undefined);
+      const page = Number.isInteger(pageRaw) && pageRaw > 0
+        ? pageRaw
+        : (parsedCitation?.page ?? undefined);
+      const report = reportRaw || parsedCitation?.report || undefined;
+      const sort = sortRaw === "latest" ? "latest" : "relevance";
+
+      if (!safeQuery && !year && !report && !page && !courtRaw) {
+        return res.status(400).json({ message: "Query or citation fields are required" });
       }
 
-      const results = await storage.searchCaseLaw(safeQuery, 20);
+      const results = await storage.searchCaseLaw(safeQuery, 20, {
+        year,
+        report,
+        page,
+        court: courtRaw || undefined,
+        sort,
+        parsedCitation,
+      });
       const verified = results.map((j) => ({
         citation: j.citation,
         court: j.court,

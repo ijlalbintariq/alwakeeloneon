@@ -88,14 +88,35 @@ function formatDecisionDate(value: string | null): string {
 }
 
 function parseCitationFromText(value: string): { year: number; journal: string; page: number } | null {
-  const match = value.trim().match(/^(\d{4})\s+([A-Za-z]+)\s+(\d{1,6})$/);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const page = Number(match[3]);
+  const raw = value.trim();
+  if (!raw) return null;
+  const normalized = raw
+    .replace(/[()[\],;:]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const yearFirst =
+    normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9]{1,12})(?:\s+[A-Za-z.]{2,15}){0,2}\s+(\d{1,6})\b/i);
+  if (yearFirst) {
+    const year = Number(yearFirst[1]);
+    const page = Number(yearFirst[3]);
+    if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1) return null;
+    return {
+      year,
+      journal: yearFirst[2].toUpperCase(),
+      page,
+    };
+  }
+
+  const reportFirst =
+    normalized.match(/\b([A-Za-z][A-Za-z0-9]{1,12})\s+((?:19|20)\d{2})(?:\s+[A-Za-z.]{2,15}){0,2}\s+(\d{1,6})\b/i);
+  if (!reportFirst) return null;
+  const year = Number(reportFirst[2]);
+  const page = Number(reportFirst[3]);
   if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1) return null;
   return {
     year,
-    journal: match[2].toUpperCase(),
+    journal: reportFirst[1].toUpperCase(),
     page,
   };
 }
@@ -123,8 +144,10 @@ export default function JudgmentSearchPage() {
   const [showFullText, setShowFullText] = useState<Record<number, boolean>>({});
 
   const [year, setYear] = useState<number>(currentYear);
+  const [keywordYear, setKeywordYear] = useState<string>("");
   const [journal, setJournal] = useState<string>("");
   const [page, setPage] = useState<string>("");
+  const [keywordPage, setKeywordPage] = useState<string>("");
   const [court, setCourt] = useState<string>("");
   const [searchMode, setSearchMode] = useState<"keyword" | "citation">("keyword");
   const [keywordSort, setKeywordSort] = useState<"relevance" | "latest">("relevance");
@@ -156,8 +179,21 @@ export default function JudgmentSearchPage() {
     setSummaries({});
     setExpandedSummary(null);
 
+    const keywordYearValue = Number(keywordYear);
+    const keywordPageValue = Number(keywordPage);
+    const hasKeywordYear = Number.isInteger(keywordYearValue) && keywordYearValue >= 1947;
+    const hasKeywordPage = Number.isInteger(keywordPageValue) && keywordPageValue > 0;
+    const requestParams = new URLSearchParams({
+      q: searchQuery.trim(),
+      sort: keywordSort,
+    });
+    if (journal.trim()) requestParams.set("report", journal.trim());
+    if (court.trim()) requestParams.set("court", court.trim());
+    if (hasKeywordYear) requestParams.set("year", String(keywordYearValue));
+    if (hasKeywordPage) requestParams.set("page", String(keywordPageValue));
+
     try {
-      const localRes = await fetch(`/api/case-law/search?q=${encodeURIComponent(searchQuery)}`);
+      const localRes = await fetch(`/api/case-law/search?${requestParams.toString()}`);
       const local = await localRes.json();
       setLocalResults(local.map((r: any) => ({ ...r, source: "internal" })));
     } catch {
@@ -167,7 +203,14 @@ export default function JudgmentSearchPage() {
 
     setIsExternalLoading(true);
     try {
-      const extRes = await apiRequest("POST", "/api/ai/search-judgments", { query: searchQuery });
+      const extRes = await apiRequest("POST", "/api/ai/search-judgments", {
+        query: searchQuery.trim(),
+        report: journal.trim() || undefined,
+        court: court.trim() || undefined,
+        year: hasKeywordYear ? keywordYearValue : undefined,
+        page: hasKeywordPage ? keywordPageValue : undefined,
+        sort: keywordSort,
+      });
       const ext = await extRes.json();
       const items = Array.isArray(ext) ? ext : ext.judgments || ext.results || [];
       setExternalResults(items.map((r: any) => ({ ...r, source: "external" })));
@@ -449,7 +492,7 @@ export default function JudgmentSearchPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Jurisdiction</span>
                 <select
@@ -503,17 +546,29 @@ export default function JudgmentSearchPage() {
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Year</span>
                 <select
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
+                  value={keywordYear}
+                  onChange={(e) => setKeywordYear(e.target.value)}
                   className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
                 >
-                  <option value={currentYear + 1}>All Years</option>
+                  <option value="">All Years</option>
                   {years.map((y) => (
-                    <option key={y} value={y}>
+                    <option key={y} value={String(y)}>
                       {y}
                     </option>
                   ))}
                 </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Page</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={keywordPage}
+                  onChange={(e) => setKeywordPage(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  placeholder="e.g. 184"
+                />
               </label>
             </div>
 
