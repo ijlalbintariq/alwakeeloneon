@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, threads, TIER_LIMITS, type CaseLaw } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
 import { syncGithubKnowledge } from "./github-sync";
@@ -2870,10 +2870,12 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
 async function seedLegalData() {
   try {
-    const existingStatutes = await storage.getAllStatutes();
-    const existingCaseLaw = await storage.getAllCaseLaw();
+    const [statutesCountRow] = await db.select({ total: count() }).from(statutes);
+    const [caseLawCountRow] = await db.select({ total: count() }).from(caseLaw);
+    const existingStatutesCount = Number(statutesCountRow?.total || 0);
+    const existingCaseLawCount = Number(caseLawCountRow?.total || 0);
 
-    if (existingStatutes.length === 0) {
+    if (existingStatutesCount === 0) {
       const statuteData = [
         { shortTitle: "PPC 302", section: "302", description: "Punishment of Qatl-i-amd (Intentional Murder)", punishment: "Death, Imprisonment for Life, or imprisonment up to 25 years (Tazir)" },
         { shortTitle: "PPC 420", section: "420", description: "Cheating and dishonestly inducing delivery of property", punishment: "Imprisonment up to 7 years and fine" },
@@ -2894,7 +2896,7 @@ async function seedLegalData() {
       console.log("Seeded statutes table with Pakistani legal data");
     }
 
-    if (existingCaseLaw.length === 0) {
+    if (existingCaseLawCount === 0) {
       const caseLawData = [
         { citation: "2023 SCMR 1450 & 2023 PLJ 55", court: "Supreme Court of Pakistan", title: "Bail in Cheque Dishonour Cases", summary: "Bail in Cheque Dishonour Cases", keywords: ["bail", "489-f", "cheque", "dishonour", "financial"] },
         { citation: "2021 YLR 405 & 2021 PLJ 112", court: "Lahore High Court", title: "Custody of Minors (Welfare of Minor)", summary: "Custody of Minors (Welfare of Minor)", keywords: ["custody", "minor", "guardian", "mother", "hizanat", "welfare"] },
