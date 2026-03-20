@@ -350,6 +350,8 @@ export function registerAuthRoutes(app: Express): void {
         }
       } else {
         return res.status(404).json({
+          code: "google_account_not_found",
+          email,
           message: "No account found for this Google email. Please sign up first, then use Google sign-in.",
         });
       }
