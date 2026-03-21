@@ -60,9 +60,6 @@ export default function CitationSearchPage() {
         }
         const data = (await res.json()) as Journal[];
         setJournals(data);
-        if (!journal && data.length > 0) {
-          setJournal(data[0].code);
-        }
       } catch (err: any) {
         setError(err?.message || "Failed to load journals");
       } finally {
@@ -79,10 +76,6 @@ export default function CitationSearchPage() {
     setError(null);
 
     const pageNumber = Number(page);
-    if (!journal.trim()) {
-      setError("Please select a journal.");
-      return;
-    }
     if (!Number.isInteger(pageNumber) || pageNumber < 1) {
       setError("Page must be a positive number.");
       return;
@@ -92,9 +85,9 @@ export default function CitationSearchPage() {
     try {
       const query = new URLSearchParams({
         year: String(year),
-        journal,
         page: String(pageNumber),
       });
+      if (journal.trim()) query.set("journal", journal.trim());
       if (court.trim()) query.set("court", court.trim());
 
       const res = await apiRequest("GET", `/api/citation-search?${query.toString()}`);
@@ -108,7 +101,7 @@ export default function CitationSearchPage() {
     }
   }
 
-  const citationPreview = `${year} ${journal || "JOURNAL"} ${page || "PAGE"}`;
+  const citationPreview = `${year} ${journal || "ALL"} ${page || "PAGE"}`;
 
   return (
     <div className="space-y-8 fade-in" data-testid="citation-search-page">
@@ -151,6 +144,7 @@ export default function CitationSearchPage() {
               data-testid="select-citation-journal"
             >
               {journals.length === 0 ? <option value="">No journals available</option> : null}
+              {journals.length > 0 ? <option value="">All Journals</option> : null}
               {journals.map((j) => (
                 <option key={j.id} value={j.code}>
                   {j.code} - {j.name}

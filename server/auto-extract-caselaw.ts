@@ -12,10 +12,20 @@ const MAX_TOTAL_QUEUE_CHARS = envInt("AUTO_EXTRACT_MAX_TOTAL_QUEUE_CHARS", proce
 
 interface ExtractedCase {
   citation: string;
+  citationRole: "primary" | "cited";
   court: string;
   title: string;
   summary: string;
   keywords: string[];
+}
+
+interface CitationMention {
+  citation: string;
+  index: number;
+}
+
+interface ExtractAndSaveOptions {
+  allowExistingUpdates?: boolean;
 }
 
 interface QueueItem {
@@ -141,8 +151,16 @@ function normalizeCitation(raw: string): string {
   return out.trim();
 }
 
-function extractCitationsFromText(text: string): string[] {
-  const citationSet = new Set<string>();
+function normalizeCitationKey(citation: string): string {
+  return normalizeCitation(citation).toLowerCase();
+}
+
+function escapeRegex(value: string): string {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractCitationMentionsFromText(text: string): CitationMention[] {
+  const mentions = new Map<string, CitationMention>();
 
   for (const pattern of CITATION_PATTERNS) {
     pattern.lastIndex = 0;
@@ -150,12 +168,42 @@ function extractCitationsFromText(text: string): string[] {
     while ((match = pattern.exec(text)) !== null) {
       const normalized = normalizeCitation(match[0]);
       if (normalized.length >= 8) {
-        citationSet.add(normalized);
+        const index = Number(match.index || 0);
+        const existing = mentions.get(normalized);
+        if (!existing || index < existing.index) {
+          mentions.set(normalized, { citation: normalized, index });
+        }
       }
     }
   }
 
-  return Array.from(citationSet);
+  return Array.from(mentions.values()).sort((a, b) => a.index - b.index);
+}
+
+function inferPrimaryCitation(text: string, mentions: CitationMention[]): string | null {
+  if (mentions.length === 0) return null;
+  const headWindow = text.slice(0, Math.min(text.length, 4000));
+
+  for (const mention of mentions) {
+    const citationEscaped = escapeRegex(mention.citation);
+    const explicitPattern = new RegExp(
+      `(?:reported\\s+as|case\\s+reported\\s+at|citation\\s*[:\\-])\\s*${citationEscaped}`,
+      "i",
+    );
+    if (explicitPattern.test(headWindow)) {
+      return mention.citation;
+    }
+  }
+
+  const captionIndex = headWindow.search(/\b(?:vs?\.?|versus|v\.?)\b/i);
+  if (captionIndex >= 0) {
+    const nearCaption = mentions.find((mention) => mention.index <= captionIndex + 1200);
+    if (nearCaption) return nearCaption.citation;
+  }
+
+  const topMention = mentions.find((mention) => mention.index < 1600);
+  if (topMention) return topMention.citation;
+  return mentions[0].citation;
 }
 
 function inferCourt(citation: string): string {
@@ -175,9 +223,9 @@ function inferCourt(citation: string): string {
   return "";
 }
 
-function findTitleNearCitation(text: string, citation: string): string {
+function findTitleNearCitation(text: string, citation: string, hintIndex?: number): string {
   const idx = text.indexOf(citation);
-  const searchIdx = idx !== -1 ? idx : 0;
+  const searchIdx = idx !== -1 ? idx : (Number.isInteger(hintIndex) ? Number(hintIndex) : 0);
 
   const searchStart = Math.max(0, searchIdx - 500);
   const searchEnd = Math.min(text.length, searchIdx + citation.length + 500);
@@ -205,11 +253,12 @@ function findTitleNearCitation(text: string, citation: string): string {
   return "";
 }
 
-function extractSummaryNearCitation(text: string, citation: string): string {
+function extractSummaryNearCitation(text: string, citation: string, hintIndex?: number): string {
   const idx = text.indexOf(citation);
-  if (idx === -1) return "";
+  const searchIdx = idx !== -1 ? idx : (Number.isInteger(hintIndex) ? Number(hintIndex) : -1);
+  if (searchIdx === -1) return "";
 
-  const afterCitation = text.substring(idx + citation.length, idx + citation.length + 1000);
+  const afterCitation = text.substring(searchIdx + citation.length, searchIdx + citation.length + 1000);
 
   const cleaned = afterCitation.replace(/^\s*[,;:\-–—.)\]]+\s*/, "");
 
@@ -228,10 +277,11 @@ function extractSummaryNearCitation(text: string, citation: string): string {
   return "";
 }
 
-function extractKeywords(text: string, citation: string): string[] {
+function extractKeywords(text: string, citation: string, hintIndex?: number): string[] {
   const idx = text.indexOf(citation);
-  const contextStart = Math.max(0, (idx !== -1 ? idx : 0) - 500);
-  const contextEnd = Math.min(text.length, (idx !== -1 ? idx : 0) + citation.length + 500);
+  const searchIdx = idx !== -1 ? idx : (Number.isInteger(hintIndex) ? Number(hintIndex) : 0);
+  const contextStart = Math.max(0, searchIdx - 500);
+  const contextEnd = Math.min(text.length, searchIdx + citation.length + 500);
   const context = text.substring(contextStart, contextEnd).toLowerCase();
 
   const keywords = new Set<string>();
@@ -257,18 +307,59 @@ function extractKeywords(text: string, citation: string): string[] {
   return Array.from(keywords).slice(0, 8);
 }
 
-export function nlpExtractCases(text: string): ExtractedCase[] {
-  const citations = extractCitationsFromText(text);
-  const cases: ExtractedCase[] = [];
+export function assignCitationRolesToCases(
+  text: string,
+  cases: Array<Pick<ExtractedCase, "citation" | "court" | "title" | "summary" | "keywords">>,
+): ExtractedCase[] {
+  if (!Array.isArray(cases) || cases.length === 0) return [];
 
-  for (const citation of citations) {
+  const mentions = extractCitationMentionsFromText(text || "");
+  const inferredPrimary = inferPrimaryCitation(text || "", mentions);
+  const inferredPrimaryKey = inferredPrimary ? normalizeCitationKey(inferredPrimary) : "";
+
+  let assignedPrimary = false;
+  const mapped = cases.map((item) => {
+    const normalizedCitation = normalizeCitation(String(item.citation || ""));
+    const citation = normalizedCitation || String(item.citation || "").trim();
+    const citationKey = normalizeCitationKey(citation);
+    const isPrimary = !assignedPrimary && !!citationKey && citationKey === inferredPrimaryKey;
+    if (isPrimary) assignedPrimary = true;
+    return {
+      citation,
+      citationRole: isPrimary ? "primary" : "cited",
+      court: String(item.court || ""),
+      title: String(item.title || ""),
+      summary: String(item.summary || ""),
+      keywords: Array.isArray(item.keywords) ? item.keywords : [],
+    } as ExtractedCase;
+  });
+
+  if (!assignedPrimary && mapped.length > 0) {
+    mapped[0].citationRole = "primary";
+  }
+  return mapped;
+}
+
+export function nlpExtractCases(text: string): ExtractedCase[] {
+  const mentions = extractCitationMentionsFromText(text);
+  const cases: ExtractedCase[] = [];
+  const inferredPrimary = inferPrimaryCitation(text, mentions);
+  const inferredPrimaryKey = inferredPrimary ? normalizeCitationKey(inferredPrimary) : "";
+  let assignedPrimary = false;
+
+  for (const mention of mentions) {
+    const citation = mention.citation;
     const court = inferCourt(citation);
-    const title = findTitleNearCitation(text, citation);
-    const summary = extractSummaryNearCitation(text, citation);
-    const keywords = extractKeywords(text, citation);
+    const title = findTitleNearCitation(text, citation, mention.index);
+    const summary = extractSummaryNearCitation(text, citation, mention.index);
+    const keywords = extractKeywords(text, citation, mention.index);
+    const citationKey = normalizeCitationKey(citation);
+    const isPrimary = !assignedPrimary && citationKey === inferredPrimaryKey;
+    if (isPrimary) assignedPrimary = true;
 
     cases.push({
       citation,
+      citationRole: isPrimary ? "primary" : "cited",
       court,
       title: title || `Case reported at ${citation}`,
       summary: summary || `Case cited as ${citation}`,
@@ -276,6 +367,9 @@ export function nlpExtractCases(text: string): ExtractedCase[] {
     });
   }
 
+  if (!assignedPrimary && cases.length > 0) {
+    cases[0].citationRole = "primary";
+  }
   return cases;
 }
 
@@ -326,29 +420,44 @@ async function processQueue(): Promise<void> {
   isProcessing = false;
 }
 
-async function extractAndSave(text: string, source: string, sourceDocId?: number, sourceType?: string, sourceFilename?: string): Promise<void> {
+async function extractAndSave(
+  text: string,
+  source: string,
+  sourceDocId?: number,
+  sourceType?: string,
+  sourceFilename?: string,
+  options: ExtractAndSaveOptions = {},
+): Promise<{ extracted: number; saved: number; skippedKnown: number }> {
   try {
     const extracted = nlpExtractCases(text);
 
     if (extracted.length === 0) {
-      return;
+      return { extracted: 0, saved: 0, skippedKnown: 0 };
     }
 
     const newCases: ExtractedCase[] = [];
+    let skippedKnown = 0;
+    const allowExistingUpdates = !!options.allowExistingUpdates;
     for (const c of extracted) {
       if (!c.citation || !c.title) continue;
       const key = c.citation.toLowerCase().trim();
-      if (knownCitations.has(key)) continue;
-      knownCitations.add(key);
+      if (!allowExistingUpdates && knownCitations.has(key)) {
+        skippedKnown += 1;
+        continue;
+      }
+      if (!knownCitations.has(key)) {
+        knownCitations.add(key);
+      }
       newCases.push(c);
     }
 
     if (newCases.length === 0) {
-      return;
+      return { extracted: extracted.length, saved: 0, skippedKnown };
     }
 
     const entries = newCases.map(c => ({
       citation: c.citation.trim(),
+      citationRole: c.citationRole,
       court: (c.court || "").trim(),
       title: c.title.trim(),
       summary: (c.summary || "").trim(),
@@ -360,8 +469,10 @@ async function extractAndSave(text: string, source: string, sourceDocId?: number
 
     await storage.bulkCreateCaseLaw(entries);
     console.log(`[Auto-Extract] Added ${entries.length} new case law entries from: ${source}`);
+    return { extracted: extracted.length, saved: entries.length, skippedKnown };
   } catch (err: any) {
     console.error(`[Auto-Extract] Error processing ${source}:`, err?.message || err);
+    return { extracted: 0, saved: 0, skippedKnown: 0 };
   }
 }
 
@@ -442,4 +553,189 @@ export async function extractFromAllExistingSources(): Promise<void> {
   } catch (err: any) {
     console.error("[Auto-Extract] Error scanning sources:", err?.message || err);
   }
+}
+
+export type CaseLawRoleReindexProgress = {
+  running: boolean;
+  source: "github" | "admin" | "statute" | "user";
+  totalDocuments: number;
+  processedDocuments: number;
+  extractedCitations: number;
+  savedCitations: number;
+  failedDocuments: number;
+  stopped: boolean;
+  done: boolean;
+};
+
+export async function reindexCaseLawFromAllExistingSources(args?: {
+  shouldStop?: () => boolean;
+  onProgress?: (progress: CaseLawRoleReindexProgress) => void;
+}): Promise<{
+  totalDocuments: number;
+  processedDocuments: number;
+  extractedCitations: number;
+  savedCitations: number;
+  failedDocuments: number;
+  stopped: boolean;
+}> {
+  const shouldStop = typeof args?.shouldStop === "function" ? args.shouldStop : () => false;
+  const onProgress = typeof args?.onProgress === "function" ? args.onProgress : undefined;
+
+  await loadKnownCitations();
+  await storage.resetAllCaseLawCitationRolesToCited();
+
+  const githubDocs = await storage.getAllGithubKnowledge();
+  const adminFirstPage = await storage.getAdminKnowledgePage(1, 0);
+  const statuteFirstPage = await storage.getStatuteDocumentsPage(1, 0);
+  const userDocs = await storage.getAllDocuments();
+  const totalDocuments = Number(githubDocs.length || 0)
+    + Number(adminFirstPage.total || 0)
+    + Number(statuteFirstPage.total || 0)
+    + Number(userDocs.length || 0);
+
+  let processedDocuments = 0;
+  let extractedCitations = 0;
+  let savedCitations = 0;
+  let failedDocuments = 0;
+  let stopped = false;
+  let activeSource: CaseLawRoleReindexProgress["source"] = "github";
+
+  const publish = (done: boolean = false) => {
+    onProgress?.({
+      running: !done,
+      source: activeSource,
+      totalDocuments,
+      processedDocuments,
+      extractedCitations,
+      savedCitations,
+      failedDocuments,
+      stopped,
+      done,
+    });
+  };
+
+  const processDocument = async (
+    content: string,
+    source: string,
+    sourceDocId?: number,
+    sourceType?: string,
+    sourceFilename?: string,
+  ) => {
+    if (shouldStop()) {
+      stopped = true;
+      return;
+    }
+    const normalized = String(content || "").replace(/\x00/g, "").trim();
+    if (normalized.length < 200) {
+      processedDocuments += 1;
+      publish();
+      return;
+    }
+    try {
+      const result = await extractAndSave(
+        normalized,
+        source,
+        sourceDocId,
+        sourceType,
+        sourceFilename,
+        { allowExistingUpdates: true },
+      );
+      extractedCitations += Number(result.extracted || 0);
+      savedCitations += Number(result.saved || 0);
+    } catch {
+      failedDocuments += 1;
+    } finally {
+      processedDocuments += 1;
+      publish();
+    }
+  };
+
+  // GitHub knowledge
+  activeSource = "github";
+  for (const doc of githubDocs) {
+    if (stopped) break;
+    await processDocument(doc.content || "", `github:${doc.filename}`, doc.id, "github", doc.filename);
+  }
+
+  // Admin knowledge vault
+  if (!stopped) {
+    activeSource = "admin";
+    let adminOffset = 0;
+    const PAGE_SIZE = 100;
+    while (true) {
+      if (shouldStop()) {
+        stopped = true;
+        break;
+      }
+      const page = await storage.getAdminKnowledgePage(PAGE_SIZE, adminOffset);
+      if (page.items.length === 0) break;
+      for (const row of page.items) {
+        if (shouldStop()) {
+          stopped = true;
+          break;
+        }
+        const doc = await storage.getAdminKnowledgeById(row.id);
+        if (!doc) {
+          processedDocuments += 1;
+          publish();
+          continue;
+        }
+        await processDocument(doc.content || "", `admin:${doc.filename}`, doc.id, "admin", doc.filename);
+      }
+      adminOffset += page.items.length;
+      if (!page.hasMore || stopped) break;
+    }
+  }
+
+  // Statute library documents
+  if (!stopped) {
+    activeSource = "statute";
+    let statuteOffset = 0;
+    const PAGE_SIZE = 100;
+    while (true) {
+      if (shouldStop()) {
+        stopped = true;
+        break;
+      }
+      const page = await storage.getStatuteDocumentsPage(PAGE_SIZE, statuteOffset);
+      if (page.items.length === 0) break;
+      for (const row of page.items) {
+        if (shouldStop()) {
+          stopped = true;
+          break;
+        }
+        const doc = await storage.getStatuteDocument(row.id);
+        if (!doc) {
+          processedDocuments += 1;
+          publish();
+          continue;
+        }
+        await processDocument(doc.content || "", `statute:${doc.filename}`, doc.id, "statute", doc.filename);
+      }
+      statuteOffset += page.items.length;
+      if (!page.hasMore || stopped) break;
+    }
+  }
+
+  // User knowledge vault documents
+  if (!stopped) {
+    activeSource = "user";
+    for (const doc of userDocs) {
+      if (shouldStop()) {
+        stopped = true;
+        break;
+      }
+      await processDocument(doc.content || "", `user:${doc.title}`, doc.id, "user", doc.title || undefined);
+    }
+  }
+
+  publish(true);
+  return {
+    totalDocuments,
+    processedDocuments,
+    extractedCitations,
+    savedCitations,
+    failedDocuments,
+    stopped,
+  };
 }
