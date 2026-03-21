@@ -144,6 +144,9 @@ type CaseLawSourceDocument = {
   filename?: string;
   sourceType?: string;
   citation?: string;
+  mimeType?: string | null;
+  originalFileAvailable?: boolean;
+  viewUrl?: string | null;
   message?: string;
 };
 
@@ -1060,8 +1063,15 @@ export default function LegalDraftingPage() {
         throw new Error(message || "Could not open case source document.");
       }
       const data = (await response.json()) as CaseLawSourceDocument;
-      if (!data?.found || !data.content) {
+      if (!data?.found) {
         throw new Error(data?.message || "Source document not found for this citation.");
+      }
+      if (data.viewUrl) {
+        window.open(data.viewUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+      if (!data.content) {
+        throw new Error("Source document is linked but no preview text is available.");
       }
       setCaseSourceDoc(data);
     } catch (err: any) {

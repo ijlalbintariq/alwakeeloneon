@@ -32,7 +32,21 @@ let queuedChars = 0;
 const knownCitations = new Set<string>();
 let knownCitationsLoaded = false;
 
-const REPORT_ABBRS = "PLD|SCMR|YLR|MLD|CLC|PCRLJ|PCr\\.?LJ|PLJ|PLC|NLR|PSC|ALD|KLR|PTD|PTCL|PLS|GBLR|Tax";
+const REPORT_CODES = [
+  "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
+  "PSC", "ALD", "KLR", "PTD", "PTCL", "PLS", "GBLR", "TAX", "CLD", "SLR",
+] as const;
+
+function buildFlexibleReportPattern(code: string): string {
+  const letters = String(code || "").replace(/[^A-Za-z]/g, "").split("");
+  return letters.map((ch) => `${ch}\\.?`).join("\\s*");
+}
+
+const REPORT_ABBRS = REPORT_CODES.map((code) => buildFlexibleReportPattern(code)).join("|");
+const REPORT_NORMALIZERS = REPORT_CODES.map((code) => ({
+  canonical: code,
+  regex: new RegExp(`\\b${buildFlexibleReportPattern(code)}\\b`, "gi"),
+}));
 
 const COURT_NAMES = "Supreme\\s+Court|S\\.?C\\.?|Lah\\.?|Lahore|Sindh|Kar\\.?|Karachi|Pesh\\.?|Peshawar|Bal\\.?|Balochistan|Quetta|Islamabad|ISB|Federal\\s+Shariat|FSC|Rawalpindi|Multan|Bahawalpur|D\\.?B\\.?|F\\.?B\\.?|Tribunal|ATIR|Appellate\\s+Tribunal";
 
@@ -118,11 +132,13 @@ const LEGAL_KEYWORDS_MAP: Record<string, string[]> = {
 };
 
 function normalizeCitation(raw: string): string {
-  return raw
+  let out = raw
     .replace(/\s+/g, " ")
-    .replace(/[()]/g, "")
-    .replace(/PCr\.?LJ/gi, "PCRLJ")
-    .trim();
+    .replace(/[()]/g, "");
+  for (const normalizer of REPORT_NORMALIZERS) {
+    out = out.replace(normalizer.regex, normalizer.canonical);
+  }
+  return out.trim();
 }
 
 function extractCitationsFromText(text: string): string[] {
@@ -169,7 +185,7 @@ function findTitleNearCitation(text: string, citation: string): string {
 
   const titlePatterns = [
     /(?:(?:Mst\.?|Dr\.?|Mr\.?|Mrs\.?|M\/s\.?|Govt\.?|Government|State|Federation|Province|Commissioner|Secretary|Chairman|Inspector|SHO|DSP|SSP|DPO|Advocate|Barrister)\s+)?([A-Z][\w.']+(?:\s+(?:and|&)\s+(?:others?|another|etc\.?))?(?:\s+[\w.']+)*)\s+(?:vs?\.?|versus|Vs?\.?|V\.?S\.?)\s+(?:(?:Mst\.?|Dr\.?|Mr\.?|Mrs\.?|M\/s\.?|Govt\.?|Government|State|Federation|Province|Commissioner|Secretary|Chairman|Inspector|SHO|DSP|SSP|DPO|Advocate|Barrister)\s+)?([A-Z][\w.']+(?:\s+(?:and|&)\s+(?:others?|another|etc\.?))?(?:\s+[\w.']+)*)/gi,
-    /([A-Z][\w\s.']+?)\s+(?:vs?\.?|versus)\s+([A-Z][\w\s.']+?)(?=\s*[,.\n(]|\s+\d{4}|\s+(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ))/gi,
+    new RegExp(`([A-Z][\\w\\s.']+?)\\s+(?:vs?\\.?|versus)\\s+([A-Z][\\w\\s.']+?)(?=\\s*[,.\n(]|\\s+\\d{4}|\\s+(?:${REPORT_ABBRS}))`, "gi"),
   ];
 
   for (const pattern of titlePatterns) {
@@ -230,7 +246,7 @@ function extractKeywords(text: string, citation: string): string[] {
 
   const reportMatch = citation.match(new RegExp(REPORT_ABBRS, "i"));
   if (reportMatch) {
-    keywords.add(reportMatch[0].toUpperCase().replace(/\./g, ""));
+    keywords.add(reportMatch[0].toUpperCase().replace(/[^A-Z0-9]/g, ""));
   }
 
   if (keywords.size === 0) {

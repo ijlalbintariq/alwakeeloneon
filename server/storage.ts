@@ -195,6 +195,30 @@ function normalizeCaseLawCitationReport(token: string): string {
   return String(token || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
+const CASELAW_REPORT_CODES = new Set([
+  "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
+  "PSC", "ALD", "KLR", "PTD", "PTCL", "PLS", "GBLR", "CLD", "TAX", "SLR",
+]);
+
+function extractKnownCaseLawReport(raw: string): string | null {
+  const direct = normalizeCaseLawCitationReport(raw);
+  if (CASELAW_REPORT_CODES.has(direct)) return direct;
+
+  const tokens = String(raw || "")
+    .split(/\s+/g)
+    .map((token) => normalizeCaseLawCitationReport(token))
+    .filter(Boolean);
+  if (tokens.length === 0) return null;
+
+  for (let len = tokens.length; len >= 1; len -= 1) {
+    for (let start = 0; start + len <= tokens.length; start += 1) {
+      const candidate = tokens.slice(start, start + len).join("");
+      if (CASELAW_REPORT_CODES.has(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
 function parseCaseLawCitationParts(citation: string): CaseLawCitationParts | null {
   const raw = String(citation || "").trim();
   if (!raw) return null;
@@ -203,23 +227,23 @@ function parseCaseLawCitationParts(citation: string): CaseLawCitationParts | nul
     .replace(/\s+/g, " ")
     .trim();
 
-  // Year-first format: 1974 SCMR 184 (with optional locality token in between)
+  // Year-first format: 1974 SCMR 184 / 1976 P Cr. L J 944
   const yearFirst =
-    normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9]{1,12})(?:\s+[A-Za-z.]{2,15}){0,2}\s+(\d{1,6})\b/i);
+    normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+(\d{1,6})\b/i);
   if (yearFirst) {
     const year = Number(yearFirst[1]);
-    const report = normalizeCaseLawCitationReport(yearFirst[2]);
+    const report = extractKnownCaseLawReport(yearFirst[2]) || normalizeCaseLawCitationReport(yearFirst[2]);
     const page = Number(yearFirst[3]);
     if (Number.isInteger(year) && Number.isInteger(page) && page > 0 && report) {
       return { year, report, page };
     }
   }
 
-  // Report-first format: SCMR 1974 184
+  // Report-first format: SCMR 1974 184 / P Cr. L J 1976 944
   const reportFirst =
-    normalized.match(/\b([A-Za-z][A-Za-z0-9]{1,12})\s+((?:19|20)\d{2})(?:\s+[A-Za-z.]{2,15}){0,2}\s+(\d{1,6})\b/i);
+    normalized.match(/\b([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+((?:19|20)\d{2})\s+(\d{1,6})\b/i);
   if (!reportFirst) return null;
-  const report = normalizeCaseLawCitationReport(reportFirst[1]);
+  const report = extractKnownCaseLawReport(reportFirst[1]) || normalizeCaseLawCitationReport(reportFirst[1]);
   const year = Number(reportFirst[2]);
   const page = Number(reportFirst[3]);
   if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1 || !report) return null;
@@ -254,6 +278,30 @@ function enrichCaseLawCitationFields<T extends Partial<InsertCaseLaw>>(entry: T)
   }
 
   return normalized as T;
+}
+
+function normalizeCaseLawCitationText(value: string): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildCaseLawDedupKey(entry: Partial<Pick<CaseLaw, "citation" | "citationYear" | "citationReport" | "citationPage">>): string {
+  const report = normalizeCaseLawCitationReport(String(entry.citationReport || ""));
+  const year = Number(entry.citationYear);
+  const page = Number(entry.citationPage);
+  if (report && Number.isInteger(year) && Number.isInteger(page) && page > 0) {
+    return `parts:${report}:${year}:${page}`;
+  }
+
+  const parsed = parseCaseLawCitationParts(String(entry.citation || ""));
+  if (parsed) {
+    return `parts:${parsed.report}:${parsed.year}:${parsed.page}`;
+  }
+
+  return `citation:${normalizeCaseLawCitationText(String(entry.citation || ""))}`;
 }
 
 export interface IStorage {
@@ -356,6 +404,7 @@ export interface IStorage {
   getCaseLawPage(limit: number, offset: number): Promise<PagedResult<CaseLaw>>;
   getCaseLawById(id: number): Promise<CaseLaw | undefined>;
   getCaseLawByCitation(citation: string): Promise<CaseLaw | undefined>;
+  getCaseLawBySourceDocuments(sourceDocIds: number[], sourceType?: string): Promise<CaseLaw[]>;
   getCaseLawCitations(): Promise<string[]>;
   createCaseLaw(entry: InsertCaseLaw): Promise<CaseLaw>;
   updateCaseLaw(id: number, entry: Partial<InsertCaseLaw>): Promise<CaseLaw | undefined>;
@@ -1280,15 +1329,27 @@ export class DatabaseStorage implements IStorage {
       CASE WHEN ${courtTextExpr} THEN 45 ELSE 0 END
     )`;
 
+    const fetchLimit = Math.min(500, safeLimit * 8);
     const queryBuilder = db.select().from(caseLaw).where(whereClause);
-    if (sortMode === "latest") {
-      return await queryBuilder
-        .orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id))
-        .limit(safeLimit);
+    const rows = sortMode === "latest"
+      ? await queryBuilder
+          .orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id))
+          .limit(fetchLimit)
+      : await queryBuilder
+          .orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id))
+          .limit(fetchLimit);
+
+    // Keep the highest-ranked row for each citation key to avoid duplicate judgments in search results.
+    const deduped: CaseLaw[] = [];
+    const seen = new Set<string>();
+    for (const row of rows) {
+      const key = buildCaseLawDedupKey(row);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(row);
+      if (deduped.length >= safeLimit) break;
     }
-    return await queryBuilder
-      .orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id))
-      .limit(safeLimit);
+    return deduped;
   }
 
   async getAllCaseLaw(): Promise<CaseLaw[]> {
@@ -1324,6 +1385,27 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
+  async getCaseLawBySourceDocuments(sourceDocIds: number[], sourceType?: string): Promise<CaseLaw[]> {
+    const ids = Array.from(
+      new Set(
+        sourceDocIds
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0),
+      ),
+    );
+    if (ids.length === 0) return [];
+
+    const normalizedType = String(sourceType || "").trim();
+    const whereClause = normalizedType
+      ? and(inArray(caseLaw.sourceDocId, ids), eq(caseLaw.sourceType, normalizedType))
+      : inArray(caseLaw.sourceDocId, ids);
+
+    return await db.select()
+      .from(caseLaw)
+      .where(whereClause)
+      .orderBy(desc(caseLaw.id));
+  }
+
   async getCaseLawCitations(): Promise<string[]> {
     const rows = await db.select({ citation: caseLaw.citation }).from(caseLaw);
     return rows.map((r: { citation: string }) => r.citation.toLowerCase().trim());
@@ -1331,6 +1413,84 @@ export class DatabaseStorage implements IStorage {
 
   async createCaseLaw(entry: InsertCaseLaw): Promise<CaseLaw> {
     const normalizedEntry = enrichCaseLawCitationFields(entry);
+    const report = normalizeCaseLawCitationReport(String(normalizedEntry.citationReport || ""));
+    const year = Number(normalizedEntry.citationYear);
+    const page = Number(normalizedEntry.citationPage);
+
+    let existing: CaseLaw | undefined;
+    if (report && Number.isInteger(year) && Number.isInteger(page) && page > 0) {
+      const [row] = await db.select().from(caseLaw).where(
+        and(
+          eq(caseLaw.citationYear, year),
+          eq(caseLaw.citationPage, page),
+          sql`upper(${caseLaw.citationReport}) = ${report}`,
+        ),
+      )
+        .orderBy(desc(caseLaw.id))
+        .limit(1);
+      existing = row;
+    }
+
+    if (!existing && String(normalizedEntry.citation || "").trim()) {
+      const citationRaw = String(normalizedEntry.citation).trim();
+      const [row] = await db.select().from(caseLaw).where(
+        sql`lower(trim(${caseLaw.citation})) = lower(trim(${citationRaw}))`,
+      )
+        .orderBy(desc(caseLaw.id))
+        .limit(1);
+      existing = row;
+    }
+
+    if (existing) {
+      const patch: Partial<InsertCaseLaw> = {};
+
+      if (!String(existing.court || "").trim() && String(normalizedEntry.court || "").trim()) {
+        patch.court = normalizedEntry.court;
+      }
+      if (
+        String(existing.title || "").toLowerCase().startsWith("case reported at")
+        && !String(normalizedEntry.title || "").toLowerCase().startsWith("case reported at")
+      ) {
+        patch.title = normalizedEntry.title;
+      }
+      if (
+        String(existing.summary || "").toLowerCase().startsWith("case cited as")
+        && !String(normalizedEntry.summary || "").toLowerCase().startsWith("case cited as")
+      ) {
+        patch.summary = normalizedEntry.summary;
+      }
+
+      if (!existing.sourceDocId && normalizedEntry.sourceDocId) {
+        patch.sourceDocId = normalizedEntry.sourceDocId;
+      }
+      if (!existing.sourceType && normalizedEntry.sourceType) {
+        patch.sourceType = normalizedEntry.sourceType;
+      }
+      if (!existing.sourceFilename && normalizedEntry.sourceFilename) {
+        patch.sourceFilename = normalizedEntry.sourceFilename;
+      }
+
+      if (Array.isArray(normalizedEntry.keywords) && normalizedEntry.keywords.length > 0) {
+        const mergedKeywords = Array.from(
+          new Set(
+            [...(existing.keywords || []), ...normalizedEntry.keywords]
+              .map((item) => String(item || "").trim())
+              .filter(Boolean),
+          ),
+        ).slice(0, 30);
+        const oldKeywords = Array.isArray(existing.keywords) ? existing.keywords : [];
+        const changed = mergedKeywords.length !== oldKeywords.length
+          || mergedKeywords.some((kw, idx) => kw !== oldKeywords[idx]);
+        if (changed) patch.keywords = mergedKeywords;
+      }
+
+      if (Object.keys(patch).length > 0) {
+        const [updated] = await db.update(caseLaw).set(patch).where(eq(caseLaw.id, existing.id)).returning();
+        return updated || existing;
+      }
+      return existing;
+    }
+
     const [created] = await db.insert(caseLaw).values(normalizedEntry).returning();
     return created;
   }
@@ -1355,12 +1515,19 @@ export class DatabaseStorage implements IStorage {
   async bulkCreateCaseLaw(entries: InsertCaseLaw[]): Promise<CaseLaw[]> {
     if (entries.length === 0) return [];
     const normalizedEntries = entries.map((entry) => enrichCaseLawCitationFields(entry));
-    const BATCH_SIZE = 500;
+    const perBatchDeduped: InsertCaseLaw[] = [];
+    const seen = new Set<string>();
+    for (const entry of normalizedEntries) {
+      const key = buildCaseLawDedupKey(entry as Partial<CaseLaw>);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      perBatchDeduped.push(entry);
+    }
+
     const results: CaseLaw[] = [];
-    for (let i = 0; i < normalizedEntries.length; i += BATCH_SIZE) {
-      const batch = normalizedEntries.slice(i, i + BATCH_SIZE);
-      const inserted = await db.insert(caseLaw).values(batch).returning();
-      results.push(...inserted);
+    for (const entry of perBatchDeduped) {
+      const created = await this.createCaseLaw(entry);
+      results.push(created);
     }
     return results;
   }

@@ -16,7 +16,16 @@ export type ResolvedCitation = ExtractedCitation & {
   citedJudgmentId: string | null;
 };
 
-const JOURNAL_PATTERN = "PLD|SCMR|PLJ|MLD|CLC|PCrLJ|PCRLJ|YLR|NLR|CLD|PTD|PLC";
+const JOURNAL_CODES = [
+  "PLD", "SCMR", "PLJ", "MLD", "CLC", "PCRLJ", "YLR", "NLR", "CLD", "PTD", "PLC", "PSC", "SLR",
+] as const;
+
+function buildFlexibleReportPattern(code: string): string {
+  const letters = String(code || "").replace(/[^A-Za-z]/g, "").split("");
+  return letters.map((ch) => `${ch}\\.?`).join("\\s*");
+}
+
+const JOURNAL_PATTERN = JOURNAL_CODES.map((code) => buildFlexibleReportPattern(code)).join("|");
 const CITATION_REGEX = new RegExp(`\\b(\\d{4})\\s+(${JOURNAL_PATTERN})\\s+(\\d{1,5})\\b`, "gi");
 
 function extractContext(text: string, start: number, length: number, radius: number = 100): string {
@@ -32,7 +41,7 @@ export class CitationExtractor {
 
     for (const match of text.matchAll(CITATION_REGEX)) {
       const year = Number(match[1]);
-      const journalCode = String(match[2] || "").toUpperCase().replace(/\./g, "");
+      const journalCode = String(match[2] || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
       const page = Number(match[3]);
       const startOffset = Number(match.index || 0);
       const rawCitation = `${year} ${journalCode} ${page}`;

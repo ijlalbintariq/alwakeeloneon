@@ -95,28 +95,33 @@ function parseCitationFromText(value: string): { year: number; journal: string; 
     .replace(/\s+/g, " ")
     .trim();
 
+  const normalizeJournal = (input: string): string => String(input || "")
+    .replace(/\bP\.?\s*Cr\.?\s*L\.?\s*J\b/gi, "PCRLJ")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .toUpperCase();
+
   const yearFirst =
-    normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9]{1,12})(?:\s+[A-Za-z.]{2,15}){0,2}\s+(\d{1,6})\b/i);
+    normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+(\d{1,6})\b/i);
   if (yearFirst) {
     const year = Number(yearFirst[1]);
     const page = Number(yearFirst[3]);
     if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1) return null;
     return {
       year,
-      journal: yearFirst[2].toUpperCase(),
+      journal: normalizeJournal(yearFirst[2]),
       page,
     };
   }
 
   const reportFirst =
-    normalized.match(/\b([A-Za-z][A-Za-z0-9]{1,12})\s+((?:19|20)\d{2})(?:\s+[A-Za-z.]{2,15}){0,2}\s+(\d{1,6})\b/i);
+    normalized.match(/\b([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+((?:19|20)\d{2})\s+(\d{1,6})\b/i);
   if (!reportFirst) return null;
   const year = Number(reportFirst[2]);
   const page = Number(reportFirst[3]);
   if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1) return null;
   return {
     year,
-    journal: reportFirst[1].toUpperCase(),
+    journal: normalizeJournal(reportFirst[1]),
     page,
   };
 }
@@ -145,10 +150,12 @@ export default function JudgmentSearchPage() {
 
   const [year, setYear] = useState<number>(currentYear);
   const [keywordYear, setKeywordYear] = useState<string>("");
-  const [journal, setJournal] = useState<string>("");
+  const [keywordJournal, setKeywordJournal] = useState<string>("");
+  const [citationJournal, setCitationJournal] = useState<string>("");
   const [page, setPage] = useState<string>("");
   const [keywordPage, setKeywordPage] = useState<string>("");
-  const [court, setCourt] = useState<string>("");
+  const [keywordCourt, setKeywordCourt] = useState<string>("");
+  const [citationCourt, setCitationCourt] = useState<string>("");
   const [searchMode, setSearchMode] = useState<"keyword" | "citation">("keyword");
   const [keywordSort, setKeywordSort] = useState<"relevance" | "latest">("relevance");
 
@@ -169,7 +176,7 @@ export default function JudgmentSearchPage() {
     [localResults, externalResults],
   );
 
-  const citationPreview = `${year} ${journal || "JOURNAL"} ${page || "PAGE"}`;
+  const citationPreview = `${year} ${citationJournal || "JOURNAL"} ${page || "PAGE"}`;
 
   const runKeywordSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
@@ -187,26 +194,38 @@ export default function JudgmentSearchPage() {
       q: searchQuery.trim(),
       sort: keywordSort,
     });
-    if (journal.trim()) requestParams.set("report", journal.trim());
-    if (court.trim()) requestParams.set("court", court.trim());
+    if (keywordJournal.trim()) requestParams.set("report", keywordJournal.trim());
+    if (keywordCourt.trim()) requestParams.set("court", keywordCourt.trim());
     if (hasKeywordYear) requestParams.set("year", String(keywordYearValue));
     if (hasKeywordPage) requestParams.set("page", String(keywordPageValue));
 
+    let localItems: CaseLawResult[] = [];
     try {
       const localRes = await fetch(`/api/case-law/search?${requestParams.toString()}`);
       const local = await localRes.json();
-      setLocalResults(local.map((r: any) => ({ ...r, source: "internal" })));
+      localItems = local.map((r: any) => ({ ...r, source: "internal" }));
+      setLocalResults(localItems);
     } catch {
       setLocalResults([]);
     }
     setIsLoading(false);
 
+    if (localItems.length > 0) {
+      setExternalResults([]);
+      setIsExternalLoading(false);
+      await apiRequest("POST", "/api/search-history", {
+        type: "judgment",
+        query: searchQuery,
+      }).catch(() => {});
+      return;
+    }
+
     setIsExternalLoading(true);
     try {
       const extRes = await apiRequest("POST", "/api/ai/search-judgments", {
         query: searchQuery.trim(),
-        report: journal.trim() || undefined,
-        court: court.trim() || undefined,
+        report: keywordJournal.trim() || undefined,
+        court: keywordCourt.trim() || undefined,
         year: hasKeywordYear ? keywordYearValue : undefined,
         page: hasKeywordPage ? keywordPageValue : undefined,
         sort: keywordSort,
@@ -265,7 +284,7 @@ export default function JudgmentSearchPage() {
     event.preventDefault();
 
     const pageNumber = Number(page);
-    if (!journal.trim()) {
+    if (!citationJournal.trim()) {
       setCitationError("Please select a journal.");
       return;
     }
@@ -276,9 +295,9 @@ export default function JudgmentSearchPage() {
 
     await runCitationSearch({
       year,
-      journal,
+      journal: citationJournal,
       page: pageNumber,
-      court,
+      court: citationCourt,
     });
   };
 
@@ -340,8 +359,8 @@ export default function JudgmentSearchPage() {
         }
         const data = (await res.json()) as Journal[];
         setJournals(data);
-        if (!journal && data.length > 0) {
-          setJournal(data[0].code);
+        if (!citationJournal && data.length > 0) {
+          setCitationJournal(data[0].code);
         }
       } catch (err: any) {
         setCitationError(err?.message || "Failed to load journals");
@@ -351,7 +370,7 @@ export default function JudgmentSearchPage() {
     }
 
     void loadJournals();
-  }, []);
+  }, [citationJournal]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -411,9 +430,9 @@ export default function JudgmentSearchPage() {
     const selectedJournal = matchedJournal?.code || journals[0]?.code || pendingAutoCitation.journal;
 
     setYear(pendingAutoCitation.year);
-    setJournal(selectedJournal);
+    setCitationJournal(selectedJournal);
     setPage(String(pendingAutoCitation.page));
-    setCourt(pendingAutoCitation.court || "");
+    setCitationCourt(pendingAutoCitation.court || "");
 
     void runCitationSearch({
       year: pendingAutoCitation.year,
@@ -507,8 +526,8 @@ export default function JudgmentSearchPage() {
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Journal</span>
                 <select
-                  value={journal}
-                  onChange={(e) => setJournal(e.target.value)}
+                  value={keywordJournal}
+                  onChange={(e) => setKeywordJournal(e.target.value)}
                   className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
                   disabled={loadingJournals}
                 >
@@ -524,8 +543,8 @@ export default function JudgmentSearchPage() {
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Court</span>
                 <input
-                  value={court}
-                  onChange={(e) => setCourt(e.target.value)}
+                  value={keywordCourt}
+                  onChange={(e) => setKeywordCourt(e.target.value)}
                   className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
                   placeholder="All Courts"
                 />
@@ -611,8 +630,8 @@ export default function JudgmentSearchPage() {
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Journal</span>
                 <select
-                  value={journal}
-                  onChange={(e) => setJournal(e.target.value)}
+                  value={citationJournal}
+                  onChange={(e) => setCitationJournal(e.target.value)}
                   className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
                   disabled={loadingJournals}
                   data-testid="select-citation-journal"
@@ -642,8 +661,8 @@ export default function JudgmentSearchPage() {
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Court (Optional)</span>
                 <input
-                  value={court}
-                  onChange={(e) => setCourt(e.target.value)}
+                  value={citationCourt}
+                  onChange={(e) => setCitationCourt(e.target.value)}
                   className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
                   placeholder="All Courts"
                   data-testid="input-citation-court"

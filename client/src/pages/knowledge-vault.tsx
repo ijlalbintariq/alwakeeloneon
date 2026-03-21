@@ -510,6 +510,20 @@ export default function KnowledgeVaultPage() {
     URL.revokeObjectURL(url);
   };
 
+  const openSourceDoc = async (doc: VaultDoc) => {
+    const fileUrl = `/api/documents/${doc.id}/file`;
+    try {
+      const probe = await fetch(fileUrl, { method: "HEAD", credentials: "include" });
+      if (probe.ok || probe.status === 302) {
+        window.open(fileUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+    } catch {
+      // Fallback below.
+    }
+    setPreviewDoc(doc);
+  };
+
   const citeResult = async (doc: VaultDoc, snippet: string) => {
     const citeText = `${doc.title} (${formatDate(doc.createdAt)})\n${snippet}`;
     try {
@@ -1038,7 +1052,7 @@ export default function KnowledgeVaultPage() {
                         <td className="px-8 py-4">
                           <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => setPreviewDoc(doc)}
+                              onClick={() => void openSourceDoc(doc)}
                               className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10"
                               title="View"
                             >
@@ -1244,7 +1258,7 @@ export default function KnowledgeVaultPage() {
 
                     <div className="mt-3 flex items-center gap-2">
                       <button
-                        onClick={() => setPreviewDoc(doc)}
+                        onClick={() => void openSourceDoc(doc)}
                         className="px-3 py-1.5 rounded-lg border border-white/15 text-sm text-slate-200 hover:bg-white/10"
                       >
                         Open Source

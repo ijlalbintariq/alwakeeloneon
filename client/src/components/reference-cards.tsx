@@ -389,6 +389,9 @@ interface SourceDocument {
   filename?: string;
   sourceType?: string;
   citation?: string;
+  mimeType?: string | null;
+  originalFileAvailable?: boolean;
+  viewUrl?: string | null;
   message?: string;
 }
 
@@ -425,7 +428,9 @@ function JudgmentDetailPopup({ judgment, onClose }: { judgment: JudgmentReferenc
       if (res.ok) {
         const data = await res.json();
         setSourceDoc(data);
-        if (data.found) {
+        if (data.found && data.viewUrl) {
+          window.open(data.viewUrl, "_blank", "noopener,noreferrer");
+        } else if (data.found && data.content) {
           setShowDocViewer(true);
         }
       }

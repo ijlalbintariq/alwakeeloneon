@@ -95,16 +95,23 @@ export async function backfillCaseLawSources() {
 function extractCitationsFromDoc(content: string): string[] {
   const citations: string[] = [];
   const seen = new Set<string>();
+  const reportCodes = ["PLD", "SCMR", "CLC", "YLR", "MLD", "PCRLJ", "PLJ", "PSC", "PLC", "GBLR", "KLR", "SLR", "CLD", "PTD"];
+  const reportPattern = reportCodes
+    .map((code) => {
+      const letters = code.replace(/[^A-Za-z]/g, "").split("");
+      return letters.map((ch) => `${ch}\\.?`).join("\\s*");
+    })
+    .join("|");
 
   const patterns = [
-    /(\d{4}\s+(?:PLD|SCMR|CLC|YLR|MLD|PCrLJ|PLJ|PSC|PLC|GBLR|KLR|SLR)\s+\d+)/g,
-    /((?:PLD|SCMR|CLC|YLR|MLD|PCrLJ|PLJ|PSC|PLC|GBLR|KLR|SLR)\s+\d{4}\s+(?:SC|Supreme Court|Lahore|Karachi|Peshawar|Islamabad|Sindh|Balochistan|Quetta|Federal Shariat|FSC)\s+\d+)/gi,
+    new RegExp(`(\\d{4}\\s+(?:${reportPattern})\\s+\\d+)`, "gi"),
+    new RegExp(`((?:${reportPattern})\\s+\\d{4}\\s+(?:SC|Supreme Court|Lahore|Karachi|Peshawar|Islamabad|Sindh|Balochistan|Quetta|Federal Shariat|FSC)\\s+\\d+)`, "gi"),
   ];
 
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(content)) !== null) {
-      const citation = match[1].trim();
+      const citation = String(match[1] || "").trim().replace(/\s+/g, " ");
       if (!seen.has(citation)) {
         seen.add(citation);
         citations.push(citation);
