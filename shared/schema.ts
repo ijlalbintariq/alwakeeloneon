@@ -130,6 +130,7 @@ export const caseLaw = pgTable("case_law", {
   citationYear: integer("citation_year"),
   citationReport: text("citation_report"),
   citationPage: integer("citation_page"),
+  citationRole: text("citation_role", { enum: ["primary", "cited"] }).notNull().default("cited"),
   court: text("court").notNull(),
   title: text("title").notNull(),
   summary: text("summary").notNull(),

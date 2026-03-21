@@ -406,6 +406,7 @@ export interface IStorage {
   getCaseLawByCitation(citation: string): Promise<CaseLaw | undefined>;
   getCaseLawBySourceDocuments(sourceDocIds: number[], sourceType?: string): Promise<CaseLaw[]>;
   getCaseLawCitations(): Promise<string[]>;
+  resetAllCaseLawCitationRolesToCited(): Promise<number>;
   createCaseLaw(entry: InsertCaseLaw): Promise<CaseLaw>;
   updateCaseLaw(id: number, entry: Partial<InsertCaseLaw>): Promise<CaseLaw | undefined>;
   deleteCaseLaw(id: number): Promise<void>;
@@ -413,7 +414,7 @@ export interface IStorage {
   bulkCreateCaseLaw(entries: InsertCaseLaw[]): Promise<CaseLaw[]>;
   getLawJournals(): Promise<Array<{ id: number; code: string; name: string }>>;
   getCourtsRef(): Promise<Array<{ id: number; code: string; name: string; level: string }>>;
-  searchJudgmentsByCitation(params: { year: number; journalCode: string; page: number; court?: string }): Promise<CitationSearchResult[]>;
+  searchJudgmentsByCitation(params: { year: number; journalCode?: string; page: number; court?: string }): Promise<CitationSearchResult[]>;
   getJudgmentDetail(id: string): Promise<JudgmentDetail | undefined>;
   createJudgment(entry: InsertJudgment): Promise<Judgment>;
   createCitationLinks(entries: InsertCitationLink[]): Promise<number>;
@@ -1265,8 +1266,10 @@ export class DatabaseStorage implements IStorage {
     const courtRaw = String(options.court || "").trim();
     const sortMode = options.sort === "latest" ? "latest" : "relevance";
 
-    const hasYear = Number.isInteger(yearRaw) && yearRaw >= 1900 && yearRaw <= 2200;
-    const hasPage = Number.isInteger(pageRaw) && pageRaw > 0;
+    const year = Number.isInteger(yearRaw) && Number(yearRaw) >= 1900 && Number(yearRaw) <= 2200 ? Number(yearRaw) : null;
+    const page = Number.isInteger(pageRaw) && Number(pageRaw) > 0 ? Number(pageRaw) : null;
+    const hasYear = year !== null;
+    const hasPage = page !== null;
     const hasReport = reportRaw.length > 0;
 
     const textMatchExpr = hasTextQuery
@@ -1279,8 +1282,8 @@ export class DatabaseStorage implements IStorage {
       : undefined;
 
     const structuredClauses = [
-      hasPage ? eq(caseLaw.citationPage, pageRaw) : undefined,
-      hasYear ? eq(caseLaw.citationYear, yearRaw) : undefined,
+      hasPage ? eq(caseLaw.citationPage, page) : undefined,
+      hasYear ? eq(caseLaw.citationYear, year) : undefined,
       hasReport ? sql`upper(${caseLaw.citationReport}) = ${reportRaw}` : undefined,
     ].filter((clause): clause is NonNullable<typeof clause> => Boolean(clause));
 
@@ -1300,23 +1303,24 @@ export class DatabaseStorage implements IStorage {
     const whereClause = whereParts.length === 1 ? whereParts[0] : and(...whereParts)!;
 
     const exactTripletExpr = hasReport && hasYear && hasPage
-      ? sql`upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationYear} = ${yearRaw} AND ${caseLaw.citationPage} = ${pageRaw}`
+      ? sql`upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationYear} = ${year} AND ${caseLaw.citationPage} = ${page}`
       : sql`false`;
     const reportPageExpr = hasReport && hasPage
-      ? sql`upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationPage} = ${pageRaw}`
+      ? sql`upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationPage} = ${page}`
       : sql`false`;
     const reportYearExpr = hasReport && hasYear
-      ? sql`upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationYear} = ${yearRaw}`
+      ? sql`upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationYear} = ${year}`
       : sql`false`;
-    const pageExpr = hasPage ? sql`${caseLaw.citationPage} = ${pageRaw}` : sql`false`;
+    const pageExpr = hasPage ? sql`${caseLaw.citationPage} = ${page}` : sql`false`;
     const reportExpr = hasReport ? sql`upper(${caseLaw.citationReport}) = ${reportRaw}` : sql`false`;
-    const yearExpr = hasYear ? sql`${caseLaw.citationYear} = ${yearRaw}` : sql`false`;
+    const yearExpr = hasYear ? sql`${caseLaw.citationYear} = ${year}` : sql`false`;
     const citationTextExpr = hasTextQuery ? ilike(caseLaw.citation, textPattern) : sql`false`;
     const titleTextExpr = hasTextQuery ? ilike(caseLaw.title, textPattern) : sql`false`;
     const summaryTextExpr = hasTextQuery ? ilike(caseLaw.summary, textPattern) : sql`false`;
     const courtTextExpr = hasTextQuery ? ilike(caseLaw.court, textPattern) : sql`false`;
 
     const relevanceScore = sql<number>`(
+      CASE WHEN ${caseLaw.citationRole} = 'primary' THEN 140 ELSE 0 END +
       CASE WHEN ${exactTripletExpr} THEN 1000 ELSE 0 END +
       CASE WHEN ${reportPageExpr} THEN 700 ELSE 0 END +
       CASE WHEN ${reportYearExpr} THEN 550 ELSE 0 END +
@@ -1411,8 +1415,19 @@ export class DatabaseStorage implements IStorage {
     return rows.map((r: { citation: string }) => r.citation.toLowerCase().trim());
   }
 
+  async resetAllCaseLawCitationRolesToCited(): Promise<number> {
+    const updated = await db
+      .update(caseLaw)
+      .set({ citationRole: "cited" })
+      .returning({ id: caseLaw.id });
+    return updated.length;
+  }
+
   async createCaseLaw(entry: InsertCaseLaw): Promise<CaseLaw> {
     const normalizedEntry = enrichCaseLawCitationFields(entry);
+    if (normalizedEntry.citationRole !== "primary" && normalizedEntry.citationRole !== "cited") {
+      normalizedEntry.citationRole = "cited";
+    }
     const report = normalizeCaseLawCitationReport(String(normalizedEntry.citationReport || ""));
     const year = Number(normalizedEntry.citationYear);
     const page = Number(normalizedEntry.citationPage);
@@ -1468,6 +1483,12 @@ export class DatabaseStorage implements IStorage {
       }
       if (!existing.sourceFilename && normalizedEntry.sourceFilename) {
         patch.sourceFilename = normalizedEntry.sourceFilename;
+      }
+      if (existing.citationRole !== "primary" && normalizedEntry.citationRole === "primary") {
+        patch.citationRole = "primary";
+      }
+      if (!existing.citationRole && normalizedEntry.citationRole) {
+        patch.citationRole = normalizedEntry.citationRole;
       }
 
       if (Array.isArray(normalizedEntry.keywords) && normalizedEntry.keywords.length > 0) {
@@ -1555,13 +1576,15 @@ export class DatabaseStorage implements IStorage {
       .orderBy(courtsRef.name);
   }
 
-  async searchJudgmentsByCitation(params: { year: number; journalCode: string; page: number; court?: string }): Promise<CitationSearchResult[]> {
+  async searchJudgmentsByCitation(params: { year: number; journalCode?: string; page: number; court?: string }): Promise<CitationSearchResult[]> {
     const conditions = [
       eq(judgments.year, params.year),
       eq(judgments.page, params.page),
       eq(judgments.isActive, true),
-      sql`lower(${lawJournals.code}) = lower(${params.journalCode})`,
     ];
+    if (params.journalCode?.trim()) {
+      conditions.push(sql`lower(${lawJournals.code}) = lower(${params.journalCode.trim()})`);
+    }
 
     if (params.court && params.court.trim()) {
       const courtPattern = `%${params.court.trim()}%`;
@@ -1932,7 +1955,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(orgInvites).where(eq(orgInvites.invitedBy, userId));
 
     const ownedOrgs = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.ownerId, userId));
-    const ownedOrgIds = ownedOrgs.map((o) => o.id);
+    const ownedOrgIds = ownedOrgs.map((o: { id: number }) => o.id);
     if (ownedOrgIds.length > 0) {
       await db.delete(orgMembers).where(inArray(orgMembers.orgId, ownedOrgIds));
       await db.delete(orgInvites).where(inArray(orgInvites.orgId, ownedOrgIds));
@@ -2760,6 +2783,7 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "alter_case_law_citation_year", stmt: sql`ALTER TABLE case_law ADD COLUMN IF NOT EXISTS citation_year integer` },
     { label: "alter_case_law_citation_report", stmt: sql`ALTER TABLE case_law ADD COLUMN IF NOT EXISTS citation_report text` },
     { label: "alter_case_law_citation_page", stmt: sql`ALTER TABLE case_law ADD COLUMN IF NOT EXISTS citation_page integer` },
+    { label: "alter_case_law_citation_role", stmt: sql`ALTER TABLE case_law ADD COLUMN IF NOT EXISTS citation_role text` },
     {
       label: "backfill_case_law_citation_parts",
       stmt: sql`
@@ -2781,6 +2805,16 @@ export async function ensureSearchIndexes(): Promise<void> {
           AND (citation_year IS NULL OR citation_report IS NULL OR citation_page IS NULL)
       `,
     },
+    {
+      label: "backfill_case_law_citation_role",
+      stmt: sql`
+        UPDATE case_law
+        SET citation_role = COALESCE(NULLIF(trim(citation_role), ''), 'cited')
+        WHERE citation_role IS NULL OR trim(citation_role) = ''
+      `,
+    },
+    { label: "alter_case_law_citation_role_default", stmt: sql`ALTER TABLE case_law ALTER COLUMN citation_role SET DEFAULT 'cited'` },
+    { label: "alter_case_law_citation_role_not_null", stmt: sql`ALTER TABLE case_law ALTER COLUMN citation_role SET NOT NULL` },
     { label: "idx_threads_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads (user_id)` },
     { label: "idx_messages_thread_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages (thread_id)` },
     { label: "idx_documents_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents (user_id)` },
@@ -2792,6 +2826,7 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_case_law_citation_parts", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_citation_parts ON case_law (citation_report, citation_year, citation_page)` },
     { label: "idx_case_law_citation_page", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_citation_page ON case_law (citation_page)` },
     { label: "idx_case_law_citation_year", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_citation_year ON case_law (citation_year)` },
+    { label: "idx_case_law_citation_role", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_citation_role ON case_law (citation_role, source_doc_id)` },
     { label: "idx_case_law_citation_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_citation_trgm ON case_law USING gin (citation gin_trgm_ops)` },
     { label: "idx_case_law_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_title_trgm ON case_law USING gin (title gin_trgm_ops)` },
     { label: "idx_case_law_court_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_court_trgm ON case_law USING gin (court gin_trgm_ops)` },

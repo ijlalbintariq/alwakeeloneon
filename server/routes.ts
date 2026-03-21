@@ -9,7 +9,13 @@ import { count, eq } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
 import { syncGithubKnowledge } from "./github-sync";
-import { queueAutoExtraction, nlpExtractCases } from "./auto-extract-caselaw";
+import {
+  assignCitationRolesToCases,
+  nlpExtractCases,
+  queueAutoExtraction,
+  reindexCaseLawFromAllExistingSources,
+  type CaseLawRoleReindexProgress,
+} from "./auto-extract-caselaw";
 import crypto from "crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -663,6 +669,15 @@ type CaseLawReindexJobState = {
   lastError: string | null;
 };
 
+type CaseLawCitationRoleReindexJobState = {
+  running: boolean;
+  shouldStop: boolean;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  lastError: string | null;
+  progress: CaseLawRoleReindexProgress | null;
+};
+
 type ReindexBatchResult = {
   processed: number;
   indexed: number;
@@ -770,6 +785,15 @@ const caseLawReindexJob: CaseLawReindexJobState = {
   lastError: null,
 };
 
+const caseLawCitationRoleReindexJob: CaseLawCitationRoleReindexJobState = {
+  running: false,
+  shouldStop: false,
+  startedAt: null,
+  finishedAt: null,
+  lastError: null,
+  progress: null,
+};
+
 const globalAdminRagReindexJob: GlobalAdminRagReindexJobState = createGlobalAdminRagReindexJobState();
 
 function snapshotCaseLawReindexJob() {
@@ -777,6 +801,17 @@ function snapshotCaseLawReindexJob() {
     ...caseLawReindexJob,
     startedAt: caseLawReindexJob.startedAt ? caseLawReindexJob.startedAt.toISOString() : null,
     finishedAt: caseLawReindexJob.finishedAt ? caseLawReindexJob.finishedAt.toISOString() : null,
+  };
+}
+
+function snapshotCaseLawCitationRoleReindexJob() {
+  return {
+    running: caseLawCitationRoleReindexJob.running,
+    shouldStop: caseLawCitationRoleReindexJob.shouldStop,
+    startedAt: caseLawCitationRoleReindexJob.startedAt ? caseLawCitationRoleReindexJob.startedAt.toISOString() : null,
+    finishedAt: caseLawCitationRoleReindexJob.finishedAt ? caseLawCitationRoleReindexJob.finishedAt.toISOString() : null,
+    lastError: caseLawCitationRoleReindexJob.lastError,
+    progress: caseLawCitationRoleReindexJob.progress,
   };
 }
 
@@ -1640,7 +1675,7 @@ function parseCitationParts(citation: string, journalCodeMap: Map<string, string
     .filter(({ token, idx }) => idx > yearIdx && /^\d{1,5}$/.test(token) && Number(token) > 0)
     .map(({ idx }) => idx)
     .pop();
-  if (!Number.isInteger(pageIdx)) return null;
+  if (!Number.isInteger(pageIdx) || pageIdx === undefined) return null;
 
   const page = Number(tokens[pageIdx]);
   if (!Number.isInteger(page) || page < 1) return null;
@@ -1822,6 +1857,12 @@ async function searchCaseLawWithFullText(args: {
         if (!Number.isInteger(sourceDocId) || sourceDocId <= 0) continue;
         const existing = bestBySourceDoc.get(sourceDocId);
         if (!existing) {
+          bestBySourceDoc.set(sourceDocId, row);
+          continue;
+        }
+        const existingPrimary = String(existing.citationRole || "").toLowerCase() === "primary";
+        const candidatePrimary = String(row.citationRole || "").toLowerCase() === "primary";
+        if (candidatePrimary && !existingPrimary) {
           bestBySourceDoc.set(sourceDocId, row);
           continue;
         }
@@ -5355,26 +5396,26 @@ RAG POLICY (STRICT):
       const page = Number(req.query.page);
       const court = String(req.query.court || "").trim();
       const currentYear = new Date().getFullYear();
+      const isAllJournals = !journalCode || journalCode.toLowerCase() === "all";
 
       if (!Number.isInteger(year) || year < 1947 || year > currentYear + 1) {
         return res.status(400).json({ message: `Year must be between 1947 and ${currentYear + 1}` });
-      }
-      if (!journalCode) {
-        return res.status(400).json({ message: "Journal code is required" });
       }
       if (!Number.isInteger(page) || page < 1) {
         return res.status(400).json({ message: "Page must be a positive integer" });
       }
 
-      const journals = await storage.getLawJournals();
-      const exists = journals.some((j) => j.code.toLowerCase() === journalCode.toLowerCase());
-      if (!exists) {
-        return res.status(400).json({ message: `Unknown journal code: ${journalCode}` });
+      if (!isAllJournals) {
+        const journals = await storage.getLawJournals();
+        const exists = journals.some((j) => j.code.toLowerCase() === journalCode.toLowerCase());
+        if (!exists) {
+          return res.status(400).json({ message: `Unknown journal code: ${journalCode}` });
+        }
       }
 
       const matches = await storage.searchJudgmentsByCitation({
         year,
-        journalCode,
+        journalCode: isAllJournals ? undefined : journalCode,
         page,
         court: court || undefined,
       });
@@ -9290,6 +9331,7 @@ ${boundedRaw}`;
           keywords,
         });
       }
+      const roleAwareCases = assignCitationRolesToCases(content, validCases);
 
       let savedDocId: number | null = null;
       const savedFilename = filename;
@@ -9342,7 +9384,7 @@ ${boundedRaw}`;
             sourceType: sanitizeInputText(body.sourceType || "browser-hybrid", 64),
             confidence: Number.isFinite(Number(body.confidence)) ? Number(body.confidence) : null,
             fileHash: sanitizeInputText(body.fileHash || "", 128) || null,
-            caseCount: validCases.length,
+            caseCount: roleAwareCases.length,
           });
         });
       } catch (saveErr) {
@@ -9350,10 +9392,10 @@ ${boundedRaw}`;
       }
 
       return res.json({
-        extracted: validCases.length,
+        extracted: roleAwareCases.length,
         truncated: false,
         originalLength: content.length,
-        cases: validCases,
+        cases: roleAwareCases,
         savedDocId,
         savedFilename,
         source: "client",
@@ -9369,7 +9411,14 @@ ${boundedRaw}`;
     try {
       const actorUserId = getUserId(req);
       const { entries, sourceDocId, sourceFilename } = req.body as {
-        entries: Array<{ citation: string; court: string; title: string; summary: string; keywords: string | string[] }>;
+        entries: Array<{
+          citation: string;
+          citationRole?: "primary" | "cited" | string;
+          court: string;
+          title: string;
+          summary: string;
+          keywords: string | string[];
+        }>;
         sourceDocId?: number;
         sourceFilename?: string;
       };
@@ -9383,6 +9432,7 @@ ${boundedRaw}`;
         title: string;
         summary: string;
         keywords: string[];
+        citationRole?: "primary" | "cited";
         sourceDocId?: number;
         sourceType?: string;
         sourceFilename?: string;
@@ -9396,6 +9446,7 @@ ${boundedRaw}`;
         const title = sanitizeInputText(stripNullBytes(String(e?.title || "").trim()), 500);
         const court = sanitizeInputText(stripNullBytes(String(e?.court || "").trim()), 180);
         const summary = sanitizeInputText(stripNullBytes(String(e?.summary || "").trim()), 20000);
+        const citationRole = String((e as any)?.citationRole || "").toLowerCase() === "primary" ? "primary" : "cited";
         if (!citation || !title) {
           errors.push(`Row ${i + 1}: Missing required fields (citation and title)`);
           continue;
@@ -9412,7 +9463,7 @@ ${boundedRaw}`;
           .map((k: string) => sanitizeInputText(stripNullBytes(String(k || "").trim()), 64))
           .filter(Boolean)
           .slice(0, 30);
-        const entry: any = { citation, court, title, summary, keywords, _rowNumber: rowNumber };
+        const entry: any = { citation, citationRole, court, title, summary, keywords, _rowNumber: rowNumber };
         if (sourceDocId) {
           entry.sourceDocId = sourceDocId;
           entry.sourceType = "admin";
@@ -9530,6 +9581,98 @@ ${boundedRaw}`;
     }
   });
 
+  app.post("/api/admin/case-law/reindex-roles/start", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const actorUserId = getUserId(req);
+      if (caseLawCitationRoleReindexJob.running) {
+        return res.status(409).json({
+          ok: false,
+          message: "Case-law citation role reindex is already running",
+          status: snapshotCaseLawCitationRoleReindexJob(),
+        });
+      }
+
+      caseLawCitationRoleReindexJob.running = true;
+      caseLawCitationRoleReindexJob.shouldStop = false;
+      caseLawCitationRoleReindexJob.startedAt = new Date();
+      caseLawCitationRoleReindexJob.finishedAt = null;
+      caseLawCitationRoleReindexJob.lastError = null;
+      caseLawCitationRoleReindexJob.progress = null;
+
+      await logAuditEvent("admin.caseLaw.reindexRoles.start", actorUserId, null, {});
+
+      runInBackground("case-law-role-reindex", async () => {
+        try {
+          const result = await reindexCaseLawFromAllExistingSources({
+            shouldStop: () => caseLawCitationRoleReindexJob.shouldStop,
+            onProgress: (progress) => {
+              caseLawCitationRoleReindexJob.progress = progress;
+            },
+          });
+          caseLawCitationRoleReindexJob.progress = {
+            running: false,
+            source: caseLawCitationRoleReindexJob.progress?.source || "user",
+            totalDocuments: result.totalDocuments,
+            processedDocuments: result.processedDocuments,
+            extractedCitations: result.extractedCitations,
+            savedCitations: result.savedCitations,
+            failedDocuments: result.failedDocuments,
+            stopped: result.stopped,
+            done: true,
+          };
+          await logAuditEvent("admin.caseLaw.reindexRoles.finish", actorUserId, null, {
+            ...result,
+          });
+        } catch (err: any) {
+          caseLawCitationRoleReindexJob.lastError = sanitizeInputText(err?.message || "Case-law citation role reindex failed", 300);
+          try {
+            await logAuditEvent("admin.caseLaw.reindexRoles.fail", actorUserId, null, {
+              error: caseLawCitationRoleReindexJob.lastError,
+            });
+          } catch {
+            // best-effort audit
+          }
+        } finally {
+          caseLawCitationRoleReindexJob.running = false;
+          caseLawCitationRoleReindexJob.shouldStop = false;
+          caseLawCitationRoleReindexJob.finishedAt = new Date();
+        }
+      });
+
+      return res.json({
+        ok: true,
+        message: "Case-law citation role reindex started in background",
+        status: snapshotCaseLawCitationRoleReindexJob(),
+      });
+    } catch (err) {
+      console.error("Error starting case-law citation role reindex:", err);
+      return res.status(500).json({ message: "Failed to start case-law citation role reindex" });
+    }
+  });
+
+  app.get("/api/admin/case-law/reindex-roles/status", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    return res.json({ ok: true, status: snapshotCaseLawCitationRoleReindexJob() });
+  });
+
+  app.post("/api/admin/case-law/reindex-roles/stop", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!caseLawCitationRoleReindexJob.running) {
+      return res.status(409).json({
+        ok: false,
+        message: "No running case-law citation role reindex job",
+        status: snapshotCaseLawCitationRoleReindexJob(),
+      });
+    }
+    caseLawCitationRoleReindexJob.shouldStop = true;
+    return res.json({
+      ok: true,
+      message: "Case-law citation role reindex stop requested",
+      status: snapshotCaseLawCitationRoleReindexJob(),
+    });
+  });
+
   app.post("/api/admin/case-law/extract", guardedUploadQueue, upload.single("file"), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
@@ -9614,6 +9757,7 @@ ${boundedRaw}`;
               keywords: Array.isArray(c.keywords) ? c.keywords : (typeof c.keywords === "string" ? c.keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : (Array.isArray(c.tags) ? c.tags : [])),
             }));
             if (mapped.length > 0) {
+              const mappedWithRoles = assignCitationRolesToCases(rawJson, mapped);
               const uid = getUserId(req)!;
               let jsonDocId: number | null = null;
               try {
@@ -9654,10 +9798,10 @@ ${boundedRaw}`;
                 console.error("[Case Law Extract] Failed to save JSON document:", saveErr);
               }
               return res.json({
-                extracted: mapped.length,
+                extracted: mappedWithRoles.length,
                 truncated: false,
                 originalLength: rawJson.length,
-                cases: mapped,
+                cases: mappedWithRoles,
                 savedDocId: jsonDocId,
                 savedFilename: file.originalname,
               });
@@ -9693,6 +9837,7 @@ ${boundedRaw}`;
               }
             }
             if (entries.length > 0) {
+              const entriesWithRoles = assignCitationRolesToCases(rawCsv, entries);
               const uid = getUserId(req)!;
               let csvDocId: number | null = null;
               try {
@@ -9732,7 +9877,14 @@ ${boundedRaw}`;
               } catch (saveErr) {
                 console.error("[Case Law Extract] Failed to save CSV document:", saveErr);
               }
-              return res.json({ extracted: entries.length, truncated: false, originalLength: rawCsv.length, cases: entries, savedDocId: csvDocId, savedFilename: file.originalname });
+              return res.json({
+                extracted: entriesWithRoles.length,
+                truncated: false,
+                originalLength: rawCsv.length,
+                cases: entriesWithRoles,
+                savedDocId: csvDocId,
+                savedFilename: file.originalname,
+              });
             }
           }
         }

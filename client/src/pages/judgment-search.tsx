@@ -71,7 +71,7 @@ type CitationResult = {
 
 type CitationSearchParams = {
   year: number;
-  journal: string;
+  journal?: string;
   page: number;
   court?: string;
 };
@@ -149,11 +149,8 @@ export default function JudgmentSearchPage() {
   const [showFullText, setShowFullText] = useState<Record<number, boolean>>({});
 
   const [year, setYear] = useState<number>(currentYear);
-  const [keywordYear, setKeywordYear] = useState<string>("");
-  const [keywordJournal, setKeywordJournal] = useState<string>("");
   const [citationJournal, setCitationJournal] = useState<string>("");
   const [page, setPage] = useState<string>("");
-  const [keywordPage, setKeywordPage] = useState<string>("");
   const [keywordCourt, setKeywordCourt] = useState<string>("");
   const [citationCourt, setCitationCourt] = useState<string>("");
   const [searchMode, setSearchMode] = useState<"keyword" | "citation">("keyword");
@@ -176,7 +173,7 @@ export default function JudgmentSearchPage() {
     [localResults, externalResults],
   );
 
-  const citationPreview = `${year} ${citationJournal || "JOURNAL"} ${page || "PAGE"}`;
+  const citationPreview = `${year} ${citationJournal || "ALL"} ${page || "PAGE"}`;
 
   const runKeywordSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
@@ -186,18 +183,11 @@ export default function JudgmentSearchPage() {
     setSummaries({});
     setExpandedSummary(null);
 
-    const keywordYearValue = Number(keywordYear);
-    const keywordPageValue = Number(keywordPage);
-    const hasKeywordYear = Number.isInteger(keywordYearValue) && keywordYearValue >= 1947;
-    const hasKeywordPage = Number.isInteger(keywordPageValue) && keywordPageValue > 0;
     const requestParams = new URLSearchParams({
       q: searchQuery.trim(),
       sort: keywordSort,
     });
-    if (keywordJournal.trim()) requestParams.set("report", keywordJournal.trim());
     if (keywordCourt.trim()) requestParams.set("court", keywordCourt.trim());
-    if (hasKeywordYear) requestParams.set("year", String(keywordYearValue));
-    if (hasKeywordPage) requestParams.set("page", String(keywordPageValue));
 
     let localItems: CaseLawResult[] = [];
     try {
@@ -224,10 +214,7 @@ export default function JudgmentSearchPage() {
     try {
       const extRes = await apiRequest("POST", "/api/ai/search-judgments", {
         query: searchQuery.trim(),
-        report: keywordJournal.trim() || undefined,
         court: keywordCourt.trim() || undefined,
-        year: hasKeywordYear ? keywordYearValue : undefined,
-        page: hasKeywordPage ? keywordPageValue : undefined,
         sort: keywordSort,
       });
       const ext = await extRes.json();
@@ -260,9 +247,9 @@ export default function JudgmentSearchPage() {
     try {
       const queryParams = new URLSearchParams({
         year: String(params.year),
-        journal: params.journal,
         page: String(params.page),
       });
+      if (params.journal?.trim()) queryParams.set("journal", params.journal.trim());
       if (params.court?.trim()) queryParams.set("court", params.court.trim());
 
       const res = await apiRequest("GET", `/api/citation-search?${queryParams.toString()}`);
@@ -284,10 +271,6 @@ export default function JudgmentSearchPage() {
     event.preventDefault();
 
     const pageNumber = Number(page);
-    if (!citationJournal.trim()) {
-      setCitationError("Please select a journal.");
-      return;
-    }
     if (!Number.isInteger(pageNumber) || pageNumber < 1) {
       setCitationError("Page must be a positive number.");
       return;
@@ -359,9 +342,6 @@ export default function JudgmentSearchPage() {
         }
         const data = (await res.json()) as Journal[];
         setJournals(data);
-        if (!citationJournal && data.length > 0) {
-          setCitationJournal(data[0].code);
-        }
       } catch (err: any) {
         setCitationError(err?.message || "Failed to load journals");
       } finally {
@@ -370,7 +350,7 @@ export default function JudgmentSearchPage() {
     }
 
     void loadJournals();
-  }, [citationJournal]);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -427,7 +407,7 @@ export default function JudgmentSearchPage() {
       (j) => j.code.toUpperCase() === pendingAutoCitation.journal.toUpperCase(),
     );
 
-    const selectedJournal = matchedJournal?.code || journals[0]?.code || pendingAutoCitation.journal;
+    const selectedJournal = matchedJournal?.code || "";
 
     setYear(pendingAutoCitation.year);
     setCitationJournal(selectedJournal);
@@ -511,7 +491,7 @@ export default function JudgmentSearchPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Jurisdiction</span>
                 <select
@@ -520,23 +500,6 @@ export default function JudgmentSearchPage() {
                   disabled
                 >
                   <option value="Pakistan">Pakistan</option>
-                </select>
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Journal</span>
-                <select
-                  value={keywordJournal}
-                  onChange={(e) => setKeywordJournal(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-                  disabled={loadingJournals}
-                >
-                  <option value="">All Journals</option>
-                  {journals.map((j) => (
-                    <option key={j.id} value={j.code}>
-                      {j.code}
-                    </option>
-                  ))}
                 </select>
               </label>
 
@@ -560,34 +523,6 @@ export default function JudgmentSearchPage() {
                   <option value="relevance">Relevance</option>
                   <option value="latest">Latest</option>
                 </select>
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Year</span>
-                <select
-                  value={keywordYear}
-                  onChange={(e) => setKeywordYear(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-                >
-                  <option value="">All Years</option>
-                  {years.map((y) => (
-                    <option key={y} value={String(y)}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Page</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={keywordPage}
-                  onChange={(e) => setKeywordPage(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-                  placeholder="e.g. 184"
-                />
               </label>
             </div>
 
@@ -637,6 +572,7 @@ export default function JudgmentSearchPage() {
                   data-testid="select-citation-journal"
                 >
                   {journals.length === 0 ? <option value="">No journals available</option> : null}
+                  {journals.length > 0 ? <option value="">All Journals</option> : null}
                   {journals.map((j) => (
                     <option key={j.id} value={j.code}>
                       {j.code}
