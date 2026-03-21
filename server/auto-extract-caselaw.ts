@@ -24,6 +24,11 @@ interface CitationMention {
   index: number;
 }
 
+interface CitationRoleAssignmentOptions {
+  sourceFilename?: string;
+  preferredPrimaryCitation?: string | null;
+}
+
 interface ExtractAndSaveOptions {
   allowExistingUpdates?: boolean;
 }
@@ -61,6 +66,7 @@ const REPORT_NORMALIZERS = REPORT_CODES.map((code) => ({
 const COURT_NAMES = "Supreme\\s+Court|S\\.?C\\.?|Lah\\.?|Lahore|Sindh|Kar\\.?|Karachi|Pesh\\.?|Peshawar|Bal\\.?|Balochistan|Quetta|Islamabad|ISB|Federal\\s+Shariat|FSC|Rawalpindi|Multan|Bahawalpur|D\\.?B\\.?|F\\.?B\\.?|Tribunal|ATIR|Appellate\\s+Tribunal";
 
 const CITATION_PATTERNS: RegExp[] = [
+  /\b(?:19|20)\d{2}\s*L\.?\s*H\.?\s*C\.?\s*\d{1,6}\b/gi,
   new RegExp(`(?:${REPORT_ABBRS})\\s+\\d{4}\\s+(?:${COURT_NAMES})\\s+\\d+`, "gi"),
   new RegExp(`(?:${REPORT_ABBRS})\\s+\\d{4}\\s+\\d+`, "gi"),
   new RegExp(`\\d{4}\\s+(?:${REPORT_ABBRS})\\s+\\d+`, "gi"),
@@ -145,6 +151,10 @@ function normalizeCitation(raw: string): string {
   let out = raw
     .replace(/\s+/g, " ")
     .replace(/[()]/g, "");
+  out = out.replace(
+    /\b((?:19|20)\d{2})\s*L\.?\s*H\.?\s*C\.?\s*(\d{1,6})\b/gi,
+    (_m, year, numberPart) => `${year}LHC${Number(numberPart)}`,
+  );
   for (const normalizer of REPORT_NORMALIZERS) {
     out = out.replace(normalizer.regex, normalizer.canonical);
   }
@@ -180,8 +190,10 @@ function extractCitationMentionsFromText(text: string): CitationMention[] {
   return Array.from(mentions.values()).sort((a, b) => a.index - b.index);
 }
 
-function inferPrimaryCitation(text: string, mentions: CitationMention[]): string | null {
+function inferPrimaryCitation(text: string, mentions: CitationMention[], preferredPrimaryCitation?: string | null): string | null {
   if (mentions.length === 0) return null;
+  const preferred = normalizeCitation(String(preferredPrimaryCitation || ""));
+  if (preferred) return preferred;
   const headWindow = text.slice(0, Math.min(text.length, 4000));
 
   for (const mention of mentions) {
@@ -206,7 +218,31 @@ function inferPrimaryCitation(text: string, mentions: CitationMention[]): string
   return mentions[0].citation;
 }
 
+function extractLhcNeutralCitationFromSourceFilename(sourceFilename?: string): string | null {
+  const raw = String(sourceFilename || "").trim();
+  if (!raw) return null;
+  const basename = raw.replace(/\.[^.]+$/g, "");
+  const match = basename.match(/\b((?:19|20)\d{2})\s*[-_. ]*L\.?\s*H\.?\s*C\.?\s*[-_. ]*(\d{1,6})\b/i);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const numberPart = Number(match[2]);
+  if (!Number.isInteger(year) || !Number.isInteger(numberPart) || numberPart < 1) return null;
+  return `${year}LHC${numberPart}`;
+}
+
+function addPreferredPrimaryMention(mentions: CitationMention[], preferredPrimaryCitation?: string | null): CitationMention[] {
+  const preferred = normalizeCitation(String(preferredPrimaryCitation || ""));
+  if (!preferred) return mentions;
+  const preferredKey = normalizeCitationKey(preferred);
+  const alreadyPresent = mentions.some((mention) => normalizeCitationKey(mention.citation) === preferredKey);
+  if (alreadyPresent) return mentions;
+  return [{ citation: preferred, index: -1 }, ...mentions];
+}
+
 function inferCourt(citation: string): string {
+  if (/\b(?:19|20)\d{2}\s*L\.?\s*H\.?\s*C\.?\s*\d{1,6}\b/i.test(citation)) {
+    return "Lahore High Court";
+  }
   for (const [pattern, court] of COURT_MAP) {
     if (pattern.test(citation)) {
       return court;
@@ -310,11 +346,14 @@ function extractKeywords(text: string, citation: string, hintIndex?: number): st
 export function assignCitationRolesToCases(
   text: string,
   cases: Array<Pick<ExtractedCase, "citation" | "court" | "title" | "summary" | "keywords">>,
+  options?: CitationRoleAssignmentOptions,
 ): ExtractedCase[] {
   if (!Array.isArray(cases) || cases.length === 0) return [];
 
-  const mentions = extractCitationMentionsFromText(text || "");
-  const inferredPrimary = inferPrimaryCitation(text || "", mentions);
+  const filenamePrimary = extractLhcNeutralCitationFromSourceFilename(options?.sourceFilename);
+  const preferredPrimary = options?.preferredPrimaryCitation || filenamePrimary;
+  const mentions = addPreferredPrimaryMention(extractCitationMentionsFromText(text || ""), preferredPrimary);
+  const inferredPrimary = inferPrimaryCitation(text || "", mentions, preferredPrimary);
   const inferredPrimaryKey = inferredPrimary ? normalizeCitationKey(inferredPrimary) : "";
 
   let assignedPrimary = false;
@@ -340,10 +379,12 @@ export function assignCitationRolesToCases(
   return mapped;
 }
 
-export function nlpExtractCases(text: string): ExtractedCase[] {
-  const mentions = extractCitationMentionsFromText(text);
+export function nlpExtractCases(text: string, options?: CitationRoleAssignmentOptions): ExtractedCase[] {
+  const filenamePrimary = extractLhcNeutralCitationFromSourceFilename(options?.sourceFilename);
+  const preferredPrimary = options?.preferredPrimaryCitation || filenamePrimary;
+  const mentions = addPreferredPrimaryMention(extractCitationMentionsFromText(text), preferredPrimary);
   const cases: ExtractedCase[] = [];
-  const inferredPrimary = inferPrimaryCitation(text, mentions);
+  const inferredPrimary = inferPrimaryCitation(text, mentions, preferredPrimary);
   const inferredPrimaryKey = inferredPrimary ? normalizeCitationKey(inferredPrimary) : "";
   let assignedPrimary = false;
 
@@ -429,7 +470,7 @@ async function extractAndSave(
   options: ExtractAndSaveOptions = {},
 ): Promise<{ extracted: number; saved: number; skippedKnown: number }> {
   try {
-    const extracted = nlpExtractCases(text);
+    const extracted = nlpExtractCases(text, { sourceFilename });
 
     if (extracted.length === 0) {
       return { extracted: 0, saved: 0, skippedKnown: 0 };
