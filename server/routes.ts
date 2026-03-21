@@ -9331,7 +9331,7 @@ ${boundedRaw}`;
           keywords,
         });
       }
-      const roleAwareCases = assignCitationRolesToCases(content, validCases);
+      const roleAwareCases = assignCitationRolesToCases(content, validCases, { sourceFilename: filename });
 
       let savedDocId: number | null = null;
       const savedFilename = filename;
@@ -9757,7 +9757,7 @@ ${boundedRaw}`;
               keywords: Array.isArray(c.keywords) ? c.keywords : (typeof c.keywords === "string" ? c.keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : (Array.isArray(c.tags) ? c.tags : [])),
             }));
             if (mapped.length > 0) {
-              const mappedWithRoles = assignCitationRolesToCases(rawJson, mapped);
+              const mappedWithRoles = assignCitationRolesToCases(rawJson, mapped, { sourceFilename: file.originalname });
               const uid = getUserId(req)!;
               let jsonDocId: number | null = null;
               try {
@@ -9837,7 +9837,7 @@ ${boundedRaw}`;
               }
             }
             if (entries.length > 0) {
-              const entriesWithRoles = assignCitationRolesToCases(rawCsv, entries);
+              const entriesWithRoles = assignCitationRolesToCases(rawCsv, entries, { sourceFilename: file.originalname });
               const uid = getUserId(req)!;
               let csvDocId: number | null = null;
               try {
@@ -9958,7 +9958,7 @@ ${boundedRaw}`;
         console.error("[Case Law Extract] Failed to save document to knowledge base:", saveErr);
       }
 
-      const extracted = nlpExtractCases(content);
+      const extracted = nlpExtractCases(content, { sourceFilename: file.originalname });
       const validCases = extracted.filter(c => c.citation && c.title);
 
       res.json({
