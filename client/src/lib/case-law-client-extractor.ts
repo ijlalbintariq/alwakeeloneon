@@ -21,7 +21,21 @@ type ClientExtractResult = {
   sourceType?: "browser-hybrid" | "browser-pdf-text";
 };
 
-const REPORT_ABBRS = "PLD|SCMR|YLR|MLD|CLC|PCRLJ|PCr\\.?LJ|PLJ|PLC|NLR|CLD|PTD|PTCL";
+const REPORT_CODES = [
+  "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
+  "CLD", "PTD", "PTCL", "PSC", "ALD", "KLR", "PLS", "GBLR", "TAX", "SLR",
+] as const;
+
+function buildFlexibleReportPattern(code: string): string {
+  const letters = String(code || "").replace(/[^A-Za-z]/g, "").split("");
+  return letters.map((ch) => `${ch}\\.?`).join("\\s*");
+}
+
+const REPORT_ABBRS = REPORT_CODES.map((code) => buildFlexibleReportPattern(code)).join("|");
+const REPORT_NORMALIZERS = REPORT_CODES.map((code) => ({
+  canonical: code,
+  regex: new RegExp(`\\b${buildFlexibleReportPattern(code)}\\b`, "gi"),
+}));
 
 const CITATION_PATTERNS: RegExp[] = [
   new RegExp(`(?:${REPORT_ABBRS})\\s+\\d{4}\\s+\\d+`, "gi"),
@@ -30,11 +44,13 @@ const CITATION_PATTERNS: RegExp[] = [
 ];
 
 function normalizeCitation(raw: string): string {
-  return String(raw || "")
+  let out = String(raw || "")
     .replace(/\s+/g, " ")
-    .replace(/[()]/g, "")
-    .replace(/PCr\.?LJ/gi, "PCRLJ")
-    .trim();
+    .replace(/[()]/g, "");
+  for (const normalizer of REPORT_NORMALIZERS) {
+    out = out.replace(normalizer.regex, normalizer.canonical);
+  }
+  return out.trim();
 }
 
 function clamp(value: number, min: number, max: number): number {

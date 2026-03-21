@@ -151,7 +151,16 @@ export default function JudgmentViewPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [sourceDocData, setSourceDocData] = useState<{ found: boolean; id?: number; hasSource?: boolean; sourceType?: string; sourceFilename?: string } | null>(null);
-  const [sourceContent, setSourceContent] = useState<{ found: boolean; title?: string; content?: string; filename?: string; sourceType?: string } | null>(null);
+  const [sourceContent, setSourceContent] = useState<{
+    found: boolean;
+    title?: string;
+    content?: string;
+    filename?: string;
+    sourceType?: string;
+    mimeType?: string | null;
+    originalFileAvailable?: boolean;
+    viewUrl?: string | null;
+  } | null>(null);
   const [isLoadingSourceContent, setIsLoadingSourceContent] = useState(false);
   const [showSourceDoc, setShowSourceDoc] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -186,7 +195,9 @@ export default function JudgmentViewPage() {
       if (res.ok) {
         const data = await res.json();
         setSourceContent(data);
-        if (data.found) {
+        if (data.found && data.viewUrl) {
+          window.open(data.viewUrl, "_blank", "noopener,noreferrer");
+        } else if (data.found && data.content) {
           setShowSourceDoc(true);
         }
       }

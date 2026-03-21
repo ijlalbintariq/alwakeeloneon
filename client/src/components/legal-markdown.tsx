@@ -32,6 +32,7 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
 }
 
 export function LegalMarkdown({ content, className }: { content: string; className?: string }) {
+  const citationPattern = /^\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+/i;
   return (
     <div className={`legal-markdown ${className || ""}`}>
       <ReactMarkdown
@@ -72,7 +73,6 @@ export function LegalMarkdown({ content, className }: { content: string; classNa
                 </LegalLink>
               );
             }
-            const citationPattern = /^(PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ)\s+\d{4}\s+/;
             if (citationPattern.test(text)) {
               const searchQuery = encodeURIComponent(text);
               return (

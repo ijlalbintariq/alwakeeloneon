@@ -109,9 +109,7 @@ function resolveConfidence(scores: number[]): "high" | "medium" | "low" {
 function normalizeCitationToken(input: string): string {
   return String(input || "")
     .toUpperCase()
-    .replace(/[()]/g, " ")
-    .replace(/PCr\.?LJ/g, "PCRLJ")
-    .replace(/\s+/g, " ")
+    .replace(/[^A-Z0-9]/g, "")
     .trim();
 }
 
@@ -146,7 +144,7 @@ function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: numbe
     const phraseMatch = normalizedQuery.length >= 12 && normalizedChunk.includes(normalizedQuery) ? 1 : 0;
 
     const normalizedCitationScope = normalizeCitationToken(`${m.title} ${m.chunkText}`);
-    const citationMatch = citationToken && /(?:\b(?:PLD|SCMR|CLC|MLD|YLR|PCRLJ|PLJ|NLR|CLD|PTD|PLC)\b\s*\d{1,5}|\d{4}\s+\b(?:PLD|SCMR|CLC|MLD|YLR|PCRLJ|PLJ|NLR|CLD|PTD|PLC)\b)/.test(citationToken)
+    const citationMatch = citationToken && /(?:\b(?:PLD|SCMR|CLC|MLD|YLR|PCRLJ|PLJ|NLR|CLD|PTD|PLC|PSC|SLR)\d{1,5}\b|\b\d{4}(?:PLD|SCMR|CLC|MLD|YLR|PCRLJ|PLJ|NLR|CLD|PTD|PLC|PSC|SLR)\d{1,5}\b)/.test(citationToken)
       ? (normalizedCitationScope.includes(citationToken) ? 1 : 0)
       : 0;
 

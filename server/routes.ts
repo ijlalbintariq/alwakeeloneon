@@ -1579,9 +1579,44 @@ async function applyAlWakeeloSafetyGuardrails(content: string): Promise<string> 
 
 type CitationParts = { year: number; journalCode: string; page: number };
 type CaseLawCitationQueryParts = { year: number; report: string; page: number };
+const CASELAW_REPORT_CODES = new Set([
+  "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
+  "PSC", "ALD", "KLR", "PTD", "PTCL", "PLS", "GBLR", "CLD", "TAX", "SLR",
+]);
+
+function buildFlexibleReportPattern(code: string): string {
+  const letters = String(code || "").replace(/[^A-Za-z]/g, "").split("");
+  return letters.map((ch) => `${ch}\\.?`).join("\\s*");
+}
+
+const CASELAW_REPORT_FLEX_PATTERN = Array.from(CASELAW_REPORT_CODES)
+  .map((code) => buildFlexibleReportPattern(code))
+  .join("|");
 
 function normalizeCitationToken(token: string): string {
-  return String(token || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  return String(token || "")
+    .replace(/\bP\.?\s*Cr\.?\s*L\.?\s*J\b/gi, "PCRLJ")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .toUpperCase();
+}
+
+function resolveCaseLawReportToken(raw: string): string | null {
+  const direct = normalizeCitationToken(raw);
+  if (CASELAW_REPORT_CODES.has(direct)) return direct;
+
+  const tokens = String(raw || "")
+    .split(/\s+/g)
+    .map((token) => normalizeCitationToken(token))
+    .filter(Boolean);
+  if (tokens.length === 0) return null;
+
+  for (let len = tokens.length; len >= 1; len -= 1) {
+    for (let start = 0; start + len <= tokens.length; start += 1) {
+      const candidate = tokens.slice(start, start + len).join("");
+      if (CASELAW_REPORT_CODES.has(candidate)) return candidate;
+    }
+  }
+  return null;
 }
 
 function parseCitationParts(citation: string, journalCodeMap: Map<string, string>): CitationParts | null {
@@ -1600,30 +1635,44 @@ function parseCitationParts(citation: string, journalCodeMap: Map<string, string
   const year = Number(tokens[yearIdx]);
   if (!Number.isInteger(year)) return null;
 
-  const journalCandidates = [
+  const pageIdx = tokens
+    .map((token, idx) => ({ token, idx }))
+    .filter(({ token, idx }) => idx > yearIdx && /^\d{1,5}$/.test(token) && Number(token) > 0)
+    .map(({ idx }) => idx)
+    .pop();
+  if (!Number.isInteger(pageIdx)) return null;
+
+  const page = Number(tokens[pageIdx]);
+  if (!Number.isInteger(page) || page < 1) return null;
+
+  const phraseCandidates: string[] = [];
+  const yearTail = tokens.slice(yearIdx + 1, pageIdx);
+  if (yearTail.length > 0) {
+    phraseCandidates.push(yearTail.join(" "));
+  }
+  phraseCandidates.push(
     tokens[yearIdx + 1],
-    tokens[yearIdx - 1],
     tokens[yearIdx + 2],
+    tokens[yearIdx - 1],
     tokens[yearIdx - 2],
-  ].filter((token): token is string => typeof token === "string" && token.length > 0);
+  );
 
   let journalCode: string | undefined;
-  for (const token of journalCandidates) {
-    const mapped = journalCodeMap.get(normalizeCitationToken(token));
+  for (const phrase of phraseCandidates) {
+    if (!phrase || typeof phrase !== "string") continue;
+    const direct = journalCodeMap.get(normalizeCitationToken(phrase));
+    if (direct) {
+      journalCode = direct;
+      break;
+    }
+    const resolved = resolveCaseLawReportToken(phrase);
+    const mapped = resolved ? journalCodeMap.get(resolved) : undefined;
     if (mapped) {
       journalCode = mapped;
       break;
     }
   }
   if (!journalCode) return null;
-
-  const tailTokens = tokens.slice(yearIdx + 1);
-  const pageToken = [...tailTokens]
-    .reverse()
-    .find((token) => /^\d{1,5}$/.test(token) && Number(token) > 0);
-  if (!pageToken) return null;
-  const page = Number(pageToken);
-  if (!Number.isInteger(page) || page < 1) return null;
 
   return { year, journalCode, page };
 }
@@ -1637,24 +1686,170 @@ function parseCaseLawCitationQuery(query: string): CaseLawCitationQueryParts | n
     .trim();
 
   const yearFirst =
-    normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9]{1,12})(?:\s+[A-Za-z.]{2,15}){0,2}\s+(\d{1,6})\b/i);
+    normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+(\d{1,6})\b/i);
   if (yearFirst) {
     const year = Number(yearFirst[1]);
     const page = Number(yearFirst[3]);
-    const report = normalizeCitationToken(yearFirst[2]);
+    const report = resolveCaseLawReportToken(yearFirst[2]) || normalizeCitationToken(yearFirst[2]);
     if (Number.isInteger(year) && Number.isInteger(page) && page > 0 && report) {
       return { year, report, page };
     }
   }
 
   const reportFirst =
-    normalized.match(/\b([A-Za-z][A-Za-z0-9]{1,12})\s+((?:19|20)\d{2})(?:\s+[A-Za-z.]{2,15}){0,2}\s+(\d{1,6})\b/i);
+    normalized.match(/\b([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+((?:19|20)\d{2})\s+(\d{1,6})\b/i);
   if (!reportFirst) return null;
-  const report = normalizeCitationToken(reportFirst[1]);
+  const report = resolveCaseLawReportToken(reportFirst[1]) || normalizeCitationToken(reportFirst[1]);
   const year = Number(reportFirst[2]);
   const page = Number(reportFirst[3]);
   if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1 || !report) return null;
   return { year, report, page };
+}
+
+function caseLawSearchRowKey(entry: CaseLaw): string {
+  const citationKey = normalizeCitationForMatch(String(entry.citation || ""));
+  if (citationKey) return `c:${citationKey}`;
+  const report = normalizeCitationToken(String(entry.citationReport || ""));
+  const year = Number(entry.citationYear);
+  const page = Number(entry.citationPage);
+  if (report && Number.isInteger(year) && Number.isInteger(page) && page > 0) {
+    return `p:${report}:${year}:${page}`;
+  }
+  return `id:${entry.id}`;
+}
+
+function scoreCaseLawTextMatch(entry: CaseLaw, query: string): number {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return 0;
+  const title = String(entry.title || "").toLowerCase();
+  const summary = String(entry.summary || "").toLowerCase();
+  const citation = String(entry.citation || "").toLowerCase();
+  const court = String(entry.court || "").toLowerCase();
+
+  let score = 0;
+  if (title.includes(q)) score += 5;
+  if (summary.includes(q)) score += 4;
+  if (citation.includes(q)) score += 4;
+  if (court.includes(q)) score += 1;
+
+  const tokens = q.split(/\s+/g).filter((token) => token.length >= 3);
+  for (const token of tokens.slice(0, 8)) {
+    if (title.includes(token)) score += 1.5;
+    if (summary.includes(token)) score += 1.2;
+    if (citation.includes(token)) score += 1.2;
+  }
+  return score;
+}
+
+function filterCaseLawByStructuredFields(
+  rows: CaseLaw[],
+  options: {
+    year?: number;
+    report?: string;
+    page?: number;
+    court?: string;
+  },
+): CaseLaw[] {
+  const year = Number.isInteger(Number(options.year)) ? Number(options.year) : undefined;
+  const page = Number.isInteger(Number(options.page)) ? Number(options.page) : undefined;
+  const report = normalizeCitationToken(String(options.report || "").trim());
+  const court = String(options.court || "").trim().toLowerCase();
+
+  return rows.filter((row) => {
+    if (year && Number(row.citationYear) !== year) return false;
+    if (page && Number(row.citationPage) !== page) return false;
+    if (report && normalizeCitationToken(String(row.citationReport || "")) !== report) return false;
+    if (court && !String(row.court || "").toLowerCase().includes(court)) return false;
+    return true;
+  });
+}
+
+async function searchCaseLawWithFullText(args: {
+  userId: string;
+  query: string;
+  limit: number;
+  year?: number;
+  report?: string;
+  page?: number;
+  court?: string;
+  sort?: "relevance" | "latest";
+  parsedCitation?: CaseLawCitationQueryParts | null;
+}): Promise<CaseLaw[]> {
+  const baseResults = await storage.searchCaseLaw(args.query, args.limit, {
+    year: args.year,
+    report: args.report,
+    page: args.page,
+    court: args.court,
+    sort: args.sort,
+    parsedCitation: args.parsedCitation,
+  });
+
+  const query = String(args.query || "").trim();
+  if (!query) return baseResults;
+
+  let ragCandidates: CaseLaw[] = [];
+  try {
+    const retrieval = await retrieveForQuery({
+      userId: args.userId,
+      query,
+      topK: Math.min(120, Math.max(args.limit * 4, 24)),
+    });
+
+    const sourceDocIds: number[] = [];
+    const seenDocIds = new Set<number>();
+    for (const match of retrieval.matches) {
+      const sourceType = String((match.metadata || {}).sourceType || "").toLowerCase();
+      if (sourceType !== "admin-case-law") continue;
+      const sourceDocId = Number(match.sourceDocumentId);
+      if (!Number.isInteger(sourceDocId) || sourceDocId <= 0 || seenDocIds.has(sourceDocId)) continue;
+      seenDocIds.add(sourceDocId);
+      sourceDocIds.push(sourceDocId);
+      if (sourceDocIds.length >= Math.max(args.limit * 4, 30)) break;
+    }
+
+    if (sourceDocIds.length > 0) {
+      const rows = await storage.getCaseLawBySourceDocuments(sourceDocIds, "admin");
+      const filteredRows = filterCaseLawByStructuredFields(rows, {
+        year: args.year,
+        report: args.report,
+        page: args.page,
+        court: args.court,
+      });
+
+      const bestBySourceDoc = new Map<number, CaseLaw>();
+      for (const row of filteredRows) {
+        const sourceDocId = Number(row.sourceDocId || 0);
+        if (!Number.isInteger(sourceDocId) || sourceDocId <= 0) continue;
+        const existing = bestBySourceDoc.get(sourceDocId);
+        if (!existing) {
+          bestBySourceDoc.set(sourceDocId, row);
+          continue;
+        }
+        const existingScore = scoreCaseLawTextMatch(existing, query);
+        const candidateScore = scoreCaseLawTextMatch(row, query);
+        if (candidateScore > existingScore) {
+          bestBySourceDoc.set(sourceDocId, row);
+        }
+      }
+
+      ragCandidates = sourceDocIds
+        .map((sourceDocId) => bestBySourceDoc.get(sourceDocId))
+        .filter((row): row is CaseLaw => Boolean(row));
+    }
+  } catch (err) {
+    console.warn("[CaseLaw Search] Full-text retrieval fallback unavailable:", err);
+  }
+
+  const merged: CaseLaw[] = [];
+  const seen = new Set<string>();
+  for (const row of [...baseResults, ...ragCandidates]) {
+    const key = caseLawSearchRowKey(row);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(row);
+    if (merged.length >= args.limit) break;
+  }
+  return merged;
 }
 
 function resolveCourtId(courtRaw: string, courts: Array<{ id: number; code: string; name: string }>): number | null {
@@ -2090,7 +2285,7 @@ function escapeRegExp(value: string): string {
 function normalizeCitationForMatch(value: string): string {
   return String(value || "")
     .toUpperCase()
-    .replace(/\bP\.?\s*CR\.?\s*LJ\b/g, "PCRLJ")
+    .replace(/\bP\.?\s*C\.?\s*R\.?\s*L\.?\s*J\b/g, "PCRLJ")
     .replace(/\bSUPREME\s+COURT\b/g, "SC")
     .replace(/\bFEDERAL\s+SHARIAT(?:\s+COURT)?\b/g, "FSC")
     .replace(/\bLAHORE\b/g, "LAH")
@@ -2106,8 +2301,8 @@ function extractCaseCitationCandidates(text: string): string[] {
   const candidates: string[] = [];
   const seen = new Set<string>();
   const patterns = [
-    /\b\d{4}\s+(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PCr\.?LJ|PLJ|NLR|CLD|PTD|PLC|PSC|GBLR|KLR|SLR)\s+\d{1,5}\b/gi,
-    /\b(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PCr\.?LJ|PLJ|NLR|CLD|PTD|PLC|PSC|GBLR|KLR|SLR)\s+\d{4}\s+(?:SC|Lah\.?|Lahore|Kar\.?|Karachi|Peshawar|Islamabad|Sindh|Balochistan|FSC|Federal\s+Shariat(?:\s+Court)?|Supreme\s+Court)\s+\d{1,5}\b/gi,
+    new RegExp(`\\b\\d{4}\\s+(?:${CASELAW_REPORT_FLEX_PATTERN})\\s+\\d{1,5}\\b`, "gi"),
+    new RegExp(`\\b(?:${CASELAW_REPORT_FLEX_PATTERN})\\s+\\d{4}\\s+(?:SC|Lah\\.?|Lahore|Kar\\.?|Karachi|Peshawar|Islamabad|Sindh|Balochistan|FSC|Federal\\s+Shariat(?:\\s+Court)?|Supreme\\s+Court)\\s+\\d{1,5}\\b`, "gi"),
   ];
 
   for (const pattern of patterns) {
@@ -3423,6 +3618,43 @@ export async function registerRoutes(
     if (!userId) return res.sendStatus(401);
     const docs = await storage.getDocuments(userId);
     res.json(docs.map(toApiDocument));
+  });
+
+  app.get("/api/documents/:id/file", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const id = parseInt(String(req.params.id));
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid document ID" });
+
+      const doc = await storage.getDocumentById(id, userId);
+      if (!doc) return res.status(404).json({ message: "Document not found" });
+
+      const fileMeta = await storage.getDocumentFile(id, userId);
+      if (!fileMeta) return res.status(404).json({ message: "File not found" });
+
+      if (fileMeta.provider === "r2" && fileMeta.objectKey) {
+        const binary = await getR2ObjectBinary(fileMeta.objectKey);
+        if (!binary) return res.status(404).json({ message: "File not found" });
+        const contentType = binary.contentType || fileMeta.mimeType || "application/octet-stream";
+        const safeFilename = (fileMeta.originalFilename || doc.title || `document-${id}`).replace(/[^a-zA-Z0-9._-]+/g, "_");
+        res.setHeader("X-Frame-Options", "SAMEORIGIN");
+        res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Content-Disposition", `inline; filename="${safeFilename}"`);
+        res.setHeader("Cache-Control", "private, max-age=3600");
+        return res.send(binary.buffer);
+      }
+
+      if (fileMeta.publicUrl) {
+        return res.redirect(fileMeta.publicUrl);
+      }
+
+      return res.status(404).json({ message: "File not found" });
+    } catch (err) {
+      console.error("Error fetching document file:", err);
+      res.status(500).json({ message: "Failed to fetch document file" });
+    }
   });
 
   app.get("/api/documents/insights", async (req, res) => {
@@ -4906,7 +5138,10 @@ RAG POLICY (STRICT):
         return res.json([]);
       }
 
-      const results = await storage.searchCaseLaw(query, limit, {
+      const results = await searchCaseLawWithFullText({
+        userId,
+        query,
+        limit,
         year,
         report,
         page,
@@ -4962,6 +5197,8 @@ RAG POLICY (STRICT):
       let title = "";
       let content = "";
       let filename = "";
+      let mimeType: string | null = null;
+      let originalFileAvailable = false;
 
       if (entry.sourceType === "github") {
         const doc = await storage.getGithubKnowledgeById(entry.sourceDocId);
@@ -4973,6 +5210,11 @@ RAG POLICY (STRICT):
           content = doc.content;
           filename = doc.filename;
           const fileMeta = await storage.getAdminKnowledgeFile(doc.id);
+          if (fileMeta) {
+            filename = fileMeta.originalFilename || filename;
+            mimeType = fileMeta.mimeType || null;
+            originalFileAvailable = !!((fileMeta.provider === "r2" && fileMeta.objectKey) || fileMeta.publicUrl);
+          }
           if (fileMeta?.extractedTextKey) {
             const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
             if (fullContent) content = fullContent;
@@ -4985,6 +5227,11 @@ RAG POLICY (STRICT):
           content = doc.content;
           filename = doc.filename;
           const fileMeta = await storage.getStatuteDocumentFile(doc.id);
+          if (fileMeta) {
+            filename = fileMeta.originalFilename || filename;
+            mimeType = fileMeta.mimeType || null;
+            originalFileAvailable = !!((fileMeta.provider === "r2" && fileMeta.objectKey) || fileMeta.publicUrl);
+          }
           if (fileMeta?.extractedTextKey) {
             const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
             if (fullContent) content = fullContent;
@@ -4997,6 +5244,11 @@ RAG POLICY (STRICT):
           content = doc.content || "";
           filename = doc.title || "";
           const fileMeta = await storage.getDocumentFile(doc.id, userId);
+          if (fileMeta) {
+            filename = fileMeta.originalFilename || filename;
+            mimeType = fileMeta.mimeType || null;
+            originalFileAvailable = !!((fileMeta.provider === "r2" && fileMeta.objectKey) || fileMeta.publicUrl);
+          }
           if (fileMeta?.extractedTextKey) {
             const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
             if (fullContent) content = fullContent;
@@ -5004,7 +5256,7 @@ RAG POLICY (STRICT):
         }
       }
 
-      if (!content) {
+      if (!content && !originalFileAvailable) {
         return res.json({ found: false, message: "Source document no longer available" });
       }
 
@@ -5013,12 +5265,72 @@ RAG POLICY (STRICT):
         title,
         content,
         filename,
+        mimeType,
+        originalFileAvailable,
+        viewUrl: originalFileAvailable ? `/api/case-law/${entry.id}/source/file` : null,
         sourceType: entry.sourceType,
         citation: entry.citation,
       });
     } catch (err) {
       console.error("Error fetching case law source:", err);
       res.status(500).json({ message: "Failed to fetch source document" });
+    }
+  });
+
+  app.get("/api/case-law/:id/source/file", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const id = parseInt(String(req.params.id));
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+
+      const entry = await storage.getCaseLawById(id);
+      if (!entry) return res.status(404).json({ message: "Case law entry not found" });
+      if (!entry.sourceDocId || !entry.sourceType) {
+        return res.status(404).json({ message: "No source document linked to this case law entry" });
+      }
+
+      let fileMeta:
+        | Awaited<ReturnType<typeof storage.getAdminKnowledgeFile>>
+        | Awaited<ReturnType<typeof storage.getStatuteDocumentFile>>
+        | Awaited<ReturnType<typeof storage.getDocumentFile>>
+        | undefined;
+
+      if (entry.sourceType === "admin") {
+        fileMeta = await storage.getAdminKnowledgeFile(entry.sourceDocId);
+      } else if (entry.sourceType === "statute") {
+        fileMeta = await storage.getStatuteDocumentFile(entry.sourceDocId);
+      } else if (entry.sourceType === "user") {
+        const userDoc = await storage.getDocumentById(entry.sourceDocId, userId);
+        if (!userDoc) return res.status(404).json({ message: "Source document not found" });
+        fileMeta = await storage.getDocumentFile(userDoc.id, userId);
+      } else {
+        return res.status(404).json({ message: "Original file is not available for this source type" });
+      }
+
+      if (!fileMeta) return res.status(404).json({ message: "File not found" });
+
+      if (fileMeta.provider === "r2" && fileMeta.objectKey) {
+        const binary = await getR2ObjectBinary(fileMeta.objectKey);
+        if (!binary) return res.status(404).json({ message: "File not found" });
+        const contentType = binary.contentType || fileMeta.mimeType || "application/octet-stream";
+        const safeFilename = (fileMeta.originalFilename || `case-law-source-${id}`).replace(/[^a-zA-Z0-9._-]+/g, "_");
+        res.setHeader("X-Frame-Options", "SAMEORIGIN");
+        res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Content-Disposition", `inline; filename="${safeFilename}"`);
+        res.setHeader("Cache-Control", "private, max-age=3600");
+        return res.send(binary.buffer);
+      }
+
+      if (fileMeta.publicUrl) {
+        return res.redirect(fileMeta.publicUrl);
+      }
+
+      return res.status(404).json({ message: "File not found" });
+    } catch (err) {
+      console.error("Error fetching case law source file:", err);
+      res.status(500).json({ message: "Failed to fetch source file" });
     }
   });
 
@@ -7313,7 +7625,10 @@ The user has attached the following documents for your reference. Analyze them c
         return res.status(400).json({ message: "Query or citation fields are required" });
       }
 
-      const results = await storage.searchCaseLaw(safeQuery, 20, {
+      const results = await searchCaseLawWithFullText({
+        userId,
+        query: safeQuery,
+        limit: 20,
         year,
         report,
         page,
@@ -7371,7 +7686,9 @@ The user has attached the following documents for your reference. Analyze them c
           if (citationNorm.length >= 6 && docTitleNorm.includes(citationNorm)) {
             return true;
           }
-          const citationParts = citation ? citation.match(/\b(PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ)\s*\d{4}/i) : null;
+          const citationParts = citation
+            ? citation.match(new RegExp(`\\b(?:${CASELAW_REPORT_FLEX_PATTERN})\\s*\\d{4}\\b`, "i"))
+            : null;
           if (citationParts) {
             const reportPattern = normalize(citationParts[0]);
             if (docTitleNorm.includes(reportPattern)) {
@@ -9083,7 +9400,7 @@ ${boundedRaw}`;
           errors.push(`Row ${i + 1}: Missing required fields (citation and title)`);
           continue;
         }
-        const dedupeKey = `${citation.toLowerCase()}|${title.toLowerCase()}|${sourceDocId || 0}`;
+        const dedupeKey = `${citation.toLowerCase()}|${title.toLowerCase()}`;
         if (seen.has(dedupeKey)) continue;
         seen.add(dedupeKey);
         const kw = Array.isArray(e.keywords)
