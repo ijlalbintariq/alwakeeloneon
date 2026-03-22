@@ -6,6 +6,13 @@ import crypto from "crypto";
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  findOrCreateGoogleUser(profile: {
+    email: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    profileImageUrl?: string | null;
+    emailVerified?: boolean;
+  }): Promise<{ user: User; created: boolean }>;
   upsertUser(user: UpsertUser): Promise<User>;
   issueSingleSessionLock(userId: string, ipAddress: string): Promise<{ sessionEpoch: number; activeSessionIp: string | null }>;
   clearSingleSessionLock(userId: string, expectedSessionEpoch?: number | null): Promise<void>;
@@ -32,6 +39,74 @@ class AuthStorage implements IAuthStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+
+  async findOrCreateGoogleUser(profile: {
+    email: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    profileImageUrl?: string | null;
+    emailVerified?: boolean;
+  }): Promise<{ user: User; created: boolean }> {
+    const normalizedEmail = String(profile.email || "").trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new Error("google_profile_missing_email");
+    }
+
+    const now = new Date();
+    const normalizedFirstName = (profile.firstName || "").trim() || undefined;
+    const normalizedLastName = (profile.lastName || "").trim() || undefined;
+    const normalizedImage = (profile.profileImageUrl || "").trim() || undefined;
+    const verified = profile.emailVerified !== false;
+
+    const [inserted] = await db
+      .insert(users)
+      .values({
+        email: normalizedEmail,
+        firstName: normalizedFirstName,
+        lastName: normalizedLastName,
+        profileImageUrl: normalizedImage,
+        authProvider: "google",
+        passwordHash: null,
+        subscriptionTier: "free",
+        emailVerified: verified,
+        emailVerifiedAt: verified ? now : null,
+      })
+      .onConflictDoNothing({ target: users.email })
+      .returning();
+
+    if (inserted) {
+      return { user: inserted, created: true };
+    }
+
+    const [existing] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
+    if (!existing) {
+      throw new Error("google_user_lookup_failed_after_conflict");
+    }
+
+    const patch: Partial<User> & { updatedAt: Date } = {
+      updatedAt: now,
+    };
+
+    if (!existing.firstName && normalizedFirstName) patch.firstName = normalizedFirstName;
+    if (!existing.lastName && normalizedLastName) patch.lastName = normalizedLastName;
+    if (!existing.profileImageUrl && normalizedImage) patch.profileImageUrl = normalizedImage;
+    if (!existing.emailVerified && verified) {
+      patch.emailVerified = true;
+      patch.emailVerifiedAt = now;
+    }
+
+    const patchKeys = Object.keys(patch);
+    if (patchKeys.length > 1) {
+      const [updated] = await db
+        .update(users)
+        .set(patch)
+        .where(eq(users.id, existing.id))
+        .returning();
+      if (updated) return { user: updated, created: false };
+    }
+
+    return { user: existing, created: false };
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
