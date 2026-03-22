@@ -15,7 +15,6 @@ import {
   Plus,
   Search,
   Send,
-  Settings,
   Shield,
   Trash2,
   Upload,
@@ -400,7 +399,7 @@ export default function OrganizationPage() {
 
   if (orgLoading) {
     return (
-      <section className="h-full rounded-xl md:rounded-[1.8rem] border border-[hsl(var(--preview-border))] bg-[#181611] flex items-center justify-center">
+      <section className="h-full rounded-xl md:rounded-[1.8rem] border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))] flex items-center justify-center">
         <Loader2 size={28} className="animate-spin text-amber-500" />
       </section>
     );
@@ -409,9 +408,9 @@ export default function OrganizationPage() {
   if (!org) {
     if (!canCreateOrg) {
       return (
-        <section className="h-full rounded-xl md:rounded-[1.8rem] overflow-y-auto border border-[hsl(var(--preview-border))] bg-[#181611] p-6 md:p-10 text-slate-100">
+        <section className="h-full rounded-xl md:rounded-[1.8rem] overflow-y-auto border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))] p-6 md:p-10 text-[hsl(var(--preview-text-primary))]">
           <div className="mx-auto max-w-3xl space-y-6">
-            <div className="rounded-2xl border border-amber-500/20 bg-[#2c241b]/70 p-6">
+            <div className="rounded-2xl border border-amber-500/20 bg-[hsl(var(--preview-surface))/0.7] p-6">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="text-amber-400 mt-0.5" size={20} />
                 <div>
@@ -426,10 +425,10 @@ export default function OrganizationPage() {
             </div>
 
             {pendingInvites.length > 0 && (
-              <div className="rounded-2xl border border-amber-500/20 bg-[#2c241b]/65 p-6 space-y-4">
+              <div className="rounded-2xl border border-amber-500/20 bg-[hsl(var(--preview-surface))/0.65] p-6 space-y-4">
                 <h3 className="text-lg font-bold text-white">Pending Invitations</h3>
                 {pendingInvites.map((invite) => (
-                  <div key={invite.id} className="rounded-xl border border-slate-700 bg-[#181611]/80 p-4 flex items-center justify-between gap-3">
+                  <div key={invite.id} className="rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.8] p-4 flex items-center justify-between gap-3">
                     <div>
                       <p className="font-semibold text-slate-100">{invite.orgName}</p>
                       <p className="text-xs text-slate-500 mt-0.5">Received {formatDate(invite.createdAt)}</p>
@@ -437,7 +436,7 @@ export default function OrganizationPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => acceptInvite.mutate(invite.id)}
-                        className="h-9 px-4 rounded-lg bg-amber-500 text-[#181611] text-sm font-bold hover:bg-amber-400 transition-colors"
+                        className="h-9 px-4 rounded-lg bg-amber-500 text-[hsl(var(--preview-bg))] text-sm font-bold hover:bg-amber-400 transition-colors"
                         data-testid={`button-accept-invite-${invite.id}`}
                       >
                         Accept
@@ -460,9 +459,9 @@ export default function OrganizationPage() {
     }
 
     return (
-      <section className="h-full rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[#181611] text-slate-100">
+      <section className="h-full rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))] text-[hsl(var(--preview-text-primary))]">
         <div className="flex h-full min-h-0 flex-col">
-          <header className="shrink-0 border-b border-[#3a3327] bg-[#181611]/90 backdrop-blur-md px-6 md:px-10 py-4 flex items-center justify-between">
+          <header className="shrink-0 border-b border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.9] backdrop-blur-md px-6 md:px-10 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Building2 className="text-amber-400" size={24} />
               <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</h2>
@@ -476,10 +475,10 @@ export default function OrganizationPage() {
 
             <div className="relative mx-auto max-w-3xl space-y-5">
               {pendingInvites.length > 0 && (
-                <div className="rounded-2xl border border-amber-500/20 bg-[#2c241b]/65 p-5 space-y-3">
+                <div className="rounded-2xl border border-amber-500/20 bg-[hsl(var(--preview-surface))/0.65] p-5 space-y-3">
                   <h3 className="text-base font-bold text-white">Pending Invitations</h3>
                   {pendingInvites.map((invite) => (
-                    <div key={invite.id} className="rounded-xl border border-slate-700 bg-[#181611]/75 p-3 flex items-center justify-between gap-3">
+                    <div key={invite.id} className="rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.75] p-3 flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-100">{invite.orgName}</p>
                         <p className="text-xs text-slate-500">{invite.email}</p>
@@ -487,7 +486,7 @@ export default function OrganizationPage() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => acceptInvite.mutate(invite.id)}
-                          className="h-8 px-3 rounded-lg bg-amber-500 text-[#181611] text-xs font-bold"
+                          className="h-8 px-3 rounded-lg bg-amber-500 text-[hsl(var(--preview-bg))] text-xs font-bold"
                           data-testid={`button-accept-invite-${invite.id}`}
                         >
                           Accept
@@ -505,11 +504,11 @@ export default function OrganizationPage() {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-[#42392b] bg-[#2c241b]/60 backdrop-blur-xl shadow-2xl overflow-hidden">
-                <div className="h-36 md:h-40 relative bg-[#111723] border-b border-[#42392b]">
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#2c241b]/90 to-transparent" />
+              <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.6] backdrop-blur-xl shadow-2xl overflow-hidden">
+                <div className="h-36 md:h-40 relative bg-[hsl(var(--preview-surface-elevated))] border-b border-[hsl(var(--preview-border))]">
+                  <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--preview-surface))/0.9] to-transparent" />
                   <div className="absolute bottom-0 left-0 p-6 md:p-8 flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-[#181611] flex items-center justify-center shadow-lg">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-[hsl(var(--preview-bg))] flex items-center justify-center shadow-lg">
                       <Building2 size={24} />
                     </div>
                     <h1 className="text-2xl md:text-3xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -531,7 +530,7 @@ export default function OrganizationPage() {
                         value={orgName}
                         onChange={(e) => setOrgName(e.target.value)}
                         placeholder="e.g., Malik & Associates"
-                        className="w-full h-12 rounded-xl border border-[#4a4030] bg-[#1f1a12] pl-11 pr-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                        className="w-full h-12 rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.8] pl-11 pr-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                         data-testid="input-org-name"
                       />
                     </div>
@@ -545,7 +544,7 @@ export default function OrganizationPage() {
                         value={orgDesc}
                         onChange={(e) => setOrgDesc(e.target.value)}
                         placeholder="Enter brief details about your firm's practice areas..."
-                        className="w-full min-h-[140px] rounded-xl border border-[#4a4030] bg-[#1f1a12] pl-11 pr-4 py-3 text-slate-100 placeholder:text-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                        className="w-full min-h-[140px] rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.8] pl-11 pr-4 py-3 text-slate-100 placeholder:text-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                         data-testid="input-org-description"
                       />
                     </div>
@@ -566,7 +565,7 @@ export default function OrganizationPage() {
                     <button
                       onClick={() => createOrg.mutate({ name: orgName.trim(), description: orgDesc.trim() })}
                       disabled={!orgName.trim() || createOrg.isPending}
-                      className="h-12 px-7 rounded-xl bg-amber-500 text-[#181611] text-base font-bold hover:bg-amber-400 disabled:opacity-50 flex items-center gap-2"
+                      className="h-12 px-7 rounded-xl bg-amber-500 text-[hsl(var(--preview-bg))] text-base font-bold hover:bg-amber-400 disabled:opacity-50 flex items-center gap-2"
                       data-testid="button-create-org"
                     >
                       {createOrg.isPending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
@@ -591,9 +590,9 @@ export default function OrganizationPage() {
   }
 
   return (
-    <section className="h-full rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[#231c0f] text-slate-100 fade-in">
+    <section className="h-full rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))] text-[hsl(var(--preview-text-primary))] fade-in">
       <div className="flex h-full min-h-0">
-        <aside className="w-[76px] lg:w-[260px] shrink-0 border-r border-amber-500/10 bg-[#2d2416]/95">
+        <aside className="w-[76px] lg:w-[260px] shrink-0 border-r border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.95]">
           <div className="h-full flex flex-col p-4">
             <div className="mb-8 px-1">
               <div className="flex items-center gap-3">
@@ -639,7 +638,7 @@ export default function OrganizationPage() {
               {isOwner && (
                 <button
                   onClick={() => setShowInviteModal(true)}
-                  className="w-full h-10 rounded-xl bg-amber-500 text-[#181611] text-sm font-bold flex items-center justify-center gap-2 hover:bg-amber-400 transition-colors"
+                  className="w-full h-10 rounded-xl bg-amber-500 text-[hsl(var(--preview-bg))] text-sm font-bold flex items-center justify-center gap-2 hover:bg-amber-400 transition-colors"
                   data-testid="button-open-invite-modal"
                 >
                   <UserPlus size={14} />
@@ -679,15 +678,14 @@ export default function OrganizationPage() {
                   <div className="flex gap-3">
                     <a
                       href="/settings"
-                      className="h-10 px-6 rounded-xl bg-[#2d2416] border border-slate-700 text-slate-300 text-sm font-bold flex items-center gap-2 hover:bg-[#3a2f1f] transition-colors"
+                      className="h-10 px-6 rounded-xl bg-[hsl(var(--preview-surface-elevated))] border border-[hsl(var(--preview-border))] text-slate-300 text-sm font-bold flex items-center gap-2 hover:bg-[hsl(var(--preview-surface-elevated))/0.9] transition-colors"
                     >
-                      <Settings size={15} />
                       Settings
                     </a>
                     {isOwner && (
                       <button
                         onClick={() => setShowInviteModal(true)}
-                        className="h-10 px-6 rounded-xl bg-amber-500 text-[#181611] text-sm font-bold shadow-[0_0_15px_rgba(249,164,6,0.28)] hover:bg-amber-400 transition-colors flex items-center gap-2"
+                        className="h-10 px-6 rounded-xl bg-amber-500 text-[hsl(var(--preview-bg))] text-sm font-bold shadow-[0_0_15px_rgba(249,164,6,0.28)] hover:bg-amber-400 transition-colors flex items-center gap-2"
                         data-testid="button-invite-top"
                       >
                         <Plus size={15} />
@@ -698,11 +696,11 @@ export default function OrganizationPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-2xl border border-amber-500/10 bg-[rgba(35,28,15,0.6)] backdrop-blur-xl p-6">
+                  <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl p-6">
                     <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Shared Documents</p>
                     <p className="text-4xl font-bold text-slate-100 mt-1">{knowledge.length}</p>
                   </div>
-                  <div className="rounded-2xl border border-amber-500/10 bg-[rgba(35,28,15,0.6)] backdrop-blur-xl p-6">
+                  <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl p-6">
                     <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Team Members</p>
                     <p className="text-4xl font-bold text-slate-100 mt-1">{members.length}</p>
                   </div>
@@ -711,7 +709,7 @@ export default function OrganizationPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-slate-100 text-2xl font-bold">Team Members</h3>
-                    <div className="w-64 max-w-full flex items-center gap-2 rounded-lg px-3 py-1.5 bg-[#2d2416] border border-slate-700">
+                    <div className="w-64 max-w-full flex items-center gap-2 rounded-lg px-3 py-1.5 bg-[hsl(var(--preview-surface-elevated))/0.9] border border-[hsl(var(--preview-border))]">
                       <Search size={16} className="text-slate-400" />
                       <input
                         value={memberSearch}
@@ -723,11 +721,11 @@ export default function OrganizationPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-amber-500/10 bg-[rgba(35,28,15,0.6)] backdrop-blur-xl overflow-hidden">
+                  <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse min-w-[760px]">
                         <thead>
-                          <tr className="bg-[#2d2416]/50 border-b border-slate-700/50">
+                          <tr className="bg-[hsl(var(--preview-surface-elevated))/0.5] border-b border-slate-700/50">
                             <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Name</th>
                             <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Role</th>
                             <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Email</th>
@@ -854,7 +852,7 @@ export default function OrganizationPage() {
                     <select
                       value={docCategoryFilter}
                       onChange={(e) => setDocCategoryFilter(e.target.value)}
-                      className="h-10 px-4 rounded-xl bg-[#2d2416] border border-slate-700 text-slate-300 text-sm font-bold"
+                      className="h-10 px-4 rounded-xl bg-[hsl(var(--preview-surface-elevated))/0.9] border border-[hsl(var(--preview-border))] text-slate-300 text-sm font-bold"
                       data-testid="select-vault-filter"
                     >
                       <option value="all">All Categories</option>
@@ -864,7 +862,7 @@ export default function OrganizationPage() {
                     </select>
                     <button
                       onClick={() => setShowUploadModal(true)}
-                      className="h-10 px-6 rounded-xl bg-amber-500 text-[#181611] text-sm font-bold shadow-[0_0_15px_rgba(249,164,6,0.3)] hover:bg-amber-400 transition-colors flex items-center gap-2"
+                      className="h-10 px-6 rounded-xl bg-amber-500 text-[hsl(var(--preview-bg))] text-sm font-bold shadow-[0_0_15px_rgba(249,164,6,0.3)] hover:bg-amber-400 transition-colors flex items-center gap-2"
                       data-testid="button-open-upload-modal"
                     >
                       <Upload size={15} />
@@ -874,11 +872,11 @@ export default function OrganizationPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-2xl border border-amber-500/10 bg-[rgba(35,28,15,0.6)] backdrop-blur-xl p-6">
+                  <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl p-6">
                     <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Shared Documents</p>
                     <p className="text-4xl font-bold text-slate-100 mt-1">{knowledge.length}</p>
                   </div>
-                  <div className="rounded-2xl border border-amber-500/10 bg-[rgba(35,28,15,0.6)] backdrop-blur-xl p-6">
+                  <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl p-6">
                     <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Team Members</p>
                     <p className="text-4xl font-bold text-slate-100 mt-1">{members.length}</p>
                   </div>
@@ -887,7 +885,7 @@ export default function OrganizationPage() {
                 <div className="space-y-5">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-slate-100 text-2xl font-bold">Vault Library</h3>
-                    <div className="w-64 max-w-full flex items-center gap-2 rounded-lg px-3 py-1.5 bg-[#2d2416] border border-slate-700">
+                    <div className="w-64 max-w-full flex items-center gap-2 rounded-lg px-3 py-1.5 bg-[hsl(var(--preview-surface-elevated))/0.9] border border-[hsl(var(--preview-border))]">
                       <Search size={16} className="text-slate-400" />
                       <input
                         value={docSearch}
@@ -900,7 +898,7 @@ export default function OrganizationPage() {
                   </div>
 
                   {filteredKnowledge.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-700 bg-[#2d2416]/45 p-10 text-center">
+                    <div className="rounded-2xl border border-dashed border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.45] p-10 text-center">
                       <FileText size={40} className="mx-auto mb-4 text-slate-600" />
                       <p className="text-lg font-semibold text-slate-300">No documents found</p>
                       <p className="text-sm text-slate-500 mt-1">Upload files or adjust your search/filter.</p>
@@ -910,12 +908,12 @@ export default function OrganizationPage() {
                       {filteredKnowledge.map((doc) => (
                         <article
                           key={doc.id}
-                          className="rounded-xl border border-amber-500/10 bg-[rgba(35,28,15,0.6)] p-5 flex flex-col gap-4 transition-all duration-300 hover:border-amber-500/30 hover:bg-[rgba(45,36,22,0.8)] hover:-translate-y-[2px] cursor-pointer"
+                          className="rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] p-5 flex flex-col gap-4 transition-all duration-300 hover:border-amber-500/30 hover:bg-[hsl(var(--preview-surface-elevated))/0.8] hover:-translate-y-[2px] cursor-pointer"
                           onClick={() => setPreviewDoc(doc)}
                           data-testid={`vault-doc-${doc.id}`}
                         >
                           <div className="flex justify-between items-start gap-2">
-                            <div className="bg-[#2d2416]/70 p-2.5 rounded-lg text-amber-300 border border-amber-500/10">
+                            <div className="bg-[hsl(var(--preview-surface-elevated))/0.8] p-2.5 rounded-lg text-amber-300 border border-amber-500/10">
                               <BookOpen size={18} />
                             </div>
                             <div className="flex items-center gap-2">
@@ -968,7 +966,7 @@ export default function OrganizationPage() {
       {showInviteModal && isOwner && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4" onClick={() => setShowInviteModal(false)}>
           <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
-          <div className="relative w-full max-w-[520px] rounded-2xl border border-amber-500/15 bg-[rgba(35,28,15,0.82)] backdrop-blur-xl shadow-2xl p-8" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-[520px] rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.9] backdrop-blur-xl shadow-2xl p-8" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setShowInviteModal(false)}
               className="absolute right-4 top-4 text-slate-400 hover:text-white"
@@ -995,13 +993,13 @@ export default function OrganizationPage() {
                     onChange={(e) => setInviteEmail(e.target.value)}
                     type="email"
                     placeholder="colleague@lawfirm.com"
-                    className="w-full h-11 rounded-xl bg-[#27231b] border border-[#3a3327] pl-10 pr-4 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    className="w-full h-11 rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] pl-10 pr-4 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                     data-testid="input-invite-email"
                   />
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[#3a3327] bg-[#27231b]/50 p-3 text-xs text-slate-400 flex items-start gap-2">
+              <div className="rounded-lg border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.5] p-3 text-xs text-slate-400 flex items-start gap-2">
                 <AlertTriangle size={14} className="mt-0.5 text-amber-400" />
                 Invitees join as <span className="text-slate-200 font-semibold">Member</span> role by default in this version.
               </div>
@@ -1011,7 +1009,7 @@ export default function OrganizationPage() {
               <button
                 onClick={() => inviteMember.mutate(inviteEmail.trim())}
                 disabled={!inviteEmail.trim() || inviteMember.isPending}
-                className="w-full h-11 rounded-xl bg-gradient-to-b from-amber-500 to-amber-600 text-[#181611] font-bold hover:to-amber-500 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full h-11 rounded-xl bg-gradient-to-b from-amber-500 to-amber-600 text-[hsl(var(--preview-bg))] font-bold hover:to-amber-500 disabled:opacity-50 flex items-center justify-center gap-2"
                 data-testid="button-send-invite"
               >
                 {inviteMember.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
@@ -1019,7 +1017,7 @@ export default function OrganizationPage() {
               </button>
               <button
                 onClick={() => setShowInviteModal(false)}
-                className="w-full h-11 rounded-xl border border-[#3a3327] text-slate-400 font-medium hover:bg-[#27231b]"
+                className="w-full h-11 rounded-xl border border-[hsl(var(--preview-border))] text-slate-400 font-medium hover:bg-[hsl(var(--preview-surface-elevated))/0.8]"
                 data-testid="button-cancel-invite"
               >
                 Cancel
@@ -1032,7 +1030,7 @@ export default function OrganizationPage() {
       {showUploadModal && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4" onClick={() => setShowUploadModal(false)}>
           <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
-          <div className="relative w-full max-w-[560px] rounded-2xl border border-amber-500/15 bg-[rgba(35,28,15,0.84)] backdrop-blur-xl shadow-2xl p-7" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-[560px] rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.92] backdrop-blur-xl shadow-2xl p-7" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setShowUploadModal(false)}
               className="absolute right-4 top-4 text-slate-400 hover:text-white"
@@ -1051,7 +1049,7 @@ export default function OrganizationPage() {
                   value={docTitle}
                   onChange={(e) => setDocTitle(e.target.value)}
                   placeholder="e.g., Firm Precedents"
-                  className="w-full h-11 rounded-xl bg-[#27231b] border border-[#3a3327] px-4 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full h-11 rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] px-4 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                   data-testid="input-upload-title"
                 />
               </div>
@@ -1063,7 +1061,7 @@ export default function OrganizationPage() {
                   <select
                     value={docCategory}
                     onChange={(e) => setDocCategory(e.target.value)}
-                    className="w-full h-11 rounded-xl bg-[#27231b] border border-[#3a3327] pl-9 pr-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    className="w-full h-11 rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] pl-9 pr-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                     data-testid="select-upload-category"
                   >
                     <option value="general">General</option>
@@ -1083,7 +1081,7 @@ export default function OrganizationPage() {
                   type="file"
                   accept=".txt,.pdf,.docx"
                   onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  className="w-full rounded-xl bg-[#27231b] border border-[#3a3327] px-3 py-2 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-500 file:px-3 file:py-1.5 file:text-[#181611] file:font-semibold"
+                  className="w-full rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] px-3 py-2 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-500 file:px-3 file:py-1.5 file:text-[hsl(var(--preview-bg))] file:font-semibold"
                   data-testid="input-upload-file"
                 />
                 {selectedFile && <p className="text-xs text-slate-500 mt-1">Selected: {selectedFile.name}</p>}
@@ -1094,7 +1092,7 @@ export default function OrganizationPage() {
               <button
                 onClick={() => uploadKnowledge.mutate()}
                 disabled={!selectedFile || uploadKnowledge.isPending}
-                className="w-full h-11 rounded-xl bg-amber-500 text-[#181611] font-bold hover:bg-amber-400 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full h-11 rounded-xl bg-amber-500 text-[hsl(var(--preview-bg))] font-bold hover:bg-amber-400 disabled:opacity-50 flex items-center justify-center gap-2"
                 data-testid="button-upload-doc"
               >
                 {uploadKnowledge.isPending ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
@@ -1102,7 +1100,7 @@ export default function OrganizationPage() {
               </button>
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="w-full h-11 rounded-xl border border-[#3a3327] text-slate-400 font-medium hover:bg-[#27231b]"
+                className="w-full h-11 rounded-xl border border-[hsl(var(--preview-border))] text-slate-400 font-medium hover:bg-[hsl(var(--preview-surface-elevated))/0.8]"
                 data-testid="button-cancel-upload"
               >
                 Cancel
@@ -1115,8 +1113,8 @@ export default function OrganizationPage() {
       {previewDoc && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4" onClick={() => setPreviewDoc(null)}>
           <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
-          <div className="relative w-full max-w-3xl max-h-[85vh] rounded-2xl border border-amber-500/15 bg-[#231c0f] shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          <div className="relative w-full max-w-3xl max-h-[85vh] rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))] shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-[hsl(var(--preview-border))] flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold text-white">{previewDoc.title}</h3>
                 <p className="text-xs text-slate-500">{previewDoc.filename} • {previewDoc.category}</p>
