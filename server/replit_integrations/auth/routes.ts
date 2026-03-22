@@ -330,37 +330,78 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(401).json({ message: "Invalid Google token" });
       }
 
-      const payload = await verifyRes.json();
+      const payload = (await verifyRes.json()) as Record<string, any>;
+      const tokenAudience = String(payload.aud || "").trim();
+      const tokenIssuer = String(payload.iss || "").trim();
+      const allowedIssuers = new Set(["accounts.google.com", "https://accounts.google.com"]);
+      const tokenEmail = String(payload.email || "").trim().toLowerCase();
+      const tokenEmailVerified = String(payload.email_verified || "").trim().toLowerCase() === "true" || payload.email_verified === true;
+      const tokenSub = String(payload.sub || "").trim();
 
-      if (payload.aud !== clientId) {
+      if (tokenAudience !== clientId) {
         recordSecurityEvent("auth_anomaly", "google-token-audience-mismatch", {});
         return res.status(401).json({ message: "Token audience mismatch" });
       }
 
-      const email = payload.email;
-      const user = await authStorage.getUserByEmail(email);
+      if (tokenIssuer && !allowedIssuers.has(tokenIssuer)) {
+        recordSecurityEvent("auth_anomaly", "google-token-issuer-mismatch", { issuer: tokenIssuer });
+        return res.status(401).json({ message: "Token issuer mismatch" });
+      }
 
-      if (user) {
-        if (user.authProvider === "email") {
-          return res.status(409).json({ message: "An account with this email already exists using email/password. Please sign in with your email and password." });
-        }
-        if (await isUserBanned(user.id)) {
-          recordSecurityEvent("auth_anomaly", `banned-login:${user.id}`, { provider: "google" });
-          return res.status(403).json({ message: "Your account is suspended. Please contact support." });
-        }
-      } else {
-        return res.status(404).json({
-          code: "google_account_not_found",
-          email,
-          message: "No account found for this Google email. Please sign up first, then use Google sign-in.",
+      if (!tokenEmail) {
+        recordSecurityEvent("auth_anomaly", "google-token-missing-email", { sub: tokenSub || undefined });
+        return res.status(400).json({
+          code: "google_email_missing",
+          message: "Google account does not provide a usable email address.",
         });
       }
-      if (!user!.emailVerified) {
-        await authStorage.markUserEmailVerified(user!.id).catch(() => {});
+
+      if (!tokenEmailVerified) {
+        recordSecurityEvent("auth_anomaly", "google-token-email-unverified", { email: tokenEmail, sub: tokenSub || undefined });
+        return res.status(401).json({
+          code: "google_email_unverified",
+          message: "Google email is not verified.",
+        });
       }
 
-      await logAuditEvent("auth.login", user!.id, user!.id, { provider: "google" }).catch(() => {});
-      await persistSession(req, res, user!);
+      const firstName = String(payload.given_name || "").trim() || undefined;
+      const lastName = String(payload.family_name || "").trim() || undefined;
+      const displayName = String(payload.name || "").trim();
+      const profileImageUrl = String(payload.picture || "").trim() || undefined;
+      const derivedFirstName = firstName || (displayName ? displayName.split(" ")[0] : undefined) || "Google";
+      const derivedLastName = lastName || (displayName ? displayName.split(" ").slice(1).join(" ").trim() : undefined) || "User";
+
+      const { user, created } = await authStorage.findOrCreateGoogleUser({
+        email: tokenEmail,
+        firstName: derivedFirstName,
+        lastName: derivedLastName,
+        profileImageUrl,
+        emailVerified: true,
+      });
+
+      if (await isUserBanned(user.id)) {
+        recordSecurityEvent("auth_anomaly", `banned-login:${user.id}`, { provider: "google" });
+        return res.status(403).json({ message: "Your account is suspended. Please contact support." });
+      }
+
+      if (created) {
+        await logAuditEvent("auth.register", user.id, user.id, {
+          provider: "google",
+          termsAcceptedVersion: TERMS_VERSION,
+          googleSub: tokenSub || undefined,
+        }).catch(() => {});
+
+        sendWelcomeEmail(user.email || tokenEmail, user.firstName || "there").catch((err) => {
+          console.warn("[Auth] Google welcome email send failed:", err?.message || err);
+        });
+      }
+
+      await logAuditEvent("auth.login", user.id, user.id, {
+        provider: "google",
+        created,
+        googleSub: tokenSub || undefined,
+      }).catch(() => {});
+      await persistSession(req, res, user);
       return;
     } catch (error) {
       console.error("Google token auth error:", error);
