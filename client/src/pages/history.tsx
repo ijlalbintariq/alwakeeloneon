@@ -250,16 +250,16 @@ export default function HistoryPage() {
 
   return (
     <section
-      className="h-[calc(100dvh-96px)] md:h-[calc(100vh-120px)] rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[#181611] text-slate-100 fade-in"
+      className="h-[calc(100dvh-96px)] md:h-[calc(100vh-120px)] rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))] text-[hsl(var(--preview-text-primary))] fade-in"
       data-testid="history-page"
     >
       <div className="flex h-full min-h-0 flex-col">
-        <header className="shrink-0 border-b border-[#3a3327] bg-[#181611]/95 px-5 py-3 md:px-8">
+        <header className="shrink-0 border-b border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.92] px-5 py-3 md:px-8">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center">
               <History size={18} />
             </div>
-            <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h2 className="text-xl font-bold preview-title" style={{ fontFamily: "'Playfair Display', serif" }}>
               Al Wakeelo
             </h2>
           </div>
@@ -268,20 +268,20 @@ export default function HistoryPage() {
         <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-10 md:py-8">
           <div className="mx-auto w-full max-w-[1280px]">
             <div className="mb-8">
-              <h1 className="mb-6 text-4xl font-bold leading-tight text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h1 className="mb-6 text-4xl font-bold leading-tight preview-title" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Search History
               </h1>
 
               <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                 <label className="h-12 w-full md:w-1/2 min-w-[280px]">
-                  <div className="flex h-full w-full items-center rounded-xl border border-amber-500/20 bg-[rgba(35,28,15,0.7)] backdrop-blur-md focus-within:ring-2 focus-within:ring-amber-500/50 transition-all">
-                    <div className="pl-4 pr-2 text-[#bbb09b]">
+                  <div className="flex h-full w-full items-center rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface-elevated))/0.65] backdrop-blur-md focus-within:ring-2 focus-within:ring-amber-500/40 transition-all">
+                    <div className="pl-4 pr-2 preview-muted">
                       <Search size={20} />
                     </div>
                     <input
                       value={searchText}
                       onChange={(e) => setSearchText(e.target.value)}
-                      className="h-full w-full min-w-0 flex-1 rounded-xl border-none bg-transparent px-2 text-base text-white placeholder:text-[#bbb09b] focus:outline-none"
+                      className="h-full w-full min-w-0 flex-1 rounded-xl border-none bg-transparent px-2 text-base preview-title placeholder:preview-muted focus:outline-none"
                       placeholder="Search past queries, statutes, or drafts..."
                       data-testid="input-history-search"
                     />
@@ -293,8 +293,8 @@ export default function HistoryPage() {
                     onClick={() => setFilter("all")}
                     className={`h-10 shrink-0 rounded-xl px-5 text-sm font-bold transition-all ${
                       filter === "all"
-                        ? "bg-amber-500 text-[#181611] shadow-lg shadow-amber-500/20"
-                        : "border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                        ? "bg-amber-500 text-[hsl(var(--preview-bg))] shadow-lg shadow-amber-500/20"
+                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-amber-300"
                     }`}
                     data-testid="button-history-filter-all"
                   >
@@ -304,8 +304,8 @@ export default function HistoryPage() {
                     onClick={() => setFilter("statutes")}
                     className={`h-10 shrink-0 rounded-xl px-5 text-sm font-medium transition-colors ${
                       filter === "statutes"
-                        ? "bg-amber-500 text-[#181611]"
-                        : "border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                        ? "bg-amber-500 text-[hsl(var(--preview-bg))]"
+                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-amber-300"
                     }`}
                     data-testid="button-history-filter-statutes"
                   >
@@ -315,8 +315,8 @@ export default function HistoryPage() {
                     onClick={() => setFilter("drafts")}
                     className={`h-10 shrink-0 rounded-xl px-5 text-sm font-medium transition-colors ${
                       filter === "drafts"
-                        ? "bg-amber-500 text-[#181611]"
-                        : "border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                        ? "bg-amber-500 text-[hsl(var(--preview-bg))]"
+                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-amber-300"
                     }`}
                     data-testid="button-history-filter-drafts"
                   >
@@ -326,8 +326,8 @@ export default function HistoryPage() {
                     onClick={() => setFilter("chats")}
                     className={`h-10 shrink-0 rounded-xl px-5 text-sm font-medium transition-colors ${
                       filter === "chats"
-                        ? "bg-amber-500 text-[#181611]"
-                        : "border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                        ? "bg-amber-500 text-[hsl(var(--preview-bg))]"
+                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-amber-300"
                     }`}
                     data-testid="button-history-filter-chats"
                   >
@@ -338,7 +338,7 @@ export default function HistoryPage() {
             </div>
 
             {historyLoading || threadsLoading ? (
-              <div className="flex items-center justify-center py-16 text-slate-400">
+              <div className="flex items-center justify-center py-16 preview-subtitle">
                 <Loader2 size={20} className="mr-2 animate-spin text-amber-400" /> Loading activity...
               </div>
             ) : historyError ? (
@@ -346,16 +346,16 @@ export default function HistoryPage() {
                 Could not load search history right now.
               </div>
             ) : groupedActivities.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#3a3327] bg-[rgba(35,28,15,0.45)] p-10 text-center">
-                <History size={44} className="mx-auto mb-4 text-[#6f6657]" />
-                <p className="text-lg font-semibold text-slate-300">No activity found</p>
-                <p className="mt-1 text-sm text-slate-500">Try a different filter or run searches to populate history.</p>
+              <div className="rounded-xl border border-dashed border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.55] p-10 text-center">
+                <History size={44} className="mx-auto mb-4 preview-muted" />
+                <p className="text-lg font-semibold preview-title">No activity found</p>
+                <p className="mt-1 text-sm preview-subtitle">Try a different filter or run searches to populate history.</p>
               </div>
             ) : (
               <div className="flex flex-col gap-6">
                 {groupedActivities.map(([bucket, items]) => (
                   <section key={bucket} className="flex flex-col gap-4">
-                    <h3 className="pl-2 text-xs font-bold uppercase tracking-widest text-slate-400">{bucket}</h3>
+                    <h3 className="pl-2 text-xs font-bold uppercase tracking-widest preview-muted">{bucket}</h3>
 
                     {items.map((item) => {
                       const meta = typeMeta(item.kind);
@@ -364,7 +364,7 @@ export default function HistoryPage() {
                       return (
                         <div
                           key={item.id}
-                          className="group w-full rounded-2xl border border-white/5 bg-white/[0.03] p-4 transition-all duration-200 hover:-translate-y-[1px] hover:border-amber-500/30 hover:bg-white/[0.06]"
+                          className="group w-full rounded-2xl border border-[hsl(var(--preview-border))/0.75] bg-[hsl(var(--preview-surface))/0.7] p-4 transition-all duration-200 hover:-translate-y-[1px] hover:border-amber-500/35 hover:bg-[hsl(var(--preview-surface-elevated))/0.75]"
                           data-testid={`history-activity-${item.id}`}
                         >
                           <div className="flex items-center justify-between gap-3">
@@ -374,12 +374,12 @@ export default function HistoryPage() {
                               </div>
 
                               <div className="min-w-0">
-                                <h4 className="truncate text-lg font-bold text-white transition-colors group-hover:text-amber-300" style={{ fontFamily: "'Playfair Display', serif" }}>
+                                <h4 className="truncate text-lg font-bold preview-title transition-colors group-hover:text-amber-300" style={{ fontFamily: "'Playfair Display', serif" }}>
                                   {item.title}
                                 </h4>
-                                <p className="mt-1 flex items-center gap-2 text-sm text-slate-400">
+                                <p className="mt-1 flex items-center gap-2 text-sm preview-subtitle">
                                   <span>{meta.label}</span>
-                                  <span className="h-1 w-1 rounded-full bg-slate-600" />
+                                  <span className="h-1 w-1 rounded-full bg-[hsl(var(--preview-border))]" />
                                   <span className="inline-flex items-center gap-1">
                                     <Clock3 size={12} /> {formatRelative(item.createdAt)}
                                   </span>
@@ -389,7 +389,7 @@ export default function HistoryPage() {
 
                             <button
                               onClick={() => handleAction(item)}
-                              className="shrink-0 rounded-lg bg-amber-500/10 px-4 py-2 text-sm font-bold text-amber-400 transition-colors hover:bg-amber-500 hover:text-[#181611]"
+                              className="shrink-0 rounded-lg bg-amber-500/10 px-4 py-2 text-sm font-bold text-amber-300 transition-colors hover:bg-amber-500 hover:text-[hsl(var(--preview-bg))]"
                               data-testid={`button-history-action-${item.id}`}
                             >
                               <span className="inline-flex items-center gap-2">
@@ -413,17 +413,17 @@ export default function HistoryPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setSelectedThread(null); setThreadMessages(null); }}>
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
-            className="relative max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-[#3a3327] bg-[#231c0f] flex flex-col"
+            className="relative max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#3a3327] bg-[#231c0f] p-4">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))] p-4">
               <div>
-                <h3 className="text-sm font-bold text-white">{selectedThread.title}</h3>
-                <p className="mt-0.5 text-[10px] text-slate-500">{new Date(selectedThread.createdAt).toLocaleString()}</p>
+                <h3 className="text-sm font-bold preview-title">{selectedThread.title}</h3>
+                <p className="mt-0.5 text-[10px] preview-muted">{new Date(selectedThread.createdAt).toLocaleString()}</p>
               </div>
               <button
                 onClick={() => { setSelectedThread(null); setThreadMessages(null); }}
-                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-[#3a3327] hover:text-white"
+                className="rounded-lg p-1.5 preview-subtitle transition-colors hover:bg-[hsl(var(--preview-surface-elevated))] hover:text-[hsl(var(--preview-text-primary))]"
                 data-testid="button-close-thread-modal"
               >
                 <X size={16} />
@@ -444,8 +444,8 @@ export default function HistoryPage() {
                       <div
                         className={`max-w-[85%] rounded-2xl p-4 ${
                           m.role === "user"
-                            ? "bg-amber-500 text-[#181611] rounded-tr-sm"
-                            : "border border-[#3a3327] bg-[#181611] text-slate-100 rounded-tl-sm"
+                            ? "bg-amber-500 text-[hsl(var(--preview-bg))] rounded-tr-sm"
+                            : "border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))] text-[hsl(var(--preview-text-primary))] rounded-tl-sm"
                         }`}
                       >
                         {m.role === "assistant" ? (
@@ -461,7 +461,7 @@ export default function HistoryPage() {
                   );
                 })
               ) : (
-                <p className="py-8 text-center text-sm text-slate-500">No messages found in this consultation.</p>
+                <p className="py-8 text-center text-sm preview-muted">No messages found in this consultation.</p>
               )}
             </div>
           </div>
