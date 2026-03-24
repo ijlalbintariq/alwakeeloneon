@@ -3222,7 +3222,12 @@ export async function registerRoutes(
   });
 
   app.use("/api", (req, res, next) => {
-    if (!dbAvailable && req.path === "/auth/google/status") {
+    if (
+      !dbAvailable &&
+      (req.path === "/auth/google/status" ||
+        req.path === "/auth/google/start" ||
+        req.path === "/auth/google/callback")
+    ) {
       return next();
     }
     return requireDatabase(req, res, next);
