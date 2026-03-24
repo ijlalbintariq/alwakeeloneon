@@ -122,9 +122,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const upgradeCheckoutHref = getUpgradeCheckoutPath(usage?.tier);
   const canUseTurbo = usage?.tier === "pro" || usage?.tier === "chamber" || usage?.tier === "enterprise";
   const canUseApex = usage?.tier === "chamber" || usage?.tier === "enterprise";
-  const isApexAgentMode = aiMode === "apex-agent";
-  const isApexMode = aiMode !== "standard" && aiMode !== "turbo";
-  const selectedApexModel = isApexMode && !isApexAgentMode ? aiMode : null;
+  const isApexAgentWebMode = aiMode === "apex-agent-web";
+  const isApexModelMode = aiMode === "apex-pro" || aiMode === "apex-agent";
+  const isApexMode = isApexModelMode || isApexAgentWebMode;
+  const selectedApexModel = isApexModelMode
+    ? aiMode
+    : isApexAgentWebMode
+      ? "apex-agent"
+      : null;
   const turboMode = aiMode === "turbo";
 
   const { data: apexData } = useQuery<ApexModelsData>({
@@ -136,19 +141,22 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   });
 
   const getModelDisplayName = useCallback((modelId: string): string => {
+    const modelKey = String(modelId || "").toLowerCase();
     const modelNames: Record<string, string> = {
       "standard": "Standard",
       "turbo": "Turbo",
       "deepseek-chat": "Turbo",
       "deepseek-reasoner": "DeepSeek Pro",
       "apex-agent": "Apex Agent",
+      "apex-agent-web": "Apex Agent Web",
     };
-    if (modelNames[modelId]) return modelNames[modelId];
-    if (modelId.includes("deepseek")) return "DeepSeek";
-    const apexModel = apexData?.models.find(m => m.id === modelId);
+    if (modelNames[modelKey]) return modelNames[modelKey];
+    if (modelKey.includes("deepseek")) return "DeepSeek";
+    const apexModel = apexData?.models.find(m => m.id.toLowerCase() === modelKey);
     if (apexModel) return apexModel.name;
-    if (modelId.includes("apex-agent")) return "Apex Agent";
-    if (modelId.includes("apex")) return "Apex";
+    if (modelKey.includes("apex-agent-web") || modelKey.includes("apex agent web")) return "Apex Agent Web";
+    if (modelKey.includes("apex-agent") || modelKey.includes("apex agent")) return "Apex Agent";
+    if (modelKey.includes("apex-pro") || modelKey.includes("apex pro")) return "Apex Pro";
     return "Standard";
   }, [apexData]);
 
@@ -170,16 +178,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       return "Turbo legal analysis optimized for speed and quality.";
     }
     if (id.includes("apex-pro")) {
-      return "Premium Kimi reasoning for highly complex legal strategy.";
+      return "Premium non-web legal reasoning for complex analysis and high-quality structured drafting.";
+    }
+    if (id === "apex-agent-web") {
+      return "Kimi AI agent with live web research across Pakistani legal databases.";
     }
     if (id === "apex-agent") {
-      return "Kimi AI agent with live web research — searches Pakistani legal databases, case law, and statutes in real-time.";
-    }
-    if (id.includes("apex-agent")) {
-      return "Kimi AI agent with live web research across legal databases.";
-    }
-    if (id.includes("apex")) {
-      return "Kimi-based legal assistant focused on high-quality responses.";
+      return "Non-web internal research agent grounded in your app context/knowledge vault and conversation history.";
     }
     if (id.includes("groq") || id.includes("standard")) {
       return "Default legal chat mode with reliable fast responses.";
@@ -192,9 +197,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const currentModeName = useCallback((): { name: string; color: string; icon: "zap" | "sparkles" | "standard" | "globe" } => {
     if (aiMode === "standard") return { name: "Standard", color: "text-slate-400", icon: "standard" };
     if (aiMode === "turbo") return { name: "Turbo", color: "text-amber-400", icon: "zap" };
-    if (aiMode === "apex-agent") return { name: "Apex Agent", color: "text-cyan-400", icon: "globe" };
+    if (aiMode === "apex-agent-web") return { name: "Apex Agent Web", color: "text-cyan-400", icon: "globe" };
     const apexModel = apexData?.models.find(m => m.id === aiMode);
-    return { name: apexModel?.name || "Apex", color: "text-emerald-400", icon: "sparkles" };
+    return { name: apexModel?.name || "Apex Pro", color: "text-emerald-400", icon: "sparkles" };
   }, [aiMode, apexData]);
 
   useEffect(() => {
@@ -338,8 +343,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     try {
       let response: Response;
 
-      // ── Apex Agent Mode (Kimi Web Research) ──────────────────────────────
-      if (aiMode === "apex-agent" && isAlWakeelo && text.trim().length > 0 && currentFiles.length === 0) {
+      // ── Apex Agent Web Mode (Kimi Web Research) ──────────────────────────
+      if (isApexAgentWebMode && isAlWakeelo && text.trim().length > 0 && currentFiles.length === 0) {
         setAgentStatus("🔍 Initializing web research agent...");
         try {
           const agentRes = await apiRequest("POST", "/api/apex/agent", {
@@ -360,9 +365,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             id: assistantId,
             role: "assistant",
             content: agentData.content || "Research complete.",
-            modeName: "Apex Agent",
-            modelName: agentData.model || "Apex Agent",
-            modelId: "apex-agent",
+            modeName: "Apex Agent Web",
+            modelName: agentData.model || "Apex Agent Web",
+            modelId: "apex-agent-web",
             modelDescription: "Kimi AI with live web research across legal databases",
             isAgentMode: true,
             agentSteps,
@@ -456,7 +461,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         const modelId = data.model || (isApexMode ? aiMode : aiMode);
         const modelLabel = modelId ? getModelDisplayName(modelId) : undefined;
         const modelDescription = modelId ? getModelFunctionDescription(modelId) : undefined;
-        const modeLabel = isApexMode ? "Apex" : (turboMode && canUseTurbo ? "Turbo" : "Standard");
+        const modeLabel = isApexAgentWebMode
+          ? "Apex Agent Web"
+          : isApexModelMode
+            ? "Apex"
+            : (turboMode && canUseTurbo ? "Turbo" : "Standard");
         setMessages([...updated, {
           id: assistantId,
           role: "assistant",
@@ -506,7 +515,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     const modelId = parsed.model || aiMode;
                     const modelLabel = getModelDisplayName(modelId);
                     const modelDescription = getModelFunctionDescription(modelId);
-                    const modeLabel = isApexMode ? "Apex" : (turboMode && canUseTurbo ? "Turbo" : "Standard");
+                    const modeLabel = isApexAgentWebMode
+                      ? "Apex Agent Web"
+                      : isApexModelMode
+                        ? "Apex"
+                        : (turboMode && canUseTurbo ? "Turbo" : "Standard");
                     setMessages(prev => {
                       const last = prev[prev.length - 1];
                       if (last && last.id === assistantId) {
@@ -971,12 +984,12 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
           {isLoading && (
             <div className="flex justify-start">
-              <div className={`bg-[#0f172a] p-5 rounded-2xl border flex items-center gap-3 ${isApexAgentMode ? "border-cyan-800" : "border-slate-800"}`}>
-                <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentMode ? "bg-cyan-400" : "bg-amber-500"}`} />
-                <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "75ms" }} />
-                <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "150ms" }} />
-                <span className={`text-[10px] font-black uppercase tracking-widest ml-2 ${isApexAgentMode ? "text-cyan-400" : "text-slate-500"}`}>
-                  {agentStatus || (isApexAgentMode ? "Agent Researching Web..." : "Reasoning Protocol...")}
+              <div className={`bg-[#0f172a] p-5 rounded-2xl border flex items-center gap-3 ${isApexAgentWebMode ? "border-cyan-800" : "border-slate-800"}`}>
+                <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} />
+                <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "75ms" }} />
+                <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "150ms" }} />
+                <span className={`text-[10px] font-black uppercase tracking-widest ml-2 ${isApexAgentWebMode ? "text-cyan-400" : "text-slate-500"}`}>
+                  {agentStatus || (isApexAgentWebMode ? "Agent Researching Web..." : "Reasoning Protocol...")}
                 </span>
               </div>
             </div>
@@ -1026,7 +1039,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
                   aiMode === "turbo"
                     ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                    : isApexAgentMode
+                    : isApexAgentWebMode
                       ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
                       : isApexMode
                         ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
@@ -1036,7 +1049,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               >
                 {aiMode === "turbo" ? (
                   <Zap size={12} className="text-amber-400" />
-                ) : isApexAgentMode ? (
+                ) : isApexAgentWebMode ? (
                   <Globe size={12} className="text-cyan-400" />
                 ) : isApexMode ? (
                   <Sparkles size={12} className="text-emerald-400" />
@@ -1109,12 +1122,12 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         Agent Mode
                       </div>
                       <button
-                        onClick={() => { setAiMode("apex-agent"); setShowModelMenu(false); }}
-                        className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 last:border-0 ${aiMode === "apex-agent" ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400"}`}
+                        onClick={() => { setAiMode("apex-agent-web"); setShowModelMenu(false); }}
+                        className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 last:border-0 ${aiMode === "apex-agent-web" ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400"}`}
                       >
                         <div className="font-bold flex items-center gap-1.5">
                           <Globe size={11} className="text-cyan-400" />
-                          Apex Agent
+                          Apex Agent Web
                           <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-full font-black">WEB</span>
                         </div>
                         <div className="text-[10px] text-slate-500 mt-0.5">Live web research across Pakistani legal databases</div>
@@ -1480,15 +1493,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
             {isLoading && (
               <div className="flex items-center gap-3 w-full">
-                <div className={`h-10 w-10 rounded-full text-slate-950 flex items-center justify-center ${isApexAgentMode ? "bg-cyan-400" : "bg-amber-500"}`}>
-                  {isApexAgentMode ? <Globe size={18} /> : <Scale size={18} />}
+                <div className={`h-10 w-10 rounded-full text-slate-950 flex items-center justify-center ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`}>
+                  {isApexAgentWebMode ? <Globe size={18} /> : <Scale size={18} />}
                 </div>
-                <div className={`p-4 rounded-xl border flex items-center gap-2 ${isApexAgentMode ? "border-cyan-500/20 bg-cyan-500/5" : "border-amber-500/20 bg-amber-500/5"}`}>
-                  <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentMode ? "bg-cyan-400" : "bg-amber-500"}`} />
-                  <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "75ms" }} />
-                  <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "150ms" }} />
-                  <span className={`text-[10px] font-black uppercase tracking-widest ml-2 ${isApexAgentMode ? "text-cyan-400" : "text-slate-500"}`}>
-                    {agentStatus || (isApexAgentMode ? "Agent researching web..." : "Reasoning...")}
+                <div className={`p-4 rounded-xl border flex items-center gap-2 ${isApexAgentWebMode ? "border-cyan-500/20 bg-cyan-500/5" : "border-amber-500/20 bg-amber-500/5"}`}>
+                  <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} />
+                  <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "75ms" }} />
+                  <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "150ms" }} />
+                  <span className={`text-[10px] font-black uppercase tracking-widest ml-2 ${isApexAgentWebMode ? "text-cyan-400" : "text-slate-500"}`}>
+                    {agentStatus || (isApexAgentWebMode ? "Agent researching web..." : "Reasoning...")}
                   </span>
                 </div>
               </div>
@@ -1550,13 +1563,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     onClick={() => setShowModelMenu(!showModelMenu)}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
                       aiMode === "turbo" ? "text-amber-300 border-amber-500/40 bg-amber-500/10" :
-                      isApexAgentMode ? "text-cyan-300 border-cyan-500/40 bg-cyan-500/10" :
+                      isApexAgentWebMode ? "text-cyan-300 border-cyan-500/40 bg-cyan-500/10" :
                       isApexMode ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" :
                       "text-slate-300 border-amber-500/20"
                     }`}
                     data-testid="button-model-selector"
                   >
-                    {isApexAgentMode ? <Globe size={11} /> : isApexMode ? <Sparkles size={11} /> : aiMode === "turbo" ? <Zap size={11} /> : <Scale size={11} />}
+                    {isApexAgentWebMode ? <Globe size={11} /> : isApexMode ? <Sparkles size={11} /> : aiMode === "turbo" ? <Zap size={11} /> : <Scale size={11} />}
                     {currentModeName().name}
                     <ChevronDown size={10} />
                   </button>
@@ -1585,12 +1598,12 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         <>
                           <div className="px-4 py-1.5 text-[9px] text-cyan-300 uppercase tracking-widest font-black border-b border-amber-500/10 bg-cyan-500/10">Agent Mode</div>
                           <button
-                            onClick={() => { setAiMode("apex-agent"); setShowModelMenu(false); }}
-                            className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${aiMode === "apex-agent" ? "bg-cyan-500/12 text-cyan-300" : "text-slate-300"}`}
+                            onClick={() => { setAiMode("apex-agent-web"); setShowModelMenu(false); }}
+                            className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${aiMode === "apex-agent-web" ? "bg-cyan-500/12 text-cyan-300" : "text-slate-300"}`}
                           >
                             <div className="font-bold flex items-center gap-1.5">
                               <Globe size={11} className="text-cyan-400" />
-                              Apex Agent
+                              Apex Agent Web
                               <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-full font-black">WEB</span>
                             </div>
                             <div className="text-[10px] text-slate-500 mt-0.5">Live web research across Pakistani legal databases</div>

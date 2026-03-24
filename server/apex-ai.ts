@@ -15,7 +15,7 @@ function getClient(): OpenAI | null {
   return moonshotClient;
 }
 
-export type ApexModel = "apex" | "apex-pro" | "apex-agent";
+export type ApexModel = "apex-pro" | "apex-agent";
 
 // ─── Kimi Agent Web Search Types ────────────────────────────────────────────
 
@@ -66,13 +66,6 @@ interface ApexTranscriptionOptions {
 
 function getModelConfig(model: ApexModel) {
   switch (model) {
-    case "apex":
-      return {
-        modelId: "kimi-k2.5",
-        temperature: 0.6,
-        thinking: false,
-        displayName: "Apex",
-      };
     case "apex-pro":
       return {
         modelId: "kimi-k2.5",
@@ -99,19 +92,14 @@ export function getApexModelsForTier(tier: string): Array<{ id: ApexModel; name:
 
   if (tier === "chamber" || tier === "enterprise") {
     models.push({
-      id: "apex",
-      name: "Apex",
-      description: "Fast, intelligent responses for legal queries",
-    });
-    models.push({
       id: "apex-pro",
       name: "Apex Pro",
-      description: "Deep reasoning with thinking traces for complex legal analysis",
+      description: "Premium non-web legal reasoning and high-quality structured drafting output.",
     });
     models.push({
       id: "apex-agent",
       name: "Apex Agent",
-      description: "Kimi AI agent with live web research — searches Pakistani legal databases, case law & statutes in real-time",
+      description: "Non-web internal research agent. Grounds responses in app context/knowledge vault and conversation history.",
     });
   }
 
@@ -158,7 +146,7 @@ export async function transcribeWithApex(options: ApexTranscriptionOptions): Pro
     throw new Error("Apex AI is not configured. MOONSHOT_API_KEY is required.");
   }
 
-  const model = options.model || "apex";
+  const model = options.model || "apex-pro";
   const config = getModelConfig(model);
 
   const response = await client.chat.completions.create({
