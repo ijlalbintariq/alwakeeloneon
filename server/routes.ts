@@ -2075,11 +2075,12 @@ async function verifyReferencesBlock(content: string): Promise<string> {
     const court = sanitizeReferenceText(judgment?.court || "", 120);
     const description = sanitizeReferenceText(judgment?.description || "", 320);
     if (!citation) continue;
-    const matched = await storage.getCaseLawByCitation(citation).catch(() => undefined);
+    const matched = await resolveCaseCitationFromInternalDb(citation).catch(() => null);
+    if (!matched || !isCaseLawRowCitationTrusted(matched)) continue;
     const normalizedJudgment = {
-      citation: sanitizeReferenceText(matched?.citation || citation, 140),
-      court: sanitizeReferenceText(matched?.court || court || "Pakistani Courts", 120),
-      description: sanitizeReferenceText(description || matched?.summary || "", 320),
+      citation: sanitizeReferenceText(matched.citation, 140),
+      court: sanitizeReferenceText(matched.court || court || "Pakistani Courts", 120),
+      description: sanitizeReferenceText(description || matched.summary || "", 320),
     };
     const judgmentKey = normalizedJudgment.citation.toLowerCase();
     if (seenJudgments.has(judgmentKey)) continue;
@@ -2229,6 +2230,35 @@ function parseCaseLawCitationQuery(query: string): CaseLawCitationQueryParts | n
   return { year, report, page };
 }
 
+function isTrustedCaseLawCitationParts(parts: CaseLawCitationQueryParts | null | undefined): boolean {
+  if (!parts) return false;
+  const year = Number(parts.year);
+  const page = Number(parts.page);
+  const report = normalizeCitationToken(String(parts.report || ""));
+  const currentYear = new Date().getFullYear();
+  if (!CASELAW_REPORT_CODES.has(report)) return false;
+  if (!Number.isInteger(year) || year < 1947 || year > currentYear + 1) return false;
+  if (!Number.isInteger(page) || page < 1 || page > 200000) return false;
+  return true;
+}
+
+function getTrustedCaseLawCitationPartsFromRow(entry: Pick<CaseLaw, "citation" | "citationYear" | "citationReport" | "citationPage">): CaseLawCitationQueryParts | null {
+  const report = normalizeCitationToken(String(entry.citationReport || ""));
+  const year = Number(entry.citationYear);
+  const page = Number(entry.citationPage);
+  const fromFields = report && Number.isInteger(year) && Number.isInteger(page) && page > 0
+    ? { year, report, page }
+    : null;
+  if (isTrustedCaseLawCitationParts(fromFields)) return fromFields;
+  const fromCitation = parseCaseLawCitationQuery(String(entry.citation || ""));
+  if (isTrustedCaseLawCitationParts(fromCitation)) return fromCitation;
+  return null;
+}
+
+function isCaseLawRowCitationTrusted(entry: Pick<CaseLaw, "citation" | "citationYear" | "citationReport" | "citationPage">): boolean {
+  return Boolean(getTrustedCaseLawCitationPartsFromRow(entry));
+}
+
 function caseLawSearchRowKey(entry: CaseLaw): string {
   const citationKey = normalizeCitationForMatch(String(entry.citation || ""));
   if (citationKey) return `c:${citationKey}`;
@@ -2325,6 +2355,10 @@ function collapseCaseRowsBySource(rows: CaseLaw[]): CaseLaw[] {
   return out;
 }
 
+function filterToTrustedCaseLawRows(rows: CaseLaw[]): CaseLaw[] {
+  return rows.filter((row) => isCaseLawRowCitationTrusted(row));
+}
+
 function filterCaseLawByStructuredFields(
   rows: CaseLaw[],
   options: {
@@ -2382,7 +2416,7 @@ async function searchCaseLawWithFullText(args: {
   sort?: "relevance" | "latest";
   parsedCitation?: CaseLawCitationQueryParts | null;
 }): Promise<CaseLaw[]> {
-  const baseResults = await storage.searchCaseLaw(args.query, args.limit, {
+  const baseResultsRaw = await storage.searchCaseLaw(args.query, args.limit, {
     year: args.year,
     report: args.report,
     page: args.page,
@@ -2390,6 +2424,7 @@ async function searchCaseLawWithFullText(args: {
     sort: args.sort,
     parsedCitation: args.parsedCitation,
   });
+  const baseResults = filterToTrustedCaseLawRows(baseResultsRaw);
 
   const query = String(args.query || "").trim();
   if (!query) {
@@ -2417,7 +2452,8 @@ async function searchCaseLawWithFullText(args: {
     }
 
     if (sourceDocIds.length > 0) {
-      const rows = await storage.getCaseLawBySourceDocuments(sourceDocIds, "admin");
+      const rowsRaw = await storage.getCaseLawBySourceDocuments(sourceDocIds, "admin");
+      const rows = filterToTrustedCaseLawRows(rowsRaw);
       const filteredRows = filterCaseLawByStructuredFields(rows, {
         year: args.year,
         report: args.report,
@@ -2475,7 +2511,7 @@ async function searchCaseLawWithFullText(args: {
   // Top-up from a wider pool when strict text filtering removes metadata-only entries.
   if (normalizedStrictRows.length < args.limit) {
     const topUpLimit = Math.max(args.limit * 3, args.limit + 10);
-    const topUpRows = await storage.searchCaseLaw(args.query, topUpLimit, {
+    const topUpRowsRaw = await storage.searchCaseLaw(args.query, topUpLimit, {
       year: args.year,
       report: args.report,
       page: args.page,
@@ -2483,6 +2519,7 @@ async function searchCaseLawWithFullText(args: {
       sort: args.sort,
       parsedCitation: args.parsedCitation,
     });
+    const topUpRows = filterToTrustedCaseLawRows(topUpRowsRaw);
     const topUpFiltered = await filterCaseLawResultsWithRealFullText(topUpRows, args.userId);
     const topUpRanked = await rankCaseLawRowsBySourceRelevance(topUpFiltered, args.userId, query);
     const topUpNormalized = citationIntent ? topUpRanked : collapseCaseRowsBySource(topUpRanked);
@@ -3002,17 +3039,23 @@ function extractCitationVariants(value: string): string[] {
 function caseCitationMatches(candidateCitation: string, rowCitation: string): boolean {
   const normalizedCandidate = normalizeCitationForMatch(candidateCitation);
   if (!normalizedCandidate) return false;
+  const candidateParts = parseCaseLawCitationQuery(candidateCitation);
   const variants = extractCitationVariants(rowCitation);
   for (const variant of variants) {
     const normalizedVariant = normalizeCitationForMatch(variant);
     if (!normalizedVariant) continue;
-    if (
-      normalizedVariant === normalizedCandidate ||
-      normalizedVariant.includes(normalizedCandidate) ||
-      normalizedCandidate.includes(normalizedVariant)
-    ) {
-      return true;
+    const variantParts = parseCaseLawCitationQuery(variant);
+    if (isTrustedCaseLawCitationParts(candidateParts) && isTrustedCaseLawCitationParts(variantParts)) {
+      if (
+        candidateParts.year === variantParts.year
+        && candidateParts.page === variantParts.page
+        && normalizeCitationToken(candidateParts.report) === normalizeCitationToken(variantParts.report)
+      ) {
+        return true;
+      }
+      continue;
     }
+    if (normalizedVariant === normalizedCandidate) return true;
   }
   return false;
 }
@@ -3185,6 +3228,8 @@ async function resolveCaseCitationFromKnowledgeBase(candidate: string): Promise<
 async function resolveCaseCitationFromInternalDb(candidate: string): Promise<CaseLaw | null> {
   const normalizedCandidate = normalizeCitationForMatch(candidate);
   if (!normalizedCandidate) return null;
+  const candidateParts = parseCaseLawCitationQuery(candidate);
+  const hasTrustedCandidateParts = isTrustedCaseLawCitationParts(candidateParts);
 
   const rows: CaseLaw[] = [];
   const seen = new Set<number>();
@@ -3204,10 +3249,23 @@ async function resolveCaseCitationFromInternalDb(candidate: string): Promise<Cas
   let best: CaseLaw | null = null;
   let bestScore = -1;
   for (const row of rows) {
+    if (!isCaseLawRowCitationTrusted(row)) continue;
+    const rowParts = getTrustedCaseLawCitationPartsFromRow(row);
+    if (hasTrustedCandidateParts) {
+      if (!rowParts) continue;
+      if (
+        normalizeCitationToken(rowParts.report) !== normalizeCitationToken(candidateParts!.report)
+        || Number(rowParts.year) !== Number(candidateParts!.year)
+        || Number(rowParts.page) !== Number(candidateParts!.page)
+      ) {
+        continue;
+      }
+    }
     if (!caseCitationMatches(candidate, row.citation)) continue;
     let score = 0;
     const normalizedRowCitation = normalizeCitationForMatch(String(row.citation || ""));
     if (normalizedRowCitation === normalizedCandidate) score += 6;
+    if (rowParts && hasTrustedCandidateParts) score += 12;
     if (String(row.citationRole || "").toLowerCase() === "primary") score += 2;
     if (row.sourceDocId && row.sourceType) score += 1;
     if (score > bestScore) {
@@ -5976,8 +6034,8 @@ RAG POLICY (STRICT):
     try {
       const citation = (req.query.citation as string) || "";
       if (!citation) return res.status(400).json({ message: "Citation required" });
-      const entry = await storage.getCaseLawByCitation(citation);
-      if (!entry) return res.json({ found: false });
+      const entry = await resolveCaseCitationFromInternalDb(citation);
+      if (!entry || !isCaseLawRowCitationTrusted(entry)) return res.json({ found: false });
       res.json({
         found: true,
         id: entry.id,
