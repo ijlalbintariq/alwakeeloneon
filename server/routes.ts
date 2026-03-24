@@ -10140,7 +10140,9 @@ ${boundedRaw}`;
             ? title
             : file.originalname.replace(/\.[^/.]+$/, "");
 
-          const compacted = compactContentForDb(content);
+          const normalizedCategory = String(category || "general").toLowerCase();
+          const preserveFullText = normalizedCategory === "case-law";
+          const compacted = preserveFullText ? { inlineContent: content, wasTruncated: false } : compactContentForDb(content);
           const extractedTextKey = compacted.wasTruncated
             ? await uploadExtractedTextToR2({
               text: content,
@@ -10157,12 +10159,12 @@ ${boundedRaw}`;
             title: docTitle,
             filename: file.originalname,
             content: persistedContent,
-            category: category || "general",
+            category: normalizedCategory,
             uploadedBy: userId,
           });
           maybeIndexAdminCaseLawInBackground({
             adminKnowledgeId: doc.id,
-            category: category || "general",
+            category: normalizedCategory,
           });
           await uploadAdminKnowledgeFileToR2({
             docId: doc.id,
@@ -10611,19 +10613,8 @@ ${boundedRaw}`;
       const savedFilename = filename;
       try {
         const docTitle = filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
-        const compacted = compactContentForDb(content);
-        const extractedTextKey = compacted.wasTruncated
-          ? await uploadExtractedTextToR2({
-            text: content,
-            fileName: filename,
-            prefix: `admin-knowledge-text/${userId}`,
-            metadata: {
-              user_id: userId,
-              source: "admin-case-law-client-extracted",
-            },
-          })
-          : null;
-        const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : content;
+        const extractedTextKey = null;
+        const persistedContent = content;
         const savedDoc = await storage.addAdminKnowledge({
           title: docTitle,
           filename,
@@ -11045,19 +11036,8 @@ ${boundedRaw}`;
               let jsonDocId: number | null = null;
               try {
                 const docTitle = file.originalname.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
-                const compacted = compactContentForDb(rawJson);
-                const extractedTextKey = compacted.wasTruncated
-                  ? await uploadExtractedTextToR2({
-                    text: rawJson,
-                    fileName: file.originalname,
-                    prefix: `admin-knowledge-text/${uid}`,
-                    metadata: {
-                      user_id: uid,
-                      source: "admin-case-law-extracted",
-                    },
-                  })
-                  : null;
-                const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : rawJson;
+                const extractedTextKey = null;
+                const persistedContent = rawJson;
                 const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: persistedContent, category: "case-law", uploadedBy: uid });
                 jsonDocId = savedDoc.id;
                 maybeIndexAdminCaseLawInBackground({
@@ -11133,19 +11113,8 @@ ${boundedRaw}`;
               let csvDocId: number | null = null;
               try {
                 const docTitle = file.originalname.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
-                const compacted = compactContentForDb(rawCsv);
-                const extractedTextKey = compacted.wasTruncated
-                  ? await uploadExtractedTextToR2({
-                    text: rawCsv,
-                    fileName: file.originalname,
-                    prefix: `admin-knowledge-text/${uid}`,
-                    metadata: {
-                      user_id: uid,
-                      source: "admin-case-law-extracted",
-                    },
-                  })
-                  : null;
-                const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : rawCsv;
+                const extractedTextKey = null;
+                const persistedContent = rawCsv;
                 const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: persistedContent, category: "case-law", uploadedBy: uid });
                 csvDocId = savedDoc.id;
                 maybeIndexAdminCaseLawInBackground({
@@ -11201,19 +11170,8 @@ ${boundedRaw}`;
       let savedFilename = file.originalname;
       try {
         const docTitle = file.originalname.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Uploaded Case Law Document";
-        const compacted = compactContentForDb(content);
-        const extractedTextKey = compacted.wasTruncated
-          ? await uploadExtractedTextToR2({
-            text: content,
-            fileName: file.originalname,
-            prefix: `admin-knowledge-text/${userId}`,
-            metadata: {
-              user_id: userId,
-              source: "admin-case-law-extracted",
-            },
-          })
-          : null;
-        const persistedContent = compacted.wasTruncated && extractedTextKey ? compacted.inlineContent : content;
+        const extractedTextKey = null;
+        const persistedContent = content;
         const savedDoc = await storage.addAdminKnowledge({
           title: docTitle,
           filename: file.originalname,
