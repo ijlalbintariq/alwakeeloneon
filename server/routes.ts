@@ -5261,9 +5261,14 @@ RAG POLICY (STRICT):
       const result = await callStandardAISimple(systemPrompt, userPrompt, TOKEN_LIMITS.chat, { timeoutProfile: "search", temperature: 0.2 });
       await logUsageCost(userId, "chat", result.model, systemPrompt + userPrompt, result.text);
       const lowConfidenceContext = strictContext && retrieval.confidence === "low";
-      const answerText = lowConfidenceContext
+      let answerText = lowConfidenceContext
         ? `Retrieved context confidence is low. Please verify key points against source text.\n\n${result.text}`
         : result.text;
+      answerText = enforcePakistanLawOnlyOutput(answerText);
+      answerText = (await enforceInternalCaseCitationIntegrity(answerText, {
+        placeholder: "[CASE CITATION REQUIRED]",
+        normalizeVerified: true,
+      })).content;
 
       const citations = retrieval.matches.slice(0, 5).map((m) => ({
         documentId: m.ragDocumentId,
