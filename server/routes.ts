@@ -126,7 +126,8 @@ const PAKISTAN_LAW_ONLY_POLICY = `PAKISTAN LAW ONLY POLICY (ABSOLUTE):
 - Never cite, quote, or rely on Indian law or non-Pakistani legal authorities.
 - Disallowed references include: IPC, Indian Penal Code, CrPC 1973, Constitution of India, Indian Evidence Act, SCC, AIR, and Indian Supreme/High Court precedents.
 - If a user asks for non-Pakistani law, briefly refuse and ask them to reframe under Pakistani law.
-- Prefer Pakistani authorities such as PPC, Cr.P.C. 1898, C.P.C. 1908, Constitution of Islamic Republic of Pakistan 1973, and PLD/SCMR/YLR/MLD/CLC/CLD/PCRLJ citations.`;
+- Prefer Pakistani authorities such as PPC, Cr.P.C. 1898, C.P.C. 1908, Constitution of Islamic Republic of Pakistan 1973.
+- Treat these as Pakistani citation/report families: PLD, SCMR, YLR, MLD, CLC, CLD, PLC (Pakistan Labour Cases), PLJ, PCRLJ/P Cr. L J, PTD, NLR, and neutral citations (LHC/IHC/SHC/PHC/BHC/AJKHC).`;
 const PUBLIC_CHAT_SYSTEM_PROMPT = `You are the AI legal intake assistant for AlWakeelo Law Chamber.
 
 Your responsibilities are:
@@ -2124,7 +2125,7 @@ function userPromptHasPakistaniCitationHint(text: string): boolean {
   if (candidates.length === 0) return false;
   return candidates.some((candidate) => {
     if (parseCaseLawCitationQueryParts(candidate)) return true;
-    return /\b(?:19|20)\d{2}\s+(?:PLD|SCMR|YLR|MLD|CLC|CLD|PLC|PLJ|PCRLJ|P\s*Cr\.?\s*L\.?\s*J|PTD|NLR)\s+\d{1,6}\b/i.test(candidate);
+    return /\b(?:19|20)\d{2}\s+(?:PLD|SCMR|YLR|MLD|CLC|CLD|PLC|PLJ|PCRLJ|P\s*Cr\.?\s*L\.?\s*J|PTD|NLR|LHC|IHC|SHC|PHC|BHC|AJKHC)\s+\d{1,6}\b/i.test(candidate);
   });
 }
 
@@ -2134,6 +2135,10 @@ function suppressWrongIndianJurisdictionForPakCitation(responseText: string, use
   if (!userPromptHasPakistaniCitationHint(userPrompt)) return content;
   const wrongScopeSignal =
     /indian courts?/i.test(content)
+    || /\bindian decision\b/i.test(content)
+    || /\bnot\s+from\s+any\s+pakistani\s+court\b/i.test(content)
+    || /\boutside\s+pakistan(?:i)?\s+jurisdiction\b/i.test(content)
+    || /\bnot\s+pakistani\s+precedent\b/i.test(content)
     || (/outside the scope/i.test(content) && /pakistani jurisdiction/i.test(content))
     || (/i can only provide/i.test(content) && /pakistani jurisdiction/i.test(content));
   if (!wrongScopeSignal) return content;
