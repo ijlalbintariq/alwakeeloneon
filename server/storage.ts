@@ -1297,6 +1297,49 @@ export class DatabaseStorage implements IStorage {
     const hasPage = page !== null;
     const hasReport = reportRaw.length > 0;
 
+    const buildSourceContentMatchExpr = (pattern: string) => sql`(
+      (
+        coalesce(${caseLaw.sourceType}, '') = 'admin'
+        and exists (
+          select 1
+          from ${adminKnowledge} ak
+          where ak.id = ${caseLaw.sourceDocId}
+            and coalesce(ak.content, '') ILIKE ${pattern}
+        )
+      )
+      or (
+        coalesce(${caseLaw.sourceType}, '') = 'github'
+        and exists (
+          select 1
+          from ${githubKnowledge} gk
+          where gk.id = ${caseLaw.sourceDocId}
+            and coalesce(gk.content, '') ILIKE ${pattern}
+        )
+      )
+      or (
+        coalesce(${caseLaw.sourceType}, '') = 'statute'
+        and exists (
+          select 1
+          from ${statuteDocuments} sd
+          where sd.id = ${caseLaw.sourceDocId}
+            and coalesce(sd.content, '') ILIKE ${pattern}
+        )
+      )
+      or (
+        coalesce(${caseLaw.sourceType}, '') = 'user'
+        and exists (
+          select 1
+          from ${documents} d
+          where d.id = ${caseLaw.sourceDocId}
+            and coalesce(d.content, '') ILIKE ${pattern}
+        )
+      )
+    )`;
+
+    const sourcePhraseTextExpr = hasTextQuery
+      ? buildSourceContentMatchExpr(textPattern)
+      : undefined;
+
     const phraseTextExpr = hasTextQuery
       ? or(
           ilike(caseLaw.citation, textPattern),
@@ -1304,6 +1347,7 @@ export class DatabaseStorage implements IStorage {
           ilike(caseLaw.title, textPattern),
           ilike(caseLaw.summary, textPattern),
           sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${textPattern}`,
+          sourcePhraseTextExpr!,
         )
       : undefined;
 
@@ -1315,6 +1359,7 @@ export class DatabaseStorage implements IStorage {
         ilike(caseLaw.title, tokenPattern),
         ilike(caseLaw.summary, tokenPattern),
         sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${tokenPattern}`,
+        buildSourceContentMatchExpr(tokenPattern),
       ];
     });
     const tokenTextExpr = tokenClauses.length > 0 ? or(...tokenClauses)! : undefined;
@@ -1362,6 +1407,8 @@ export class DatabaseStorage implements IStorage {
     const keywordTextExpr = hasTextQuery
       ? sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${textPattern}`
       : sql`false`;
+    const sourcePhraseMatchExpr = hasTextQuery && sourcePhraseTextExpr ? sourcePhraseTextExpr : sql`false`;
+    const sourceTokenMatchExpr = hasTextQuery && tokenTextExpr ? tokenTextExpr : sql`false`;
     const tokenRankExpr = queryTokens.length > 0
       ? sql<number>`COALESCE(
           ts_rank_cd(
@@ -1392,6 +1439,8 @@ export class DatabaseStorage implements IStorage {
       CASE WHEN ${summaryTextExpr} THEN 65 ELSE 0 END +
       CASE WHEN ${courtTextExpr} THEN 45 ELSE 0 END +
       CASE WHEN ${keywordTextExpr} THEN 60 ELSE 0 END +
+      CASE WHEN ${sourcePhraseMatchExpr} THEN 175 ELSE 0 END +
+      CASE WHEN ${sourceTokenMatchExpr} THEN 95 ELSE 0 END +
       LEAST(220, ${tokenRankExpr} * 140)
     )`;
 
@@ -2977,6 +3026,9 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_case_law_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_title_trgm ON case_law USING gin (title gin_trgm_ops)` },
     { label: "idx_case_law_court_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_court_trgm ON case_law USING gin (court gin_trgm_ops)` },
     { label: "idx_github_knowledge_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_title_trgm ON github_knowledge USING gin (title gin_trgm_ops)` },
+    { label: "idx_github_knowledge_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_content_trgm ON github_knowledge USING gin (content gin_trgm_ops)` },
+    { label: "idx_admin_knowledge_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_admin_knowledge_content_trgm ON admin_knowledge USING gin (content gin_trgm_ops)` },
+    { label: "idx_documents_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_documents_content_trgm ON documents USING gin (content gin_trgm_ops)` },
     { label: "idx_statutes_short_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statutes_short_title_trgm ON statutes USING gin (short_title gin_trgm_ops)` },
     { label: "idx_statutes_description_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statutes_description_trgm ON statutes USING gin (description gin_trgm_ops)` },
     { label: "idx_statute_documents_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statute_documents_title_trgm ON statute_documents USING gin (title gin_trgm_ops)` },
