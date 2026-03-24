@@ -204,6 +204,44 @@ function enforcePakistanLawOnlyOutput(text: string): string {
     .replace(/\bAIR\s+\d{4}\s+[A-Za-z.\s]+\s+\d+\b/gi, "[Pakistani case citation required]");
 }
 
+function buildApexModeSystemPrompt(
+  baseSystemPrompt: string,
+  model: ApexModel,
+  moduleType: ModuleType,
+  hasAttachments: boolean,
+): string {
+  const shared = `APEX MODE POLICY (STRICT):
+- Do not use live web search tools in this mode.
+- Use only user prompt, conversation history, attached files (if any), and internal knowledge context provided by the app.
+- Never claim to have searched external websites in this mode.
+- If a legal citation is not present in available internal context, state it as unavailable instead of fabricating.`;
+
+  const apexPro = `APEX PRO PROFILE:
+- Primary goal: premium final output quality for complex legal drafting/analysis.
+- Prefer concise but high-quality structure with clear legal reasoning.
+- Prioritize court-ready language and polished formatting when drafting is requested.
+- Return a final answer directly; do not expose internal chain-of-thought.`;
+
+  const apexAgentDraftGuard = moduleType === "draft" || moduleType === "contract-drafting"
+    ? `- Drafting request detected: preserve requested drafting format and output only the final draft unless user explicitly asks for analysis sections.`
+    : `- For advisory chat, structure response in this order:
+  1) Objective
+  2) Findings from internal context
+  3) Legal analysis
+  4) Recommendation
+  5) Internal citation check (only citations grounded in provided internal context).`;
+
+  const apexAgent = `APEX AGENT (NON-WEB) PROFILE:
+- Primary goal: behave as an internal research agent, grounded in app-provided context.
+- Do not rely on internet or external assumptions.
+- Prefer evidence-grounded statements tied to internal context.
+${apexAgentDraftGuard}
+- If attachments are present, treat them as highest-priority source material.`;
+
+  const profile = model === "apex-agent" ? apexAgent : apexPro;
+  return `${baseSystemPrompt}\n\n${shared}\n\n${profile}${hasAttachments ? "\n\nAttachment priority: enabled." : ""}`;
+}
+
 function normalizeSiteBaseUrl(req: Request): string {
   const configured = String(process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "").trim();
   if (configured) return configured.replace(/\/+$/, "");
@@ -6882,16 +6920,18 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       const requestedMode: "standard" | "turbo" | ApexModel =
         requestedModeRaw === "turbo"
           ? "turbo"
-          : (requestedModeRaw === "apex" || requestedModeRaw === "apex-pro" || requestedModeRaw === "apex-agent")
-            ? (requestedModeRaw as ApexModel)
-            : "standard";
+          : (requestedModeRaw === "apex" || requestedModeRaw === "apex-pro")
+            ? "apex-pro"
+            : (requestedModeRaw === "apex-agent" || requestedModeRaw === "apex-agent-web")
+              ? "apex-agent"
+              : "standard";
       const userTier = await storage.getUserTier(userId);
       const canUseTurboMode = isTurboAllowedForTier(userTier);
       const canUseApexMode = isApexAllowedForTier(userTier);
       if (requestedMode === "turbo" && !canUseTurboMode) {
         return res.status(403).json({ message: "Turbo transcription requires Pro, Chamber, or Enterprise." });
       }
-      if ((requestedMode === "apex" || requestedMode === "apex-pro" || requestedMode === "apex-agent") && !canUseApexMode) {
+      if ((requestedMode === "apex-pro" || requestedMode === "apex-agent") && !canUseApexMode) {
         return res.status(403).json({ message: "Apex transcription requires Chamber or Enterprise." });
       }
 
@@ -7002,7 +7042,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
             }
           }
         }
-      } else if (requestedMode === "apex" || requestedMode === "apex-pro" || requestedMode === "apex-agent") {
+      } else if (requestedMode === "apex-pro" || requestedMode === "apex-agent") {
         if (isApexAvailable()) {
           try {
             const result = await transcribeWithApex({
@@ -7123,9 +7163,13 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       const requestedAiMode = typeof aiModeRaw === "string" ? aiModeRaw.trim().toLowerCase() : "";
       const requestedTurbo = requestedAiMode === "turbo" || turboRaw === true || turboRaw === "true";
       const rawApexModel = typeof apexModelRaw === "string" ? apexModelRaw.trim().toLowerCase() : "";
-      const requestedApexModelRaw = ["apex", "apex-pro", "apex-agent"].includes(rawApexModel)
-        ? rawApexModel
-        : (["apex", "apex-pro", "apex-agent"].includes(requestedAiMode) ? requestedAiMode : "");
+      const normalizeRequestedApexModel = (value: string): ApexModel | "" => {
+        if (value === "apex" || value === "apex-pro") return "apex-pro";
+        if (value === "apex-agent" || value === "apex-agent-web") return "apex-agent";
+        return "";
+      };
+      const requestedApexModelRaw = normalizeRequestedApexModel(rawApexModel)
+        || normalizeRequestedApexModel(requestedAiMode);
 
       const files = req.files as Express.Multer.File[] | undefined;
       let attachmentContext = "";
@@ -7347,10 +7391,8 @@ The user has attached the following documents for your reference. Analyze them c
         if (allowedApexModels.length === 0) {
           return res.status(403).json({ message: `No Apex models are available for your ${normalizedTier} plan` });
         }
-        if (requestedApexModelRaw === "apex") {
-          selectedApexModel = allowedApexModels[0];
-        } else if (allowedApexModels.includes(requestedApexModelRaw as ApexModel)) {
-          selectedApexModel = requestedApexModelRaw as ApexModel;
+        if (allowedApexModels.includes(requestedApexModelRaw)) {
+          selectedApexModel = requestedApexModelRaw;
         } else {
           return res.status(403).json({ message: `Your ${normalizedTier} plan does not include access to this Apex model` });
         }
@@ -7381,7 +7423,7 @@ The user has attached the following documents for your reference. Analyze them c
       }
 
       let usedModel = selectedRoute === "apex"
-        ? (selectedApexModel || "apex")
+        ? (selectedApexModel || "apex-pro")
         : selectedRoute === "turbo"
           ? getDeepSeekModelName()
           : getGroqModelName();
@@ -7543,8 +7585,15 @@ The user has attached the following documents for your reference. Analyze them c
         if (!selectedApexModel) {
           return res.status(403).json({ message: `No Apex models are available for your ${normalizedTier} plan` });
         }
+        const apexSystemPrompt = buildApexModeSystemPrompt(
+          systemPromptFull,
+          selectedApexModel,
+          moduleType,
+          extractedAttachmentCount > 0,
+        );
+        routingPath.push(`apex-profile:${selectedApexModel}`);
         try {
-          const apexMessages = buildMessages(systemPromptFull, geminiContents);
+          const apexMessages = buildMessages(apexSystemPrompt, geminiContents);
           const apexResult = await callApexAIWithFallback(
             apexMessages,
             selectedApexModel,
@@ -7561,7 +7610,7 @@ The user has attached the following documents for your reference. Analyze them c
           routingPath.push(`apex-runtime-fallback:${fallbackRoute}`);
           downgraded = true;
           usageFeatureKey = featureKey;
-          const fallbackResult = await fallbackAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
+          const fallbackResult = await fallbackAiCall(apexSystemPrompt, geminiContents, tokenLimit, { timeoutProfile, temperature });
           result = { text: fallbackResult.text, model: fallbackResult.model };
         }
       } else {
