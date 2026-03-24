@@ -94,7 +94,7 @@ export function getApexModelsForTier(tier: string): Array<{ id: ApexModel; name:
     models.push({
       id: "apex-pro",
       name: "Apex Pro",
-      description: "Premium non-web legal reasoning and high-quality structured drafting output.",
+      description: "Premium legal reasoning and high-quality structured drafting output.",
     });
     models.push({
       id: "apex-agent",

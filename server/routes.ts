@@ -5731,11 +5731,15 @@ RAG POLICY (STRICT):
     if (!userId) return res.sendStatus(401);
     try {
       const year = Number(req.query.year);
-      const journalCode = String(req.query.journal || "").trim();
+      const journalCodeRaw = String(req.query.journal || "").trim();
+      const normalizedJournalQuery = normalizeCitationToken(journalCodeRaw);
       const page = Number(req.query.page);
       const court = String(req.query.court || "").trim();
       const currentYear = new Date().getFullYear();
-      const isAllJournals = !journalCode || journalCode.toLowerCase() === "all";
+      const isAllJournals =
+        !journalCodeRaw
+        || journalCodeRaw.toLowerCase() === "all"
+        || normalizedJournalQuery === "ALL";
 
       if (!Number.isInteger(year) || year < 1947 || year > currentYear + 1) {
         return res.status(400).json({ message: `Year must be between 1947 and ${currentYear + 1}` });
@@ -5746,15 +5750,25 @@ RAG POLICY (STRICT):
 
       if (!isAllJournals) {
         const journals = await storage.getLawJournals();
-        const exists = journals.some((j) => j.code.toLowerCase() === journalCode.toLowerCase());
-        if (!exists) {
-          return res.status(400).json({ message: `Unknown journal code: ${journalCode}` });
+        const journalsByNormalizedCode = new Map(
+          journals.map((j) => [normalizeCitationToken(j.code), j.code]),
+        );
+        const resolvedJournalCode = journalsByNormalizedCode.get(normalizedJournalQuery);
+        if (!resolvedJournalCode) {
+          return res.status(400).json({ message: `Unknown journal code: ${journalCodeRaw}` });
         }
+        const matches = await storage.searchJudgmentsByCitation({
+          year,
+          journalCode: resolvedJournalCode,
+          page,
+          court: court || undefined,
+        });
+        return res.json(matches);
       }
 
       const matches = await storage.searchJudgmentsByCitation({
         year,
-        journalCode: isAllJournals ? undefined : journalCode,
+        journalCode: undefined,
         page,
         court: court || undefined,
       });
@@ -5801,7 +5815,10 @@ RAG POLICY (STRICT):
       }).parse(req.body);
 
       const journals = await storage.getLawJournals();
-      const journal = journals.find((j) => j.code.toLowerCase() === parsed.journalCode.toLowerCase());
+      const normalizedRequestedJournal = normalizeCitationToken(parsed.journalCode);
+      const journal = journals.find(
+        (j) => normalizeCitationToken(j.code) === normalizedRequestedJournal,
+      );
       if (!journal) {
         return res.status(400).json({ message: `Unknown journal code: ${parsed.journalCode}` });
       }

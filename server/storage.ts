@@ -1494,31 +1494,34 @@ export class DatabaseStorage implements IStorage {
     const year = Number(normalizedEntry.citationYear);
     const page = Number(normalizedEntry.citationPage);
 
-    let existing: CaseLaw | undefined;
-    if (report && Number.isInteger(year) && Number.isInteger(page) && page > 0) {
-      const [row] = await db.select().from(caseLaw).where(
-        and(
-          eq(caseLaw.citationYear, year),
-          eq(caseLaw.citationPage, page),
-          sql`upper(${caseLaw.citationReport}) = ${report}`,
-        ),
-      )
-        .orderBy(desc(caseLaw.id))
-        .limit(1);
-      existing = row;
-    }
+    const findExisting = async (): Promise<CaseLaw | undefined> => {
+      let existing: CaseLaw | undefined;
+      if (report && Number.isInteger(year) && Number.isInteger(page) && page > 0) {
+        const [row] = await db.select().from(caseLaw).where(
+          and(
+            eq(caseLaw.citationYear, year),
+            eq(caseLaw.citationPage, page),
+            sql`upper(${caseLaw.citationReport}) = ${report}`,
+          ),
+        )
+          .orderBy(desc(caseLaw.id))
+          .limit(1);
+        existing = row;
+      }
 
-    if (!existing && String(normalizedEntry.citation || "").trim()) {
-      const citationRaw = String(normalizedEntry.citation).trim();
-      const [row] = await db.select().from(caseLaw).where(
-        sql`lower(trim(${caseLaw.citation})) = lower(trim(${citationRaw}))`,
-      )
-        .orderBy(desc(caseLaw.id))
-        .limit(1);
-      existing = row;
-    }
+      if (!existing && String(normalizedEntry.citation || "").trim()) {
+        const citationRaw = String(normalizedEntry.citation).trim();
+        const [row] = await db.select().from(caseLaw).where(
+          sql`lower(trim(${caseLaw.citation})) = lower(trim(${citationRaw}))`,
+        )
+          .orderBy(desc(caseLaw.id))
+          .limit(1);
+        existing = row;
+      }
+      return existing;
+    };
 
-    if (existing) {
+    const mergeIntoExisting = async (existing: CaseLaw): Promise<CaseLaw> => {
       const patch: Partial<InsertCaseLaw> = {};
 
       if (!String(existing.court || "").trim() && String(normalizedEntry.court || "").trim()) {
@@ -1546,6 +1549,19 @@ export class DatabaseStorage implements IStorage {
       if (!existing.sourceFilename && normalizedEntry.sourceFilename) {
         patch.sourceFilename = normalizedEntry.sourceFilename;
       }
+      if (normalizedEntry.citationRole === "primary" && normalizedEntry.sourceDocId && normalizedEntry.sourceType) {
+        const shouldPromoteSource =
+          existing.citationRole !== "primary"
+          || !existing.sourceDocId
+          || !existing.sourceType;
+        if (shouldPromoteSource) {
+          patch.sourceDocId = normalizedEntry.sourceDocId;
+          patch.sourceType = normalizedEntry.sourceType;
+          if (normalizedEntry.sourceFilename) {
+            patch.sourceFilename = normalizedEntry.sourceFilename;
+          }
+        }
+      }
       if (existing.citationRole !== "primary" && normalizedEntry.citationRole === "primary") {
         patch.citationRole = "primary";
       }
@@ -1572,10 +1588,26 @@ export class DatabaseStorage implements IStorage {
         return updated || existing;
       }
       return existing;
+    };
+
+    const existing = await findExisting();
+    if (existing) {
+      return await mergeIntoExisting(existing);
     }
 
-    const [created] = await db.insert(caseLaw).values(normalizedEntry).returning();
-    return created;
+    try {
+      const [created] = await db.insert(caseLaw).values(normalizedEntry).returning();
+      return created;
+    } catch (err: any) {
+      // Race-safe path: if concurrent insert wins, resolve to canonical existing row.
+      if (String(err?.code || "") === "23505") {
+        const collided = await findExisting();
+        if (collided) {
+          return await mergeIntoExisting(collided);
+        }
+      }
+      throw err;
+    }
   }
 
   async updateCaseLaw(id: number, entry: Partial<InsertCaseLaw>): Promise<CaseLaw | undefined> {
@@ -2503,9 +2535,14 @@ const JOURNAL_SEED_DATA: Array<{ code: string; name: string }> = [
   { code: "PLJ", name: "Pakistan Law Journal" },
   { code: "MLD", name: "Monthly Law Digest" },
   { code: "CLC", name: "Civil Law Cases" },
+  { code: "PCRLJ", name: "Pakistan Criminal Law Journal (P Cr. L J)" },
+  { code: "PLC", name: "Pakistan Labour Cases" },
   { code: "YLR", name: "Yearly Law Reporter" },
+  { code: "NLR", name: "National Law Reports" },
   { code: "CLD", name: "Corporate Law Decisions" },
   { code: "PTD", name: "Pakistan Tax Decisions" },
+  { code: "PSC", name: "Pakistan Supreme Court (PSC)" },
+  { code: "SLR", name: "Supreme Law Reporter" },
 ];
 
 const COURT_SEED_DATA: Array<{ code: string; name: string; level: string }> = [
