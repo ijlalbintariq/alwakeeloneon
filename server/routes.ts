@@ -21,7 +21,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import multer from "multer";
-import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, type ApexModel } from "./apex-ai";
+import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 import { chatWithOpenRouter, streamWithOpenRouter, isOpenRouterAvailable, getOpenRouterModelName } from "./openrouter";
 import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekModelName, getDeepSeekProModelName } from "./deepseek-ai";
@@ -10621,6 +10621,119 @@ Instructions:
         return res.status(429).json({ message: "Rate limit exceeded. Please try again shortly." });
       }
       res.status(500).json({ message: err.message || "Failed to generate response" });
+    }
+  });
+
+  // ========== APEX AGENT (KIMI WEB RESEARCH) ROUTE ==========
+
+  app.post("/api/apex/agent", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const tier = normalizeTier(await storage.getUserTier(userId));
+    const tierPlan = getTierPlan(tier);
+
+    if (!isApexAvailable()) {
+      return res.status(503).json({ message: "Apex AI is not configured. MOONSHOT_API_KEY is required." });
+    }
+
+    // Only Chamber and Enterprise tiers can use Apex Agent
+    if (!isApexAllowedForTier(tier)) {
+      return res.status(403).json({ message: "Apex Agent requires Chamber or Enterprise plan." });
+    }
+
+    const { message, threadId, systemContext, maxIterations } = req.body;
+    if (!message || typeof message !== "string" || !message.trim()) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
+    // Check monthly Apex usage cap
+    const apexMonthlyCap = Math.max(0, Number(tierPlan.apexMonthlyCap || 0));
+    const apexUsedThisMonth = await storage.getMonthlyUsageCountByFeature(userId, "chat-apex");
+    if (apexMonthlyCap > 0 && apexUsedThisMonth >= apexMonthlyCap) {
+      return res.status(429).json({
+        message: `Apex monthly cap reached (${apexMonthlyCap}/${apexMonthlyCap}) on ${tierPlan.label} plan.`,
+        cap: apexMonthlyCap,
+        used: apexUsedThisMonth,
+      });
+    }
+
+    const allowed = await checkUsageLimit(userId, "chat", res);
+    if (!allowed) return;
+
+    try {
+      // Build system prompt with legal context
+      let systemPrompt = getLegalSystemPrompt();
+      systemPrompt += `\n\nYou are operating in APEX AGENT mode with web research capabilities. You have access to the $web_search tool to research Pakistani legal topics, case law, statutes, and legal news from authoritative sources. When answering legal questions:
+
+1. Use web search to find current, authoritative Pakistani legal information
+2. Search for relevant case law from Pakistani courts (Supreme Court, High Courts)
+3. Look up specific statutes, ordinances, and regulations
+4. Find recent legal developments and amendments
+5. Cross-reference multiple sources for accuracy
+6. Always cite your sources with URLs when available
+7. Synthesize findings into a comprehensive, structured legal analysis
+
+Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pakistan, High Court judgments, PLD (Pakistan Legal Decisions), SCMR, and official government legal portals.`;
+
+      if (systemContext) {
+        systemPrompt += `\n\n${systemContext}`;
+      }
+
+      systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
+
+      const knowledgeContext = await gatherKnowledgeContext(message, userId);
+      systemPrompt += knowledgeContext;
+
+      const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+        { role: "system", content: systemPrompt },
+      ];
+
+      // Load thread history if provided
+      if (threadId) {
+        const threadMessages = await storage.getMessages(threadId);
+        const recentMessages = threadMessages.slice(-8);
+        for (const tm of recentMessages) {
+          messages.push({ role: tm.role as "user" | "assistant", content: tm.content });
+        }
+      }
+
+      messages.push({ role: "user", content: message });
+
+      const apexRequestCap = Math.max(256, getModeOutputCap(tier, "apex") || 4096);
+      const agentMaxIterations = Math.min(10, Math.max(3, Number(maxIterations) || 6));
+
+      console.log(`[Apex Agent] Starting web research for user ${userId}, tier: ${tier}`);
+      const startedAt = Date.now();
+
+      const agentResult = await chatWithApexAgent({
+        messages,
+        maxTokens: apexRequestCap,
+        maxIterations: agentMaxIterations,
+      });
+
+      console.log(`[Apex Agent] Completed in ${Date.now() - startedAt}ms, steps: ${agentResult.steps.length}, searches: ${agentResult.searchQueries.length}`);
+
+      const safeContent = await applyAlWakeeloSafetyGuardrails(agentResult.content).catch(() => ensureAlWakeeloReferencesBlock(agentResult.content));
+      const inputText = messages.map(m => m.content).join("\n");
+      await logUsageCost(userId, "chat-apex", agentResult.model, inputText, safeContent);
+
+      res.json({
+        content: safeContent,
+        reasoning: agentResult.reasoning,
+        model: agentResult.model,
+        steps: agentResult.steps,
+        searchQueries: agentResult.searchQueries,
+        sourcesUsed: agentResult.sourcesUsed,
+        inputTokens: agentResult.inputTokens,
+        outputTokens: agentResult.outputTokens,
+      });
+    } catch (err: any) {
+      console.error("[Apex Agent] Error:", err);
+      if (err?.status === 429 || err?.message?.includes("429")) {
+        return res.status(429).json({ message: "Rate limit exceeded. Please try again shortly." });
+      }
+      res.status(500).json({ message: err.message || "Apex Agent research failed" });
     }
   });
 
