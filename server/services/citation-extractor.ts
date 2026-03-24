@@ -17,8 +17,10 @@ export type ResolvedCitation = ExtractedCitation & {
 };
 
 const JOURNAL_CODES = [
-  "PLD", "SCMR", "PLJ", "MLD", "CLC", "PCRLJ", "YLR", "NLR", "CLD", "PTD", "PLC", "PSC", "SLR",
+  "PLD", "SCMR", "PLJ", "MLD", "CLC", "PCRLJ", "YLR", "NLR", "CLD", "PTD", "PLC", "PSC", "SLR", "AIR",
+  "LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC",
 ] as const;
+const NEUTRAL_CODES = ["LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC"] as const;
 
 function buildFlexibleReportPattern(code: string): string {
   const letters = String(code || "").replace(/[^A-Za-z]/g, "").split("");
@@ -26,7 +28,9 @@ function buildFlexibleReportPattern(code: string): string {
 }
 
 const JOURNAL_PATTERN = JOURNAL_CODES.map((code) => buildFlexibleReportPattern(code)).join("|");
-const CITATION_REGEX = new RegExp(`\\b(\\d{4})\\s+(${JOURNAL_PATTERN})\\s+(\\d{1,5})\\b`, "gi");
+const NEUTRAL_PATTERN = NEUTRAL_CODES.map((code) => buildFlexibleReportPattern(code)).join("|");
+const CITATION_REGEX = new RegExp(`\\b(\\d{4})\\s+(${JOURNAL_PATTERN})\\s+(\\d{1,6})\\b`, "gi");
+const COMPACT_NEUTRAL_REGEX = new RegExp(`\\b(\\d{4})\\s*(${NEUTRAL_PATTERN})\\s*(\\d{1,6})\\b`, "gi");
 
 function extractContext(text: string, start: number, length: number, radius: number = 100): string {
   const contextStart = Math.max(0, start - radius);
@@ -39,17 +43,14 @@ export class CitationExtractor {
     const results: ExtractedCitation[] = [];
     const seen = new Set<string>();
 
-    for (const match of text.matchAll(CITATION_REGEX)) {
-      const year = Number(match[1]);
-      const journalCode = String(match[2] || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-      const page = Number(match[3]);
-      const startOffset = Number(match.index || 0);
+    const addMatch = (yearRaw: string, journalRaw: string, pageRaw: string, startOffset: number) => {
+      const year = Number(yearRaw);
+      const journalCode = String(journalRaw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const page = Number(pageRaw);
       const rawCitation = `${year} ${journalCode} ${page}`;
       const dedupeKey = `${year}:${journalCode}:${page}`;
-
-      if (!year || !journalCode || !page || seen.has(dedupeKey)) continue;
+      if (!year || !journalCode || !page || seen.has(dedupeKey)) return;
       seen.add(dedupeKey);
-
       results.push({
         rawCitation,
         year,
@@ -58,8 +59,14 @@ export class CitationExtractor {
         startOffset,
         contextExcerpt: extractContext(text, startOffset, rawCitation.length, 100),
       });
-    }
+    };
 
+    for (const match of text.matchAll(CITATION_REGEX)) {
+      addMatch(match[1], match[2], match[3], Number(match.index || 0));
+    }
+    for (const match of text.matchAll(COMPACT_NEUTRAL_REGEX)) {
+      addMatch(match[1], match[2], match[3], Number(match.index || 0));
+    }
     return results;
   }
 
