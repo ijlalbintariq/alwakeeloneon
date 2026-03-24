@@ -8045,6 +8045,41 @@ The user has attached the following documents for your reference. Analyze them c
 
       let fullText = "";
       try {
+        const parsedLookupCitation = parseCaseLawCitationQuery(citation || searchTerm);
+        const candidateRows = await searchCaseLawWithFullText({
+          userId,
+          query: searchTerm,
+          limit: 25,
+          year: parsedLookupCitation?.year,
+          report: parsedLookupCitation?.report,
+          page: parsedLookupCitation?.page,
+          parsedCitation: parsedLookupCitation,
+          sort: "relevance",
+        });
+        const normalizedTitleForMatch = normalizeTextForMatch(title || "");
+        let bestRow: CaseLaw | null = null;
+        let bestScore = -1;
+        for (const row of candidateRows) {
+          let score = scoreCaseLawTextMatch(row, searchTerm);
+          if (citation && caseCitationMatches(citation, row.citation)) score += 120;
+          if (normalizedTitleForMatch) {
+            const rowTitleNorm = normalizeTextForMatch(row.title || "");
+            if (rowTitleNorm === normalizedTitleForMatch) score += 80;
+            else if (rowTitleNorm.includes(normalizedTitleForMatch) || normalizedTitleForMatch.includes(rowTitleNorm)) score += 40;
+          }
+          if (score > bestScore) {
+            bestScore = score;
+            bestRow = row;
+          }
+        }
+        if (bestRow) {
+          fullText = await loadCaseLawSourceText(bestRow, userId, { includeMetadataFallback: false });
+        }
+
+        // Fallback path only if strict case-law resolution fails.
+        if (fullText.trim()) {
+          // strict path succeeded
+        } else {
         const normalize = (s: string) => s.replace(/[^a-z0-9]/gi, "").toLowerCase();
         const citationNorm = citation ? normalize(citation) : "";
         const stopWords = new Set(["the", "and", "for", "with", "from", "this", "that", "case", "state", "versus", "pakistan", "government", "court", "high", "supreme", "lahore", "karachi", "islamabad", "peshawar", "quetta"]);
@@ -8087,6 +8122,7 @@ The user has attached the following documents for your reference. Analyze them c
               break;
             }
           }
+        }
         }
       } catch {}
 
