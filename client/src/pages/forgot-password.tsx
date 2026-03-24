@@ -9,6 +9,8 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [resetUrl, setResetUrl] = useState<string | null>(null);
+  const [serverMessage, setServerMessage] = useState<string>("");
+  const [isGoogleAccountNotice, setIsGoogleAccountNotice] = useState(false);
   const { toast } = useToast();
 
   const forgotMutation = useMutation({
@@ -21,6 +23,8 @@ export default function ForgotPasswordPage() {
     },
     onSuccess: (data: any) => {
       setSubmitted(true);
+      setServerMessage(String(data?.message || ""));
+      setIsGoogleAccountNotice(data?.provider === "google" || data?.action === "use_google_signin");
       if (data.resetUrl) {
         setResetUrl(data.resetUrl);
       }
@@ -63,12 +67,12 @@ export default function ForgotPasswordPage() {
               <CheckCircle size={28} className="text-emerald-400" />
             </div>
             <h2 className="text-lg font-semibold text-white">
-              {resetUrl ? "Reset Link Ready" : "Check Your Email"}
+              {resetUrl ? "Reset Link Ready" : isGoogleAccountNotice ? "Use Google Sign-In" : "Check Your Email"}
             </h2>
             <p className="text-sm text-slate-400 leading-relaxed">
               {resetUrl
                 ? "Your password reset link has been generated. Click the button below to set a new password."
-                : "If an account with that email exists, we've sent a password reset link to your inbox. Please check your email."}
+                : (serverMessage || "If an account with that email exists, we've sent a password reset link to your inbox. Please check your email.")}
             </p>
 
             {resetUrl && (

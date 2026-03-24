@@ -16,6 +16,7 @@ const TERMS_REQUIRED_MESSAGE = "You must agree to the Terms and Conditions to cr
 const AUTH_SINGLE_IP_ENFORCED = isSingleIpEnforced();
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 const GENERIC_FORGOT_PASSWORD_MESSAGE = "If an account with that email exists, a password reset link has been sent.";
+const GOOGLE_FORGOT_PASSWORD_MESSAGE = "This account uses Google sign-in. Please continue with Google instead of password reset.";
 const GENERIC_VERIFICATION_RESEND_MESSAGE = "If an account with that email exists, a verification link has been sent.";
 
 const registerSchema = z.object({
@@ -698,7 +699,19 @@ export function registerAuthRoutes(app: Express): void {
 
       const user = await authStorage.getUserByEmail(parsed.data.email);
 
-      if (!user || user.authProvider !== "email") {
+      if (!user) {
+        return res.json({ message: GENERIC_FORGOT_PASSWORD_MESSAGE });
+      }
+
+      if (user.authProvider === "google") {
+        return res.json({
+          message: GOOGLE_FORGOT_PASSWORD_MESSAGE,
+          provider: "google",
+          action: "use_google_signin",
+        });
+      }
+
+      if (user.authProvider !== "email") {
         return res.json({ message: GENERIC_FORGOT_PASSWORD_MESSAGE });
       }
 
@@ -713,6 +726,10 @@ export function registerAuthRoutes(app: Express): void {
 
       if (!emailSent) {
         console.warn(`[Auth] Password reset email could not be sent for ${parsed.data.email}.`);
+        return res.status(503).json({
+          message: "We could not send reset email right now. Please try again shortly.",
+          code: "EMAIL_TEMPORARILY_UNAVAILABLE",
+        });
       }
       return res.json({ message: GENERIC_FORGOT_PASSWORD_MESSAGE });
     } catch (error) {
