@@ -2531,6 +2531,12 @@ export const storage = new DatabaseStorage();
 
 const JOURNAL_SEED_DATA: Array<{ code: string; name: string }> = [
   { code: "PLD", name: "Pakistan Law Decisions" },
+  { code: "LHC", name: "Lahore High Court Neutral Citation" },
+  { code: "IHC", name: "Islamabad High Court Neutral Citation" },
+  { code: "SHC", name: "Sindh High Court Neutral Citation" },
+  { code: "PHC", name: "Peshawar High Court Neutral Citation" },
+  { code: "BHC", name: "Balochistan High Court Neutral Citation" },
+  { code: "AJKHC", name: "High Court of Azad Jammu and Kashmir Neutral Citation" },
   { code: "SCMR", name: "Supreme Court Monthly Review" },
   { code: "PLJ", name: "Pakistan Law Journal" },
   { code: "MLD", name: "Monthly Law Digest" },

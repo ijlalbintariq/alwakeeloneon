@@ -103,6 +103,17 @@ function parseCitationFromText(value: string): { year: number; journal: string; 
     .replace(/\bP\.?\s*Cr\.?\s*L\.?\s*J\b/gi, "PCRLJ")
     .replace(/[^A-Za-z0-9]/g, "")
     .toUpperCase();
+  const compactNeutral = normalized.match(/\b((?:19|20)\d{2})\s*(LHC|IHC|SHC|PHC|BHC|AJKHC)\s*(\d{1,6})\b/i);
+  if (compactNeutral) {
+    const year = Number(compactNeutral[1]);
+    const page = Number(compactNeutral[3]);
+    if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1) return null;
+    return {
+      year,
+      journal: normalizeJournal(compactNeutral[2]),
+      page,
+    };
+  }
 
   const yearFirst =
     normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+(\d{1,6})\b/i);
