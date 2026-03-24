@@ -91,6 +91,26 @@ function normalizeSiteBaseUrl(req: Request): string {
   return `${proto}://${host}`.replace(/\/+$/, "");
 }
 
+function getGoogleRedirectUri(req: Request): string {
+  const configured = String(process.env.GOOGLE_REDIRECT_URI || "").trim();
+  if (configured) return configured;
+  return `${normalizeSiteBaseUrl(req)}/api/auth/google/callback`;
+}
+
+function base64UrlEncode(input: Buffer): string {
+  return input
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function buildOAuthAuthRedirect(query: Record<string, string>): string {
+  const params = new URLSearchParams(query);
+  const suffix = params.toString();
+  return suffix ? `/auth?${suffix}` : "/auth";
+}
+
 async function requireCaptchaOrReject(req: Request, res: any, action: string): Promise<boolean> {
   const captchaResult = await verifyCaptchaToken(req, req.body?.captchaToken, action);
   if (captchaResult.ok) return true;
@@ -115,7 +135,7 @@ async function issueEmailVerification(user: any, req: Request, source: "register
   await logAuditEvent("auth.verification.sent", user.id, user.id, { source }).catch(() => {});
 }
 
-async function persistSession(req: any, res: any, user: any, statusCode: number = 200): Promise<void> {
+async function establishSession(req: any, user: any): Promise<void> {
   const loginIp = resolveRequestIp(req);
   let sessionEpoch = Number(user?.sessionEpoch || 0);
   if (AUTH_SINGLE_IP_ENFORCED) {
@@ -135,7 +155,10 @@ async function persistSession(req: any, res: any, user: any, statusCode: number 
       });
     });
   });
+}
 
+async function persistSession(req: any, res: any, user: any, statusCode: number = 200): Promise<void> {
+  await establishSession(req, user);
   const { passwordHash: _, ...safeUser } = user;
   res.status(statusCode).json(safeUser);
 }
@@ -309,6 +332,249 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  app.get("/api/auth/google/start", async (req, res) => {
+    try {
+      if (!applyAuthRateLimit(req, res, "google-oauth-start", 30, 15 * 60 * 1000)) return;
+
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      if (!clientId || !clientSecret) {
+        return res.redirect(
+          buildOAuthAuthRedirect({
+            google_error: "google_not_configured",
+            google_error_detail: "Google sign-in is not configured on server.",
+          }),
+        );
+      }
+
+      const state = base64UrlEncode(crypto.randomBytes(24));
+      const codeVerifier = base64UrlEncode(crypto.randomBytes(48));
+      const codeChallenge = base64UrlEncode(crypto.createHash("sha256").update(codeVerifier).digest());
+      const redirectUri = getGoogleRedirectUri(req);
+
+      (req.session as any).googleOAuth = {
+        state,
+        codeVerifier,
+        createdAt: Date.now(),
+      };
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err: any) => {
+          if (err) return reject(err);
+          return resolve();
+        });
+      });
+
+      const authParams = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: "openid email profile",
+        state,
+        code_challenge: codeChallenge,
+        code_challenge_method: "S256",
+        include_granted_scopes: "true",
+        prompt: "select_account",
+      });
+      return res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${authParams.toString()}`);
+    } catch (error) {
+      console.error("Google OAuth start error:", error);
+      return res.redirect(
+        buildOAuthAuthRedirect({
+          google_error: "google_start_failed",
+          google_error_detail: "Could not start Google sign-in.",
+        }),
+      );
+    }
+  });
+
+  app.get("/api/auth/google/callback", async (req, res) => {
+    const fail = (code: string, detail?: string) => {
+      const payload: Record<string, string> = { google_error: code };
+      if (detail) payload.google_error_detail = detail.slice(0, 220);
+      return res.redirect(buildOAuthAuthRedirect(payload));
+    };
+
+    try {
+      if (!applyAuthRateLimit(req, res, "google-oauth-callback", 40, 15 * 60 * 1000)) return;
+
+      if (!dbAvailable) {
+        return fail("db_unavailable", "Database unavailable");
+      }
+
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      if (!clientId || !clientSecret) {
+        return fail("google_not_configured", "Google sign-in is not configured on server.");
+      }
+
+      const oauthError = String(req.query.error || "").trim();
+      const oauthErrorDescription = String(req.query.error_description || "").trim();
+      if (oauthError) {
+        recordSecurityEvent("auth_anomaly", "google-oauth-denied", {
+          error: oauthError,
+          description: oauthErrorDescription || undefined,
+        });
+        return fail("oauth_denied", oauthErrorDescription || oauthError);
+      }
+
+      const code = String(req.query.code || "").trim();
+      const state = String(req.query.state || "").trim();
+      const oauthSession = (req.session as any)?.googleOAuth as
+        | { state?: string; codeVerifier?: string; createdAt?: number }
+        | undefined;
+
+      (req.session as any).googleOAuth = null;
+      await new Promise<void>((resolve) => {
+        req.session.save(() => resolve());
+      });
+
+      const stateAgeMs = Date.now() - Number(oauthSession?.createdAt || 0);
+      const stateLooksValid =
+        !!code &&
+        !!state &&
+        !!oauthSession?.state &&
+        state === oauthSession.state &&
+        !!oauthSession?.codeVerifier &&
+        Number.isFinite(stateAgeMs) &&
+        stateAgeMs >= 0 &&
+        stateAgeMs <= 10 * 60 * 1000;
+
+      if (!stateLooksValid) {
+        recordSecurityEvent("auth_anomaly", "google-oauth-state-mismatch", {
+          hasCode: !!code,
+          hasState: !!state,
+          hasSessionState: !!oauthSession?.state,
+          stateAgeMs: Number.isFinite(stateAgeMs) ? stateAgeMs : null,
+        });
+        return fail("state_mismatch");
+      }
+
+      const redirectUri = getGoogleRedirectUri(req);
+      const tokenForm = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
+        code_verifier: oauthSession!.codeVerifier!,
+      });
+
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: tokenForm.toString(),
+      });
+      if (!tokenRes.ok) {
+        const detail = await tokenRes.text().catch(() => "");
+        recordSecurityEvent("auth_anomaly", "google-oauth-token-exchange-failed", {
+          status: tokenRes.status,
+          detail: detail.slice(0, 200),
+        });
+        return fail("token_exchange_failed");
+      }
+
+      const tokenPayload = (await tokenRes.json()) as Record<string, unknown>;
+      const idToken = String(tokenPayload.id_token || "").trim();
+      const accessToken = String(tokenPayload.access_token || "").trim();
+
+      let payload: Record<string, any> = {};
+      if (idToken) {
+        const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+        if (!verifyRes.ok) {
+          recordSecurityEvent("auth_anomaly", "google-oauth-id-token-invalid", { status: verifyRes.status });
+          return fail("token_exchange_failed");
+        }
+        payload = (await verifyRes.json()) as Record<string, any>;
+      } else if (accessToken) {
+        const userInfoRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!userInfoRes.ok) {
+          recordSecurityEvent("auth_anomaly", "google-oauth-userinfo-failed", { status: userInfoRes.status });
+          return fail("token_exchange_failed");
+        }
+        payload = (await userInfoRes.json()) as Record<string, any>;
+      } else {
+        recordSecurityEvent("auth_anomaly", "google-oauth-missing-tokens", {});
+        return fail("token_exchange_failed");
+      }
+
+      const tokenAudience = String(payload.aud || "").trim();
+      const tokenIssuer = String(payload.iss || "").trim();
+      const allowedIssuers = new Set(["accounts.google.com", "https://accounts.google.com"]);
+      const tokenEmail = String(payload.email || "").trim().toLowerCase();
+      const tokenEmailVerified = String(payload.email_verified || "").trim().toLowerCase() === "true" || payload.email_verified === true;
+      const tokenSub = String(payload.sub || "").trim();
+
+      if (tokenAudience && tokenAudience !== clientId) {
+        recordSecurityEvent("auth_anomaly", "google-token-audience-mismatch", {});
+        return fail("token_exchange_failed");
+      }
+
+      if (tokenIssuer && !allowedIssuers.has(tokenIssuer)) {
+        recordSecurityEvent("auth_anomaly", "google-token-issuer-mismatch", { issuer: tokenIssuer });
+        return fail("token_exchange_failed");
+      }
+
+      if (!tokenEmail) {
+        recordSecurityEvent("auth_anomaly", "google-token-missing-email", { sub: tokenSub || undefined });
+        return fail("google_email_missing");
+      }
+
+      if (!tokenEmailVerified) {
+        recordSecurityEvent("auth_anomaly", "google-token-email-unverified", { email: tokenEmail, sub: tokenSub || undefined });
+        return fail("google_email_unverified");
+      }
+
+      const firstName = String(payload.given_name || "").trim() || undefined;
+      const lastName = String(payload.family_name || "").trim() || undefined;
+      const displayName = String(payload.name || "").trim();
+      const profileImageUrl = String(payload.picture || "").trim() || undefined;
+      const derivedFirstName = firstName || (displayName ? displayName.split(" ")[0] : undefined) || "Google";
+      const derivedLastName = lastName || (displayName ? displayName.split(" ").slice(1).join(" ").trim() : undefined) || "User";
+
+      const { user, created } = await authStorage.findOrCreateGoogleUser({
+        email: tokenEmail,
+        firstName: derivedFirstName,
+        lastName: derivedLastName,
+        profileImageUrl,
+        emailVerified: true,
+      });
+
+      if (await isUserBanned(user.id)) {
+        recordSecurityEvent("auth_anomaly", `banned-login:${user.id}`, { provider: "google" });
+        return fail("account_banned", "Your account is suspended. Please contact support.");
+      }
+
+      if (created) {
+        await logAuditEvent("auth.register", user.id, user.id, {
+          provider: "google",
+          termsAcceptedVersion: TERMS_VERSION,
+          googleSub: tokenSub || undefined,
+        }).catch(() => {});
+
+        sendWelcomeEmail(user.email || tokenEmail, user.firstName || "there").catch((err) => {
+          console.warn("[Auth] Google welcome email send failed:", err?.message || err);
+        });
+      }
+
+      await logAuditEvent("auth.login", user.id, user.id, {
+        provider: "google",
+        created,
+        googleSub: tokenSub || undefined,
+      }).catch(() => {});
+
+      await establishSession(req, user);
+      return res.redirect("/dashboard");
+    } catch (error) {
+      console.error("Google OAuth callback error:", error);
+      if (!dbAvailable || isDatabaseConnectivityError(error)) {
+        return fail("db_unavailable", "Database unavailable");
+      }
+      return fail("google_callback_failed");
+    }
+  });
+
   app.post("/api/auth/google/token", async (req, res) => {
     try {
       if (!applyAuthRateLimit(req, res, "google-token", 20, 15 * 60 * 1000)) return;
@@ -411,7 +677,12 @@ export function registerAuthRoutes(app: Express): void {
 
   app.get("/api/auth/google/status", (_req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID || "";
-    res.json({ available: !!clientId, clientId });
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || "";
+    res.json({
+      available: !!clientId && !!clientSecret,
+      clientId,
+      flow: "authorization_code",
+    });
   });
 
   app.post("/api/auth/forgot-password", async (req, res) => {

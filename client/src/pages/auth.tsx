@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
 import { useLocation, Link, useSearch } from "wouter";
@@ -8,25 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 
 type AuthMode = "login" | "register";
 
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: any) => void;
-          renderButton: (element: HTMLElement, config: any) => void;
-          prompt: () => void;
-        };
-      };
-    };
-  }
-}
-
 export default function AuthPage() {
   const TERMS_VERSION = "2026-03";
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
   const verifyToken = params.get("verify");
+  const googleError = params.get("google_error");
+  const googleErrorDetail = params.get("google_error_detail");
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +28,6 @@ export default function AuthPage() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const googleButtonRef = useRef<HTMLDivElement>(null);
   const getCaptchaToken = () => (window as any).__ALWAKEELO_CAPTCHA_TOKEN || undefined;
 
   const { data: googleStatus } = useQuery<{ available: boolean; clientId: string }>({
@@ -51,109 +38,18 @@ export default function AuthPage() {
     },
   });
 
-  const handleGoogleCredential = useCallback(async (response: any) => {
+  const handleGoogleStart = useCallback(() => {
+    if (mode === "register" && !acceptedTerms) return;
     setGoogleLoading(true);
-    try {
-      const res = await fetch("/api/auth/google/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          credential: response.credential,
-          acceptedTerms: mode === "register" ? acceptedTerms : undefined,
-          termsVersion: TERMS_VERSION,
-          captchaToken: getCaptchaToken(),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast({
-          title: "Google sign-in failed",
-          description: data.message || "Something went wrong",
-          variant: "destructive",
-        });
-        return;
-      }
-      const signedInUser = data?.user || data;
-      if (signedInUser?.id) {
-        queryClient.setQueryData(["/api/auth/user"], signedInUser);
-      } else {
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      }
-      navigate("/dashboard");
-    } catch {
-      toast({
-        title: "Google sign-in failed",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setGoogleLoading(false);
+    const params = new URLSearchParams();
+    params.set("mode", mode);
+    params.set("termsVersion", TERMS_VERSION);
+    const captchaToken = getCaptchaToken();
+    if (captchaToken) {
+      params.set("captchaToken", captchaToken);
     }
-  }, [acceptedTerms, mode, queryClient, navigate, toast]);
-
-  useEffect(() => {
-    if (!googleStatus?.available || !googleStatus?.clientId) return;
-
-    const renderGoogleButton = () => {
-      if (!window.google || !googleButtonRef.current) return;
-      googleButtonRef.current.innerHTML = "";
-      window.google.accounts.id.initialize({
-        client_id: googleStatus.clientId,
-        callback: handleGoogleCredential,
-        auto_select: false,
-        ux_mode: "popup",
-        itp_support: true,
-      });
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        type: "standard",
-        theme: "outline",
-        size: "large",
-        text: mode === "register" ? "signup_with" : "signin_with",
-        shape: "pill",
-        width: Math.min(360, Math.max(280, googleButtonRef.current.clientWidth || 320)),
-        logo_alignment: "left",
-      });
-    };
-
-    const handleScriptError = () => {
-      toast({
-        title: "Google sign-in unavailable",
-        description: "Google SDK could not be loaded. Check Google client origins and browser privacy settings.",
-        variant: "destructive",
-      });
-    };
-
-    const sdkSrc = "https://accounts.google.com/gsi/client";
-    const existingScript = document.querySelector(`script[src="${sdkSrc}"]`) as HTMLScriptElement | null;
-
-    if (window.google?.accounts?.id) {
-      renderGoogleButton();
-      return;
-    }
-
-    if (existingScript) {
-      existingScript.addEventListener("load", renderGoogleButton);
-      existingScript.addEventListener("error", handleScriptError);
-      return () => {
-        existingScript.removeEventListener("load", renderGoogleButton);
-        existingScript.removeEventListener("error", handleScriptError);
-      };
-    }
-
-    const script = document.createElement("script");
-    script.src = sdkSrc;
-    script.async = true;
-    script.defer = true;
-    script.onload = renderGoogleButton;
-    script.onerror = handleScriptError;
-    document.head.appendChild(script);
-
-    return () => {
-      script.removeEventListener("load", renderGoogleButton);
-      script.removeEventListener("error", handleScriptError);
-    };
-  }, [googleStatus?.available, googleStatus?.clientId, handleGoogleCredential, mode, toast]);
+    window.location.assign(`/api/auth/google/start?${params.toString()}`);
+  }, [acceptedTerms, mode]);
 
   const loginMutation = useMutation({
     mutationFn: async () => {
@@ -280,6 +176,43 @@ export default function AuthPage() {
       cancelled = true;
     };
   }, [verifyToken, verificationPending, toast]);
+
+  useEffect(() => {
+    if (!googleError) return;
+    const normalized = String(googleError).toLowerCase();
+    let description =
+      googleErrorDetail ||
+      "Something went wrong while signing in with Google. Please try again.";
+    if (normalized === "state_mismatch") {
+      description = "Google sign-in expired or was invalid. Please try again.";
+    } else if (normalized === "oauth_denied") {
+      description = "Google authorization was cancelled.";
+    } else if (normalized === "token_exchange_failed") {
+      description = "Could not complete Google authorization. Please try again.";
+    } else if (normalized === "google_email_missing") {
+      description = "Google account did not provide a usable email address.";
+    } else if (normalized === "google_email_unverified") {
+      description = "Google email is not verified.";
+    } else if (normalized === "db_unavailable") {
+      description = "Database is unavailable right now. Please retry in a moment.";
+    }
+
+    toast({
+      title: normalized === "oauth_denied" ? "Google sign-in canceled" : "Google sign-in failed",
+      description,
+      variant: "destructive",
+    });
+    setGoogleLoading(false);
+
+    if (typeof window !== "undefined") {
+      const nextParams = new URLSearchParams(window.location.search);
+      nextParams.delete("google_error");
+      nextParams.delete("google_error_detail");
+      const nextQuery = nextParams.toString();
+      const cleanUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash || ""}`;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, [googleError, googleErrorDetail, toast]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -473,13 +406,15 @@ export default function AuthPage() {
                 Agree to Terms to continue with Google
               </button>
             ) : (
-              <div className="mx-auto w-full max-w-[380px] rounded-xl border border-amber-400/25 bg-[#0f172a]/65 p-2 shadow-[0_0_24px_rgba(245,158,11,0.12)]">
-                <div
-                  ref={googleButtonRef}
-                  className="flex min-h-[44px] items-center justify-center"
-                  data-testid="google-signin-button"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={handleGoogleStart}
+                data-testid="google-signin-button"
+                className="mx-auto w-full max-w-[380px] bg-white text-slate-900 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"
+              >
+                <SiGoogle size={14} />
+                {mode === "register" ? "Continue with Google" : "Sign in with Google"}
+              </button>
             )
           ) : (
             <button
