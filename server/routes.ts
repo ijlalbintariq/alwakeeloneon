@@ -109,6 +109,10 @@ const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE
 const ATTACHMENT_PROMPT_TOKEN_BUDGET = Math.max(500, Number(process.env.ATTACHMENT_PROMPT_TOKEN_BUDGET || 2200));
 const ATTACHMENT_FILE_TOKEN_BUDGET = Math.max(150, Number(process.env.ATTACHMENT_FILE_TOKEN_BUDGET || 800));
 const CASELAW_RAG_INDEX_DOC_TIMEOUT_MS = Math.max(5000, Number(process.env.CASELAW_RAG_INDEX_DOC_TIMEOUT_MS || 45000));
+const ADMIN_UPLOAD_AUTO_INDEX = (() => {
+  const raw = String(process.env.ADMIN_UPLOAD_AUTO_INDEX || "false").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+})();
 const LEGAL_DRAFT_DOC_PREFIX = "Legal Draft:";
 const CONTRACT_DRAFT_DOC_PREFIX = "Contract Draft:";
 const PUBLIC_CHAT_MESSAGE_LIMIT = Math.max(1, Number(process.env.PUBLIC_CHAT_MESSAGE_LIMIT || 10));
@@ -162,6 +166,7 @@ const PUBLIC_CHAT_CASE_NUDGE = {
 
 let activeUploadRequests = 0;
 const pendingUploadResolvers: Array<() => void> = [];
+let adminUploadIndexDisabledLogged = false;
 
 function getVisitorIpAddress(req: Request): string {
   const forwarded = req.headers["x-forwarded-for"];
@@ -186,6 +191,15 @@ function withPakistanLawOnlyPolicy(systemPrompt: string): string {
   if (!base) return PAKISTAN_LAW_ONLY_POLICY;
   if (base.includes("PAKISTAN LAW ONLY POLICY (ABSOLUTE):")) return base;
   return `${base}\n\n${PAKISTAN_LAW_ONLY_POLICY}`;
+}
+
+function shouldAutoIndexAdminUploads(): boolean {
+  if (ADMIN_UPLOAD_AUTO_INDEX) return true;
+  if (!adminUploadIndexDisabledLogged) {
+    adminUploadIndexDisabledLogged = true;
+    console.log("[RAG] Admin upload auto-index is disabled. Upload now, then use Admin > Global RAG Indexing > Start.");
+  }
+  return false;
 }
 
 function enforcePakistanLawOnlyOutput(text: string): string {
@@ -1561,6 +1575,7 @@ async function reindexAdminKnowledgeBatch(limit: number, offset: number, hooks?:
 }
 
 function maybeIndexAdminCaseLawInBackground(args: { adminKnowledgeId: number; category?: string | null }) {
+  if (!shouldAutoIndexAdminUploads()) return;
   const isCaseLaw = isAdminKnowledgeCaseLawCategory(args.category);
   const label = isCaseLaw ? "case-law" : "knowledge";
   runInBackground(`rag-admin-${label}:${args.adminKnowledgeId}`, async () => {
@@ -1580,6 +1595,7 @@ function maybeIndexAdminCaseLawInBackground(args: { adminKnowledgeId: number; ca
 }
 
 function maybeIndexStatuteDocumentInBackground(args: { statuteDocumentId: number }) {
+  if (!shouldAutoIndexAdminUploads()) return;
   runInBackground(`rag-admin-statute:${args.statuteDocumentId}`, async () => {
     try {
       await indexAdminStatuteDocument(args.statuteDocumentId);
@@ -3984,6 +4000,9 @@ export async function registerRoutes(
   const uploadGuards = getUploadQueueStats();
   console.log(
     `[Upload Guards] concurrency=${uploadGuards.concurrency} maxPending=${uploadGuards.maxPending} documentFileMax=${toMbText(DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES)} adminFileMax=${toMbText(ADMIN_UPLOAD_MAX_FILE_SIZE_BYTES)}`,
+  );
+  console.log(
+    `[Admin Upload Indexing] autoIndexOnUpload=${ADMIN_UPLOAD_AUTO_INDEX ? "enabled" : "disabled (manual-only)"}`,
   );
   console.log(
     `[Upload Storage] mode=${USE_DISK_UPLOAD_STORAGE ? "disk" : "memory"} tempDir=${USE_DISK_UPLOAD_STORAGE ? UPLOAD_TEMP_DIR : "n/a"}`,
@@ -10084,6 +10103,10 @@ ${boundedRaw}`;
         uploaded: results.length,
         errors: errors.length > 0 ? errors : undefined,
         documents: results,
+        indexing: {
+          autoIndexOnUpload: ADMIN_UPLOAD_AUTO_INDEX,
+          deferred: !ADMIN_UPLOAD_AUTO_INDEX,
+        },
       });
     } catch (err) {
       if (isExtractionQueueFullError(err)) return sendExtractionBusy(res);
@@ -11255,6 +11278,10 @@ ${boundedRaw}`;
         count: results.length,
         failed: errors.length,
         errors,
+        indexing: {
+          autoIndexOnUpload: ADMIN_UPLOAD_AUTO_INDEX,
+          deferred: !ADMIN_UPLOAD_AUTO_INDEX,
+        },
       });
     } catch (err) {
       if (isExtractionQueueFullError(err)) return sendExtractionBusy(res);
