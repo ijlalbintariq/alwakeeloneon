@@ -1272,6 +1272,14 @@ export class DatabaseStorage implements IStorage {
     const safeLimit = Math.max(1, Math.min(100, Number(limit) || 10));
     const hasTextQuery = safeQuery.length > 0;
     const textPattern = `%${safeQuery}%`;
+    const queryTokens = hasTextQuery
+      ? safeQuery
+          .toLowerCase()
+          .split(/\s+/g)
+          .map((token) => token.trim())
+          .filter((token) => token.length >= 2)
+          .slice(0, 10)
+      : [];
 
     const parsedFromQuery = options.parsedCitation === undefined
       ? parseCaseLawCitationParts(safeQuery)
@@ -1289,13 +1297,29 @@ export class DatabaseStorage implements IStorage {
     const hasPage = page !== null;
     const hasReport = reportRaw.length > 0;
 
-    const textMatchExpr = hasTextQuery
+    const phraseTextExpr = hasTextQuery
       ? or(
           ilike(caseLaw.citation, textPattern),
           ilike(caseLaw.court, textPattern),
           ilike(caseLaw.title, textPattern),
           ilike(caseLaw.summary, textPattern),
+          sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${textPattern}`,
         )
+      : undefined;
+
+    const tokenClauses = queryTokens.flatMap((token) => {
+      const tokenPattern = `%${token}%`;
+      return [
+        ilike(caseLaw.citation, tokenPattern),
+        ilike(caseLaw.court, tokenPattern),
+        ilike(caseLaw.title, tokenPattern),
+        ilike(caseLaw.summary, tokenPattern),
+        sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${tokenPattern}`,
+      ];
+    });
+    const tokenTextExpr = tokenClauses.length > 0 ? or(...tokenClauses)! : undefined;
+    const textMatchExpr = hasTextQuery
+      ? (phraseTextExpr && tokenTextExpr ? or(phraseTextExpr, tokenTextExpr) : (phraseTextExpr || tokenTextExpr))
       : undefined;
 
     const structuredClauses = [
@@ -1335,6 +1359,25 @@ export class DatabaseStorage implements IStorage {
     const titleTextExpr = hasTextQuery ? ilike(caseLaw.title, textPattern) : sql`false`;
     const summaryTextExpr = hasTextQuery ? ilike(caseLaw.summary, textPattern) : sql`false`;
     const courtTextExpr = hasTextQuery ? ilike(caseLaw.court, textPattern) : sql`false`;
+    const keywordTextExpr = hasTextQuery
+      ? sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${textPattern}`
+      : sql`false`;
+    const tokenRankExpr = queryTokens.length > 0
+      ? sql<number>`COALESCE(
+          ts_rank_cd(
+            to_tsvector(
+              'simple',
+              coalesce(${caseLaw.citation}, '') || ' ' ||
+              coalesce(${caseLaw.title}, '') || ' ' ||
+              coalesce(${caseLaw.summary}, '') || ' ' ||
+              coalesce(${caseLaw.court}, '') || ' ' ||
+              coalesce(array_to_string(${caseLaw.keywords}, ' '), '')
+            ),
+            plainto_tsquery('simple', ${queryTokens.join(" ")})
+          ),
+          0
+        )`
+      : sql<number>`0`;
 
     const relevanceScore = sql<number>`(
       CASE WHEN ${caseLaw.citationRole} = 'primary' THEN 140 ELSE 0 END +
@@ -1347,7 +1390,9 @@ export class DatabaseStorage implements IStorage {
       CASE WHEN ${citationTextExpr} THEN 110 ELSE 0 END +
       CASE WHEN ${titleTextExpr} THEN 80 ELSE 0 END +
       CASE WHEN ${summaryTextExpr} THEN 65 ELSE 0 END +
-      CASE WHEN ${courtTextExpr} THEN 45 ELSE 0 END
+      CASE WHEN ${courtTextExpr} THEN 45 ELSE 0 END +
+      CASE WHEN ${keywordTextExpr} THEN 60 ELSE 0 END +
+      LEAST(220, ${tokenRankExpr} * 140)
     )`;
 
     const fetchLimit = Math.min(500, safeLimit * 8);
