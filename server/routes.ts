@@ -2359,6 +2359,10 @@ function filterToTrustedCaseLawRows(rows: CaseLaw[]): CaseLaw[] {
   return rows.filter((row) => isCaseLawRowCitationTrusted(row));
 }
 
+function filterToPrimaryCaseLawRows(rows: CaseLaw[]): CaseLaw[] {
+  return rows.filter((row) => String(row.citationRole || "").toLowerCase() === "primary");
+}
+
 function filterCaseLawByStructuredFields(
   rows: CaseLaw[],
   options: {
@@ -2424,7 +2428,7 @@ async function searchCaseLawWithFullText(args: {
     sort: args.sort,
     parsedCitation: args.parsedCitation,
   });
-  const baseResults = filterToTrustedCaseLawRows(baseResultsRaw);
+  const baseResults = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(baseResultsRaw));
 
   const query = String(args.query || "").trim();
   if (!query) {
@@ -2453,7 +2457,7 @@ async function searchCaseLawWithFullText(args: {
 
     if (sourceDocIds.length > 0) {
       const rowsRaw = await storage.getCaseLawBySourceDocuments(sourceDocIds, "admin");
-      const rows = filterToTrustedCaseLawRows(rowsRaw);
+      const rows = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(rowsRaw));
       const filteredRows = filterCaseLawByStructuredFields(rows, {
         year: args.year,
         report: args.report,
@@ -2519,7 +2523,7 @@ async function searchCaseLawWithFullText(args: {
       sort: args.sort,
       parsedCitation: args.parsedCitation,
     });
-    const topUpRows = filterToTrustedCaseLawRows(topUpRowsRaw);
+    const topUpRows = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(topUpRowsRaw));
     const topUpFiltered = await filterCaseLawResultsWithRealFullText(topUpRows, args.userId);
     const topUpRanked = await rankCaseLawRowsBySourceRelevance(topUpFiltered, args.userId, query);
     const topUpNormalized = citationIntent ? topUpRanked : collapseCaseRowsBySource(topUpRanked);
