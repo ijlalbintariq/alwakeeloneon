@@ -4,8 +4,8 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, threads, TIER_LIMITS, type CaseLaw } from "@shared/schema";
-import { count, eq } from "drizzle-orm";
+import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, threads, documents, TIER_LIMITS, type CaseLaw } from "@shared/schema";
+import { and, count, eq, sql } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
 import { syncGithubKnowledge } from "./github-sync";
@@ -740,6 +740,49 @@ type ReindexBatchHooks = {
   onProgress?: (progress: ReindexBatchProgress) => void;
 };
 
+type CaseLawBadIndexSourceKind = "admin" | "github" | "statute" | "user" | "all";
+
+type CaseLawBadIndexTarget = {
+  sourceType: Exclude<CaseLawBadIndexSourceKind, "all">;
+  sourceDocId: number;
+  sourceFilename: string;
+  totalRows: number;
+  primaryRows: number;
+  citedRows: number;
+  uniqueKeys: number;
+  duplicateRows: number;
+};
+
+type CaseLawBadIndexDuplicateStats = {
+  totalRows: number;
+  duplicateGroups: number;
+  duplicateRows: number;
+};
+
+type CaseLawBadIndexReextractJobState = {
+  running: boolean;
+  shouldStop: boolean;
+  sourceKind: Exclude<CaseLawBadIndexSourceKind, "all"> | "all";
+  minRows: number;
+  limit: number;
+  maxCitations: number;
+  totalTargets: number;
+  processedTargets: number;
+  reindexedTargets: number;
+  skippedNoSource: number;
+  skippedNoExtract: number;
+  replacedRows: number;
+  insertedRows: number;
+  activeTarget: {
+    sourceType: Exclude<CaseLawBadIndexSourceKind, "all">;
+    sourceDocId: number;
+    sourceFilename: string;
+  } | null;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  lastError: string | null;
+};
+
 type GlobalAdminRagSourceKey = "case-law" | "statute-docs" | "knowledge-vault";
 
 type GlobalAdminRagSourceState = {
@@ -832,6 +875,28 @@ const caseLawCitationRoleReindexJob: CaseLawCitationRoleReindexJobState = {
   progress: null,
 };
 
+const CASELAW_BAD_INDEX_SOURCE_OPTIONS: CaseLawBadIndexSourceKind[] = ["admin", "github", "statute", "user", "all"];
+
+const caseLawBadIndexReextractJob: CaseLawBadIndexReextractJobState = {
+  running: false,
+  shouldStop: false,
+  sourceKind: "admin",
+  minRows: 20,
+  limit: 100,
+  maxCitations: 40,
+  totalTargets: 0,
+  processedTargets: 0,
+  reindexedTargets: 0,
+  skippedNoSource: 0,
+  skippedNoExtract: 0,
+  replacedRows: 0,
+  insertedRows: 0,
+  activeTarget: null,
+  startedAt: null,
+  finishedAt: null,
+  lastError: null,
+};
+
 const globalAdminRagReindexJob: GlobalAdminRagReindexJobState = createGlobalAdminRagReindexJobState();
 
 function snapshotCaseLawReindexJob() {
@@ -850,6 +915,370 @@ function snapshotCaseLawCitationRoleReindexJob() {
     finishedAt: caseLawCitationRoleReindexJob.finishedAt ? caseLawCitationRoleReindexJob.finishedAt.toISOString() : null,
     lastError: caseLawCitationRoleReindexJob.lastError,
     progress: caseLawCitationRoleReindexJob.progress,
+  };
+}
+
+function snapshotCaseLawBadIndexReextractJob() {
+  return {
+    ...caseLawBadIndexReextractJob,
+    startedAt: caseLawBadIndexReextractJob.startedAt ? caseLawBadIndexReextractJob.startedAt.toISOString() : null,
+    finishedAt: caseLawBadIndexReextractJob.finishedAt ? caseLawBadIndexReextractJob.finishedAt.toISOString() : null,
+  };
+}
+
+function toCaseLawBadIndexInt(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+}
+
+function normalizeCaseLawBadIndexSourceKind(value: unknown): CaseLawBadIndexSourceKind {
+  const normalized = String(value || "admin").trim().toLowerCase();
+  return CASELAW_BAD_INDEX_SOURCE_OPTIONS.includes(normalized as CaseLawBadIndexSourceKind)
+    ? (normalized as CaseLawBadIndexSourceKind)
+    : "admin";
+}
+
+function getDbRows<T>(result: unknown): T[] {
+  if (Array.isArray(result)) return result as T[];
+  const rows = (result as { rows?: T[] } | null)?.rows;
+  return Array.isArray(rows) ? rows : [];
+}
+
+function normalizeCaseLawCitationReportToken(token: string): string {
+  return String(token || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+
+const CASELAW_BAD_INDEX_REPORT_CODES = new Set([
+  "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
+  "PSC", "ALD", "KLR", "PTD", "PTCL", "PLS", "GBLR", "CLD", "TAX", "SLR",
+]);
+
+function extractKnownCaseLawReport(raw: string): string | null {
+  const direct = normalizeCaseLawCitationReportToken(raw);
+  if (CASELAW_BAD_INDEX_REPORT_CODES.has(direct)) return direct;
+
+  const tokens = String(raw || "")
+    .split(/\s+/g)
+    .map((token) => normalizeCaseLawCitationReportToken(token))
+    .filter(Boolean);
+  if (tokens.length === 0) return null;
+
+  for (let len = tokens.length; len >= 1; len -= 1) {
+    for (let start = 0; start + len <= tokens.length; start += 1) {
+      const candidate = tokens.slice(start, start + len).join("");
+      if (CASELAW_BAD_INDEX_REPORT_CODES.has(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+function parseCaseLawCitationParts(citation: string): { year: number; report: string; page: number } | null {
+  const raw = String(citation || "").trim();
+  if (!raw) return null;
+  const normalized = raw
+    .replace(/[()[\],;:]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const yearFirst =
+    normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+(\d{1,6})\b/i);
+  if (yearFirst) {
+    const year = Number(yearFirst[1]);
+    const report = extractKnownCaseLawReport(yearFirst[2]) || normalizeCaseLawCitationReportToken(yearFirst[2]);
+    const page = Number(yearFirst[3]);
+    if (Number.isInteger(year) && Number.isInteger(page) && page > 0 && report) {
+      return { year, report, page };
+    }
+  }
+
+  const reportFirst =
+    normalized.match(/\b([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+((?:19|20)\d{2})\s+(\d{1,6})\b/i);
+  if (!reportFirst) return null;
+  const report = extractKnownCaseLawReport(reportFirst[1]) || normalizeCaseLawCitationReportToken(reportFirst[1]);
+  const year = Number(reportFirst[2]);
+  const page = Number(reportFirst[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1 || !report) return null;
+  return { year, report, page };
+}
+
+function normalizeCaseLawCitationText(value: string): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildCaseLawDedupKey(entry: {
+  citation: string;
+  citationYear?: number | null;
+  citationReport?: string | null;
+  citationPage?: number | null;
+}): string {
+  const report = normalizeCaseLawCitationReportToken(String(entry.citationReport || ""));
+  const year = Number(entry.citationYear);
+  const page = Number(entry.citationPage);
+  if (report && Number.isInteger(year) && Number.isInteger(page) && page > 0) {
+    return `parts:${report}:${year}:${page}`;
+  }
+  const parsed = parseCaseLawCitationParts(String(entry.citation || ""));
+  if (parsed) {
+    return `parts:${parsed.report}:${parsed.year}:${parsed.page}`;
+  }
+  return `citation:${normalizeCaseLawCitationText(String(entry.citation || ""))}`;
+}
+
+type NormalizedExtractedCase = {
+  citation: string;
+  citationRole: "primary" | "cited";
+  court: string;
+  title: string;
+  summary: string;
+  keywords: string[];
+};
+
+function normalizeExtractedCaseRow(row: NormalizedExtractedCase): NormalizedExtractedCase | null {
+  const citation = String(row.citation || "").trim();
+  const title = String(row.title || "").trim();
+  if (!citation || !title) return null;
+  return {
+    citation,
+    citationRole: row.citationRole === "primary" ? "primary" : "cited",
+    court: String(row.court || "").trim(),
+    title,
+    summary: String(row.summary || "").trim() || `Case cited as ${citation}`,
+    keywords: Array.isArray(row.keywords)
+      ? row.keywords.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 25)
+      : [],
+  };
+}
+
+function capExtractedCaseRows(rows: NormalizedExtractedCase[], maxTotal: number): NormalizedExtractedCase[] {
+  const safeMax = Math.max(1, maxTotal);
+  const deduped: NormalizedExtractedCase[] = [];
+  const seen = new Set<string>();
+
+  for (const row of rows) {
+    const normalized = normalizeExtractedCaseRow(row);
+    if (!normalized) continue;
+    const key = buildCaseLawDedupKey({ citation: normalized.citation });
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(normalized);
+  }
+
+  if (deduped.length === 0) return [];
+
+  let primaryIndex = deduped.findIndex((row) => row.citationRole === "primary");
+  if (primaryIndex < 0) {
+    deduped[0].citationRole = "primary";
+    primaryIndex = 0;
+  }
+
+  const primary = deduped[primaryIndex];
+  const others = deduped
+    .filter((_row, index) => index !== primaryIndex)
+    .map((row) => ({ ...row, citationRole: "cited" as const }));
+
+  return [primary, ...others.slice(0, Math.max(0, safeMax - 1))];
+}
+
+async function getCaseLawDuplicateStats(): Promise<CaseLawBadIndexDuplicateStats> {
+  const result = await db.execute(sql.raw(`
+    WITH keyed AS (
+      SELECT
+        COALESCE(
+          CASE
+            WHEN citation_report IS NOT NULL AND citation_year IS NOT NULL AND citation_page IS NOT NULL
+              THEN upper(citation_report) || ':' || citation_year::text || ':' || citation_page::text
+            ELSE NULL
+          END,
+          regexp_replace(lower(coalesce(citation, '')), '[^a-z0-9]+', '', 'g')
+        ) AS dedup_key
+      FROM case_law
+    ),
+    grouped AS (
+      SELECT dedup_key, count(*) AS grp_count
+      FROM keyed
+      GROUP BY dedup_key
+    )
+    SELECT
+      (SELECT count(*)::bigint FROM case_law) AS total_rows,
+      count(*) FILTER (WHERE grp_count > 1)::bigint AS duplicate_groups,
+      COALESCE(sum(grp_count - 1) FILTER (WHERE grp_count > 1), 0)::bigint AS duplicate_rows
+    FROM grouped;
+  `));
+  const rows = getDbRows<{
+    total_rows: string | number;
+    duplicate_groups: string | number;
+    duplicate_rows: string | number;
+  }>(result);
+  const row = rows[0];
+  return {
+    totalRows: toCaseLawBadIndexInt(row?.total_rows, 0),
+    duplicateGroups: toCaseLawBadIndexInt(row?.duplicate_groups, 0),
+    duplicateRows: toCaseLawBadIndexInt(row?.duplicate_rows, 0),
+  };
+}
+
+async function loadCaseLawBadIndexTargets(
+  sourceKind: CaseLawBadIndexSourceKind,
+  minRows: number,
+  limit: number,
+): Promise<CaseLawBadIndexTarget[]> {
+  const sourceFilterClause = sourceKind === "all" ? sql`` : sql`AND source_type = ${sourceKind}`;
+
+  const result = await db.execute(sql`
+    WITH grouped AS (
+      SELECT
+        source_type,
+        source_doc_id,
+        min(coalesce(source_filename, '')) AS source_filename,
+        count(*)::int AS total_rows,
+        count(*) FILTER (WHERE citation_role = 'primary')::int AS primary_rows,
+        count(*) FILTER (WHERE citation_role = 'cited')::int AS cited_rows,
+        count(
+          DISTINCT COALESCE(
+            CASE
+              WHEN citation_report IS NOT NULL AND citation_year IS NOT NULL AND citation_page IS NOT NULL
+                THEN upper(citation_report) || ':' || citation_year::text || ':' || citation_page::text
+              ELSE NULL
+            END,
+            regexp_replace(lower(coalesce(citation, '')), '[^a-z0-9]+', '', 'g')
+          )
+        )::int AS unique_keys
+      FROM case_law
+      WHERE source_doc_id IS NOT NULL
+        AND source_type IS NOT NULL
+        ${sourceFilterClause}
+      GROUP BY source_type, source_doc_id
+      HAVING count(*) >= ${minRows}
+    )
+    SELECT
+      source_type,
+      source_doc_id,
+      source_filename,
+      total_rows,
+      primary_rows,
+      cited_rows,
+      unique_keys,
+      (total_rows - unique_keys)::int AS duplicate_rows
+    FROM grouped
+    ORDER BY duplicate_rows DESC, cited_rows DESC, total_rows DESC
+    LIMIT ${limit};
+  `);
+
+  const rows = getDbRows<{
+    source_type: string;
+    source_doc_id: string | number;
+    source_filename: string | null;
+    total_rows: string | number;
+    primary_rows: string | number;
+    cited_rows: string | number;
+    unique_keys: string | number;
+    duplicate_rows: string | number;
+  }>(result);
+
+  return rows
+    .map((row) => ({
+      sourceType: String(row.source_type || "") as Exclude<CaseLawBadIndexSourceKind, "all">,
+      sourceDocId: toCaseLawBadIndexInt(row.source_doc_id, 0),
+      sourceFilename: String(row.source_filename || "").trim(),
+      totalRows: toCaseLawBadIndexInt(row.total_rows, 0),
+      primaryRows: toCaseLawBadIndexInt(row.primary_rows, 0),
+      citedRows: toCaseLawBadIndexInt(row.cited_rows, 0),
+      uniqueKeys: toCaseLawBadIndexInt(row.unique_keys, 0),
+      duplicateRows: toCaseLawBadIndexInt(row.duplicate_rows, 0),
+    }))
+    .filter((row) =>
+      ["admin", "github", "statute", "user"].includes(row.sourceType)
+      && Number.isInteger(row.sourceDocId)
+      && row.sourceDocId > 0,
+    );
+}
+
+async function loadCaseLawBadIndexSourceContent(
+  sourceType: Exclude<CaseLawBadIndexSourceKind, "all">,
+  sourceDocId: number,
+): Promise<{ content: string; filename: string } | null> {
+  if (sourceType === "admin") {
+    const doc = await storage.getAdminKnowledgeById(sourceDocId);
+    if (!doc) return null;
+    return {
+      content: String(doc.content || ""),
+      filename: String(doc.filename || `admin-${sourceDocId}.md`),
+    };
+  }
+  if (sourceType === "github") {
+    const doc = await storage.getGithubKnowledgeById(sourceDocId);
+    if (!doc) return null;
+    return {
+      content: String(doc.content || ""),
+      filename: String(doc.filename || `github-${sourceDocId}.md`),
+    };
+  }
+  if (sourceType === "statute") {
+    const doc = await storage.getStatuteDocument(sourceDocId);
+    if (!doc) return null;
+    return {
+      content: String(doc.content || ""),
+      filename: String(doc.filename || `statute-${sourceDocId}.md`),
+    };
+  }
+
+  const [doc] = await db.select({
+    title: documents.title,
+    content: documents.content,
+  })
+    .from(documents)
+    .where(eq(documents.id, sourceDocId))
+    .limit(1);
+
+  if (!doc) return null;
+  return {
+    content: String(doc.content || ""),
+    filename: String(doc.title || `user-${sourceDocId}`),
+  };
+}
+
+async function reextractCaseLawForSourceTarget(
+  target: CaseLawBadIndexTarget,
+  maxCitations: number,
+): Promise<{ replaced: number; inserted: number; skipped: "none" | "no-source" | "no-extract" }> {
+  const source = await loadCaseLawBadIndexSourceContent(target.sourceType, target.sourceDocId);
+  if (!source || !source.content || source.content.trim().length < 200) {
+    return { replaced: 0, inserted: 0, skipped: "no-source" };
+  }
+
+  const extractedRaw = nlpExtractCases(source.content, { sourceFilename: source.filename }) as NormalizedExtractedCase[];
+  const roleAware = assignCitationRolesToCases(source.content, extractedRaw, {
+    sourceFilename: source.filename,
+  }) as NormalizedExtractedCase[];
+  const extracted = capExtractedCaseRows(roleAware, maxCitations);
+  if (extracted.length === 0) {
+    return { replaced: 0, inserted: 0, skipped: "no-extract" };
+  }
+
+  const deleted = await db.delete(caseLaw)
+    .where(and(eq(caseLaw.sourceDocId, target.sourceDocId), eq(caseLaw.sourceType, target.sourceType)))
+    .returning({ id: caseLaw.id });
+
+  const inserted = await storage.bulkCreateCaseLaw(extracted.map((row) => ({
+    citation: row.citation,
+    citationRole: row.citationRole,
+    court: row.court,
+    title: row.title,
+    summary: row.summary,
+    keywords: row.keywords,
+    sourceDocId: target.sourceDocId,
+    sourceType: target.sourceType,
+    sourceFilename: source.filename,
+  })));
+
+  return {
+    replaced: deleted.length,
+    inserted: inserted.length,
+    skipped: "none",
   };
 }
 
@@ -9667,6 +10096,178 @@ ${boundedRaw}`;
       console.error("Error fetching case law:", err);
       res.status(500).json({ message: "Failed to fetch case law" });
     }
+  });
+
+  app.get("/api/admin/case-law/bad-index/audit", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const sourceKind = normalizeCaseLawBadIndexSourceKind(req.query.source);
+      const minRows = Math.max(5, Math.min(5000, toCaseLawBadIndexInt(req.query.minRows, 20)));
+      const limit = Math.max(1, Math.min(1000, toCaseLawBadIndexInt(req.query.limit, 100)));
+      const [duplicateStats, targets] = await Promise.all([
+        getCaseLawDuplicateStats(),
+        loadCaseLawBadIndexTargets(sourceKind, minRows, limit),
+      ]);
+      return res.json({
+        ok: true,
+        sourceKind,
+        minRows,
+        limit,
+        generatedAt: new Date().toISOString(),
+        duplicateStats,
+        targets,
+        jobStatus: snapshotCaseLawBadIndexReextractJob(),
+      });
+    } catch (err) {
+      console.error("Error auditing case law bad index targets:", err);
+      return res.status(500).json({ message: "Failed to audit bad index targets" });
+    }
+  });
+
+  app.get("/api/admin/case-law/bad-index/reextract/status", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    return res.json({ ok: true, status: snapshotCaseLawBadIndexReextractJob() });
+  });
+
+  app.post("/api/admin/case-law/bad-index/reextract/start", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const actorUserId = getUserId(req);
+      if (caseLawBadIndexReextractJob.running) {
+        return res.status(409).json({
+          ok: false,
+          message: "Targeted bad-index re-extract job is already running",
+          status: snapshotCaseLawBadIndexReextractJob(),
+        });
+      }
+
+      const payload = z.object({
+        source: z.enum(["admin", "github", "statute", "user", "all"]).optional(),
+        minRows: z.number().int().min(5).max(5000).optional(),
+        limit: z.number().int().min(1).max(1000).optional(),
+        maxCitations: z.number().int().min(1).max(200).optional(),
+      }).parse(req.body || {});
+
+      caseLawBadIndexReextractJob.running = true;
+      caseLawBadIndexReextractJob.shouldStop = false;
+      caseLawBadIndexReextractJob.sourceKind = normalizeCaseLawBadIndexSourceKind(payload.source || "admin");
+      caseLawBadIndexReextractJob.minRows = Math.max(5, Math.min(5000, Number(payload.minRows || 20)));
+      caseLawBadIndexReextractJob.limit = Math.max(1, Math.min(1000, Number(payload.limit || 100)));
+      caseLawBadIndexReextractJob.maxCitations = Math.max(1, Math.min(200, Number(payload.maxCitations || 40)));
+      caseLawBadIndexReextractJob.totalTargets = 0;
+      caseLawBadIndexReextractJob.processedTargets = 0;
+      caseLawBadIndexReextractJob.reindexedTargets = 0;
+      caseLawBadIndexReextractJob.skippedNoSource = 0;
+      caseLawBadIndexReextractJob.skippedNoExtract = 0;
+      caseLawBadIndexReextractJob.replacedRows = 0;
+      caseLawBadIndexReextractJob.insertedRows = 0;
+      caseLawBadIndexReextractJob.activeTarget = null;
+      caseLawBadIndexReextractJob.startedAt = new Date();
+      caseLawBadIndexReextractJob.finishedAt = null;
+      caseLawBadIndexReextractJob.lastError = null;
+
+      await logAuditEvent("admin.caseLaw.badIndexReextract.start", actorUserId, null, {
+        source: caseLawBadIndexReextractJob.sourceKind,
+        minRows: caseLawBadIndexReextractJob.minRows,
+        limit: caseLawBadIndexReextractJob.limit,
+        maxCitations: caseLawBadIndexReextractJob.maxCitations,
+      });
+
+      runInBackground("case-law-bad-index-reextract", async () => {
+        try {
+          const targets = await loadCaseLawBadIndexTargets(
+            caseLawBadIndexReextractJob.sourceKind,
+            caseLawBadIndexReextractJob.minRows,
+            caseLawBadIndexReextractJob.limit,
+          );
+          caseLawBadIndexReextractJob.totalTargets = targets.length;
+
+          for (const target of targets) {
+            if (caseLawBadIndexReextractJob.shouldStop) break;
+            caseLawBadIndexReextractJob.activeTarget = {
+              sourceType: target.sourceType,
+              sourceDocId: target.sourceDocId,
+              sourceFilename: target.sourceFilename,
+            };
+            caseLawBadIndexReextractJob.processedTargets += 1;
+
+            try {
+              const result = await reextractCaseLawForSourceTarget(target, caseLawBadIndexReextractJob.maxCitations);
+              if (result.skipped === "no-source") {
+                caseLawBadIndexReextractJob.skippedNoSource += 1;
+              } else if (result.skipped === "no-extract") {
+                caseLawBadIndexReextractJob.skippedNoExtract += 1;
+              } else {
+                caseLawBadIndexReextractJob.reindexedTargets += 1;
+                caseLawBadIndexReextractJob.replacedRows += result.replaced;
+                caseLawBadIndexReextractJob.insertedRows += result.inserted;
+              }
+            } catch (targetErr: any) {
+              caseLawBadIndexReextractJob.lastError = sanitizeInputText(
+                targetErr?.message || `Target failed: ${target.sourceType}:${target.sourceDocId}`,
+                400,
+              );
+              console.warn(
+                `[CaseLaw][bad-index-reextract] Target failed ${target.sourceType}:${target.sourceDocId}:`,
+                targetErr?.message || targetErr,
+              );
+            }
+          }
+        } catch (err: any) {
+          caseLawBadIndexReextractJob.lastError = sanitizeInputText(err?.message || "Unknown error", 400);
+        } finally {
+          caseLawBadIndexReextractJob.running = false;
+          caseLawBadIndexReextractJob.activeTarget = null;
+          caseLawBadIndexReextractJob.finishedAt = new Date();
+          try {
+            await logAuditEvent("admin.caseLaw.badIndexReextract.finish", actorUserId, null, {
+              stopped: caseLawBadIndexReextractJob.shouldStop,
+              source: caseLawBadIndexReextractJob.sourceKind,
+              totalTargets: caseLawBadIndexReextractJob.totalTargets,
+              processedTargets: caseLawBadIndexReextractJob.processedTargets,
+              reindexedTargets: caseLawBadIndexReextractJob.reindexedTargets,
+              skippedNoSource: caseLawBadIndexReextractJob.skippedNoSource,
+              skippedNoExtract: caseLawBadIndexReextractJob.skippedNoExtract,
+              replacedRows: caseLawBadIndexReextractJob.replacedRows,
+              insertedRows: caseLawBadIndexReextractJob.insertedRows,
+              lastError: caseLawBadIndexReextractJob.lastError,
+            });
+          } catch (auditErr) {
+            console.warn("[CaseLaw][bad-index-reextract] Failed to write finish audit log:", auditErr);
+          }
+          caseLawBadIndexReextractJob.shouldStop = false;
+        }
+      });
+
+      return res.json({
+        ok: true,
+        message: "Targeted bad-index re-extract started in background",
+        status: snapshotCaseLawBadIndexReextractJob(),
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error starting bad-index re-extract:", err);
+      return res.status(500).json({ message: "Failed to start targeted bad-index re-extract" });
+    }
+  });
+
+  app.post("/api/admin/case-law/bad-index/reextract/stop", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!caseLawBadIndexReextractJob.running) {
+      return res.status(409).json({
+        ok: false,
+        message: "No targeted bad-index re-extract job is running",
+        status: snapshotCaseLawBadIndexReextractJob(),
+      });
+    }
+    caseLawBadIndexReextractJob.shouldStop = true;
+    return res.json({
+      ok: true,
+      message: "Stop signal sent. Job will stop after current document.",
+      status: snapshotCaseLawBadIndexReextractJob(),
+    });
   });
 
   app.post("/api/admin/case-law", async (req, res) => {

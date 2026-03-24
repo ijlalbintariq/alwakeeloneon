@@ -1577,6 +1577,60 @@ type CaseLawEntry = {
   keywords: string[];
 };
 
+type CaseLawBadIndexSourceKind = "admin" | "github" | "statute" | "user" | "all";
+
+type CaseLawBadIndexTarget = {
+  sourceType: "admin" | "github" | "statute" | "user";
+  sourceDocId: number;
+  sourceFilename: string;
+  totalRows: number;
+  primaryRows: number;
+  citedRows: number;
+  uniqueKeys: number;
+  duplicateRows: number;
+};
+
+type CaseLawBadIndexDuplicateStats = {
+  totalRows: number;
+  duplicateGroups: number;
+  duplicateRows: number;
+};
+
+type CaseLawBadIndexReextractStatus = {
+  running: boolean;
+  shouldStop: boolean;
+  sourceKind: CaseLawBadIndexSourceKind;
+  minRows: number;
+  limit: number;
+  maxCitations: number;
+  totalTargets: number;
+  processedTargets: number;
+  reindexedTargets: number;
+  skippedNoSource: number;
+  skippedNoExtract: number;
+  replacedRows: number;
+  insertedRows: number;
+  activeTarget: {
+    sourceType: "admin" | "github" | "statute" | "user";
+    sourceDocId: number;
+    sourceFilename: string;
+  } | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  lastError: string | null;
+};
+
+type CaseLawBadIndexAuditResponse = {
+  ok: boolean;
+  sourceKind: CaseLawBadIndexSourceKind;
+  minRows: number;
+  limit: number;
+  generatedAt: string;
+  duplicateStats: CaseLawBadIndexDuplicateStats;
+  targets: CaseLawBadIndexTarget[];
+  jobStatus: CaseLawBadIndexReextractStatus;
+};
+
 function CaseLawSection() {
   const CASELAW_EXTRACT_TIMEOUT_MS = 180000;
   const CASELAW_EXTRACT_MAX_RETRIES = 2;
@@ -1615,6 +1669,49 @@ function CaseLawSection() {
   const [isAutoScanning, setIsAutoScanning] = useState(false);
   const [formData, setFormData] = useState({ citation: "", court: "", title: "", summary: "", keywords: "" });
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [badIndexSource, setBadIndexSource] = useState<CaseLawBadIndexSourceKind>("admin");
+  const [badIndexMinRows, setBadIndexMinRows] = useState("20");
+  const [badIndexLimit, setBadIndexLimit] = useState("100");
+  const [badIndexMaxCitations, setBadIndexMaxCitations] = useState("40");
+
+  const parsedBadIndexMinRows = Math.max(5, Math.min(5000, Number(badIndexMinRows) || 20));
+  const parsedBadIndexLimit = Math.max(1, Math.min(1000, Number(badIndexLimit) || 100));
+  const parsedBadIndexMaxCitations = Math.max(1, Math.min(200, Number(badIndexMaxCitations) || 40));
+
+  const { data: badIndexAuditData, isLoading: badIndexAuditLoading, refetch: refetchBadIndexAudit } = useQuery<CaseLawBadIndexAuditResponse>({
+    queryKey: ["/api/admin/case-law/bad-index/audit", badIndexSource, parsedBadIndexMinRows, parsedBadIndexLimit],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        source: badIndexSource,
+        minRows: String(parsedBadIndexMinRows),
+        limit: String(parsedBadIndexLimit),
+      });
+      const res = await fetch(`/api/admin/case-law/bad-index/audit?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load bad-index audit");
+      }
+      return res.json();
+    },
+  });
+
+  const { data: badIndexStatusData } = useQuery<{ ok: boolean; status: CaseLawBadIndexReextractStatus }>({
+    queryKey: ["/api/admin/case-law/bad-index/reextract/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/case-law/bad-index/reextract/status", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load bad-index re-extract status");
+      }
+      return res.json();
+    },
+    refetchInterval: (query) => {
+      const payload = query.state.data as { ok: boolean; status: CaseLawBadIndexReextractStatus } | undefined;
+      return payload?.status?.running ? 2500 : 12000;
+    },
+  });
 
   useEffect(() => {
     if (page > 1 && caseLawEntries.length === 0 && totalCaseLawEntries > 0) {
@@ -1764,6 +1861,41 @@ function CaseLawSection() {
       });
     },
     onError: () => toast({ title: "Failed to sync case law into citation database", variant: "destructive" }),
+  });
+
+  const startBadIndexReextractMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/case-law/bad-index/reextract/start", {
+        source: badIndexSource,
+        minRows: parsedBadIndexMinRows,
+        limit: parsedBadIndexLimit,
+        maxCitations: parsedBadIndexMaxCitations,
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: data?.message || "Targeted bad-index re-extract started" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/bad-index/reextract/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/bad-index/audit"] });
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || "Failed to start targeted re-extract", variant: "destructive" });
+    },
+  });
+
+  const stopBadIndexReextractMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/case-law/bad-index/reextract/stop", {});
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: data?.message || "Stop requested" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/bad-index/reextract/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/bad-index/audit"] });
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || "Failed to stop targeted re-extract", variant: "destructive" });
+    },
   });
 
   const processCaseLawFiles = async (files: File[], append: boolean = false) => {
@@ -2038,6 +2170,8 @@ function CaseLawSection() {
     </Card>
   );
 
+  const badIndexJobStatus = badIndexStatusData?.status || badIndexAuditData?.jobStatus || null;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -2100,6 +2234,168 @@ function CaseLawSection() {
           </Button>
         </div>
       </div>
+
+      <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]" data-testid="case-law-bad-index-audit-card">
+        <CardContent className="p-6 space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">Bad Index Audit</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Detect duplicate/noisy source docs and run targeted re-extract without full reindex.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-amber-300 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                onClick={() => refetchBadIndexAudit()}
+                disabled={badIndexAuditLoading}
+                data-testid="button-refresh-bad-index-audit"
+              >
+                {badIndexAuditLoading ? <Loader2 className="animate-spin" size={12} /> : <RotateCcw size={12} />}
+                <span>Refresh</span>
+              </Button>
+              {badIndexJobStatus?.running ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-300 border border-red-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  onClick={() => stopBadIndexReextractMutation.mutate()}
+                  disabled={stopBadIndexReextractMutation.isPending}
+                  data-testid="button-stop-bad-index-reextract"
+                >
+                  {stopBadIndexReextractMutation.isPending ? <Loader2 className="animate-spin" size={12} /> : <X size={12} />}
+                  <span>Stop</span>
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="bg-amber-500 text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  onClick={() => startBadIndexReextractMutation.mutate()}
+                  disabled={startBadIndexReextractMutation.isPending}
+                  data-testid="button-start-bad-index-reextract"
+                >
+                  {startBadIndexReextractMutation.isPending ? <Loader2 className="animate-spin" size={12} /> : <Search size={12} />}
+                  <span>Run Targeted Re-Extract</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <p className="text-[9px] uppercase tracking-widest font-black text-slate-500 mb-1">Source</p>
+              <Select value={badIndexSource} onValueChange={(value: CaseLawBadIndexSourceKind) => setBadIndexSource(value)}>
+                <SelectTrigger className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid="select-bad-index-source">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin Knowledge</SelectItem>
+                  <SelectItem value="github">GitHub</SelectItem>
+                  <SelectItem value="statute">Statute Docs</SelectItem>
+                  <SelectItem value="user">User Docs</SelectItem>
+                  <SelectItem value="all">All Sources</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <p className="text-[9px] uppercase tracking-widest font-black text-slate-500 mb-1">Min Rows</p>
+              <Input
+                value={badIndexMinRows}
+                onChange={(e) => setBadIndexMinRows(e.target.value)}
+                className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+                data-testid="input-bad-index-min-rows"
+              />
+            </div>
+            <div>
+              <p className="text-[9px] uppercase tracking-widest font-black text-slate-500 mb-1">Target Limit</p>
+              <Input
+                value={badIndexLimit}
+                onChange={(e) => setBadIndexLimit(e.target.value)}
+                className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+                data-testid="input-bad-index-limit"
+              />
+            </div>
+            <div>
+              <p className="text-[9px] uppercase tracking-widest font-black text-slate-500 mb-1">Max Citations/Doc</p>
+              <Input
+                value={badIndexMaxCitations}
+                onChange={(e) => setBadIndexMaxCitations(e.target.value)}
+                className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+                data-testid="input-bad-index-max-citations"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+              <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Total Rows</p>
+              <p className="text-sm font-bold text-slate-100">{(badIndexAuditData?.duplicateStats?.totalRows || 0).toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+              <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Duplicate Groups</p>
+              <p className="text-sm font-bold text-amber-300">{(badIndexAuditData?.duplicateStats?.duplicateGroups || 0).toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+              <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Duplicate Rows</p>
+              <p className="text-sm font-bold text-red-300">{(badIndexAuditData?.duplicateStats?.duplicateRows || 0).toLocaleString()}</p>
+            </div>
+          </div>
+
+          {badIndexJobStatus && (
+            <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2 text-[11px] text-slate-300">
+              <p className="font-bold text-slate-100">
+                Job: {badIndexJobStatus.running ? "Running" : "Idle"} · {badIndexJobStatus.processedTargets}/{badIndexJobStatus.totalTargets} processed
+              </p>
+              <p className="text-slate-400 mt-1">
+                Reindexed {badIndexJobStatus.reindexedTargets} · Skipped(no source) {badIndexJobStatus.skippedNoSource} · Skipped(no extract) {badIndexJobStatus.skippedNoExtract}
+              </p>
+              <p className="text-slate-400">
+                Replaced rows {badIndexJobStatus.replacedRows.toLocaleString()} · Inserted rows {badIndexJobStatus.insertedRows.toLocaleString()}
+              </p>
+              {badIndexJobStatus.activeTarget && (
+                <p className="text-amber-300 mt-1">
+                  Active: {badIndexJobStatus.activeTarget.sourceType}:{badIndexJobStatus.activeTarget.sourceDocId} · {badIndexJobStatus.activeTarget.sourceFilename || "Untitled"}
+                </p>
+              )}
+              {badIndexJobStatus.lastError && (
+                <p className="text-red-300 mt-1">Last error: {badIndexJobStatus.lastError}</p>
+              )}
+            </div>
+          )}
+
+          {badIndexAuditLoading ? (
+            <div className="flex items-center gap-2 text-slate-400 text-xs">
+              <Loader2 className="animate-spin" size={14} />
+              <span>Loading bad-index targets...</span>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {(badIndexAuditData?.targets || []).length === 0 ? (
+                <p className="text-xs text-slate-500">No problematic source documents found for current filters.</p>
+              ) : (
+                (badIndexAuditData?.targets || []).map((target, idx) => (
+                  <div key={`${target.sourceType}-${target.sourceDocId}-${idx}`} className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] font-bold text-slate-100">
+                        {target.sourceType}:{target.sourceDocId}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        dup {target.duplicateRows} · rows {target.totalRows}
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-slate-500 truncate mt-1">{target.sourceFilename || "Unnamed source"}</p>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      primary {target.primaryRows} · cited {target.citedRows} · unique {target.uniqueKeys}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {showAddForm && !editingId && <CaseLawForm isEdit={false} />}
       {editingId && <CaseLawForm isEdit={true} />}
