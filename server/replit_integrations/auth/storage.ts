@@ -3,6 +3,14 @@ import { db } from "../../db";
 import { eq, and, gt, isNull, sql } from "drizzle-orm";
 import crypto from "crypto";
 
+type BillingCycle = "monthly" | "quarterly" | "yearly";
+
+function normalizeBillingCycle(cycleRaw: string | null | undefined): BillingCycle {
+  const cycle = String(cycleRaw || "monthly").toLowerCase();
+  if (cycle === "quarterly" || cycle === "yearly") return cycle;
+  return "monthly";
+}
+
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -69,6 +77,9 @@ class AuthStorage implements IAuthStorage {
         authProvider: "google",
         passwordHash: null,
         subscriptionTier: "free",
+        subscriptionCycle: "monthly",
+        subscriptionStartAt: null,
+        subscriptionEndAt: null,
         emailVerified: verified,
         emailVerifiedAt: verified ? now : null,
       })
@@ -115,9 +126,11 @@ class AuthStorage implements IAuthStorage {
       (normalizedTierRaw === "free" || normalizedTierRaw === "standard" || normalizedTierRaw === "pro" || normalizedTierRaw === "chamber" || normalizedTierRaw === "enterprise")
           ? normalizedTierRaw
           : "free";
+    const normalizedCycle = normalizeBillingCycle(userData.subscriptionCycle || "monthly");
     const safeUserData: UpsertUser = {
       ...userData,
       subscriptionTier: normalizedTier,
+      subscriptionCycle: normalizedCycle,
     };
 
     const [user] = await db

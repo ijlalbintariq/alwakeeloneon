@@ -1423,11 +1423,32 @@ async function callApexAIWithFallback(
 }
 
 type ChatRouteMode = "standard" | "turbo";
+type BillingCycle = "monthly" | "quarterly" | "yearly";
 
 function normalizeTier(tierRaw: string | undefined | null): "free" | "standard" | "pro" | "chamber" | "enterprise" {
   const tier = String(tierRaw || "free").toLowerCase();
   if (tier === "free" || tier === "pro" || tier === "chamber" || tier === "enterprise") return tier;
   return "standard";
+}
+
+function normalizeBillingCycle(cycleRaw: string | undefined | null): BillingCycle {
+  const cycle = String(cycleRaw || "monthly").toLowerCase();
+  if (cycle === "quarterly" || cycle === "yearly") return cycle;
+  return "monthly";
+}
+
+function getBillingCycleMonths(cycle: BillingCycle): number {
+  if (cycle === "quarterly") return 3;
+  if (cycle === "yearly") return 12;
+  return 1;
+}
+
+function getSubscriptionWindow(cycle: BillingCycle, startAt = new Date()): { startAt: Date; endAt: Date } {
+  const months = getBillingCycleMonths(cycle);
+  const cycleStart = new Date(startAt);
+  const cycleEnd = new Date(cycleStart);
+  cycleEnd.setMonth(cycleEnd.getMonth() + months);
+  return { startAt: cycleStart, endAt: cycleEnd };
 }
 
 function getTierPlan(tierRaw: string | undefined | null) {
@@ -5565,7 +5586,10 @@ RAG POLICY (STRICT):
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const tier = normalizeTier(await storage.getUserTier(userId));
+      const profile = await storage.getUserProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      const tier = normalizeTier(profile.subscriptionTier);
+      const subscriptionCycle = normalizeBillingCycle(profile.subscriptionCycle);
       const limits = getTierPlan(tier);
       const used = await storage.getMonthlyUsageCount(userId);
       const remaining = Math.max(0, limits.monthlyQueries - used);
@@ -5575,6 +5599,9 @@ RAG POLICY (STRICT):
         tier,
         tierLabel: limits.label,
         tierDescription: limits.description,
+        subscriptionCycle,
+        subscriptionStartAt: profile.subscriptionStartAt ? profile.subscriptionStartAt.toISOString() : null,
+        subscriptionEndAt: profile.subscriptionEndAt ? profile.subscriptionEndAt.toISOString() : null,
         monthlyLimit: limits.monthlyQueries,
         used,
         remaining,
@@ -8472,11 +8499,15 @@ ${boundedRaw}`;
     try {
       const currentUserId = getUserId(req);
       const targetId = req.params.id;
-      const { subscriptionTier, isAdmin: adminFlag, resetMonthlyQuota } = req.body;
+      const { subscriptionTier, subscriptionCycle, isAdmin: adminFlag, resetMonthlyQuota } = req.body;
 
       const validTiers = ["free", "standard", "pro", "chamber", "enterprise"];
+      const validCycles = ["monthly", "quarterly", "yearly"];
       if (subscriptionTier !== undefined && !validTiers.includes(subscriptionTier)) {
         return res.status(400).json({ message: "Invalid subscription tier" });
+      }
+      if (subscriptionCycle !== undefined && !validCycles.includes(String(subscriptionCycle).toLowerCase())) {
+        return res.status(400).json({ message: "Invalid subscription cycle" });
       }
       if (adminFlag !== undefined && typeof adminFlag !== "boolean") {
         return res.status(400).json({ message: "isAdmin must be a boolean" });
@@ -8490,17 +8521,31 @@ ${boundedRaw}`;
 
       let updated;
       let quotaReset: { before: number; deleted: number; after: number; windowStart: Date } | null = null;
-      if (subscriptionTier !== undefined) {
-        updated = await storage.updateUserTier(targetId, subscriptionTier);
-        if (updated) {
-          // Subscription renewal or plan reassignment refreshes the user's monthly quota.
+      if (subscriptionTier !== undefined || subscriptionCycle !== undefined) {
+        const existing = await storage.getUserProfile(targetId);
+        if (!existing) return res.status(404).json({ message: "User not found" });
+
+        const normalizedTier = normalizeTier(subscriptionTier ?? existing.subscriptionTier);
+        const normalizedCycle = normalizeBillingCycle(subscriptionCycle ?? existing.subscriptionCycle);
+        const isFreeTier = normalizedTier === "free";
+        const cycleWindow = isFreeTier ? null : getSubscriptionWindow(normalizedCycle, new Date());
+
+        updated = await storage.updateUserSubscription(targetId, {
+          subscriptionTier: normalizedTier,
+          subscriptionCycle: isFreeTier ? "monthly" : normalizedCycle,
+          subscriptionStartAt: cycleWindow?.startAt ?? null,
+          subscriptionEndAt: cycleWindow?.endAt ?? null,
+        });
+
+        if (updated && subscriptionTier !== undefined) {
+          // Subscription reassignment refreshes this month's usage ledger.
           quotaReset = await storage.resetMonthlyUsageCount(targetId);
         }
       }
       if (adminFlag !== undefined) {
         updated = await storage.updateUserAdminStatus(targetId, adminFlag);
       }
-      if (resetMonthlyQuota === true && subscriptionTier === undefined) {
+      if (resetMonthlyQuota === true && subscriptionTier === undefined && subscriptionCycle === undefined) {
         updated = updated || (await storage.getUserProfile(targetId));
         if (!updated) return res.status(404).json({ message: "User not found" });
         quotaReset = await storage.resetMonthlyUsageCount(targetId);
@@ -8509,6 +8554,7 @@ ${boundedRaw}`;
       if (!updated) return res.status(404).json({ message: "User not found" });
       await logAuditEvent("admin.user.update", currentUserId, targetId, {
         subscriptionTier: subscriptionTier ?? undefined,
+        subscriptionCycle: subscriptionCycle ?? undefined,
         isAdmin: adminFlag ?? undefined,
         resetMonthlyQuota: !!quotaReset,
         quotaResetDeleted: quotaReset?.deleted ?? 0,
@@ -8549,7 +8595,7 @@ ${boundedRaw}`;
   app.post("/api/admin/users", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
-      const { email, password, firstName, lastName, subscriptionTier, isAdmin: makeAdmin } = req.body;
+      const { email, password, firstName, lastName, subscriptionTier, subscriptionCycle, isAdmin: makeAdmin } = req.body;
       if (!email || !password || !firstName || !lastName) {
         return res.status(400).json({ message: "Email, password, first name, and last name are required" });
       }
@@ -8572,18 +8618,29 @@ ${boundedRaw}`;
         emailVerified: true,
         emailVerifiedAt: new Date(),
       });
-      if (subscriptionTier && ["free", "standard", "pro", "chamber", "enterprise"].includes(subscriptionTier)) {
-        await storage.updateUserTier(user.id, subscriptionTier);
-      }
+      const validTiers = ["free", "standard", "pro", "chamber", "enterprise"];
+      const normalizedTier = validTiers.includes(String(subscriptionTier || "").toLowerCase())
+        ? String(subscriptionTier).toLowerCase()
+        : "free";
+      const normalizedCycle = normalizeBillingCycle(subscriptionCycle);
+      const cycleWindow = normalizedTier === "free" ? null : getSubscriptionWindow(normalizedCycle, new Date());
+      const subscribedUser = await storage.updateUserSubscription(user.id, {
+        subscriptionTier: normalizedTier,
+        subscriptionCycle: normalizedTier === "free" ? "monthly" : normalizedCycle,
+        subscriptionStartAt: cycleWindow?.startAt ?? null,
+        subscriptionEndAt: cycleWindow?.endAt ?? null,
+      });
+      const createdUser = subscribedUser || user;
       if (makeAdmin === true) {
-        await storage.updateUserAdminStatus(user.id, true);
+        await storage.updateUserAdminStatus(createdUser.id, true);
       }
       await logAuditEvent("admin.user.create", getUserId(req), user.id, {
         email,
-        subscriptionTier: subscriptionTier || "free",
+        subscriptionTier: normalizedTier,
+        subscriptionCycle: normalizedTier === "free" ? "monthly" : normalizedCycle,
         isAdmin: makeAdmin === true,
       });
-      res.status(201).json({ message: "User created successfully", user });
+      res.status(201).json({ message: "User created successfully", user: createdUser });
     } catch (err) {
       console.error("Error creating user:", err);
       res.status(500).json({ message: "Failed to create user" });

@@ -5,7 +5,14 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { SUBSCRIPTION_PLANS, getSubscriptionPlanByKey, type SubscriptionPlanKey } from "@/lib/subscription-plans";
+import {
+  SUBSCRIPTION_PLANS,
+  getPlanCyclePricing,
+  getSubscriptionPlanByKey,
+  normalizeBillingCycle,
+  type BillingCycle,
+  type SubscriptionPlanKey,
+} from "@/lib/subscription-plans";
 
 type CheckoutFormState = {
   name: string;
@@ -61,7 +68,7 @@ function maskDigits(value: string, keepStart = 2, keepEnd = 2): string {
   return `${digits.slice(0, keepStart)}${"*".repeat(Math.max(4, digits.length - keepStart - keepEnd))}${digits.slice(-keepEnd)}`;
 }
 
-function buildCaseDescription(planLabel: string, form: CheckoutFormState): string {
+function buildCaseDescription(planLabel: string, billingCycle: BillingCycle, pricingLabel: string, form: CheckoutFormState): string {
   const paymentLine =
     form.paymentMethod === "card"
       ? `Payment: Card | Holder: ${form.cardHolderName || "N/A"} | Number: ${maskDigits(form.cardNumber, 0, 4)} | Expiry: ${form.cardExpiry || "N/A"}`
@@ -73,6 +80,8 @@ function buildCaseDescription(planLabel: string, form: CheckoutFormState): strin
 
   const lines = [
     `Subscription interest for ${planLabel} plan.`,
+    `Billing cycle: ${billingCycle}`,
+    `Pricing: ${pricingLabel}`,
     `Organization: ${form.organization || "N/A"}`,
     `City: ${form.city || "N/A"}`,
     `Phone: ${form.phone || "N/A"}`,
@@ -93,7 +102,12 @@ export default function CheckoutPage() {
     () => getSubscriptionPlanByKey(new URLSearchParams(window.location.search).get("plan")),
     [],
   );
+  const initialCycle = useMemo(
+    () => normalizeBillingCycle(new URLSearchParams(window.location.search).get("cycle")),
+    [],
+  );
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanKey>(initialPlan.key);
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>(initialCycle);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<CheckoutFormState>({
     name: "",
@@ -117,8 +131,11 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
-    const queryPlan = getSubscriptionPlanByKey(new URLSearchParams(window.location.search).get("plan"));
+    const params = new URLSearchParams(window.location.search);
+    const queryPlan = getSubscriptionPlanByKey(params.get("plan"));
+    const queryCycle = normalizeBillingCycle(params.get("cycle"));
     setSelectedPlan(queryPlan.key);
+    setBillingCycle(queryCycle);
   }, [location]);
 
   useEffect(() => {
@@ -134,6 +151,10 @@ export default function CheckoutPage() {
     () => SUBSCRIPTION_PLANS.find((plan) => plan.key === selectedPlan) || SUBSCRIPTION_PLANS[1],
     [selectedPlan],
   );
+  const selectedPlanPricing = useMemo(
+    () => getPlanCyclePricing(selectedPlanData, selectedPlanData.key === "enterprise" ? "monthly" : billingCycle),
+    [selectedPlanData, billingCycle],
+  );
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -142,8 +163,8 @@ export default function CheckoutPage() {
         phone: form.phone.trim(),
         email: form.email.trim().toLowerCase(),
         city: form.city.trim(),
-        caseType: `Subscription - ${selectedPlanData.title} (${form.paymentMethod === "card" ? "Card" : form.paymentMethod === "jazzcash" ? "JazzCash" : "EasyPaisa"})`,
-        caseDescription: buildCaseDescription(selectedPlanData.title, form),
+        caseType: `Subscription - ${selectedPlanData.title} (${selectedPlanPricing.cycleLabel}, ${form.paymentMethod === "card" ? "Card" : form.paymentMethod === "jazzcash" ? "JazzCash" : "EasyPaisa"})`,
+        caseDescription: buildCaseDescription(selectedPlanData.title, billingCycle, selectedPlanPricing.totalLabel, form),
         urgency: "normal",
         preferredCallbackTime: "",
         consentToContact: form.consentToContact,
@@ -169,7 +190,7 @@ export default function CheckoutPage() {
 
   const handlePlanPick = (planKey: SubscriptionPlanKey) => {
     setSelectedPlan(planKey);
-    navigate(`/checkout?plan=${planKey}`);
+    navigate(`/checkout?plan=${planKey}&cycle=${billingCycle}`);
   };
 
   const onSubmit = (event: FormEvent) => {
@@ -241,37 +262,74 @@ export default function CheckoutPage() {
               Choose your subscription, submit activation request, and our chamber will confirm onboarding.
             </p>
 
-            <div className="space-y-2.5 mb-6">
-              {SUBSCRIPTION_PLANS.map((plan) => (
+            <div className="mb-4 inline-flex items-center rounded-xl border border-slate-700 bg-[#101a2b] p-1.5 gap-1">
+              {[
+                { key: "monthly" as const, label: "Monthly" },
+                { key: "quarterly" as const, label: "3 Months" },
+                { key: "yearly" as const, label: "Yearly" },
+              ].map((cycle) => (
                 <button
-                  key={plan.key}
+                  key={cycle.key}
                   type="button"
-                  onClick={() => handlePlanPick(plan.key)}
-                  className={`w-full text-left rounded-xl border px-3 py-3 transition-all ${
-                    selectedPlan === plan.key
-                      ? "border-amber-400 bg-amber-500/10"
-                      : "border-slate-700 bg-[#0f172a] hover:border-slate-500"
+                  onClick={() => {
+                    setBillingCycle(cycle.key);
+                    navigate(`/checkout?plan=${selectedPlan}&cycle=${cycle.key}`);
+                  }}
+                  className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${
+                    billingCycle === cycle.key
+                      ? "bg-amber-500 text-slate-950"
+                      : "text-slate-300 hover:text-amber-200"
                   }`}
-                  data-testid={`checkout-plan-${plan.key}`}
+                  data-testid={`checkout-cycle-${cycle.key}`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-bold text-white">{plan.title}</p>
-                      <p className="text-[11px] text-slate-400">{plan.price}</p>
-                    </div>
-                    {selectedPlan === plan.key ? (
-                      <CheckCircle2 size={16} className="text-amber-400" />
-                    ) : (
-                      <ChevronRight size={15} className="text-slate-500" />
-                    )}
-                  </div>
+                  {cycle.label}
                 </button>
               ))}
+            </div>
+
+            <div className="space-y-2.5 mb-6">
+              {SUBSCRIPTION_PLANS.map((plan) => {
+                const pricing = getPlanCyclePricing(plan, billingCycle);
+                const priceLabel = plan.key === "enterprise" ? plan.price : pricing.totalLabel;
+                return (
+                  <button
+                    key={plan.key}
+                    type="button"
+                    onClick={() => handlePlanPick(plan.key)}
+                    className={`w-full text-left rounded-xl border px-3 py-3 transition-all ${
+                      selectedPlan === plan.key
+                        ? "border-amber-400 bg-amber-500/10"
+                        : "border-slate-700 bg-[#0f172a] hover:border-slate-500"
+                    }`}
+                    data-testid={`checkout-plan-${plan.key}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-bold text-white">{plan.title}</p>
+                        <p className="text-[11px] text-slate-400">{priceLabel}</p>
+                        {plan.key !== "enterprise" && (
+                          <p className="text-[10px] text-slate-500">{pricing.effectiveMonthlyLabel}</p>
+                        )}
+                      </div>
+                      {selectedPlan === plan.key ? (
+                        <CheckCircle2 size={16} className="text-amber-400" />
+                      ) : (
+                        <ChevronRight size={15} className="text-slate-500" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="rounded-2xl border border-slate-800 bg-[#0f172a] p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 mb-2">
                 {selectedPlanData.title} Plan Includes
+              </p>
+              <p className="text-[11px] text-slate-400 mb-3">
+                Billing cycle: <span className="text-amber-300 font-semibold">{selectedPlanPricing.cycleLabel}</span>
+                {" · "}
+                <span className="text-slate-300">{selectedPlanPricing.totalLabel}</span>
               </p>
               <ul className="space-y-2">
                 {selectedPlanData.features.slice(0, 6).map((feature) => (
@@ -295,7 +353,8 @@ export default function CheckoutPage() {
                   Subscription request submitted
                 </h2>
                 <p className="text-sm text-slate-300 leading-relaxed">
-                  Our chamber team will contact you shortly to complete activation for the <span className="text-amber-300 font-semibold">{selectedPlanData.title}</span> plan.
+                  Our chamber team will contact you shortly to complete activation for the <span className="text-amber-300 font-semibold">{selectedPlanData.title}</span> plan on the{" "}
+                  <span className="text-amber-200 font-semibold">{selectedPlanPricing.cycleLabel}</span> cycle.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <a

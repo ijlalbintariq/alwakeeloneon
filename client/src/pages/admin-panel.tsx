@@ -654,6 +654,7 @@ function UsersSection() {
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
   const [newTier, setNewTier] = useState("free");
+  const [newCycle, setNewCycle] = useState<"monthly" | "quarterly" | "yearly">("monthly");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [banReasons, setBanReasons] = useState<Record<string, string>>({});
   const [isExportingUsersCsv, setIsExportingUsersCsv] = useState(false);
@@ -666,6 +667,7 @@ function UsersSection() {
         firstName: newFirstName,
         lastName: newLastName,
         subscriptionTier: newTier,
+        subscriptionCycle: newCycle,
         isAdmin: newIsAdmin,
       });
       return res.json();
@@ -680,6 +682,7 @@ function UsersSection() {
       setNewFirstName("");
       setNewLastName("");
       setNewTier("free");
+      setNewCycle("monthly");
       setNewIsAdmin(false);
       toast({ title: "User created successfully" });
     },
@@ -794,6 +797,9 @@ function UsersSection() {
         "first_name",
         "last_name",
         "subscription_tier",
+        "subscription_cycle",
+        "subscription_start_at",
+        "subscription_end_at",
         "is_admin",
         "is_banned",
         "ban_reason",
@@ -808,6 +814,9 @@ function UsersSection() {
         u.firstName || "",
         u.lastName || "",
         u.subscriptionTier || "",
+        u.subscriptionCycle || "monthly",
+        u.subscriptionStartAt || "",
+        u.subscriptionEndAt || "",
         u.isAdmin ? "yes" : "no",
         u.isBanned ? "yes" : "no",
         u.banReason || "",
@@ -926,6 +935,16 @@ function UsersSection() {
                   <SelectItem value="enterprise">Enterprise</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={newCycle} onValueChange={(val: "monthly" | "quarterly" | "yearly") => setNewCycle(val)}>
+                <SelectTrigger className="w-44 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid="select-new-cycle">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">3 Months</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant="ghost"
                 className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${newIsAdmin ? "text-amber-400" : "text-slate-500"}`}
@@ -980,6 +999,16 @@ function UsersSection() {
                     SUSPENDED
                   </Badge>
                 )}
+                <span className="text-[10px] text-slate-500">
+                  Cycle: {String(u.subscriptionCycle || "monthly").toLowerCase() === "yearly"
+                    ? "Yearly"
+                    : String(u.subscriptionCycle || "monthly").toLowerCase() === "quarterly"
+                      ? "3 Months"
+                      : "Monthly"}
+                  {u.subscriptionEndAt
+                    ? ` · Ends ${new Date(String(u.subscriptionEndAt)).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })}`
+                    : ""}
+                </span>
 
                 <Select
                   value={u.subscriptionTier}
@@ -994,6 +1023,19 @@ function UsersSection() {
                     <SelectItem value="pro">Pro</SelectItem>
                     <SelectItem value="chamber">Chamber</SelectItem>
                     <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={(u.subscriptionCycle as "monthly" | "quarterly" | "yearly" | undefined) || "monthly"}
+                  onValueChange={(val) => updateUserMutation.mutate({ userId: u.id, data: { subscriptionCycle: val } })}
+                >
+                  <SelectTrigger className="w-32 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid={`select-cycle-${u.id}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">3 Months</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
                   </SelectContent>
                 </Select>
 

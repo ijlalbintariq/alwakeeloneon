@@ -72,6 +72,14 @@ export type StyleMemoryModule = "legal-drafting" | "contract-drafting";
 export type StyleMemoryScope = "user" | "org" | "user-org";
 export type StyleMemoryStrictness = "strict" | "balanced" | "flexible";
 export type StyleMemorySourceType = "upload" | "saved-draft" | "accepted-redline";
+export type BillingCycle = "monthly" | "quarterly" | "yearly";
+
+const BILLING_CYCLE_SET = new Set<BillingCycle>(["monthly", "quarterly", "yearly"]);
+
+function normalizeBillingCycle(cycleRaw: string | null | undefined): BillingCycle {
+  const cycle = String(cycleRaw || "monthly").toLowerCase();
+  return BILLING_CYCLE_SET.has(cycle as BillingCycle) ? (cycle as BillingCycle) : "monthly";
+}
 
 export type StyleMemorySettingsView = {
   module: StyleMemoryModule;
@@ -442,6 +450,15 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   deleteUser(userId: string): Promise<void>;
   updateUserTier(userId: string, tier: string): Promise<User | undefined>;
+  updateUserSubscription(
+    userId: string,
+    data: {
+      subscriptionTier?: string;
+      subscriptionCycle?: BillingCycle;
+      subscriptionStartAt?: Date | null;
+      subscriptionEndAt?: Date | null;
+    },
+  ): Promise<User | undefined>;
   updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<User | undefined>;
   isUserAdmin(userId: string): Promise<boolean>;
   hasAnyAdmin(): Promise<boolean>;
@@ -1987,8 +2004,49 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserTier(userId: string, tier: string): Promise<User | undefined> {
+    const normalizedTier = String(tier || "free").toLowerCase();
     const [updated] = await db.update(users)
-      .set({ subscriptionTier: tier, updatedAt: new Date() })
+      .set({ subscriptionTier: normalizedTier, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
+  }
+
+  async updateUserSubscription(
+    userId: string,
+    data: {
+      subscriptionTier?: string;
+      subscriptionCycle?: BillingCycle;
+      subscriptionStartAt?: Date | null;
+      subscriptionEndAt?: Date | null;
+    },
+  ): Promise<User | undefined> {
+    const patch: {
+      subscriptionTier?: string;
+      subscriptionCycle?: BillingCycle;
+      subscriptionStartAt?: Date | null;
+      subscriptionEndAt?: Date | null;
+      updatedAt: Date;
+    } = {
+      updatedAt: new Date(),
+    };
+
+    if (data.subscriptionTier !== undefined) {
+      patch.subscriptionTier = String(data.subscriptionTier || "free").toLowerCase();
+    }
+    if (data.subscriptionCycle !== undefined) {
+      patch.subscriptionCycle = normalizeBillingCycle(data.subscriptionCycle);
+    }
+    if (data.subscriptionStartAt !== undefined) {
+      patch.subscriptionStartAt = data.subscriptionStartAt;
+    }
+    if (data.subscriptionEndAt !== undefined) {
+      patch.subscriptionEndAt = data.subscriptionEndAt;
+    }
+
+    const [updated] = await db
+      .update(users)
+      .set(patch)
       .where(eq(users.id, userId))
       .returning();
     return updated;
@@ -2890,6 +2948,19 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "alter_users_email_verified", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false` },
     { label: "alter_users_email_verified_at", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamp` },
     { label: "alter_users_subscription_tier_default", stmt: sql`ALTER TABLE users ALTER COLUMN subscription_tier SET DEFAULT 'free'` },
+    { label: "alter_users_subscription_cycle", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_cycle text NOT NULL DEFAULT 'monthly'` },
+    { label: "alter_users_subscription_start_at", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_start_at timestamp` },
+    { label: "alter_users_subscription_end_at", stmt: sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_end_at timestamp` },
+    {
+      label: "backfill_users_subscription_cycle",
+      stmt: sql`UPDATE users SET subscription_cycle = 'monthly' WHERE subscription_cycle IS NULL OR trim(subscription_cycle) = ''`,
+    },
+    {
+      label: "sanitize_users_subscription_cycle",
+      stmt: sql`UPDATE users SET subscription_cycle = 'monthly' WHERE lower(subscription_cycle) NOT IN ('monthly', 'quarterly', 'yearly')`,
+    },
+    { label: "idx_users_subscription_cycle", stmt: sql`CREATE INDEX IF NOT EXISTS idx_users_subscription_cycle ON users (subscription_cycle)` },
+    { label: "idx_users_subscription_end_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_users_subscription_end_at ON users (subscription_end_at)` },
   ];
 
   for (const { label, stmt } of indexStatements) {
