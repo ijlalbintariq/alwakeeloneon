@@ -131,20 +131,26 @@ export function parseReferences(content: string): { cleanContent: string; refere
   }
 
   if (!chosenPayload) {
-    return { cleanContent: content, references: null };
-  }
-
-  const refs: ParsedReferences = {
-    laws: normalizeLaws(chosenPayload.laws),
-    judgments: normalizeJudgments(chosenPayload.judgments),
-  };
-  if (refs.laws.length === 0 && refs.judgments.length === 0) {
+    const malformedTailPattern =
+      /\n?\s*\{\s*"laws"\s*:\s*[^,\}\n]*\s*,\s*"judgments"\s*:\s*[^\}\n]*\s*\}\s*$/i;
+    const malformedTailMatch = content.match(malformedTailPattern);
+    if (malformedTailMatch && typeof malformedTailMatch.index === "number") {
+      return { cleanContent: content.slice(0, malformedTailMatch.index).trimEnd(), references: null };
+    }
     return { cleanContent: content, references: null };
   }
 
   const cleanContent = chosenIndex >= 0
     ? `${content.slice(0, chosenIndex).trimEnd()}${content.slice(chosenIndex + chosenLength).trimEnd()}`
     : content;
+
+  const refs: ParsedReferences = {
+    laws: normalizeLaws(chosenPayload.laws),
+    judgments: normalizeJudgments(chosenPayload.judgments),
+  };
+  if (refs.laws.length === 0 && refs.judgments.length === 0) {
+    return { cleanContent, references: null };
+  }
 
   return { cleanContent, references: refs };
 }
