@@ -100,7 +100,7 @@ const GENERAL_UPLOAD_MAX_FILE_SIZE_BYTES = Math.max(2, Number(process.env.GENERA
 const EXTRACTION_TIMEOUT_MS = Math.max(3000, Number(process.env.EXTRACTION_TIMEOUT_MS || 120000));
 const UPLOAD_QUEUE_CONCURRENCY = Math.max(1, Number(process.env.UPLOAD_QUEUE_CONCURRENCY || 2));
 const UPLOAD_QUEUE_MAX_PENDING = Math.max(UPLOAD_QUEUE_CONCURRENCY, Number(process.env.UPLOAD_QUEUE_MAX_PENDING || 32));
-const CASELAW_AUTO_SYNC_MAX = Math.max(1, Number(process.env.CASELAW_AUTO_SYNC_MAX || 500));
+const CASELAW_AUTO_SYNC_MAX = Math.max(1, Number(process.env.CASELAW_AUTO_SYNC_MAX || 5000));
 const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
 const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
 const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_TOKEN_BUDGET || 900));
@@ -2787,6 +2787,112 @@ async function syncCaseLawEntriesToJudgments(
     linked,
     unresolved,
     errors: errors.slice(0, 50),
+  };
+}
+
+async function persistExtractedCasesAndSync(args: {
+  extractedCases: Array<{
+    citation: string;
+    citationRole?: "primary" | "cited" | string;
+    court?: string;
+    title: string;
+    summary?: string;
+    keywords?: string[] | string;
+  }>;
+  sourceDocId?: number | null;
+  sourceFilename?: string | null;
+  actorUserId: string;
+}): Promise<{
+  inserted: number;
+  errors: string[];
+  citationSync?: {
+    processed: number;
+    imported: number;
+    existing: number;
+    skipped: number;
+    failed: number;
+    linked: number;
+    unresolved: number;
+    errors: string[];
+  };
+  citationSyncLimited: boolean;
+}> {
+  const seen = new Set<string>();
+  const entries = args.extractedCases
+    .map((c) => {
+      const citation = sanitizeInputText(stripNullBytes(String(c.citation || "").trim()), 220);
+      const title = sanitizeInputText(stripNullBytes(String(c.title || "").trim()), 500);
+      if (!citation || !title) return null;
+      const dedupeKey = `${citation.toLowerCase()}|${title.toLowerCase()}`;
+      if (seen.has(dedupeKey)) return null;
+      seen.add(dedupeKey);
+      const kw = Array.isArray(c.keywords)
+        ? c.keywords
+        : (typeof c.keywords === "string" ? c.keywords.split(",") : []);
+      const keywords = kw
+        .map((k) => sanitizeInputText(stripNullBytes(String(k || "").trim()), 64))
+        .filter(Boolean)
+        .slice(0, 30);
+      const role = String(c.citationRole || "").toLowerCase() === "primary" ? "primary" : "cited";
+      return {
+        citation,
+        citationRole: role as "primary" | "cited",
+        court: sanitizeInputText(stripNullBytes(String(c.court || "").trim()), 180),
+        title,
+        summary: sanitizeInputText(stripNullBytes(String(c.summary || "").trim()), 20000),
+        keywords,
+        sourceDocId: args.sourceDocId || null,
+        sourceType: args.sourceDocId ? "admin" : null,
+        sourceFilename: sanitizeInputText(String(args.sourceFilename || ""), 220) || null,
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+  if (entries.length === 0) {
+    return { inserted: 0, errors: [], citationSyncLimited: false };
+  }
+
+  const created: Array<{
+    id: number;
+    citation: string;
+    court: string;
+    title: string;
+    summary: string;
+    sourceDocId?: number | null;
+    sourceType?: string | null;
+  }> = [];
+  const errors: string[] = [];
+  const insertBatchSize = 150;
+
+  for (let i = 0; i < entries.length; i += insertBatchSize) {
+    const chunk = entries.slice(i, i + insertBatchSize);
+    try {
+      const insertedChunk = await storage.bulkCreateCaseLaw(chunk as any);
+      created.push(...insertedChunk);
+    } catch (chunkErr: any) {
+      for (const row of chunk) {
+        try {
+          const inserted = await storage.createCaseLaw(row as any);
+          created.push(inserted as any);
+        } catch (rowErr: any) {
+          errors.push(sanitizeInputText(rowErr?.message || "Insert failed", 300));
+        }
+      }
+      console.warn("[Case Law Upload] Batch fallback activated:", sanitizeInputText(chunkErr?.message || "Unknown error", 300));
+    }
+  }
+
+  if (created.length === 0) {
+    return { inserted: 0, errors: errors.slice(0, 100), citationSyncLimited: false };
+  }
+
+  const syncBatch = created.slice(0, CASELAW_AUTO_SYNC_MAX);
+  const citationSync = await syncCaseLawEntriesToJudgments(syncBatch, args.actorUserId);
+  return {
+    inserted: created.length,
+    errors: errors.slice(0, 100),
+    citationSync,
+    citationSyncLimited: created.length > CASELAW_AUTO_SYNC_MAX,
   };
 }
 
@@ -10559,6 +10665,13 @@ ${boundedRaw}`;
         console.error("[Case Law Client Extract] Failed to save document:", saveErr);
       }
 
+      const caseLawSave = await persistExtractedCasesAndSync({
+        extractedCases: roleAwareCases,
+        sourceDocId: savedDocId,
+        sourceFilename: savedFilename,
+        actorUserId: userId,
+      });
+
       return res.json({
         extracted: roleAwareCases.length,
         truncated: false,
@@ -10566,6 +10679,8 @@ ${boundedRaw}`;
         cases: roleAwareCases,
         savedDocId,
         savedFilename,
+        caseLawSave,
+        autoSavedToCaseLaw: true,
         source: "client",
       });
     } catch (err) {
@@ -10965,6 +11080,12 @@ ${boundedRaw}`;
               } catch (saveErr) {
                 console.error("[Case Law Extract] Failed to save JSON document:", saveErr);
               }
+              const caseLawSave = await persistExtractedCasesAndSync({
+                extractedCases: mappedWithRoles,
+                sourceDocId: jsonDocId,
+                sourceFilename: file.originalname,
+                actorUserId: uid,
+              });
               return res.json({
                 extracted: mappedWithRoles.length,
                 truncated: false,
@@ -10972,6 +11093,8 @@ ${boundedRaw}`;
                 cases: mappedWithRoles,
                 savedDocId: jsonDocId,
                 savedFilename: file.originalname,
+                caseLawSave,
+                autoSavedToCaseLaw: true,
               });
             }
           }
@@ -11045,6 +11168,12 @@ ${boundedRaw}`;
               } catch (saveErr) {
                 console.error("[Case Law Extract] Failed to save CSV document:", saveErr);
               }
+              const caseLawSave = await persistExtractedCasesAndSync({
+                extractedCases: entriesWithRoles,
+                sourceDocId: csvDocId,
+                sourceFilename: file.originalname,
+                actorUserId: uid,
+              });
               return res.json({
                 extracted: entriesWithRoles.length,
                 truncated: false,
@@ -11052,6 +11181,8 @@ ${boundedRaw}`;
                 cases: entriesWithRoles,
                 savedDocId: csvDocId,
                 savedFilename: file.originalname,
+                caseLawSave,
+                autoSavedToCaseLaw: true,
               });
             }
           }
@@ -11108,13 +11239,6 @@ ${boundedRaw}`;
           });
         });
         console.log(`[Case Law Extract] Saved document as admin_knowledge id=${savedDocId}: "${docTitle}"`);
-        runInBackground(`case-law-autoextract:${savedDoc.id}`, async () => {
-          queueAutoExtraction(content, `admin-knowledge:${file.originalname}`, {
-            sourceDocId: savedDoc.id,
-            sourceType: "admin",
-            sourceFilename: file.originalname,
-          });
-        });
         runInBackground(`case-law-audit:${savedDoc.id}`, async () => {
           await logAuditEvent("admin.caseLaw.extract", userId, null, {
             filename: file.originalname,
@@ -11128,6 +11252,12 @@ ${boundedRaw}`;
 
       const extracted = nlpExtractCases(content, { sourceFilename: file.originalname });
       const validCases = extracted.filter(c => c.citation && c.title);
+      const caseLawSave = await persistExtractedCasesAndSync({
+        extractedCases: validCases,
+        sourceDocId: savedDocId,
+        sourceFilename: savedFilename || file.originalname,
+        actorUserId: userId,
+      });
 
       res.json({
         extracted: validCases.length,
@@ -11136,6 +11266,8 @@ ${boundedRaw}`;
         cases: validCases,
         savedDocId,
         savedFilename,
+        caseLawSave,
+        autoSavedToCaseLaw: true,
       });
     } catch (err) {
       if (isExtractionQueueFullError(err)) return sendExtractionBusy(res);

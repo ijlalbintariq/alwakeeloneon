@@ -1911,7 +1911,7 @@ function CaseLawSection() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
-  const [extractedCases, setExtractedCases] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string[]; _sourceDocId?: number; _sourceFilename?: string }>>([]);
+  const [extractedCases, setExtractedCases] = useState<Array<{ citation: string; court: string; title: string; summary: string; keywords: string[]; _sourceDocId?: number; _sourceFilename?: string; _alreadySaved?: boolean }>>([]);
   const [autoSaveFailed, setAutoSaveFailed] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractProgress, setExtractProgress] = useState({ current: 0, total: 0, currentFile: "" });
@@ -2117,11 +2117,13 @@ function CaseLawSection() {
     const failedFileNames: string[] = [];
     const failedFileObjects: File[] = [];
     let clientExtractedFiles = 0;
+    let autoSavedFiles = 0;
 
     const processSingleFile = async (file: File): Promise<{
       cases: typeof extractedCases;
       failed: boolean;
       usedClientExtraction: boolean;
+      autoSavedToCaseLaw: boolean;
     }> => {
       try {
         const clientExtract = await extractCaseLawInBrowser(file, CASELAW_CLIENT_EXTRACT_MAX_BYTES, {
@@ -2155,12 +2157,14 @@ function CaseLawSection() {
                   ...c,
                   _sourceDocId: clientData.savedDocId || undefined,
                   _sourceFilename: clientData.savedFilename || file.name,
+                  _alreadySaved: Boolean(clientData.autoSavedToCaseLaw),
                 }))
               : [];
             return {
               cases: validCases,
               failed: false,
               usedClientExtraction: true,
+              autoSavedToCaseLaw: Boolean(clientData.autoSavedToCaseLaw),
             };
           }
         }
@@ -2184,7 +2188,7 @@ function CaseLawSection() {
 
           if (!res.ok) {
             if (attempt === CASELAW_EXTRACT_MAX_RETRIES) {
-              return { cases: [], failed: true, usedClientExtraction: false };
+              return { cases: [], failed: true, usedClientExtraction: false, autoSavedToCaseLaw: false };
             }
             continue;
           }
@@ -2197,23 +2201,25 @@ function CaseLawSection() {
                 ...c,
                 _sourceDocId: data.savedDocId || undefined,
                 _sourceFilename: data.savedFilename || file.name,
+                _alreadySaved: Boolean(data.autoSavedToCaseLaw),
               }))
             : [];
           return {
             cases: validCases,
             failed: false,
             usedClientExtraction: false,
+            autoSavedToCaseLaw: Boolean(data.autoSavedToCaseLaw),
           };
         } catch {
           if (attempt === CASELAW_EXTRACT_MAX_RETRIES) {
-            return { cases: [], failed: true, usedClientExtraction: false };
+            return { cases: [], failed: true, usedClientExtraction: false, autoSavedToCaseLaw: false };
           }
         } finally {
           window.clearTimeout(timeoutId);
         }
       }
 
-      return { cases: [], failed: true, usedClientExtraction: false };
+      return { cases: [], failed: true, usedClientExtraction: false, autoSavedToCaseLaw: false };
     };
 
     let completed = 0;
@@ -2231,6 +2237,9 @@ function CaseLawSection() {
       for (const { file, result } of results) {
         if (result.usedClientExtraction) {
           clientExtractedFiles += 1;
+        }
+        if (result.autoSavedToCaseLaw) {
+          autoSavedFiles += 1;
         }
         if (result.failed) {
           failedFileNames.push(file.name);
@@ -2266,12 +2275,23 @@ function CaseLawSection() {
       let msg = `Extracted ${allCases.length} cases from ${files.length - failedFileNames.length} file${files.length - failedFileNames.length !== 1 ? "s" : ""}`;
       if (failedFileNames.length > 0) msg += ` (${failedFileNames.length} file${failedFileNames.length !== 1 ? "s" : ""} failed)`;
       if (clientExtractedFiles > 0) msg += ` · ${clientExtractedFiles} via browser extraction`;
-      toast({ title: `${msg} · saving automatically...` });
-      try {
+      if (autoSavedFiles > 0) msg += ` · ${autoSavedFiles} auto-saved`;
+      const pendingForSave = mergedForSave.filter((entry) => !entry._alreadySaved);
+      if (pendingForSave.length > 0) {
+        toast({ title: `${msg} · saving automatically...` });
+        try {
+          setAutoSaveFailed(false);
+          await saveBulkMutation.mutateAsync(pendingForSave);
+        } catch {
+          setAutoSaveFailed(true);
+        }
+      } else {
+        toast({ title: `${msg} · all extracted entries already saved and synced` });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
+        setExtractedCases([]);
+        setRetryExtractFiles([]);
         setAutoSaveFailed(false);
-        await saveBulkMutation.mutateAsync(mergedForSave);
-      } catch {
-        setAutoSaveFailed(true);
+        setShowBulkUpload(false);
       }
     } else {
       toast({
