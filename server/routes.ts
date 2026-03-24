@@ -192,6 +192,23 @@ function withPakistanLawOnlyPolicy(systemPrompt: string): string {
   return `${base}\n\n${PAKISTAN_LAW_ONLY_POLICY}`;
 }
 
+function stripCitationPlaceholderArtifacts(text: string): string {
+  if (!text) return "";
+  return String(text)
+    .replace(/\[\s*CASE CITATION REQUIRED\s*\]/gi, "")
+    .replace(/\[\s*Pakistani case citation required\s*\]/gi, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/\[\s*\]/g, "")
+    .replace(/\s+,/g, ",")
+    .replace(/\s+\./g, ".")
+    .replace(/\s+;/g, ";")
+    .replace(/\s+:/g, ":")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function shouldAutoIndexAdminUploads(): boolean {
   if (ADMIN_UPLOAD_AUTO_INDEX) return true;
   if (!adminUploadIndexDisabledLogged) {
@@ -203,7 +220,7 @@ function shouldAutoIndexAdminUploads(): boolean {
 
 function enforcePakistanLawOnlyOutput(text: string): string {
   if (!text) return "";
-  return String(text)
+  const scoped = String(text)
     .replace(/\bsection\s+(\d+[A-Za-z-]*)\s+of\s+ipc\b/gi, "Section $1 PPC")
     .replace(/\bIndian Penal Code(?:,\s*1860)?\b/gi, "Pakistan Penal Code, 1860")
     .replace(/\bIPC\b/gi, "PPC")
@@ -213,8 +230,9 @@ function enforcePakistanLawOnlyOutput(text: string): string {
     .replace(/\bIndian Evidence Act(?:,\s*1872)?\b/gi, "Qanun-e-Shahadat Order, 1984")
     .replace(/\bSupreme Court of India\b/gi, "Supreme Court of Pakistan")
     .replace(/\bIndian High Court\b/gi, "Pakistani High Court")
-    .replace(/\b(?:\d{4}\s*)?\(?\d+\)?\s+SCC\s+\d+\b/gi, "[Pakistani case citation required]")
-    .replace(/\bAIR\s+\d{4}\s+[A-Za-z.\s]+\s+\d+\b/gi, "[Pakistani case citation required]");
+    .replace(/\b(?:\d{4}\s*)?\(?\d+\)?\s+SCC\s+\d+\b/gi, "")
+    .replace(/\bAIR\s+\d{4}\s+[A-Za-z.\s]+\s+\d+\b/gi, "");
+  return stripCitationPlaceholderArtifacts(scoped);
 }
 
 function buildApexModeSystemPrompt(
@@ -3528,7 +3546,7 @@ async function enforceInternalCaseCitationIntegrity(
     return { content: text, removed: [], verified: [] };
   }
 
-  const placeholder = normalizeSpaces(String(options?.placeholder || "[CASE CITATION REQUIRED]"));
+  const placeholder = normalizeSpaces(String(options?.placeholder ?? ""));
   const normalizeVerified = options?.normalizeVerified !== false;
   const requirePrimary = options?.requirePrimary === true;
   const requireLinkedSource = options?.requireLinkedSource === true;
@@ -3559,7 +3577,7 @@ async function enforceInternalCaseCitationIntegrity(
   if (removed.size > 0) {
     const longestFirst = Array.from(removed).filter(Boolean).sort((a, b) => b.length - a.length);
     for (const raw of longestFirst) {
-      cleaned = cleaned.replace(new RegExp(escapeRegExp(raw), "gi"), placeholder);
+      cleaned = cleaned.replace(new RegExp(escapeRegExp(raw), "gi"), placeholder || "");
     }
   }
 
@@ -3583,7 +3601,7 @@ async function enforceInternalCaseCitationIntegrity(
   }
 
   return {
-    content: cleaned,
+    content: stripCitationPlaceholderArtifacts(cleaned),
     removed: Array.from(removed),
     verified: Array.from(new Set(Array.from(verifiedByKey.values()))),
   };
@@ -3658,7 +3676,7 @@ async function resolveLegalDraftReferences(
   const payload = createEmptyLegalDraftReferencePayload();
   const stripUnverifiedCaseCitations = options?.stripUnverifiedCaseCitations === true;
   const unresolvedCaseCitationPlaceholder = normalizeSpaces(
-    String(options?.unresolvedCaseCitationPlaceholder || "[CASE CITATION REQUIRED]"),
+    String(options?.unresolvedCaseCitationPlaceholder ?? ""),
   );
   let cleanedText = String(text || "");
   if (!cleanedText.trim()) return { cleanedText: "", references: payload };
@@ -3685,7 +3703,7 @@ async function resolveLegalDraftReferences(
       .sort((a, b) => b.length - a.length);
     for (const raw of uniqueByLength) {
       const pattern = new RegExp(escapeRegExp(raw), "gi");
-      cleanedText = cleanedText.replace(pattern, unresolvedCaseCitationPlaceholder || "[CASE CITATION REQUIRED]");
+      cleanedText = cleanedText.replace(pattern, unresolvedCaseCitationPlaceholder || "");
     }
   }
 
@@ -3718,7 +3736,7 @@ async function resolveLegalDraftReferences(
   payload.unresolvedStatutes = unresolvedStatutes;
 
   return {
-    cleanedText: normalizeCourtReadyDraftingText(cleanedText),
+    cleanedText: normalizeCourtReadyDraftingText(stripCitationPlaceholderArtifacts(cleanedText)),
     references: payload,
   };
 }
@@ -5998,7 +6016,7 @@ RAG POLICY (STRICT):
         : result.text;
       answerText = enforcePakistanLawOnlyOutput(answerText);
       answerText = (await enforceInternalCaseCitationIntegrity(answerText, {
-        placeholder: "[CASE CITATION REQUIRED]",
+        placeholder: "",
         normalizeVerified: true,
         requirePrimary: true,
         requireLinkedSource: true,
@@ -7697,7 +7715,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
         const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 3200);
         const legalKnowledgeContextBlock = legalKnowledgeContext
           ? legalKnowledgeContext
-          : "\n\nREFERENCE MATERIALS:\n- No high-confidence internal matches were found for this prompt.\n- If a citation is needed, use [CASE CITATION REQUIRED] instead of inventing one.";
+          : "\n\nREFERENCE MATERIALS:\n- No high-confidence internal matches were found for this prompt.\n- If a citation is unavailable in internal references, omit it (do not use placeholders).";
 
         const typeLockInstruction = selectedDocType
           ? buildStrictTypeLockInstruction(selectedDocType, profile.label)
@@ -7735,7 +7753,7 @@ Targeted edit mode (strict):
 - Keep Pakistani court drafting language and formatting.
 - Do not invent facts, citations, or statutory sections.
 - Case law citation lock (absolute): use only citations found in the INTERNAL DATABASE REFERENCES block below.
-- If an internal citation is unavailable, use [CASE CITATION REQUIRED].
+- If an internal citation is unavailable, omit the citation (no placeholders).
 
 Selected excerpt to replace:
 ${selectedSnippet}
@@ -7787,7 +7805,7 @@ Court-ready formatting requirements (mandatory):
 - Use numbered facts (1., 2., 3.) and alphabetic legal grounds (A., B., C.).
 - Keep prayer specific to this filing type and facts; avoid generic/contract wording.
 - Do not invent facts, dates, orders, or citations; use placeholders like [______] where details are missing.
-- Case law citation rule (strict): include only citations that are real and verifiable from Al Wakeelo internal Knowledge Base; if unsure, use [CASE CITATION REQUIRED].
+- Case law citation rule (strict): include only citations that are real and verifiable from Al Wakeelo internal Knowledge Base; if unavailable, omit citation.
 - Statute citation rule (strict): cite only authentic Pakistani statute provisions; do not invent section/article numbers.
 - Use only citations available in the INTERNAL DATABASE REFERENCES block below. Do not cite any authority outside that block.
 - End with signature block (party/counsel) and place/date.
@@ -7836,7 +7854,7 @@ Repair instructions:
 - Rewrite the full pleading in proper Pakistani court-ready format.
 - Keep the same legal objective and facts; do not invent new facts.
 - Keep clean spacing and section breaks; no markdown symbols.
-- Keep citations restricted to INTERNAL DATABASE REFERENCES only; if unavailable use [CASE CITATION REQUIRED].
+- Keep citations restricted to INTERNAL DATABASE REFERENCES only; if unavailable omit citation.
 - Return plain pleading text only.
 
 INTERNAL DATABASE REFERENCES (AUTO-LOADED):
@@ -7860,7 +7878,7 @@ ${draftedText}`;
 
         const referenceResolution = await resolveLegalDraftReferences(draftedText, {
           stripUnverifiedCaseCitations: true,
-          unresolvedCaseCitationPlaceholder: "[CASE CITATION REQUIRED]",
+          unresolvedCaseCitationPlaceholder: "",
         });
         draftedText = referenceResolution.cleanedText;
         if (!draftedText) {
@@ -8496,7 +8514,7 @@ The user has attached the following documents for your reference. Analyze them c
 - Use only case citations that are present in the internal database context provided to you.
 - Use only PRIMARY citations from internal case entries (not secondary/referred citations).
 - Do not cite web/internet authorities.
-- If a citation is not available internally, write exactly: [CASE CITATION REQUIRED].`;
+- If a citation is not available internally, omit the citation (no placeholders).`;
       }
       const featureKey = moduleProfile.modelStrategy.tokenLimitKey;
       const featureTokenLimit = TOKEN_LIMITS[featureKey] || TOKEN_LIMITS.chat;
@@ -8536,7 +8554,7 @@ The user has attached the following documents for your reference. Analyze them c
             : cached.response;
           const scopedCachedContent = enforcePakistanLawOnlyOutput(cachedContent);
           const citationCheckedCached = await enforceInternalCaseCitationIntegrity(scopedCachedContent, {
-            placeholder: "[CASE CITATION REQUIRED]",
+            placeholder: "",
             normalizeVerified: true,
             requirePrimary: enforcePrimaryLinkedSourceCitations,
             requireLinkedSource: enforcePrimaryLinkedSourceCitations,
@@ -8632,7 +8650,7 @@ The user has attached the following documents for your reference. Analyze them c
           res.write(`data: ${JSON.stringify({ text: scopedFullContent })}\n\n`);
         }
         const citationCheckedStream = await enforceInternalCaseCitationIntegrity(fullContent, {
-          placeholder: "[CASE CITATION REQUIRED]",
+          placeholder: "",
           normalizeVerified: true,
           requirePrimary: enforcePrimaryLinkedSourceCitations,
           requireLinkedSource: enforcePrimaryLinkedSourceCitations,
@@ -8735,7 +8753,7 @@ The user has attached the following documents for your reference. Analyze them c
       }
       completion = enforcePakistanLawOnlyOutput(completion);
       completion = (await enforceInternalCaseCitationIntegrity(completion, {
-        placeholder: "[CASE CITATION REQUIRED]",
+        placeholder: "",
         normalizeVerified: true,
         requirePrimary: enforcePrimaryLinkedSourceCitations,
         requireLinkedSource: enforcePrimaryLinkedSourceCitations,
@@ -11827,7 +11845,7 @@ Instructions:
       let aiResponse = result.text;
       aiResponse = enforcePakistanLawOnlyOutput(aiResponse);
       aiResponse = (await enforceInternalCaseCitationIntegrity(aiResponse, {
-        placeholder: "[CASE CITATION REQUIRED]",
+        placeholder: "",
         normalizeVerified: true,
         requirePrimary: true,
         requireLinkedSource: true,
@@ -11988,7 +12006,7 @@ Instructions:
       let safeResponseContent = await applyAlWakeeloSafetyGuardrails(responseContent).catch(() => ensureAlWakeeloReferencesBlock(responseContent));
       safeResponseContent = enforcePakistanLawOnlyOutput(safeResponseContent);
       safeResponseContent = (await enforceInternalCaseCitationIntegrity(safeResponseContent, {
-        placeholder: "[CASE CITATION REQUIRED]",
+        placeholder: "",
         normalizeVerified: true,
         requirePrimary: true,
         requireLinkedSource: true,
@@ -12065,7 +12083,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 - Formal case-law citations in your answer must come only from internal database references provided in context.
 - Use only PRIMARY internal citations with linked source documents.
 - Do not present web-found case citations as legal authorities.
-- If no internal case citation is available, write exactly: [CASE CITATION REQUIRED].`;
+- If no internal case citation is available, omit citation (no placeholders).`;
 
       if (systemContext) {
         systemPrompt += `\n\n${systemContext}`;
@@ -12108,7 +12126,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       let safeContent = await applyAlWakeeloSafetyGuardrails(agentResult.content).catch(() => ensureAlWakeeloReferencesBlock(agentResult.content));
       safeContent = enforcePakistanLawOnlyOutput(safeContent);
       safeContent = (await enforceInternalCaseCitationIntegrity(safeContent, {
-        placeholder: "[CASE CITATION REQUIRED]",
+        placeholder: "",
         normalizeVerified: true,
         requirePrimary: true,
         requireLinkedSource: true,
