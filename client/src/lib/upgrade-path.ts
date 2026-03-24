@@ -14,7 +14,7 @@ export function getRecommendedUpgradePlan(tierRaw: string | null | undefined): S
 }
 
 export function getUpgradeCheckoutPath(tierRaw: string | null | undefined): string {
-  return `/checkout?plan=${getRecommendedUpgradePlan(tierRaw)}`;
+  return `/checkout?plan=${getRecommendedUpgradePlan(tierRaw)}&cycle=monthly`;
 }
 
 export function getUpgradeActionLabel(tierRaw: string | null | undefined): string {

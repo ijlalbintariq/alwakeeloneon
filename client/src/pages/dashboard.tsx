@@ -9,6 +9,9 @@ type UsageData = {
   tier: string;
   tierLabel: string;
   tierDescription: string;
+  subscriptionCycle?: "monthly" | "quarterly" | "yearly" | string;
+  subscriptionStartAt?: string | null;
+  subscriptionEndAt?: string | null;
   monthlyLimit: number;
   used: number;
   remaining: number;
@@ -43,6 +46,11 @@ export default function DashboardPage() {
   const isAtLimit = usage && usage.percentage >= 100;
   const upgradeHref = getUpgradeCheckoutPath(usage?.tier);
   const upgradeLabel = getUpgradeActionLabel(usage?.tier);
+  const cycleLabelRaw = String(usage?.subscriptionCycle || "monthly").toLowerCase();
+  const cycleLabel = cycleLabelRaw === "yearly" ? "Yearly" : cycleLabelRaw === "quarterly" ? "3 Months" : "Monthly";
+  const renewalLabel = usage?.subscriptionEndAt
+    ? new Date(usage.subscriptionEndAt).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })
+    : "Not set";
 
   return (
     <div className="space-y-7 md:space-y-10 fade-in" data-testid="dashboard-page">
@@ -104,6 +112,7 @@ export default function DashboardPage() {
               <p className="text-[9px] font-black uppercase tracking-widest preview-muted">Current Plan</p>
               <p className="text-xl font-black text-amber-500" data-testid="text-tier-label">{usage.tierLabel}</p>
               <p className="text-[10px] preview-subtitle text-center">{usage.tierDescription}</p>
+              <p className="text-[10px] preview-muted text-center">{cycleLabel} cycle · Renews by {renewalLabel}</p>
               <a
                 href={upgradeHref}
                 className="mt-1 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-amber-500/40 text-amber-300 text-[10px] font-black uppercase tracking-widest hover:border-amber-400 hover:text-amber-200 transition-colors"

@@ -3,7 +3,7 @@ import { ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Cro
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { SUBSCRIPTION_PLANS, type SubscriptionPlanKey } from "@/lib/subscription-plans";
+import { SUBSCRIPTION_PLANS, getPlanCyclePricing, type BillingCycle, type SubscriptionPlanKey } from "@/lib/subscription-plans";
 
 function FeatureCard({
   icon: Icon,
@@ -69,12 +69,14 @@ export default function LandingPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanKey | "free">("pro");
   const landingPlans = useMemo(() => [
     {
       key: "free" as const,
       badge: "Free",
       title: "Free",
+      monthlyPricePkr: 0,
       price: "PKR 0/mo",
       subtitle: "Starter access",
       cta: "Start Free",
@@ -382,6 +384,27 @@ export default function LandingPage() {
             <p className="text-slate-400 mt-4 max-w-xl mx-auto">
               Transparent pricing by AI actions, model access, output caps, and upload/OCR limits.
             </p>
+            <div className="mt-6 inline-flex items-center rounded-xl border border-slate-700 bg-[#101a2b] p-1.5 gap-1">
+              {[
+                { key: "monthly" as const, label: "Monthly" },
+                { key: "quarterly" as const, label: "3 Months (10% Off)" },
+                { key: "yearly" as const, label: "Yearly (20% Off)" },
+              ].map((cycle) => (
+                <button
+                  key={cycle.key}
+                  type="button"
+                  onClick={() => setBillingCycle(cycle.key)}
+                  className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${
+                    billingCycle === cycle.key
+                      ? "bg-amber-500 text-slate-950"
+                      : "text-slate-300 hover:text-amber-200"
+                  }`}
+                  data-testid={`pricing-cycle-${cycle.key}`}
+                >
+                  {cycle.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
@@ -407,7 +430,21 @@ export default function LandingPage() {
                   {plan.badge}
                 </p>
                 <h3 className="text-2xl font-bold text-white mb-1">{plan.title}</h3>
-                <p className="text-amber-400 text-sm font-black mb-1">{plan.price}</p>
+                <p className="text-amber-400 text-sm font-black mb-1">
+                  {plan.key === "free"
+                    ? plan.price
+                    : plan.key === "enterprise"
+                      ? plan.price
+                      : getPlanCyclePricing(plan, billingCycle).totalLabel}
+                </p>
+                {plan.key !== "free" && plan.key !== "enterprise" && (
+                  <p className="text-[10px] text-slate-500 mb-1">
+                    {getPlanCyclePricing(plan, billingCycle).effectiveMonthlyLabel} · {getPlanCyclePricing(plan, billingCycle).savingsLabel}
+                  </p>
+                )}
+                {plan.key === "enterprise" && billingCycle !== "monthly" && (
+                  <p className="text-[10px] text-slate-500 mb-1">Enterprise billing remains custom and contact-led.</p>
+                )}
                 <p className="text-xs text-slate-500 mb-5">{plan.subtitle}</p>
                 <ul className="space-y-2.5 mb-7">
                   {plan.features.map((feature) => (
@@ -432,7 +469,7 @@ export default function LandingPage() {
                   </a>
                 ) : (
                   <a
-                    href={`/checkout?plan=${plan.key}`}
+                    href={`/checkout?plan=${plan.key}&cycle=${billingCycle}`}
                     className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center ${
                       plan.highlighted
                         ? "bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20"

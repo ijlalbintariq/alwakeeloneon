@@ -19,6 +19,9 @@ type UsageData = {
   tier: string;
   tierLabel: string;
   tierDescription: string;
+  subscriptionCycle?: "monthly" | "quarterly" | "yearly" | string;
+  subscriptionStartAt?: string | null;
+  subscriptionEndAt?: string | null;
   monthlyLimit: number;
   used: number;
   remaining: number;
@@ -120,6 +123,12 @@ export default function UserPanelPage() {
   const effectiveTier = usage?.tier || profile?.subscriptionTier || "free";
   const upgradeHref = getUpgradeCheckoutPath(effectiveTier);
   const upgradeLabel = getUpgradeActionLabel(effectiveTier);
+  const cycleLabel = String(usage?.subscriptionCycle || profile?.subscriptionCycle || "monthly").toLowerCase();
+  const normalizedCycleLabel =
+    cycleLabel === "yearly" ? "Yearly" : cycleLabel === "quarterly" ? "3 Months" : "Monthly";
+  const renewalLabel = usage?.subscriptionEndAt
+    ? new Date(usage.subscriptionEndAt).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })
+    : "Not set";
 
   const handleSelectAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -301,6 +310,12 @@ export default function UserPanelPage() {
               <p className="text-xs text-slate-400">
                 {TIER_LIMITS[profile?.subscriptionTier || "free"]?.description || "10 AI chats + 1 legal draft + 1 contract draft/month"}
               </p>
+              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2c] px-3 py-2.5">
+                <p className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500">Billing Cycle</p>
+                <p className="text-xs text-slate-300 mt-1">
+                  {normalizedCycleLabel} commitment · Renewal window ends on <span className="text-amber-300 font-semibold">{renewalLabel}</span>.
+                </p>
+              </div>
               <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2c] px-3 py-2.5">
                 <p className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500">Model Access</p>
                 <p className="text-xs text-slate-300 mt-1">
