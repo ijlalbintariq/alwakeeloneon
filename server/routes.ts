@@ -1965,18 +1965,66 @@ function extractJsonObject(raw: string): string | null {
   return null;
 }
 
+function normalizeReferencesPayload(payload: unknown): { laws: unknown[]; judgments: unknown[] } {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return { laws: [], judgments: [] };
+  }
+  const obj = payload as { laws?: unknown; judgments?: unknown };
+  return {
+    laws: Array.isArray(obj.laws) ? obj.laws : [],
+    judgments: Array.isArray(obj.judgments) ? obj.judgments : [],
+  };
+}
+
+function parseLooseReferencesJsonAtEnd(content: string): { laws: unknown[]; judgments: unknown[] } | null {
+  const tail = String(content || "").slice(-4000);
+  const match = tail.match(/\{\s*"laws"\s*:\s*\[[\s\S]*?\]\s*,\s*"judgments"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/i);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]);
+    return normalizeReferencesPayload(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function renderSingleReferencesBlock(content: string, payload: unknown): string {
+  const safePayload = normalizeReferencesPayload(payload);
+  const normalizedJson = JSON.stringify(safePayload);
+
+  // Remove any existing fenced references block(s) first.
+  let body = String(content || "").replace(/```references\s*[\s\S]*?```/gi, "").trimEnd();
+
+  // Remove one or more trailing loose references JSON blobs.
+  let prev = "";
+  while (body !== prev) {
+    prev = body;
+    body = body
+      .replace(/\n?\s*\{\s*"laws"\s*:\s*\[[\s\S]*?\]\s*,\s*"judgments"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/i, "")
+      .trimEnd();
+  }
+
+  if (!body) return `\`\`\`references\n${normalizedJson}\n\`\`\``;
+  return `${body}\n\n\`\`\`references\n${normalizedJson}\n\`\`\``;
+}
+
 function ensureAlWakeeloReferencesBlock(content: string): string {
   const refsRegex = /```references\s*([\s\S]*?)```/i;
   const match = content.match(refsRegex);
+  let payload: unknown = { laws: [], judgments: [] };
+
   if (!match) {
-    return `${content.trim()}\n\n\`\`\`references\n{"laws":[],"judgments":[]}\n\`\`\``;
+    const loosePayload = parseLooseReferencesJsonAtEnd(content);
+    if (loosePayload) payload = loosePayload;
+    return renderSingleReferencesBlock(String(content || "").trim(), payload);
   }
+
   try {
-    JSON.parse(match[1].trim());
-    return content;
+    payload = JSON.parse(match[1].trim());
   } catch {
-    return content.replace(refsRegex, "```references\n{\"laws\":[],\"judgments\":[]}\n```");
+    payload = { laws: [], judgments: [] };
   }
+  return renderSingleReferencesBlock(content, payload);
 }
 
 const REFERENCES_BLOCK_REGEX = /```references\s*([\s\S]*?)```/i;
@@ -2047,6 +2095,18 @@ function sanitizeReferenceText(value: string, maxLen: number): string {
     .slice(0, maxLen);
 }
 
+function hasLinkedPrimaryCaseLawSource(
+  entry: Pick<CaseLaw, "citationRole" | "sourceDocId" | "sourceType">,
+): boolean {
+  const role = String(entry.citationRole || "").toLowerCase();
+  if (role !== "primary") return false;
+  const sourceDocId = Number(entry.sourceDocId || 0);
+  if (!Number.isInteger(sourceDocId) || sourceDocId <= 0) return false;
+  const sourceType = String(entry.sourceType || "").toLowerCase();
+  // Strict "document-backed" scope for chat citations.
+  return sourceType === "admin" || sourceType === "user" || sourceType === "statute";
+}
+
 async function verifyReferencesBlock(content: string): Promise<string> {
   const match = content.match(REFERENCES_BLOCK_REGEX);
   if (!match) return ensureAlWakeeloReferencesBlock(content);
@@ -2090,8 +2150,11 @@ async function verifyReferencesBlock(content: string): Promise<string> {
     const court = sanitizeReferenceText(judgment?.court || "", 120);
     const description = sanitizeReferenceText(judgment?.description || "", 320);
     if (!citation) continue;
-    const matched = await resolveCaseCitationFromInternalDb(citation).catch(() => null);
-    if (!matched || !isCaseLawRowCitationTrusted(matched)) continue;
+    const matched = await resolveCaseCitationFromInternalDb(citation, {
+      requirePrimary: true,
+      requireLinkedSource: true,
+    }).catch(() => null);
+    if (!matched || !isCaseLawRowCitationTrusted(matched) || !hasLinkedPrimaryCaseLawSource(matched)) continue;
     const normalizedJudgment = {
       citation: sanitizeReferenceText(matched.citation, 140),
       court: sanitizeReferenceText(matched.court || court || "Pakistani Courts", 120),
@@ -2107,7 +2170,7 @@ async function verifyReferencesBlock(content: string): Promise<string> {
     laws: verifiedLaws.slice(0, 5),
     judgments: verifiedJudgments.slice(0, 5),
   });
-  return content.replace(REFERENCES_BLOCK_REGEX, `\`\`\`references\n${normalized}\n\`\`\``);
+  return renderSingleReferencesBlock(content, JSON.parse(normalized));
 }
 
 async function applyAlWakeeloSafetyGuardrails(content: string): Promise<string> {
@@ -2166,7 +2229,7 @@ function parseCitationParts(citation: string, journalCodeMap: Map<string, string
   if (!raw) return null;
 
   const normalized = raw
-    .replace(/[()[\],;:]+/g, " ")
+    .replace(/[()[\],;:_/-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   const compactNeutral = normalized.match(/\b((?:19|20)\d{2})(LHC|IHC|SHC|PHC|BHC|AJKHC)(\d{1,6})\b/i);
@@ -2232,7 +2295,7 @@ function parseCaseLawCitationQuery(query: string): CaseLawCitationQueryParts | n
   const raw = String(query || "").trim();
   if (!raw) return null;
   const normalized = raw
-    .replace(/[()[\],;:]+/g, " ")
+    .replace(/[()[\],;:_/-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -2258,7 +2321,9 @@ function parseCaseLawCitationQuery(query: string): CaseLawCitationQueryParts | n
   }
 
   const reportFirst =
-    normalized.match(/\b([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+((?:19|20)\d{2})\s+(\d{1,6})\b/i);
+    normalized.match(
+      /\b([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+((?:19|20)\d{2})(?:\s+(?:SC|Lah\.?|Lahore|Kar\.?|Karachi|Pesh\.?|Peshawar|Islamabad|Sindh|Balochistan|FSC|Federal\s+Shariat(?:\s+Court)?|Supreme\s+Court))?\s+(\d{1,6})\b/i,
+    );
   if (!reportFirst) return null;
   const report = resolveCaseLawReportToken(reportFirst[1]) || normalizeCitationToken(reportFirst[1]);
   const year = Number(reportFirst[2]);
@@ -3155,9 +3220,19 @@ function normalizeCitationForMatch(value: string): string {
 function extractCaseCitationCandidates(text: string): string[] {
   const candidates: string[] = [];
   const seen = new Set<string>();
+  const separator = String.raw`(?:\s|[-/:,.;])*`;
   const patterns = [
-    new RegExp(`\\b\\d{4}\\s+(?:${CASELAW_REPORT_FLEX_PATTERN})\\s+\\d{1,5}\\b`, "gi"),
-    new RegExp(`\\b(?:${CASELAW_REPORT_FLEX_PATTERN})\\s+\\d{4}\\s+(?:SC|Lah\\.?|Lahore|Kar\\.?|Karachi|Peshawar|Islamabad|Sindh|Balochistan|FSC|Federal\\s+Shariat(?:\\s+Court)?|Supreme\\s+Court)\\s+\\d{1,5}\\b`, "gi"),
+    // Year-first standard citations: 1989 SCMR 585 / 1989 P Cr. L J 1871 / 1989-SCMR-585
+    new RegExp(`\\b(?:19|20)\\d{2}${separator}(?:${CASELAW_REPORT_FLEX_PATTERN})${separator}\\d{1,6}\\b`, "gi"),
+    // Report-first citations with optional court token: PLD 2015 SC 1245
+    new RegExp(
+      `\\b(?:${CASELAW_REPORT_FLEX_PATTERN})${separator}(?:19|20)\\d{2}(?:${separator}(?:SC|Lah\\.?|Lahore|Kar\\.?|Karachi|Pesh\\.?|Peshawar|Islamabad|Sindh|Balochistan|FSC|Federal\\s+Shariat(?:\\s+Court)?|Supreme\\s+Court))?${separator}\\d{1,6}\\b`,
+      "gi",
+    ),
+    // Neutral compact citations: 2014LHC5158 / 2022IHC77 / 2019PHC456
+    /\b(?:19|20)\d{2}(?:LHC|IHC|SHC|PHC|BHC|AJKHC)\d{1,6}\b/gi,
+    // Neutral spaced/hyphenated citations: 2014 LHC 5158 / 2014-LHC-5158
+    /\b(?:19|20)\d{2}(?:\s|[-/:,.;])*(?:LHC|IHC|SHC|PHC|BHC|AJKHC)(?:\s|[-/:,.;])*\d{1,6}\b/gi,
   ];
 
   for (const pattern of patterns) {
@@ -3372,11 +3447,19 @@ async function resolveCaseCitationFromKnowledgeBase(candidate: string): Promise<
   return null;
 }
 
-async function resolveCaseCitationFromInternalDb(candidate: string): Promise<CaseLaw | null> {
+async function resolveCaseCitationFromInternalDb(
+  candidate: string,
+  options?: {
+    requirePrimary?: boolean;
+    requireLinkedSource?: boolean;
+  },
+): Promise<CaseLaw | null> {
   const normalizedCandidate = normalizeCitationForMatch(candidate);
   if (!normalizedCandidate) return null;
   const candidateParts = parseCaseLawCitationQuery(candidate);
   const hasTrustedCandidateParts = isTrustedCaseLawCitationParts(candidateParts);
+  const requirePrimary = options?.requirePrimary === true;
+  const requireLinkedSource = options?.requireLinkedSource === true;
 
   const rows: CaseLaw[] = [];
   const seen = new Set<number>();
@@ -3397,6 +3480,8 @@ async function resolveCaseCitationFromInternalDb(candidate: string): Promise<Cas
   let bestScore = -1;
   for (const row of rows) {
     if (!isCaseLawRowCitationTrusted(row)) continue;
+    if (requirePrimary && String(row.citationRole || "").toLowerCase() !== "primary") continue;
+    if (requireLinkedSource && !hasLinkedPrimaryCaseLawSource(row)) continue;
     const rowParts = getTrustedCaseLawCitationPartsFromRow(row);
     if (hasTrustedCandidateParts) {
       if (!rowParts) continue;
@@ -3426,7 +3511,12 @@ async function resolveCaseCitationFromInternalDb(candidate: string): Promise<Cas
 
 async function enforceInternalCaseCitationIntegrity(
   content: string,
-  options?: { placeholder?: string; normalizeVerified?: boolean },
+  options?: {
+    placeholder?: string;
+    normalizeVerified?: boolean;
+    requirePrimary?: boolean;
+    requireLinkedSource?: boolean;
+  },
 ): Promise<{ content: string; removed: string[]; verified: string[] }> {
   const text = String(content || "");
   if (!text.trim()) {
@@ -3440,6 +3530,8 @@ async function enforceInternalCaseCitationIntegrity(
 
   const placeholder = normalizeSpaces(String(options?.placeholder || "[CASE CITATION REQUIRED]"));
   const normalizeVerified = options?.normalizeVerified !== false;
+  const requirePrimary = options?.requirePrimary === true;
+  const requireLinkedSource = options?.requireLinkedSource === true;
   const resolvedByKey = new Map<string, CaseLaw | null>();
   const removed = new Set<string>();
   const verifiedByKey = new Map<string, string>();
@@ -3449,7 +3541,10 @@ async function enforceInternalCaseCitationIntegrity(
     if (!key) continue;
     let resolved = resolvedByKey.get(key);
     if (resolved === undefined) {
-      resolved = await resolveCaseCitationFromInternalDb(candidate);
+      resolved = await resolveCaseCitationFromInternalDb(candidate, {
+        requirePrimary,
+        requireLinkedSource,
+      });
       resolvedByKey.set(key, resolved);
     }
     if (resolved) {
@@ -5905,6 +6000,8 @@ RAG POLICY (STRICT):
       answerText = (await enforceInternalCaseCitationIntegrity(answerText, {
         placeholder: "[CASE CITATION REQUIRED]",
         normalizeVerified: true,
+        requirePrimary: true,
+        requireLinkedSource: true,
       })).content;
 
       const citations = retrieval.matches.slice(0, 5).map((m) => ({
@@ -8393,6 +8490,14 @@ The user has attached the following documents for your reference. Analyze them c
         : selectedRoute === "turbo"
           ? getDeepSeekModelName()
           : getGroqModelName();
+      const enforcePrimaryLinkedSourceCitations = moduleProfile.features.strictCitations;
+      if (enforcePrimaryLinkedSourceCitations) {
+        systemPrompt += `\n\nCITATION INTEGRITY POLICY (ABSOLUTE):
+- Use only case citations that are present in the internal database context provided to you.
+- Use only PRIMARY citations from internal case entries (not secondary/referred citations).
+- Do not cite web/internet authorities.
+- If a citation is not available internally, write exactly: [CASE CITATION REQUIRED].`;
+      }
       const featureKey = moduleProfile.modelStrategy.tokenLimitKey;
       const featureTokenLimit = TOKEN_LIMITS[featureKey] || TOKEN_LIMITS.chat;
       const planModeCap = selectedRoute === "apex"
@@ -8433,6 +8538,8 @@ The user has attached the following documents for your reference. Analyze them c
           const citationCheckedCached = await enforceInternalCaseCitationIntegrity(scopedCachedContent, {
             placeholder: "[CASE CITATION REQUIRED]",
             normalizeVerified: true,
+            requirePrimary: enforcePrimaryLinkedSourceCitations,
+            requireLinkedSource: enforcePrimaryLinkedSourceCitations,
           });
           return res.json({
             content: citationCheckedCached.content,
@@ -8527,6 +8634,8 @@ The user has attached the following documents for your reference. Analyze them c
         const citationCheckedStream = await enforceInternalCaseCitationIntegrity(fullContent, {
           placeholder: "[CASE CITATION REQUIRED]",
           normalizeVerified: true,
+          requirePrimary: enforcePrimaryLinkedSourceCitations,
+          requireLinkedSource: enforcePrimaryLinkedSourceCitations,
         });
         if (citationCheckedStream.content !== fullContent) {
           fullContent = citationCheckedStream.content;
@@ -8628,6 +8737,8 @@ The user has attached the following documents for your reference. Analyze them c
       completion = (await enforceInternalCaseCitationIntegrity(completion, {
         placeholder: "[CASE CITATION REQUIRED]",
         normalizeVerified: true,
+        requirePrimary: enforcePrimaryLinkedSourceCitations,
+        requireLinkedSource: enforcePrimaryLinkedSourceCitations,
       })).content;
 
       const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
@@ -11713,7 +11824,14 @@ Instructions:
 
       const result = await callStandardAI(systemPrompt, chatHistory, 4096, { timeoutProfile: "analysis", temperature: 0.3 });
 
-      const aiResponse = result.text;
+      let aiResponse = result.text;
+      aiResponse = enforcePakistanLawOnlyOutput(aiResponse);
+      aiResponse = (await enforceInternalCaseCitationIntegrity(aiResponse, {
+        placeholder: "[CASE CITATION REQUIRED]",
+        normalizeVerified: true,
+        requirePrimary: true,
+        requireLinkedSource: true,
+      })).content;
       const inputText = systemPrompt + messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat", result.model, inputText, aiResponse);
 
@@ -11867,7 +11985,14 @@ Instructions:
       }
 
       const actualModel = responseModel;
-      const safeResponseContent = await applyAlWakeeloSafetyGuardrails(responseContent).catch(() => ensureAlWakeeloReferencesBlock(responseContent));
+      let safeResponseContent = await applyAlWakeeloSafetyGuardrails(responseContent).catch(() => ensureAlWakeeloReferencesBlock(responseContent));
+      safeResponseContent = enforcePakistanLawOnlyOutput(safeResponseContent);
+      safeResponseContent = (await enforceInternalCaseCitationIntegrity(safeResponseContent, {
+        placeholder: "[CASE CITATION REQUIRED]",
+        normalizeVerified: true,
+        requirePrimary: true,
+        requireLinkedSource: true,
+      })).content;
       const inputText = messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat-apex", actualModel, inputText, safeResponseContent);
 
@@ -11936,6 +12061,11 @@ Instructions:
 7. Synthesize findings into a comprehensive, structured legal analysis
 
 Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pakistan, High Court judgments, PLD (Pakistan Legal Decisions), SCMR, and official government legal portals.`;
+      systemPrompt += `\n\nCITATION INTEGRITY POLICY (ABSOLUTE):
+- Formal case-law citations in your answer must come only from internal database references provided in context.
+- Use only PRIMARY internal citations with linked source documents.
+- Do not present web-found case citations as legal authorities.
+- If no internal case citation is available, write exactly: [CASE CITATION REQUIRED].`;
 
       if (systemContext) {
         systemPrompt += `\n\n${systemContext}`;
@@ -11975,7 +12105,14 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       console.log(`[Apex Agent] Completed in ${Date.now() - startedAt}ms, steps: ${agentResult.steps.length}, searches: ${agentResult.searchQueries.length}`);
 
-      const safeContent = await applyAlWakeeloSafetyGuardrails(agentResult.content).catch(() => ensureAlWakeeloReferencesBlock(agentResult.content));
+      let safeContent = await applyAlWakeeloSafetyGuardrails(agentResult.content).catch(() => ensureAlWakeeloReferencesBlock(agentResult.content));
+      safeContent = enforcePakistanLawOnlyOutput(safeContent);
+      safeContent = (await enforceInternalCaseCitationIntegrity(safeContent, {
+        placeholder: "[CASE CITATION REQUIRED]",
+        normalizeVerified: true,
+        requirePrimary: true,
+        requireLinkedSource: true,
+      })).content;
       const inputText = messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat-apex", agentResult.model, inputText, safeContent);
 
