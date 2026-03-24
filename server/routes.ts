@@ -2010,21 +2010,31 @@ function parseLooseReferencesJsonAtEnd(content: string): { laws: unknown[]; judg
   }
 }
 
+function stripTrailingReferencesArtifacts(content: string): string {
+  let body = String(content || "").trimEnd();
+  let prev = "";
+  const patterns: RegExp[] = [
+    /\n?\s*\{\s*"laws"\s*:\s*\[[\s\S]*?\]\s*,\s*"judgments"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/i,
+    /\n?\s*\{\s*"judgments"\s*:\s*\[[\s\S]*?\]\s*,\s*"laws"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/i,
+    /\n?\s*\{\s*"laws"\s*:\s*[^,\}\n]*\s*,\s*"judgments"\s*:\s*[^\}\n]*\s*\}\s*$/i,
+    /\n?\s*\{\s*"judgments"\s*:\s*[^,\}\n]*\s*,\s*"laws"\s*:\s*[^\}\n]*\s*\}\s*$/i,
+  ];
+  while (body !== prev) {
+    prev = body;
+    for (const pattern of patterns) {
+      body = body.replace(pattern, "").trimEnd();
+    }
+  }
+  return body;
+}
+
 function renderSingleReferencesBlock(content: string, payload: unknown): string {
   const safePayload = normalizeReferencesPayload(payload);
   const normalizedJson = JSON.stringify(safePayload);
 
   // Remove any existing fenced references block(s) first.
   let body = String(content || "").replace(/```references\s*[\s\S]*?```/gi, "").trimEnd();
-
-  // Remove one or more trailing loose references JSON blobs.
-  let prev = "";
-  while (body !== prev) {
-    prev = body;
-    body = body
-      .replace(/\n?\s*\{\s*"laws"\s*:\s*\[[\s\S]*?\]\s*,\s*"judgments"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/i, "")
-      .trimEnd();
-  }
+  body = stripTrailingReferencesArtifacts(body);
 
   if (!body) return `\`\`\`references\n${normalizedJson}\n\`\`\``;
   return `${body}\n\n\`\`\`references\n${normalizedJson}\n\`\`\``;
@@ -2105,6 +2115,29 @@ function extractKeywords(text: string, limit: number = 6): string[] {
     .sort((a, b) => b[1] - a[1])
     .slice(0, Math.max(1, limit))
     .map(([token]) => token);
+}
+
+function userPromptHasPakistaniCitationHint(text: string): boolean {
+  const input = String(text || "");
+  if (!input.trim()) return false;
+  const candidates = extractCaseCitationCandidates(input);
+  if (candidates.length === 0) return false;
+  return candidates.some((candidate) => {
+    if (parseCaseLawCitationQueryParts(candidate)) return true;
+    return /\b(?:19|20)\d{2}\s+(?:PLD|SCMR|YLR|MLD|CLC|CLD|PLC|PLJ|PCRLJ|P\s*Cr\.?\s*L\.?\s*J|PTD|NLR)\s+\d{1,6}\b/i.test(candidate);
+  });
+}
+
+function suppressWrongIndianJurisdictionForPakCitation(responseText: string, userPrompt: string): string {
+  let content = String(responseText || "");
+  if (!content.trim()) return content;
+  if (!userPromptHasPakistaniCitationHint(userPrompt)) return content;
+  const wrongScopeSignal =
+    /indian courts?/i.test(content)
+    || (/outside the scope/i.test(content) && /pakistani jurisdiction/i.test(content))
+    || (/i can only provide/i.test(content) && /pakistani jurisdiction/i.test(content));
+  if (!wrongScopeSignal) return content;
+  return "I could not find a verified internal-database match for the cited Pakistani case in the current indexed records. Please upload/index that judgment and ask again; I will answer from internal database sources only.";
 }
 
 type RawLawRef = { name?: string; section?: string; description?: string };
@@ -3905,10 +3938,11 @@ Examples: **[Pakistan Penal Code, 1860]**, **[Code of Civil Procedure, 1908]**, 
 ### Leading Case Law and Judicial Precedents
 Cite relevant Pakistani court judgments with proper citations. For each case:
 - **Citation** (e.g., PLD 2024 Supreme Court 123, 2025 SCMR 456, 2024 YLR 789)
-- **Court Name** and **Decision Date** (approximate if needed)
+- **Court Name** and **Decision Date** (only if known from internal records; never guess)
 - **Legal Principle Established**: What the court held
 - **Practitioner Application**: How this applies to the user's situation
-Use ONLY official citations: PLD, SCMR, YLR, MLD, CLC, PCRLJ, PLJ.
+Use ONLY official Pakistani citations: PLD, SCMR, YLR, MLD, CLC, CLD, PLC, PCRLJ, PLJ, PTD, and neutral citations (LHC/IHC/SHC/PHC/BHC/AJKHC).
+Important: PLC is Pakistan Labour Cases (Pakistani), not Indian.
 DUAL CITATION: If reported in PLD and PLJ, cite BOTH.
 
 ### Practical Legal Strategy and Case Preparation
@@ -4568,7 +4602,8 @@ export async function registerRoutes(
         usedModel = result.model;
         return result.text;
       });
-      const safeAiResponse = await applyAlWakeeloSafetyGuardrails(aiResponse).catch(() => ensureAlWakeeloReferencesBlock(aiResponse));
+      const normalizedAiResponse = suppressWrongIndianJurisdictionForPakCitation(aiResponse, firstMessage);
+      const safeAiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse).catch(() => ensureAlWakeeloReferencesBlock(normalizedAiResponse));
 
       if (!fromCache) {
         await logUsageCost(userId, "chat", usedModel || getOpenRouterModelName(), systemPromptFull + firstMessage, safeAiResponse);
@@ -4730,7 +4765,8 @@ export async function registerRoutes(
 
       const result = await callStandardAI(systemPromptFull, geminiContents, TOKEN_LIMITS.chat);
 
-      const aiResponse = await applyAlWakeeloSafetyGuardrails(result.text).catch(() => ensureAlWakeeloReferencesBlock(result.text));
+      const normalizedAiResponse = suppressWrongIndianJurisdictionForPakCitation(result.text, message);
+      const aiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse).catch(() => ensureAlWakeeloReferencesBlock(normalizedAiResponse));
       const inputText = systemPromptFull + history.map(m => m.content).join(" ");
       await logUsageCost(userId, "chat", result.model, inputText, aiResponse);
 
@@ -8543,6 +8579,7 @@ The user has attached the following documents for your reference. Analyze them c
       if (directMode) routingPath.push("direct-mode:true");
 
       const cacheRaw = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
+      const latestUserPromptText = lastUserMessage?.content || "";
       const styleCacheTag = styleContext ? hashQuery("style-context", styleContext).slice(0, 12) : "none";
       const cacheKey = `${cacheRaw}::type=${featureKey}::intent=${moduleIntent || "none"}::profile=${moduleType}::route=${routeLabel}::direct=${directMode ? "1" : "0"}::style=${styleCacheTag}`;
       const normalized = normalizeQuery(cacheKey);
@@ -8556,7 +8593,10 @@ The user has attached the following documents for your reference. Analyze them c
           const cachedContent = moduleType === "al-wakeelo" && !directMode
             ? await applyAlWakeeloSafetyGuardrails(cached.response).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
             : cached.response;
-          const scopedCachedContent = enforcePakistanLawOnlyOutput(cachedContent);
+          const scopedCachedContent = suppressWrongIndianJurisdictionForPakCitation(
+            enforcePakistanLawOnlyOutput(cachedContent),
+            latestUserPromptText,
+          );
           const citationCheckedCached = await enforceInternalCaseCitationIntegrity(scopedCachedContent, {
             placeholder: "",
             normalizeVerified: true,
@@ -8639,6 +8679,7 @@ The user has attached the following documents for your reference. Analyze them c
           }
         }
 
+        fullContent = suppressWrongIndianJurisdictionForPakCitation(fullContent, latestUserPromptText);
         if (moduleType === "al-wakeelo" && !directMode) {
           const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
           if (adjusted !== fullContent) {
@@ -8729,7 +8770,7 @@ The user has attached the following documents for your reference. Analyze them c
       }
       usedModel = result.model;
       routingPath.push(`model:${usedModel}`);
-      let completion = result.text;
+      let completion = suppressWrongIndianJurisdictionForPakCitation(result.text, latestUserPromptText);
 
       if (moduleType === "al-wakeelo" && !directMode) {
         completion = await applyAlWakeeloSafetyGuardrails(completion).catch(() => ensureAlWakeeloReferencesBlock(completion));
