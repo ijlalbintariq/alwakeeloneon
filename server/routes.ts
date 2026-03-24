@@ -1859,6 +1859,43 @@ function scoreSourceTextMatch(sourceText: string, query: string): number {
   return score;
 }
 
+function isLikelyDerivedCitationEntry(entry: CaseLaw): boolean {
+  const title = String(entry.title || "").trim().toLowerCase();
+  const summary = String(entry.summary || "").trim().toLowerCase();
+  const keywordString = Array.isArray(entry.keywords) ? entry.keywords.join(" ").toLowerCase() : "";
+
+  if (title.startsWith("case reported at ")) return true;
+  if (summary.startsWith("case cited as ")) return true;
+  if (title.startsWith("reference may be made to ")) return true;
+  if (title.includes(" case no") && title.length < 140 && /reported at/i.test(title)) return true;
+  if (keywordString.includes("pakistani law") && keywordString.includes("case law") && title.startsWith("case reported at")) {
+    return true;
+  }
+  return false;
+}
+
+function collapseCaseRowsBySource(rows: CaseLaw[]): CaseLaw[] {
+  const out: CaseLaw[] = [];
+  const seenSource = new Set<string>();
+  const seenFallback = new Set<string>();
+  for (const row of rows) {
+    const sourceType = String(row.sourceType || "").toLowerCase();
+    const sourceDocId = Number(row.sourceDocId || 0);
+    if (sourceType && Number.isInteger(sourceDocId) && sourceDocId > 0) {
+      const sourceKey = `${sourceType}:${sourceDocId}`;
+      if (seenSource.has(sourceKey)) continue;
+      seenSource.add(sourceKey);
+      out.push(row);
+      continue;
+    }
+    const fallbackKey = caseLawSearchRowKey(row);
+    if (seenFallback.has(fallbackKey)) continue;
+    seenFallback.add(fallbackKey);
+    out.push(row);
+  }
+  return out;
+}
+
 function filterCaseLawByStructuredFields(
   rows: CaseLaw[],
   options: {
@@ -1895,7 +1932,10 @@ async function rankCaseLawRowsBySourceRelevance(rows: CaseLaw[], userId: string,
       const metadataScore = scoreCaseLawTextMatch(row, query);
       const fullTextScore = scoreSourceTextMatch(sourceText, query);
       const recencyScore = Number.isInteger(Number(row.citationYear)) ? Number(row.citationYear) / 10000 : 0;
-      return { row, score: metadataScore + fullTextScore + recencyScore };
+      const role = String(row.citationRole || "").toLowerCase();
+      const roleScore = role === "primary" ? 8 : role === "cited" ? -2 : 0;
+      const derivedPenalty = isLikelyDerivedCitationEntry(row) ? -10 : 6;
+      return { row, score: metadataScore + fullTextScore + recencyScore + roleScore + derivedPenalty };
     }),
   );
   scored.sort((a, b) => b.score - a.score);
@@ -1997,12 +2037,14 @@ async function searchCaseLawWithFullText(args: {
   }
   const strictFullTextRows = await filterCaseLawResultsWithRealFullText(merged, args.userId);
   const rankedStrictRows = await rankCaseLawRowsBySourceRelevance(strictFullTextRows, args.userId, query);
-  if (strictFullTextRows.length >= args.limit) {
-    return rankedStrictRows.slice(0, args.limit);
+  const citationIntent = Boolean(args.parsedCitation || parseCaseLawCitationQuery(query));
+  const normalizedStrictRows = citationIntent ? rankedStrictRows : collapseCaseRowsBySource(rankedStrictRows);
+  if (normalizedStrictRows.length >= args.limit) {
+    return normalizedStrictRows.slice(0, args.limit);
   }
 
   // Top-up from a wider pool when strict text filtering removes metadata-only entries.
-  if (strictFullTextRows.length < args.limit) {
+  if (normalizedStrictRows.length < args.limit) {
     const topUpLimit = Math.max(args.limit * 3, args.limit + 10);
     const topUpRows = await storage.searchCaseLaw(args.query, topUpLimit, {
       year: args.year,
@@ -2013,9 +2055,11 @@ async function searchCaseLawWithFullText(args: {
       parsedCitation: args.parsedCitation,
     });
     const topUpFiltered = await filterCaseLawResultsWithRealFullText(topUpRows, args.userId);
+    const topUpRanked = await rankCaseLawRowsBySourceRelevance(topUpFiltered, args.userId, query);
+    const topUpNormalized = citationIntent ? topUpRanked : collapseCaseRowsBySource(topUpRanked);
     const out: CaseLaw[] = [];
     const outSeen = new Set<string>();
-    for (const row of [...rankedStrictRows, ...topUpFiltered]) {
+    for (const row of [...normalizedStrictRows, ...topUpNormalized]) {
       const key = caseLawSearchRowKey(row);
       if (outSeen.has(key)) continue;
       outSeen.add(key);
@@ -2023,10 +2067,11 @@ async function searchCaseLawWithFullText(args: {
       if (out.length >= args.limit) break;
     }
     const reranked = await rankCaseLawRowsBySourceRelevance(out, args.userId, query);
-    return reranked.slice(0, args.limit);
+    const rerankedNormalized = citationIntent ? reranked : collapseCaseRowsBySource(reranked);
+    return rerankedNormalized.slice(0, args.limit);
   }
 
-  return rankedStrictRows;
+  return normalizedStrictRows;
 }
 
 function resolveCourtId(courtRaw: string, courts: Array<{ id: number; code: string; name: string }>): number | null {
