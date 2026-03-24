@@ -24,6 +24,7 @@ type ClientExtractResult = {
 const REPORT_CODES = [
   "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
   "CLD", "PTD", "PTCL", "PSC", "ALD", "KLR", "PLS", "GBLR", "TAX", "SLR",
+  "AIR",
 ] as const;
 
 function buildFlexibleReportPattern(code: string): string {
@@ -36,17 +37,39 @@ const REPORT_NORMALIZERS = REPORT_CODES.map((code) => ({
   canonical: code,
   regex: new RegExp(`\\b${buildFlexibleReportPattern(code)}\\b`, "gi"),
 }));
+const YEAR_PATTERN = "(?:19|20)\\d{2}";
+const PAGE_PATTERN = "\\d{1,6}";
+const INTER_TOKEN_SEP = "\\s*[,;:/-]?\\s*";
+const NEUTRAL_COURT_CODES = ["LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC"] as const;
+const NEUTRAL_COURT_NORMALIZERS = NEUTRAL_COURT_CODES.map((code) => ({
+  code,
+  regex: new RegExp(`\\b(${YEAR_PATTERN})\\s*${buildFlexibleReportPattern(code)}\\s*(${PAGE_PATTERN})\\b`, "gi"),
+}));
+const NEUTRAL_COURT_ABBRS = NEUTRAL_COURT_CODES.map((code) => buildFlexibleReportPattern(code)).join("|");
+const COURT_NAMES = "Supreme\\s+Court|S\\.?C\\.?|Lah\\.?|Lahore|Lhr\\.?|Sindh|Sind\\.?|Kar\\.?|Karachi|Pesh\\.?|Peshawar|Bal\\.?|Balochistan|Quetta|Islamabad|ISB|I\\.?H\\.?C\\.?|S\\.?H\\.?C\\.?|P\\.?H\\.?C\\.?|B\\.?H\\.?C\\.?|Federal\\s+Shariat|FSC|Rawalpindi|Multan|Bahawalpur|D\\.?B\\.?|F\\.?B\\.?|Tribunal|ATIR|Appellate\\s+Tribunal|Azad\\s+J\\.?\\s*(?:&|and)\\s*K\\.?|Azad\\s+Jammu\\s*(?:&|and)\\s*Kashmir|A\\.?J\\.?K\\.?|A\\.?J\\.?K\\.?H\\.?C\\.?|P\\.?\\s*C\\.?|Privy\\s+Council";
 
 const CITATION_PATTERNS: RegExp[] = [
-  new RegExp(`(?:${REPORT_ABBRS})\\s+\\d{4}\\s+\\d+`, "gi"),
-  new RegExp(`\\d{4}\\s+(?:${REPORT_ABBRS})\\s+\\d+`, "gi"),
-  new RegExp(`\\(\\d{4}\\)\\s+(?:${REPORT_ABBRS})\\s+\\d+`, "gi"),
+  new RegExp(`\\b${YEAR_PATTERN}\\s*(?:${NEUTRAL_COURT_ABBRS})\\s*${PAGE_PATTERN}\\b`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}${YEAR_PATTERN}${INTER_TOKEN_SEP}(?:${COURT_NAMES})${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}${YEAR_PATTERN}${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`${YEAR_PATTERN}${INTER_TOKEN_SEP}(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}(?:${COURT_NAMES})${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`${YEAR_PATTERN}${INTER_TOKEN_SEP}(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`\\(${YEAR_PATTERN}\\)${INTER_TOKEN_SEP}(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}(?:${COURT_NAMES})?${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}\\(${YEAR_PATTERN}\\)${INTER_TOKEN_SEP}(?:${COURT_NAMES})?${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}(?:${COURT_NAMES})${INTER_TOKEN_SEP}${YEAR_PATTERN}${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
 ];
 
 function normalizeCitation(raw: string): string {
   let out = String(raw || "")
+    .replace(/[,:;]+/g, " ")
     .replace(/\s+/g, " ")
     .replace(/[()]/g, "");
+  for (const normalizer of NEUTRAL_COURT_NORMALIZERS) {
+    out = out.replace(
+      normalizer.regex,
+      (_m, year, numberPart) => `${year}${normalizer.code}${Number(numberPart)}`,
+    );
+  }
   for (const normalizer of REPORT_NORMALIZERS) {
     out = out.replace(normalizer.regex, normalizer.canonical);
   }
@@ -60,7 +83,15 @@ function clamp(value: number, min: number, max: number): number {
 
 function inferCourt(citation: string): string {
   const value = citation.toLowerCase();
+  if (/\b(?:19|20)\d{2}lhc\d{1,6}\b/.test(value)) return "Lahore High Court";
+  if (/\b(?:19|20)\d{2}ihc\d{1,6}\b/.test(value)) return "Islamabad High Court";
+  if (/\b(?:19|20)\d{2}shc\d{1,6}\b/.test(value)) return "Sindh High Court";
+  if (/\b(?:19|20)\d{2}phc\d{1,6}\b/.test(value)) return "Peshawar High Court";
+  if (/\b(?:19|20)\d{2}bhc\d{1,6}\b/.test(value)) return "Balochistan High Court";
+  if (/\b(?:19|20)\d{2}ajkhc\d{1,6}\b/.test(value)) return "High Court of Azad Jammu and Kashmir";
   if (/\bscmr\b|\bpsc\b|supreme\s+court/.test(value)) return "Supreme Court of Pakistan";
+  if (/\bazad\s+j(?:ammu)?\s*(?:&|and)\s*k(?:ashmir)?\b|\ba\.?j\.?k\.?\b/.test(value)) return "High Court of Azad Jammu and Kashmir";
+  if (/\bprivy\s+council\b|\bp\.?\s*c\.?\b/.test(value)) return "Privy Council";
   if (/\blhc\b|lahore/.test(value)) return "Lahore High Court";
   if (/\bshc\b|sindh|karachi/.test(value)) return "Sindh High Court";
   if (/\bphc\b|peshawar/.test(value)) return "Peshawar High Court";

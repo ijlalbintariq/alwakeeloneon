@@ -50,6 +50,7 @@ let knownCitationsLoaded = false;
 const REPORT_CODES = [
   "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
   "PSC", "ALD", "KLR", "PTD", "PTCL", "PLS", "GBLR", "TAX", "CLD", "SLR",
+  "AIR",
 ] as const;
 
 function buildFlexibleReportPattern(code: string): string {
@@ -63,19 +64,40 @@ const REPORT_NORMALIZERS = REPORT_CODES.map((code) => ({
   regex: new RegExp(`\\b${buildFlexibleReportPattern(code)}\\b`, "gi"),
 }));
 
-const COURT_NAMES = "Supreme\\s+Court|S\\.?C\\.?|Lah\\.?|Lahore|Sindh|Kar\\.?|Karachi|Pesh\\.?|Peshawar|Bal\\.?|Balochistan|Quetta|Islamabad|ISB|Federal\\s+Shariat|FSC|Rawalpindi|Multan|Bahawalpur|D\\.?B\\.?|F\\.?B\\.?|Tribunal|ATIR|Appellate\\s+Tribunal";
+const YEAR_PATTERN = "(?:19|20)\\d{2}";
+const PAGE_PATTERN = "\\d{1,6}";
+const INTER_TOKEN_SEP = "\\s*[,;:/-]?\\s*";
+const NEUTRAL_COURT_CODES = ["LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC"] as const;
+const NEUTRAL_COURT_CODE_MAP: Record<string, string> = {
+  LHC: "Lahore High Court",
+  IHC: "Islamabad High Court",
+  SHC: "Sindh High Court",
+  PHC: "Peshawar High Court",
+  BHC: "Balochistan High Court",
+  AJKHC: "High Court of Azad Jammu and Kashmir",
+};
+const NEUTRAL_COURT_NORMALIZERS = NEUTRAL_COURT_CODES.map((code) => ({
+  code,
+  regex: new RegExp(`\\b(${YEAR_PATTERN})\\s*${buildFlexibleReportPattern(code)}\\s*(${PAGE_PATTERN})\\b`, "gi"),
+}));
+const NEUTRAL_COURT_ABBRS = NEUTRAL_COURT_CODES.map((code) => buildFlexibleReportPattern(code)).join("|");
+const COURT_NAMES = "Supreme\\s+Court|S\\.?C\\.?|Lah\\.?|Lahore|Lhr\\.?|Sindh|Sind\\.?|Kar\\.?|Karachi|Pesh\\.?|Peshawar|Bal\\.?|Balochistan|Quetta|Islamabad|ISB|I\\.?H\\.?C\\.?|S\\.?H\\.?C\\.?|P\\.?H\\.?C\\.?|B\\.?H\\.?C\\.?|Federal\\s+Shariat|FSC|Rawalpindi|Multan|Bahawalpur|D\\.?B\\.?|F\\.?B\\.?|Tribunal|ATIR|Appellate\\s+Tribunal|Azad\\s+J\\.?\\s*(?:&|and)\\s*K\\.?|Azad\\s+Jammu\\s*(?:&|and)\\s*Kashmir|A\\.?J\\.?K\\.?|A\\.?J\\.?K\\.?H\\.?C\\.?|P\\.?\\s*C\\.?|Privy\\s+Council";
 
 const CITATION_PATTERNS: RegExp[] = [
-  /\b(?:19|20)\d{2}\s*L\.?\s*H\.?\s*C\.?\s*\d{1,6}\b/gi,
-  new RegExp(`(?:${REPORT_ABBRS})\\s+\\d{4}\\s+(?:${COURT_NAMES})\\s+\\d+`, "gi"),
-  new RegExp(`(?:${REPORT_ABBRS})\\s+\\d{4}\\s+\\d+`, "gi"),
-  new RegExp(`\\d{4}\\s+(?:${REPORT_ABBRS})\\s+\\d+`, "gi"),
-  new RegExp(`\\(\\d{4}\\)\\s+(?:${REPORT_ABBRS})\\s+\\d+`, "gi"),
-  new RegExp(`(?:${REPORT_ABBRS})\\s*\\(\\d{4}\\)\\s+\\d+`, "gi"),
+  new RegExp(`\\b${YEAR_PATTERN}\\s*(?:${NEUTRAL_COURT_ABBRS})\\s*${PAGE_PATTERN}\\b`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}${YEAR_PATTERN}${INTER_TOKEN_SEP}(?:${COURT_NAMES})${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}${YEAR_PATTERN}${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`${YEAR_PATTERN}${INTER_TOKEN_SEP}(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}(?:${COURT_NAMES})${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`${YEAR_PATTERN}${INTER_TOKEN_SEP}(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`\\(${YEAR_PATTERN}\\)${INTER_TOKEN_SEP}(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}(?:${COURT_NAMES})?${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}\\(${YEAR_PATTERN}\\)${INTER_TOKEN_SEP}(?:${COURT_NAMES})?${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})${INTER_TOKEN_SEP}(?:${COURT_NAMES})${INTER_TOKEN_SEP}${YEAR_PATTERN}${INTER_TOKEN_SEP}${PAGE_PATTERN}`, "gi"),
 ];
 
 const COURT_MAP: Array<[RegExp, string]> = [
   [/\bSupreme\s+Court\b|(?<!\w)S\.?C\.?(?!\w)/i, "Supreme Court of Pakistan"],
+  [/\bAzad\s+J(?:ammu)?\s*(?:&|and)\s*K(?:ashmir)?\b|(?<!\w)A\.?J\.?K\.?(?!\w)/i, "High Court of Azad Jammu and Kashmir"],
+  [/\bPrivy\s+Council\b|(?<!\w)P\.?\s*C\.?(?!\w)/i, "Privy Council"],
   [/\bLah(?:ore)?\.?\b/i, "Lahore High Court"],
   [/\bSindh\b|(?<!\w)Kar(?:achi)?\.?(?!\w)/i, "Sindh High Court"],
   [/\bPesh(?:awar)?\.?\b/i, "Peshawar High Court"],
@@ -149,12 +171,15 @@ const LEGAL_KEYWORDS_MAP: Record<string, string[]> = {
 
 function normalizeCitation(raw: string): string {
   let out = raw
+    .replace(/[,:;]+/g, " ")
     .replace(/\s+/g, " ")
     .replace(/[()]/g, "");
-  out = out.replace(
-    /\b((?:19|20)\d{2})\s*L\.?\s*H\.?\s*C\.?\s*(\d{1,6})\b/gi,
-    (_m, year, numberPart) => `${year}LHC${Number(numberPart)}`,
-  );
+  for (const normalizer of NEUTRAL_COURT_NORMALIZERS) {
+    out = out.replace(
+      normalizer.regex,
+      (_m, year, numberPart) => `${year}${normalizer.code}${Number(numberPart)}`,
+    );
+  }
   for (const normalizer of REPORT_NORMALIZERS) {
     out = out.replace(normalizer.regex, normalizer.canonical);
   }
@@ -218,16 +243,20 @@ function inferPrimaryCitation(text: string, mentions: CitationMention[], preferr
   return mentions[0].citation;
 }
 
-function extractLhcNeutralCitationFromSourceFilename(sourceFilename?: string): string | null {
+function extractNeutralCitationFromSourceFilename(sourceFilename?: string): string | null {
   const raw = String(sourceFilename || "").trim();
   if (!raw) return null;
   const basename = raw.replace(/\.[^.]+$/g, "");
-  const match = basename.match(/\b((?:19|20)\d{2})\s*[-_. ]*L\.?\s*H\.?\s*C\.?\s*[-_. ]*(\d{1,6})\b/i);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const numberPart = Number(match[2]);
-  if (!Number.isInteger(year) || !Number.isInteger(numberPart) || numberPart < 1) return null;
-  return `${year}LHC${numberPart}`;
+  for (const normalizer of NEUTRAL_COURT_NORMALIZERS) {
+    normalizer.regex.lastIndex = 0;
+    const match = normalizer.regex.exec(basename);
+    if (!match) continue;
+    const year = Number(match[1]);
+    const numberPart = Number(match[2]);
+    if (!Number.isInteger(year) || !Number.isInteger(numberPart) || numberPart < 1) continue;
+    return `${year}${normalizer.code}${numberPart}`;
+  }
+  return null;
 }
 
 function addPreferredPrimaryMention(mentions: CitationMention[], preferredPrimaryCitation?: string | null): CitationMention[] {
@@ -240,8 +269,17 @@ function addPreferredPrimaryMention(mentions: CitationMention[], preferredPrimar
 }
 
 function inferCourt(citation: string): string {
-  if (/\b(?:19|20)\d{2}\s*L\.?\s*H\.?\s*C\.?\s*\d{1,6}\b/i.test(citation)) {
-    return "Lahore High Court";
+  const canonicalNeutral = citation.match(new RegExp(`\\b(${YEAR_PATTERN})(LHC|IHC|SHC|PHC|BHC|AJKHC)(${PAGE_PATTERN})\\b`, "i"));
+  if (canonicalNeutral) {
+    return NEUTRAL_COURT_CODE_MAP[String(canonicalNeutral[2]).toUpperCase()] || "";
+  }
+  const flexibleNeutral = citation.match(new RegExp(`\\b${YEAR_PATTERN}\\s*(?:${NEUTRAL_COURT_ABBRS})\\s*${PAGE_PATTERN}\\b`, "i"));
+  if (flexibleNeutral) {
+    for (const code of NEUTRAL_COURT_CODES) {
+      if (new RegExp(buildFlexibleReportPattern(code), "i").test(flexibleNeutral[0])) {
+        return NEUTRAL_COURT_CODE_MAP[code];
+      }
+    }
   }
   for (const [pattern, court] of COURT_MAP) {
     if (pattern.test(citation)) {
@@ -350,7 +388,7 @@ export function assignCitationRolesToCases(
 ): ExtractedCase[] {
   if (!Array.isArray(cases) || cases.length === 0) return [];
 
-  const filenamePrimary = extractLhcNeutralCitationFromSourceFilename(options?.sourceFilename);
+  const filenamePrimary = extractNeutralCitationFromSourceFilename(options?.sourceFilename);
   const preferredPrimary = options?.preferredPrimaryCitation || filenamePrimary;
   const mentions = addPreferredPrimaryMention(extractCitationMentionsFromText(text || ""), preferredPrimary);
   const inferredPrimary = inferPrimaryCitation(text || "", mentions, preferredPrimary);
@@ -380,7 +418,7 @@ export function assignCitationRolesToCases(
 }
 
 export function nlpExtractCases(text: string, options?: CitationRoleAssignmentOptions): ExtractedCase[] {
-  const filenamePrimary = extractLhcNeutralCitationFromSourceFilename(options?.sourceFilename);
+  const filenamePrimary = extractNeutralCitationFromSourceFilename(options?.sourceFilename);
   const preferredPrimary = options?.preferredPrimaryCitation || filenamePrimary;
   const mentions = addPreferredPrimaryMention(extractCitationMentionsFromText(text), preferredPrimary);
   const cases: ExtractedCase[] = [];
