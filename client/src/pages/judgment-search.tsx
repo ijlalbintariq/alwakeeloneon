@@ -87,6 +87,10 @@ function formatDecisionDate(value: string | null): string {
   });
 }
 
+function formatJournalCodeLabel(code: string): string {
+  return String(code || "").toUpperCase() === "PCRLJ" ? "P Cr. L J" : code;
+}
+
 function parseCitationFromText(value: string): { year: number; journal: string; page: number } | null {
   const raw = value.trim();
   if (!raw) return null;
@@ -575,7 +579,7 @@ export default function JudgmentSearchPage() {
                   {journals.length > 0 ? <option value="">All Journals</option> : null}
                   {journals.map((j) => (
                     <option key={j.id} value={j.code}>
-                      {j.code}
+                      {formatJournalCodeLabel(j.code)}
                     </option>
                   ))}
                 </select>

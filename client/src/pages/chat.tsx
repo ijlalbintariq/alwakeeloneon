@@ -178,7 +178,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       return "Turbo legal analysis optimized for speed and quality.";
     }
     if (id.includes("apex-pro")) {
-      return "Premium non-web legal reasoning for complex analysis and high-quality structured drafting.";
+      return "Premium legal reasoning for complex analysis and high-quality structured drafting.";
     }
     if (id === "apex-agent-web") {
       return "Kimi AI agent with live web research across Pakistani legal databases.";

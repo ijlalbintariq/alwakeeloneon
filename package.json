@@ -9,6 +9,10 @@
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push",
+    "caselaw:dedupe:dry": "npx tsx script/caselaw_dedupe_hardening.ts",
+    "caselaw:dedupe:apply": "npx tsx script/caselaw_dedupe_hardening.ts --apply",
+    "caselaw:reextract:plan": "npx tsx script/caselaw_reextract_problem_docs.ts",
+    "caselaw:reextract:apply": "npx tsx script/caselaw_reextract_problem_docs.ts --apply",
     "test": "DATABASE_URL= PGHOST= node --import tsx --test tests/unit/**/*.test.ts",
     "test:e2e": "node --import tsx --test tests/e2e/**/*.test.ts"
   },
