@@ -185,6 +185,10 @@ function sanitizeInputText(value: unknown, maxLen: number): string {
     .slice(0, Math.max(1, maxLen));
 }
 
+function stripNullBytes(text: string): string {
+  return String(text || "").replace(/\x00/g, "");
+}
+
 function withPakistanLawOnlyPolicy(systemPrompt: string): string {
   const base = String(systemPrompt || "").trim();
   if (!base) return PAKISTAN_LAW_ONLY_POLICY;
@@ -9398,10 +9402,6 @@ RULES:
   });
 
   // ====== ADMIN ROUTES ======
-
-  function stripNullBytes(text: string): string {
-    return text.replace(/\x00/g, "");
-  }
 
   async function extractPdfTextSafe(sourceBuffer: Buffer, context: string = "pdf-parse"): Promise<string> {
     const text = await extractPdfTextGuarded(sourceBuffer, {
