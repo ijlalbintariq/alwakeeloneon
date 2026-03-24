@@ -8,7 +8,6 @@ import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, thr
 import { and, count, eq, sql } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
-import { syncGithubKnowledge } from "./github-sync";
 import {
   assignCitationRolesToCases,
   nlpExtractCases,
@@ -2122,7 +2121,10 @@ type CaseLawCitationQueryParts = { year: number; report: string; page: number };
 const CASELAW_REPORT_CODES = new Set([
   "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
   "PSC", "ALD", "KLR", "PTD", "PTCL", "PLS", "GBLR", "CLD", "TAX", "SLR",
+  "AIR",
+  "LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC",
 ]);
+const NEUTRAL_COURT_REPORT_CODES = new Set(["LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC"]);
 
 function buildFlexibleReportPattern(code: string): string {
   const letters = String(code || "").replace(/[^A-Za-z]/g, "").split("");
@@ -2167,6 +2169,15 @@ function parseCitationParts(citation: string, journalCodeMap: Map<string, string
     .replace(/[()[\],;:]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+  const compactNeutral = normalized.match(/\b((?:19|20)\d{2})(LHC|IHC|SHC|PHC|BHC|AJKHC)(\d{1,6})\b/i);
+  if (compactNeutral) {
+    const year = Number(compactNeutral[1]);
+    const page = Number(compactNeutral[3]);
+    const mapped = journalCodeMap.get(normalizeCitationToken(compactNeutral[2]));
+    if (mapped && Number.isInteger(year) && Number.isInteger(page) && page > 0) {
+      return { year, journalCode: mapped, page };
+    }
+  }
   const tokens = normalized.split(" ").filter(Boolean);
   if (tokens.length < 3) return null;
 
@@ -2224,6 +2235,16 @@ function parseCaseLawCitationQuery(query: string): CaseLawCitationQueryParts | n
     .replace(/[()[\],;:]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+
+  const compactNeutral = normalized.match(/\b((?:19|20)\d{2})(LHC|IHC|SHC|PHC|BHC|AJKHC)(\d{1,6})\b/i);
+  if (compactNeutral) {
+    const year = Number(compactNeutral[1]);
+    const report = normalizeCitationToken(compactNeutral[2]);
+    const page = Number(compactNeutral[3]);
+    if (Number.isInteger(year) && Number.isInteger(page) && page > 0 && report) {
+      return { year, report, page };
+    }
+  }
 
   const yearFirst =
     normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+(\d{1,6})\b/i);
@@ -11449,9 +11470,8 @@ ${boundedRaw}`;
 
   if (dbAvailable) {
     await seedLegalData();
-    syncGithubKnowledge().catch(err => console.error("[GitHub Sync] Background sync failed:", err));
   } else {
-    console.warn("[Startup] Skipping legal data seed and GitHub sync because DB is unavailable.");
+    console.warn("[Startup] Skipping legal data seed because DB is unavailable.");
   }
 
   app.get("/api/saved-judgments", async (req, res) => {
