@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
 import { sendEmailVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from "../../email";
-import { dbAvailable, dbUnavailableReason } from "../../db";
+import { dbAvailable, dbUnavailableReason, pool } from "../../db";
 import { isUserBanned, logAuditEvent } from "../../security-governance";
 import { recordSecurityEvent } from "../../security-monitoring";
 import { isSingleIpEnforced, resolveRequestIp } from "./ip";
@@ -18,6 +18,7 @@ const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 const GENERIC_FORGOT_PASSWORD_MESSAGE = "If an account with that email exists, a password reset link has been sent.";
 const GOOGLE_FORGOT_PASSWORD_MESSAGE = "This account uses Google sign-in. Please continue with Google instead of password reset.";
 const GENERIC_VERIFICATION_RESEND_MESSAGE = "If an account with that email exists, a verification link has been sent.";
+const ADMIN_MAX_CONCURRENT_SESSIONS = Math.max(1, Number(process.env.AUTH_ADMIN_MAX_SESSIONS || 3));
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -139,7 +140,7 @@ async function issueEmailVerification(user: any, req: Request, source: "register
 async function establishSession(req: any, user: any): Promise<void> {
   const loginIp = resolveRequestIp(req);
   let sessionEpoch = Number(user?.sessionEpoch || 0);
-  if (AUTH_SINGLE_IP_ENFORCED) {
+  if (AUTH_SINGLE_IP_ENFORCED && !user?.isAdmin) {
     const lock = await authStorage.issueSingleSessionLock(user.id, loginIp);
     sessionEpoch = lock.sessionEpoch;
   }
@@ -156,6 +157,48 @@ async function establishSession(req: any, user: any): Promise<void> {
       });
     });
   });
+
+  if (user?.isAdmin) {
+    await enforceAdminSessionLimit(user.id, String(req.sessionID || "").trim() || null);
+  }
+}
+
+async function enforceAdminSessionLimit(userId: string, keepSid: string | null): Promise<void> {
+  if (!pool || ADMIN_MAX_CONCURRENT_SESSIONS < 1) return;
+
+  try {
+    const active = await pool.query(
+      `select sid
+         from sessions
+        where expire > now()
+          and coalesce(sess->>'userId','') = $1
+        order by expire desc, sid desc`,
+      [userId],
+    );
+    const sids = (active.rows || [])
+      .map((row: any) => String(row?.sid || "").trim())
+      .filter(Boolean);
+    if (sids.length <= ADMIN_MAX_CONCURRENT_SESSIONS) return;
+
+    const keep = new Set<string>();
+    if (keepSid && sids.includes(keepSid)) keep.add(keepSid);
+    for (const sid of sids) {
+      if (keep.size >= ADMIN_MAX_CONCURRENT_SESSIONS) break;
+      keep.add(sid);
+    }
+    const toDelete = sids.filter((sid) => !keep.has(sid));
+    if (toDelete.length > 0) {
+      await pool.query(`delete from sessions where sid = any($1::text[])`, [toDelete]);
+      recordSecurityEvent("auth_anomaly", `admin-session-trim:${userId}`, {
+        userId,
+        kept: Array.from(keep),
+        removedCount: toDelete.length,
+        maxSessions: ADMIN_MAX_CONCURRENT_SESSIONS,
+      });
+    }
+  } catch (err: any) {
+    console.warn("[Auth] Could not enforce admin session limit:", err?.message || err);
+  }
 }
 
 async function persistSession(req: any, res: any, user: any, statusCode: number = 200): Promise<void> {

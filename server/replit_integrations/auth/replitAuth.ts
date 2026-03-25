@@ -81,7 +81,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
       req.session.destroy(() => {});
       return res.status(403).json({ message: "Your account is suspended. Please contact support." });
     }
-    if (AUTH_SINGLE_IP_ENFORCED) {
+    if (AUTH_SINGLE_IP_ENFORCED && !user.isAdmin) {
       const activeEpoch = Number(user.sessionEpoch || 0);
       const sessionEpoch = Number((req.session as any).sessionEpoch || NaN);
       const expectedIp = String(user.activeSessionIp || "").trim();
