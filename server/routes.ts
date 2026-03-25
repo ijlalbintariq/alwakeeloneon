@@ -16,7 +16,7 @@ import {
   TIER_LIMITS,
   type CaseLaw,
 } from "@shared/schema";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, lt, sql } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
 import {
@@ -114,6 +114,14 @@ const UPLOAD_QUEUE_MAX_PENDING = Math.max(UPLOAD_QUEUE_CONCURRENCY, Number(proce
 const CASELAW_AUTO_SYNC_MAX = Math.max(1, Number(process.env.CASELAW_AUTO_SYNC_MAX || 5000));
 const CASELAW_AUTO_SYNC_ON_UPLOAD = (() => {
   const raw = String(process.env.CASELAW_AUTO_SYNC_ON_UPLOAD || "false").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+})();
+const CASELAW_AUTO_PROCESS_PENDING_ON_UPLOAD = (() => {
+  const raw = String(process.env.CASELAW_AUTO_PROCESS_PENDING_ON_UPLOAD || "true").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+})();
+const CASELAW_AUTO_FULL_SYNC_ON_UPLOAD = (() => {
+  const raw = String(process.env.CASELAW_AUTO_FULL_SYNC_ON_UPLOAD || "true").trim().toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 })();
 const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
@@ -844,6 +852,44 @@ type CaseLawBadIndexReextractJobState = {
   lastError: string | null;
 };
 
+type CaseLawSyncToJudgmentsJobState = {
+  running: boolean;
+  shouldStop: boolean;
+  batchSize: number;
+  nextCursorId: number | null;
+  processed: number;
+  imported: number;
+  existing: number;
+  skipped: number;
+  failed: number;
+  linked: number;
+  unresolved: number;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  lastError: string | null;
+  activeRange: { fromId: number; toId: number } | null;
+  errors: string[];
+};
+
+type CaseLawProcessPendingFilesJobState = {
+  running: boolean;
+  shouldStop: boolean;
+  batchSize: number;
+  loops: number;
+  processed: number;
+  extractedDocuments: number;
+  insertedRows: number;
+  failed: number;
+  skippedNoText: number;
+  skippedNoCases: number;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  lastError: string | null;
+  activeDocId: number | null;
+  activeFilename: string | null;
+  errors: string[];
+};
+
 type GlobalAdminRagSourceKey = "case-law" | "statute-docs" | "knowledge-vault";
 
 type GlobalAdminRagSourceState = {
@@ -958,6 +1004,44 @@ const caseLawBadIndexReextractJob: CaseLawBadIndexReextractJobState = {
   lastError: null,
 };
 
+const caseLawSyncToJudgmentsJob: CaseLawSyncToJudgmentsJobState = {
+  running: false,
+  shouldStop: false,
+  batchSize: 1500,
+  nextCursorId: null,
+  processed: 0,
+  imported: 0,
+  existing: 0,
+  skipped: 0,
+  failed: 0,
+  linked: 0,
+  unresolved: 0,
+  startedAt: null,
+  finishedAt: null,
+  lastError: null,
+  activeRange: null,
+  errors: [],
+};
+
+const caseLawProcessPendingFilesJob: CaseLawProcessPendingFilesJobState = {
+  running: false,
+  shouldStop: false,
+  batchSize: 200,
+  loops: 0,
+  processed: 0,
+  extractedDocuments: 0,
+  insertedRows: 0,
+  failed: 0,
+  skippedNoText: 0,
+  skippedNoCases: 0,
+  startedAt: null,
+  finishedAt: null,
+  lastError: null,
+  activeDocId: null,
+  activeFilename: null,
+  errors: [],
+};
+
 const globalAdminRagReindexJob: GlobalAdminRagReindexJobState = createGlobalAdminRagReindexJobState();
 
 function snapshotCaseLawReindexJob() {
@@ -985,6 +1069,28 @@ function snapshotCaseLawBadIndexReextractJob() {
     startedAt: caseLawBadIndexReextractJob.startedAt ? caseLawBadIndexReextractJob.startedAt.toISOString() : null,
     finishedAt: caseLawBadIndexReextractJob.finishedAt ? caseLawBadIndexReextractJob.finishedAt.toISOString() : null,
   };
+}
+
+function snapshotCaseLawSyncToJudgmentsJob() {
+  return {
+    ...caseLawSyncToJudgmentsJob,
+    startedAt: caseLawSyncToJudgmentsJob.startedAt ? caseLawSyncToJudgmentsJob.startedAt.toISOString() : null,
+    finishedAt: caseLawSyncToJudgmentsJob.finishedAt ? caseLawSyncToJudgmentsJob.finishedAt.toISOString() : null,
+  };
+}
+
+function snapshotCaseLawProcessPendingFilesJob() {
+  return {
+    ...caseLawProcessPendingFilesJob,
+    startedAt: caseLawProcessPendingFilesJob.startedAt ? caseLawProcessPendingFilesJob.startedAt.toISOString() : null,
+    finishedAt: caseLawProcessPendingFilesJob.finishedAt ? caseLawProcessPendingFilesJob.finishedAt.toISOString() : null,
+  };
+}
+
+function pushCappedJobError(target: string[], message: string, cap: number = 160) {
+  if (!message) return;
+  if (target.length >= cap) return;
+  target.push(message);
 }
 
 function toCaseLawBadIndexInt(value: unknown, fallback: number): number {
@@ -3133,6 +3239,220 @@ async function persistExtractedCasesAndSync(args: {
   };
 }
 
+type PendingCaseLawAdminDoc = {
+  id: number;
+  title: string | null;
+  filename: string | null;
+  objectKey: string | null;
+  extractedTextKey: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+};
+
+async function fetchPendingCaseLawAdminDocs(limit: number): Promise<PendingCaseLawAdminDoc[]> {
+  const rows = await db
+    .select({
+      id: adminKnowledge.id,
+      title: adminKnowledge.title,
+      filename: adminKnowledge.filename,
+      objectKey: adminKnowledgeFiles.objectKey,
+      extractedTextKey: adminKnowledgeFiles.extractedTextKey,
+      mimeType: adminKnowledgeFiles.mimeType,
+      sizeBytes: adminKnowledgeFiles.sizeBytes,
+    })
+    .from(adminKnowledge)
+    .leftJoin(adminKnowledgeFiles, eq(adminKnowledgeFiles.adminKnowledgeId, adminKnowledge.id))
+    .leftJoin(caseLaw, and(eq(caseLaw.sourceDocId, adminKnowledge.id), eq(caseLaw.sourceType, "admin")))
+    .where(eq(adminKnowledge.category, "case-law"))
+    .groupBy(
+      adminKnowledge.id,
+      adminKnowledge.title,
+      adminKnowledge.filename,
+      adminKnowledgeFiles.objectKey,
+      adminKnowledgeFiles.extractedTextKey,
+      adminKnowledgeFiles.mimeType,
+      adminKnowledgeFiles.sizeBytes,
+    )
+    .having(eq(sql<number>`count(${caseLaw.id})`, 0))
+    .orderBy(sql`${adminKnowledge.id} desc`)
+    .limit(Math.max(1, Math.min(2000, limit)));
+  return rows;
+}
+
+type PendingCaseLawExtractors = {
+  parsePdfSafe: (buffer: Buffer) => Promise<string>;
+  parsePdfWithOcrFallback: (file: Express.Multer.File) => Promise<string>;
+  parseDocxSafe: (buffer: Buffer) => Promise<string>;
+};
+
+async function processSinglePendingCaseLawAdminDoc(
+  doc: PendingCaseLawAdminDoc,
+  actorUserId: string,
+  extractors: PendingCaseLawExtractors,
+): Promise<{
+  extractedDocuments: number;
+  insertedRows: number;
+  failed: number;
+  skippedNoText: number;
+  skippedNoCases: number;
+  errors: string[];
+}> {
+  const out = {
+    extractedDocuments: 0,
+    insertedRows: 0,
+    failed: 0,
+    skippedNoText: 0,
+    skippedNoCases: 0,
+    errors: [] as string[],
+  };
+  const sourceFilename = sanitizeInputText(
+    doc.filename || doc.title || `admin-knowledge-${doc.id}.txt`,
+    240,
+  ) || `admin-knowledge-${doc.id}.txt`;
+  let content = "";
+
+  try {
+    const stored = await storage.getAdminKnowledgeById(doc.id);
+    content = stripNullBytes(String(stored?.content || "")).trim();
+  } catch {
+    content = "";
+  }
+
+  if (!content && doc.extractedTextKey) {
+    try {
+      content = stripNullBytes(await getR2ObjectText(doc.extractedTextKey)).trim();
+    } catch (r2TextErr: any) {
+      pushCappedJobError(
+        out.errors,
+        `#${doc.id} ${sourceFilename}: failed reading extracted text (${sanitizeInputText(r2TextErr?.message || "unknown", 180)})`,
+      );
+    }
+  }
+
+  if (!content && doc.objectKey) {
+    try {
+      const sourceBuffer = await getR2ObjectBinary(doc.objectKey);
+      if (sourceBuffer && sourceBuffer.length > 0) {
+        const ext = normalizeAttachmentExt(path.extname(sourceFilename || "").toLowerCase());
+        let parseExt = ext;
+        if (!parseExt) {
+          const mime = String(doc.mimeType || "").toLowerCase();
+          if (mime === "application/pdf") parseExt = ".pdf";
+          else if (mime === "application/msword") parseExt = ".doc";
+          else if ((DOCX_COMPAT_MIMES as readonly string[]).includes(mime)) parseExt = ".docx";
+          else parseExt = ".txt";
+        }
+
+        const stableFile = {
+          fieldname: "file",
+          originalname: sourceFilename,
+          encoding: "7bit",
+          mimetype: String(doc.mimeType || "application/octet-stream"),
+          size: Number(doc.sizeBytes || sourceBuffer.length),
+          buffer: sourceBuffer,
+          destination: "",
+          filename: path.basename(sourceFilename),
+          path: "",
+        } as Express.Multer.File;
+
+        const signatureExt = parseExt === ".md" || parseExt === ".json" || parseExt === ".csv" ? ".txt" : parseExt;
+        if ([".pdf", ".doc", ".docx", ".txt"].includes(signatureExt) && !hasSafeDocumentSignature(stableFile, signatureExt)) {
+          throw new Error("file signature does not match declared format");
+        }
+
+        if (parseExt === ".pdf") {
+          try {
+            content = await extractors.parsePdfSafe(stableFile.buffer);
+          } catch {
+            content = "";
+          }
+          if (!content) {
+            content = await extractors.parsePdfWithOcrFallback(stableFile);
+          }
+        } else if (parseExt === ".doc" || parseExt === ".docx") {
+          content = await extractors.parseDocxSafe(stableFile.buffer);
+        } else {
+          content = stripNullBytes(stableFile.buffer.toString("utf-8").trim());
+        }
+      }
+    } catch (fileErr: any) {
+      out.failed += 1;
+      pushCappedJobError(
+        out.errors,
+        `#${doc.id} ${sourceFilename}: ${sanitizeInputText(fileErr?.message || "processing failed", 220)}`,
+      );
+      return out;
+    }
+  }
+
+  if (!content || content.length < 10) {
+    out.skippedNoText += 1;
+    return out;
+  }
+
+  try {
+    const extracted = nlpExtractCases(content, { sourceFilename });
+    const validCases = extracted.filter((entry) => entry.citation && entry.title);
+    if (validCases.length === 0) {
+      out.skippedNoCases += 1;
+      return out;
+    }
+    const saved = await persistExtractedCasesAndSync({
+      extractedCases: validCases,
+      sourceDocId: doc.id,
+      sourceFilename,
+      actorUserId,
+    });
+    out.extractedDocuments += 1;
+    out.insertedRows += Number(saved.inserted || 0);
+    if (saved.errors?.length) {
+      for (const message of saved.errors.slice(0, 10)) {
+        pushCappedJobError(out.errors, `#${doc.id} ${sourceFilename}: ${message}`);
+      }
+    }
+  } catch (extractErr: any) {
+    out.failed += 1;
+    pushCappedJobError(
+      out.errors,
+      `#${doc.id} ${sourceFilename}: ${sanitizeInputText(extractErr?.message || "NLP extraction failed", 220)}`,
+    );
+  }
+
+  return out;
+}
+
+async function fetchCaseLawEntriesForSync(args: {
+  cursorId: number | null;
+  batchSize: number;
+}): Promise<Array<{
+  id: number;
+  citation: string;
+  court: string;
+  title: string;
+  summary: string;
+  sourceDocId?: number | null;
+  sourceType?: string | null;
+}>> {
+  const safeBatchSize = Math.max(1, Math.min(5000, Number(args.batchSize) || 1000));
+  const whereClause = Number.isInteger(Number(args.cursorId)) && Number(args.cursorId) > 0
+    ? lt(caseLaw.id, Number(args.cursorId))
+    : undefined;
+  return db
+    .select({
+      id: caseLaw.id,
+      citation: caseLaw.citation,
+      court: caseLaw.court,
+      title: caseLaw.title,
+      summary: caseLaw.summary,
+      sourceDocId: caseLaw.sourceDocId,
+      sourceType: caseLaw.sourceType,
+    })
+    .from(caseLaw)
+    .where(whereClause)
+    .orderBy(sql`${caseLaw.id} desc`)
+    .limit(safeBatchSize);
+}
+
 function startsWithBytes(buffer: Buffer, signature: number[]): boolean {
   if (buffer.length < signature.length) return false;
   for (let i = 0; i < signature.length; i++) {
@@ -4401,6 +4721,9 @@ export async function registerRoutes(
   );
   console.log(
     `[Case Law Sync] autoSyncOnUpload=${CASELAW_AUTO_SYNC_ON_UPLOAD ? "enabled" : "disabled (manual-only)"}`,
+  );
+  console.log(
+    `[Case Law Upload Pipelines] autoProcessPendingOnUpload=${CASELAW_AUTO_PROCESS_PENDING_ON_UPLOAD ? "enabled" : "disabled"} autoFullSyncOnUpload=${CASELAW_AUTO_FULL_SYNC_ON_UPLOAD ? "enabled" : "disabled"}`,
   );
   console.log(
     `[Upload Storage] mode=${USE_DISK_UPLOAD_STORAGE ? "disk" : "memory"} tempDir=${USE_DISK_UPLOAD_STORAGE ? UPLOAD_TEMP_DIR : "n/a"}`,
@@ -10955,6 +11278,7 @@ ${boundedRaw}`;
         sourceFilename: savedFilename,
         actorUserId: userId,
       });
+      kickCaseLawUploadBackgroundPipelines(userId);
 
       return res.json({
         extracted: roleAwareCases.length,
@@ -11083,6 +11407,9 @@ ${boundedRaw}`;
         const syncBatch = created.slice(0, CASELAW_AUTO_SYNC_MAX);
         citationSync = await syncCaseLawEntriesToJudgments(syncBatch, actorUserId);
       }
+      if (created.length > 0 && actorUserId) {
+        kickCaseLawUploadBackgroundPipelines(actorUserId);
+      }
       await logAuditEvent("admin.caseLaw.bulkCreate", actorUserId, null, { inserted: created.length, errors: errors.length, sourceDocId: sourceDocId || null });
       res.status(201).json({
         inserted: created.length,
@@ -11097,15 +11424,216 @@ ${boundedRaw}`;
     }
   });
 
+  async function ensureCaseLawSyncToJudgmentsBackground(actorUserId: string, options?: { batchSize?: number; reason?: string }) {
+    const batchSize = Math.max(100, Math.min(5000, Number(options?.batchSize) || caseLawSyncToJudgmentsJob.batchSize || 1500));
+    if (caseLawSyncToJudgmentsJob.running) {
+      return { started: false, status: snapshotCaseLawSyncToJudgmentsJob() };
+    }
+
+    caseLawSyncToJudgmentsJob.running = true;
+    caseLawSyncToJudgmentsJob.shouldStop = false;
+    caseLawSyncToJudgmentsJob.batchSize = batchSize;
+    caseLawSyncToJudgmentsJob.nextCursorId = null;
+    caseLawSyncToJudgmentsJob.processed = 0;
+    caseLawSyncToJudgmentsJob.imported = 0;
+    caseLawSyncToJudgmentsJob.existing = 0;
+    caseLawSyncToJudgmentsJob.skipped = 0;
+    caseLawSyncToJudgmentsJob.failed = 0;
+    caseLawSyncToJudgmentsJob.linked = 0;
+    caseLawSyncToJudgmentsJob.unresolved = 0;
+    caseLawSyncToJudgmentsJob.startedAt = new Date();
+    caseLawSyncToJudgmentsJob.finishedAt = null;
+    caseLawSyncToJudgmentsJob.lastError = null;
+    caseLawSyncToJudgmentsJob.activeRange = null;
+    caseLawSyncToJudgmentsJob.errors = [];
+
+    await logAuditEvent("admin.caseLaw.syncToJudgments.start", actorUserId, null, {
+      mode: "full",
+      batchSize,
+      reason: sanitizeInputText(options?.reason || "manual", 80),
+    });
+
+    runInBackground("case-law-sync-to-judgments", async () => {
+      try {
+        while (!caseLawSyncToJudgmentsJob.shouldStop) {
+          const batch = await fetchCaseLawEntriesForSync({
+            cursorId: caseLawSyncToJudgmentsJob.nextCursorId,
+            batchSize: caseLawSyncToJudgmentsJob.batchSize,
+          });
+          if (batch.length === 0) break;
+
+          const ids = batch.map((row) => Number(row.id)).filter((id) => Number.isInteger(id));
+          caseLawSyncToJudgmentsJob.activeRange = ids.length > 0
+            ? { fromId: Math.max(...ids), toId: Math.min(...ids) }
+            : null;
+
+          const syncResult = await syncCaseLawEntriesToJudgments(batch, actorUserId || "");
+          caseLawSyncToJudgmentsJob.processed += Number(syncResult.processed || 0);
+          caseLawSyncToJudgmentsJob.imported += Number(syncResult.imported || 0);
+          caseLawSyncToJudgmentsJob.existing += Number(syncResult.existing || 0);
+          caseLawSyncToJudgmentsJob.skipped += Number(syncResult.skipped || 0);
+          caseLawSyncToJudgmentsJob.failed += Number(syncResult.failed || 0);
+          caseLawSyncToJudgmentsJob.linked += Number(syncResult.linked || 0);
+          caseLawSyncToJudgmentsJob.unresolved += Number(syncResult.unresolved || 0);
+          for (const message of syncResult.errors || []) {
+            pushCappedJobError(caseLawSyncToJudgmentsJob.errors, message);
+          }
+
+          const minId = ids.length > 0 ? Math.min(...ids) : 0;
+          caseLawSyncToJudgmentsJob.nextCursorId = minId > 0 ? minId : null;
+        }
+
+        await logAuditEvent("admin.caseLaw.syncToJudgments.finish", actorUserId, null, {
+          mode: "full",
+          stopped: caseLawSyncToJudgmentsJob.shouldStop,
+          processed: caseLawSyncToJudgmentsJob.processed,
+          imported: caseLawSyncToJudgmentsJob.imported,
+          existing: caseLawSyncToJudgmentsJob.existing,
+          skipped: caseLawSyncToJudgmentsJob.skipped,
+          failed: caseLawSyncToJudgmentsJob.failed,
+          linked: caseLawSyncToJudgmentsJob.linked,
+          unresolved: caseLawSyncToJudgmentsJob.unresolved,
+          errors: caseLawSyncToJudgmentsJob.errors.slice(0, 50),
+        });
+      } catch (err: any) {
+        caseLawSyncToJudgmentsJob.lastError = sanitizeInputText(err?.message || "Citation sync failed", 300);
+        pushCappedJobError(caseLawSyncToJudgmentsJob.errors, caseLawSyncToJudgmentsJob.lastError);
+        try {
+          await logAuditEvent("admin.caseLaw.syncToJudgments.fail", actorUserId, null, {
+            error: caseLawSyncToJudgmentsJob.lastError,
+          });
+        } catch {
+          // best-effort audit
+        }
+      } finally {
+        caseLawSyncToJudgmentsJob.running = false;
+        caseLawSyncToJudgmentsJob.shouldStop = false;
+        caseLawSyncToJudgmentsJob.activeRange = null;
+        caseLawSyncToJudgmentsJob.finishedAt = new Date();
+      }
+    });
+
+    return { started: true, status: snapshotCaseLawSyncToJudgmentsJob() };
+  }
+
+  async function ensureCaseLawProcessPendingFilesBackground(actorUserId: string, options?: { batchSize?: number; reason?: string }) {
+    const batchSize = Math.max(25, Math.min(1000, Number(options?.batchSize) || caseLawProcessPendingFilesJob.batchSize || 200));
+    if (caseLawProcessPendingFilesJob.running) {
+      return { started: false, status: snapshotCaseLawProcessPendingFilesJob() };
+    }
+
+    caseLawProcessPendingFilesJob.running = true;
+    caseLawProcessPendingFilesJob.shouldStop = false;
+    caseLawProcessPendingFilesJob.batchSize = batchSize;
+    caseLawProcessPendingFilesJob.loops = 0;
+    caseLawProcessPendingFilesJob.processed = 0;
+    caseLawProcessPendingFilesJob.extractedDocuments = 0;
+    caseLawProcessPendingFilesJob.insertedRows = 0;
+    caseLawProcessPendingFilesJob.failed = 0;
+    caseLawProcessPendingFilesJob.skippedNoText = 0;
+    caseLawProcessPendingFilesJob.skippedNoCases = 0;
+    caseLawProcessPendingFilesJob.startedAt = new Date();
+    caseLawProcessPendingFilesJob.finishedAt = null;
+    caseLawProcessPendingFilesJob.lastError = null;
+    caseLawProcessPendingFilesJob.activeDocId = null;
+    caseLawProcessPendingFilesJob.activeFilename = null;
+    caseLawProcessPendingFilesJob.errors = [];
+
+    await logAuditEvent("admin.caseLaw.processPendingFiles.start", actorUserId, null, {
+      batchSize,
+      reason: sanitizeInputText(options?.reason || "manual", 80),
+    });
+
+    runInBackground("case-law-process-pending-files", async () => {
+      try {
+        while (!caseLawProcessPendingFilesJob.shouldStop) {
+          const pendingDocs = await fetchPendingCaseLawAdminDocs(caseLawProcessPendingFilesJob.batchSize);
+          if (pendingDocs.length === 0) break;
+          caseLawProcessPendingFilesJob.loops += 1;
+
+          for (const pending of pendingDocs) {
+            if (caseLawProcessPendingFilesJob.shouldStop) break;
+            caseLawProcessPendingFilesJob.processed += 1;
+            caseLawProcessPendingFilesJob.activeDocId = pending.id;
+            caseLawProcessPendingFilesJob.activeFilename = sanitizeInputText(
+              pending.filename || pending.title || `admin-knowledge-${pending.id}.txt`,
+              240,
+            ) || `admin-knowledge-${pending.id}.txt`;
+
+            const result = await processSinglePendingCaseLawAdminDoc(
+              pending,
+              actorUserId,
+              {
+                parsePdfSafe: (buffer) => extractPdfTextSafe(buffer, "admin-case-law-process-pending"),
+                parsePdfWithOcrFallback: (file) => extractPdfTextWithOcrFallback(file, "admin-case-law-process-pending"),
+                parseDocxSafe: (buffer) => extractDocxTextSafe(buffer, "admin-case-law-process-pending"),
+              },
+            );
+            caseLawProcessPendingFilesJob.extractedDocuments += result.extractedDocuments;
+            caseLawProcessPendingFilesJob.insertedRows += result.insertedRows;
+            caseLawProcessPendingFilesJob.failed += result.failed;
+            caseLawProcessPendingFilesJob.skippedNoText += result.skippedNoText;
+            caseLawProcessPendingFilesJob.skippedNoCases += result.skippedNoCases;
+            for (const message of result.errors) {
+              pushCappedJobError(caseLawProcessPendingFilesJob.errors, message);
+            }
+          }
+        }
+
+        await logAuditEvent("admin.caseLaw.processPendingFiles.finish", actorUserId, null, {
+          stopped: caseLawProcessPendingFilesJob.shouldStop,
+          loops: caseLawProcessPendingFilesJob.loops,
+          processed: caseLawProcessPendingFilesJob.processed,
+          extractedDocuments: caseLawProcessPendingFilesJob.extractedDocuments,
+          insertedRows: caseLawProcessPendingFilesJob.insertedRows,
+          failed: caseLawProcessPendingFilesJob.failed,
+          skippedNoText: caseLawProcessPendingFilesJob.skippedNoText,
+          skippedNoCases: caseLawProcessPendingFilesJob.skippedNoCases,
+          errors: caseLawProcessPendingFilesJob.errors.slice(0, 50),
+        });
+      } catch (err: any) {
+        caseLawProcessPendingFilesJob.lastError = sanitizeInputText(err?.message || "Process-pending failed", 300);
+        pushCappedJobError(caseLawProcessPendingFilesJob.errors, caseLawProcessPendingFilesJob.lastError);
+        try {
+          await logAuditEvent("admin.caseLaw.processPendingFiles.fail", actorUserId, null, {
+            error: caseLawProcessPendingFilesJob.lastError,
+          });
+        } catch {
+          // best-effort audit
+        }
+      } finally {
+        caseLawProcessPendingFilesJob.running = false;
+        caseLawProcessPendingFilesJob.shouldStop = false;
+        caseLawProcessPendingFilesJob.activeDocId = null;
+        caseLawProcessPendingFilesJob.activeFilename = null;
+        caseLawProcessPendingFilesJob.finishedAt = new Date();
+      }
+    });
+
+    return { started: true, status: snapshotCaseLawProcessPendingFilesJob() };
+  }
+
+  function kickCaseLawUploadBackgroundPipelines(actorUserId: string) {
+    runInBackground("case-law-upload-auto-pipelines", async () => {
+      if (CASELAW_AUTO_PROCESS_PENDING_ON_UPLOAD) {
+        await ensureCaseLawProcessPendingFilesBackground(actorUserId, { reason: "upload-auto" });
+      }
+      if (CASELAW_AUTO_FULL_SYNC_ON_UPLOAD) {
+        await ensureCaseLawSyncToJudgmentsBackground(actorUserId, { reason: "upload-auto" });
+      }
+    });
+  }
+
   app.post("/api/admin/case-law/sync-to-judgments", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
       const actorUserId = getUserId(req);
-      const payload = (req.body || {}) as { caseLawIds?: number[]; limit?: number };
+      const payload = (req.body || {}) as { caseLawIds?: number[]; limit?: number; batchSize?: number };
       const requestedIds = Array.isArray(payload.caseLawIds)
         ? payload.caseLawIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)
         : [];
       const limit = Math.max(1, Math.min(5000, Number(payload.limit) || 1000));
+      const batchSize = Math.max(100, Math.min(5000, Number(payload.batchSize) || 1500));
 
       let entries: Array<{
         id: number;
@@ -11120,21 +11648,57 @@ ${boundedRaw}`;
       if (requestedIds.length > 0) {
         const resolved = await Promise.all(requestedIds.map((id) => storage.getCaseLawById(id)));
         entries = resolved.filter((entry): entry is NonNullable<typeof entry> => !!entry);
-      } else {
-        const all = await storage.getAllCaseLaw();
-        entries = [...all].sort((a, b) => b.id - a.id).slice(0, limit);
+        const syncResult = await syncCaseLawEntriesToJudgments(entries, actorUserId || "");
+        await logAuditEvent("admin.caseLaw.syncToJudgments", actorUserId, null, {
+          requested: requestedIds.length,
+          ...syncResult,
+          mode: "targeted",
+        });
+        return res.json(syncResult);
       }
 
-      const syncResult = await syncCaseLawEntriesToJudgments(entries, actorUserId || "");
-      await logAuditEvent("admin.caseLaw.syncToJudgments", actorUserId, null, {
-        requested: requestedIds.length > 0 ? requestedIds.length : limit,
-        ...syncResult,
+      const kickoff = await ensureCaseLawSyncToJudgmentsBackground(actorUserId || "", {
+        batchSize,
+        reason: "manual",
       });
-      res.json(syncResult);
+      if (!kickoff.started) {
+        return res.status(409).json({
+          ok: false,
+          message: "Citation sync job is already running",
+          status: kickoff.status,
+        });
+      }
+      return res.json({
+        ok: true,
+        message: "Citation sync started in background and will continue until all rows are scanned.",
+        status: kickoff.status,
+      });
     } catch (err) {
       console.error("Error syncing case law to judgments:", err);
       res.status(500).json({ message: "Failed to sync case law to citation database" });
     }
+  });
+
+  app.get("/api/admin/case-law/sync-to-judgments/status", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    return res.json({ ok: true, status: snapshotCaseLawSyncToJudgmentsJob() });
+  });
+
+  app.post("/api/admin/case-law/sync-to-judgments/stop", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!caseLawSyncToJudgmentsJob.running) {
+      return res.status(409).json({
+        ok: false,
+        message: "No running citation sync job",
+        status: snapshotCaseLawSyncToJudgmentsJob(),
+      });
+    }
+    caseLawSyncToJudgmentsJob.shouldStop = true;
+    return res.json({
+      ok: true,
+      message: "Citation sync stop requested",
+      status: snapshotCaseLawSyncToJudgmentsJob(),
+    });
   });
 
   app.post("/api/admin/case-law/auto-extract", async (req, res) => {
@@ -11153,180 +11717,52 @@ ${boundedRaw}`;
     if (!(await isAdmin(req, res))) return;
     try {
       const actorUserId = getUserId(req)!;
-      const payload = (req.body || {}) as { limit?: number };
-      const limit = Math.max(1, Math.min(1000, Number(payload.limit) || 200));
+      const payload = (req.body || {}) as { limit?: number; batchSize?: number };
+      const batchSize = Math.max(25, Math.min(1000, Number(payload.batchSize || payload.limit || 200)));
 
-      const pendingDocs = await db
-        .select({
-          id: adminKnowledge.id,
-          title: adminKnowledge.title,
-          filename: adminKnowledge.filename,
-          objectKey: adminKnowledgeFiles.objectKey,
-          extractedTextKey: adminKnowledgeFiles.extractedTextKey,
-          mimeType: adminKnowledgeFiles.mimeType,
-          sizeBytes: adminKnowledgeFiles.sizeBytes,
-        })
-        .from(adminKnowledge)
-        .leftJoin(adminKnowledgeFiles, eq(adminKnowledgeFiles.adminKnowledgeId, adminKnowledge.id))
-        .leftJoin(caseLaw, and(eq(caseLaw.sourceDocId, adminKnowledge.id), eq(caseLaw.sourceType, "admin")))
-        .where(eq(adminKnowledge.category, "case-law"))
-        .groupBy(
-          adminKnowledge.id,
-          adminKnowledge.title,
-          adminKnowledge.filename,
-          adminKnowledgeFiles.objectKey,
-          adminKnowledgeFiles.extractedTextKey,
-          adminKnowledgeFiles.mimeType,
-          adminKnowledgeFiles.sizeBytes,
-        )
-        .having(eq(sql<number>`count(${caseLaw.id})`, 0))
-        .orderBy(sql`${adminKnowledge.id} desc`)
-        .limit(limit);
-
-      const summary = {
-        targets: pendingDocs.length,
-        processed: 0,
-        extractedDocuments: 0,
-        insertedRows: 0,
-        failed: 0,
-        skippedNoText: 0,
-        skippedNoCases: 0,
-        errors: [] as string[],
-      };
-
-      for (const pending of pendingDocs) {
-        summary.processed += 1;
-        const sourceFilename = sanitizeInputText(
-          pending.filename || pending.title || `admin-knowledge-${pending.id}.txt`,
-          240,
-        ) || `admin-knowledge-${pending.id}.txt`;
-        let content = "";
-
-        try {
-          const doc = await storage.getAdminKnowledgeById(pending.id);
-          content = stripNullBytes(String(doc?.content || "")).trim();
-        } catch {
-          content = "";
-        }
-
-        if (!content && pending.extractedTextKey) {
-          try {
-            content = stripNullBytes(await getR2ObjectText(pending.extractedTextKey)).trim();
-          } catch (r2TextErr: any) {
-            summary.errors.push(
-              `#${pending.id} ${sourceFilename}: failed reading extracted text (${sanitizeInputText(r2TextErr?.message || "unknown", 180)})`,
-            );
-          }
-        }
-
-        if (!content && pending.objectKey) {
-          try {
-            const sourceBuffer = await getR2ObjectBinary(pending.objectKey);
-            if (sourceBuffer && sourceBuffer.length > 0) {
-              const ext = normalizeAttachmentExt(path.extname(sourceFilename || "").toLowerCase());
-              let parseExt = ext;
-              if (!parseExt) {
-                const mime = String(pending.mimeType || "").toLowerCase();
-                if (mime === "application/pdf") parseExt = ".pdf";
-                else if (mime === "application/msword") parseExt = ".doc";
-                else if ((DOCX_COMPAT_MIMES as readonly string[]).includes(mime)) parseExt = ".docx";
-                else parseExt = ".txt";
-              }
-
-              const stableFile = {
-                fieldname: "file",
-                originalname: sourceFilename,
-                encoding: "7bit",
-                mimetype: String(pending.mimeType || "application/octet-stream"),
-                size: Number(pending.sizeBytes || sourceBuffer.length),
-                buffer: sourceBuffer,
-                destination: "",
-                filename: path.basename(sourceFilename),
-                path: "",
-              } as Express.Multer.File;
-
-              const signatureExt = parseExt === ".md" || parseExt === ".json" || parseExt === ".csv" ? ".txt" : parseExt;
-              if ([".pdf", ".doc", ".docx", ".txt"].includes(signatureExt) && !hasSafeDocumentSignature(stableFile, signatureExt)) {
-                throw new Error("file signature does not match declared format");
-              }
-
-              if (parseExt === ".pdf") {
-                try {
-                  content = await extractPdfTextSafe(stableFile.buffer, "admin-case-law-process-pending");
-                } catch (pdfErr: any) {
-                  if (isExtractionQueueFullError(pdfErr)) return sendExtractionBusy(res);
-                  content = "";
-                }
-                if (!content) {
-                  content = await extractPdfTextWithOcrFallback(stableFile, "admin-case-law-process-pending");
-                }
-              } else if (parseExt === ".doc" || parseExt === ".docx") {
-                content = await extractDocxTextSafe(stableFile.buffer, "admin-case-law-process-pending");
-              } else {
-                content = stripNullBytes(stableFile.buffer.toString("utf-8").trim());
-              }
-            }
-          } catch (fileErr: any) {
-            if (isExtractionQueueFullError(fileErr)) return sendExtractionBusy(res);
-            summary.failed += 1;
-            summary.errors.push(
-              `#${pending.id} ${sourceFilename}: ${sanitizeInputText(fileErr?.message || "processing failed", 220)}`,
-            );
-            continue;
-          }
-        }
-
-        if (!content || content.length < 10) {
-          summary.skippedNoText += 1;
-          continue;
-        }
-
-        try {
-          const extracted = nlpExtractCases(content, { sourceFilename });
-          const validCases = extracted.filter((entry) => entry.citation && entry.title);
-          if (validCases.length === 0) {
-            summary.skippedNoCases += 1;
-            continue;
-          }
-          const saved = await persistExtractedCasesAndSync({
-            extractedCases: validCases,
-            sourceDocId: pending.id,
-            sourceFilename,
-            actorUserId,
-          });
-          summary.extractedDocuments += 1;
-          summary.insertedRows += Number(saved.inserted || 0);
-          if (saved.errors?.length) {
-            summary.errors.push(...saved.errors.slice(0, 10).map((msg) => `#${pending.id} ${sourceFilename}: ${msg}`));
-          }
-        } catch (extractErr: any) {
-          if (isExtractionQueueFullError(extractErr)) return sendExtractionBusy(res);
-          summary.failed += 1;
-          summary.errors.push(
-            `#${pending.id} ${sourceFilename}: ${sanitizeInputText(extractErr?.message || "NLP extraction failed", 220)}`,
-          );
-        }
-      }
-
-      await logAuditEvent("admin.caseLaw.processPendingFiles", actorUserId, null, {
-        limit,
-        ...summary,
-        errors: summary.errors.slice(0, 50),
+      const kickoff = await ensureCaseLawProcessPendingFilesBackground(actorUserId, {
+        batchSize,
+        reason: "manual",
       });
+      if (!kickoff.started) {
+        return res.status(409).json({
+          ok: false,
+          message: "Process-pending job is already running",
+          status: kickoff.status,
+        });
+      }
 
       return res.json({
         ok: true,
-        message: `Processed ${summary.processed} pending file(s): inserted ${summary.insertedRows} case-law row(s)`,
-        summary: {
-          ...summary,
-          errors: summary.errors.slice(0, 100),
-        },
+        message: "Pending case-law processing started in background and will continue until no pending docs remain.",
+        status: kickoff.status,
       });
     } catch (err: any) {
-      if (isExtractionQueueFullError(err)) return sendExtractionBusy(res);
       console.error("Error processing pending case-law files:", err);
       return res.status(500).json({ message: "Failed to process pending case-law files" });
     }
+  });
+
+  app.get("/api/admin/case-law/process-pending-files/status", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    return res.json({ ok: true, status: snapshotCaseLawProcessPendingFilesJob() });
+  });
+
+  app.post("/api/admin/case-law/process-pending-files/stop", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!caseLawProcessPendingFilesJob.running) {
+      return res.status(409).json({
+        ok: false,
+        message: "No running process-pending job",
+        status: snapshotCaseLawProcessPendingFilesJob(),
+      });
+    }
+    caseLawProcessPendingFilesJob.shouldStop = true;
+    return res.json({
+      ok: true,
+      message: "Process-pending stop requested",
+      status: snapshotCaseLawProcessPendingFilesJob(),
+    });
   });
 
   app.post("/api/admin/case-law/reindex-roles/start", async (req, res) => {
@@ -11540,6 +11976,7 @@ ${boundedRaw}`;
                 sourceFilename: file.originalname,
                 actorUserId: uid,
               });
+              kickCaseLawUploadBackgroundPipelines(uid);
               return res.json({
                 extracted: mappedWithRoles.length,
                 truncated: false,
@@ -11617,6 +12054,7 @@ ${boundedRaw}`;
                 sourceFilename: file.originalname,
                 actorUserId: uid,
               });
+              kickCaseLawUploadBackgroundPipelines(uid);
               return res.json({
                 extracted: entriesWithRoles.length,
                 truncated: false,
@@ -11690,6 +12128,7 @@ ${boundedRaw}`;
         sourceFilename: savedFilename || file.originalname,
         actorUserId: userId,
       });
+      kickCaseLawUploadBackgroundPipelines(userId);
 
       res.json({
         extracted: validCases.length,
