@@ -303,27 +303,29 @@ export default function JudgmentViewPage() {
           <h2 className="text-sm font-bold text-white truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
             {judgment.title}
           </h2>
-          <div className="flex items-center gap-3">
-            <p className="text-[9px] text-amber-500/80 uppercase tracking-wider font-bold">{judgment.citation}</p>
-            <p className="text-[9px] text-slate-500 uppercase tracking-wider">{judgment.court}</p>
+          <div className="flex items-start gap-4">
+            <div className="flex flex-col items-start gap-1.5">
+              <p className="text-[9px] text-amber-500/80 uppercase tracking-wider font-bold">{judgment.citation}</p>
+              {sourceDocData?.found && sourceDocData.hasSource && (
+                <button
+                  onClick={loadSourceContent}
+                  disabled={isLoadingSourceContent}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-600/15 text-emerald-300 text-[11px] font-extrabold uppercase tracking-[0.16em] rounded-xl border border-emerald-500/40 hover:bg-emerald-600/25 hover:text-emerald-200 transition-all disabled:opacity-50"
+                  title="View linked case law document"
+                >
+                  {isLoadingSourceContent ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <BookOpen size={13} />
+                  )}
+                  Case Doc
+                </button>
+              )}
+            </div>
+            <p className="text-[9px] text-slate-500 uppercase tracking-wider mt-0.5">{judgment.court}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0 flex-wrap justify-end">
-          {sourceDocData?.found && sourceDocData.hasSource && (
-            <button
-              onClick={loadSourceContent}
-              disabled={isLoadingSourceContent}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/10 text-emerald-400 text-[9px] font-bold uppercase tracking-widest rounded-lg hover:bg-emerald-600/20 transition-all disabled:opacity-50"
-              title="View linked case law document"
-            >
-              {isLoadingSourceContent ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <BookOpen size={12} />
-              )}
-              Case Doc
-            </button>
-          )}
           <button
             onClick={() => generateJudgmentPDF(judgment, summaryData)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/10 text-blue-400 text-[9px] font-bold uppercase tracking-widest rounded-lg hover:bg-blue-600/20 transition-all"
