@@ -411,6 +411,254 @@ export async function sendWelcomeEmail(
   return true;
 }
 
+type BillingCycle = "monthly" | "quarterly" | "yearly";
+type SubscriptionPlan = "standard" | "pro" | "chamber" | "enterprise";
+
+export type SubscriptionInvoiceEmailInput = {
+  to: string;
+  customerName?: string | null;
+  planKey: SubscriptionPlan;
+  billingCycle?: BillingCycle | null;
+  invoiceNumber?: string | null;
+  issuedAt?: Date | null;
+  dueAt?: Date | null;
+  periodStartAt?: Date | null;
+  periodEndAt?: Date | null;
+  paymentMethod?: string | null;
+  transactionRef?: string | null;
+  subtotalPkr?: number | null;
+  discountPkr?: number | null;
+  taxPkr?: number | null;
+};
+
+const PLAN_MONTHLY_PRICE_PKR: Record<SubscriptionPlan, number> = {
+  standard: 500,
+  pro: 1000,
+  chamber: 3000,
+  enterprise: 50000,
+};
+
+function normalizeBillingCycle(cycle: string | null | undefined): BillingCycle {
+  const normalized = String(cycle || "monthly").trim().toLowerCase();
+  if (normalized === "quarterly" || normalized === "yearly") return normalized;
+  return "monthly";
+}
+
+function getCycleMonths(cycle: BillingCycle): number {
+  if (cycle === "quarterly") return 3;
+  if (cycle === "yearly") return 12;
+  return 1;
+}
+
+function getCycleDiscountRate(planKey: SubscriptionPlan, cycle: BillingCycle): number {
+  if (planKey === "enterprise") return 0;
+  if (cycle === "quarterly") return 0.1;
+  if (cycle === "yearly") return 0.2;
+  return 0;
+}
+
+function toRupees(value: number): number {
+  return Math.max(0, Math.round(Number.isFinite(value) ? value : 0));
+}
+
+function formatPkr(value: number): string {
+  return `PKR ${toRupees(value).toLocaleString("en-PK")}`;
+}
+
+function formatDatePk(value: Date): string {
+  return value.toLocaleDateString("en-PK", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function buildInvoiceNumber(now: Date): string {
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(now.getUTCDate()).padStart(2, "0");
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `INV-AW-${year}${month}${day}-${rand}`;
+}
+
+export function buildSubscriptionInvoiceTemplate(input: SubscriptionInvoiceEmailInput): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const now = new Date();
+  const cycle = normalizeBillingCycle(input.billingCycle);
+  const plan = String(input.planKey || "pro").toLowerCase() as SubscriptionPlan;
+  const cycleMonths = getCycleMonths(cycle);
+  const issuedAt = input.issuedAt || now;
+  const dueAt = input.dueAt || issuedAt;
+  const invoiceNumber = String(input.invoiceNumber || "").trim() || buildInvoiceNumber(issuedAt);
+  const customerName = String(input.customerName || "Valued Client").trim();
+  const paymentMethod = String(input.paymentMethod || "Online Payment").trim();
+  const transactionRef = String(input.transactionRef || "").trim();
+  const periodStartAt = input.periodStartAt || issuedAt;
+  const periodEndAt = input.periodEndAt || new Date(periodStartAt.getTime() + cycleMonths * 30 * 24 * 60 * 60 * 1000);
+
+  const monthlyPrice = PLAN_MONTHLY_PRICE_PKR[plan] || PLAN_MONTHLY_PRICE_PKR.pro;
+  const defaultSubtotal = monthlyPrice * cycleMonths;
+  const defaultDiscount = toRupees(defaultSubtotal * getCycleDiscountRate(plan, cycle));
+  const subtotal = input.subtotalPkr == null ? defaultSubtotal : toRupees(input.subtotalPkr);
+  const discount = input.discountPkr == null ? defaultDiscount : toRupees(input.discountPkr);
+  const tax = input.taxPkr == null ? 0 : toRupees(input.taxPkr);
+  const total = Math.max(0, subtotal - discount + tax);
+
+  const safeName = escapeHtml(customerName);
+  const safeInvoice = escapeHtml(invoiceNumber);
+  const safePlan = escapeHtml(plan.toUpperCase());
+  const safeCycle = escapeHtml(cycle.charAt(0).toUpperCase() + cycle.slice(1));
+  const safeIssued = escapeHtml(formatDatePk(issuedAt));
+  const safeDue = escapeHtml(formatDatePk(dueAt));
+  const safePeriod = escapeHtml(`${formatDatePk(periodStartAt)} to ${formatDatePk(periodEndAt)}`);
+  const safePayment = escapeHtml(paymentMethod);
+  const safeTxn = escapeHtml(transactionRef || "N/A");
+  const logoUrl = escapeHtml(resolveBrandLogoUrl());
+
+  const subject = `Invoice ${invoiceNumber} - ${plan.toUpperCase()} Plan (${safeCycle})`;
+  const text = [
+    `Al Wakeelo Subscription Invoice`,
+    `Invoice: ${invoiceNumber}`,
+    `Customer: ${customerName}`,
+    `Plan: ${plan.toUpperCase()} (${cycle})`,
+    `Issue Date: ${formatDatePk(issuedAt)}`,
+    `Due Date: ${formatDatePk(dueAt)}`,
+    `Billing Period: ${formatDatePk(periodStartAt)} to ${formatDatePk(periodEndAt)}`,
+    `Payment Method: ${paymentMethod}`,
+    `Transaction Ref: ${transactionRef || "N/A"}`,
+    `Subtotal: ${formatPkr(subtotal)}`,
+    `Discount: -${formatPkr(discount)}`,
+    `Tax: ${formatPkr(tax)}`,
+    `Total: ${formatPkr(total)}`,
+    "",
+    "This is a system-generated invoice from Al Wakeelo.",
+  ].join("\n");
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#0b1220;font-family:Inter,Arial,sans-serif;color:#e2e8f0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b1220;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;background:#111a2b;border:1px solid #24324a;border-radius:16px;overflow:hidden;">
+          <tr>
+            <td style="padding:22px 24px;border-bottom:1px solid #24324a;background:linear-gradient(180deg,#101a2b 0%,#0d1523 100%);">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align:top;">
+                    <img src="${logoUrl}" alt="Al Wakeelo" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:10px;border:1px solid rgba(245,158,11,0.4);" />
+                    <h1 style="margin:10px 0 0;font-size:20px;line-height:1.2;color:#f8fafc;">Subscription Invoice</h1>
+                    <p style="margin:6px 0 0;font-size:11px;line-height:1.5;letter-spacing:1.3px;text-transform:uppercase;color:#f59e0b;font-weight:700;">Al Wakeelo Billing</p>
+                  </td>
+                  <td align="right" style="vertical-align:top;">
+                    <p style="margin:0;font-size:12px;color:#94a3b8;">Invoice No.</p>
+                    <p style="margin:2px 0 10px;font-size:14px;font-weight:700;color:#f8fafc;">${safeInvoice}</p>
+                    <p style="margin:0;font-size:12px;color:#94a3b8;">Issue Date</p>
+                    <p style="margin:2px 0 0;font-size:13px;color:#f8fafc;">${safeIssued}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:22px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+                <tr>
+                  <td style="padding:0 0 10px 0;">
+                    <p style="margin:0;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Billed To</p>
+                    <p style="margin:6px 0 0;font-size:15px;color:#f8fafc;font-weight:700;">${safeName}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #24324a;border-radius:12px;overflow:hidden;">
+                <tr style="background:#0f172a;">
+                  <td style="padding:10px 12px;font-size:12px;color:#94a3b8;border-bottom:1px solid #24324a;">Plan</td>
+                  <td style="padding:10px 12px;font-size:12px;color:#94a3b8;border-bottom:1px solid #24324a;">Billing Cycle</td>
+                  <td style="padding:10px 12px;font-size:12px;color:#94a3b8;border-bottom:1px solid #24324a;">Period</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px;color:#f8fafc;font-size:13px;font-weight:700;">${safePlan}</td>
+                  <td style="padding:12px;color:#f8fafc;font-size:13px;">${safeCycle}</td>
+                  <td style="padding:12px;color:#f8fafc;font-size:13px;">${safePeriod}</td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;border:1px solid #24324a;border-radius:12px;overflow:hidden;">
+                <tr>
+                  <td style="padding:10px 12px;font-size:13px;color:#cbd5e1;">Subtotal</td>
+                  <td align="right" style="padding:10px 12px;font-size:13px;color:#f8fafc;">${escapeHtml(formatPkr(subtotal))}</td>
+                </tr>
+                <tr style="background:#0f172a;">
+                  <td style="padding:10px 12px;font-size:13px;color:#cbd5e1;">Discount</td>
+                  <td align="right" style="padding:10px 12px;font-size:13px;color:#f8fafc;">-${escapeHtml(formatPkr(discount))}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 12px;font-size:13px;color:#cbd5e1;">Tax</td>
+                  <td align="right" style="padding:10px 12px;font-size:13px;color:#f8fafc;">${escapeHtml(formatPkr(tax))}</td>
+                </tr>
+                <tr style="background:#13223a;border-top:1px solid #2f4668;">
+                  <td style="padding:12px;font-size:14px;color:#f8fafc;font-weight:700;">Total</td>
+                  <td align="right" style="padding:12px;font-size:14px;color:#f8fafc;font-weight:700;">${escapeHtml(formatPkr(total))}</td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;">
+                <tr>
+                  <td style="padding:0;font-size:12px;color:#94a3b8;line-height:1.7;">
+                    Payment Method: <span style="color:#f8fafc;">${safePayment}</span><br/>
+                    Transaction Ref: <span style="color:#f8fafc;">${safeTxn}</span><br/>
+                    Due Date: <span style="color:#f8fafc;">${safeDue}</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:14px 24px;background:#0d1523;border-top:1px solid #24324a;">
+              <p style="margin:0;font-size:11px;color:#64748b;line-height:1.6;">
+                This is a system-generated invoice for subscription billing. For support, contact support@alwakeelo.com.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject, html, text };
+}
+
+export async function sendSubscriptionInvoiceEmail(input: SubscriptionInvoiceEmailInput): Promise<EmailSendResult> {
+  const to = String(input.to || "").trim().toLowerCase();
+  if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    return {
+      ok: false,
+      provider: "resend",
+      error: "A valid recipient email is required.",
+    };
+  }
+  const template = buildSubscriptionInvoiceTemplate({ ...input, to });
+  return sendEmailViaResend({
+    to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  });
+}
+
 export async function sendResendTestEmail(to: string): Promise<EmailSendResult> {
   const providerStatus = getEmailProviderStatus();
   return sendEmailViaResend({
