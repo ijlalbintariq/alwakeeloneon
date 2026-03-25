@@ -4,7 +4,18 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { insertBookmarkSchema, insertSearchHistorySchema, statutes, caseLaw, threads, documents, TIER_LIMITS, type CaseLaw } from "@shared/schema";
+import {
+  insertBookmarkSchema,
+  insertSearchHistorySchema,
+  statutes,
+  caseLaw,
+  threads,
+  documents,
+  adminKnowledge,
+  adminKnowledgeFiles,
+  TIER_LIMITS,
+  type CaseLaw,
+} from "@shared/schema";
 import { and, count, eq, sql } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
@@ -101,6 +112,10 @@ const EXTRACTION_TIMEOUT_MS = Math.max(3000, Number(process.env.EXTRACTION_TIMEO
 const UPLOAD_QUEUE_CONCURRENCY = Math.max(1, Number(process.env.UPLOAD_QUEUE_CONCURRENCY || 2));
 const UPLOAD_QUEUE_MAX_PENDING = Math.max(UPLOAD_QUEUE_CONCURRENCY, Number(process.env.UPLOAD_QUEUE_MAX_PENDING || 32));
 const CASELAW_AUTO_SYNC_MAX = Math.max(1, Number(process.env.CASELAW_AUTO_SYNC_MAX || 5000));
+const CASELAW_AUTO_SYNC_ON_UPLOAD = (() => {
+  const raw = String(process.env.CASELAW_AUTO_SYNC_ON_UPLOAD || "false").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+})();
 const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
 const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
 const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_TOKEN_BUDGET || 900));
@@ -167,6 +182,7 @@ const PUBLIC_CHAT_CASE_NUDGE = {
 let activeUploadRequests = 0;
 const pendingUploadResolvers: Array<() => void> = [];
 let adminUploadIndexDisabledLogged = false;
+let caseLawAutoSyncDisabledLogged = false;
 
 function getVisitorIpAddress(req: Request): string {
   const forwarded = req.headers["x-forwarded-for"];
@@ -219,6 +235,15 @@ function shouldAutoIndexAdminUploads(): boolean {
   if (!adminUploadIndexDisabledLogged) {
     adminUploadIndexDisabledLogged = true;
     console.log("[RAG] Admin upload auto-index is disabled. Upload now, then use Admin > Global RAG Indexing > Start.");
+  }
+  return false;
+}
+
+function shouldAutoSyncCaseLawUploads(): boolean {
+  if (CASELAW_AUTO_SYNC_ON_UPLOAD) return true;
+  if (!caseLawAutoSyncDisabledLogged) {
+    caseLawAutoSyncDisabledLogged = true;
+    console.log("[Case Law Sync] Auto sync on upload is disabled. Upload now, then run Admin > Case Law > Sync to Judgments manually.");
   }
   return false;
 }
@@ -3016,6 +3041,7 @@ async function persistExtractedCasesAndSync(args: {
     errors: string[];
   };
   citationSyncLimited: boolean;
+  citationSyncDeferred: boolean;
 }> {
   const extractedCases = ensureFilenameNeutralPrimaryCaseRow(args.extractedCases, args.sourceFilename);
   const seen = new Set<string>();
@@ -3050,7 +3076,7 @@ async function persistExtractedCasesAndSync(args: {
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 
   if (entries.length === 0) {
-    return { inserted: 0, errors: [], citationSyncLimited: false };
+    return { inserted: 0, errors: [], citationSyncLimited: false, citationSyncDeferred: false };
   }
 
   const created: Array<{
@@ -3084,7 +3110,16 @@ async function persistExtractedCasesAndSync(args: {
   }
 
   if (created.length === 0) {
-    return { inserted: 0, errors: errors.slice(0, 100), citationSyncLimited: false };
+    return { inserted: 0, errors: errors.slice(0, 100), citationSyncLimited: false, citationSyncDeferred: false };
+  }
+
+  if (!shouldAutoSyncCaseLawUploads()) {
+    return {
+      inserted: created.length,
+      errors: errors.slice(0, 100),
+      citationSyncLimited: false,
+      citationSyncDeferred: true,
+    };
   }
 
   const syncBatch = created.slice(0, CASELAW_AUTO_SYNC_MAX);
@@ -3094,6 +3129,7 @@ async function persistExtractedCasesAndSync(args: {
     errors: errors.slice(0, 100),
     citationSync,
     citationSyncLimited: created.length > CASELAW_AUTO_SYNC_MAX,
+    citationSyncDeferred: false,
   };
 }
 
@@ -4362,6 +4398,9 @@ export async function registerRoutes(
   );
   console.log(
     `[Admin Upload Indexing] autoIndexOnUpload=${ADMIN_UPLOAD_AUTO_INDEX ? "enabled" : "disabled (manual-only)"}`,
+  );
+  console.log(
+    `[Case Law Sync] autoSyncOnUpload=${CASELAW_AUTO_SYNC_ON_UPLOAD ? "enabled" : "disabled (manual-only)"}`,
   );
   console.log(
     `[Upload Storage] mode=${USE_DISK_UPLOAD_STORAGE ? "disk" : "memory"} tempDir=${USE_DISK_UPLOAD_STORAGE ? UPLOAD_TEMP_DIR : "n/a"}`,
@@ -10745,11 +10784,14 @@ ${boundedRaw}`;
       }
       const keywordsArr = Array.isArray(keywords) ? keywords : (typeof keywords === "string" ? keywords.split(",").map((k: string) => k.trim()).filter(Boolean) : []);
       const created = await storage.createCaseLaw({ citation, court, title, summary, keywords: keywordsArr });
-      const citationSync = await syncCaseLawEntriesToJudgments([created], actorUserId || "");
+      const citationSync = shouldAutoSyncCaseLawUploads()
+        ? await syncCaseLawEntriesToJudgments([created], actorUserId || "")
+        : undefined;
       await logAuditEvent("admin.caseLaw.create", actorUserId, null, { id: created.id, citation: created.citation });
       res.status(201).json({
         ...created,
         citationSync,
+        citationSyncDeferred: !citationSync,
       });
     } catch (err) {
       console.error("Error creating case law:", err);
@@ -11037,7 +11079,7 @@ ${boundedRaw}`;
         unresolved: number;
         errors: string[];
       } | undefined;
-      if (created.length > 0 && actorUserId) {
+      if (created.length > 0 && actorUserId && shouldAutoSyncCaseLawUploads()) {
         const syncBatch = created.slice(0, CASELAW_AUTO_SYNC_MAX);
         citationSync = await syncCaseLawEntriesToJudgments(syncBatch, actorUserId);
       }
@@ -11047,6 +11089,7 @@ ${boundedRaw}`;
         errors,
         citationSync,
         citationSyncLimited: created.length > CASELAW_AUTO_SYNC_MAX,
+        citationSyncDeferred: !citationSync,
       });
     } catch (err) {
       console.error("Error bulk creating case law:", err);
@@ -11103,6 +11146,186 @@ ${boundedRaw}`;
     } catch (err) {
       console.error("Error starting auto-extraction:", err);
       res.status(500).json({ message: "Failed to start auto-extraction" });
+    }
+  });
+
+  app.post("/api/admin/case-law/process-pending-files", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const actorUserId = getUserId(req)!;
+      const payload = (req.body || {}) as { limit?: number };
+      const limit = Math.max(1, Math.min(1000, Number(payload.limit) || 200));
+
+      const pendingDocs = await db
+        .select({
+          id: adminKnowledge.id,
+          title: adminKnowledge.title,
+          filename: adminKnowledge.filename,
+          objectKey: adminKnowledgeFiles.objectKey,
+          extractedTextKey: adminKnowledgeFiles.extractedTextKey,
+          mimeType: adminKnowledgeFiles.mimeType,
+          sizeBytes: adminKnowledgeFiles.sizeBytes,
+        })
+        .from(adminKnowledge)
+        .leftJoin(adminKnowledgeFiles, eq(adminKnowledgeFiles.adminKnowledgeId, adminKnowledge.id))
+        .leftJoin(caseLaw, and(eq(caseLaw.sourceDocId, adminKnowledge.id), eq(caseLaw.sourceType, "admin")))
+        .where(eq(adminKnowledge.category, "case-law"))
+        .groupBy(
+          adminKnowledge.id,
+          adminKnowledge.title,
+          adminKnowledge.filename,
+          adminKnowledgeFiles.objectKey,
+          adminKnowledgeFiles.extractedTextKey,
+          adminKnowledgeFiles.mimeType,
+          adminKnowledgeFiles.sizeBytes,
+        )
+        .having(eq(sql<number>`count(${caseLaw.id})`, 0))
+        .orderBy(sql`${adminKnowledge.id} desc`)
+        .limit(limit);
+
+      const summary = {
+        targets: pendingDocs.length,
+        processed: 0,
+        extractedDocuments: 0,
+        insertedRows: 0,
+        failed: 0,
+        skippedNoText: 0,
+        skippedNoCases: 0,
+        errors: [] as string[],
+      };
+
+      for (const pending of pendingDocs) {
+        summary.processed += 1;
+        const sourceFilename = sanitizeInputText(
+          pending.filename || pending.title || `admin-knowledge-${pending.id}.txt`,
+          240,
+        ) || `admin-knowledge-${pending.id}.txt`;
+        let content = "";
+
+        try {
+          const doc = await storage.getAdminKnowledgeById(pending.id);
+          content = stripNullBytes(String(doc?.content || "")).trim();
+        } catch {
+          content = "";
+        }
+
+        if (!content && pending.extractedTextKey) {
+          try {
+            content = stripNullBytes(await getR2ObjectText(pending.extractedTextKey)).trim();
+          } catch (r2TextErr: any) {
+            summary.errors.push(
+              `#${pending.id} ${sourceFilename}: failed reading extracted text (${sanitizeInputText(r2TextErr?.message || "unknown", 180)})`,
+            );
+          }
+        }
+
+        if (!content && pending.objectKey) {
+          try {
+            const sourceBuffer = await getR2ObjectBinary(pending.objectKey);
+            if (sourceBuffer && sourceBuffer.length > 0) {
+              const ext = normalizeAttachmentExt(path.extname(sourceFilename || "").toLowerCase());
+              let parseExt = ext;
+              if (!parseExt) {
+                const mime = String(pending.mimeType || "").toLowerCase();
+                if (mime === "application/pdf") parseExt = ".pdf";
+                else if (mime === "application/msword") parseExt = ".doc";
+                else if ((DOCX_COMPAT_MIMES as readonly string[]).includes(mime)) parseExt = ".docx";
+                else parseExt = ".txt";
+              }
+
+              const stableFile = {
+                fieldname: "file",
+                originalname: sourceFilename,
+                encoding: "7bit",
+                mimetype: String(pending.mimeType || "application/octet-stream"),
+                size: Number(pending.sizeBytes || sourceBuffer.length),
+                buffer: sourceBuffer,
+                destination: "",
+                filename: path.basename(sourceFilename),
+                path: "",
+              } as Express.Multer.File;
+
+              const signatureExt = parseExt === ".md" || parseExt === ".json" || parseExt === ".csv" ? ".txt" : parseExt;
+              if ([".pdf", ".doc", ".docx", ".txt"].includes(signatureExt) && !hasSafeDocumentSignature(stableFile, signatureExt)) {
+                throw new Error("file signature does not match declared format");
+              }
+
+              if (parseExt === ".pdf") {
+                try {
+                  content = await extractPdfTextSafe(stableFile.buffer, "admin-case-law-process-pending");
+                } catch (pdfErr: any) {
+                  if (isExtractionQueueFullError(pdfErr)) return sendExtractionBusy(res);
+                  content = "";
+                }
+                if (!content) {
+                  content = await extractPdfTextWithOcrFallback(stableFile, "admin-case-law-process-pending");
+                }
+              } else if (parseExt === ".doc" || parseExt === ".docx") {
+                content = await extractDocxTextSafe(stableFile.buffer, "admin-case-law-process-pending");
+              } else {
+                content = stripNullBytes(stableFile.buffer.toString("utf-8").trim());
+              }
+            }
+          } catch (fileErr: any) {
+            if (isExtractionQueueFullError(fileErr)) return sendExtractionBusy(res);
+            summary.failed += 1;
+            summary.errors.push(
+              `#${pending.id} ${sourceFilename}: ${sanitizeInputText(fileErr?.message || "processing failed", 220)}`,
+            );
+            continue;
+          }
+        }
+
+        if (!content || content.length < 10) {
+          summary.skippedNoText += 1;
+          continue;
+        }
+
+        try {
+          const extracted = nlpExtractCases(content, { sourceFilename });
+          const validCases = extracted.filter((entry) => entry.citation && entry.title);
+          if (validCases.length === 0) {
+            summary.skippedNoCases += 1;
+            continue;
+          }
+          const saved = await persistExtractedCasesAndSync({
+            extractedCases: validCases,
+            sourceDocId: pending.id,
+            sourceFilename,
+            actorUserId,
+          });
+          summary.extractedDocuments += 1;
+          summary.insertedRows += Number(saved.inserted || 0);
+          if (saved.errors?.length) {
+            summary.errors.push(...saved.errors.slice(0, 10).map((msg) => `#${pending.id} ${sourceFilename}: ${msg}`));
+          }
+        } catch (extractErr: any) {
+          if (isExtractionQueueFullError(extractErr)) return sendExtractionBusy(res);
+          summary.failed += 1;
+          summary.errors.push(
+            `#${pending.id} ${sourceFilename}: ${sanitizeInputText(extractErr?.message || "NLP extraction failed", 220)}`,
+          );
+        }
+      }
+
+      await logAuditEvent("admin.caseLaw.processPendingFiles", actorUserId, null, {
+        limit,
+        ...summary,
+        errors: summary.errors.slice(0, 50),
+      });
+
+      return res.json({
+        ok: true,
+        message: `Processed ${summary.processed} pending file(s): inserted ${summary.insertedRows} case-law row(s)`,
+        summary: {
+          ...summary,
+          errors: summary.errors.slice(0, 100),
+        },
+      });
+    } catch (err: any) {
+      if (isExtractionQueueFullError(err)) return sendExtractionBusy(res);
+      console.error("Error processing pending case-law files:", err);
+      return res.status(500).json({ message: "Failed to process pending case-law files" });
     }
   });
 
