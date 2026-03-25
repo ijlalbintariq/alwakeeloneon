@@ -1621,6 +1621,44 @@ type CaseLawBadIndexReextractStatus = {
   lastError: string | null;
 };
 
+type CaseLawSyncToJudgmentsStatus = {
+  running: boolean;
+  shouldStop: boolean;
+  batchSize: number;
+  nextCursorId: number | null;
+  processed: number;
+  imported: number;
+  existing: number;
+  skipped: number;
+  failed: number;
+  linked: number;
+  unresolved: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  lastError: string | null;
+  activeRange: { fromId: number; toId: number } | null;
+  errors: string[];
+};
+
+type CaseLawProcessPendingFilesStatus = {
+  running: boolean;
+  shouldStop: boolean;
+  batchSize: number;
+  loops: number;
+  processed: number;
+  extractedDocuments: number;
+  insertedRows: number;
+  failed: number;
+  skippedNoText: number;
+  skippedNoCases: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  lastError: string | null;
+  activeDocId: number | null;
+  activeFilename: string | null;
+  errors: string[];
+};
+
 type CaseLawBadIndexAuditResponse = {
   ok: boolean;
   sourceKind: CaseLawBadIndexSourceKind;
@@ -1908,6 +1946,40 @@ function CaseLawSection() {
   });
   const caseLawEntries = caseLawPage?.items || [];
   const totalCaseLawEntries = caseLawPage?.total || 0;
+  const { data: syncCitationStatusData } = useQuery<{ ok: boolean; status: CaseLawSyncToJudgmentsStatus }>({
+    queryKey: ["/api/admin/case-law/sync-to-judgments/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/case-law/sync-to-judgments/status", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch citation sync status");
+      }
+      return res.json();
+    },
+    refetchInterval: (query) => {
+      const payload = query.state.data as { ok: boolean; status: CaseLawSyncToJudgmentsStatus } | undefined;
+      return payload?.status?.running ? 2500 : 12000;
+    },
+  });
+  const { data: processPendingStatusData } = useQuery<{ ok: boolean; status: CaseLawProcessPendingFilesStatus }>({
+    queryKey: ["/api/admin/case-law/process-pending-files/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/case-law/process-pending-files/status", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch process-pending status");
+      }
+      return res.json();
+    },
+    refetchInterval: (query) => {
+      const payload = query.state.data as { ok: boolean; status: CaseLawProcessPendingFilesStatus } | undefined;
+      return payload?.status?.running ? 2500 : 12000;
+    },
+  });
+  const syncCitationStatus = syncCitationStatusData?.status;
+  const processPendingStatus = processPendingStatusData?.status;
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -2054,38 +2126,37 @@ function CaseLawSection() {
 
   const syncCitationDbMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/admin/case-law/sync-to-judgments", { limit: 2000 });
+      const res = await apiRequest("POST", "/api/admin/case-law/sync-to-judgments", { batchSize: 1500 });
       return res.json();
     },
     onSuccess: (data: any) => {
-      const processed = Number(data?.processed || 0);
-      const imported = Number(data?.imported || 0);
-      const existing = Number(data?.existing || 0);
-      const skipped = Number(data?.skipped || 0);
-      const failed = Number(data?.failed || 0);
-      toast({
-        title: `Citation sync complete: ${imported} imported, ${existing} existing, ${skipped} skipped, ${failed} failed (processed ${processed})`,
-      });
+      const running = Boolean(data?.status?.running);
+      if (running) {
+        toast({ title: data?.message || "Citation sync started in background" });
+      } else {
+        const processed = Number(data?.processed || 0);
+        const imported = Number(data?.imported || 0);
+        const existing = Number(data?.existing || 0);
+        const skipped = Number(data?.skipped || 0);
+        const failed = Number(data?.failed || 0);
+        toast({
+          title: `Citation sync complete: ${imported} imported, ${existing} existing, ${skipped} skipped, ${failed} failed (processed ${processed})`,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/sync-to-judgments/status"] });
     },
     onError: () => toast({ title: "Failed to sync case law into citation database", variant: "destructive" }),
   });
 
   const processPendingFilesMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/admin/case-law/process-pending-files", { limit: 200 });
+      const res = await apiRequest("POST", "/api/admin/case-law/process-pending-files", { batchSize: 200 });
       return res.json();
     },
     onSuccess: (data: any) => {
-      const summary = data?.summary || {};
-      const processed = Number(summary.processed || 0);
-      const insertedRows = Number(summary.insertedRows || 0);
-      const skippedNoText = Number(summary.skippedNoText || 0);
-      const skippedNoCases = Number(summary.skippedNoCases || 0);
-      const failed = Number(summary.failed || 0);
-      toast({
-        title: `Pending files processed: ${processed} checked, ${insertedRows} inserted, ${skippedNoText} no-text, ${skippedNoCases} no-cases, ${failed} failed`,
-      });
+      toast({ title: data?.message || "Pending case-law processing started in background" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/process-pending-files/status"] });
     },
     onError: () => toast({ title: "Failed to process pending case-law files", variant: "destructive" }),
   });
@@ -2431,21 +2502,21 @@ function CaseLawSection() {
             variant="ghost"
             className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => syncCitationDbMutation.mutate()}
-            disabled={syncCitationDbMutation.isPending || isAutoScanning || processPendingFilesMutation.isPending}
+            disabled={syncCitationDbMutation.isPending || isAutoScanning || processPendingFilesMutation.isPending || Boolean(syncCitationStatus?.running)}
             data-testid="button-sync-citation-db"
           >
-            {syncCitationDbMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Database size={14} />}
-            <span>Sync Citation DB</span>
+            {syncCitationDbMutation.isPending || syncCitationStatus?.running ? <Loader2 className="animate-spin" size={14} /> : <Database size={14} />}
+            <span>{syncCitationStatus?.running ? `Syncing (${syncCitationStatus.processed})` : "Sync Citation DB"}</span>
           </Button>
           <Button
             variant="ghost"
             className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => processPendingFilesMutation.mutate()}
-            disabled={processPendingFilesMutation.isPending || isAutoScanning || syncCitationDbMutation.isPending}
+            disabled={processPendingFilesMutation.isPending || isAutoScanning || syncCitationDbMutation.isPending || Boolean(processPendingStatus?.running)}
             data-testid="button-process-pending-caselaw-files"
           >
-            {processPendingFilesMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
-            <span>Process Pending Files</span>
+            {processPendingFilesMutation.isPending || processPendingStatus?.running ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+            <span>{processPendingStatus?.running ? `Processing (${processPendingStatus.processed})` : "Process Pending Files"}</span>
           </Button>
           <Button
             variant="ghost"
@@ -2464,7 +2535,7 @@ function CaseLawSection() {
                 setIsAutoScanning(false);
               }
             }}
-            disabled={isAutoScanning || processPendingFilesMutation.isPending}
+            disabled={isAutoScanning || processPendingFilesMutation.isPending || Boolean(processPendingStatus?.running)}
             data-testid="button-auto-scan"
           >
             {isAutoScanning ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} />}
