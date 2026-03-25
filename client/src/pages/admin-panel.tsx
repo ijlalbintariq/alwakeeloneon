@@ -2070,6 +2070,26 @@ function CaseLawSection() {
     onError: () => toast({ title: "Failed to sync case law into citation database", variant: "destructive" }),
   });
 
+  const processPendingFilesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/case-law/process-pending-files", { limit: 200 });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      const summary = data?.summary || {};
+      const processed = Number(summary.processed || 0);
+      const insertedRows = Number(summary.insertedRows || 0);
+      const skippedNoText = Number(summary.skippedNoText || 0);
+      const skippedNoCases = Number(summary.skippedNoCases || 0);
+      const failed = Number(summary.failed || 0);
+      toast({
+        title: `Pending files processed: ${processed} checked, ${insertedRows} inserted, ${skippedNoText} no-text, ${skippedNoCases} no-cases, ${failed} failed`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
+    },
+    onError: () => toast({ title: "Failed to process pending case-law files", variant: "destructive" }),
+  });
+
   const startBadIndexReextractMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/admin/case-law/bad-index/reextract/start", {
@@ -2411,11 +2431,21 @@ function CaseLawSection() {
             variant="ghost"
             className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => syncCitationDbMutation.mutate()}
-            disabled={syncCitationDbMutation.isPending || isAutoScanning}
+            disabled={syncCitationDbMutation.isPending || isAutoScanning || processPendingFilesMutation.isPending}
             data-testid="button-sync-citation-db"
           >
             {syncCitationDbMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Database size={14} />}
             <span>Sync Citation DB</span>
+          </Button>
+          <Button
+            variant="ghost"
+            className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            onClick={() => processPendingFilesMutation.mutate()}
+            disabled={processPendingFilesMutation.isPending || isAutoScanning || syncCitationDbMutation.isPending}
+            data-testid="button-process-pending-caselaw-files"
+          >
+            {processPendingFilesMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+            <span>Process Pending Files</span>
           </Button>
           <Button
             variant="ghost"
@@ -2434,7 +2464,7 @@ function CaseLawSection() {
                 setIsAutoScanning(false);
               }
             }}
-            disabled={isAutoScanning}
+            disabled={isAutoScanning || processPendingFilesMutation.isPending}
             data-testid="button-auto-scan"
           >
             {isAutoScanning ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} />}
