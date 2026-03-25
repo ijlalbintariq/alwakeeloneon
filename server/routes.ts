@@ -2241,6 +2241,14 @@ async function applyAlWakeeloSafetyGuardrails(content: string): Promise<string> 
 
 type CitationParts = { year: number; journalCode: string; page: number };
 type CaseLawCitationQueryParts = { year: number; report: string; page: number };
+type ExtractedCaseDraftRow = {
+  citation: string;
+  citationRole?: "primary" | "cited" | string;
+  court?: string;
+  title: string;
+  summary?: string;
+  keywords?: string[] | string;
+};
 const CASELAW_REPORT_CODES = new Set([
   "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
   "PSC", "ALD", "KLR", "PTD", "PTCL", "PLS", "GBLR", "CLD", "TAX", "SLR",
@@ -2248,10 +2256,84 @@ const CASELAW_REPORT_CODES = new Set([
   "LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC",
 ]);
 const NEUTRAL_COURT_REPORT_CODES = new Set(["LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC"]);
+const NEUTRAL_COURT_NAME_BY_REPORT: Record<string, string> = {
+  LHC: "Lahore High Court",
+  IHC: "Islamabad High Court",
+  SHC: "Sindh High Court",
+  PHC: "Peshawar High Court",
+  BHC: "Balochistan High Court",
+  AJKHC: "High Court of Azad Jammu and Kashmir",
+};
 
 function buildFlexibleReportPattern(code: string): string {
   const letters = String(code || "").replace(/[^A-Za-z]/g, "").split("");
   return letters.map((ch) => `${ch}\\.?`).join("\\s*");
+}
+
+function deriveNeutralPrimaryCitationFromFilename(sourceFilename?: string | null): CaseLawCitationQueryParts | null {
+  const rawName = String(sourceFilename || "").trim();
+  if (!rawName) return null;
+  const baseName = rawName.replace(/\.[^.]+$/g, "").trim();
+  if (!baseName) return null;
+  const parsed = parseCaseLawCitationQuery(baseName);
+  if (!parsed) return null;
+  const report = normalizeCitationToken(String(parsed.report || ""));
+  if (!NEUTRAL_COURT_REPORT_CODES.has(report)) return null;
+  return {
+    year: Number(parsed.year),
+    report,
+    page: Number(parsed.page),
+  };
+}
+
+function ensureFilenameNeutralPrimaryCaseRow(
+  extractedCases: ExtractedCaseDraftRow[],
+  sourceFilename?: string | null,
+): ExtractedCaseDraftRow[] {
+  const neutral = deriveNeutralPrimaryCitationFromFilename(sourceFilename);
+  if (!neutral) return Array.isArray(extractedCases) ? extractedCases : [];
+
+  const canonical = `${neutral.year}${neutral.report}${neutral.page}`;
+  const rows = Array.isArray(extractedCases)
+    ? extractedCases.map((row) => ({
+      ...row,
+      citation: String(row?.citation || "").trim(),
+      title: String(row?.title || "").trim(),
+      summary: String(row?.summary || "").trim(),
+      court: String(row?.court || "").trim(),
+      keywords: Array.isArray(row?.keywords)
+        ? row.keywords
+        : (typeof row?.keywords === "string"
+          ? row.keywords.split(",").map((item) => String(item || "").trim()).filter(Boolean)
+          : []),
+    }))
+    : [];
+
+  let targetIndex = rows.findIndex((row) => caseCitationMatches(canonical, String(row.citation || "")));
+  if (targetIndex >= 0) {
+    rows[targetIndex].citation = canonical;
+    if (!rows[targetIndex].court) {
+      rows[targetIndex].court = NEUTRAL_COURT_NAME_BY_REPORT[neutral.report] || "";
+    }
+  } else {
+    rows.unshift({
+      citation: canonical,
+      citationRole: "primary",
+      court: NEUTRAL_COURT_NAME_BY_REPORT[neutral.report] || "",
+      title: `Case reported at ${canonical}`,
+      summary: `Case cited as ${canonical}`,
+      keywords: ["Pakistani law", "case law", neutral.report],
+    });
+    targetIndex = 0;
+  }
+
+  for (const row of rows) {
+    row.citationRole = "cited";
+  }
+  if (targetIndex >= 0 && targetIndex < rows.length) {
+    rows[targetIndex].citationRole = "primary";
+  }
+  return rows;
 }
 
 const CASELAW_REPORT_FLEX_PATTERN = Array.from(CASELAW_REPORT_CODES)
@@ -2916,14 +2998,7 @@ async function syncCaseLawEntriesToJudgments(
 }
 
 async function persistExtractedCasesAndSync(args: {
-  extractedCases: Array<{
-    citation: string;
-    citationRole?: "primary" | "cited" | string;
-    court?: string;
-    title: string;
-    summary?: string;
-    keywords?: string[] | string;
-  }>;
+  extractedCases: ExtractedCaseDraftRow[];
   sourceDocId?: number | null;
   sourceFilename?: string | null;
   actorUserId: string;
@@ -2942,8 +3017,9 @@ async function persistExtractedCasesAndSync(args: {
   };
   citationSyncLimited: boolean;
 }> {
+  const extractedCases = ensureFilenameNeutralPrimaryCaseRow(args.extractedCases, args.sourceFilename);
   const seen = new Set<string>();
-  const entries = args.extractedCases
+  const entries = extractedCases
     .map((c) => {
       const citation = sanitizeInputText(stripNullBytes(String(c.citation || "").trim()), 220);
       const title = sanitizeInputText(stripNullBytes(String(c.title || "").trim()), 500);

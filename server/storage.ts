@@ -206,6 +206,7 @@ function normalizeCaseLawCitationReport(token: string): string {
 const CASELAW_REPORT_CODES = new Set([
   "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
   "PSC", "ALD", "KLR", "PTD", "PTCL", "PLS", "GBLR", "CLD", "TAX", "SLR",
+  "LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC",
 ]);
 
 function extractKnownCaseLawReport(raw: string): string | null {
@@ -234,6 +235,17 @@ function parseCaseLawCitationParts(citation: string): CaseLawCitationParts | nul
     .replace(/[()[\],;:]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+
+  // Neutral compact format: 2014LHC5158 / 2022IHC77
+  const compactNeutral = normalized.match(/\b((?:19|20)\d{2})(LHC|IHC|SHC|PHC|BHC|AJKHC)(\d{1,6})\b/i);
+  if (compactNeutral) {
+    const year = Number(compactNeutral[1]);
+    const report = normalizeCaseLawCitationReport(compactNeutral[2]);
+    const page = Number(compactNeutral[3]);
+    if (Number.isInteger(year) && Number.isInteger(page) && page > 0 && report) {
+      return { year, report, page };
+    }
+  }
 
   // Year-first format: 1974 SCMR 184 / 1976 P Cr. L J 944
   const yearFirst =
