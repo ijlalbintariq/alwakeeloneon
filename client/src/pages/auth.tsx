@@ -30,6 +30,19 @@ export default function AuthPage() {
   const { toast } = useToast();
   const getCaptchaToken = () => (window as any).__ALWAKEELO_CAPTCHA_TOKEN || undefined;
 
+  useEffect(() => {
+    const requestedModeRaw = String(params.get("mode") || "").trim().toLowerCase();
+    let requestedMode: AuthMode | null = null;
+    if (requestedModeRaw === "register" || requestedModeRaw === "signup" || requestedModeRaw === "sign-up") {
+      requestedMode = "register";
+    } else if (requestedModeRaw === "login" || requestedModeRaw === "signin" || requestedModeRaw === "sign-in") {
+      requestedMode = "login";
+    }
+    if (requestedMode && requestedMode !== mode) {
+      setMode(requestedMode);
+    }
+  }, [searchString, mode]);
+
   const { data: googleStatus } = useQuery<{ available: boolean; clientId: string }>({
     queryKey: ["/api/auth/google/status"],
     queryFn: async () => {
@@ -438,9 +451,17 @@ export default function AuthPage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => {
-              setMode(mode === "login" ? "register" : "login");
+              const nextMode: AuthMode = mode === "login" ? "register" : "login";
+              setMode(nextMode);
               setPassword("");
               setAcceptedTerms(false);
+              if (typeof window !== "undefined") {
+                const next = new URLSearchParams(window.location.search);
+                next.set("mode", nextMode);
+                const nextQuery = next.toString();
+                const cleanUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash || ""}`;
+                window.history.replaceState({}, document.title, cleanUrl);
+              }
             }}
             data-testid="button-toggle-auth-mode"
             className="text-xs preview-muted hover:text-amber-400 transition-colors"

@@ -85,6 +85,16 @@ function Router({ onReady }: { onReady?: () => void }) {
     return <AuthPage />;
   }
 
+  if (location === "/sign-in" || location === "/login") {
+    if (user) return <Redirect to="/dashboard" />;
+    return <Redirect to="/auth?mode=login" />;
+  }
+
+  if (location === "/sign-up" || location === "/register" || location === "/signup") {
+    if (user) return <Redirect to="/dashboard" />;
+    return <Redirect to="/auth?mode=register" />;
+  }
+
   if (location === "/forgot-password") {
     if (user) return <Redirect to="/dashboard" />;
     return <ForgotPasswordPage />;
