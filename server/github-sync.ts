@@ -6,6 +6,7 @@ const GITHUB_REPO = "ijlalbintariq/law";
 const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_REPO}`;
 const SUPPORTED_EXTENSIONS = [".txt", ".json", ".csv", ".pdf"];
 const PROD_DEFAULT_SYNC_ENABLED = false;
+const GITHUB_ACCESS_TOKEN = String(process.env.GITHUB_ACCESS_TOKEN || "").trim();
 
 function envBool(name: string, defaultValue: boolean): boolean {
   const raw = (process.env[name] || "").trim().toLowerCase();
@@ -22,6 +23,19 @@ function envInt(name: string, defaultValue: number, min: number, max: number): n
 function shouldRunGithubSync(): boolean {
   const defaultEnabled = process.env.NODE_ENV === "production" ? PROD_DEFAULT_SYNC_ENABLED : true;
   return envBool("GITHUB_SYNC_ENABLED", defaultEnabled);
+}
+
+function buildGithubHeaders(options?: { includeAccept?: boolean }): Record<string, string> {
+  const headers: Record<string, string> = {
+    "User-Agent": "AlWakeelo-LegalBot",
+  };
+  if (options?.includeAccept) {
+    headers.Accept = "application/vnd.github.v3+json";
+  }
+  if (GITHUB_ACCESS_TOKEN) {
+    headers.Authorization = `Bearer ${GITHUB_ACCESS_TOKEN}`;
+  }
+  return headers;
 }
 
 const MAX_GITHUB_FILE_BYTES = envInt("GITHUB_SYNC_MAX_FILE_BYTES", 2 * 1024 * 1024, 64 * 1024, 50 * 1024 * 1024);
@@ -53,7 +67,7 @@ async function fetchDirectoryContents(path: string = ""): Promise<GithubItem[]> 
     : `${GITHUB_API_BASE}/contents`;
 
   const res = await fetch(url, {
-    headers: { "Accept": "application/vnd.github.v3+json", "User-Agent": "AlWakeelo-LegalBot" },
+    headers: buildGithubHeaders({ includeAccept: true }),
   });
   if (!res.ok) {
     console.error(`[GitHub Sync] API error for path "${path}": ${res.status} ${res.statusText}`);
@@ -90,7 +104,7 @@ async function fetchFileContent(file: GithubItem): Promise<string | null> {
   try {
     const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
     const res = await fetch(file.download_url, {
-      headers: { "User-Agent": "AlWakeelo-LegalBot" },
+      headers: buildGithubHeaders(),
     });
     if (!res.ok) return null;
 
@@ -119,6 +133,11 @@ async function fetchFileContent(file: GithubItem): Promise<string | null> {
 
 export async function syncGithubKnowledge(): Promise<void> {
   try {
+    if (GITHUB_ACCESS_TOKEN) {
+      console.log("[GitHub Sync] Access token detected. Authenticated API mode enabled.");
+    } else {
+      console.log("[GitHub Sync] No access token configured. Using public GitHub API mode.");
+    }
     if (!shouldRunGithubSync()) {
       console.log("[GitHub Sync] Disabled by configuration. Skipping startup sync.");
       return;
