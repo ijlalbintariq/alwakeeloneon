@@ -22,7 +22,13 @@ export default function TermsOfServicePage() {
 
       <div className="max-w-4xl mx-auto px-3 sm:px-6 py-10 md:py-16">
         <h1 className="text-4xl font-bold italic mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>Terms and Conditions</h1>
-        <p className="text-sm text-slate-500 mb-12">Last updated: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+        <p className="text-sm text-slate-500 mb-6">Last updated: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+        <div className="mb-10 rounded-xl border border-amber-400/35 bg-amber-500/10 px-4 py-3">
+          <p className="text-sm text-amber-100 leading-relaxed">
+            <span className="font-semibold">Business Ownership Notice:</span> Al Wakeelo is owned and operated by{" "}
+            <span className="font-semibold text-amber-200">Majnoon Studio</span> (registered business name).
+          </p>
+        </div>
 
         <div className="prose prose-invert prose-slate max-w-none space-y-8">
           <section>
