@@ -227,7 +227,6 @@ function stripCitationPlaceholderArtifacts(text: string): string {
     .replace(/\[\s*CASE CITATION REQUIRED\s*\]/gi, "")
     .replace(/\[\s*Pakistani case citation required\s*\]/gi, "")
     .replace(/\(\s*\)/g, "")
-    .replace(/\[\s*\]/g, "")
     .replace(/\s+,/g, ",")
     .replace(/\s+\./g, ".")
     .replace(/\s+;/g, ";")
