@@ -197,6 +197,7 @@ export type CaseLawSearchOptions = {
   court?: string;
   sort?: "relevance" | "latest";
   parsedCitation?: CaseLawCitationParts | null;
+  includeSourceContentSearch?: boolean;
 };
 
 function normalizeCaseLawCitationReport(token: string): string {
@@ -1302,6 +1303,7 @@ export class DatabaseStorage implements IStorage {
     const reportRaw = normalizeCaseLawCitationReport(options.report || parsedFromQuery?.report || "");
     const courtRaw = String(options.court || "").trim();
     const sortMode = options.sort === "latest" ? "latest" : "relevance";
+    const includeSourceContentSearch = options.includeSourceContentSearch === true;
 
     const year = Number.isInteger(yearRaw) && Number(yearRaw) >= 1900 && Number(yearRaw) <= 2200 ? Number(yearRaw) : null;
     const page = Number.isInteger(pageRaw) && Number(pageRaw) > 0 ? Number(pageRaw) : null;
@@ -1348,7 +1350,7 @@ export class DatabaseStorage implements IStorage {
       )
     )`;
 
-    const sourcePhraseTextExpr = hasTextQuery
+    const sourcePhraseTextExpr = includeSourceContentSearch && hasTextQuery
       ? buildSourceContentMatchExpr(textPattern)
       : undefined;
 
@@ -1359,20 +1361,23 @@ export class DatabaseStorage implements IStorage {
           ilike(caseLaw.title, textPattern),
           ilike(caseLaw.summary, textPattern),
           sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${textPattern}`,
-          sourcePhraseTextExpr!,
+          ...(sourcePhraseTextExpr ? [sourcePhraseTextExpr] : []),
         )
       : undefined;
 
     const tokenClauses = queryTokens.flatMap((token) => {
       const tokenPattern = `%${token}%`;
-      return [
+      const baseClauses = [
         ilike(caseLaw.citation, tokenPattern),
         ilike(caseLaw.court, tokenPattern),
         ilike(caseLaw.title, tokenPattern),
         ilike(caseLaw.summary, tokenPattern),
         sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${tokenPattern}`,
-        buildSourceContentMatchExpr(tokenPattern),
       ];
+      if (includeSourceContentSearch) {
+        baseClauses.push(buildSourceContentMatchExpr(tokenPattern));
+      }
+      return baseClauses;
     });
     const tokenTextExpr = tokenClauses.length > 0 ? or(...tokenClauses)! : undefined;
     const textMatchExpr = hasTextQuery
@@ -1419,8 +1424,8 @@ export class DatabaseStorage implements IStorage {
     const keywordTextExpr = hasTextQuery
       ? sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${textPattern}`
       : sql`false`;
-    const sourcePhraseMatchExpr = hasTextQuery && sourcePhraseTextExpr ? sourcePhraseTextExpr : sql`false`;
-    const sourceTokenMatchExpr = hasTextQuery && tokenTextExpr ? tokenTextExpr : sql`false`;
+    const sourcePhraseMatchExpr = includeSourceContentSearch && hasTextQuery && sourcePhraseTextExpr ? sourcePhraseTextExpr : sql`false`;
+    const sourceTokenMatchExpr = includeSourceContentSearch && hasTextQuery && tokenTextExpr ? tokenTextExpr : sql`false`;
     const tokenRankExpr = queryTokens.length > 0
       ? sql<number>`COALESCE(
           ts_rank_cd(

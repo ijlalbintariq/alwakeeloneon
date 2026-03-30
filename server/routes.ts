@@ -2767,7 +2767,16 @@ async function rankCaseLawRowsBySourceRelevance(rows: CaseLaw[], userId: string,
     rows.map(async (row) => {
       let sourceText = "";
       try {
-        sourceText = await loadCaseLawSourceText(row, userId, { includeMetadataFallback: false });
+        sourceText = await loadCaseLawSourceText(row, userId, {
+          includeMetadataFallback: false,
+          allowRemoteFileRead: false,
+        });
+        if (!sourceText.trim()) {
+          sourceText = await loadCaseLawSourceText(row, userId, {
+            includeMetadataFallback: false,
+            allowRemoteFileRead: true,
+          });
+        }
       } catch {
         sourceText = "";
       }
@@ -2795,79 +2804,83 @@ async function searchCaseLawWithFullText(args: {
   sort?: "relevance" | "latest";
   parsedCitation?: CaseLawCitationQueryParts | null;
 }): Promise<CaseLaw[]> {
-  const baseResultsRaw = await storage.searchCaseLaw(args.query, args.limit, {
+  const query = String(args.query || "").trim();
+  const baseResultsPromise = storage.searchCaseLaw(args.query, args.limit, {
     year: args.year,
     report: args.report,
     page: args.page,
     court: args.court,
     sort: args.sort,
     parsedCitation: args.parsedCitation,
+    includeSourceContentSearch: false,
   });
-  const baseResults = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(baseResultsRaw));
+  const ragCandidatesPromise: Promise<CaseLaw[]> = !query
+    ? Promise.resolve([])
+    : (async () => {
+      try {
+        const retrieval = await retrieveForQuery({
+          userId: args.userId,
+          query,
+          topK: Math.min(120, Math.max(args.limit * 4, 24)),
+        });
 
-  const query = String(args.query || "").trim();
+        const sourceDocIds: number[] = [];
+        const seenDocIds = new Set<number>();
+        for (const match of retrieval.matches) {
+          const sourceType = String((match.metadata || {}).sourceType || "").toLowerCase();
+          if (sourceType !== "admin-case-law") continue;
+          const sourceDocId = Number(match.sourceDocumentId);
+          if (!Number.isInteger(sourceDocId) || sourceDocId <= 0 || seenDocIds.has(sourceDocId)) continue;
+          seenDocIds.add(sourceDocId);
+          sourceDocIds.push(sourceDocId);
+          if (sourceDocIds.length >= Math.max(args.limit * 4, 30)) break;
+        }
+
+        if (sourceDocIds.length === 0) return [];
+        const rowsRaw = await storage.getCaseLawBySourceDocuments(sourceDocIds, "admin");
+        const rows = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(rowsRaw));
+        const filteredRows = filterCaseLawByStructuredFields(rows, {
+          year: args.year,
+          report: args.report,
+          page: args.page,
+          court: args.court,
+        });
+
+        const bestBySourceDoc = new Map<number, CaseLaw>();
+        for (const row of filteredRows) {
+          const sourceDocId = Number(row.sourceDocId || 0);
+          if (!Number.isInteger(sourceDocId) || sourceDocId <= 0) continue;
+          const existing = bestBySourceDoc.get(sourceDocId);
+          if (!existing) {
+            bestBySourceDoc.set(sourceDocId, row);
+            continue;
+          }
+          const existingPrimary = String(existing.citationRole || "").toLowerCase() === "primary";
+          const candidatePrimary = String(row.citationRole || "").toLowerCase() === "primary";
+          if (candidatePrimary && !existingPrimary) {
+            bestBySourceDoc.set(sourceDocId, row);
+            continue;
+          }
+          const existingScore = scoreCaseLawTextMatch(existing, query);
+          const candidateScore = scoreCaseLawTextMatch(row, query);
+          if (candidateScore > existingScore) {
+            bestBySourceDoc.set(sourceDocId, row);
+          }
+        }
+
+        return sourceDocIds
+          .map((sourceDocId) => bestBySourceDoc.get(sourceDocId))
+          .filter((row): row is CaseLaw => Boolean(row));
+      } catch (err) {
+        console.warn("[CaseLaw Search] Full-text retrieval fallback unavailable:", err);
+        return [];
+      }
+    })();
+
+  const [baseResultsRaw, ragCandidates] = await Promise.all([baseResultsPromise, ragCandidatesPromise]);
+  const baseResults = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(baseResultsRaw));
   if (!query) {
     return filterCaseLawResultsWithRealFullText(baseResults, args.userId);
-  }
-
-  let ragCandidates: CaseLaw[] = [];
-  try {
-    const retrieval = await retrieveForQuery({
-      userId: args.userId,
-      query,
-      topK: Math.min(120, Math.max(args.limit * 4, 24)),
-    });
-
-    const sourceDocIds: number[] = [];
-    const seenDocIds = new Set<number>();
-    for (const match of retrieval.matches) {
-      const sourceType = String((match.metadata || {}).sourceType || "").toLowerCase();
-      if (sourceType !== "admin-case-law") continue;
-      const sourceDocId = Number(match.sourceDocumentId);
-      if (!Number.isInteger(sourceDocId) || sourceDocId <= 0 || seenDocIds.has(sourceDocId)) continue;
-      seenDocIds.add(sourceDocId);
-      sourceDocIds.push(sourceDocId);
-      if (sourceDocIds.length >= Math.max(args.limit * 4, 30)) break;
-    }
-
-    if (sourceDocIds.length > 0) {
-      const rowsRaw = await storage.getCaseLawBySourceDocuments(sourceDocIds, "admin");
-      const rows = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(rowsRaw));
-      const filteredRows = filterCaseLawByStructuredFields(rows, {
-        year: args.year,
-        report: args.report,
-        page: args.page,
-        court: args.court,
-      });
-
-      const bestBySourceDoc = new Map<number, CaseLaw>();
-      for (const row of filteredRows) {
-        const sourceDocId = Number(row.sourceDocId || 0);
-        if (!Number.isInteger(sourceDocId) || sourceDocId <= 0) continue;
-        const existing = bestBySourceDoc.get(sourceDocId);
-        if (!existing) {
-          bestBySourceDoc.set(sourceDocId, row);
-          continue;
-        }
-        const existingPrimary = String(existing.citationRole || "").toLowerCase() === "primary";
-        const candidatePrimary = String(row.citationRole || "").toLowerCase() === "primary";
-        if (candidatePrimary && !existingPrimary) {
-          bestBySourceDoc.set(sourceDocId, row);
-          continue;
-        }
-        const existingScore = scoreCaseLawTextMatch(existing, query);
-        const candidateScore = scoreCaseLawTextMatch(row, query);
-        if (candidateScore > existingScore) {
-          bestBySourceDoc.set(sourceDocId, row);
-        }
-      }
-
-      ragCandidates = sourceDocIds
-        .map((sourceDocId) => bestBySourceDoc.get(sourceDocId))
-        .filter((row): row is CaseLaw => Boolean(row));
-    }
-  } catch (err) {
-    console.warn("[CaseLaw Search] Full-text retrieval fallback unavailable:", err);
   }
 
   const merged: CaseLaw[] = [];
@@ -2897,6 +2910,7 @@ async function searchCaseLawWithFullText(args: {
       court: args.court,
       sort: args.sort,
       parsedCitation: args.parsedCitation,
+      includeSourceContentSearch: false,
     });
     const topUpRows = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(topUpRowsRaw));
     const topUpFiltered = await filterCaseLawResultsWithRealFullText(topUpRows, args.userId);
@@ -2948,11 +2962,13 @@ async function loadCaseLawSourceText(
   userId: string,
   options?: {
     includeMetadataFallback?: boolean;
+    allowRemoteFileRead?: boolean;
   },
 ): Promise<string> {
   const sourceType = String(entry.sourceType || "").toLowerCase();
   const sourceDocId = Number(entry.sourceDocId || 0);
   const includeMetadataFallback = options?.includeMetadataFallback !== false;
+  const allowRemoteFileRead = options?.allowRemoteFileRead !== false;
   let content = "";
 
   if (sourceDocId > 0 && sourceType === "admin") {
@@ -2960,7 +2976,7 @@ async function loadCaseLawSourceText(
     if (doc) {
       content = doc.content || "";
       const fileMeta = await storage.getAdminKnowledgeFile(doc.id);
-      if (fileMeta?.extractedTextKey) {
+      if (allowRemoteFileRead && fileMeta?.extractedTextKey) {
         const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
         if (fullContent) content = fullContent;
       }
@@ -2973,7 +2989,7 @@ async function loadCaseLawSourceText(
     if (doc) {
       content = doc.content || "";
       const fileMeta = await storage.getStatuteDocumentFile(doc.id);
-      if (fileMeta?.extractedTextKey) {
+      if (allowRemoteFileRead && fileMeta?.extractedTextKey) {
         const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
         if (fullContent) content = fullContent;
       }
@@ -2983,7 +2999,7 @@ async function loadCaseLawSourceText(
     if (doc) {
       content = doc.content || "";
       const fileMeta = await storage.getDocumentFile(doc.id, userId);
-      if (fileMeta?.extractedTextKey) {
+      if (allowRemoteFileRead && fileMeta?.extractedTextKey) {
         const fullContent = await getR2ObjectText(fileMeta.extractedTextKey);
         if (fullContent) content = fullContent;
       }
@@ -2999,10 +3015,13 @@ async function loadCaseLawSourceText(
 
 async function filterCaseLawResultsWithRealFullText(rows: CaseLaw[], userId: string): Promise<CaseLaw[]> {
   if (rows.length === 0) return [];
-  const checks = await Promise.all(
+  const localChecks = await Promise.all(
     rows.map(async (row) => {
       try {
-        const sourceText = await loadCaseLawSourceText(row, userId, { includeMetadataFallback: false });
+        const sourceText = await loadCaseLawSourceText(row, userId, {
+          includeMetadataFallback: false,
+          allowRemoteFileRead: false,
+        });
         if (!sourceText || sourceText.trim().length < 20) return null;
         return row;
       } catch {
@@ -3010,7 +3029,24 @@ async function filterCaseLawResultsWithRealFullText(rows: CaseLaw[], userId: str
       }
     }),
   );
-  return checks.filter((row): row is CaseLaw => Boolean(row));
+  const localRows = localChecks.filter((row): row is CaseLaw => Boolean(row));
+  if (localRows.length > 0) return localRows;
+
+  const remoteChecks = await Promise.all(
+    rows.slice(0, Math.min(12, rows.length)).map(async (row) => {
+      try {
+        const sourceText = await loadCaseLawSourceText(row, userId, {
+          includeMetadataFallback: false,
+          allowRemoteFileRead: true,
+        });
+        if (!sourceText || sourceText.trim().length < 20) return null;
+        return row;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return remoteChecks.filter((row): row is CaseLaw => Boolean(row));
 }
 
 async function syncCaseLawEntriesToJudgments(
@@ -4583,20 +4619,36 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
   if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
     const caseLawLines: string[] = [];
-    for (const c of caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT)) {
-      let sourceExcerpt = "";
-      if (userId) {
-        try {
-          const sourceText = await loadCaseLawSourceText(c, userId, { includeMetadataFallback: false });
-          if (!sourceText.trim()) continue;
-          sourceExcerpt = sourceText.slice(0, 700).replace(/\s+/g, " ").trim();
-        } catch {
-          continue;
+    const candidateRows = caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT);
+    const withExcerpts = await Promise.all(
+      candidateRows.map(async (c) => {
+        let sourceExcerpt = "";
+        if (userId) {
+          try {
+            let sourceText = await loadCaseLawSourceText(c, userId, {
+              includeMetadataFallback: false,
+              allowRemoteFileRead: false,
+            });
+            if (!sourceText.trim()) {
+              sourceText = await loadCaseLawSourceText(c, userId, {
+                includeMetadataFallback: false,
+                allowRemoteFileRead: true,
+              });
+            }
+            if (!sourceText.trim()) return null;
+            sourceExcerpt = sourceText.slice(0, 700).replace(/\s+/g, " ").trim();
+          } catch {
+            return null;
+          }
         }
-      }
-      caseLawLines.push(`- ${c.citation} (${c.court}): ${c.title} — ${c.summary}`);
-      if (sourceExcerpt) {
-        caseLawLines.push(`  Key Judgment Excerpt: ${sourceExcerpt}${sourceExcerpt.length >= 700 ? "..." : ""}`);
+        return { row: c, sourceExcerpt };
+      }),
+    );
+    for (const item of withExcerpts) {
+      if (!item) continue;
+      caseLawLines.push(`- ${item.row.citation} (${item.row.court}): ${item.row.title} — ${item.row.summary}`);
+      if (item.sourceExcerpt) {
+        caseLawLines.push(`  Key Judgment Excerpt: ${item.sourceExcerpt}${item.sourceExcerpt.length >= 700 ? "..." : ""}`);
       }
     }
     if (caseLawLines.length > 0) {
