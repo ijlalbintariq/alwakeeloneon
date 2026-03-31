@@ -790,6 +790,7 @@ type ReindexBatchResult = {
   failed: number;
   failures: Array<{ sourceId: number; reason: string }>;
   nextOffset: number;
+  nextCursorId: number | null;
   remaining: number;
   totalDocuments: number;
   hasMore: boolean;
@@ -801,11 +802,19 @@ type ReindexBatchProgress = {
   indexed: number;
   failed: number;
   nextOffset: number;
+  nextCursorId: number | null;
 };
 
 type ReindexBatchHooks = {
   onMeta?: (meta: { totalDocuments: number }) => void;
   onProgress?: (progress: ReindexBatchProgress) => void;
+};
+
+type GlobalAdminRagReindexMode = "full" | "incremental";
+
+type ReindexBatchOptions = {
+  mode?: GlobalAdminRagReindexMode;
+  nextCursorId?: number | null;
 };
 
 type CaseLawBadIndexSourceKind = "admin" | "github" | "statute" | "user" | "all";
@@ -895,6 +904,7 @@ type GlobalAdminRagSourceState = {
   key: GlobalAdminRagSourceKey;
   label: string;
   nextOffset: number;
+  nextCursorId: number | null;
   totalDocuments: number;
   processed: number;
   indexed: number;
@@ -906,6 +916,7 @@ type GlobalAdminRagSourceState = {
 type GlobalAdminRagReindexJobState = {
   running: boolean;
   shouldStop: boolean;
+  mode: GlobalAdminRagReindexMode;
   batchSize: number;
   activeSourceIndex: number;
   startedAt: Date | null;
@@ -932,6 +943,7 @@ function createGlobalAdminRagSourceState(key: GlobalAdminRagSourceKey): GlobalAd
     key,
     label: labelByKey[key],
     nextOffset: 0,
+    nextCursorId: null,
     totalDocuments: 0,
     processed: 0,
     indexed: 0,
@@ -945,6 +957,7 @@ function createGlobalAdminRagReindexJobState(): GlobalAdminRagReindexJobState {
   return {
     running: false,
     shouldStop: false,
+    mode: "full",
     batchSize: 50,
     activeSourceIndex: 0,
     startedAt: null,
@@ -1464,6 +1477,7 @@ function snapshotGlobalAdminRagReindexJob() {
   return {
     running: globalAdminRagReindexJob.running,
     shouldStop: globalAdminRagReindexJob.shouldStop,
+    mode: globalAdminRagReindexJob.mode,
     batchSize: globalAdminRagReindexJob.batchSize,
     activeSource: GLOBAL_ADMIN_RAG_SOURCE_ORDER[globalAdminRagReindexJob.activeSourceIndex] || null,
     activeSourceLabel: GLOBAL_ADMIN_RAG_SOURCE_ORDER[globalAdminRagReindexJob.activeSourceIndex]
@@ -1499,35 +1513,89 @@ async function withOperationTimeout<T>(promise: Promise<T>, timeoutMs: number, t
   }
 }
 
-async function reindexCaseLawBatch(limit: number, offset: number, hooks?: ReindexBatchHooks): Promise<ReindexBatchResult> {
+async function reindexCaseLawBatch(
+  limit: number,
+  offset: number,
+  hooks?: ReindexBatchHooks,
+  options?: ReindexBatchOptions,
+): Promise<ReindexBatchResult> {
   if (!dbAvailable || !pool) {
     throw new Error("Database unavailable");
   }
 
-  const rows = await pool.query(
-    `
-    SELECT id
-    FROM admin_knowledge
-    WHERE ${ADMIN_CASELAW_CATEGORY_SQL} = 'caselaw'
-    ORDER BY id ASC
-    LIMIT $1 OFFSET $2
-    `,
-    [limit, offset],
-  );
-  const totalRow = await pool.query(
-    `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE ${ADMIN_CASELAW_CATEGORY_SQL} = 'caselaw'`,
-  );
-  const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  const mode: GlobalAdminRagReindexMode = options?.mode === "incremental" ? "incremental" : "full";
+  const currentCursorId = Math.max(0, Number(options?.nextCursorId || 0));
+  let rows: Array<{ id: number }> = [];
+  let totalDocuments = 0;
+
+  if (mode === "incremental") {
+    const rowsResult = await pool.query(
+      `
+      SELECT ak.id
+      FROM admin_knowledge ak
+      WHERE ${ADMIN_CASELAW_CATEGORY_SQL} = 'caselaw'
+        AND ak.id > $2
+        AND NOT EXISTS (
+          SELECT 1
+          FROM rag_documents rd
+          WHERE rd.user_id = $1
+            AND rd.source_document_id = ak.id
+            AND rd.status = 'indexed'
+            AND rd.chunk_count > 0
+        )
+      ORDER BY ak.id ASC
+      LIMIT $3
+      `,
+      [GLOBAL_CASELAW_RAG_USER_ID, currentCursorId, limit],
+    );
+    rows = (rowsResult.rows || []) as Array<{ id: number }>;
+    const totalRow = await pool.query(
+      `
+      SELECT COUNT(*)::int AS total
+      FROM admin_knowledge ak
+      WHERE ${ADMIN_CASELAW_CATEGORY_SQL} = 'caselaw'
+        AND ak.id > $2
+        AND NOT EXISTS (
+          SELECT 1
+          FROM rag_documents rd
+          WHERE rd.user_id = $1
+            AND rd.source_document_id = ak.id
+            AND rd.status = 'indexed'
+            AND rd.chunk_count > 0
+        )
+      `,
+      [GLOBAL_CASELAW_RAG_USER_ID, currentCursorId],
+    );
+    totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  } else {
+    const rowsResult = await pool.query(
+      `
+      SELECT id
+      FROM admin_knowledge
+      WHERE ${ADMIN_CASELAW_CATEGORY_SQL} = 'caselaw'
+      ORDER BY id ASC
+      LIMIT $1 OFFSET $2
+      `,
+      [limit, offset],
+    );
+    rows = (rowsResult.rows || []) as Array<{ id: number }>;
+    const totalRow = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE ${ADMIN_CASELAW_CATEGORY_SQL} = 'caselaw'`,
+    );
+    totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  }
   hooks?.onMeta?.({ totalDocuments });
 
   let processed = 0;
   let indexed = 0;
   let failed = 0;
+  let nextCursorId = mode === "incremental" ? currentCursorId : null;
   const failures: Array<{ sourceId: number; reason: string }> = [];
 
-  for (const row of rows.rows || []) {
+  for (const row of rows) {
     const adminKnowledgeId = Number((row as any).id);
     if (!Number.isInteger(adminKnowledgeId) || adminKnowledgeId < 1) continue;
+    if (mode === "incremental") nextCursorId = adminKnowledgeId;
     try {
       const result = await withOperationTimeout(
         indexAdminCaseLawDocument(adminKnowledgeId),
@@ -1557,52 +1625,108 @@ async function reindexCaseLawBatch(limit: number, offset: number, hooks?: Reinde
       processed,
       indexed,
       failed,
-      nextOffset: offset + processed,
+      nextOffset: mode === "full" ? offset + processed : 0,
+      nextCursorId,
     });
   }
 
-  const nextOffset = offset + processed;
-  const remaining = Math.max(0, totalDocuments - nextOffset);
+  const nextOffset = mode === "full" ? offset + processed : 0;
+  const remaining = mode === "full"
+    ? Math.max(0, totalDocuments - nextOffset)
+    : Math.max(0, totalDocuments - processed);
   return {
     processed,
     indexed,
     failed,
     failures,
     nextOffset,
+    nextCursorId,
     remaining,
     totalDocuments,
     hasMore: remaining > 0,
   };
 }
 
-async function reindexStatuteBatch(limit: number, offset: number, hooks?: ReindexBatchHooks): Promise<ReindexBatchResult> {
+async function reindexStatuteBatch(
+  limit: number,
+  offset: number,
+  hooks?: ReindexBatchHooks,
+  options?: ReindexBatchOptions,
+): Promise<ReindexBatchResult> {
   if (!dbAvailable || !pool) {
     throw new Error("Database unavailable");
   }
 
-  const rows = await pool.query(
-    `
-    SELECT id
-    FROM statute_documents
-    ORDER BY id ASC
-    LIMIT $1 OFFSET $2
-    `,
-    [limit, offset],
-  );
-  const totalRow = await pool.query(
-    `SELECT COUNT(*)::int AS total FROM statute_documents`,
-  );
-  const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  const mode: GlobalAdminRagReindexMode = options?.mode === "incremental" ? "incremental" : "full";
+  const currentCursorId = Math.max(0, Number(options?.nextCursorId || 0));
+  let rows: Array<{ id: number }> = [];
+  let totalDocuments = 0;
+
+  if (mode === "incremental") {
+    const rowsResult = await pool.query(
+      `
+      SELECT sd.id
+      FROM statute_documents sd
+      WHERE sd.id > $2
+        AND NOT EXISTS (
+          SELECT 1
+          FROM rag_documents rd
+          WHERE rd.user_id = $1
+            AND rd.source_document_id = sd.id
+            AND rd.status = 'indexed'
+            AND rd.chunk_count > 0
+        )
+      ORDER BY sd.id ASC
+      LIMIT $3
+      `,
+      [GLOBAL_STATUTE_RAG_USER_ID, currentCursorId, limit],
+    );
+    rows = (rowsResult.rows || []) as Array<{ id: number }>;
+    const totalRow = await pool.query(
+      `
+      SELECT COUNT(*)::int AS total
+      FROM statute_documents sd
+      WHERE sd.id > $2
+        AND NOT EXISTS (
+          SELECT 1
+          FROM rag_documents rd
+          WHERE rd.user_id = $1
+            AND rd.source_document_id = sd.id
+            AND rd.status = 'indexed'
+            AND rd.chunk_count > 0
+        )
+      `,
+      [GLOBAL_STATUTE_RAG_USER_ID, currentCursorId],
+    );
+    totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  } else {
+    const rowsResult = await pool.query(
+      `
+      SELECT id
+      FROM statute_documents
+      ORDER BY id ASC
+      LIMIT $1 OFFSET $2
+      `,
+      [limit, offset],
+    );
+    rows = (rowsResult.rows || []) as Array<{ id: number }>;
+    const totalRow = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM statute_documents`,
+    );
+    totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  }
   hooks?.onMeta?.({ totalDocuments });
 
   let processed = 0;
   let indexed = 0;
   let failed = 0;
+  let nextCursorId = mode === "incremental" ? currentCursorId : null;
   const failures: Array<{ sourceId: number; reason: string }> = [];
 
-  for (const row of rows.rows || []) {
+  for (const row of rows) {
     const statuteDocumentId = Number((row as any).id);
     if (!Number.isInteger(statuteDocumentId) || statuteDocumentId < 1) continue;
+    if (mode === "incremental") nextCursorId = statuteDocumentId;
     try {
       const result = await withOperationTimeout(
         indexAdminStatuteDocument(statuteDocumentId),
@@ -1632,53 +1756,111 @@ async function reindexStatuteBatch(limit: number, offset: number, hooks?: Reinde
       processed,
       indexed,
       failed,
-      nextOffset: offset + processed,
+      nextOffset: mode === "full" ? offset + processed : 0,
+      nextCursorId,
     });
   }
 
-  const nextOffset = offset + processed;
-  const remaining = Math.max(0, totalDocuments - nextOffset);
+  const nextOffset = mode === "full" ? offset + processed : 0;
+  const remaining = mode === "full"
+    ? Math.max(0, totalDocuments - nextOffset)
+    : Math.max(0, totalDocuments - processed);
   return {
     processed,
     indexed,
     failed,
     failures,
     nextOffset,
+    nextCursorId,
     remaining,
     totalDocuments,
     hasMore: remaining > 0,
   };
 }
 
-async function reindexAdminKnowledgeBatch(limit: number, offset: number, hooks?: ReindexBatchHooks): Promise<ReindexBatchResult> {
+async function reindexAdminKnowledgeBatch(
+  limit: number,
+  offset: number,
+  hooks?: ReindexBatchHooks,
+  options?: ReindexBatchOptions,
+): Promise<ReindexBatchResult> {
   if (!dbAvailable || !pool) {
     throw new Error("Database unavailable");
   }
 
-  const rows = await pool.query(
-    `
-    SELECT id
-    FROM admin_knowledge
-    WHERE ${ADMIN_CASELAW_CATEGORY_SQL} <> 'caselaw'
-    ORDER BY id ASC
-    LIMIT $1 OFFSET $2
-    `,
-    [limit, offset],
-  );
-  const totalRow = await pool.query(
-    `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE ${ADMIN_CASELAW_CATEGORY_SQL} <> 'caselaw'`,
-  );
-  const totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  const mode: GlobalAdminRagReindexMode = options?.mode === "incremental" ? "incremental" : "full";
+  const currentCursorId = Math.max(0, Number(options?.nextCursorId || 0));
+  let rows: Array<{ id: number }> = [];
+  let totalDocuments = 0;
+
+  if (mode === "incremental") {
+    const rowsResult = await pool.query(
+      `
+      SELECT ak.id
+      FROM admin_knowledge ak
+      WHERE ${ADMIN_CASELAW_CATEGORY_SQL} <> 'caselaw'
+        AND ak.id > $2
+        AND NOT EXISTS (
+          SELECT 1
+          FROM rag_documents rd
+          WHERE rd.user_id = $1
+            AND rd.source_document_id = ak.id
+            AND rd.status = 'indexed'
+            AND rd.chunk_count > 0
+        )
+      ORDER BY ak.id ASC
+      LIMIT $3
+      `,
+      [GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID, currentCursorId, limit],
+    );
+    rows = (rowsResult.rows || []) as Array<{ id: number }>;
+    const totalRow = await pool.query(
+      `
+      SELECT COUNT(*)::int AS total
+      FROM admin_knowledge ak
+      WHERE ${ADMIN_CASELAW_CATEGORY_SQL} <> 'caselaw'
+        AND ak.id > $2
+        AND NOT EXISTS (
+          SELECT 1
+          FROM rag_documents rd
+          WHERE rd.user_id = $1
+            AND rd.source_document_id = ak.id
+            AND rd.status = 'indexed'
+            AND rd.chunk_count > 0
+        )
+      `,
+      [GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID, currentCursorId],
+    );
+    totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  } else {
+    const rowsResult = await pool.query(
+      `
+      SELECT id
+      FROM admin_knowledge
+      WHERE ${ADMIN_CASELAW_CATEGORY_SQL} <> 'caselaw'
+      ORDER BY id ASC
+      LIMIT $1 OFFSET $2
+      `,
+      [limit, offset],
+    );
+    rows = (rowsResult.rows || []) as Array<{ id: number }>;
+    const totalRow = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM admin_knowledge WHERE ${ADMIN_CASELAW_CATEGORY_SQL} <> 'caselaw'`,
+    );
+    totalDocuments = Number(totalRow.rows?.[0]?.total || 0);
+  }
   hooks?.onMeta?.({ totalDocuments });
 
   let processed = 0;
   let indexed = 0;
   let failed = 0;
+  let nextCursorId = mode === "incremental" ? currentCursorId : null;
   const failures: Array<{ sourceId: number; reason: string }> = [];
 
-  for (const row of rows.rows || []) {
+  for (const row of rows) {
     const adminKnowledgeId = Number((row as any).id);
     if (!Number.isInteger(adminKnowledgeId) || adminKnowledgeId < 1) continue;
+    if (mode === "incremental") nextCursorId = adminKnowledgeId;
     try {
       const result = await withOperationTimeout(
         indexAdminKnowledgeDocument(adminKnowledgeId),
@@ -1708,18 +1890,22 @@ async function reindexAdminKnowledgeBatch(limit: number, offset: number, hooks?:
       processed,
       indexed,
       failed,
-      nextOffset: offset + processed,
+      nextOffset: mode === "full" ? offset + processed : 0,
+      nextCursorId,
     });
   }
 
-  const nextOffset = offset + processed;
-  const remaining = Math.max(0, totalDocuments - nextOffset);
+  const nextOffset = mode === "full" ? offset + processed : 0;
+  const remaining = mode === "full"
+    ? Math.max(0, totalDocuments - nextOffset)
+    : Math.max(0, totalDocuments - processed);
   return {
     processed,
     indexed,
     failed,
     failures,
     nextOffset,
+    nextCursorId,
     remaining,
     totalDocuments,
     hasMore: remaining > 0,
@@ -6283,6 +6469,7 @@ export async function registerRoutes(
     try {
       const parsed = z.object({
         batchSize: z.number().int().min(1).max(100).optional(),
+        mode: z.enum(["full", "incremental"]).optional(),
       }).parse(req.body || {});
 
       if (globalAdminRagReindexJob.running) {
@@ -6299,9 +6486,11 @@ export async function registerRoutes(
       }
 
       const batchSize = parsed.batchSize ?? 50;
+      const mode: GlobalAdminRagReindexMode = parsed.mode ?? "full";
       const freshState = createGlobalAdminRagReindexJobState();
       freshState.running = true;
       freshState.batchSize = batchSize;
+      freshState.mode = mode;
       freshState.startedAt = new Date();
       freshState.finishedAt = null;
 
@@ -6310,9 +6499,10 @@ export async function registerRoutes(
       const actorUserId = getUserId(req);
       await logAuditEvent("admin.rag.reindexGlobal.start", actorUserId, null, {
         batchSize,
+        mode,
       });
 
-      runInBackground("rag-admin-global-full-reindex", async () => {
+      runInBackground(`rag-admin-global-${mode}-reindex`, async () => {
         try {
           while (!globalAdminRagReindexJob.shouldStop) {
             const sourceKey = GLOBAL_ADMIN_RAG_SOURCE_ORDER[globalAdminRagReindexJob.activeSourceIndex];
@@ -6327,47 +6517,72 @@ export async function registerRoutes(
             const baseProcessed = sourceState.processed;
             const baseIndexed = sourceState.indexed;
             const baseFailed = sourceState.failed;
+            const runMode = globalAdminRagReindexJob.mode;
+            const totalDocFromMeta = (totalDocuments: number) => {
+              if (runMode === "incremental") {
+                sourceState.totalDocuments = Math.max(sourceState.totalDocuments, baseProcessed + totalDocuments);
+                return;
+              }
+              sourceState.totalDocuments = totalDocuments;
+            };
             const batch = sourceKey === "case-law"
               ? await reindexCaseLawBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset, {
                 onMeta: ({ totalDocuments }) => {
-                  sourceState.totalDocuments = totalDocuments;
+                  totalDocFromMeta(totalDocuments);
                 },
-                onProgress: ({ processed, indexed, failed, nextOffset }) => {
+                onProgress: ({ processed, indexed, failed, nextOffset, nextCursorId }) => {
                   sourceState.processed = baseProcessed + processed;
                   sourceState.indexed = baseIndexed + indexed;
                   sourceState.failed = baseFailed + failed;
                   sourceState.nextOffset = nextOffset;
+                  sourceState.nextCursorId = nextCursorId;
                 },
+              }, {
+                mode: runMode,
+                nextCursorId: sourceState.nextCursorId,
               })
               : sourceKey === "statute-docs"
                 ? await reindexStatuteBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset, {
                   onMeta: ({ totalDocuments }) => {
-                    sourceState.totalDocuments = totalDocuments;
+                    totalDocFromMeta(totalDocuments);
                   },
-                  onProgress: ({ processed, indexed, failed, nextOffset }) => {
+                  onProgress: ({ processed, indexed, failed, nextOffset, nextCursorId }) => {
                     sourceState.processed = baseProcessed + processed;
                     sourceState.indexed = baseIndexed + indexed;
                     sourceState.failed = baseFailed + failed;
                     sourceState.nextOffset = nextOffset;
+                    sourceState.nextCursorId = nextCursorId;
                   },
+                }, {
+                  mode: runMode,
+                  nextCursorId: sourceState.nextCursorId,
                 })
                 : await reindexAdminKnowledgeBatch(globalAdminRagReindexJob.batchSize, sourceState.nextOffset, {
                   onMeta: ({ totalDocuments }) => {
-                    sourceState.totalDocuments = totalDocuments;
+                    totalDocFromMeta(totalDocuments);
                   },
-                  onProgress: ({ processed, indexed, failed, nextOffset }) => {
+                  onProgress: ({ processed, indexed, failed, nextOffset, nextCursorId }) => {
                     sourceState.processed = baseProcessed + processed;
                     sourceState.indexed = baseIndexed + indexed;
                     sourceState.failed = baseFailed + failed;
                     sourceState.nextOffset = nextOffset;
+                    sourceState.nextCursorId = nextCursorId;
                   },
+                }, {
+                  mode: runMode,
+                  nextCursorId: sourceState.nextCursorId,
                 });
 
-            sourceState.totalDocuments = batch.totalDocuments;
+            if (runMode === "incremental") {
+              sourceState.totalDocuments = Math.max(sourceState.totalDocuments, baseProcessed + batch.totalDocuments);
+            } else {
+              sourceState.totalDocuments = batch.totalDocuments;
+            }
             sourceState.processed = baseProcessed + batch.processed;
             sourceState.indexed = baseIndexed + batch.indexed;
             sourceState.failed = baseFailed + batch.failed;
             sourceState.nextOffset = batch.nextOffset;
+            sourceState.nextCursorId = batch.nextCursorId;
             if (batch.failures.length > 0) {
               sourceState.lastError = batch.failures[0].reason;
             }
@@ -6402,7 +6617,9 @@ export async function registerRoutes(
 
       return res.json({
         ok: true,
-        message: "Global admin RAG reindex started in background",
+        message: mode === "incremental"
+          ? "Global admin RAG incremental indexing started (missing/unindexed only)"
+          : "Global admin RAG full reindex started",
         status: snapshotGlobalAdminRagReindexJob(),
       });
     } catch (err: any) {

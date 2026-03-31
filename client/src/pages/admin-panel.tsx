@@ -129,6 +129,7 @@ type GlobalRagReindexSourceStatus = {
   key: "case-law" | "statute-docs" | "knowledge-vault";
   label: string;
   nextOffset: number;
+  nextCursorId: number | null;
   totalDocuments: number;
   processed: number;
   indexed: number;
@@ -140,6 +141,7 @@ type GlobalRagReindexSourceStatus = {
 type GlobalRagReindexStatus = {
   running: boolean;
   shouldStop: boolean;
+  mode: "full" | "incremental";
   batchSize: number;
   activeSource: "case-law" | "statute-docs" | "knowledge-vault" | null;
   activeSourceLabel: string | null;
@@ -298,7 +300,7 @@ function GlobalRagIndexCard() {
 
   const startMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/admin/rag/reindex-global/start", { batchSize: 50 });
+      const res = await apiRequest("POST", "/api/admin/rag/reindex-global/start", { batchSize: 50, mode: "full" });
       return res.json();
     },
     onSuccess: (data: any) => {
@@ -308,6 +310,23 @@ function GlobalRagIndexCard() {
     onError: (err: any) => {
       toast({
         title: err?.message || "Failed to start global RAG indexing",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const startIncrementalMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/rag/reindex-global/start", { batchSize: 50, mode: "incremental" });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: data?.message || "Incremental RAG indexing started" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/rag/reindex-global/status"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: err?.message || "Failed to start incremental RAG indexing",
         variant: "destructive",
       });
     },
@@ -341,7 +360,7 @@ function GlobalRagIndexCard() {
               Global RAG Indexing
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Indexes Case Law, Statute Library, and Admin Knowledge Vault automatically in batches of 50.
+              Use <span className="text-emerald-300 font-semibold">Index Missing Only</span> for faster backfills, or <span className="text-amber-200 font-semibold">Index All</span> for full rebuild.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -357,15 +376,27 @@ function GlobalRagIndexCard() {
                 <span>Stop</span>
               </Button>
             ) : (
-              <Button
-                className="bg-amber-500 text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
-                onClick={() => startMutation.mutate()}
-                disabled={startMutation.isPending || isLoading}
-                data-testid="button-start-global-rag-index"
-              >
-                {startMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
-                <span>Index All (Batch 50)</span>
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  className="text-emerald-200 border border-emerald-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  onClick={() => startIncrementalMutation.mutate()}
+                  disabled={startIncrementalMutation.isPending || startMutation.isPending || isLoading}
+                  data-testid="button-start-global-rag-index-incremental"
+                >
+                  {startIncrementalMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+                  <span>Index Missing Only</span>
+                </Button>
+                <Button
+                  className="bg-amber-500 text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  onClick={() => startMutation.mutate()}
+                  disabled={startMutation.isPending || startIncrementalMutation.isPending || isLoading}
+                  data-testid="button-start-global-rag-index"
+                >
+                  {startMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+                  <span>Index All (Batch 50)</span>
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -401,6 +432,8 @@ function GlobalRagIndexCard() {
                 {status.running ? "Running" : "Idle"}
               </span>
               <span>•</span>
+              <span>Mode: {status.mode === "incremental" ? "Missing Only" : "Full Reindex"}</span>
+              <span>•</span>
               <span>Active Source: {status.activeSourceLabel || "None"}</span>
             </div>
 
@@ -414,7 +447,9 @@ function GlobalRagIndexCard() {
                     </p>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Indexed {source.indexed.toLocaleString()} • Failed {source.failed.toLocaleString()} • Next offset {source.nextOffset.toLocaleString()}
+                    Indexed {source.indexed.toLocaleString()} • Failed {source.failed.toLocaleString()} • {status.mode === "incremental"
+                      ? `Cursor ${(source.nextCursorId || 0).toLocaleString()}`
+                      : `Next offset ${source.nextOffset.toLocaleString()}`}
                   </p>
                 </div>
               ))}
