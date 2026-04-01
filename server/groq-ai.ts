@@ -26,8 +26,6 @@ export function isGroqAvailable(): boolean {
 
 const ALLOWED_MODELS = [
   "openai/gpt-oss-120b",
-  "openai/gpt-oss-20b",
-  "llama-3.1-8b-instant",
 ] as const;
 
 async function resolveModel(): Promise<string> {
