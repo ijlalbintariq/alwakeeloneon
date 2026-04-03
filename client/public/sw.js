@@ -7,7 +7,16 @@ const STATIC_ASSETS = [
   "/logo.svg",
 ];
 
+function isAllowedHost() {
+  const host = (self.location && self.location.hostname ? String(self.location.hostname) : "").toLowerCase();
+  return host === "alwakeelo.com" || host === "www.alwakeelo.com" || host === "alwakeeloneon-1.onrender.com";
+}
+
 self.addEventListener("install", (event) => {
+  if (!isAllowedHost()) {
+    self.skipWaiting();
+    return;
+  }
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
@@ -15,6 +24,17 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  if (!isAllowedHost()) {
+    event.waitUntil(
+      (async () => {
+        const names = await caches.keys();
+        await Promise.all(names.map((name) => caches.delete(name)));
+        await self.registration.unregister();
+      })()
+    );
+    return;
+  }
+
   event.waitUntil(
     caches.keys().then((names) =>
       Promise.all(
@@ -28,6 +48,8 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (!isAllowedHost()) return;
+
   const { request } = event;
   const url = new URL(request.url);
 
