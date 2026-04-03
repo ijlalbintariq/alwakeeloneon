@@ -150,7 +150,9 @@ const PAKISTAN_LAW_ONLY_POLICY = `PAKISTAN LAW ONLY POLICY (ABSOLUTE):
 - Disallowed references include: IPC, Indian Penal Code, CrPC 1973, Constitution of India, Indian Evidence Act, SCC, AIR, and Indian Supreme/High Court precedents.
 - If a user asks for non-Pakistani law, briefly refuse and ask them to reframe under Pakistani law.
 - Prefer Pakistani authorities such as PPC, Cr.P.C. 1898, C.P.C. 1908, Constitution of Islamic Republic of Pakistan 1973.
-- Treat these as Pakistani citation/report families: PLD, SCMR, YLR, MLD, CLC, CLD, PLC (Pakistan Labour Cases), PLJ, PCRLJ/P Cr. L J, PTD, NLR, and neutral citations (LHC/IHC/SHC/PHC/BHC/AJKHC).`;
+- Treat these as Pakistani citation/report families: PLD, SCMR, YLR, MLD, CLC, CLD, PLC (Pakistan Labour Cases), PLJ, PCRLJ/P Cr. L J, PTD, NLR, and neutral citations (LHC/IHC/SHC/PHC/BHC/AJKHC).
+- IDENTITY/TRUTHFULNESS: Never claim a specific underlying AI vendor, model family, or architecture (for example “OpenAI GPT-4”) unless the exact provider/model is explicitly supplied by runtime metadata in this session.
+- If asked “which model are you built on?”, respond neutrally: “I am Al Wakeelo. Model routing can vary by mode and deployment configuration.”`;
 const PUBLIC_CHAT_SYSTEM_PROMPT = `You are the AI legal intake assistant for AlWakeelo Law Chamber.
 
 Your responsibilities are:
@@ -5397,10 +5399,14 @@ export async function registerRoutes(
 
   app.get("/api/shared/:token", async (req, res) => {
     const { token } = req.params;
-    if (!token) return res.status(400).json({ message: "Invalid share token" });
-    const thread = await storage.getThreadByShareToken(token);
+    const normalizedToken = String(token || "").trim().toLowerCase();
+    // Share tokens are generated as crypto.randomBytes(16).toString("hex") => 32 hex chars.
+    if (!/^[a-f0-9]{32}$/.test(normalizedToken)) {
+      return res.status(404).json({ message: "API route not found." });
+    }
+    const thread = await storage.getThreadByShareToken(normalizedToken);
     if (!thread) {
-      return res.status(404).json({ message: "Shared conversation not found" });
+      return res.status(404).json({ message: "API route not found." });
     }
     const msgs = await storage.getMessages(thread.id);
     const user = await storage.getUserProfile(thread.userId);
