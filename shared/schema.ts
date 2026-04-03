@@ -339,6 +339,10 @@ export const adminKnowledge = pgTable("admin_knowledge", {
   filename: text("filename").notNull(),
   content: text("content").notNull(),
   category: text("category").default("general").notNull(),
+  caseLawProcessStatus: text("case_law_process_status").notNull().default("pending"),
+  caseLawProcessAttempts: integer("case_law_process_attempts").notNull().default(0),
+  caseLawProcessLastAt: timestamp("case_law_process_last_at"),
+  caseLawProcessLastError: text("case_law_process_last_error"),
   uploadedBy: varchar("uploaded_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });

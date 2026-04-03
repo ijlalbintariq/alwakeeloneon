@@ -124,6 +124,8 @@ const CASELAW_AUTO_FULL_SYNC_ON_UPLOAD = (() => {
   const raw = String(process.env.CASELAW_AUTO_FULL_SYNC_ON_UPLOAD || "true").trim().toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 })();
+const CASELAW_PENDING_MAX_ATTEMPTS = Math.max(1, Number(process.env.CASELAW_PENDING_MAX_ATTEMPTS || 3));
+const CASELAW_PENDING_PROCESSING_STALE_MINUTES = Math.max(5, Number(process.env.CASELAW_PENDING_PROCESSING_STALE_MINUTES || 60));
 const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
 const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
 const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_TOKEN_BUDGET || 900));
@@ -3470,9 +3472,52 @@ type PendingCaseLawAdminDoc = {
   extractedTextKey: string | null;
   mimeType: string | null;
   sizeBytes: number | null;
+  caseLawProcessStatus: string | null;
+  caseLawProcessAttempts: number | null;
+  caseLawProcessLastAt: Date | null;
 };
 
+type CaseLawProcessTerminalStatus = "done" | "merged" | "no_cases" | "failed";
+
+async function setCaseLawProcessState(args: {
+  docId: number;
+  status: string;
+  attempts?: number;
+  setLastAt?: boolean;
+  error?: string | null;
+}) {
+  const patch: Record<string, any> = {
+    caseLawProcessStatus: sanitizeInputText(String(args.status || "pending").trim().toLowerCase(), 32) || "pending",
+  };
+  if (Number.isInteger(Number(args.attempts)) && Number(args.attempts) >= 0) {
+    patch.caseLawProcessAttempts = Number(args.attempts);
+  }
+  if (args.setLastAt !== false) {
+    patch.caseLawProcessLastAt = new Date();
+  }
+  if (typeof args.error !== "undefined") {
+    patch.caseLawProcessLastError = args.error
+      ? sanitizeInputText(stripNullBytes(String(args.error || "")).trim(), 500)
+      : null;
+  }
+  await db.update(adminKnowledge).set(patch as any).where(eq(adminKnowledge.id, args.docId));
+}
+
+async function finalizeCaseLawProcessState(args: {
+  docId: number;
+  status: CaseLawProcessTerminalStatus;
+  error?: string | null;
+}) {
+  await setCaseLawProcessState({
+    docId: args.docId,
+    status: args.status,
+    setLastAt: true,
+    error: args.error ?? null,
+  });
+}
+
 async function fetchPendingCaseLawAdminDocs(limit: number): Promise<PendingCaseLawAdminDoc[]> {
+  const staleProcessingBefore = new Date(Date.now() - CASELAW_PENDING_PROCESSING_STALE_MINUTES * 60 * 1000);
   const rows = await db
     .select({
       id: adminKnowledge.id,
@@ -3482,15 +3527,34 @@ async function fetchPendingCaseLawAdminDocs(limit: number): Promise<PendingCaseL
       extractedTextKey: adminKnowledgeFiles.extractedTextKey,
       mimeType: adminKnowledgeFiles.mimeType,
       sizeBytes: adminKnowledgeFiles.sizeBytes,
+      caseLawProcessStatus: adminKnowledge.caseLawProcessStatus,
+      caseLawProcessAttempts: adminKnowledge.caseLawProcessAttempts,
+      caseLawProcessLastAt: adminKnowledge.caseLawProcessLastAt,
     })
     .from(adminKnowledge)
     .leftJoin(adminKnowledgeFiles, eq(adminKnowledgeFiles.adminKnowledgeId, adminKnowledge.id))
     .leftJoin(caseLaw, and(eq(caseLaw.sourceDocId, adminKnowledge.id), eq(caseLaw.sourceType, "admin")))
-    .where(eq(adminKnowledge.category, "case-law"))
+    .where(and(
+      eq(adminKnowledge.category, "case-law"),
+      sql`COALESCE(${adminKnowledge.caseLawProcessAttempts}, 0) < ${CASELAW_PENDING_MAX_ATTEMPTS}`,
+      sql`(
+        COALESCE(${adminKnowledge.caseLawProcessStatus}, 'pending') IN ('pending', 'retry')
+        OR (
+          COALESCE(${adminKnowledge.caseLawProcessStatus}, '') = 'processing'
+          AND (
+            ${adminKnowledge.caseLawProcessLastAt} IS NULL
+            OR ${adminKnowledge.caseLawProcessLastAt} < ${staleProcessingBefore}
+          )
+        )
+      )`,
+    ))
     .groupBy(
       adminKnowledge.id,
       adminKnowledge.title,
       adminKnowledge.filename,
+      adminKnowledge.caseLawProcessStatus,
+      adminKnowledge.caseLawProcessAttempts,
+      adminKnowledge.caseLawProcessLastAt,
       adminKnowledgeFiles.objectKey,
       adminKnowledgeFiles.extractedTextKey,
       adminKnowledgeFiles.mimeType,
@@ -3532,7 +3596,37 @@ async function processSinglePendingCaseLawAdminDoc(
     doc.filename || doc.title || `admin-knowledge-${doc.id}.txt`,
     240,
   ) || `admin-knowledge-${doc.id}.txt`;
+  const currentAttempts = Math.max(0, Number(doc.caseLawProcessAttempts || 0));
+  const nextAttempts = currentAttempts + 1;
   let content = "";
+
+  if (currentAttempts >= CASELAW_PENDING_MAX_ATTEMPTS) {
+    out.failed += 1;
+    const attemptMsg = `maximum attempts reached (${CASELAW_PENDING_MAX_ATTEMPTS})`;
+    try {
+      await finalizeCaseLawProcessState({
+        docId: doc.id,
+        status: "failed",
+        error: attemptMsg,
+      });
+    } catch {
+      // best effort
+    }
+    pushCappedJobError(out.errors, `#${doc.id} ${sourceFilename}: ${attemptMsg}`);
+    return out;
+  }
+
+  try {
+    await setCaseLawProcessState({
+      docId: doc.id,
+      status: "processing",
+      attempts: nextAttempts,
+      setLastAt: true,
+      error: null,
+    });
+  } catch {
+    // best effort
+  }
 
   try {
     const stored = await storage.getAdminKnowledgeById(doc.id);
@@ -3600,9 +3694,19 @@ async function processSinglePendingCaseLawAdminDoc(
       }
     } catch (fileErr: any) {
       out.failed += 1;
+      const normalizedError = sanitizeInputText(fileErr?.message || "processing failed", 220);
+      try {
+        await finalizeCaseLawProcessState({
+          docId: doc.id,
+          status: "failed",
+          error: normalizedError,
+        });
+      } catch {
+        // best effort
+      }
       pushCappedJobError(
         out.errors,
-        `#${doc.id} ${sourceFilename}: ${sanitizeInputText(fileErr?.message || "processing failed", 220)}`,
+        `#${doc.id} ${sourceFilename}: ${normalizedError}`,
       );
       return out;
     }
@@ -3610,6 +3714,15 @@ async function processSinglePendingCaseLawAdminDoc(
 
   if (!content || content.length < 10) {
     out.skippedNoText += 1;
+    try {
+      await finalizeCaseLawProcessState({
+        docId: doc.id,
+        status: "failed",
+        error: "extracted text empty",
+      });
+    } catch {
+      // best effort
+    }
     return out;
   }
 
@@ -3618,6 +3731,15 @@ async function processSinglePendingCaseLawAdminDoc(
     const validCases = extracted.filter((entry) => entry.citation && entry.title);
     if (validCases.length === 0) {
       out.skippedNoCases += 1;
+      try {
+        await finalizeCaseLawProcessState({
+          docId: doc.id,
+          status: "no_cases",
+          error: "no valid case citations extracted",
+        });
+      } catch {
+        // best effort
+      }
       return out;
     }
     const saved = await persistExtractedCasesAndSync({
@@ -3633,11 +3755,30 @@ async function processSinglePendingCaseLawAdminDoc(
         pushCappedJobError(out.errors, `#${doc.id} ${sourceFilename}: ${message}`);
       }
     }
+    const linkedRows = await storage.getCaseLawBySourceDocuments([doc.id], "admin");
+    const terminalStatus: CaseLawProcessTerminalStatus = linkedRows.length > 0
+      ? "done"
+      : "merged";
+    await finalizeCaseLawProcessState({
+      docId: doc.id,
+      status: terminalStatus,
+      error: saved.errors?.length ? saved.errors[0] : null,
+    });
   } catch (extractErr: any) {
     out.failed += 1;
+    const normalizedError = sanitizeInputText(extractErr?.message || "NLP extraction failed", 220);
+    try {
+      await finalizeCaseLawProcessState({
+        docId: doc.id,
+        status: "failed",
+        error: normalizedError,
+      });
+    } catch {
+      // best effort
+    }
     pushCappedJobError(
       out.errors,
-      `#${doc.id} ${sourceFilename}: ${sanitizeInputText(extractErr?.message || "NLP extraction failed", 220)}`,
+      `#${doc.id} ${sourceFilename}: ${normalizedError}`,
     );
   }
 
