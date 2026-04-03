@@ -12,9 +12,17 @@ async function run() {
 
   const pendingRes = await client.query(`
     select count(*)::int as pending
-    from admin_knowledge ak
-    where ak.category = 'case-law'
-      and coalesce(ak.case_law_process_status, 'pending') in ('pending', 'retry', 'processing')
+    from (
+      select ak.id
+      from admin_knowledge ak
+      left join case_law cl
+        on cl.source_doc_id = ak.id
+       and cl.source_type = 'admin'
+      where ak.category = 'case-law'
+        and coalesce(ak.case_law_process_status, 'pending') in ('pending', 'retry', 'processing')
+      group by ak.id
+      having count(cl.id) = 0
+    ) t
   `);
 
   const legacyPendingRes = await client.query(`
