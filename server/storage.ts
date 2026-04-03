@@ -3083,57 +3083,10 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "alter_case_leads_preferred_callback_time", stmt: sql`ALTER TABLE case_leads ADD COLUMN IF NOT EXISTS preferred_callback_time text` },
     { label: "alter_case_leads_consent_to_contact", stmt: sql`ALTER TABLE case_leads ADD COLUMN IF NOT EXISTS consent_to_contact boolean NOT NULL DEFAULT false` },
     { label: "alter_document_files_extracted_text_key", stmt: sql`ALTER TABLE document_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
-    { label: "alter_admin_knowledge_case_law_process_status", stmt: sql`ALTER TABLE admin_knowledge ADD COLUMN IF NOT EXISTS case_law_process_status text` },
-    { label: "alter_admin_knowledge_case_law_process_attempts", stmt: sql`ALTER TABLE admin_knowledge ADD COLUMN IF NOT EXISTS case_law_process_attempts integer` },
+    { label: "alter_admin_knowledge_case_law_process_status", stmt: sql`ALTER TABLE admin_knowledge ADD COLUMN IF NOT EXISTS case_law_process_status text DEFAULT 'pending'` },
+    { label: "alter_admin_knowledge_case_law_process_attempts", stmt: sql`ALTER TABLE admin_knowledge ADD COLUMN IF NOT EXISTS case_law_process_attempts integer DEFAULT 0` },
     { label: "alter_admin_knowledge_case_law_process_last_at", stmt: sql`ALTER TABLE admin_knowledge ADD COLUMN IF NOT EXISTS case_law_process_last_at timestamp` },
     { label: "alter_admin_knowledge_case_law_process_last_error", stmt: sql`ALTER TABLE admin_knowledge ADD COLUMN IF NOT EXISTS case_law_process_last_error text` },
-    {
-      label: "backfill_admin_knowledge_case_law_process_attempts",
-      stmt: sql`
-        UPDATE admin_knowledge
-        SET case_law_process_attempts = COALESCE(case_law_process_attempts, 0)
-        WHERE case_law_process_attempts IS NULL
-      `,
-    },
-    {
-      label: "backfill_admin_knowledge_case_law_process_done",
-      stmt: sql`
-        UPDATE admin_knowledge ak
-        SET case_law_process_status = 'done'
-        WHERE lower(trim(ak.category)) = 'case-law'
-          AND EXISTS (
-            SELECT 1
-            FROM case_law cl
-            WHERE cl.source_type = 'admin'
-              AND cl.source_doc_id = ak.id
-          )
-          AND (ak.case_law_process_status IS NULL OR trim(ak.case_law_process_status) = '' OR lower(trim(ak.case_law_process_status)) IN ('pending', 'retry', 'processing'))
-      `,
-    },
-    {
-      label: "backfill_admin_knowledge_case_law_process_pending",
-      stmt: sql`
-        UPDATE admin_knowledge
-        SET case_law_process_status = 'pending'
-        WHERE case_law_process_status IS NULL OR trim(case_law_process_status) = ''
-      `,
-    },
-    {
-      label: "alter_admin_knowledge_case_law_process_status_default",
-      stmt: sql`ALTER TABLE admin_knowledge ALTER COLUMN case_law_process_status SET DEFAULT 'pending'`,
-    },
-    {
-      label: "alter_admin_knowledge_case_law_process_status_not_null",
-      stmt: sql`ALTER TABLE admin_knowledge ALTER COLUMN case_law_process_status SET NOT NULL`,
-    },
-    {
-      label: "alter_admin_knowledge_case_law_process_attempts_default",
-      stmt: sql`ALTER TABLE admin_knowledge ALTER COLUMN case_law_process_attempts SET DEFAULT 0`,
-    },
-    {
-      label: "alter_admin_knowledge_case_law_process_attempts_not_null",
-      stmt: sql`ALTER TABLE admin_knowledge ALTER COLUMN case_law_process_attempts SET NOT NULL`,
-    },
     { label: "alter_admin_knowledge_files_extracted_text_key", stmt: sql`ALTER TABLE admin_knowledge_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
     { label: "alter_statute_document_files_extracted_text_key", stmt: sql`ALTER TABLE statute_document_files ADD COLUMN IF NOT EXISTS extracted_text_key text` },
     { label: "idx_admin_knowledge_files_doc_id", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_knowledge_files_doc_id ON admin_knowledge_files (admin_knowledge_id)` },
