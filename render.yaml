@@ -1,11 +1,10 @@
 services:
   - type: web
     name: alwakeelo-web
-    env: node
+    env: docker
     plan: starter
     autoDeploy: true
-    buildCommand: npm ci && npm run build
-    startCommand: node dist/index.cjs
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
