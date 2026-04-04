@@ -5462,6 +5462,57 @@ export async function registerRoutes(
     res.json({ thread, messages: msgs });
   });
 
+  app.post("/api/threads/upsert-turn", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+
+    try {
+      const payload = z.object({
+        threadId: z.number().int().positive().optional(),
+        title: z.string().trim().min(1).max(240).optional(),
+        userMessage: z.string().trim().min(1),
+        assistantMessage: z.string().trim().min(1),
+      }).parse(req.body || {});
+
+      let thread = payload.threadId ? await storage.getThread(payload.threadId) : undefined;
+      if (thread && thread.userId !== userId) {
+        return res.status(404).json({ message: "Thread not found" });
+      }
+
+      if (!thread) {
+        const fallbackTitle = payload.userMessage.slice(0, 80) || "Al Wakeelo Consultation";
+        thread = await storage.createThread({
+          userId,
+          title: payload.title || fallbackTitle,
+        });
+      }
+
+      await storage.createMessage({
+        threadId: thread.id,
+        role: "user",
+        content: payload.userMessage,
+      });
+      await storage.createMessage({
+        threadId: thread.id,
+        role: "assistant",
+        content: payload.assistantMessage,
+      });
+
+      const refreshed = await storage.getThread(thread.id);
+      return res.json({
+        ok: true,
+        threadId: thread.id,
+        thread: refreshed || thread,
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid payload" });
+      }
+      console.error("Error upserting thread turn:", err);
+      return res.status(500).json({ message: "Failed to save consultation turn" });
+    }
+  });
+
   app.delete(api.threads.delete.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
