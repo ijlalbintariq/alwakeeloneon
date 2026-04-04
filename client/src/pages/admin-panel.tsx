@@ -6,7 +6,7 @@ import { Redirect } from "wouter";
 import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
   UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus,
-  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink, RotateCcw, Download
+  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink, RotateCcw, Download, StopCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -2196,6 +2196,19 @@ function CaseLawSection() {
     onError: () => toast({ title: "Failed to process pending case-law files", variant: "destructive" }),
   });
 
+  const stopProcessPendingFilesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/case-law/process-pending-files/stop", {});
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: data?.message || "Pending case-law stop requested" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/process-pending-files/status"] });
+    },
+    onError: () => toast({ title: "Failed to stop pending case-law processing", variant: "destructive" }),
+  });
+
   const startBadIndexReextractMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/admin/case-law/bad-index/reextract/start", {
@@ -2552,6 +2565,16 @@ function CaseLawSection() {
           >
             {processPendingFilesMutation.isPending || processPendingStatus?.running ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
             <span>{processPendingStatus?.running ? `Processing (${processPendingStatus.processed})` : "Process Pending Files"}</span>
+          </Button>
+          <Button
+            variant="ghost"
+            className="text-rose-300 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            onClick={() => stopProcessPendingFilesMutation.mutate()}
+            disabled={stopProcessPendingFilesMutation.isPending || !Boolean(processPendingStatus?.running)}
+            data-testid="button-stop-process-pending-caselaw-files"
+          >
+            {stopProcessPendingFilesMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <StopCircle size={14} />}
+            <span>{stopProcessPendingFilesMutation.isPending ? "Stopping..." : "Stop Pending Process"}</span>
           </Button>
           <Button
             variant="ghost"
