@@ -529,7 +529,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select()
       .from(threads)
       .where(eq(threads.userId, userId))
-      .orderBy(desc(threads.createdAt));
+      .orderBy(desc(threads.updatedAt), desc(threads.createdAt));
   }
 
   async getThread(id: number): Promise<Thread | undefined> {
@@ -554,6 +554,10 @@ export class DatabaseStorage implements IStorage {
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
     const [message] = await db.insert(messages).values(insertMessage).returning();
+    await db
+      .update(threads)
+      .set({ updatedAt: new Date() })
+      .where(eq(threads.id, insertMessage.threadId));
     return message;
   }
 

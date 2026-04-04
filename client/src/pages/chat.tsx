@@ -310,6 +310,38 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const parseAttachmentNames = useCallback((content: string): string[] => {
+    const match = String(content || "").match(/\[Attached:\s*([^\]]+)\]/i);
+    if (!match || !match[1]) return [];
+    return match[1]
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }, []);
+
+  const persistConsultationTurn = useCallback(async (userMessage: ChatMessage, assistantMessage: ChatMessage) => {
+    try {
+      const titleSource = String(userMessage.content || "")
+        .replace(/\s*\[Attached:[^\]]+\]\s*/gi, " ")
+        .trim();
+      const title = (titleSource || "Al Wakeelo Consultation").slice(0, 80);
+      const res = await apiRequest("POST", "/api/threads/upsert-turn", {
+        threadId: sharedThreadId || undefined,
+        title,
+        userMessage: userMessage.content,
+        assistantMessage: assistantMessage.content,
+      });
+      const data = await res.json().catch(() => null);
+      const nextThreadId = Number(data?.thread?.id || data?.threadId || 0);
+      if (nextThreadId > 0 && nextThreadId !== sharedThreadId) {
+        setSharedThreadId(nextThreadId);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/threads"] });
+    } catch (err) {
+      console.warn("Failed to persist consultation turn:", err);
+    }
+  }, [sharedThreadId]);
+
   const formatRagAnswer = (answer: string, citations: RAGCitation[]): string => {
     if (!citations || citations.length === 0) return answer;
     const sourceLines = citations.slice(0, 5).map((c, idx) => {
@@ -360,8 +392,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           const agentSteps: AgentStep[] = Array.isArray(agentData.steps) ? agentData.steps : [];
           const agentSearchQueries: string[] = Array.isArray(agentData.searchQueries) ? agentData.searchQueries : [];
           const agentSourcesUsed = Array.isArray(agentData.sourcesUsed) ? agentData.sourcesUsed : [];
-
-          setMessages([...updated, {
+          const assistantMessage: ChatMessage = {
             id: assistantId,
             role: "assistant",
             content: agentData.content || "Research complete.",
@@ -373,7 +404,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             agentSteps,
             agentSearchQueries,
             agentSourcesUsed,
-          }]);
+          };
+          setMessages([...updated, assistantMessage]);
+          await persistConsultationTurn(userMsg, assistantMessage);
 
           setAgentStatus(null);
           await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
@@ -395,7 +428,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         const formatted = formatRagAnswer(String(ragData?.answer || ""), ragCitations);
         const modelName = ragData?.model?.name ? String(ragData.model.name) : "RAG";
         const modeName = "RAG";
-        setMessages([...updated, {
+        const assistantMessage: ChatMessage = {
           id: assistantId,
           role: "assistant",
           content: formatted,
@@ -405,7 +438,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           modelDescription: "Retrieval-grounded response from indexed vault documents.",
           ragCitations,
           ragConfidence: ragData?.confidence || "low",
-        }]);
+        };
+        setMessages([...updated, assistantMessage]);
+        await persistConsultationTurn(userMsg, assistantMessage);
         await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
         queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
         return;
@@ -456,6 +491,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       }
 
       const contentType = response.headers.get("content-type") || "";
+      let persistedAssistantContent = "";
       if (contentType.includes("application/json")) {
         const data = await response.json();
         const modelId = data.model || (isApexMode ? aiMode : aiMode);
@@ -466,7 +502,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           : isApexModelMode
             ? "Apex"
             : (turboMode && canUseTurbo ? "Turbo" : "Standard");
-        setMessages([...updated, {
+        const assistantMessage: ChatMessage = {
           id: assistantId,
           role: "assistant",
           content: data.content,
@@ -476,7 +512,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           modelDescription,
           moduleProfile: typeof data.moduleProfile === "string" ? data.moduleProfile : undefined,
           routingPath: Array.isArray(data.routingPath) ? data.routingPath.map(String) : undefined,
-        }]);
+        };
+        persistedAssistantContent = assistantMessage.content;
+        setMessages([...updated, assistantMessage]);
       } else {
         setMessages([...updated, { id: assistantId, role: "assistant", content: "" }]);
         const reader = response.body?.getReader();
@@ -535,6 +573,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       }
                       return prev;
                     });
+                    persistedAssistantContent = accumulated;
                     break;
                   }
                   if (parsed.text) {
@@ -555,6 +594,17 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             }
           }
         }
+        if (!persistedAssistantContent && accumulated) {
+          persistedAssistantContent = accumulated;
+        }
+      }
+
+      if (persistedAssistantContent.trim()) {
+        await persistConsultationTurn(userMsg, {
+          id: assistantId,
+          role: "assistant",
+          content: persistedAssistantContent,
+        });
       }
 
       await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
@@ -602,11 +652,16 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       const res = await apiRequest("GET", `/api/threads/${threadId}`);
       const data = await res.json();
       if (!data?.messages) return;
-      const restored: ChatMessage[] = data.messages.map((m: any, idx: number) => ({
-        id: String(m.id ?? `${threadId}-${idx}`),
-        role: m.role === "assistant" ? "assistant" : "user",
-        content: m.content || "",
-      }));
+      const restored: ChatMessage[] = data.messages.map((m: any, idx: number) => {
+        const content = String(m.content || "");
+        const attachments = parseAttachmentNames(content);
+        return {
+          ...(attachments.length > 0 ? { attachments } : {}),
+          id: String(m.id ?? `${threadId}-${idx}`),
+          role: m.role === "assistant" ? "assistant" : "user",
+          content,
+        };
+      });
       setMessages(restored);
       setSharedThreadId(threadId);
       setShareUrl(null);
@@ -1266,8 +1321,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
             <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-hide">
               <h3 className="text-[11px] font-bold text-amber-500/40 uppercase tracking-widest mb-3 px-2">Recent Consultations</h3>
-              {threads.slice(0, 12).map((thread, idx) => {
-                const isActive = sharedThreadId === thread.id || (idx === 0 && !sharedThreadId);
+              {threads.slice(0, 12).map((thread) => {
+                const isActive = sharedThreadId === thread.id;
                 return (
                   <button
                     key={thread.id}
