@@ -1694,6 +1694,36 @@ type CaseLawProcessPendingFilesStatus = {
   errors: string[];
 };
 
+type CaseLawProcessPendingDiagnosticsStatusCount = {
+  status: string;
+  documents: number;
+  noExtractDocuments: number;
+  extractedDocuments: number;
+};
+
+type CaseLawProcessPendingDiagnosticsTopError = {
+  error: string;
+  documents: number;
+};
+
+type CaseLawProcessPendingDiagnosticsResponse = {
+  ok: boolean;
+  generatedAt: string;
+  staleProcessingMinutes: number;
+  maxAttempts: number;
+  summary: {
+    totalDocs: number;
+    extractedDocs: number;
+    pendingLegacy: number;
+    actionablePending: number;
+    processingFresh: number;
+    maxAttemptsReached: number;
+    terminalNoExtract: number;
+  };
+  statusCounts: CaseLawProcessPendingDiagnosticsStatusCount[];
+  topErrors: CaseLawProcessPendingDiagnosticsTopError[];
+};
+
 type CaseLawBadIndexAuditResponse = {
   ok: boolean;
   sourceKind: CaseLawBadIndexSourceKind;
@@ -2013,8 +2043,29 @@ function CaseLawSection() {
       return payload?.status?.running ? 2500 : 12000;
     },
   });
+  const { data: processPendingDiagnosticsData, isLoading: processPendingDiagnosticsLoading } = useQuery<CaseLawProcessPendingDiagnosticsResponse>({
+    queryKey: ["/api/admin/case-law/process-pending-files/diagnostics"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/case-law/process-pending-files/diagnostics", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch process-pending diagnostics");
+      }
+      return res.json();
+    },
+    refetchInterval: (query) => {
+      const statusPayload = queryClient.getQueryData<{ ok: boolean; status: CaseLawProcessPendingFilesStatus }>([
+        "/api/admin/case-law/process-pending-files/status",
+      ]);
+      if (statusPayload?.status?.running) return 3000;
+      const payload = query.state.data as CaseLawProcessPendingDiagnosticsResponse | undefined;
+      return payload ? 12000 : 5000;
+    },
+  });
   const syncCitationStatus = syncCitationStatusData?.status;
   const processPendingStatus = processPendingStatusData?.status;
+  const processPendingDiagnostics = processPendingDiagnosticsData || null;
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -2192,6 +2243,7 @@ function CaseLawSection() {
       toast({ title: data?.message || "Pending case-law processing started in background" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/process-pending-files/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/process-pending-files/diagnostics"] });
     },
     onError: () => toast({ title: "Failed to process pending case-law files", variant: "destructive" }),
   });
@@ -2205,8 +2257,30 @@ function CaseLawSection() {
       toast({ title: data?.message || "Pending case-law stop requested" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/process-pending-files/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/process-pending-files/diagnostics"] });
     },
     onError: () => toast({ title: "Failed to stop pending case-law processing", variant: "destructive" }),
+  });
+
+  const retryTerminalProcessPendingMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/case-law/process-pending-files/retry-terminal", {
+        statuses: ["failed", "no_cases"],
+        limit: 5000,
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      const updated = Number(data?.updated || 0);
+      const message = data?.message || (updated > 0
+        ? `Marked ${updated.toLocaleString()} documents for retry`
+        : "No failed/no-cases documents found for retry");
+      toast({ title: message });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/process-pending-files/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/process-pending-files/diagnostics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law"] });
+    },
+    onError: () => toast({ title: "Failed to mark terminal docs for retry", variant: "destructive" }),
   });
 
   const startBadIndexReextractMutation = useMutation({
@@ -2578,6 +2652,16 @@ function CaseLawSection() {
           </Button>
           <Button
             variant="ghost"
+            className="text-amber-300 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            onClick={() => retryTerminalProcessPendingMutation.mutate()}
+            disabled={retryTerminalProcessPendingMutation.isPending}
+            data-testid="button-retry-terminal-caselaw-files"
+          >
+            {retryTerminalProcessPendingMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <AlertOctagon size={14} />}
+            <span>{retryTerminalProcessPendingMutation.isPending ? "Marking..." : "Retry Failed/No-Cases"}</span>
+          </Button>
+          <Button
+            variant="ghost"
             className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={async () => {
               setIsAutoScanning(true);
@@ -2618,6 +2702,101 @@ function CaseLawSection() {
           </Button>
         </div>
       </div>
+
+      <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]" data-testid="case-law-pending-diagnostics-card">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">Pending Pipeline Diagnostics</span>
+            {processPendingDiagnostics?.generatedAt ? (
+              <span className="text-[10px] text-slate-500">
+                Updated {new Date(processPendingDiagnostics.generatedAt).toLocaleTimeString()}
+              </span>
+            ) : (
+              <span className="text-[10px] text-slate-500">Waiting for diagnostics...</span>
+            )}
+          </div>
+
+          {processPendingDiagnosticsLoading && !processPendingDiagnostics ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Loader2 className="animate-spin" size={14} />
+              <span>Loading pending diagnostics...</span>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px]">
+                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                  <p className="text-slate-500 uppercase tracking-wider">Actionable Pending</p>
+                  <p className="text-amber-300 font-bold text-sm">{(processPendingDiagnostics?.summary.actionablePending || 0).toLocaleString()}</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                  <p className="text-slate-500 uppercase tracking-wider">Legacy No Extract</p>
+                  <p className="text-slate-200 font-bold text-sm">{(processPendingDiagnostics?.summary.pendingLegacy || 0).toLocaleString()}</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                  <p className="text-slate-500 uppercase tracking-wider">Terminal No Extract</p>
+                  <p className="text-rose-300 font-bold text-sm">{(processPendingDiagnostics?.summary.terminalNoExtract || 0).toLocaleString()}</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                  <p className="text-slate-500 uppercase tracking-wider">Processing (Fresh)</p>
+                  <p className="text-sky-300 font-bold text-sm">{(processPendingDiagnostics?.summary.processingFresh || 0).toLocaleString()}</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                  <p className="text-slate-500 uppercase tracking-wider">Max Attempts</p>
+                  <p className="text-orange-300 font-bold text-sm">{(processPendingDiagnostics?.summary.maxAttemptsReached || 0).toLocaleString()}</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                  <p className="text-slate-500 uppercase tracking-wider">Extracted Docs</p>
+                  <p className="text-emerald-300 font-bold text-sm">
+                    {(processPendingDiagnostics?.summary.extractedDocs || 0).toLocaleString()}
+                    <span className="text-slate-500 font-normal"> / {(processPendingDiagnostics?.summary.totalDocs || 0).toLocaleString()}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Status Breakdown</p>
+                  {(processPendingDiagnostics?.statusCounts || []).length === 0 ? (
+                    <p className="text-[10px] text-slate-500">No status rows yet.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {(processPendingDiagnostics?.statusCounts || []).slice(0, 8).map((row) => (
+                        <div key={row.status} className="flex items-center justify-between gap-2 text-[10px]">
+                          <span className="text-slate-300 font-semibold">{row.status}</span>
+                          <span className="text-slate-500">
+                            total {row.documents.toLocaleString()} · no-extract {row.noExtractDocuments.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Top Failure Reasons</p>
+                  {(processPendingDiagnostics?.topErrors || []).length === 0 ? (
+                    <p className="text-[10px] text-slate-500">No failure reasons available.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {(processPendingDiagnostics?.topErrors || []).slice(0, 8).map((row, idx) => (
+                        <div key={`${idx}-${row.error.slice(0, 40)}`} className="flex items-start justify-between gap-2 text-[10px]">
+                          <span className="text-slate-300 line-clamp-2">{row.error}</span>
+                          <span className="text-rose-300 font-semibold shrink-0">{row.documents.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {processPendingDiagnostics && (
+                <p className="text-[10px] text-slate-500">
+                  Rules: actionable uses max attempts {processPendingDiagnostics.maxAttempts} and stale processing threshold {processPendingDiagnostics.staleProcessingMinutes} min.
+                </p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <CaseLawBadIndexAuditCard />
 

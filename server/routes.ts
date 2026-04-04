@@ -3478,6 +3478,45 @@ type PendingCaseLawAdminDoc = {
 };
 
 type CaseLawProcessTerminalStatus = "done" | "merged" | "no_cases" | "failed";
+type CaseLawRetryTerminalStatus = Extract<CaseLawProcessTerminalStatus, "failed" | "no_cases" | "merged">;
+type CaseLawPendingDiagnosticsSummary = {
+  totalDocs: number;
+  extractedDocs: number;
+  pendingLegacy: number;
+  actionablePending: number;
+  processingFresh: number;
+  maxAttemptsReached: number;
+  terminalNoExtract: number;
+};
+type CaseLawPendingDiagnosticsStatusCount = {
+  status: string;
+  documents: number;
+  noExtractDocuments: number;
+  extractedDocuments: number;
+};
+type CaseLawPendingDiagnosticsTopError = {
+  error: string;
+  documents: number;
+};
+
+const CASELAW_RETRYABLE_TERMINAL_STATUSES: readonly CaseLawRetryTerminalStatus[] = ["failed", "no_cases", "merged"] as const;
+
+function toCaseLawPendingDiagnosticsInt(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.trunc(n));
+}
+
+function normalizeCaseLawRetryTerminalStatuses(input: unknown): CaseLawRetryTerminalStatus[] {
+  const source = Array.isArray(input)
+    ? input
+    : (typeof input === "string" ? input.split(",") : []);
+  const normalized = source
+    .map((value) => sanitizeInputText(String(value || "").trim().toLowerCase(), 24))
+    .filter((value): value is CaseLawRetryTerminalStatus => (CASELAW_RETRYABLE_TERMINAL_STATUSES as readonly string[]).includes(value));
+  if (normalized.length === 0) return ["failed", "no_cases"];
+  return Array.from(new Set(normalized));
+}
 
 async function setCaseLawProcessState(args: {
   docId: number;
@@ -3564,6 +3603,241 @@ async function fetchPendingCaseLawAdminDocs(limit: number): Promise<PendingCaseL
     .orderBy(sql`${adminKnowledge.id} desc`)
     .limit(Math.max(1, Math.min(2000, limit)));
   return rows;
+}
+
+async function retryCaseLawTerminalDocs(args: {
+  statuses: CaseLawRetryTerminalStatus[];
+  limit: number;
+}): Promise<{
+  requestedStatuses: CaseLawRetryTerminalStatus[];
+  scanned: number;
+  updated: number;
+  statusBreakdown: Array<{ status: string; documents: number }>;
+  sample: Array<{ id: number; filename: string; previousStatus: string; previousAttempts: number }>;
+}> {
+  const safeStatuses = normalizeCaseLawRetryTerminalStatuses(args.statuses);
+  const safeLimit = Math.max(1, Math.min(50000, Number(args.limit) || 5000));
+  const statusSql = sql.join(safeStatuses.map((status) => sql`${status}`), sql`, `);
+
+  const candidatesResult = await db.execute(sql`
+    SELECT
+      ak.id,
+      COALESCE(NULLIF(trim(ak.filename), ''), NULLIF(trim(ak.title), ''), 'admin-knowledge-' || ak.id::text) AS filename,
+      COALESCE(ak.case_law_process_status, 'pending') AS previous_status,
+      COALESCE(ak.case_law_process_attempts, 0)::int AS previous_attempts
+    FROM admin_knowledge ak
+    LEFT JOIN case_law cl
+      ON cl.source_doc_id = ak.id
+      AND cl.source_type = 'admin'
+    WHERE ak.category = 'case-law'
+      AND COALESCE(ak.case_law_process_status, 'pending') IN (${statusSql})
+    GROUP BY ak.id, ak.filename, ak.title, ak.case_law_process_status, ak.case_law_process_attempts
+    HAVING count(cl.id) = 0
+    ORDER BY ak.id DESC
+    LIMIT ${safeLimit};
+  `);
+
+  const candidateRows = getDbRows<{
+    id: number | string;
+    filename: string | null;
+    previous_status: string | null;
+    previous_attempts: number | string;
+  }>(candidatesResult)
+    .map((row) => ({
+      id: toCaseLawPendingDiagnosticsInt(row.id),
+      filename: sanitizeInputText(String(row.filename || ""), 280),
+      previousStatus: sanitizeInputText(String(row.previous_status || "pending"), 32) || "pending",
+      previousAttempts: toCaseLawPendingDiagnosticsInt(row.previous_attempts),
+    }))
+    .filter((row) => Number.isInteger(row.id) && row.id > 0);
+
+  if (candidateRows.length > 0) {
+    const idSql = sql.join(candidateRows.map((row) => sql`${row.id}`), sql`, `);
+    await db.execute(sql`
+      UPDATE admin_knowledge
+      SET
+        case_law_process_status = 'retry',
+        case_law_process_attempts = 0,
+        case_law_process_last_error = NULL,
+        case_law_process_last_at = NOW()
+      WHERE category = 'case-law'
+        AND id IN (${idSql});
+    `);
+  }
+
+  const statusCounter = new Map<string, number>();
+  for (const row of candidateRows) {
+    statusCounter.set(row.previousStatus, (statusCounter.get(row.previousStatus) || 0) + 1);
+  }
+
+  return {
+    requestedStatuses: safeStatuses,
+    scanned: safeLimit,
+    updated: candidateRows.length,
+    statusBreakdown: Array.from(statusCounter.entries())
+      .map(([status, documents]) => ({ status, documents }))
+      .sort((a, b) => b.documents - a.documents || a.status.localeCompare(b.status)),
+    sample: candidateRows.slice(0, 25),
+  };
+}
+
+async function getCaseLawPendingDiagnostics(args?: { topErrorLimit?: number }): Promise<{
+  generatedAt: string;
+  staleProcessingMinutes: number;
+  maxAttempts: number;
+  summary: CaseLawPendingDiagnosticsSummary;
+  statusCounts: CaseLawPendingDiagnosticsStatusCount[];
+  topErrors: CaseLawPendingDiagnosticsTopError[];
+}> {
+  const staleProcessingBefore = new Date(Date.now() - CASELAW_PENDING_PROCESSING_STALE_MINUTES * 60 * 1000);
+  const topErrorLimit = Math.max(1, Math.min(100, Number(args?.topErrorLimit) || 12));
+
+  const summaryResult = await db.execute(sql`
+    WITH base AS (
+      SELECT
+        ak.id,
+        COALESCE(ak.case_law_process_status, 'pending') AS status,
+        COALESCE(ak.case_law_process_attempts, 0) AS attempts,
+        ak.case_law_process_last_at AS last_at,
+        count(cl.id)::int AS case_rows
+      FROM admin_knowledge ak
+      LEFT JOIN case_law cl
+        ON cl.source_doc_id = ak.id
+        AND cl.source_type = 'admin'
+      WHERE ak.category = 'case-law'
+      GROUP BY ak.id, ak.case_law_process_status, ak.case_law_process_attempts, ak.case_law_process_last_at
+    )
+    SELECT
+      count(*)::bigint AS total_docs,
+      count(*) FILTER (WHERE case_rows > 0)::bigint AS extracted_docs,
+      count(*) FILTER (WHERE case_rows = 0)::bigint AS pending_legacy,
+      count(*) FILTER (
+        WHERE case_rows = 0
+          AND attempts < ${CASELAW_PENDING_MAX_ATTEMPTS}
+          AND (
+            status IN ('pending', 'retry')
+            OR (
+              status = 'processing'
+              AND (last_at IS NULL OR last_at < ${staleProcessingBefore})
+            )
+          )
+      )::bigint AS actionable_pending,
+      count(*) FILTER (
+        WHERE case_rows = 0
+          AND status = 'processing'
+          AND last_at IS NOT NULL
+          AND last_at >= ${staleProcessingBefore}
+      )::bigint AS processing_fresh,
+      count(*) FILTER (
+        WHERE case_rows = 0
+          AND attempts >= ${CASELAW_PENDING_MAX_ATTEMPTS}
+      )::bigint AS max_attempts_reached,
+      count(*) FILTER (
+        WHERE case_rows = 0
+          AND (
+            status IN ('failed', 'no_cases', 'merged')
+            OR attempts >= ${CASELAW_PENDING_MAX_ATTEMPTS}
+          )
+      )::bigint AS terminal_no_extract
+    FROM base;
+  `);
+
+  const summaryRow = getDbRows<{
+    total_docs: string | number;
+    extracted_docs: string | number;
+    pending_legacy: string | number;
+    actionable_pending: string | number;
+    processing_fresh: string | number;
+    max_attempts_reached: string | number;
+    terminal_no_extract: string | number;
+  }>(summaryResult)[0];
+
+  const statusCountsResult = await db.execute(sql`
+    WITH base AS (
+      SELECT
+        ak.id,
+        COALESCE(ak.case_law_process_status, 'pending') AS status,
+        count(cl.id)::int AS case_rows
+      FROM admin_knowledge ak
+      LEFT JOIN case_law cl
+        ON cl.source_doc_id = ak.id
+        AND cl.source_type = 'admin'
+      WHERE ak.category = 'case-law'
+      GROUP BY ak.id, ak.case_law_process_status
+    )
+    SELECT
+      status,
+      count(*)::bigint AS documents,
+      count(*) FILTER (WHERE case_rows = 0)::bigint AS no_extract_documents,
+      count(*) FILTER (WHERE case_rows > 0)::bigint AS extracted_documents
+    FROM base
+    GROUP BY status
+    ORDER BY documents DESC, status ASC;
+  `);
+
+  const statusCounts = getDbRows<{
+    status: string | null;
+    documents: string | number;
+    no_extract_documents: string | number;
+    extracted_documents: string | number;
+  }>(statusCountsResult).map((row) => ({
+    status: sanitizeInputText(String(row.status || "pending"), 32) || "pending",
+    documents: toCaseLawPendingDiagnosticsInt(row.documents),
+    noExtractDocuments: toCaseLawPendingDiagnosticsInt(row.no_extract_documents),
+    extractedDocuments: toCaseLawPendingDiagnosticsInt(row.extracted_documents),
+  }));
+
+  const topErrorsResult = await db.execute(sql`
+    WITH base AS (
+      SELECT
+        COALESCE(ak.case_law_process_status, 'pending') AS status,
+        NULLIF(trim(COALESCE(ak.case_law_process_last_error, '')), '') AS last_error,
+        count(cl.id)::int AS case_rows
+      FROM admin_knowledge ak
+      LEFT JOIN case_law cl
+        ON cl.source_doc_id = ak.id
+        AND cl.source_type = 'admin'
+      WHERE ak.category = 'case-law'
+      GROUP BY ak.id, ak.case_law_process_status, ak.case_law_process_last_error
+    )
+    SELECT
+      last_error AS error,
+      count(*)::bigint AS documents
+    FROM base
+    WHERE case_rows = 0
+      AND status IN ('failed', 'no_cases')
+      AND last_error IS NOT NULL
+    GROUP BY last_error
+    ORDER BY documents DESC, last_error ASC
+    LIMIT ${topErrorLimit};
+  `);
+
+  const topErrors = getDbRows<{
+    error: string | null;
+    documents: string | number;
+  }>(topErrorsResult)
+    .map((row) => ({
+      error: sanitizeInputText(stripNullBytes(String(row.error || "")).trim(), 500),
+      documents: toCaseLawPendingDiagnosticsInt(row.documents),
+    }))
+    .filter((row) => row.error.length > 0);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    staleProcessingMinutes: CASELAW_PENDING_PROCESSING_STALE_MINUTES,
+    maxAttempts: CASELAW_PENDING_MAX_ATTEMPTS,
+    summary: {
+      totalDocs: toCaseLawPendingDiagnosticsInt(summaryRow?.total_docs),
+      extractedDocs: toCaseLawPendingDiagnosticsInt(summaryRow?.extracted_docs),
+      pendingLegacy: toCaseLawPendingDiagnosticsInt(summaryRow?.pending_legacy),
+      actionablePending: toCaseLawPendingDiagnosticsInt(summaryRow?.actionable_pending),
+      processingFresh: toCaseLawPendingDiagnosticsInt(summaryRow?.processing_fresh),
+      maxAttemptsReached: toCaseLawPendingDiagnosticsInt(summaryRow?.max_attempts_reached),
+      terminalNoExtract: toCaseLawPendingDiagnosticsInt(summaryRow?.terminal_no_extract),
+    },
+    statusCounts,
+    topErrors,
+  };
 }
 
 type PendingCaseLawExtractors = {
@@ -12212,6 +12486,48 @@ ${boundedRaw}`;
   app.get("/api/admin/case-law/process-pending-files/status", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     return res.json({ ok: true, status: snapshotCaseLawProcessPendingFilesJob() });
+  });
+
+  app.get("/api/admin/case-law/process-pending-files/diagnostics", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const topErrorLimit = Math.max(1, Math.min(100, Number(req.query?.topErrors || 12)));
+      const diagnostics = await getCaseLawPendingDiagnostics({ topErrorLimit });
+      return res.json({ ok: true, ...diagnostics });
+    } catch (err) {
+      console.error("Error loading process-pending diagnostics:", err);
+      return res.status(500).json({ message: "Failed to load process-pending diagnostics" });
+    }
+  });
+
+  app.post("/api/admin/case-law/process-pending-files/retry-terminal", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const actorUserId = getUserId(req);
+      const payload = (req.body || {}) as { statuses?: string[] | string; limit?: number };
+      const statuses = normalizeCaseLawRetryTerminalStatuses(payload.statuses);
+      const limit = Math.max(1, Math.min(50000, Number(payload.limit) || 5000));
+
+      const retried = await retryCaseLawTerminalDocs({ statuses, limit });
+      await logAuditEvent("admin.caseLaw.processPendingFiles.retryTerminal", actorUserId, null, {
+        statuses: retried.requestedStatuses,
+        scanned: retried.scanned,
+        updated: retried.updated,
+        statusBreakdown: retried.statusBreakdown,
+      });
+
+      return res.json({
+        ok: true,
+        message: retried.updated > 0
+          ? `Marked ${retried.updated.toLocaleString()} terminal case-law docs for retry`
+          : "No matching terminal docs were found for retry",
+        ...retried,
+        status: snapshotCaseLawProcessPendingFilesJob(),
+      });
+    } catch (err) {
+      console.error("Error retrying terminal process-pending docs:", err);
+      return res.status(500).json({ message: "Failed to retry terminal process-pending docs" });
+    }
   });
 
   app.post("/api/admin/case-law/process-pending-files/stop", async (req, res) => {
