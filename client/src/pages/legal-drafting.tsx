@@ -1572,6 +1572,30 @@ export default function LegalDraftingPage() {
     e.currentTarget.value = "";
   };
 
+  const streamAssistantDraftMessage = async (messageId: string, text: string) => {
+    const finalText = String(text || "");
+    if (!finalText) return;
+    const total = finalText.length;
+    const chunkSize =
+      total > 10000 ? 220 :
+      total > 6000 ? 160 :
+      total > 3000 ? 110 :
+      total > 1200 ? 70 : 42;
+    let cursor = 0;
+    while (cursor < total) {
+      cursor = Math.min(total, cursor + chunkSize);
+      const partial = finalText.slice(0, cursor);
+      setDraftChatMessages((prev) =>
+        prev.map((item) =>
+          item.id === messageId
+            ? { ...item, content: partial, kind: cursor < total ? "typing" : undefined }
+            : item,
+        ),
+      );
+      await new Promise((resolve) => window.setTimeout(resolve, 14));
+    }
+  };
+
   const generateClause = async (promptOverride?: string) => {
     const prompt = (promptOverride ?? aiPrompt).trim();
     if (!prompt) return;
@@ -1665,18 +1689,29 @@ export default function LegalDraftingPage() {
       setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
       setDraftReferences(normalizeLegalDraftReferences(data?.references));
 
+      const assistantMessageId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      setDraftChatMessages((prev) => [
+        ...prev.filter((message) => message.id !== typingMessageId),
+        {
+          id: assistantMessageId,
+          role: "assistant",
+          kind: "typing",
+          content: "",
+          createdAt: Date.now(),
+        },
+      ]);
+      await streamAssistantDraftMessage(assistantMessageId, clause);
+
       setDocText(clause);
       setHasDraftInSession(!!clause.trim());
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
       setDraftChatMessages((prev) => [
-        ...prev.filter((message) => message.id !== typingMessageId),
-        {
-          id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          role: "assistant",
-          content: clause,
-          createdAt: Date.now(),
-        },
+        ...prev.map((message) =>
+          message.id === assistantMessageId
+            ? { ...message, content: clause, kind: undefined }
+            : message,
+        ),
       ]);
       setAiContextFiles([]);
       if (aiContextInputRef.current) aiContextInputRef.current.value = "";
@@ -1690,7 +1725,7 @@ export default function LegalDraftingPage() {
       runDraftReview(clause);
     } catch (err: any) {
       setDraftChatMessages((prev) => [
-        ...prev.filter((message) => message.id !== typingMessageId),
+        ...prev.filter((message) => message.id !== typingMessageId && !(message.role === "assistant" && message.kind === "typing")),
         {
           id: `assistant-error-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           role: "assistant",
