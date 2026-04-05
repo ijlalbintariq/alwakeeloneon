@@ -924,36 +924,75 @@ export class DatabaseStorage implements IStorage {
       return toStyleMemorySettingsView(updated);
     }
 
-    const [inserted] = await db
-      .insert(styleMemorySettings)
-      .values({
-        userId: args.userId,
-        orgId: args.orgId ?? null,
-        module: args.module,
-        enabled: nextEnabled,
-        ownershipMode: nextOwnershipMode,
-        strictness: nextStrictness,
-        learningSource: "full-activity",
-        coverage: "generation-only",
-      })
-      .returning();
-    return toStyleMemorySettingsView(inserted);
+    try {
+      const [inserted] = await db
+        .insert(styleMemorySettings)
+        .values({
+          userId: args.userId,
+          orgId: args.orgId ?? null,
+          module: args.module,
+          enabled: nextEnabled,
+          ownershipMode: nextOwnershipMode,
+          strictness: nextStrictness,
+          learningSource: "full-activity",
+          coverage: "generation-only",
+        })
+        .returning();
+      return toStyleMemorySettingsView(inserted);
+    } catch (err: any) {
+      // Race-safe path: if another request inserted the same scope first, update that row.
+      if (String(err?.code || "") !== "23505") throw err;
+      const collided = await this.getStyleMemorySettings(args.userId, args.module, args.orgId);
+      if (!collided) throw err;
+      const [updated] = await db
+        .update(styleMemorySettings)
+        .set({
+          enabled: nextEnabled,
+          ownershipMode: nextOwnershipMode,
+          strictness: nextStrictness,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(styleMemorySettings.userId, args.userId),
+            eq(styleMemorySettings.module, args.module),
+            args.orgId == null ? sql`${styleMemorySettings.orgId} IS NULL` : eq(styleMemorySettings.orgId, args.orgId),
+          ),
+        )
+        .returning();
+      return toStyleMemorySettingsView(updated);
+    }
   }
 
   async touchStyleMemoryBackfill(userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<void> {
     const existing = await this.getStyleMemorySettings(userId, module, orgId);
     if (!existing) {
-      await db.insert(styleMemorySettings).values({
-        userId,
-        orgId: orgId ?? null,
-        module,
-        enabled: true,
-        ownershipMode: "user-org",
-        learningSource: "full-activity",
-        coverage: "generation-only",
-        strictness: "balanced",
-        lastBackfillAt: new Date(),
-      });
+      try {
+        await db.insert(styleMemorySettings).values({
+          userId,
+          orgId: orgId ?? null,
+          module,
+          enabled: true,
+          ownershipMode: "user-org",
+          learningSource: "full-activity",
+          coverage: "generation-only",
+          strictness: "balanced",
+          lastBackfillAt: new Date(),
+        });
+      } catch (err: any) {
+        // If another request created it first, fall through to update.
+        if (String(err?.code || "") !== "23505") throw err;
+      }
+      await db
+        .update(styleMemorySettings)
+        .set({ lastBackfillAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(
+            eq(styleMemorySettings.userId, userId),
+            eq(styleMemorySettings.module, module),
+            orgId == null ? sql`${styleMemorySettings.orgId} IS NULL` : eq(styleMemorySettings.orgId, orgId),
+          ),
+        );
       return;
     }
 

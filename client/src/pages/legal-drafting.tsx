@@ -79,26 +79,6 @@ type DraftTemplate = {
   body: string;
 };
 
-type LegalDocumentType =
-  | "civil-suit-plaint"
-  | "civil-misc-application"
-  | "criminal-misc-application"
-  | "temporary-injunction-application"
-  | "execution-application"
-  | "sessions-bail-application"
-  | "sessions-pre-arrest-bail"
-  | "sessions-criminal-appeal"
-  | "sessions-criminal-revision"
-  | "family-suit-petition"
-  | "high-court-writ-petition"
-  | "high-court-civil-appeal"
-  | "high-court-criminal-appeal"
-  | "high-court-criminal-revision"
-  | "high-court-bail-before-arrest"
-  | "supreme-court-cpla"
-  | "supreme-court-criminal-petition"
-  | "custom-input";
-
 type LegalDraftCaseReference = {
   id: number;
   citation: string;
@@ -155,6 +135,14 @@ type MemoryItem = {
   kind: "instruction" | "clause" | "risk";
   text: string;
   ts: number;
+};
+
+type DraftChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  attachments?: string[];
+  createdAt: number;
 };
 
 type StyleMemoryMeta = {
@@ -707,27 +695,6 @@ const TEMPLATES: DraftTemplate[] = [
   },
 ];
 
-const LEGAL_DOCUMENT_TYPE_OPTIONS: Array<{ value: LegalDocumentType; label: string }> = [
-  { value: "custom-input", label: "Custom (Type Your Own Filing Type)" },
-  { value: "civil-suit-plaint", label: "Civil Suit (Plaint)" },
-  { value: "civil-misc-application", label: "Civil Misc. Application" },
-  { value: "criminal-misc-application", label: "Criminal Misc. Application" },
-  { value: "temporary-injunction-application", label: "Temporary Injunction Application" },
-  { value: "execution-application", label: "Execution Application" },
-  { value: "sessions-bail-application", label: "Sessions Court Bail Application" },
-  { value: "sessions-pre-arrest-bail", label: "Sessions Pre-Arrest Bail" },
-  { value: "sessions-criminal-appeal", label: "Sessions Criminal Appeal" },
-  { value: "sessions-criminal-revision", label: "Sessions Criminal Revision" },
-  { value: "family-suit-petition", label: "Family Suit / Petition" },
-  { value: "high-court-writ-petition", label: "High Court Writ Petition" },
-  { value: "high-court-civil-appeal", label: "High Court Civil Appeal" },
-  { value: "high-court-criminal-appeal", label: "High Court Criminal Appeal" },
-  { value: "high-court-criminal-revision", label: "High Court Criminal Revision" },
-  { value: "high-court-bail-before-arrest", label: "High Court Bail Before Arrest" },
-  { value: "supreme-court-cpla", label: "Supreme Court CPLA" },
-  { value: "supreme-court-criminal-petition", label: "Supreme Court Criminal Petition for Leave to Appeal" },
-];
-
 function findSnippetRange(source: string, targetSnippet: string): { start: number; end: number } | null {
   const target = targetSnippet.trim();
   if (!source || !target) return null;
@@ -764,8 +731,6 @@ export default function LegalDraftingPage() {
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<DraftRecommendation[]>([]);
   const [aiContextFiles, setAiContextFiles] = useState<File[]>([]);
-  const [legalDocumentType, setLegalDocumentType] = useState<LegalDocumentType>("civil-suit-plaint");
-  const [customLegalDocumentType, setCustomLegalDocumentType] = useState("");
   const [activeLeftTool, setActiveLeftTool] = useState<"drafts" | "templates" | "collab" | "archive">("drafts");
   const [leftRailOpen, setLeftRailOpen] = useState(true);
   const [rightRailOpen, setRightRailOpen] = useState(true);
@@ -776,6 +741,15 @@ export default function LegalDraftingPage() {
   const [expandedRecommendationId, setExpandedRecommendationId] = useState<string | null>(null);
   const [selectedDraftRange, setSelectedDraftRange] = useState<{ start: number; end: number } | null>(null);
   const [selectedDraftSnippet, setSelectedDraftSnippet] = useState("");
+  const [draftChatMessages, setDraftChatMessages] = useState<DraftChatMessage[]>([
+    {
+      id: "assistant-intro",
+      role: "assistant",
+      content:
+        "Share your facts and attach supporting documents. I will draft in Pakistani court format and update your workspace draft.",
+      createdAt: Date.now(),
+    },
+  ]);
   const [draftReferences, setDraftReferences] = useState<LegalDraftReferencesPayload>(() => createEmptyLegalDraftReferences());
   const [isResolvingReferences, setIsResolvingReferences] = useState(false);
   const [activeCaseSourceId, setActiveCaseSourceId] = useState<number | null>(null);
@@ -1405,54 +1379,23 @@ export default function LegalDraftingPage() {
   const generateClause = async (promptOverride?: string) => {
     const prompt = (promptOverride ?? aiPrompt).trim();
     if (!prompt) return;
-    if (legalDocumentType === "custom-input" && !customLegalDocumentType.trim()) {
-      toast({
-        title: "Custom filing type required",
-        description: "Please enter the custom court filing type first.",
-        variant: "destructive",
-      });
-      return;
-    }
+
+    const queuedAttachments = aiContextFiles.map((file) => file.name);
+    setDraftChatMessages((prev) => [
+      ...prev,
+      {
+        id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        role: "user",
+        content: prompt,
+        attachments: queuedAttachments.length > 0 ? queuedAttachments : undefined,
+        createdAt: Date.now(),
+      },
+    ]);
+
     setIsGenerating(true);
     try {
       const draftTextForAi = docText.slice(0, 12000);
-      const editor = editorRef.current;
-      let selectionStart = editor ? Math.max(0, editor.selectionStart ?? 0) : 0;
-      let selectionEnd = editor ? Math.max(selectionStart, editor.selectionEnd ?? selectionStart) : 0;
-      selectionStart = Math.min(selectionStart, draftTextForAi.length);
-      selectionEnd = Math.min(selectionEnd, draftTextForAi.length);
-      let selectedSnippet = draftTextForAi.slice(selectionStart, selectionEnd);
-      let hasExplicitSelection = selectionEnd > selectionStart && selectedSnippet.trim().length > 0;
-
-      // Preserve explicit user-selected text even if focus moves to the AI panel.
-      if (!hasExplicitSelection && selectedDraftRange && selectedDraftSnippet.trim()) {
-        const preservedStart = Math.max(0, Math.min(selectedDraftRange.start, draftTextForAi.length));
-        const preservedEnd = Math.max(preservedStart, Math.min(selectedDraftRange.end, draftTextForAi.length));
-        const preservedSnippet = draftTextForAi.slice(preservedStart, preservedEnd);
-        if (preservedEnd > preservedStart && preservedSnippet.trim() && preservedSnippet === selectedDraftSnippet) {
-          selectionStart = preservedStart;
-          selectionEnd = preservedEnd;
-          selectedSnippet = preservedSnippet;
-          hasExplicitSelection = true;
-        }
-      }
-
-      // If no text is selected, fall back to the paragraph under the caret only for prompt-only edits.
-      // For attachment-based drafting, default to full-draft update unless user explicitly selects text.
-      const allowCursorParagraphTarget = aiContextFiles.length === 0;
-      if (!hasExplicitSelection && allowCursorParagraphTarget && draftTextForAi.trim().length > 0) {
-        const cursor = selectionStart;
-        const paragraphStartIdx = draftTextForAi.lastIndexOf("\n\n", Math.max(0, cursor - 1));
-        const paragraphEndIdx = draftTextForAi.indexOf("\n\n", cursor);
-        const blockStart = paragraphStartIdx >= 0 ? paragraphStartIdx + 2 : 0;
-        const blockEnd = paragraphEndIdx >= 0 ? paragraphEndIdx : draftTextForAi.length;
-        const paragraphSnippet = draftTextForAi.slice(blockStart, blockEnd);
-        if (paragraphSnippet.trim().length >= 40) {
-          selectionStart = blockStart;
-          selectionEnd = blockEnd;
-          selectedSnippet = paragraphSnippet;
-        }
-      }
+      const selectedSnippet = selectedDraftSnippet.trim() ? selectedDraftSnippet.slice(0, 8000) : "";
       let response: Response;
       if (aiContextFiles.length > 0) {
         const form = new FormData();
@@ -1460,14 +1403,8 @@ export default function LegalDraftingPage() {
         form.append("draftText", draftTextForAi);
         form.append("jurisdiction", "Lahore");
         form.append("module", "legal-drafting");
-        form.append("documentType", legalDocumentType);
-        if (legalDocumentType === "custom-input") {
-          form.append("customDocumentType", customLegalDocumentType.trim());
-        }
-        if (hasExplicitSelection && selectedSnippet.trim()) {
-          form.append("selectedSnippet", selectedSnippet.slice(0, 8000));
-          form.append("selectedSnippetStart", String(selectionStart));
-          form.append("selectedSnippetEnd", String(selectionEnd));
+        if (selectedSnippet) {
+          form.append("selectedSnippet", selectedSnippet);
         }
         aiContextFiles.forEach((file) => form.append("attachments", file));
         response = await fetch("/api/retrieval/clauses/generate", {
@@ -1479,13 +1416,9 @@ export default function LegalDraftingPage() {
         const payload = {
           prompt,
           draftText: draftTextForAi,
-          selectedSnippet: selectedSnippet.trim() ? selectedSnippet.slice(0, 8000) : undefined,
-          selectedSnippetStart: selectedSnippet.trim() ? selectionStart : undefined,
-          selectedSnippetEnd: selectedSnippet.trim() ? selectionEnd : undefined,
+          selectedSnippet: selectedSnippet || undefined,
           jurisdiction: "Lahore",
           module: "legal-drafting",
-          documentType: legalDocumentType,
-          customDocumentType: legalDocumentType === "custom-input" ? customLegalDocumentType.trim() : undefined,
         };
         response = await fetch("/api/retrieval/clauses/generate", {
           method: "POST",
@@ -1509,6 +1442,15 @@ export default function LegalDraftingPage() {
       setDocText(clause);
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
+      setDraftChatMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role: "assistant",
+          content: clause,
+          createdAt: Date.now(),
+        },
+      ]);
       setAiPrompt("");
       setAiContextFiles([]);
       if (aiContextInputRef.current) aiContextInputRef.current.value = "";
@@ -1521,6 +1463,15 @@ export default function LegalDraftingPage() {
 
       runDraftReview();
     } catch (err: any) {
+      setDraftChatMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-error-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role: "assistant",
+          content: `I could not generate the draft update right now. ${err?.message || "Please try again."}`,
+          createdAt: Date.now(),
+        },
+      ]);
       toast({
         title: "Failed to generate clause",
         description: err?.message || "Please try again.",
@@ -1908,29 +1859,11 @@ export default function LegalDraftingPage() {
             )}
           </div>
 
-          <div className="h-auto md:h-12 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex items-center px-2 md:px-4 py-2 md:py-0 justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1">
-              <button onClick={() => applyWrap("**")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
-                <Bold size={16} />
-              </button>
-              <button onClick={() => applyWrap("_")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
-                <Italic size={16} />
-              </button>
-              <button onClick={() => applyWrap("<u>", "</u>")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
-                <Underline size={16} />
-              </button>
-              <div className="h-4 w-px bg-amber-500/20 mx-1" />
-              <button onClick={() => applyLinePrefix("- ")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
-                <List size={16} />
-              </button>
-              <button onClick={() => applyLinePrefix("", true)} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
-                <ListOrdered size={16} />
-              </button>
-              <div className="h-4 w-px bg-amber-500/20 mx-1" />
-              <button onClick={() => applyWrap("\nSECTION: ", "\n")} className="p-1.5 rounded hover:bg-amber-500/10 text-slate-400 hover:text-amber-400">
-                <Type size={16} />
-              </button>
+          <div className="h-auto border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex items-center px-3 md:px-4 py-2 justify-between gap-2 flex-wrap">
+            <div className="text-[11px] text-slate-300">
+              Chat-first drafting mode is active. The workspace draft updates from AI responses.
             </div>
+            <div className="text-[10px] uppercase tracking-widest text-amber-300 font-bold">Editor Disabled</div>
           </div>
 
           <div className="px-3 md:px-8 pt-3 flex items-center gap-2 flex-wrap">
@@ -1954,19 +1887,112 @@ export default function LegalDraftingPage() {
           </div>
 
           <div className="flex-1 overflow-hidden p-2 md:p-4 lg:p-5">
-            <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl">
-              <div className="h-full overflow-hidden p-3 md:p-5 lg:p-7">
-                <div className="h-full">
-                  <Textarea
-                    ref={editorRef}
-                    value={docText}
-                    onChange={(e) => handleDraftTextChange(e.target.value)}
-                    onSelect={syncSelectedDraftText}
-                    onMouseUp={syncSelectedDraftText}
-                    onKeyUp={syncSelectedDraftText}
-                    className="legal-draft-font w-full h-full min-h-[72vh] md:min-h-[76vh] resize-none border-0 focus-visible:ring-0 focus-visible:outline-none bg-transparent text-slate-100 leading-8 text-[16px] selection:bg-blue-500 selection:text-white"
-                    data-testid="textarea-legal-draft"
-                  />
+            <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl flex flex-col overflow-hidden">
+              <div className="border-b border-[hsl(var(--preview-border))] px-4 py-3 bg-[#0f172a]/40">
+                <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Workspace Draft (Read-only)</p>
+                <p className="text-[11px] text-slate-400 mt-1">AI responses update this draft automatically. Save/export actions remain available.</p>
+              </div>
+
+              <div className="max-h-[28%] min-h-[140px] overflow-y-auto border-b border-[hsl(var(--preview-border))] px-4 py-3">
+                {docText.trim() ? (
+                  <pre className="legal-draft-font whitespace-pre-wrap text-[13px] leading-7 text-slate-100">{docText}</pre>
+                ) : (
+                  <p className="text-sm text-slate-400">No draft generated yet. Send your first drafting prompt below.</p>
+                )}
+              </div>
+
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="px-4 py-2 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/25 flex items-center justify-between">
+                  <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Drafting Chat</p>
+                  <span className="text-[10px] text-slate-500">{draftChatMessages.length} messages</span>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
+                  {draftChatMessages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`rounded-xl border px-3 py-2 ${
+                        message.role === "user"
+                          ? "ml-8 border-amber-500/35 bg-amber-500/10"
+                          : "mr-8 border-slate-700 bg-[#1e293b]/45"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${message.role === "user" ? "text-amber-200" : "text-slate-300"}`}>
+                          {message.role === "user" ? "You" : "AI Drafting Assistant"}
+                        </span>
+                        <span className="text-[10px] text-slate-500">{new Date(message.createdAt).toLocaleTimeString()}</span>
+                      </div>
+                      <p className="text-[12px] whitespace-pre-wrap leading-relaxed text-slate-100">{message.content}</p>
+                      {message.attachments && message.attachments.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {message.attachments.map((name, idx) => (
+                            <span key={`${message.id}-file-${idx}`} className="inline-flex items-center rounded-md border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-100">
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mx-3 mb-3 mt-2 rounded-xl border border-[hsl(var(--preview-border))] px-3 py-2 space-y-2 bg-[#0f172a]/75 backdrop-blur-xl pb-[max(env(safe-area-inset-bottom),0.6rem)]">
+                  <div>
+                    <input
+                      ref={aiContextInputRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx,.docm,.dotx,.txt"
+                      multiple
+                      className="hidden"
+                      onChange={onAiContextFilesSelected}
+                    />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => aiContextInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-700 bg-[#1e293b]/40 text-[11px] text-slate-200 hover:border-amber-500/40 hover:text-amber-200"
+                      >
+                        <Paperclip size={12} />
+                        Attach Context Files
+                      </button>
+                      <span className="text-[10px] text-slate-500">PDF, DOC/DOCX/DOCM/DOTX, TXT · up to 5 files</span>
+                    </div>
+                    {aiContextFiles.length > 0 && (
+                      <div className="mt-2 space-y-1.5 max-h-24 overflow-y-auto pr-1">
+                        {aiContextFiles.map((file, idx) => (
+                          <div key={`${file.name}-${idx}`} className="flex items-center justify-between rounded-md border border-slate-700/70 bg-[#0f172a]/70 px-2 py-1">
+                            <span className="text-[11px] text-slate-300 truncate pr-2">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setAiContextFiles((prev) => prev.filter((_, i) => i !== idx))}
+                              className="text-[10px] text-rose-300 hover:text-rose-200"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative">
+                    <Textarea
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-xl p-3 pr-12 text-sm focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none resize-none placeholder:text-slate-600"
+                      placeholder="Describe what to draft, amend, or improve in Pakistani court format..."
+                      rows={2}
+                      data-testid="textarea-ai-draft-prompt"
+                    />
+                    <button
+                      className="absolute bottom-3 right-3 size-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center shadow-lg disabled:opacity-50"
+                      onClick={() => generateClause()}
+                      disabled={isGenerating || !aiPrompt.trim()}
+                      data-testid="button-send-ai-draft-prompt"
+                    >
+                      {isGenerating ? <Search size={15} className="animate-spin" /> : <ArrowRight size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2005,131 +2031,15 @@ export default function LegalDraftingPage() {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-5">
             <section>
-              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Draft with AI</label>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Drafting Controls</label>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Use the chat composer in the main workspace to send instructions and attach context files. The AI response updates the workspace draft.
+              </p>
               {styleMemoryMeta && (
-                <div className="mb-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-100">
+                <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-100">
                   Style memory: {styleMemoryMeta.applied ? "applied" : "not applied"} · confidence {Math.round((styleMemoryMeta.confidence || 0) * 100)}%
                 </div>
               )}
-              {selectedDraftSnippet.trim() && (
-                <div className="mb-3 rounded-lg border border-blue-400/35 bg-blue-500/10 p-2.5">
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-200">Selected Text</p>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={reselectDraftText}
-                        className="rounded px-1.5 py-0.5 text-[10px] font-bold text-blue-100 bg-blue-500/25 hover:bg-blue-500/35"
-                      >
-                        Re-select
-                      </button>
-                      <button
-                        type="button"
-                        onClick={clearSelectedDraftText}
-                        className="rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-200 bg-slate-700/70 hover:bg-slate-600/80"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-[11px] leading-relaxed text-blue-100 whitespace-pre-wrap">
-                    {selectedDraftSnippet.length > 260 ? `${selectedDraftSnippet.slice(0, 260)}...` : selectedDraftSnippet}
-                  </p>
-                </div>
-              )}
-              <div className="mb-3">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Court Filing Type</label>
-                <select
-                  value={legalDocumentType}
-                  onChange={(e) => setLegalDocumentType(e.target.value as LegalDocumentType)}
-                  className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-100 focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none"
-                >
-                  {LEGAL_DOCUMENT_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {legalDocumentType === "custom-input" && (
-                <div className="mb-3">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                    Custom Filing Type
-                  </label>
-                  <input
-                    value={customLegalDocumentType}
-                    onChange={(e) => setCustomLegalDocumentType(e.target.value)}
-                    className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-100 focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none"
-                    placeholder="e.g., Guardian Petition, Succession Application, Rent Controller Appeal"
-                    data-testid="input-custom-filing-type"
-                  />
-                </div>
-              )}
-              <div className="relative">
-                <Textarea
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-xl p-3 text-sm focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none resize-none placeholder:text-slate-600"
-                  placeholder="e.g., Draft grounds for High Court Civil Appeal against dismissal of injunction application"
-                  rows={4}
-                  data-testid="textarea-ai-draft-prompt"
-                />
-                <button
-                  className="absolute bottom-3 right-3 size-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center shadow-lg disabled:opacity-50"
-                  onClick={() => generateClause()}
-                  disabled={isGenerating || !aiPrompt.trim()}
-                  data-testid="button-send-ai-draft-prompt"
-                >
-                  {isGenerating ? <Search size={15} className="animate-spin" /> : <ArrowRight size={16} />}
-                </button>
-              </div>
-              <div className="mt-3">
-                <input
-                  ref={aiContextInputRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx,.docm,.dotx,.txt"
-                  multiple
-                  className="hidden"
-                  onChange={onAiContextFilesSelected}
-                />
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => aiContextInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-700 bg-[#1e293b]/40 text-[11px] text-slate-200 hover:border-amber-500/40 hover:text-amber-200"
-                  >
-                    <Paperclip size={12} />
-                    Attach Context Files
-                  </button>
-                  <span className="text-[10px] text-slate-500">PDF, DOC/DOCX/DOCM/DOTX, TXT · up to 5 files</span>
-                </div>
-                {aiContextFiles.length > 0 && (
-                  <div className="mt-2 space-y-1.5">
-                    {aiContextFiles.map((file, idx) => (
-                      <div key={`${file.name}-${idx}`} className="flex items-center justify-between rounded-md border border-slate-700/70 bg-[#0f172a]/70 px-2 py-1">
-                        <span className="text-[11px] text-slate-300 truncate pr-2">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => setAiContextFiles((prev) => prev.filter((_, i) => i !== idx))}
-                          className="text-[10px] text-rose-300 hover:text-rose-200"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={runDraftReview}
-                  disabled={riskLoading || recommendLoading || !docText.trim()}
-                  className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 text-[11px] text-amber-200 hover:bg-amber-500/20 disabled:opacity-60"
-                  data-testid="button-run-draft-review"
-                >
-                  <Search size={12} />
-                  {riskLoading || recommendLoading ? "Reviewing..." : "Run Draft Review"}
-                </button>
-              </div>
             </section>
 
             <StyleMemoryPanel module="legal-drafting" />
