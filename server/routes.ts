@@ -8830,6 +8830,11 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
     return Number.isFinite(parsed) ? parsed : null;
   }
 
+  function parseOptionalBoolean(value: unknown): boolean {
+    const normalized = String(value ?? "").trim().toLowerCase();
+    return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+  }
+
   function applyTargetedLegalDraftEdit(params: {
     draftText: string;
     selectedSnippet: string;
@@ -8879,6 +8884,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
         selectedSnippet?: string;
         selectedSnippetStart?: string | number;
         selectedSnippetEnd?: string | number;
+        forceTargetedEdit?: string | boolean | number;
       };
       const safePrompt = (prompt || "").trim();
       if (!safePrompt) {
@@ -9076,10 +9082,11 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
         const selectedSnippet = selectedSnippetRaw.slice(0, 8000);
         const selectedSnippetStart = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetStart);
         const selectedSnippetEnd = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetEnd);
+        const forceTargetedEdit = parseOptionalBoolean((req.body as any)?.forceTargetedEdit);
         const targetedEditMode =
           selectedSnippet.trim().length > 0 &&
           baseDraftText.trim().length > 0 &&
-          !isFullLegalRewriteRequested(safePrompt);
+          (forceTargetedEdit || !isFullLegalRewriteRequested(safePrompt));
 
         let draftedText = "";
         if (targetedEditMode) {
