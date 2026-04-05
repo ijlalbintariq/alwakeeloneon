@@ -4223,7 +4223,7 @@ function normalizeCourtReadyDraftingText(content: string): string {
     if (/^respectfully\s+(submitted|sheweth)\s*:?\s*$/i.test(trimmed)) return "RESPECTFULLY SHEWETH:";
     if (/^brief\s+facts\s*:?\s*$/i.test(trimmed)) return "BRIEF FACTS";
     if (/^grounds(\s+of\s+(appeal|application))?\s*:?\s*$/i.test(trimmed)) return "GROUNDS";
-    if (/^legal\s+authorities\s*:?\s*$/i.test(trimmed)) return "LEGAL AUTHORITIES";
+    if (/^legal\s+authorities\s*:?\s*$/i.test(trimmed)) return "GROUNDS";
     if (/^prayer\s*:?\s*$/i.test(trimmed)) return "PRAYER";
     if (/^interim\s+relief\s*:?\s*$/i.test(trimmed)) return "INTERIM RELIEF";
     if (/^verification\s*:?\s*$/i.test(trimmed)) return "VERIFICATION";
@@ -4242,13 +4242,12 @@ function normalizeCourtReadyDraftingText(content: string): string {
     "RESPECTFULLY SHEWETH:",
     "BRIEF FACTS",
     "GROUNDS",
-    "LEGAL AUTHORITIES",
     "PRAYER",
     "INTERIM RELIEF",
     "VERIFICATION",
     "ANNEXURES",
   ]);
-  const thatTheRequiredSections = new Set(["BRIEF FACTS", "GROUNDS", "LEGAL AUTHORITIES"]);
+  const thatTheRequiredSections = new Set(["BRIEF FACTS", "GROUNDS"]);
 
   const ensureThatTheLine = (line: string): string => {
     const raw = line.trim();
@@ -4286,8 +4285,13 @@ function normalizeCourtReadyDraftingText(content: string): string {
 
     const upper = line.trim().toUpperCase();
     if (sectionHeadings.has(upper)) {
-      if (out.length > 0 && out[out.length - 1] !== "") out.push("");
       const normalizedHeading = upper === "RESPECTFULLY SHEWETH" ? "RESPECTFULLY SHEWETH:" : upper;
+      const lastNonEmpty = [...out].reverse().find((entry) => entry.trim().length > 0) || "";
+      if (normalizedHeading === "GROUNDS" && lastNonEmpty.trim().toUpperCase() === "GROUNDS") {
+        currentSection = "GROUNDS";
+        continue;
+      }
+      if (out.length > 0 && out[out.length - 1] !== "") out.push("");
       out.push(normalizedHeading);
       currentSection = normalizedHeading.replace(/:$/, "");
       if (i + 1 < rawLines.length && rawLines[i + 1].trim() !== "") out.push("");
@@ -8517,6 +8521,20 @@ The petitioner has no other adequate remedy except to approach this Honourable C
 
 Avoid casual or conversational language.
 
+LEGAL SYSTEM HIERARCHY (MANDATORY)
+
+You must follow Pakistani judicial forum hierarchy and select the correct forum for the filing type.
+
+Forum mapping rules (strict):
+- Constitutional Petition / Writ under Article 199: High Court only.
+- Family Suit/Petition (custody, maintenance, khula, dissolution): Family Court only.
+- Sessions Bail matters under Sections 497/498 Cr.P.C.: Sessions Court / High Court as legally applicable, never Family Court.
+- Criminal Misc. for FIR registration under Sections 22-A/22-B Cr.P.C.: Justice of Peace / Ex-Officio Justice of Peace forum.
+- CPLA / Petition for Leave to Appeal: Supreme Court of Pakistan only.
+
+Never place a writ petition in Family Court.
+Never place a Family matter in High Court/Sessions format unless explicitly a competent appellate/revisional forum is requested.
+
 DOCUMENT FORMAT
 
 All drafts must follow this structure.
@@ -8597,7 +8615,7 @@ Facts must be chronological and legally relevant.
 
 MANDATORY LEADING PHRASE RULE
 
-In BRIEF FACTS, GROUNDS, and LEGAL AUTHORITIES, every individual line must begin with:
+In BRIEF FACTS and GROUNDS, every individual line must begin with:
 
 That the ...
 
@@ -8621,7 +8639,11 @@ D. FAILURE TO CONSIDER MATERIAL EVIDENCE
 
 Each ground must contain a heading, the legal principle, explanation of the error, and where appropriate reference to statute or precedent.
 
-LEGAL AUTHORITIES
+LEGAL AUTHORITIES INTEGRATION
+
+Do not create a separate heading titled "LEGAL AUTHORITIES".
+
+Wherever legal authorities are needed, include them within GROUNDS lines and connect each authority to the relevant legal ground.
 
 Where relevant cite Pakistani case law such as:
 
@@ -8629,8 +8651,6 @@ PLD 2018 SC 806
 2014 SCMR 1365
 2024 CLD 105
 2022 CLD 900
-
-Authorities should support the legal argument presented.
 
 PRAYER
 
@@ -8715,23 +8735,17 @@ Do not provide explanations unless explicitly requested.
 
 Always produce a complete court-ready pleading following Pakistani legal drafting practice.`;
 
-  function normalizeLegalDraftingDocType(
-    raw: string | undefined | null,
-    prompt: string,
-  ): LegalDraftingDocType {
-    const value = String(raw || "").trim().toLowerCase();
-    if (value in LEGAL_DRAFTING_DOC_TYPES) {
-      return value as LegalDraftingDocType;
-    }
-    const text = prompt.toLowerCase();
+  function inferLegalDraftingDocTypeFromPrompt(prompt: string): LegalDraftingDocType | null {
+    const text = String(prompt || "").toLowerCase();
+    if (!text.trim()) return null;
     if (/(criminal petition|criminal leave to appeal|supreme court.*criminal)/.test(text)) return "supreme-court-criminal-petition";
     if (/(cpla|civil petition for leave to appeal|supreme court.*civil)/.test(text)) return "supreme-court-cpla";
     if (/(bail before arrest|pre[-\s]?arrest.*high court|high court.*498)/.test(text)) return "high-court-bail-before-arrest";
     if (/(high court.*criminal revision|criminal revision.*high court)/.test(text)) return "high-court-criminal-revision";
     if (/(high court.*criminal appeal|criminal appeal.*high court)/.test(text)) return "high-court-criminal-appeal";
     if (/(writ|article\s*199|constitutional petition|high court writ)/.test(text)) return "high-court-writ-petition";
-    if (/(high court.*appeal|civil appeal)/.test(text)) return "high-court-civil-appeal";
-    if (/(family suit|family petition|custody|maintenance|khula|dissolution of marriage)/.test(text)) return "family-suit-petition";
+    if (/(high court.*appeal|civil appeal.*high court|high court civil appeal)/.test(text)) return "high-court-civil-appeal";
+    if (/(family suit|family petition|custody|maintenance|khula|dissolution of marriage|family court)/.test(text)) return "family-suit-petition";
     if (/(criminal\s*(misc|misc\.?|miscellaneous)|crl\.?\s*misc|crm\.?\s*misc)/.test(text)) return "criminal-misc-application";
     if (/(criminal revision|revision petition)/.test(text)) return "sessions-criminal-revision";
     if (/(criminal appeal|appeal against conviction)/.test(text)) return "sessions-criminal-appeal";
@@ -8740,6 +8754,51 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
     if (/(execution|decree holder|order\s*xxi)/.test(text)) return "execution-application";
     if (/(temporary injunction|ad[-\s]?interim|order\s*xxxix|39\s*rules?\s*1\s*&?\s*2)/.test(text)) return "temporary-injunction-application";
     if (/(civil misc|cma|interim relief|151\s*cpc)/.test(text)) return "civil-misc-application";
+    if (/(civil suit|plaint|declaration suit|injunction suit)/.test(text)) return "civil-suit-plaint";
+    return null;
+  }
+
+  function shouldPromptHierarchyOverrideType(prompt: string, inferredType: LegalDraftingDocType): boolean {
+    const text = String(prompt || "").toLowerCase();
+    const highCourtSignals = /(writ|article\s*199|constitutional petition|high court)/.test(text);
+    const familySignals = /(family court|family suit|family petition|khula|custody|maintenance|dissolution of marriage)/.test(text);
+    const supremeSignals = /(supreme court|cpla|leave to appeal)/.test(text);
+    const sessionsSignals = /(sessions court|section\s*497|section\s*498|criminal bail)/.test(text);
+    const justiceOfPeaceSignals = /(22[-\s]?a|22[-\s]?b|justice of peace|registration of fir|section\s*154\s*cr\.?p\.?c)/.test(text);
+
+    if (inferredType === "high-court-writ-petition" && highCourtSignals) return true;
+    if (inferredType === "family-suit-petition" && familySignals) return true;
+    if ((inferredType === "supreme-court-cpla" || inferredType === "supreme-court-criminal-petition") && supremeSignals) return true;
+    if (
+      (inferredType === "sessions-bail-application" || inferredType === "sessions-pre-arrest-bail") &&
+      sessionsSignals
+    ) {
+      return true;
+    }
+    if (inferredType === "criminal-misc-application" && justiceOfPeaceSignals) return true;
+    return false;
+  }
+
+  function normalizeLegalDraftingDocType(
+    raw: string | undefined | null,
+    prompt: string,
+  ): LegalDraftingDocType {
+    const value = String(raw || "").trim().toLowerCase();
+    const inferredFromPrompt = inferLegalDraftingDocTypeFromPrompt(prompt);
+
+    if (value in LEGAL_DRAFTING_DOC_TYPES) {
+      const selected = value as LegalDraftingDocType;
+      if (
+        inferredFromPrompt &&
+        inferredFromPrompt !== selected &&
+        shouldPromptHierarchyOverrideType(prompt, inferredFromPrompt)
+      ) {
+        return inferredFromPrompt;
+      }
+      return selected;
+    }
+
+    if (inferredFromPrompt) return inferredFromPrompt;
     return "civil-suit-plaint";
   }
 
@@ -9075,7 +9134,9 @@ Court-ready formatting requirements (mandatory):
 - Use uppercase captions for core headings: court title, case title, RESPECTFULLY SHEWETH:, BRIEF FACTS, GROUNDS, PRAYER, VERIFICATION, ANNEXURES.
 - Use "VERSUS" on its own line between party blocks.
 - Use numbered facts (1., 2., 3.) and alphabetic legal grounds (A., B., C.).
-- In BRIEF FACTS, GROUNDS, and LEGAL AUTHORITIES, every line/item must start with "That the" (for example: "1. That the ...", "A. That the ...").
+- In BRIEF FACTS and GROUNDS, every line/item must start with "That the" (for example: "1. That the ...", "A. That the ...").
+- Do not create a separate heading "LEGAL AUTHORITIES"; place all statutes/case citations inside relevant GROUNDS lines.
+- Court hierarchy rule (strict): use the correct Pakistani forum for selected filing type (e.g., Writ/Article 199 -> High Court; family matters -> Family Court; CPLA -> Supreme Court). Never place writ petitions in Family Court.
 - Keep prayer specific to this filing type and facts; avoid generic/contract wording.
 - Do not invent facts, dates, orders, or citations; use placeholders like [______] where details are missing.
 - Case law citation rule (strict): include only citations that are real and verifiable from Al Wakeelo internal Knowledge Base; if unavailable, omit citation.
