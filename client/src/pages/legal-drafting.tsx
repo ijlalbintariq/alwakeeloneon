@@ -829,6 +829,7 @@ export default function LegalDraftingPage() {
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
   const rightRailVisible = rightRailOpen && !focusWritingMode;
+  const hasSelectedSnippet = selectedDraftSnippet.trim().length > 0;
 
   const { data: allDocuments = [], isLoading: loadingDocs } = useQuery<DraftDocument[]>({
     queryKey: [api.documents.list.path],
@@ -1658,6 +1659,8 @@ export default function LegalDraftingPage() {
     try {
       const draftTextForAi = docText.slice(0, 12000);
       const selectedSnippet = selectedDraftSnippet.trim() ? selectedDraftSnippet.slice(0, 8000) : "";
+      const selectedSnippetStart = selectedDraftRange?.start;
+      const selectedSnippetEnd = selectedDraftRange?.end;
       let response: Response;
       if (aiContextFiles.length > 0) {
         const form = new FormData();
@@ -1667,6 +1670,9 @@ export default function LegalDraftingPage() {
         form.append("module", "legal-drafting");
         if (selectedSnippet) {
           form.append("selectedSnippet", selectedSnippet);
+          if (typeof selectedSnippetStart === "number") form.append("selectedSnippetStart", String(selectedSnippetStart));
+          if (typeof selectedSnippetEnd === "number") form.append("selectedSnippetEnd", String(selectedSnippetEnd));
+          form.append("forceTargetedEdit", "true");
         }
         aiContextFiles.forEach((file) => form.append("attachments", file));
         response = await fetch("/api/retrieval/clauses/generate", {
@@ -1679,6 +1685,9 @@ export default function LegalDraftingPage() {
           prompt,
           draftText: draftTextForAi,
           selectedSnippet: selectedSnippet || undefined,
+          selectedSnippetStart: typeof selectedSnippetStart === "number" ? selectedSnippetStart : undefined,
+          selectedSnippetEnd: typeof selectedSnippetEnd === "number" ? selectedSnippetEnd : undefined,
+          forceTargetedEdit: selectedSnippet ? true : undefined,
           jurisdiction: "Lahore",
           module: "legal-drafting",
         };
@@ -2172,6 +2181,57 @@ export default function LegalDraftingPage() {
                   <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Legal Drafting Chat</p>
                   <span className="text-[10px] text-slate-500">{draftChatMessages.length} messages</span>
                 </div>
+
+                <div className="mx-4 mt-3 rounded-xl border border-slate-700/70 bg-[#0f172a]/65 p-3">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Select Snippet (Edit-Only)</p>
+                    <span className="text-[10px] text-slate-400">
+                      {hasSelectedSnippet
+                        ? `${selectedDraftSnippet.trim().length} chars selected`
+                        : "No selection"}
+                    </span>
+                  </div>
+
+                  {!docText.trim() ? (
+                    <p className="text-[11px] text-slate-400">
+                      Generate or load a draft first, then click-drag text below to target edits.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-[10px] text-slate-400">
+                        Click-drag any text in this draft box. Then send your prompt; AI will edit only the selected passage.
+                      </p>
+                      <Textarea
+                        ref={editorRef}
+                        value={docText}
+                        readOnly
+                        onMouseUp={syncSelectedDraftText}
+                        onKeyUp={syncSelectedDraftText}
+                        onSelect={syncSelectedDraftText}
+                        className="min-h-[132px] max-h-[220px] w-full bg-[#020617]/70 border border-slate-700 rounded-xl p-3 text-[12px] leading-relaxed text-slate-100 font-[Times_New_Roman] whitespace-pre-wrap selection:bg-amber-300/40 selection:text-slate-950"
+                      />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={reselectDraftText}
+                          disabled={!hasSelectedSnippet}
+                          className="px-2 py-1 rounded border border-slate-600 text-slate-200 text-[10px] font-bold hover:border-amber-500/35 hover:text-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Re-select Highlight
+                        </button>
+                        <button
+                          type="button"
+                          onClick={clearSelectedDraftText}
+                          disabled={!hasSelectedSnippet}
+                          className="px-2 py-1 rounded border border-slate-600 text-slate-200 text-[10px] font-bold hover:border-rose-500/35 hover:text-rose-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Clear Selection
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div ref={chatListRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
                   {draftChatMessages.map((message) => (
                     <div
