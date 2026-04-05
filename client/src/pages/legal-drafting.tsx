@@ -786,6 +786,7 @@ export default function LegalDraftingPage() {
   const [isResolvingReferences, setIsResolvingReferences] = useState(false);
   const [activeCaseSourceId, setActiveCaseSourceId] = useState<number | null>(null);
   const [caseSourceDoc, setCaseSourceDoc] = useState<CaseLawSourceDocument | null>(null);
+  const [hasDraftInSession, setHasDraftInSession] = useState(false);
   const showDraftReviewPanel = riskLoading || recommendLoading || riskResults.length > 0 || recommendations.length > 0;
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
@@ -1011,6 +1012,11 @@ export default function LegalDraftingPage() {
   }, [recommendations, expandedRecommendationId]);
 
   useEffect(() => {
+    if (!hasDraftInSession) {
+      setDraftReferences(createEmptyLegalDraftReferences());
+      setIsResolvingReferences(false);
+      return;
+    }
     const currentText = docText.trim();
     if (!currentText) {
       setDraftReferences(createEmptyLegalDraftReferences());
@@ -1047,7 +1053,7 @@ export default function LegalDraftingPage() {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [docText]);
+  }, [docText, hasDraftInSession]);
 
   const openCaseSourceDocument = async (reference: LegalDraftCaseReference) => {
     if (!reference.id || !reference.hasSource) {
@@ -1349,6 +1355,7 @@ export default function LegalDraftingPage() {
     setSelectedDraftId(doc.id);
     setDraftTitle(doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "") || "Draft");
     setDocText(doc.content || "");
+    setHasDraftInSession(!!(doc.content || "").trim());
     clearSelectedDraftText();
     setRecommendations([]);
     setRiskResults([]);
@@ -1359,6 +1366,7 @@ export default function LegalDraftingPage() {
   const applyTemplate = (template: DraftTemplate) => {
     setDraftTitle(template.title);
     setDocText(template.body);
+    setHasDraftInSession(!!template.body.trim());
     clearSelectedDraftText();
     setRecommendations([]);
     setRiskResults([]);
@@ -1435,6 +1443,7 @@ export default function LegalDraftingPage() {
           createdAt: Date.now(),
         },
       ]);
+      setDraftReferences(createEmptyLegalDraftReferences());
       setAiPrompt("");
       return;
     }
@@ -1487,6 +1496,7 @@ export default function LegalDraftingPage() {
       setDraftReferences(normalizeLegalDraftReferences(data?.references));
 
       setDocText(clause);
+      setHasDraftInSession(!!clause.trim());
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
       setDraftChatMessages((prev) => [
@@ -1744,6 +1754,8 @@ export default function LegalDraftingPage() {
                 setDocText(DEFAULT_DOC);
                 setDraftTitle("Untitled Draft");
                 setSelectedDraftId(null);
+                setHasDraftInSession(false);
+                setDraftReferences(createEmptyLegalDraftReferences());
                 clearSelectedDraftText();
               }}
             >
@@ -2239,6 +2251,13 @@ export default function LegalDraftingPage() {
                 {isResolvingReferences && <Loader2 size={12} className="animate-spin text-amber-300" />}
               </div>
 
+              {!hasDraftInSession || !docText.trim() ? (
+                <div className="rounded-lg border border-slate-700/70 bg-[#1e293b]/20 p-2.5">
+                  <p className="text-[11px] text-slate-400">
+                    No draft generated in this chat yet. References will appear after AI drafts or you load a draft/template.
+                  </p>
+                </div>
+              ) : (
               <div className="space-y-3">
                 <div className="rounded-lg border border-slate-700/70 bg-[#1e293b]/20 p-2.5">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-amber-300 mb-2">Statute References</p>
@@ -2325,6 +2344,7 @@ export default function LegalDraftingPage() {
                   </div>
                 )}
               </div>
+              )}
             </section>
           </div>
           </div>
