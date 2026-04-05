@@ -142,7 +142,7 @@ type DraftChatMessage = {
   role: "user" | "assistant";
   content: string;
   attachments?: string[];
-  kind?: "guidance" | "draft-update" | "error";
+  kind?: "guidance" | "error";
   createdAt: number;
 };
 
@@ -1489,19 +1489,12 @@ export default function LegalDraftingPage() {
       setDocText(clause);
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
-      const previewLine = clause
-        .split("\n")
-        .map((line) => line.trim())
-        .find((line) => line.length > 0);
       setDraftChatMessages((prev) => [
         ...prev,
         {
           id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           role: "assistant",
-          kind: "draft-update",
-          content: previewLine
-            ? `Draft updated in Workspace Draft. Opening line: "${previewLine.slice(0, 140)}${previewLine.length > 140 ? "..." : ""}"`
-            : "Draft updated in Workspace Draft. Tell me the next section you want to improve.",
+          content: clause,
           createdAt: Date.now(),
         },
       ]);
@@ -1922,9 +1915,9 @@ export default function LegalDraftingPage() {
 
           <div className="h-auto border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/45 backdrop-blur-xl flex items-center px-3 md:px-4 py-2 justify-between gap-2 flex-wrap">
             <div className="text-[11px] text-slate-300">
-              Chat-first drafting mode is active. The workspace draft updates from AI responses.
+              Chat-first drafting mode is active. Write prompt, attach context, and get full draft replies in chat.
             </div>
-            <div className="text-[10px] uppercase tracking-widest text-amber-300 font-bold">Editor Disabled</div>
+            <div className="text-[10px] uppercase tracking-widest text-amber-300 font-bold">Single Chat View</div>
           </div>
 
           <div className="px-3 md:px-8 pt-3 flex items-center gap-2 flex-wrap">
@@ -1949,22 +1942,9 @@ export default function LegalDraftingPage() {
 
           <div className="flex-1 overflow-hidden p-2 md:p-4 lg:p-5">
             <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl flex flex-col overflow-hidden">
-              <div className="border-b border-[hsl(var(--preview-border))] px-4 py-3 bg-[#0f172a]/40">
-                <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Workspace Draft (Current)</p>
-                <p className="text-[11px] text-slate-400 mt-1">AI responses update this draft automatically. Save/export actions remain available.</p>
-              </div>
-
-              <div className="max-h-[28%] min-h-[140px] overflow-y-auto border-b border-[hsl(var(--preview-border))] px-4 py-3">
-                {docText.trim() ? (
-                  <pre className="legal-draft-font whitespace-pre-wrap text-[13px] leading-7 text-slate-100">{docText}</pre>
-                ) : (
-                  <p className="text-sm text-slate-400">No draft generated yet. Send your first drafting prompt below.</p>
-                )}
-              </div>
-
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="px-4 py-2 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/25 flex items-center justify-between">
-                  <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Drafting Activity</p>
+                  <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Legal Drafting Chat</p>
                   <span className="text-[10px] text-slate-500">{draftChatMessages.length} messages</span>
                 </div>
                 <div ref={chatListRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
@@ -1974,9 +1954,7 @@ export default function LegalDraftingPage() {
                       className={`rounded-xl border px-3 py-2 ${
                         message.role === "user"
                           ? "ml-8 border-amber-500/35 bg-amber-500/10"
-                          : message.kind === "draft-update"
-                            ? "mr-8 border-emerald-500/35 bg-emerald-500/10"
-                            : message.kind === "error"
+                          : message.kind === "error"
                               ? "mr-8 border-rose-500/35 bg-rose-500/10"
                               : "mr-8 border-slate-700 bg-[#1e293b]/45"
                       }`}
@@ -1985,9 +1963,7 @@ export default function LegalDraftingPage() {
                         <span className={`text-[10px] font-bold uppercase tracking-wider ${message.role === "user" ? "text-amber-200" : "text-slate-300"}`}>
                           {message.role === "user"
                             ? "You"
-                            : message.kind === "draft-update"
-                              ? "AI Drafting Assistant · Updated"
-                              : "AI Drafting Assistant"}
+                            : "AI Drafting Assistant"}
                         </span>
                         <span className="text-[10px] text-slate-500">{new Date(message.createdAt).toLocaleTimeString()}</span>
                       </div>
@@ -2102,7 +2078,7 @@ export default function LegalDraftingPage() {
             <section>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Drafting Controls</label>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Use the chat composer in the main workspace to send instructions and attach context files. The AI response updates the workspace draft.
+                Use the chat composer in the main area to send instructions and attach context files. The AI returns full drafting replies in chat.
               </p>
               {styleMemoryMeta && (
                 <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-100">
