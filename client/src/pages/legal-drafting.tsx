@@ -146,6 +146,16 @@ type DraftChatMessage = {
   createdAt: number;
 };
 
+type LegalDraftWorkspaceState = {
+  draftTitle: string;
+  docText: string;
+  selectedDraftId: number | null;
+  hasDraftInSession: boolean;
+  draftChatMessages: DraftChatMessage[];
+  memoryItems: MemoryItem[];
+  savedAt?: string;
+};
+
 type StyleMemoryMeta = {
   applied: boolean;
   module: "legal-drafting" | "contract-drafting" | null;
@@ -158,6 +168,7 @@ const AUTOSAVE_KEY = "legal-drafting-workspace-v2";
 const CONTEXT_MEMORY_KEY = "legal-drafting-context-memory-v1";
 const STYLE_MEMORY_BACKFILL_KEY = "legal-drafting-style-backfill-v1";
 const DRAFT_TITLE_PREFIX = "Legal Draft:";
+const WORKSPACE_STATE_SYNC_DEBOUNCE_MS = 1200;
 
 const DEFAULT_DOC = "";
 const LEGACY_DEFAULT_DOC_PREFIX = "IN THE COURT OF THE CIVIL JUDGE";
@@ -197,6 +208,32 @@ function createEmptyLegalDraftReferences(): LegalDraftReferencesPayload {
     statutes: [],
     removedCaseCitations: [],
     unresolvedStatutes: [],
+  };
+}
+
+function normalizeDraftChatMessage(input: unknown): DraftChatMessage | null {
+  if (!input || typeof input !== "object") return null;
+  const role = (input as any)?.role === "assistant" ? "assistant" : (input as any)?.role === "user" ? "user" : null;
+  if (!role) return null;
+  const content = String((input as any)?.content || "").trim();
+  if (!content) return null;
+  const idRaw = String((input as any)?.id || "").trim();
+  const createdAtRaw = Number((input as any)?.createdAt);
+  const kindRaw = String((input as any)?.kind || "").trim();
+  const attachmentsRaw = Array.isArray((input as any)?.attachments) ? (input as any).attachments : [];
+  const attachments = attachmentsRaw
+    .map((entry: unknown) => String(entry || "").trim())
+    .filter((entry: string) => entry.length > 0)
+    .slice(0, 8);
+  const kind: DraftChatMessage["kind"] | undefined =
+    kindRaw === "guidance" || kindRaw === "typing" || kindRaw === "error" ? kindRaw : undefined;
+  return {
+    id: idRaw || `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    role,
+    content: content.slice(0, 80000),
+    attachments: attachments.length > 0 ? attachments : undefined,
+    kind,
+    createdAt: Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? createdAtRaw : Date.now(),
   };
 }
 
@@ -787,6 +824,7 @@ export default function LegalDraftingPage() {
   const [activeCaseSourceId, setActiveCaseSourceId] = useState<number | null>(null);
   const [caseSourceDoc, setCaseSourceDoc] = useState<CaseLawSourceDocument | null>(null);
   const [hasDraftInSession, setHasDraftInSession] = useState(false);
+  const [workspaceStateHydrated, setWorkspaceStateHydrated] = useState(false);
   const showDraftReviewPanel = riskLoading || recommendLoading || riskResults.length > 0 || recommendations.length > 0;
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
@@ -861,6 +899,67 @@ export default function LegalDraftingPage() {
   }, []);
 
   useEffect(() => {
+    if (!user?.id) {
+      setWorkspaceStateHydrated(true);
+      return;
+    }
+    let cancelled = false;
+    const loadWorkspaceState = async () => {
+      try {
+        const res = await fetch("/api/legal-drafting/workspace-state", {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const state = data?.state as Partial<LegalDraftWorkspaceState> | null;
+        if (!state || cancelled) return;
+
+        const nextDocText = typeof state.docText === "string" ? state.docText : "";
+        const nextTitle = typeof state.draftTitle === "string" && state.draftTitle.trim()
+          ? state.draftTitle.trim()
+          : "Untitled Draft";
+        const nextSelectedDraftId = Number.isFinite(Number(state.selectedDraftId))
+          ? Number(state.selectedDraftId)
+          : null;
+        const nextHasDraft = Boolean(
+          typeof state.hasDraftInSession === "boolean"
+            ? state.hasDraftInSession
+            : nextDocText.trim().length > 0,
+        );
+        const nextMessages = Array.isArray(state.draftChatMessages)
+          ? state.draftChatMessages
+              .map((message) => normalizeDraftChatMessage(message))
+              .filter((message): message is DraftChatMessage => !!message)
+              .slice(-150)
+          : [];
+        const nextMemoryItems = Array.isArray(state.memoryItems)
+          ? state.memoryItems
+              .filter((m) => m && typeof m.text === "string" && typeof m.ts === "number")
+              .slice(0, 60)
+          : [];
+
+        setDocText(nextDocText);
+        setDraftTitle(nextTitle);
+        setSelectedDraftId(nextSelectedDraftId);
+        setHasDraftInSession(nextHasDraft);
+        setMemoryItems(nextMemoryItems);
+        if (nextMessages.length > 0) {
+          setDraftChatMessages(nextMessages);
+        }
+      } catch {
+        // Silent fallback to local autosave.
+      } finally {
+        if (!cancelled) setWorkspaceStateHydrated(true);
+      }
+    };
+
+    loadWorkspaceState();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
     setIsSavedLocal(false);
     const timeout = setTimeout(() => {
       localStorage.setItem(AUTOSAVE_KEY, docText);
@@ -872,6 +971,50 @@ export default function LegalDraftingPage() {
   useEffect(() => {
     localStorage.setItem(CONTEXT_MEMORY_KEY, JSON.stringify(memoryItems.slice(0, 30)));
   }, [memoryItems]);
+
+  useEffect(() => {
+    if (!workspaceStateHydrated || !user?.id) return;
+    const timeout = window.setTimeout(async () => {
+      const payload: LegalDraftWorkspaceState = {
+        draftTitle: (draftTitle || "Untitled Draft").slice(0, 240),
+        docText: docText || "",
+        selectedDraftId,
+        hasDraftInSession,
+        draftChatMessages: draftChatMessages.slice(-150).map((message) => ({
+          ...message,
+          content: String(message.content || "").slice(0, 80000),
+          attachments: Array.isArray(message.attachments)
+            ? message.attachments.slice(0, 8).map((item) => String(item || "").slice(0, 260))
+            : undefined,
+        })),
+        memoryItems: memoryItems.slice(0, 60).map((item) => ({
+          ...item,
+          text: String(item.text || "").slice(0, 2000),
+        })),
+      };
+      try {
+        await fetch("/api/legal-drafting/workspace-state", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // Silent autosave failure; local autosave remains fallback.
+      }
+    }, WORKSPACE_STATE_SYNC_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    workspaceStateHydrated,
+    user?.id,
+    draftTitle,
+    docText,
+    selectedDraftId,
+    hasDraftInSession,
+    draftChatMessages,
+    memoryItems,
+  ]);
 
   useEffect(() => {
     if (!selectedDraftSnippet.trim()) return;

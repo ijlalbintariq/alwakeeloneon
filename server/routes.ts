@@ -16,7 +16,7 @@ import {
   TIER_LIMITS,
   type CaseLaw,
 } from "@shared/schema";
-import { and, count, eq, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, lt, sql } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
 import {
@@ -9221,6 +9221,143 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
     } catch (err) {
       console.error("Error generating retrieval clause:", err);
       res.status(500).json({ message: "Failed to generate clause" });
+    }
+  });
+
+  const LEGAL_DRAFTING_WORKSPACE_STATE_DOC_TITLE = "__LEGAL_DRAFTING_WORKSPACE_STATE__";
+  const LEGAL_DRAFTING_WORKSPACE_STATE_SOURCE_TYPE = "legal-drafting-workspace-state";
+
+  app.get("/api/legal-drafting/workspace-state", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const [row] = await db
+        .select()
+        .from(documents)
+        .where(
+          and(
+            eq(documents.userId, userId),
+            eq(documents.sourceType, LEGAL_DRAFTING_WORKSPACE_STATE_SOURCE_TYPE),
+          ),
+        )
+        .orderBy(desc(documents.id))
+        .limit(1);
+
+      if (!row || !row.content) {
+        return res.json({ ok: true, state: null });
+      }
+
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(row.content);
+      } catch {
+        return res.json({ ok: true, state: null });
+      }
+
+      return res.json({
+        ok: true,
+        state: parsed && typeof parsed === "object" ? parsed : null,
+      });
+    } catch (err) {
+      console.error("Error loading legal drafting workspace state:", err);
+      return res.status(500).json({ message: "Failed to load legal drafting workspace state" });
+    }
+  });
+
+  app.put("/api/legal-drafting/workspace-state", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const schema = z.object({
+        draftTitle: z.string().trim().max(240).default("Untitled Draft"),
+        docText: z.string().max(250_000).default(""),
+        selectedDraftId: z.number().int().positive().nullable().optional(),
+        hasDraftInSession: z.boolean().optional().default(false),
+        draftChatMessages: z.array(
+          z.object({
+            id: z.string().trim().max(120),
+            role: z.enum(["user", "assistant"]),
+            content: z.string().max(80_000),
+            attachments: z.array(z.string().max(260)).optional(),
+            kind: z.enum(["guidance", "typing", "error"]).optional(),
+            createdAt: z.number().int().nonnegative().optional(),
+          }),
+        ).max(250).optional().default([]),
+        memoryItems: z.array(
+          z.object({
+            id: z.string().trim().max(120),
+            kind: z.enum(["instruction", "clause", "risk"]),
+            text: z.string().max(2000),
+            ts: z.number().int().nonnegative(),
+          }),
+        ).max(200).optional().default([]),
+      });
+
+      const parsed = schema.parse(req.body || {});
+
+      const statePayload = {
+        draftTitle: parsed.draftTitle || "Untitled Draft",
+        docText: parsed.docText || "",
+        selectedDraftId: parsed.selectedDraftId ?? null,
+        hasDraftInSession: !!parsed.hasDraftInSession,
+        draftChatMessages: parsed.draftChatMessages.slice(-150),
+        memoryItems: parsed.memoryItems.slice(0, 60),
+        savedAt: new Date().toISOString(),
+      };
+
+      const serialized = JSON.stringify(statePayload);
+
+      const [existing] = await db
+        .select({ id: documents.id })
+        .from(documents)
+        .where(
+          and(
+            eq(documents.userId, userId),
+            eq(documents.sourceType, LEGAL_DRAFTING_WORKSPACE_STATE_SOURCE_TYPE),
+          ),
+        )
+        .orderBy(desc(documents.id))
+        .limit(1);
+
+      if (existing?.id) {
+        await db
+          .update(documents)
+          .set({
+            title: LEGAL_DRAFTING_WORKSPACE_STATE_DOC_TITLE,
+            content: serialized,
+            summary: "Legal drafting workspace autosave state",
+            sourceType: LEGAL_DRAFTING_WORKSPACE_STATE_SOURCE_TYPE,
+            mimeType: "application/json",
+            fileExtension: "json",
+            detectedDomain: "other",
+            detectedDomainLabel: "Other",
+            classificationMethod: "workspace-autosave",
+            classificationConfidence: 100,
+          })
+          .where(eq(documents.id, existing.id));
+      } else {
+        await db.insert(documents).values({
+          userId,
+          title: LEGAL_DRAFTING_WORKSPACE_STATE_DOC_TITLE,
+          content: serialized,
+          summary: "Legal drafting workspace autosave state",
+          sourceType: LEGAL_DRAFTING_WORKSPACE_STATE_SOURCE_TYPE,
+          mimeType: "application/json",
+          fileExtension: "json",
+          detectedDomain: "other",
+          detectedDomainLabel: "Other",
+          classificationMethod: "workspace-autosave",
+          classificationConfidence: 100,
+        });
+      }
+
+      return res.json({ ok: true, savedAt: statePayload.savedAt });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0]?.message || "Invalid workspace state payload" });
+      }
+      console.error("Error saving legal drafting workspace state:", err);
+      return res.status(500).json({ message: "Failed to save legal drafting workspace state" });
     }
   });
 
