@@ -142,6 +142,7 @@ type DraftChatMessage = {
   role: "user" | "assistant";
   content: string;
   attachments?: string[];
+  kind?: "guidance" | "draft-update" | "error";
   createdAt: number;
 };
 
@@ -160,6 +161,35 @@ const DRAFT_TITLE_PREFIX = "Legal Draft:";
 
 const DEFAULT_DOC = "";
 const LEGACY_DEFAULT_DOC_PREFIX = "IN THE COURT OF THE CIVIL JUDGE";
+
+const DRAFT_ACTION_VERBS_REGEX =
+  /\b(draft|prepare|write|redraft|rewrite|revise|amend|edit|improve|finalize|generate|make|create|update|format|polish|convert)\b/i;
+const DRAFTING_DOCUMENT_HINTS_REGEX =
+  /\b(application|petition|plaint|suit|appeal|writ|bail|revision|cpla|affidavit|reply|grounds|prayer|verification|written statement)\b/i;
+const LEGAL_REFERENCE_HINTS_REGEX =
+  /\b(section|u\/s|under section|article|fir|cr\.?p\.?c|ppc|pld|scmr|mld|clc|cld|ylr|p\s*cr\.?\s*l\.?\s*j)\b/i;
+
+function isActionableDraftPrompt(prompt: string): boolean {
+  const normalized = String(prompt || "").trim();
+  if (!normalized) return false;
+  if (normalized.length >= 40) return true;
+  return (
+    DRAFT_ACTION_VERBS_REGEX.test(normalized) ||
+    DRAFTING_DOCUMENT_HINTS_REGEX.test(normalized) ||
+    LEGAL_REFERENCE_HINTS_REGEX.test(normalized)
+  );
+}
+
+function buildDraftingGuidanceMessage(): string {
+  return [
+    "I am ready as your legal drafting agent.",
+    "Tell me exactly what to draft or amend, for example:",
+    "\"Draft a Sessions Court bail application under section 497 Cr.P.C.\"",
+    "\"Revise the grounds and prayer using the attached case history.\"",
+    "\"Prepare a High Court writ petition in Pakistani court format.\"",
+    "I will generate or update the draft after a clear drafting instruction.",
+  ].join("\n");
+}
 
 function createEmptyLegalDraftReferences(): LegalDraftReferencesPayload {
   return {
@@ -719,6 +749,7 @@ export default function LegalDraftingPage() {
   const queryClient = useQueryClient();
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const aiContextInputRef = useRef<HTMLInputElement | null>(null);
+  const chatListRef = useRef<HTMLDivElement | null>(null);
 
   const [docText, setDocText] = useState(DEFAULT_DOC);
   const [draftTitle, setDraftTitle] = useState("Untitled Draft");
@@ -746,7 +777,8 @@ export default function LegalDraftingPage() {
       id: "assistant-intro",
       role: "assistant",
       content:
-        "Share your facts and attach supporting documents. I will draft in Pakistani court format and update your workspace draft.",
+        "Share your facts and attachments. I will draft in Pakistani court format after a clear drafting instruction.",
+      kind: "guidance",
       createdAt: Date.now(),
     },
   ]);
@@ -1392,6 +1424,21 @@ export default function LegalDraftingPage() {
       },
     ]);
 
+    if (!isActionableDraftPrompt(prompt)) {
+      setDraftChatMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-guidance-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role: "assistant",
+          kind: "guidance",
+          content: buildDraftingGuidanceMessage(),
+          createdAt: Date.now(),
+        },
+      ]);
+      setAiPrompt("");
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const draftTextForAi = docText.slice(0, 12000);
@@ -1442,12 +1489,19 @@ export default function LegalDraftingPage() {
       setDocText(clause);
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
+      const previewLine = clause
+        .split("\n")
+        .map((line) => line.trim())
+        .find((line) => line.length > 0);
       setDraftChatMessages((prev) => [
         ...prev,
         {
           id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           role: "assistant",
-          content: clause,
+          kind: "draft-update",
+          content: previewLine
+            ? `Draft updated in Workspace Draft. Opening line: "${previewLine.slice(0, 140)}${previewLine.length > 140 ? "..." : ""}"`
+            : "Draft updated in Workspace Draft. Tell me the next section you want to improve.",
           createdAt: Date.now(),
         },
       ]);
@@ -1468,6 +1522,7 @@ export default function LegalDraftingPage() {
         {
           id: `assistant-error-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           role: "assistant",
+          kind: "error",
           content: `I could not generate the draft update right now. ${err?.message || "Please try again."}`,
           createdAt: Date.now(),
         },
@@ -1559,6 +1614,12 @@ export default function LegalDraftingPage() {
     };
     runBackfill();
   }, []);
+
+  useEffect(() => {
+    const el = chatListRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [draftChatMessages.length, isGenerating]);
 
   return (
     <div className="relative isolate h-full min-h-[620px] md:min-h-[820px] rounded-xl border border-[hsl(var(--preview-border))] overflow-hidden bg-[#0f172a]/70 backdrop-blur-xl text-slate-100 fade-in flex flex-col shadow-2xl">
@@ -1889,7 +1950,7 @@ export default function LegalDraftingPage() {
           <div className="flex-1 overflow-hidden p-2 md:p-4 lg:p-5">
             <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl flex flex-col overflow-hidden">
               <div className="border-b border-[hsl(var(--preview-border))] px-4 py-3 bg-[#0f172a]/40">
-                <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Workspace Draft (Read-only)</p>
+                <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Workspace Draft (Current)</p>
                 <p className="text-[11px] text-slate-400 mt-1">AI responses update this draft automatically. Save/export actions remain available.</p>
               </div>
 
@@ -1903,22 +1964,30 @@ export default function LegalDraftingPage() {
 
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="px-4 py-2 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/25 flex items-center justify-between">
-                  <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Drafting Chat</p>
+                  <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Drafting Activity</p>
                   <span className="text-[10px] text-slate-500">{draftChatMessages.length} messages</span>
                 </div>
-                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
+                <div ref={chatListRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
                   {draftChatMessages.map((message) => (
                     <div
                       key={message.id}
                       className={`rounded-xl border px-3 py-2 ${
                         message.role === "user"
                           ? "ml-8 border-amber-500/35 bg-amber-500/10"
-                          : "mr-8 border-slate-700 bg-[#1e293b]/45"
+                          : message.kind === "draft-update"
+                            ? "mr-8 border-emerald-500/35 bg-emerald-500/10"
+                            : message.kind === "error"
+                              ? "mr-8 border-rose-500/35 bg-rose-500/10"
+                              : "mr-8 border-slate-700 bg-[#1e293b]/45"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-[10px] font-bold uppercase tracking-wider ${message.role === "user" ? "text-amber-200" : "text-slate-300"}`}>
-                          {message.role === "user" ? "You" : "AI Drafting Assistant"}
+                          {message.role === "user"
+                            ? "You"
+                            : message.kind === "draft-update"
+                              ? "AI Drafting Assistant · Updated"
+                              : "AI Drafting Assistant"}
                         </span>
                         <span className="text-[10px] text-slate-500">{new Date(message.createdAt).toLocaleTimeString()}</span>
                       </div>
