@@ -54,6 +54,7 @@ interface ThreadSummary {
 }
 
 const chatStateStore: Record<string, { messages: ChatMessage[]; shareUrl: string | null; sharedThreadId: number | null }> = {};
+const ACTIVE_THREAD_KEY_PREFIX = "alwakeelo-active-thread-v1:";
 
 export default function ChatPage() {
   const initialMessage = useMemo(() => {
@@ -89,6 +90,7 @@ interface RAGCitation {
 
 export function ChatModule({ type, title, initialMessage }: { type: string; title?: string; initialMessage?: string }) {
   const isAlWakeelo = type === "al-wakeelo";
+  const activeThreadStorageKey = useMemo(() => `${ACTIVE_THREAD_KEY_PREFIX}${type}`, [type]);
   const stored = chatStateStore[type];
   const [messages, setMessages] = useState<ChatMessage[]>(stored?.messages || []);
   const [input, setInput] = useState(initialMessage || "");
@@ -98,6 +100,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(stored?.shareUrl || null);
   const [sharedThreadId, setSharedThreadId] = useState<number | null>(stored?.sharedThreadId || null);
+  const [restoredThreadOnce, setRestoredThreadOnce] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -205,6 +208,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   useEffect(() => {
     chatStateStore[type] = { messages, shareUrl, sharedThreadId };
   }, [messages, shareUrl, sharedThreadId, type]);
+
+  useEffect(() => {
+    if (sharedThreadId && sharedThreadId > 0) {
+      localStorage.setItem(activeThreadStorageKey, String(sharedThreadId));
+    } else {
+      localStorage.removeItem(activeThreadStorageKey);
+    }
+  }, [activeThreadStorageKey, sharedThreadId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -642,12 +653,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     setApiError(null);
     setShareUrl(null);
     setSharedThreadId(null);
+    setRestoredThreadOnce(true);
     setShareError(null);
     setAttachedFiles([]);
+    localStorage.removeItem(activeThreadStorageKey);
     delete chatStateStore[type];
   };
 
-  const handleLoadThread = async (threadId: number) => {
+  const handleLoadThread = useCallback(async (threadId: number) => {
     try {
       const res = await apiRequest("GET", `/api/threads/${threadId}`);
       const data = await res.json();
@@ -670,7 +683,31 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       console.error("Failed to load thread:", err);
       setApiError("Failed to load consultation");
     }
-  };
+  }, [parseAttachmentNames]);
+
+  useEffect(() => {
+    if (restoredThreadOnce) return;
+    if (!isAlWakeelo) {
+      setRestoredThreadOnce(true);
+      return;
+    }
+    if (!threads || threads.length === 0) return;
+
+    const raw = localStorage.getItem(activeThreadStorageKey);
+    const persistedThreadId = Number(raw);
+    if (!Number.isFinite(persistedThreadId) || persistedThreadId <= 0) {
+      setRestoredThreadOnce(true);
+      return;
+    }
+    const exists = threads.some((thread) => thread.id === persistedThreadId);
+    if (!exists) {
+      setRestoredThreadOnce(true);
+      return;
+    }
+
+    setRestoredThreadOnce(true);
+    void handleLoadThread(persistedThreadId);
+  }, [activeThreadStorageKey, handleLoadThread, isAlWakeelo, restoredThreadOnce, threads]);
 
   const handleShare = async () => {
     if (messages.length < 2) return;
