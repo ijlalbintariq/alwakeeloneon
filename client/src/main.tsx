@@ -16,5 +16,9 @@ function hideSplash() {
 
 // Safety timeout so splash does not block first-time visitors on slow auth/network.
 window.setTimeout(hideSplash, 1600);
+// Absolute fail-safe: never leave users stuck behind splash if any runtime error occurs.
+window.addEventListener("error", () => hideSplash());
+window.addEventListener("unhandledrejection", () => hideSplash());
+window.setTimeout(hideSplash, 10000);
 
 createRoot(document.getElementById("root")!).render(<App onReady={hideSplash} />);
