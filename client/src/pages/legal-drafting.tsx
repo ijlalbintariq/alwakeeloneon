@@ -1577,22 +1577,34 @@ export default function LegalDraftingPage() {
     if (!finalText) return;
     const total = finalText.length;
     const chunkSize =
-      total > 10000 ? 220 :
-      total > 6000 ? 160 :
-      total > 3000 ? 110 :
-      total > 1200 ? 70 : 42;
+      total > 10000 ? 180 :
+      total > 6000 ? 130 :
+      total > 3000 ? 95 :
+      total > 1200 ? 64 : 34;
     let cursor = 0;
     while (cursor < total) {
       cursor = Math.min(total, cursor + chunkSize);
       const partial = finalText.slice(0, cursor);
-      setDraftChatMessages((prev) =>
-        prev.map((item) =>
-          item.id === messageId
-            ? { ...item, content: partial, kind: cursor < total ? "typing" : undefined }
-            : item,
-        ),
-      );
-      await new Promise((resolve) => window.setTimeout(resolve, 14));
+      setDraftChatMessages((prev) => {
+        let found = false;
+        const next = prev.map((item) => {
+          if (item.id !== messageId) return item;
+          found = true;
+          return { ...item, content: partial, kind: cursor < total ? "typing" : undefined };
+        });
+        if (found) return next;
+        return [
+          ...next,
+          {
+            id: messageId,
+            role: "assistant",
+            kind: cursor < total ? "typing" : undefined,
+            content: partial,
+            createdAt: Date.now(),
+          },
+        ];
+      });
+      await new Promise((resolve) => window.setTimeout(resolve, 20));
     }
   };
 
@@ -1696,10 +1708,11 @@ export default function LegalDraftingPage() {
           id: assistantMessageId,
           role: "assistant",
           kind: "typing",
-          content: "",
+          content: "Drafting...",
           createdAt: Date.now(),
         },
       ]);
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
       await streamAssistantDraftMessage(assistantMessageId, clause);
 
       setDocText(clause);
