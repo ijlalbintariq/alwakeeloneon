@@ -169,6 +169,22 @@ const LEGAL_KEYWORDS_MAP: Record<string, string[]> = {
   "evidence": ["evidence", "QSO", "Qanun-e-Shahadat"],
 };
 
+const DOCKET_PREFIX_CANONICAL_MAP: Array<[RegExp, string]> = [
+  [/\bI\.?\s*C\.?\s*A\.?\b/i, "ICA"],
+  [/\bC\.?\s*P\.?\b/i, "C.P."],
+  [/\bC\.?\s*R\.?\s*L\.?\s*\.?\s*A\.?\b/i, "CRL.A."],
+  [/\bC\.?\s*R\.?\s*L\.?\s*\.?\s*P\.?\b/i, "CRL.P."],
+  [/\bC\.?\s*R\.?\s*L\.?\s*\.?\s*R\.?\s*\.?\s*P\.?\b/i, "CRL.R.P."],
+  [/\bS\.?\s*M\.?\s*C\.?\b/i, "S.M.C."],
+  [/\bJ\.?\s*P\.?\b/i, "J.P."],
+  [/\bH\.?\s*R\.?\s*C\.?\b/i, "H.R.C."],
+  [/\bReference\b/i, "REFERENCE"],
+  [/\bWrit\b/i, "WRIT"],
+  [/\bRevision\b/i, "REVISION"],
+  [/\bPetition\b/i, "PETITION"],
+  [/\bAppeal\b/i, "APPEAL"],
+];
+
 function normalizeCitation(raw: string): string {
   let out = raw
     .replace(/[,:;]+/g, " ")
@@ -188,6 +204,44 @@ function normalizeCitation(raw: string): string {
 
 function normalizeCitationKey(citation: string): string {
   return normalizeCitation(citation).toLowerCase();
+}
+
+function looksLikeReportCitation(citation: string): boolean {
+  const normalized = normalizeCitation(String(citation || ""));
+  if (!normalized) return false;
+  if (new RegExp(`\\b${YEAR_PATTERN}(?:LHC|IHC|SHC|PHC|BHC|AJKHC)${PAGE_PATTERN}\\b`, "i").test(normalized)) return true;
+  return new RegExp(REPORT_ABBRS, "i").test(normalized);
+}
+
+function canonicalizeDocketPrefix(rawPrefix: string): string {
+  const cleaned = String(rawPrefix || "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/[^\w.\s]/g, "")
+    .trim();
+  if (!cleaned) return "";
+
+  for (const [pattern, canonical] of DOCKET_PREFIX_CANONICAL_MAP) {
+    if (pattern.test(cleaned)) return canonical;
+  }
+
+  const upper = cleaned.toUpperCase();
+  if (/^[A-Z](?:\.[A-Z])+\.?$/.test(upper)) {
+    return upper.endsWith(".") ? upper : `${upper}.`;
+  }
+  if (/^[A-Z]{2,8}$/.test(upper)) return upper;
+  return upper.replace(/\s+/g, " ").trim();
+}
+
+function isLikelyDocketPrefix(rawPrefix: string): boolean {
+  const cleaned = String(rawPrefix || "").trim();
+  if (!cleaned) return false;
+  if (/\b(?:appeal|petition|revision|reference|application|writ|suit|ica|c\.?\s*p\.?|crl|smc|j\.?\s*p\.?|h\.?\s*r\.?\s*c\.?)\b/i.test(cleaned)) {
+    return true;
+  }
+  const squashed = cleaned.replace(/\s+/g, "");
+  if (/^[A-Za-z](?:\.?[A-Za-z]){1,8}\.?$/.test(squashed)) return true;
+  return false;
 }
 
 function escapeRegex(value: string): string {
@@ -257,6 +311,62 @@ function extractNeutralCitationFromSourceFilename(sourceFilename?: string): stri
     return `${year}${normalizer.code}${numberPart}`;
   }
   return null;
+}
+
+function extractDocketCitationFromSourceFilename(sourceFilename?: string): string | null {
+  const raw = String(sourceFilename || "").trim();
+  if (!raw) return null;
+  const basename = raw.replace(/\.[^.]+$/g, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!basename) return null;
+
+  const pattern = /\b([A-Za-z][A-Za-z.\s]{0,30}?)\s+(\d{1,6})\s+(?:[A-Za-z]{1,3}\s+)?((?:19|20)\d{2})\b/gi;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(basename)) !== null) {
+    if (!isLikelyDocketPrefix(match[1])) continue;
+    const prefix = canonicalizeDocketPrefix(match[1]);
+    const numberPart = Number(match[2]);
+    const yearPart = Number(match[3]);
+    if (!prefix || !Number.isInteger(numberPart) || numberPart < 1 || !Number.isInteger(yearPart)) continue;
+    return `${prefix} ${numberPart}/${yearPart}`;
+  }
+  return null;
+}
+
+function extractDocketCitationFromText(text: string): string | null {
+  const head = String(text || "").slice(0, 9000);
+  if (!head) return null;
+
+  const explicitPattern = /\b(Intra\s+Court\s+Appeals?|Constitutional\s+Petitions?|Civil\s+Petitions?|Criminal\s+Petitions?|Civil\s+Appeals?|Criminal\s+Appeals?|Appeals?|Appeal|Petitions?|Petition|Revisions?|Revision|Reference|Applications?|Application|Writ\s+Petitions?|Writ\s+Petition|C\.?\s*P\.?|C\.?\s*R\.?\s*L\.?\s*\.?\s*P\.?|C\.?\s*R\.?\s*L\.?\s*\.?\s*A\.?|I\.?\s*C\.?\s*A\.?|S\.?\s*M\.?\s*C\.?|J\.?\s*P\.?|H\.?\s*R\.?\s*C\.?)\s+No\.?\s*([0-9]{1,6})(?:\s*(?:and|&|,)\s*[0-9]{1,6})?\s*\/\s*((?:19|20)\d{2})\b/gi;
+  let match: RegExpExecArray | null;
+  while ((match = explicitPattern.exec(head)) !== null) {
+    const prefix = canonicalizeDocketPrefix(match[1]);
+    const numberPart = Number(match[2]);
+    const yearPart = Number(match[3]);
+    if (!prefix || !Number.isInteger(numberPart) || numberPart < 1 || !Number.isInteger(yearPart)) continue;
+    return `${prefix} ${numberPart}/${yearPart}`;
+  }
+  return null;
+}
+
+function inferCourtFromTextContext(text: string, sourceFilename?: string): string {
+  const head = String(text || "").slice(0, 10000);
+  const normalized = head.toLowerCase();
+  if (!normalized) return "";
+
+  if (/\b(supreme court of pakistan|in the supreme court of pakistan)\b/i.test(head)) return "Supreme Court of Pakistan";
+  if (/\b(lahore high court|at lahore)\b/i.test(head)) return "Lahore High Court";
+  if (/\b(sindh high court|at karachi)\b/i.test(head)) return "Sindh High Court";
+  if (/\b(islamabad high court|at islamabad)\b/i.test(head)) return "Islamabad High Court";
+  if (/\b(peshawar high court|at peshawar)\b/i.test(head)) return "Peshawar High Court";
+  if (/\b(balochistan high court|at quetta)\b/i.test(head)) return "Balochistan High Court";
+  if (/\b(high court of azad jammu and kashmir|ajkhc|azad jammu)\b/i.test(head)) return "High Court of Azad Jammu and Kashmir";
+
+  const filenameNeutral = extractNeutralCitationFromSourceFilename(sourceFilename);
+  if (filenameNeutral) {
+    const inferred = inferCourt(filenameNeutral);
+    if (inferred) return inferred;
+  }
+  return "";
 }
 
 function addPreferredPrimaryMention(mentions: CitationMention[], preferredPrimaryCitation?: string | null): CitationMention[] {
@@ -419,16 +529,23 @@ export function assignCitationRolesToCases(
 
 export function nlpExtractCases(text: string, options?: CitationRoleAssignmentOptions): ExtractedCase[] {
   const filenamePrimary = extractNeutralCitationFromSourceFilename(options?.sourceFilename);
-  const preferredPrimary = options?.preferredPrimaryCitation || filenamePrimary;
-  const mentions = addPreferredPrimaryMention(extractCitationMentionsFromText(text), preferredPrimary);
+  const filenameDocketPrimary = extractDocketCitationFromSourceFilename(options?.sourceFilename);
+  const textDocketPrimary = extractDocketCitationFromText(text);
+  const fallbackPrimaryCitation = filenamePrimary || filenameDocketPrimary || textDocketPrimary || null;
+  const preferredPrimary = options?.preferredPrimaryCitation || fallbackPrimaryCitation;
+  let mentions = addPreferredPrimaryMention(extractCitationMentionsFromText(text), preferredPrimary);
+  if (mentions.length === 0 && preferredPrimary) {
+    mentions = [{ citation: normalizeCitation(preferredPrimary), index: 0 }];
+  }
   const cases: ExtractedCase[] = [];
   const inferredPrimary = inferPrimaryCitation(text, mentions, preferredPrimary);
   const inferredPrimaryKey = inferredPrimary ? normalizeCitationKey(inferredPrimary) : "";
+  const contextualCourt = inferCourtFromTextContext(text, options?.sourceFilename);
   let assignedPrimary = false;
 
   for (const mention of mentions) {
     const citation = mention.citation;
-    const court = inferCourt(citation);
+    const court = inferCourt(citation) || contextualCourt;
     const title = findTitleNearCitation(text, citation, mention.index);
     const summary = extractSummaryNearCitation(text, citation, mention.index);
     const keywords = extractKeywords(text, citation, mention.index);
@@ -440,8 +557,8 @@ export function nlpExtractCases(text: string, options?: CitationRoleAssignmentOp
       citation,
       citationRole: isPrimary ? "primary" : "cited",
       court,
-      title: title || `Case reported at ${citation}`,
-      summary: summary || `Case cited as ${citation}`,
+      title: title || (looksLikeReportCitation(citation) ? `Case reported at ${citation}` : `Case No. ${citation}`),
+      summary: summary || (looksLikeReportCitation(citation) ? `Case cited as ${citation}` : `Case identified as ${citation}`),
       keywords,
     });
   }

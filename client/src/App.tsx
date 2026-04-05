@@ -10,8 +10,8 @@ import { PublicLegalChatWidget } from "@/components/public-legal-chat-widget";
 import { AppShell } from "@/components/app-shell";
 import { ThemeProvider, useTheme } from "@/hooks/use-theme";
 
-const LandingPage = lazy(() => import("@/pages/landing"));
-const AuthPage = lazy(() => import("@/pages/auth"));
+import LandingPage from "@/pages/landing";
+import AuthPage from "@/pages/auth";
 const DashboardPage = lazy(() => import("@/pages/dashboard"));
 const JudgmentsPage = lazy(() => import("@/pages/judgments"));
 const JudgmentViewPage = lazy(() => import("@/pages/judgment-view"));

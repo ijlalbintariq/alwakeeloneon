@@ -48,7 +48,7 @@
         ]
       }
     </script>
-    <script defer src="/runtime-init.js"></script>
+    <script defer src="/runtime-init.js?v=20260401a"></script>
     <style>
       #splash-screen {
         position: fixed;
@@ -59,6 +59,7 @@
         justify-content: center;
         background: #0f172a;
         transition: opacity 0.25s ease, visibility 0.25s ease;
+        animation: splash-force-hide 0.01s linear 12s forwards;
       }
       #splash-screen.splash-hidden {
         opacity: 0;
@@ -163,6 +164,13 @@
       @keyframes splash-bounce {
         0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
         40% { transform: translateY(-6px); opacity: 1; }
+      }
+      @keyframes splash-force-hide {
+        to {
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+        }
       }
     </style>
   </head>
