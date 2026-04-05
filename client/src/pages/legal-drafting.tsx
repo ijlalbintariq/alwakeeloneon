@@ -790,7 +790,6 @@ export default function LegalDraftingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const aiContextInputRef = useRef<HTMLInputElement | null>(null);
   const chatListRef = useRef<HTMLDivElement | null>(null);
 
@@ -1074,33 +1073,9 @@ export default function LegalDraftingPage() {
     });
   };
 
-  const syncSelectedDraftText = () => {
-    const el = editorRef.current;
-    if (!el) return;
-    const start = Math.max(0, Math.min(el.selectionStart ?? 0, docText.length));
-    const end = Math.max(start, Math.min(el.selectionEnd ?? start, docText.length));
-    if (end <= start) return;
-    const snippet = docText.slice(start, end);
-    if (!snippet.trim()) return;
-    setSelectedDraftRange({ start, end });
-    setSelectedDraftSnippet(snippet);
-  };
-
   const clearSelectedDraftText = () => {
     setSelectedDraftRange(null);
     setSelectedDraftSnippet("");
-  };
-
-  const reselectDraftText = () => {
-    if (!selectedDraftRange) return;
-    const el = editorRef.current;
-    if (!el) return;
-    const start = Math.max(0, Math.min(selectedDraftRange.start, docText.length));
-    const end = Math.max(start, Math.min(selectedDraftRange.end, docText.length));
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(start, end);
-    });
   };
 
   const clearBrowserSelection = () => {
@@ -1124,7 +1099,6 @@ export default function LegalDraftingPage() {
     const remapped = findSnippetRange(docText, snippet);
     if (remapped) {
       setSelectedDraftRange(remapped);
-      requestAnimationFrame(() => reselectDraftText());
       toast({ title: "Snippet selected from chat response" });
     } else {
       setSelectedDraftRange(null);
@@ -1190,59 +1164,6 @@ export default function LegalDraftingPage() {
       x: rect.left + rect.width / 2,
       y: Math.max(12, rect.top - 42),
     });
-  };
-
-  const memoryContextText = useMemo(() => {
-    if (!memoryEnabled || memoryItems.length === 0) return "";
-    const entries = memoryItems.slice(0, 8).map((m) => {
-      const label = m.kind === "instruction" ? "Instruction" : m.kind === "clause" ? "Clause" : "Risk";
-      return `- ${label}: ${m.text}`;
-    });
-    return entries.join("\n");
-  }, [memoryEnabled, memoryItems]);
-
-  const applyWrap = (prefix: string, suffix = prefix) => {
-    const el = editorRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const selected = docText.slice(start, end) || "text";
-    const next = `${docText.slice(0, start)}${prefix}${selected}${suffix}${docText.slice(end)}`;
-    setDocText(next);
-    requestAnimationFrame(() => {
-      el.focus();
-      const cursorStart = start + prefix.length;
-      const cursorEnd = cursorStart + selected.length;
-      el.setSelectionRange(cursorStart, cursorEnd);
-    });
-  };
-
-  const applyLinePrefix = (prefix: string, ordered = false) => {
-    const el = editorRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const textBefore = docText.slice(0, start);
-    const lineStart = textBefore.lastIndexOf("\n") + 1;
-    const selectedBlock = docText.slice(lineStart, end);
-    const lines = selectedBlock.split("\n");
-    const transformed = lines
-      .map((line, idx) => {
-        if (line.trim().length === 0) return line;
-        return ordered ? `${idx + 1}. ${line}` : `${prefix}${line}`;
-      })
-      .join("\n");
-    const next = `${docText.slice(0, lineStart)}${transformed}${docText.slice(end)}`;
-    setDocText(next);
-    requestAnimationFrame(() => {
-      el.focus();
-      const cursor = lineStart + transformed.length;
-      el.setSelectionRange(cursor, cursor);
-    });
-  };
-
-  const handleDraftTextChange = (value: string) => {
-    setDocText(value);
   };
 
   useEffect(() => {
@@ -2290,56 +2211,6 @@ export default function LegalDraftingPage() {
                   <span className="text-[10px] text-slate-500">{draftChatMessages.length} messages</span>
                 </div>
 
-                <div className="mx-4 mt-3 rounded-xl border border-slate-700/70 bg-[#0f172a]/65 p-3">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <p className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">Select Snippet (Edit-Only)</p>
-                    <span className="text-[10px] text-slate-400">
-                      {hasSelectedSnippet
-                        ? `${selectedDraftSnippet.trim().length} chars selected`
-                        : "No selection"}
-                    </span>
-                  </div>
-
-                  {!docText.trim() ? (
-                    <p className="text-[11px] text-slate-400">
-                      Generate or load a draft first, then click-drag text below to target edits.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-[10px] text-slate-400">
-                        Click-drag any text in this draft box. Then send your prompt; AI will edit only the selected passage.
-                      </p>
-                      <Textarea
-                        ref={editorRef}
-                        value={docText}
-                        readOnly
-                        onMouseUp={syncSelectedDraftText}
-                        onKeyUp={syncSelectedDraftText}
-                        onSelect={syncSelectedDraftText}
-                        className="min-h-[132px] max-h-[220px] w-full bg-[#020617]/70 border border-slate-700 rounded-xl p-3 text-[12px] leading-relaxed text-slate-100 font-[Times_New_Roman] whitespace-pre-wrap selection:bg-amber-300/40 selection:text-slate-950"
-                      />
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={reselectDraftText}
-                          disabled={!hasSelectedSnippet}
-                          className="px-2 py-1 rounded border border-slate-600 text-slate-200 text-[10px] font-bold hover:border-amber-500/35 hover:text-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Re-select Highlight
-                        </button>
-                        <button
-                          type="button"
-                          onClick={clearSelectedDraftText}
-                          disabled={!hasSelectedSnippet}
-                          className="px-2 py-1 rounded border border-slate-600 text-slate-200 text-[10px] font-bold hover:border-rose-500/35 hover:text-rose-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Clear Selection
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 <div
                   ref={chatListRef}
                   className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3"
@@ -2439,6 +2310,21 @@ export default function LegalDraftingPage() {
                       </div>
                     )}
                   </div>
+
+                  {hasSelectedSnippet && (
+                    <div className="rounded-md border border-amber-500/35 bg-amber-500/10 px-2 py-1.5 flex items-center justify-between gap-2">
+                      <p className="text-[10px] text-amber-100">
+                        Edit-only snippet selected ({selectedDraftSnippet.trim().length} chars)
+                      </p>
+                      <button
+                        type="button"
+                        onClick={clearSelectedDraftText}
+                        className="text-[10px] font-bold text-amber-200 hover:text-amber-100"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
 
                   <div className="relative">
                     <Textarea
