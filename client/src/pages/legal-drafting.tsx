@@ -146,6 +146,12 @@ type DraftChatMessage = {
   createdAt: number;
 };
 
+type ChatSnippetPopover = {
+  text: string;
+  x: number;
+  y: number;
+};
+
 type LegalDraftWorkspaceState = {
   draftTitle: string;
   docText: string;
@@ -823,6 +829,7 @@ export default function LegalDraftingPage() {
   const [isResolvingReferences, setIsResolvingReferences] = useState(false);
   const [activeCaseSourceId, setActiveCaseSourceId] = useState<number | null>(null);
   const [caseSourceDoc, setCaseSourceDoc] = useState<CaseLawSourceDocument | null>(null);
+  const [chatSnippetPopover, setChatSnippetPopover] = useState<ChatSnippetPopover | null>(null);
   const [hasDraftInSession, setHasDraftInSession] = useState(false);
   const [workspaceStateHydrated, setWorkspaceStateHydrated] = useState(false);
   const showDraftReviewPanel = riskLoading || recommendLoading || riskResults.length > 0 || recommendations.length > 0;
@@ -1093,6 +1100,95 @@ export default function LegalDraftingPage() {
     requestAnimationFrame(() => {
       el.focus();
       el.setSelectionRange(start, end);
+    });
+  };
+
+  const clearBrowserSelection = () => {
+    try {
+      const selection = window.getSelection();
+      if (selection) selection.removeAllRanges();
+    } catch {
+      // Ignore selection cleanup errors.
+    }
+  };
+
+  const applyChatSnippetSelection = () => {
+    if (!chatSnippetPopover?.text) return;
+    const snippet = chatSnippetPopover.text.trim();
+    if (!snippet) {
+      setChatSnippetPopover(null);
+      return;
+    }
+
+    setSelectedDraftSnippet(snippet);
+    const remapped = findSnippetRange(docText, snippet);
+    if (remapped) {
+      setSelectedDraftRange(remapped);
+      requestAnimationFrame(() => reselectDraftText());
+      toast({ title: "Snippet selected from chat response" });
+    } else {
+      setSelectedDraftRange(null);
+      toast({
+        title: "Snippet selected",
+        description: "This text is selected for targeted edit, but exact draft position was not auto-mapped yet.",
+      });
+    }
+
+    setChatSnippetPopover(null);
+    clearBrowserSelection();
+  };
+
+  const handleChatSelectionMouseUp = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      setChatSnippetPopover(null);
+      return;
+    }
+
+    const selectedText = selection.toString().trim();
+    if (!selectedText) {
+      setChatSnippetPopover(null);
+      return;
+    }
+
+    const listEl = chatListRef.current;
+    const anchorNode = selection.anchorNode;
+    const focusNode = selection.focusNode;
+    if (!listEl || !anchorNode || !focusNode) {
+      setChatSnippetPopover(null);
+      return;
+    }
+
+    const anchorEl = anchorNode instanceof Element ? anchorNode : anchorNode.parentElement;
+    const focusEl = focusNode instanceof Element ? focusNode : focusNode.parentElement;
+    if (!anchorEl || !focusEl || !listEl.contains(anchorEl) || !listEl.contains(focusEl)) {
+      setChatSnippetPopover(null);
+      return;
+    }
+
+    const assistantMessage = anchorEl.closest("[data-chat-message-role='assistant']");
+    const focusAssistantMessage = focusEl.closest("[data-chat-message-role='assistant']");
+    if (
+      !assistantMessage ||
+      !focusAssistantMessage ||
+      assistantMessage !== focusAssistantMessage ||
+      !listEl.contains(assistantMessage)
+    ) {
+      setChatSnippetPopover(null);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    if (!rect || (!rect.width && !rect.height)) {
+      setChatSnippetPopover(null);
+      return;
+    }
+
+    setChatSnippetPopover({
+      text: selectedText.slice(0, 8000),
+      x: rect.left + rect.width / 2,
+      y: Math.max(12, rect.top - 42),
     });
   };
 
@@ -1612,6 +1708,8 @@ export default function LegalDraftingPage() {
   const generateClause = async (promptOverride?: string) => {
     const prompt = (promptOverride ?? aiPrompt).trim();
     if (!prompt) return;
+    setChatSnippetPopover(null);
+    clearBrowserSelection();
 
     const queuedAttachments = aiContextFiles.map((file) => file.name);
     setDraftChatMessages((prev) => [
@@ -1845,6 +1943,16 @@ export default function LegalDraftingPage() {
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [draftChatMessages.length, isGenerating]);
+
+  useEffect(() => {
+    const dismissPopover = () => setChatSnippetPopover(null);
+    window.addEventListener("scroll", dismissPopover, true);
+    window.addEventListener("resize", dismissPopover);
+    return () => {
+      window.removeEventListener("scroll", dismissPopover, true);
+      window.removeEventListener("resize", dismissPopover);
+    };
+  }, []);
 
   return (
     <div className="relative isolate h-full min-h-[620px] md:min-h-[820px] rounded-xl border border-[hsl(var(--preview-border))] overflow-hidden bg-[#0f172a]/70 backdrop-blur-xl text-slate-100 fade-in flex flex-col shadow-2xl">
@@ -2232,10 +2340,15 @@ export default function LegalDraftingPage() {
                   )}
                 </div>
 
-                <div ref={chatListRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
+                <div
+                  ref={chatListRef}
+                  className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3"
+                  onMouseUp={handleChatSelectionMouseUp}
+                >
                   {draftChatMessages.map((message) => (
                     <div
                       key={message.id}
+                      data-chat-message-role={message.role}
                       className={`rounded-xl border px-3 py-2 ${
                         message.role === "user"
                           ? "ml-8 border-amber-500/35 bg-amber-500/10"
@@ -2254,7 +2367,10 @@ export default function LegalDraftingPage() {
                         </span>
                         <span className="text-[10px] text-slate-500">{new Date(message.createdAt).toLocaleTimeString()}</span>
                       </div>
-                      <p className={`text-[12px] whitespace-pre-wrap leading-relaxed ${message.kind === "typing" ? "text-amber-200 animate-pulse" : "text-slate-100"}`}>
+                      <p
+                        data-chat-selectable={message.role === "assistant" ? "true" : "false"}
+                        className={`text-[12px] whitespace-pre-wrap leading-relaxed ${message.kind === "typing" ? "text-amber-200 animate-pulse" : "text-slate-100"}`}
+                      >
                         {message.content}
                       </p>
                       {message.attachments && message.attachments.length > 0 && (
@@ -2269,6 +2385,21 @@ export default function LegalDraftingPage() {
                     </div>
                   ))}
                 </div>
+
+                {chatSnippetPopover && (
+                  <div
+                    className="fixed z-[70] -translate-x-1/2 rounded-md border border-amber-500/45 bg-[#111827]/95 px-2 py-1 shadow-xl backdrop-blur"
+                    style={{ left: chatSnippetPopover.x, top: chatSnippetPopover.y }}
+                  >
+                    <button
+                      type="button"
+                      onClick={applyChatSnippetSelection}
+                      className="text-[10px] font-bold uppercase tracking-wide text-amber-200 hover:text-amber-100"
+                    >
+                      Select Snippet
+                    </button>
+                  </div>
+                )}
 
                 <div className="mx-3 mb-3 mt-2 rounded-xl border border-[hsl(var(--preview-border))] px-3 py-2 space-y-2 bg-[#0f172a]/75 backdrop-blur-xl pb-[max(env(safe-area-inset-bottom),0.6rem)]">
                   <div>
