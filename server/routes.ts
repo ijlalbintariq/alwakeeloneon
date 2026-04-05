@@ -4257,6 +4257,20 @@ function normalizeCourtReadyDraftingText(content: string): string {
     const marker = markerMatch ? markerMatch[1] : "";
     let body = markerMatch ? markerMatch[2].trim() : raw;
 
+    const plainBody = body.replace(/\s{2,}/g, " ").trim();
+    const headingLike =
+      (!!plainBody &&
+        (
+          /:\s*$/.test(plainBody) ||
+          /^[A-Z][A-Z0-9\s/&()'.-]{3,}$/.test(plainBody) ||
+          /^(MAINTAINABILITY|GROUNDS OF|QUESTIONS OF LAW|JURISDICTION|ARGUMENTS?|RELIEF SOUGHT|FACTS|BACKGROUND)\b/i.test(plainBody)
+        ) &&
+        !/[.!?]\s*$/.test(plainBody)
+      );
+    if (headingLike) {
+      return marker ? `${marker} ${plainBody}` : plainBody;
+    }
+
     if (!body) body = "[______].";
     body = body.replace(/^[,;:.-]+\s*/, "").trim();
     if (!body) body = "[______].";
@@ -8624,6 +8638,8 @@ If numbering/lettering is used, keep it before the phrase:
 1. That the ...
 A. That the ...
 
+Do not prepend "That the" to caption/sub-heading lines (for example: "MAINTAINABILITY AND ALTERNATE REMEDY", "GROUNDS OF PETITION").
+
 GROUNDS OF APPEAL OR GROUNDS
 
 Legal grounds must be structured alphabetically.
@@ -9135,6 +9151,7 @@ Court-ready formatting requirements (mandatory):
 - Use "VERSUS" on its own line between party blocks.
 - Use numbered facts (1., 2., 3.) and alphabetic legal grounds (A., B., C.).
 - In BRIEF FACTS and GROUNDS, every line/item must start with "That the" (for example: "1. That the ...", "A. That the ...").
+- Do not add "That the" to heading/sub-heading labels inside sections.
 - Do not create a separate heading "LEGAL AUTHORITIES"; place all statutes/case citations inside relevant GROUNDS lines.
 - Court hierarchy rule (strict): use the correct Pakistani forum for selected filing type (e.g., Writ/Article 199 -> High Court; family matters -> Family Court; CPLA -> Supreme Court). Never place writ petitions in Family Court.
 - Keep prayer specific to this filing type and facts; avoid generic/contract wording.
