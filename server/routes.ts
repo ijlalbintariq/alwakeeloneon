@@ -4212,8 +4212,14 @@ function normalizeCourtReadyDraftingText(content: string): string {
     out = out.replace(/\*\*([^*]+)\*\*/g, "$1");
     out = out.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1$2");
     out = out.replace(/`([^`]+)`/g, "$1");
+    out = out.replace(/\s+,/g, ",");
     out = out.replace(/ {2,}/g, " ");
     const trimmed = out.trim();
+    const highCourtWithCity = trimmed.match(/^IN\s+THE\s+HONOURABLE\s+HIGH\s+COURT(?:\s+AT|,)?\s*([A-Z][A-Z .-]*)$/i);
+    if (highCourtWithCity && highCourtWithCity[1]) {
+      const city = highCourtWithCity[1].replace(/\s+/g, " ").trim().toUpperCase();
+      return `IN THE HONOURABLE HIGH COURT, ${city}`;
+    }
     if (/^respectfully\s+(submitted|sheweth)\s*:?\s*$/i.test(trimmed)) return "RESPECTFULLY SHEWETH:";
     if (/^brief\s+facts\s*:?\s*$/i.test(trimmed)) return "BRIEF FACTS";
     if (/^grounds(\s+of\s+(appeal|application))?\s*:?\s*$/i.test(trimmed)) return "GROUNDS";
@@ -4242,9 +4248,35 @@ function normalizeCourtReadyDraftingText(content: string): string {
     "VERIFICATION",
     "ANNEXURES",
   ]);
+  const thatTheRequiredSections = new Set(["BRIEF FACTS", "GROUNDS", "LEGAL AUTHORITIES"]);
+
+  const ensureThatTheLine = (line: string): string => {
+    const raw = line.trim();
+    if (!raw) return line;
+
+    const markerMatch = raw.match(/^((?:\(?\d+\)?|[A-Za-z]|[ivxlcdmIVXLCDM]+)[.)])\s*(.*)$/);
+    const marker = markerMatch ? markerMatch[1] : "";
+    let body = markerMatch ? markerMatch[2].trim() : raw;
+
+    if (!body) body = "[______].";
+    body = body.replace(/^[,;:.-]+\s*/, "").trim();
+    if (!body) body = "[______].";
+
+    if (/^that\s+the\b/i.test(body)) {
+      body = `That the ${body.replace(/^that\s+the\s*/i, "").trim()}`;
+    } else {
+      body = body.replace(/^that\s+/i, "");
+      body = body.replace(/^the\s+/i, "");
+      body = `That the ${body.trim()}`;
+    }
+
+    body = body.replace(/\s{2,}/g, " ").trim();
+    return marker ? `${marker} ${body}` : body;
+  };
 
   const rawLines = normalized.split("\n");
   const out: string[] = [];
+  let currentSection = "";
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i].trimEnd();
     if (!line.trim()) {
@@ -4255,12 +4287,18 @@ function normalizeCourtReadyDraftingText(content: string): string {
     const upper = line.trim().toUpperCase();
     if (sectionHeadings.has(upper)) {
       if (out.length > 0 && out[out.length - 1] !== "") out.push("");
-      out.push(upper === "RESPECTFULLY SHEWETH" ? "RESPECTFULLY SHEWETH:" : upper);
+      const normalizedHeading = upper === "RESPECTFULLY SHEWETH" ? "RESPECTFULLY SHEWETH:" : upper;
+      out.push(normalizedHeading);
+      currentSection = normalizedHeading.replace(/:$/, "");
       if (i + 1 < rawLines.length && rawLines[i + 1].trim() !== "") out.push("");
       continue;
     }
 
-    out.push(line);
+    if (thatTheRequiredSections.has(currentSection)) {
+      out.push(ensureThatTheLine(line));
+    } else {
+      out.push(line);
+    }
   }
 
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -8557,6 +8595,17 @@ iv.
 
 Facts must be chronological and legally relevant.
 
+MANDATORY LEADING PHRASE RULE
+
+In BRIEF FACTS, GROUNDS, and LEGAL AUTHORITIES, every individual line must begin with:
+
+That the ...
+
+If numbering/lettering is used, keep it before the phrase:
+
+1. That the ...
+A. That the ...
+
 GROUNDS OF APPEAL OR GROUNDS
 
 Legal grounds must be structured alphabetically.
@@ -9026,6 +9075,7 @@ Court-ready formatting requirements (mandatory):
 - Use uppercase captions for core headings: court title, case title, RESPECTFULLY SHEWETH:, BRIEF FACTS, GROUNDS, PRAYER, VERIFICATION, ANNEXURES.
 - Use "VERSUS" on its own line between party blocks.
 - Use numbered facts (1., 2., 3.) and alphabetic legal grounds (A., B., C.).
+- In BRIEF FACTS, GROUNDS, and LEGAL AUTHORITIES, every line/item must start with "That the" (for example: "1. That the ...", "A. That the ...").
 - Keep prayer specific to this filing type and facts; avoid generic/contract wording.
 - Do not invent facts, dates, orders, or citations; use placeholders like [______] where details are missing.
 - Case law citation rule (strict): include only citations that are real and verifiable from Al Wakeelo internal Knowledge Base; if unavailable, omit citation.

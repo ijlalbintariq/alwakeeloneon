@@ -142,7 +142,7 @@ type DraftChatMessage = {
   role: "user" | "assistant";
   content: string;
   attachments?: string[];
-  kind?: "guidance" | "error";
+  kind?: "guidance" | "typing" | "error";
   createdAt: number;
 };
 
@@ -1110,8 +1110,9 @@ export default function LegalDraftingPage() {
     window.location.assign(viewUrl);
   };
 
-  const runRiskAnalysis = async () => {
-    if (!docText.trim()) {
+  const runRiskAnalysis = async (contentOverride?: string) => {
+    const content = (contentOverride ?? docText).trim();
+    if ((!hasDraftInSession && !contentOverride) || !content) {
       setRiskResults([]);
       setRiskLoading(false);
       return;
@@ -1125,7 +1126,7 @@ export default function LegalDraftingPage() {
         credentials: "include",
         body: JSON.stringify({
           title: draftTitle,
-          content: docText,
+          content,
         }),
       });
 
@@ -1189,6 +1190,8 @@ export default function LegalDraftingPage() {
     const nextText = source.slice(0, range.start) + replacement + source.slice(range.end);
 
     setDocText(nextText);
+    setHasDraftInSession(!!nextText.trim());
+    runDraftReview(nextText);
 
     addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
     let remaining = 0;
@@ -1232,8 +1235,9 @@ export default function LegalDraftingPage() {
     setRiskResults((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const runDraftRecommendations = async () => {
-    if (!docText.trim()) {
+  const runDraftRecommendations = async (contentOverride?: string) => {
+    const content = (contentOverride ?? docText).trim();
+    if ((!hasDraftInSession && !contentOverride) || !content) {
       setRecommendations([]);
       setRecommendLoading(false);
       return;
@@ -1247,7 +1251,7 @@ export default function LegalDraftingPage() {
         credentials: "include",
         body: JSON.stringify({
           title: draftTitle,
-          content: docText,
+          content,
           maxEdits: 6,
         }),
       });
@@ -1287,8 +1291,14 @@ export default function LegalDraftingPage() {
     }
   };
 
-  const runDraftReview = async () => {
-    await Promise.all([runRiskAnalysis(), runDraftRecommendations()]);
+  const runDraftReview = async (contentOverride?: string) => {
+    const content = (contentOverride ?? docText).trim();
+    if ((!hasDraftInSession && !contentOverride) || !content) {
+      setRiskResults([]);
+      setRecommendations([]);
+      return;
+    }
+    await Promise.all([runRiskAnalysis(content), runDraftRecommendations(content)]);
   };
 
   const saveDraftMutation = useMutation({
@@ -1361,6 +1371,9 @@ export default function LegalDraftingPage() {
     setRiskResults([]);
     setDraftReferences(createEmptyLegalDraftReferences());
     toast({ title: "Draft loaded" });
+    if ((doc.content || "").trim()) {
+      runDraftReview(doc.content || "");
+    }
   };
 
   const applyTemplate = (template: DraftTemplate) => {
@@ -1374,7 +1387,7 @@ export default function LegalDraftingPage() {
     setSelectedDraftId(null);
     setActiveLeftTool("drafts");
     toast({ title: `Template applied: ${template.title}` });
-    runDraftReview();
+    runDraftReview(template.body);
   };
 
   const onAiContextFilesSelected = (e: ChangeEvent<HTMLInputElement>) => {
@@ -1431,6 +1444,7 @@ export default function LegalDraftingPage() {
         createdAt: Date.now(),
       },
     ]);
+    setAiPrompt("");
 
     if (!isActionableDraftPrompt(prompt)) {
       setDraftChatMessages((prev) => [
@@ -1443,10 +1457,23 @@ export default function LegalDraftingPage() {
           createdAt: Date.now(),
         },
       ]);
+      setRiskResults([]);
+      setRecommendations([]);
       setDraftReferences(createEmptyLegalDraftReferences());
-      setAiPrompt("");
       return;
     }
+
+    const typingMessageId = `assistant-typing-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setDraftChatMessages((prev) => [
+      ...prev,
+      {
+        id: typingMessageId,
+        role: "assistant",
+        kind: "typing",
+        content: "AI is drafting your pleading...",
+        createdAt: Date.now(),
+      },
+    ]);
 
     setIsGenerating(true);
     try {
@@ -1500,7 +1527,7 @@ export default function LegalDraftingPage() {
       addMemoryItem("instruction", prompt);
       addMemoryItem("clause", clause);
       setDraftChatMessages((prev) => [
-        ...prev,
+        ...prev.filter((message) => message.id !== typingMessageId),
         {
           id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           role: "assistant",
@@ -1508,7 +1535,6 @@ export default function LegalDraftingPage() {
           createdAt: Date.now(),
         },
       ]);
-      setAiPrompt("");
       setAiContextFiles([]);
       if (aiContextInputRef.current) aiContextInputRef.current.value = "";
       toast({ title: "Legal draft updated" });
@@ -1518,10 +1544,10 @@ export default function LegalDraftingPage() {
         query: prompt.slice(0, 120),
       }).catch(() => {});
 
-      runDraftReview();
+      runDraftReview(clause);
     } catch (err: any) {
       setDraftChatMessages((prev) => [
-        ...prev,
+        ...prev.filter((message) => message.id !== typingMessageId),
         {
           id: `assistant-error-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           role: "assistant",
@@ -1585,10 +1611,6 @@ export default function LegalDraftingPage() {
       toast({ title: "Could not copy link", variant: "destructive" });
     }
   };
-
-  useEffect(() => {
-    runDraftReview();
-  }, []);
 
   useEffect(() => {
     const runBackfill = async () => {
@@ -1975,11 +1997,15 @@ export default function LegalDraftingPage() {
                         <span className={`text-[10px] font-bold uppercase tracking-wider ${message.role === "user" ? "text-amber-200" : "text-slate-300"}`}>
                           {message.role === "user"
                             ? "You"
+                            : message.kind === "typing"
+                              ? "AI Drafting Assistant · Writing"
                             : "AI Drafting Assistant"}
                         </span>
                         <span className="text-[10px] text-slate-500">{new Date(message.createdAt).toLocaleTimeString()}</span>
                       </div>
-                      <p className="text-[12px] whitespace-pre-wrap leading-relaxed text-slate-100">{message.content}</p>
+                      <p className={`text-[12px] whitespace-pre-wrap leading-relaxed ${message.kind === "typing" ? "text-amber-200 animate-pulse" : "text-slate-100"}`}>
+                        {message.content}
+                      </p>
                       {message.attachments && message.attachments.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {message.attachments.map((name, idx) => (
