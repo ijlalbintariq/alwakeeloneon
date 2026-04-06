@@ -180,31 +180,41 @@ const DEFAULT_DOC = "";
 const LEGACY_DEFAULT_DOC_PREFIX = "IN THE COURT OF THE CIVIL JUDGE";
 
 const DRAFT_ACTION_VERBS_REGEX =
-  /\b(draft|prepare|write|redraft|rewrite|revise|amend|edit|improve|finalize|generate|make|create|update|format|polish|convert)\b/i;
+  /\b(draft|prepare|write|redraft|rewrite|revise|amend|edit|improve|finalize|generate|make|create|update|format|polish|convert|add|insert|expand|elaborate)\b/i;
 const DRAFTING_DOCUMENT_HINTS_REGEX =
-  /\b(application|petition|plaint|suit|appeal|writ|bail|revision|cpla|affidavit|reply|grounds|prayer|verification|written statement)\b/i;
+  /\b(application|petition|plaint|suit|appeal|writ|bail|revision|cpla|affidavit|reply|written statement)\b/i;
 const LEGAL_REFERENCE_HINTS_REGEX =
   /\b(section|u\/s|under section|article|fir|cr\.?p\.?c|ppc|pld|scmr|mld|clc|cld|ylr|p\s*cr\.?\s*l\.?\s*j)\b/i;
+const LEGAL_ANALYSIS_HINTS_REGEX =
+  /\b(explain|clarify|opinion|advice|review|analyze|analysis|maintainable|jurisdiction|limitation|bail|conviction|grounds|prayer|verification|valuation|court fee|which court|forum|law|legal|draft)\b/i;
+const GREETING_ONLY_REGEX = /^\s*(hi|hello|hey|salam|assalamualaikum|aoa|ok|okay|thanks|thank you)\s*[.!?]*\s*$/i;
 
-function isActionableDraftPrompt(prompt: string): boolean {
+function classifyLegalDraftPrompt(prompt: string): "guidance" | "draft" | "analysis" {
   const normalized = String(prompt || "").trim();
-  if (!normalized) return false;
-  if (normalized.length >= 40) return true;
-  return (
-    DRAFT_ACTION_VERBS_REGEX.test(normalized) ||
-    DRAFTING_DOCUMENT_HINTS_REGEX.test(normalized) ||
-    LEGAL_REFERENCE_HINTS_REGEX.test(normalized)
-  );
+  if (!normalized) return "guidance";
+  if (GREETING_ONLY_REGEX.test(normalized)) return "guidance";
+
+  const hasDraftIntent = DRAFT_ACTION_VERBS_REGEX.test(normalized) || DRAFTING_DOCUMENT_HINTS_REGEX.test(normalized);
+  if (hasDraftIntent) return "draft";
+
+  const hasLegalAnalysisIntent =
+    LEGAL_REFERENCE_HINTS_REGEX.test(normalized) ||
+    LEGAL_ANALYSIS_HINTS_REGEX.test(normalized) ||
+    /\?$/.test(normalized) ||
+    normalized.length >= 60;
+  if (hasLegalAnalysisIntent) return "analysis";
+
+  return "guidance";
 }
 
 function buildDraftingGuidanceMessage(): string {
   return [
-    "I am ready as your legal drafting agent.",
-    "Tell me exactly what to draft or amend, for example:",
+    "I am ready as your Pakistani legal AI assistant.",
+    "You can ask me to draft or amend, for example:",
     "\"Draft a Sessions Court bail application under section 497 Cr.P.C.\"",
     "\"Revise the grounds and prayer using the attached case history.\"",
     "\"Prepare a High Court writ petition in Pakistani court format.\"",
-    "I will generate or update the draft after a clear drafting instruction.",
+    "You can also ask legal questions or ask me to review the current draft.",
   ].join("\n");
 }
 
@@ -1653,7 +1663,8 @@ export default function LegalDraftingPage() {
     ]);
     setAiPrompt("");
 
-    if (!isActionableDraftPrompt(prompt)) {
+    const promptMode = classifyLegalDraftPrompt(prompt);
+    if (promptMode === "guidance") {
       setDraftChatMessages((prev) => [
         ...prev,
         {
@@ -1669,6 +1680,7 @@ export default function LegalDraftingPage() {
       setDraftReferences(createEmptyLegalDraftReferences());
       return;
     }
+    const assistantMode: "draft" | "analysis" = promptMode === "analysis" ? "analysis" : "draft";
 
     const typingMessageId = `assistant-typing-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setDraftChatMessages((prev) => [
@@ -1692,6 +1704,7 @@ export default function LegalDraftingPage() {
         form.append("draftText", draftTextForAi);
         form.append("jurisdiction", "Lahore");
         form.append("module", "legal-drafting");
+        form.append("assistantMode", assistantMode);
         if (selectedSnippet) {
           form.append("selectedSnippet", selectedSnippet);
           if (typeof selectedSnippetStart === "number") form.append("selectedSnippetStart", String(selectedSnippetStart));
@@ -1714,6 +1727,7 @@ export default function LegalDraftingPage() {
           forceTargetedEdit: selectedSnippet ? true : undefined,
           jurisdiction: "Lahore",
           module: "legal-drafting",
+          assistantMode,
         };
         response = await fetch("/api/retrieval/clauses/generate", {
           method: "POST",
@@ -1747,11 +1761,12 @@ export default function LegalDraftingPage() {
       ]);
       await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
       await streamAssistantDraftMessage(assistantMessageId, clause);
-
-      setDocText(clause);
-      setHasDraftInSession(!!clause.trim());
       addMemoryItem("instruction", prompt);
-      addMemoryItem("clause", clause);
+      if (assistantMode === "draft") {
+        setDocText(clause);
+        setHasDraftInSession(!!clause.trim());
+        addMemoryItem("clause", clause);
+      }
       setDraftChatMessages((prev) => [
         ...prev.map((message) =>
           message.id === assistantMessageId
@@ -1761,14 +1776,16 @@ export default function LegalDraftingPage() {
       ]);
       setAiContextFiles([]);
       if (aiContextInputRef.current) aiContextInputRef.current.value = "";
-      toast({ title: "Legal draft updated" });
+      toast({ title: assistantMode === "draft" ? "Legal draft updated" : "Legal analysis ready" });
 
       await apiRequest("POST", "/api/search-history", {
         type: "draft",
         query: prompt.slice(0, 120),
       }).catch(() => {});
 
-      runDraftReview(clause);
+      if (assistantMode === "draft") {
+        runDraftReview(clause);
+      }
     } catch (err: any) {
       setDraftChatMessages((prev) => [
         ...prev.filter((message) => message.id !== typingMessageId && !(message.role === "assistant" && message.kind === "typing")),
