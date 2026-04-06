@@ -2335,6 +2335,13 @@ export default function LegalDraftingPage() {
                     <Textarea
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        if (e.shiftKey || e.nativeEvent.isComposing) return;
+                        e.preventDefault();
+                        if (isGenerating || !aiPrompt.trim()) return;
+                        void generateClause();
+                      }}
                       className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-xl p-3 pr-12 text-sm focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:border-amber-400 outline-none resize-none placeholder:text-slate-600"
                       placeholder="Describe what to draft, amend, or improve in Pakistani court format..."
                       rows={2}
