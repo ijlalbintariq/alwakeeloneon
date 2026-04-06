@@ -1632,6 +1632,14 @@ export default function LegalDraftingPage() {
     setChatSnippetPopover(null);
     clearBrowserSelection();
 
+    const selectedSnippet = selectedDraftSnippet.trim() ? selectedDraftSnippet.slice(0, 8000) : "";
+    const selectedSnippetStart = selectedDraftRange?.start;
+    const selectedSnippetEnd = selectedDraftRange?.end;
+    if (selectedSnippet) {
+      // One-time selection: consume snippet for this single command only.
+      clearSelectedDraftText();
+    }
+
     const queuedAttachments = aiContextFiles.map((file) => file.name);
     setDraftChatMessages((prev) => [
       ...prev,
@@ -1677,9 +1685,6 @@ export default function LegalDraftingPage() {
     setIsGenerating(true);
     try {
       const draftTextForAi = docText.slice(0, 12000);
-      const selectedSnippet = selectedDraftSnippet.trim() ? selectedDraftSnippet.slice(0, 8000) : "";
-      const selectedSnippetStart = selectedDraftRange?.start;
-      const selectedSnippetEnd = selectedDraftRange?.end;
       let response: Response;
       if (aiContextFiles.length > 0) {
         const form = new FormData();

@@ -4224,6 +4224,7 @@ function normalizeCourtReadyDraftingText(content: string): string {
     if (/^brief\s+facts\s*:?\s*$/i.test(trimmed)) return "BRIEF FACTS";
     if (/^grounds(\s+of\s+(appeal|application))?\s*:?\s*$/i.test(trimmed)) return "GROUNDS";
     if (/^legal\s+authorities\s*:?\s*$/i.test(trimmed)) return "GROUNDS";
+    if (/^valuation\s+and\s+court\s+fee\s*:?\s*$/i.test(trimmed)) return "VALUATION AND COURT FEE";
     if (/^prayer\s*:?\s*$/i.test(trimmed)) return "PRAYER";
     if (/^interim\s+relief\s*:?\s*$/i.test(trimmed)) return "INTERIM RELIEF";
     if (/^verification\s*:?\s*$/i.test(trimmed)) return "VERIFICATION";
@@ -4242,6 +4243,7 @@ function normalizeCourtReadyDraftingText(content: string): string {
     "RESPECTFULLY SHEWETH:",
     "BRIEF FACTS",
     "GROUNDS",
+    "VALUATION AND COURT FEE",
     "PRAYER",
     "INTERIM RELIEF",
     "VERIFICATION",
@@ -8668,6 +8670,17 @@ PLD 2018 SC 806
 2024 CLD 105
 2022 CLD 900
 
+VALUATION AND COURT FEE ORDER RULE (MANDATORY)
+
+The heading "VALUATION AND COURT FEE" must appear before the heading "PRAYER".
+
+Keep this order strict:
+- BRIEF FACTS
+- GROUNDS
+- VALUATION AND COURT FEE
+- PRAYER
+- VERIFICATION
+
 PRAYER
 
 Every draft must end with a prayer clause.
@@ -9155,6 +9168,7 @@ Court-ready formatting requirements (mandatory):
 - Do not use markdown symbols such as *, **, #, -, backticks, or bullet markers.
 - Keep professional Pakistani court format with clean headings and paragraphs.
 - Use uppercase captions for core headings: court title, case title, RESPECTFULLY SHEWETH:, BRIEF FACTS, GROUNDS, PRAYER, VERIFICATION, ANNEXURES.
+- Mandatory section order: place heading "VALUATION AND COURT FEE" immediately before heading "PRAYER".
 - Use "VERSUS" on its own line between party blocks.
 - Use numbered facts (1., 2., 3.) and alphabetic legal grounds (A., B., C.).
 - In BRIEF FACTS and GROUNDS, every line/item must start with "That the" (for example: "1. That the ...", "A. That the ...").
@@ -9211,6 +9225,7 @@ ${validation.issues.map((item, idx) => `${idx + 1}. ${item}`).join("\n")}
 Repair instructions:
 - Rewrite the full pleading in proper Pakistani court-ready format.
 - Keep the same legal objective and facts; do not invent new facts.
+- Ensure heading "VALUATION AND COURT FEE" appears before "PRAYER".
 - Keep clean spacing and section breaks; no markdown symbols.
 - Keep citations restricted to INTERNAL DATABASE REFERENCES only; if unavailable omit citation.
 - Return plain pleading text only.
