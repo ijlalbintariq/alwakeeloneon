@@ -832,7 +832,7 @@ export default function LegalDraftingPage() {
   const [chatSnippetPopover, setChatSnippetPopover] = useState<ChatSnippetPopover | null>(null);
   const [hasDraftInSession, setHasDraftInSession] = useState(false);
   const [workspaceStateHydrated, setWorkspaceStateHydrated] = useState(false);
-  const showDraftReviewPanel = recommendLoading || recommendations.length > 0;
+  const showDraftReviewPanel = hasDraftInSession || recommendLoading || recommendations.length > 0;
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
   const rightRailVisible = rightRailOpen && !focusWritingMode;
