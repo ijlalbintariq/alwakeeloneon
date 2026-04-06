@@ -227,6 +227,17 @@ function createEmptyLegalDraftReferences(): LegalDraftReferencesPayload {
   };
 }
 
+function createDraftingIntroMessage(): DraftChatMessage {
+  return {
+    id: `assistant-intro-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    role: "assistant",
+    content:
+      "Share your facts and attachments. I will draft in Pakistani court format after a clear drafting instruction.",
+    kind: "guidance",
+    createdAt: Date.now(),
+  };
+}
+
 function normalizeDraftChatMessage(input: unknown): DraftChatMessage | null {
   if (!input || typeof input !== "object") return null;
   const role = (input as any)?.role === "assistant" ? "assistant" : (input as any)?.role === "user" ? "user" : null;
@@ -824,16 +835,7 @@ export default function LegalDraftingPage() {
   const [expandedRecommendationId, setExpandedRecommendationId] = useState<string | null>(null);
   const [selectedDraftRange, setSelectedDraftRange] = useState<{ start: number; end: number } | null>(null);
   const [selectedDraftSnippet, setSelectedDraftSnippet] = useState("");
-  const [draftChatMessages, setDraftChatMessages] = useState<DraftChatMessage[]>([
-    {
-      id: "assistant-intro",
-      role: "assistant",
-      content:
-        "Share your facts and attachments. I will draft in Pakistani court format after a clear drafting instruction.",
-      kind: "guidance",
-      createdAt: Date.now(),
-    },
-  ]);
+  const [draftChatMessages, setDraftChatMessages] = useState<DraftChatMessage[]>(() => [createDraftingIntroMessage()]);
   const [draftReferences, setDraftReferences] = useState<LegalDraftReferencesPayload>(() => createEmptyLegalDraftReferences());
   const [isResolvingReferences, setIsResolvingReferences] = useState(false);
   const [activeCaseSourceId, setActiveCaseSourceId] = useState<number | null>(null);
@@ -1086,6 +1088,28 @@ export default function LegalDraftingPage() {
   const clearSelectedDraftText = () => {
     setSelectedDraftRange(null);
     setSelectedDraftSnippet("");
+  };
+
+  const startNewDraftingChat = () => {
+    setDocText(DEFAULT_DOC);
+    setDraftTitle("Untitled Draft");
+    setSelectedDraftId(null);
+    setHasDraftInSession(false);
+    setDraftReferences(createEmptyLegalDraftReferences());
+    setDraftChatMessages([createDraftingIntroMessage()]);
+    setRiskResults([]);
+    setRecommendations([]);
+    setExpandedRecommendationId(null);
+    setStyleMemoryMeta(null);
+    setAiPrompt("");
+    setAiContextFiles([]);
+    if (aiContextInputRef.current) aiContextInputRef.current.value = "";
+    setCaseSourceDoc(null);
+    setActiveCaseSourceId(null);
+    setChatSnippetPopover(null);
+    clearSelectedDraftText();
+    clearBrowserSelection();
+    toast({ title: "Started a new drafting chat" });
   };
 
   const clearBrowserSelection = () => {
@@ -2023,14 +2047,7 @@ export default function LegalDraftingPage() {
             <Button
               size="sm"
               className="inline-flex h-7 items-center justify-center gap-1 px-2 bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-md shadow-amber-500/20"
-              onClick={() => {
-                setDocText(DEFAULT_DOC);
-                setDraftTitle("Untitled Draft");
-                setSelectedDraftId(null);
-                setHasDraftInSession(false);
-                setDraftReferences(createEmptyLegalDraftReferences());
-                clearSelectedDraftText();
-              }}
+              onClick={startNewDraftingChat}
             >
               <Plus size={12} className="shrink-0" />
               New
