@@ -8656,6 +8656,7 @@ C. ILLEGAL EXERCISE OF JURISDICTION
 D. FAILURE TO CONSIDER MATERIAL EVIDENCE
 
 Each ground must contain a heading, the legal principle, explanation of the error, and where appropriate reference to statute or precedent.
+Each ground must include a brief but meaningful explanation (not just a one-line heading), preferably 2 to 4 sentences tied to the stated facts.
 
 LEGAL AUTHORITIES INTEGRATION
 
@@ -9173,6 +9174,7 @@ Court-ready formatting requirements (mandatory):
 - Use numbered facts (1., 2., 3.) and alphabetic legal grounds (A., B., C.).
 - In BRIEF FACTS and GROUNDS, every line/item must start with "That the" (for example: "1. That the ...", "A. That the ...").
 - Do not add "That the" to heading/sub-heading labels inside sections.
+- In GROUNDS, provide brief explanation for each ground (at least 2 to 4 sentences), not heading-only points.
 - Do not create a separate heading "LEGAL AUTHORITIES"; place all statutes/case citations inside relevant GROUNDS lines.
 - Court hierarchy rule (strict): use the correct Pakistani forum for selected filing type (e.g., Writ/Article 199 -> High Court; family matters -> Family Court; CPLA -> Supreme Court). Never place writ petitions in Family Court.
 - Keep prayer specific to this filing type and facts; avoid generic/contract wording.
