@@ -8834,9 +8834,40 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
 
   const FULL_REWRITE_PROMPT_PATTERN =
     /\b(full|complete|entire|whole)\s+(rewrite|redraft|regenerate|draft|version)\b|\bfrom\s+scratch\b|\bstart\s+over\b|\brewrite\s+everything\b|\bregenerate\s+everything\b|\bfresh\s+draft\b/i;
+  const GROUNDS_EXPANSION_PROMPT_PATTERN =
+    /\b(add|include|insert|expand|elaborate|improve|enhance|provide|give)\b[\s\S]{0,40}\b(additional|extra|more|new)?\s*grounds?\b|\bmore\s+grounds?\b|\badditional\s+grounds?\b/i;
 
   function isFullLegalRewriteRequested(prompt: string): boolean {
     return FULL_REWRITE_PROMPT_PATTERN.test(String(prompt || ""));
+  }
+
+  function isGroundsExpansionRequest(prompt: string): boolean {
+    return GROUNDS_EXPANSION_PROMPT_PATTERN.test(String(prompt || ""));
+  }
+
+  function extractGroundsSectionFromDraft(draftText: string): { start: number; end: number; text: string } | null {
+    const source = String(draftText || "");
+    if (!source.trim()) return null;
+
+    const headingMatch = source.match(/(^|\n)\s*GROUNDS\s*:?\s*(?:\n|$)/i);
+    if (!headingMatch || typeof headingMatch.index !== "number") return null;
+
+    const headingStart = headingMatch.index + (headingMatch[1] ? headingMatch[1].length : 0);
+    const remainder = source.slice(headingStart);
+    const nextHeading = remainder.match(
+      /\n\s*(VALUATION AND COURT FEE|PRAYER|INTERIM RELIEF|VERIFICATION|ANNEXURES|RELIEF SOUGHT)\s*:?\s*(?:\n|$)/i,
+    );
+    const sectionEnd = nextHeading && typeof nextHeading.index === "number"
+      ? headingStart + nextHeading.index
+      : source.length;
+    const sectionText = source.slice(headingStart, sectionEnd).trimEnd();
+    if (!sectionText.trim()) return null;
+
+    return {
+      start: headingStart,
+      end: sectionEnd,
+      text: sectionText,
+    };
   }
 
   function parseOptionalSelectionIndex(value: unknown): number | null {
@@ -8899,6 +8930,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
         selectedSnippetStart?: string | number;
         selectedSnippetEnd?: string | number;
         forceTargetedEdit?: string | boolean | number;
+        assistantMode?: "draft" | "analysis" | string;
       };
       const safePrompt = (prompt || "").trim();
       if (!safePrompt) {
@@ -9051,10 +9083,13 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
         const rawDocType = String(documentType || "").trim().toLowerCase();
         const customDocType = String((req.body as any)?.customDocumentType || "").trim();
         const useCustomDocType = rawDocType === "custom-input" && customDocType.length > 0;
+        const inferencePrompt = !rawDocType && baseDraftText.trim().length > 0
+          ? `${safePrompt}\n\nExisting Draft Context:\n${baseDraftText.slice(0, 2600)}`
+          : safePrompt;
 
         const selectedDocType = useCustomDocType
           ? null
-          : normalizeLegalDraftingDocType(documentType, safePrompt);
+          : normalizeLegalDraftingDocType(documentType, inferencePrompt);
 
         const profile = useCustomDocType
           ? {
@@ -9091,12 +9126,88 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
 - Do not change the selected filing type.
 - Keep proper Pakistani court forum heading, cause title, numbered facts, legal grounds, prayer, verification, and annexures (if needed).`;
 
+        const requestedAssistantMode = String((req.body as any)?.assistantMode || "").trim().toLowerCase();
+        const assistantMode: "draft" | "analysis" = requestedAssistantMode === "analysis" ? "analysis" : "draft";
+
         const sysInstruction = PAKISTANI_JUDICIAL_FORMAT_GUIDANCE;
+        if (assistantMode === "analysis") {
+          const analysisSystemInstruction = `${sysInstruction}
+
+ANALYSIS MODE OVERRIDE (HIGH PRIORITY)
+- For this request, act as a Pakistani legal AI advisor.
+- The user is asking legal guidance/review, not necessarily a fresh pleading draft.
+- Do not rewrite the full draft unless the user explicitly requests full rewrite/redraft.
+- If reviewing a draft, provide concise practical recommendations and targeted improvements.
+- Keep Pakistani forum hierarchy correct and clearly state if forum appears incorrect.
+- Cite only INTERNAL DATABASE REFERENCES. If unavailable, omit citation.`;
+
+          const analysisInput = `User legal query:
+${safePrompt}
+
+Current draft context (if any):
+${baseDraftText || "[No draft provided]"}
+
+Context files (if any):
+${attachmentContext || "[No context attachments provided]"}
+
+INTERNAL DATABASE REFERENCES (AUTO-LOADED):
+${legalKnowledgeContextBlock}
+
+Response format:
+- Give a direct legal answer first.
+- If draft-related, add "Suggested Improvements:" with numbered points.
+- Keep concise but substantive for Pakistani legal practice.`;
+
+          const analysisResult = await callLegalDraftingAI(analysisSystemInstruction, analysisInput, Math.min(TOKEN_LIMITS.draft, 1800), {
+            timeoutProfile: "analysis",
+            temperature: 0.2,
+          });
+          await logUsageCost(userId, "draft", analysisResult.model, analysisSystemInstruction + analysisInput, analysisResult.text);
+          let analysisText = normalizeDraftingText(analysisResult.text || "");
+          if (!analysisText) {
+            return res.status(502).json({ message: "AI returned empty legal analysis text" });
+          }
+
+          const analysisReferences = await resolveLegalDraftReferences(analysisText, {
+            stripUnverifiedCaseCitations: true,
+            unresolvedCaseCitationPlaceholder: "",
+          });
+          analysisText = normalizeDraftingText(analysisReferences.cleanedText || analysisText);
+          if (!analysisText) {
+            return res.status(502).json({ message: "AI analysis failed citation integrity checks" });
+          }
+
+          return res.json({
+            clause: analysisText,
+            sourceId: `legal-analysis-${selectedDocType || "general"}`,
+            confidence: 0.84,
+            method: "ai-legal-analysis",
+            assistantMode: "analysis",
+            documentType: selectedDocType || "custom-input",
+            customDocumentType: useCustomDocType ? customDocType : undefined,
+            attachmentsUsed: files?.length || 0,
+            references: analysisReferences.references,
+            styleMemory: styleMemoryMeta || undefined,
+          });
+        }
         const selectedSnippetRaw = String((req.body as any)?.selectedSnippet || "");
-        const selectedSnippet = selectedSnippetRaw.slice(0, 8000);
-        const selectedSnippetStart = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetStart);
-        const selectedSnippetEnd = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetEnd);
+        let selectedSnippet = selectedSnippetRaw.slice(0, 8000);
+        let selectedSnippetStart = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetStart);
+        let selectedSnippetEnd = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetEnd);
         const forceTargetedEdit = parseOptionalBoolean((req.body as any)?.forceTargetedEdit);
+        const autoGroundsTargetMode =
+          !selectedSnippet.trim() &&
+          baseDraftText.trim().length > 0 &&
+          !isFullLegalRewriteRequested(safePrompt) &&
+          isGroundsExpansionRequest(safePrompt);
+        if (autoGroundsTargetMode) {
+          const groundsSection = extractGroundsSectionFromDraft(baseDraftText);
+          if (groundsSection) {
+            selectedSnippet = groundsSection.text.slice(0, 8000);
+            selectedSnippetStart = groundsSection.start;
+            selectedSnippetEnd = groundsSection.end;
+          }
+        }
         const targetedEditMode =
           selectedSnippet.trim().length > 0 &&
           baseDraftText.trim().length > 0 &&
@@ -9122,6 +9233,7 @@ Targeted edit mode (strict):
 - Do not invent facts, citations, or statutory sections.
 - Case law citation lock (absolute): use only citations found in the INTERNAL DATABASE REFERENCES block below.
 - If an internal citation is unavailable, omit the citation (no placeholders).
+${autoGroundsTargetMode ? "- Scope hint: selected excerpt is the GROUNDS section. Add/expand grounds as requested while preserving existing valid grounds and drafting style.\n- Each ground must include brief explanation (2 to 4 sentences) tied to facts and law." : ""}
 
 Selected excerpt to replace:
 ${selectedSnippet}
@@ -9265,6 +9377,7 @@ ${draftedText}`;
           sourceId: `legal-${selectedDocType || "custom-input"}`,
           confidence: 0.86,
           method: "ai-legal-drafting",
+          assistantMode: "draft",
           documentType: selectedDocType || "custom-input",
           customDocumentType: useCustomDocType ? customDocType : undefined,
           attachmentsUsed: files?.length || 0,
