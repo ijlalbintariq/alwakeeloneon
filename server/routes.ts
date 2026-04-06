@@ -2104,13 +2104,13 @@ async function callLegalDraftingAI(
   if (isDeepSeekAvailable()) {
     try {
       const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () =>
-        chatWithDeepSeek({ messages, maxTokens, temperature }),
+        chatWithDeepSeekPro({ messages, maxTokens, temperature }),
       );
-      console.log(`[AI Routing][legal-drafting] DeepSeek succeeded in ${Date.now() - startedAt}ms`);
+      console.log(`[AI Routing][legal-drafting] DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
       return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
     } catch (err) {
       deepSeekError = err;
-      console.log("[AI Routing][legal-drafting] DeepSeek failed:", getErrorMessage(err));
+      console.log("[AI Routing][legal-drafting] DeepSeek R1 failed:", getErrorMessage(err));
     }
   } else {
     deepSeekError = new Error("DeepSeek is not configured");
