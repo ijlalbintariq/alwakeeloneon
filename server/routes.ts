@@ -4195,6 +4195,64 @@ function normalizeDraftingText(content: string): string {
 }
 
 function normalizeCourtReadyDraftingText(content: string): string {
+  const PARTY_ROLE_PATTERN =
+    /^(PETITIONER|PETITIONERS|RESPONDENT|RESPONDENTS|APPELLANT|APPELLANTS|DEFENDANT|DEFENDANTS|PLAINTIFF|PLAINTIFFS|COMPLAINANT|COMPLAINANTS|ACCUSED)$/i;
+  const PARTY_ALIGN_COLUMN = 74;
+  const rightAlignPartyLabel = (label: string): string => {
+    const clean = String(label || "").trim();
+    if (!clean) return "";
+    if (clean.length >= PARTY_ALIGN_COLUMN - 2) return clean;
+    return `${" ".repeat(PARTY_ALIGN_COLUMN - clean.length)}${clean}`;
+  };
+  const normalizePartyRole = (value: string): string => {
+    const raw = String(value || "").trim().replace(/\s+/g, " ").toUpperCase();
+    if (!raw) return "";
+    if (PARTY_ROLE_PATTERN.test(raw)) return raw;
+    return "";
+  };
+  const enforcePartyCaptionAlignment = (text: string): string => {
+    const rawLines = String(text || "").split("\n");
+    const formatted: string[] = [];
+    for (const rawLine of rawLines) {
+      const line = rawLine.trimEnd();
+      const trimmed = line.trim();
+      if (!trimmed) {
+        if (formatted.length > 0 && formatted[formatted.length - 1] !== "") formatted.push("");
+        continue;
+      }
+
+      if (/^(v(?:s\.?)?|versus)$/i.test(trimmed)) {
+        if (formatted.length > 0 && formatted[formatted.length - 1] !== "") formatted.push("");
+        formatted.push("VERSUS");
+        if (formatted[formatted.length - 1] !== "") formatted.push("");
+        continue;
+      }
+
+      const inlineRole = trimmed.match(/^(.*?)(?:\s*)(?:\.{3,}|…)\s*([A-Za-z][A-Za-z ]+)\s*$/);
+      if (inlineRole) {
+        const role = normalizePartyRole(inlineRole[2] || "");
+        if (role) {
+          const partyLine = String(inlineRole[1] || "").trim();
+          if (partyLine) formatted.push(partyLine);
+          formatted.push(rightAlignPartyLabel(`... ${role}`));
+          continue;
+        }
+      }
+
+      const roleOnly = trimmed.match(/^(?:\.{3,}\s*)?([A-Za-z][A-Za-z ]+)\s*$/);
+      if (roleOnly) {
+        const role = normalizePartyRole(roleOnly[1] || "");
+        if (role) {
+          formatted.push(rightAlignPartyLabel(`... ${role}`));
+          continue;
+        }
+      }
+
+      formatted.push(line);
+    }
+    return formatted.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  };
+
   const base = normalizeDraftingText(content)
     .replace(/\r\n?/g, "\n")
     .replace(/\u00a0/g, " ")
@@ -4321,7 +4379,8 @@ function normalizeCourtReadyDraftingText(content: string): string {
     }
   }
 
-  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const courtReady = out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return enforcePartyCaptionAlignment(courtReady);
 }
 
 type LegalDraftCaseReference = {
