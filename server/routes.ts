@@ -132,6 +132,7 @@ const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_
 const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 1800));
 const ATTACHMENT_PROMPT_TOKEN_BUDGET = Math.max(500, Number(process.env.ATTACHMENT_PROMPT_TOKEN_BUDGET || 2200));
 const ATTACHMENT_FILE_TOKEN_BUDGET = Math.max(150, Number(process.env.ATTACHMENT_FILE_TOKEN_BUDGET || 800));
+const CHAT_FAST_MAX_OUTPUT_TOKENS = Math.max(300, Number(process.env.CHAT_FAST_MAX_OUTPUT_TOKENS || 1600));
 const CASELAW_RAG_INDEX_DOC_TIMEOUT_MS = Math.max(5000, Number(process.env.CASELAW_RAG_INDEX_DOC_TIMEOUT_MS || 45000));
 const ADMIN_UPLOAD_AUTO_INDEX = (() => {
   const raw = String(process.env.ADMIN_UPLOAD_AUTO_INDEX || "false").trim().toLowerCase();
@@ -5305,25 +5306,51 @@ const KNOWLEDGE_SOURCES_PER_TIER = 2;
 const KNOWLEDGE_STATUTES_LIMIT = 3;
 const KNOWLEDGE_CASELAW_LIMIT = Math.max(3, Number(process.env.KNOWLEDGE_CASELAW_LIMIT || 6));
 
-async function gatherKnowledgeContext(query: string, userId?: string): Promise<string> {
+type KnowledgeContextOptions = {
+  fastMode?: boolean;
+  caseLawLimit?: number;
+  includeCaseLawSourceExcerpts?: boolean;
+  includeUserDocs?: boolean;
+  includeOrgKnowledge?: boolean;
+  sourcesPerTier?: number;
+  statutesLimit?: number;
+};
+
+async function gatherKnowledgeContext(query: string, userId?: string, options?: KnowledgeContextOptions): Promise<string> {
+  const fastMode = options?.fastMode === true;
+  const caseLawLimit = Math.max(
+    1,
+    Number(
+      options?.caseLawLimit ??
+      (fastMode ? Math.min(3, KNOWLEDGE_CASELAW_LIMIT) : KNOWLEDGE_CASELAW_LIMIT),
+    ) || KNOWLEDGE_CASELAW_LIMIT,
+  );
+  const statutesLimit = Math.max(1, Number(options?.statutesLimit ?? KNOWLEDGE_STATUTES_LIMIT) || KNOWLEDGE_STATUTES_LIMIT);
+  const sourcesPerTier = Math.max(
+    1,
+    Number(options?.sourcesPerTier ?? (fastMode ? 1 : KNOWLEDGE_SOURCES_PER_TIER)) || KNOWLEDGE_SOURCES_PER_TIER,
+  );
+  const includeCaseLawSourceExcerpts = options?.includeCaseLawSourceExcerpts ?? !fastMode;
+  const includeUserDocs = options?.includeUserDocs ?? !fastMode;
+  const includeOrgKnowledge = options?.includeOrgKnowledge ?? !fastMode;
   const contextParts: string[] = [];
 
   const caseLawPromise: Promise<CaseLaw[]> = userId
     ? searchCaseLawWithFullText({
         userId,
         query,
-        limit: KNOWLEDGE_CASELAW_LIMIT,
+        limit: caseLawLimit,
         sort: "relevance",
       })
-    : storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT);
+    : storage.searchCaseLaw(query, caseLawLimit);
 
   const promises: Promise<any>[] = [
-    storage.searchStatutes(query, KNOWLEDGE_STATUTES_LIMIT),
+    storage.searchStatutes(query, statutesLimit),
     caseLawPromise,
-    storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
-    storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
+    storage.searchGithubKnowledge(query, sourcesPerTier),
+    storage.searchAdminKnowledge(query, sourcesPerTier),
   ];
-  if (userId) {
+  if (userId && includeUserDocs) {
     promises.push(storage.getDocuments(userId));
   }
 
@@ -5331,18 +5358,18 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
   if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
     contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
-    for (const s of statutesResult.value.slice(0, KNOWLEDGE_STATUTES_LIMIT)) {
+    for (const s of statutesResult.value.slice(0, statutesLimit)) {
       contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
     }
   }
 
   if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
     const caseLawLines: string[] = [];
-    const candidateRows = caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT);
+    const candidateRows = caseLawResult.value.slice(0, caseLawLimit);
     const withExcerpts = await Promise.all(
       candidateRows.map(async (c) => {
         let sourceExcerpt = "";
-        if (userId) {
+        if (userId && includeCaseLawSourceExcerpts) {
           try {
             let sourceText = await loadCaseLawSourceText(c, userId, {
               includeMetadataFallback: false,
@@ -5392,7 +5419,7 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     }
   }
 
-  if (userDocsResult && userDocsResult.status === "fulfilled" && userDocsResult.value.length > 0) {
+  if (includeUserDocs && userDocsResult && userDocsResult.status === "fulfilled" && userDocsResult.value.length > 0) {
     const queryLower = query.toLowerCase();
     const relevant = userDocsResult.value
       .filter((d: any) => d.content && (
@@ -5410,7 +5437,7 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     }
   }
 
-  if (userId) {
+  if (userId && includeOrgKnowledge) {
     try {
       const userOrg = await storage.getUserOrganization(userId);
       if (userOrg) {
@@ -10070,7 +10097,14 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         ? (
           extractedAttachmentCount > 0
             ? ""
-            : await gatherKnowledgeContext(lastUserMessage.content, userId)
+            : await gatherKnowledgeContext(lastUserMessage.content, userId, {
+                fastMode: true,
+                includeCaseLawSourceExcerpts: false,
+                includeUserDocs: false,
+                includeOrgKnowledge: false,
+                caseLawLimit: 3,
+                sourcesPerTier: 1,
+              })
         )
         : "";
       if (attachmentContext) {
@@ -10205,9 +10239,13 @@ The user has attached the following documents for your reference. Analyze them c
       const planModeCap = selectedRoute === "apex"
         ? getModeOutputCap(userTier, "apex")
         : getModeOutputCap(userTier, selectedRoute);
-      const tokenLimit = directMode
+      const baseTokenLimit = directMode
         ? 128
         : Math.min(featureTokenLimit, planModeCap > 0 ? planModeCap : featureTokenLimit);
+      const tokenLimit =
+        moduleType === "al-wakeelo" && !directMode
+          ? Math.min(baseTokenLimit, CHAT_FAST_MAX_OUTPUT_TOKENS)
+          : baseTokenLimit;
       const timeoutProfile: TimeoutProfile = directMode ? "search" : "default";
       const temperature = directMode ? 0 : 0.7;
       const knowledgeTokensBudget = styleContext
