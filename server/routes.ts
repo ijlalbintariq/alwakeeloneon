@@ -34,7 +34,7 @@ import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 import { chatWithOpenRouter, streamWithOpenRouter, isOpenRouterAvailable, getOpenRouterModelName } from "./openrouter";
 import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
-import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekModelName, getDeepSeekProModelName } from "./deepseek-ai";
+import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName } from "./deepseek-ai";
 import { getModuleProfile, normalizeModuleType, type ModuleIntent, type ModuleType } from "./ai-module-profiles";
 import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAuditEvent, unbanUser } from "./security-governance";
 import { scanUploadedBuffer } from "./file-scan";
@@ -2087,12 +2087,14 @@ async function callTurboAI(
   const messages = buildMessages(systemPrompt, contents);
   const startedAt = Date.now();
   try {
-    const result = await withTimeout("DeepSeek", timeoutConfig.turboPrimary, () => chatWithDeepSeek({ messages, maxTokens, temperature }));
-    console.log(`[AI Routing][turbo] Primary DeepSeek succeeded in ${Date.now() - startedAt}ms`);
+    const result = await withTimeout("DeepSeek R1", timeoutConfig.turboPrimary, () =>
+      chatWithDeepSeekPro({ messages, maxTokens, temperature }),
+    );
+    console.log(`[AI Routing][turbo] Primary DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
     return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
   } catch (dsErr) {
     if (isGroqAvailable()) {
-      logModelSwitch("turbo", "DeepSeek", "Groq", dsErr);
+      logModelSwitch("turbo", "DeepSeek R1", "Groq", dsErr);
       const result = await withTimeout("Groq", timeoutConfig.turboFallback, () => chatWithGroq({ messages, maxTokens, temperature }));
       console.log(`[AI Routing][turbo] Fallback Groq succeeded in ${Date.now() - startedAt}ms`);
       return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
@@ -10280,7 +10282,7 @@ The user has attached the following documents for your reference. Analyze them c
       let usedModel = selectedRoute === "apex"
         ? (selectedApexModel || "apex-pro")
         : selectedRoute === "turbo"
-          ? getDeepSeekModelName()
+          ? getDeepSeekProModelName()
           : getGroqModelName();
       const enforcePrimaryLinkedSourceCitations = moduleProfile.features.strictCitations;
       if (enforcePrimaryLinkedSourceCitations) {
@@ -10358,8 +10360,13 @@ The user has attached the following documents for your reference. Analyze them c
         try {
           const streamMessages = buildMessages(systemPromptFull, geminiContents);
           if (selectedRoute === "turbo") {
-            usedModel = getDeepSeekModelName();
-            for await (const text of streamWithDeepSeek({ messages: streamMessages, maxTokens: tokenLimit, temperature })) {
+            usedModel = getDeepSeekProModelName();
+            for await (const text of streamWithDeepSeek({
+              messages: streamMessages,
+              model: getDeepSeekProModelName(),
+              maxTokens: tokenLimit,
+              temperature,
+            })) {
               fullContent += text;
               res.write(`data: ${JSON.stringify({ text })}\n\n`);
             }
