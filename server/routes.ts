@@ -287,11 +287,11 @@ function buildApexModeSystemPrompt(
 - Never claim to have searched external websites in this mode.
 - If a legal citation is not present in available internal context, state it as unavailable instead of fabricating.`;
 
-  const apexPro = `APEX PRO PROFILE:
-- Primary goal: premium final output quality for complex legal drafting/analysis.
-- Prefer concise but high-quality structure with clear legal reasoning.
-- Prioritize court-ready language and polished formatting when drafting is requested.
-- Return a final answer directly; do not expose internal chain-of-thought.`;
+  const apexInstant = `APEX PROFILE (KIMI-K2.5-INSTANT):
+ - Primary goal: fast, polished legal output with clear structure.
+ - Keep reasoning concise and practical while preserving legal accuracy.
+ - Prioritize court-ready language and clean formatting when drafting is requested.
+ - Return final answers directly without exposing internal chain-of-thought.`;
 
   const apexAgentDraftGuard = moduleType === "draft" || moduleType === "contract-drafting"
     ? `- Drafting request detected: preserve requested drafting format and output only the final draft unless user explicitly asks for analysis sections.`
@@ -302,14 +302,14 @@ function buildApexModeSystemPrompt(
   4) Recommendation
   5) Internal citation check (only citations grounded in provided internal context).`;
 
-  const apexAgent = `APEX AGENT (NON-WEB) PROFILE:
-- Primary goal: behave as an internal research agent, grounded in app-provided context.
-- Do not rely on internet or external assumptions.
-- Prefer evidence-grounded statements tied to internal context.
-${apexAgentDraftGuard}
-- If attachments are present, treat them as highest-priority source material.`;
+  const apexProThinking = `APEX PRO PROFILE (KIMI-K2-THINKING, NON-WEB):
+ - Primary goal: deeper legal reasoning grounded in app-provided internal context.
+ - Do not rely on internet or external assumptions.
+ - Prefer evidence-grounded statements tied to internal context.
+ ${apexAgentDraftGuard}
+ - If attachments are present, treat them as highest-priority source material.`;
 
-  const profile = model === "apex-agent" ? apexAgent : apexPro;
+  const profile = model === "apex-agent" ? apexProThinking : apexInstant;
   return `${baseSystemPrompt}\n\n${shared}\n\n${profile}${hasAttachments ? "\n\nAttachment priority: enabled." : ""}`;
 }
 

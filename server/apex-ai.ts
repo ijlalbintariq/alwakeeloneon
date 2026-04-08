@@ -68,17 +68,17 @@ function getModelConfig(model: ApexModel) {
   switch (model) {
     case "apex-pro":
       return {
-        modelId: "kimi-k2.5",
-        temperature: 1.0,
-        thinking: true,
-        displayName: "Apex Pro",
+        modelId: "kimi-k2.5-instant",
+        temperature: 0.6,
+        thinking: false,
+        displayName: "Apex",
       };
     case "apex-agent":
       return {
-        modelId: "kimi-k2.5",
+        modelId: "kimi-k2-thinking",
         temperature: 0.7,
         thinking: true,
-        displayName: "Apex Agent",
+        displayName: "Apex Pro",
       };
   }
 }
@@ -93,13 +93,13 @@ export function getApexModelsForTier(tier: string): Array<{ id: ApexModel; name:
   if (tier === "chamber" || tier === "enterprise") {
     models.push({
       id: "apex-pro",
-      name: "Apex Pro",
-      description: "Premium legal reasoning and high-quality structured drafting output.",
+      name: "Apex",
+      description: "Kimi-K2.5 Instant mode for fast, high-quality legal drafting and analysis.",
     });
     models.push({
       id: "apex-agent",
-      name: "Apex Agent",
-      description: "Non-web internal research agent. Grounds responses in app context/knowledge vault and conversation history.",
+      name: "Apex Pro",
+      description: "Kimi-K2-Thinking mode for deeper legal reasoning in non-web internal context.",
     });
   }
 
