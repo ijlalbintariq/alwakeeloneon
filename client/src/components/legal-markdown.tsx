@@ -1,4 +1,4 @@
-import { Children } from "react";
+import { Children, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useLocation } from "wouter";
@@ -31,7 +31,7 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
   );
 }
 
-export function LegalMarkdown({ content, className }: { content: string; className?: string }) {
+function LegalMarkdownComponent({ content, className }: { content: string; className?: string }) {
   const citationPattern = /^\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+/i;
   return (
     <div className={`legal-markdown ${className || ""}`}>
@@ -150,3 +150,6 @@ export function LegalMarkdown({ content, className }: { content: string; classNa
     </div>
   );
 }
+
+export const LegalMarkdown = memo(LegalMarkdownComponent);
+LegalMarkdown.displayName = "LegalMarkdown";

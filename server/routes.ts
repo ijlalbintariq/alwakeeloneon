@@ -2450,42 +2450,50 @@ async function verifyReferencesBlock(content: string): Promise<string> {
   const verifiedJudgments: Array<{ citation: string; court: string; description: string }> = [];
   const seenLaws = new Set<string>();
   const seenJudgments = new Set<string>();
-
-  for (const law of inputLaws) {
-    const name = sanitizeReferenceText(law?.name || "", 180);
-    const section = sanitizeReferenceText(law?.section || "", 80);
-    const description = sanitizeReferenceText(law?.description || "", 320);
-    if (!name && !section) continue;
-
-    const query = `${name} ${section}`.trim();
-    const matched = query ? await storage.searchStatutes(query, 3).catch(() => []) : [];
-    const primary = matched.length > 0 ? matched[0] : null;
-    const normalizedLaw = {
-      name: sanitizeReferenceText(primary?.shortTitle || name || "Pakistani Statute", 180),
-      section: sanitizeReferenceText(section || primary?.section || "", 80),
-      description: sanitizeReferenceText(description || primary?.description || "", 320),
-    };
+  const lawRows = await Promise.all(
+    inputLaws.map(async (law) => {
+      const name = sanitizeReferenceText(law?.name || "", 180);
+      const section = sanitizeReferenceText(law?.section || "", 80);
+      const description = sanitizeReferenceText(law?.description || "", 320);
+      if (!name && !section) return null;
+      const query = `${name} ${section}`.trim();
+      const matched = query ? await storage.searchStatutes(query, 3).catch(() => []) : [];
+      const primary = matched.length > 0 ? matched[0] : null;
+      return {
+        name: sanitizeReferenceText(primary?.shortTitle || name || "Pakistani Statute", 180),
+        section: sanitizeReferenceText(section || primary?.section || "", 80),
+        description: sanitizeReferenceText(description || primary?.description || "", 320),
+      };
+    }),
+  );
+  for (const normalizedLaw of lawRows) {
+    if (!normalizedLaw) continue;
     const lawKey = `${normalizedLaw.name.toLowerCase()}::${normalizedLaw.section.toLowerCase()}`;
     if (seenLaws.has(lawKey)) continue;
     seenLaws.add(lawKey);
     verifiedLaws.push(normalizedLaw);
   }
 
-  for (const judgment of inputJudgments) {
-    const citation = sanitizeReferenceText(judgment?.citation || "", 140);
-    const court = sanitizeReferenceText(judgment?.court || "", 120);
-    const description = sanitizeReferenceText(judgment?.description || "", 320);
-    if (!citation) continue;
-    const matched = await resolveCaseCitationFromInternalDb(citation, {
-      requirePrimary: true,
-      requireLinkedSource: true,
-    }).catch(() => null);
-    if (!matched || !isCaseLawRowCitationTrusted(matched) || !hasLinkedPrimaryCaseLawSource(matched)) continue;
-    const normalizedJudgment = {
-      citation: sanitizeReferenceText(matched.citation, 140),
-      court: sanitizeReferenceText(matched.court || court || "Pakistani Courts", 120),
-      description: sanitizeReferenceText(description || matched.summary || "", 320),
-    };
+  const judgmentRows = await Promise.all(
+    inputJudgments.map(async (judgment) => {
+      const citation = sanitizeReferenceText(judgment?.citation || "", 140);
+      const court = sanitizeReferenceText(judgment?.court || "", 120);
+      const description = sanitizeReferenceText(judgment?.description || "", 320);
+      if (!citation) return null;
+      const matched = await resolveCaseCitationFromInternalDb(citation, {
+        requirePrimary: true,
+        requireLinkedSource: true,
+      }).catch(() => null);
+      if (!matched || !isCaseLawRowCitationTrusted(matched) || !hasLinkedPrimaryCaseLawSource(matched)) return null;
+      return {
+        citation: sanitizeReferenceText(matched.citation, 140),
+        court: sanitizeReferenceText(matched.court || court || "Pakistani Courts", 120),
+        description: sanitizeReferenceText(description || matched.summary || "", 320),
+      };
+    }),
+  );
+  for (const normalizedJudgment of judgmentRows) {
+    if (!normalizedJudgment) continue;
     const judgmentKey = normalizedJudgment.citation.toLowerCase();
     if (seenJudgments.has(judgmentKey)) continue;
     seenJudgments.add(judgmentKey);
@@ -3863,6 +3871,7 @@ async function processSinglePendingCaseLawAdminDoc(
   doc: PendingCaseLawAdminDoc,
   actorUserId: string,
   extractors: PendingCaseLawExtractors,
+  options?: { pauseForInteractive?: () => Promise<void> },
 ): Promise<{
   extractedDocuments: number;
   insertedRows: number;
@@ -3935,6 +3944,7 @@ async function processSinglePendingCaseLawAdminDoc(
 
   if (!content && doc.objectKey) {
     try {
+      if (options?.pauseForInteractive) await options.pauseForInteractive();
       const sourceBuffer = await getR2ObjectBinary(doc.objectKey);
       if (sourceBuffer && sourceBuffer.length > 0) {
         const ext = normalizeAttachmentExt(path.extname(sourceFilename || "").toLowerCase());
@@ -3965,15 +3975,18 @@ async function processSinglePendingCaseLawAdminDoc(
         }
 
         if (parseExt === ".pdf") {
+          if (options?.pauseForInteractive) await options.pauseForInteractive();
           try {
             content = await extractors.parsePdfSafe(stableFile.buffer);
           } catch {
             content = "";
           }
           if (!content) {
+            if (options?.pauseForInteractive) await options.pauseForInteractive();
             content = await extractors.parsePdfWithOcrFallback(stableFile);
           }
         } else if (parseExt === ".doc" || parseExt === ".docx") {
+          if (options?.pauseForInteractive) await options.pauseForInteractive();
           content = await extractors.parseDocxSafe(stableFile.buffer);
         } else {
           content = stripNullBytes(stableFile.buffer.toString("utf-8").trim());
@@ -4014,6 +4027,7 @@ async function processSinglePendingCaseLawAdminDoc(
   }
 
   try {
+    if (options?.pauseForInteractive) await options.pauseForInteractive();
     const extracted = nlpExtractCases(content, { sourceFilename });
     const validCases = extracted.filter((entry) => entry.citation && entry.title);
     if (validCases.length === 0) {
@@ -4720,6 +4734,9 @@ async function resolveCaseCitationFromInternalDb(
   const hasTrustedCandidateParts = isTrustedCaseLawCitationParts(candidateParts);
   const requirePrimary = options?.requirePrimary === true;
   const requireLinkedSource = options?.requireLinkedSource === true;
+  const cacheKey = `${normalizedCandidate}|p:${requirePrimary ? 1 : 0}|l:${requireLinkedSource ? 1 : 0}`;
+  const cached = getTimedCacheValue(caseCitationResolveCache, cacheKey);
+  if (cached !== undefined) return cached;
 
   const rows: CaseLaw[] = [];
   const seen = new Set<number>();
@@ -4766,6 +4783,7 @@ async function resolveCaseCitationFromInternalDb(
     }
   }
 
+  setTimedCacheValue(caseCitationResolveCache, cacheKey, best, CASE_CITATION_RESOLVE_CACHE_TTL_MS, 2000);
   return best;
 }
 
@@ -4795,24 +4813,29 @@ async function enforceInternalCaseCitationIntegrity(
   const resolvedByKey = new Map<string, CaseLaw | null>();
   const removed = new Set<string>();
   const verifiedByKey = new Map<string, string>();
-
+  const representativeByKey = new Map<string, string>();
   for (const candidate of candidates) {
     const key = normalizeCitationForMatch(candidate);
     if (!key) continue;
-    let resolved = resolvedByKey.get(key);
-    if (resolved === undefined) {
-      resolved = await resolveCaseCitationFromInternalDb(candidate, {
+    if (!representativeByKey.has(key)) {
+      representativeByKey.set(key, candidate);
+    }
+  }
+
+  await Promise.all(
+    Array.from(representativeByKey.entries()).map(async ([key, candidate]) => {
+      const resolved = await resolveCaseCitationFromInternalDb(candidate, {
         requirePrimary,
         requireLinkedSource,
       });
       resolvedByKey.set(key, resolved);
-    }
-    if (resolved) {
-      verifiedByKey.set(key, normalizeSpaces(resolved.citation));
-    } else {
-      removed.add(normalizeSpaces(candidate));
-    }
-  }
+      if (resolved) {
+        verifiedByKey.set(key, normalizeSpaces(resolved.citation));
+      } else {
+        removed.add(normalizeSpaces(candidate));
+      }
+    }),
+  );
 
   let cleaned = text;
 
@@ -5317,17 +5340,81 @@ const KNOWLEDGE_EXCERPT_LIMIT = 1500;
 const KNOWLEDGE_SOURCES_PER_TIER = 2;
 const KNOWLEDGE_STATUTES_LIMIT = 3;
 const KNOWLEDGE_CASELAW_LIMIT = Math.max(3, Number(process.env.KNOWLEDGE_CASELAW_LIMIT || 6));
+const KNOWLEDGE_CONTEXT_CACHE_TTL_MS = Math.max(10_000, Number(process.env.KNOWLEDGE_CONTEXT_CACHE_TTL_MS || 120_000));
+const KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS = Math.max(1_000, Number(process.env.KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS || 4_000));
+const KNOWLEDGE_CASELAW_EXCERPT_DOCS = Math.max(0, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_DOCS || 2));
+const KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS = Math.max(200, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS || 1_200));
+const CASE_CITATION_RESOLVE_CACHE_TTL_MS = Math.max(10_000, Number(process.env.CASE_CITATION_RESOLVE_CACHE_TTL_MS || 180_000));
+
+type TimedCacheValue<T> = {
+  value: T;
+  expiresAt: number;
+};
+
+const knowledgeContextCache = new Map<string, TimedCacheValue<string>>();
+const caseCitationResolveCache = new Map<string, TimedCacheValue<CaseLaw | null>>();
+
+function getTimedCacheValue<T>(cache: Map<string, TimedCacheValue<T>>, key: string): T | undefined {
+  const cached = cache.get(key);
+  if (!cached) return undefined;
+  if (cached.expiresAt <= Date.now()) {
+    cache.delete(key);
+    return undefined;
+  }
+  return cached.value;
+}
+
+function setTimedCacheValue<T>(
+  cache: Map<string, TimedCacheValue<T>>,
+  key: string,
+  value: T,
+  ttlMs: number,
+  maxSize = 500,
+) {
+  cache.set(key, { value, expiresAt: Date.now() + Math.max(1_000, ttlMs) });
+  if (cache.size <= maxSize) return;
+  const now = Date.now();
+  for (const [entryKey, entryValue] of cache.entries()) {
+    if (entryValue.expiresAt <= now) {
+      cache.delete(entryKey);
+    }
+    if (cache.size <= maxSize) break;
+  }
+  while (cache.size > maxSize) {
+    const firstKey = cache.keys().next().value as string | undefined;
+    if (!firstKey) break;
+    cache.delete(firstKey);
+  }
+}
 
 async function gatherKnowledgeContext(query: string, userId?: string): Promise<string> {
+  const normalizedQuery = normalizeQuery(query).slice(0, 320);
+  if (!normalizedQuery) return "";
+  const cacheKey = `${userId || "anon"}::${normalizedQuery}`;
+  const cached = getTimedCacheValue(knowledgeContextCache, cacheKey);
+  if (cached !== undefined) return cached;
+
   const contextParts: string[] = [];
 
   const caseLawPromise: Promise<CaseLaw[]> = userId
-    ? searchCaseLawWithFullText({
-        userId,
-        query,
-        limit: KNOWLEDGE_CASELAW_LIMIT,
-        sort: "relevance",
-      })
+    ? (async () => {
+        try {
+          return await withOperationTimeout(
+            searchCaseLawWithFullText({
+              userId,
+              query,
+              limit: KNOWLEDGE_CASELAW_LIMIT,
+              sort: "relevance",
+            }),
+            KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
+            `Knowledge case-law search timeout after ${KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS}ms`,
+          );
+        } catch (err) {
+          console.warn("[Knowledge] Case-law full-text search fallback:", getErrorMessage(err));
+          const fallbackRows = await storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT).catch(() => []);
+          return filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(fallbackRows));
+        }
+      })()
     : storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT);
 
   const promises: Promise<any>[] = [
@@ -5353,24 +5440,33 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     const caseLawLines: string[] = [];
     const candidateRows = caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT);
     const withExcerpts = await Promise.all(
-      candidateRows.map(async (c) => {
+      candidateRows.map(async (c, index) => {
         let sourceExcerpt = "";
-        if (userId) {
+        if (userId && index < KNOWLEDGE_CASELAW_EXCERPT_DOCS) {
           try {
-            let sourceText = await loadCaseLawSourceText(c, userId, {
-              includeMetadataFallback: false,
-              allowRemoteFileRead: false,
-            });
-            if (!sourceText.trim()) {
-              sourceText = await loadCaseLawSourceText(c, userId, {
+            let sourceText = await withOperationTimeout(
+              loadCaseLawSourceText(c, userId, {
                 includeMetadataFallback: false,
-                allowRemoteFileRead: true,
-              });
+                allowRemoteFileRead: false,
+              }),
+              KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS,
+              `Knowledge local excerpt timeout after ${KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS}ms`,
+            );
+            if (!sourceText.trim()) {
+              sourceText = await withOperationTimeout(
+                loadCaseLawSourceText(c, userId, {
+                  includeMetadataFallback: false,
+                  allowRemoteFileRead: true,
+                }),
+                KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS,
+                `Knowledge remote excerpt timeout after ${KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS}ms`,
+              );
             }
-            if (!sourceText.trim()) return null;
-            sourceExcerpt = sourceText.slice(0, 700).replace(/\s+/g, " ").trim();
+            if (sourceText.trim()) {
+              sourceExcerpt = sourceText.slice(0, 700).replace(/\s+/g, " ").trim();
+            }
           } catch {
-            return null;
+            sourceExcerpt = "";
           }
         }
         return { row: c, sourceExcerpt };
@@ -5439,9 +5535,12 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     } catch (e) {}
   }
 
-  if (contextParts.length === 0) return "";
+  const finalContext = contextParts.length === 0
+    ? ""
+    : `\n\nREFERENCE MATERIALS (Use these as primary sources when answering. Prioritize this curated knowledge over general knowledge. Do NOT mention these sources or how you found them — present the information as your own expert analysis):\n\n${contextParts.join("\n\n")}`;
 
-  return `\n\nREFERENCE MATERIALS (Use these as primary sources when answering. Prioritize this curated knowledge over general knowledge. Do NOT mention these sources or how you found them — present the information as your own expert analysis):\n\n${contextParts.join("\n\n")}`;
+  setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
+  return finalContext;
 }
 
 async function seedLegalData() {
@@ -12789,6 +12888,9 @@ ${boundedRaw}`;
                 parsePdfSafe: (buffer) => extractPdfTextSafe(buffer, "admin-case-law-process-pending"),
                 parsePdfWithOcrFallback: (file) => extractPdfTextWithOcrFallback(file, "admin-case-law-process-pending"),
                 parseDocxSafe: (buffer) => extractDocxTextSafe(buffer, "admin-case-law-process-pending"),
+              },
+              {
+                pauseForInteractive: pauseBackgroundForInteractiveChat,
               },
             );
             caseLawProcessPendingFilesJob.extractedDocuments += result.extractedDocuments;
