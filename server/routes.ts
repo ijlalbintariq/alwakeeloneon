@@ -32,7 +32,6 @@ import os from "node:os";
 import path from "node:path";
 import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
-import { chatWithOpenRouter, streamWithOpenRouter, isOpenRouterAvailable, getOpenRouterModelName } from "./openrouter";
 import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName } from "./deepseek-ai";
 import { getModuleProfile, normalizeModuleType, type ModuleIntent, type ModuleType } from "./ai-module-profiles";
@@ -388,7 +387,6 @@ function ensurePublicChatClosingLine(text: string, language: "english" | "romanU
 async function rewritePublicChatOutput(args: {
   content: string;
   targetLanguage: "english" | "romanUrdu" | "urdu";
-  provider: "groq" | "openrouter";
 }): Promise<string> {
   const languageLabel =
     args.targetLanguage === "romanUrdu"
@@ -413,15 +411,6 @@ async function rewritePublicChatOutput(args: {
       content: `Rewrite the following in ${languageLabel}.\nRules:\n${scriptRule}\n- No Hindi.\n- No Devanagari script.\n- Keep it concise and professional.\n- Output only rewritten text.\n\nText:\n${args.content}`,
     },
   ];
-  if (args.provider === "openrouter") {
-    const rewritten = await chatWithOpenRouter({
-      messages: rewriteMessages,
-      model: "deepseek-chat",
-      maxTokens: 700,
-      temperature: 0.1,
-    });
-    return rewritten.content || "";
-  }
   const rewritten = await chatWithGroq({
     messages: rewriteMessages,
     model: "openai/gpt-oss-120b",
@@ -1985,45 +1974,50 @@ function buildMessages(systemPrompt: string, contents: Array<{ role: string; par
 
 const MODEL_TIMEOUT_MS = {
   standardPrimary: 30000,
-  standardFallback: 12000,
   turboPrimary: 30000,
-  turboFallback: 12000,
   apexPrimary: 30000,
-  apexFallback: 15000,
 };
 
 type TimeoutProfile = "default" | "search" | "analysis";
 type TimeoutConfig = {
   standardPrimary: number;
-  standardFallback: number;
   turboPrimary: number;
-  turboFallback: number;
 };
 
 const MODEL_TIMEOUT_PROFILES: Record<TimeoutProfile, TimeoutConfig> = {
   default: {
     standardPrimary: MODEL_TIMEOUT_MS.standardPrimary,
-    standardFallback: MODEL_TIMEOUT_MS.standardFallback,
     turboPrimary: MODEL_TIMEOUT_MS.turboPrimary,
-    turboFallback: MODEL_TIMEOUT_MS.turboFallback,
   },
   search: {
     standardPrimary: 30000,
-    standardFallback: 9000,
     turboPrimary: 30000,
-    turboFallback: 9500,
   },
   analysis: {
     standardPrimary: 30000,
-    standardFallback: 14000,
     turboPrimary: 30000,
-    turboFallback: 14000,
   },
 };
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   return String(err);
+}
+
+function isEmptyModelOutput(value: string): boolean {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return true;
+  if (/^no response generated\.?$/i.test(normalized)) return true;
+  if (/^no response generated\.?\s*```references\b/i.test(normalized)) return true;
+  return false;
+}
+
+function assertNonEmptyModelOutput(provider: string, value: string): string {
+  const text = String(value || "").trim();
+  if (!isEmptyModelOutput(text)) return text;
+  const err = new Error(`${provider} returned empty model output`);
+  (err as any).code = "EMPTY_MODEL_OUTPUT";
+  throw err;
 }
 
 async function withTimeout<T>(label: string, ms: number, fn: () => Promise<T>): Promise<T> {
@@ -2043,10 +2037,6 @@ async function withTimeout<T>(label: string, ms: number, fn: () => Promise<T>): 
   }
 }
 
-function logModelSwitch(mode: string, fromModel: string, toModel: string, err: unknown) {
-  console.log(`[AI Routing][${mode}] Switching ${fromModel} -> ${toModel}. Reason: ${getErrorMessage(err)}`);
-}
-
 async function callStandardAI(
   systemPrompt: string,
   contents: Array<{ role: string; parts: Array<{ text: string }> }>,
@@ -2057,23 +2047,10 @@ async function callStandardAI(
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, contents);
   const startedAt = Date.now();
-  try {
-    const result = await withTimeout("Groq", timeoutConfig.standardPrimary, () => chatWithGroq({ messages, maxTokens, temperature }));
-    console.log(`[AI Routing][standard] Primary Groq succeeded in ${Date.now() - startedAt}ms`);
-    return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
-  } catch (groqErr) {
-    if (isOpenRouterAvailable()) {
-      try {
-        logModelSwitch("standard", "Groq", "OpenRouter", groqErr);
-        const result = await withTimeout("OpenRouter", timeoutConfig.standardFallback, () => chatWithOpenRouter({ messages, maxTokens, temperature }));
-        console.log(`[AI Routing][standard] Fallback OpenRouter succeeded in ${Date.now() - startedAt}ms`);
-        return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
-      } catch (orErr) {
-        console.log("[AI Routing][standard] OpenRouter fallback failed:", getErrorMessage(orErr));
-      }
-    }
-    throw groqErr;
-  }
+  const result = await withTimeout("Groq", timeoutConfig.standardPrimary, () => chatWithGroq({ messages, maxTokens, temperature }));
+  const safeText = assertNonEmptyModelOutput("Groq", result.content);
+  console.log(`[AI Routing][standard] Primary Groq succeeded in ${Date.now() - startedAt}ms`);
+  return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
 }
 
 async function callTurboAI(
@@ -2086,21 +2063,12 @@ async function callTurboAI(
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, contents);
   const startedAt = Date.now();
-  try {
-    const result = await withTimeout("DeepSeek R1", timeoutConfig.turboPrimary, () =>
-      chatWithDeepSeekPro({ messages, maxTokens, temperature }),
-    );
-    console.log(`[AI Routing][turbo] Primary DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
-    return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
-  } catch (dsErr) {
-    if (isGroqAvailable()) {
-      logModelSwitch("turbo", "DeepSeek R1", "Groq", dsErr);
-      const result = await withTimeout("Groq", timeoutConfig.turboFallback, () => chatWithGroq({ messages, maxTokens, temperature }));
-      console.log(`[AI Routing][turbo] Fallback Groq succeeded in ${Date.now() - startedAt}ms`);
-      return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
-    }
-    throw dsErr;
-  }
+  const result = await withTimeout("DeepSeek R1", timeoutConfig.turboPrimary, () =>
+    chatWithDeepSeekPro({ messages, maxTokens, temperature }),
+  );
+  const safeText = assertNonEmptyModelOutput("DeepSeek R1", result.content);
+  console.log(`[AI Routing][turbo] Primary DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
+  return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
 }
 
 async function callStandardAISimple(
@@ -2122,42 +2090,19 @@ async function callLegalDraftingAI(
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, [{ role: "user", parts: [{ text: userText }] }]);
   const startedAt = Date.now();
-  const groqFallbackModel = "openai/gpt-oss-120b";
-  let deepSeekError: unknown = null;
-
-  if (isDeepSeekAvailable()) {
-    try {
-      const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () =>
-        chatWithDeepSeekPro({ messages, maxTokens, temperature }),
-      );
-      console.log(`[AI Routing][legal-drafting] DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
-      return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
-    } catch (err) {
-      deepSeekError = err;
-      console.log("[AI Routing][legal-drafting] DeepSeek R1 failed:", getErrorMessage(err));
-    }
-  } else {
-    deepSeekError = new Error("DeepSeek is not configured");
+  if (!isDeepSeekAvailable()) {
+    throw new Error("Legal drafting requires DeepSeek R1. Configure DEEPSEEK_API_KEY.");
   }
 
-  if (isGroqAvailable()) {
-    try {
-      logModelSwitch("legal-drafting", "DeepSeek", `Groq(${groqFallbackModel})`, deepSeekError || "DeepSeek unavailable");
-      const fallback = await withTimeout("Groq", timeoutConfig.standardFallback, () =>
-        chatWithGroq({ messages, maxTokens, temperature, model: groqFallbackModel }),
-      );
-      console.log(`[AI Routing][legal-drafting] Groq fallback (${groqFallbackModel}) succeeded in ${Date.now() - startedAt}ms`);
-      return { text: enforcePakistanLawOnlyOutput(fallback.content), model: fallback.model };
-    } catch (groqErr) {
-      console.log("[AI Routing][legal-drafting] Groq fallback failed:", getErrorMessage(groqErr));
-      throw groqErr;
-    }
-  }
-
-  throw new Error("Legal drafting requires DeepSeek or Groq fallback. Configure DEEPSEEK_API_KEY (preferred) or GROQ_API_KEY.");
+  const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () =>
+    chatWithDeepSeekPro({ messages, maxTokens, temperature }),
+  );
+  const safeText = assertNonEmptyModelOutput("DeepSeek R1", result.content);
+  console.log(`[AI Routing][legal-drafting] DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
+  return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
 }
 
-async function callApexAIWithFallback(
+async function callApexAIPrimary(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
   preferredModel: ApexModel | null,
   allowedModels: ApexModel[],
@@ -2170,61 +2115,24 @@ async function callApexAIWithFallback(
     throw new Error("No Apex models are available for this tier");
   }
 
-  const primaryModel = preferredModel && allowedModels.includes(preferredModel)
-    ? preferredModel
-    : allowedModels[0];
-  const primaryCandidates = Array.from(new Set([primaryModel, ...allowedModels])) as ApexModel[];
-
+  const primaryModel = preferredModel && allowedModels.includes(preferredModel) ? preferredModel : allowedModels[0];
   let responseContent = "";
   let responseReasoning: string | undefined;
   let responseModel = "";
-  let lastKimiError: unknown;
-  let primarySucceeded = false;
   const apexStartedAt = Date.now();
-
-  for (let i = 0; i < primaryCandidates.length; i++) {
-    const kimi = primaryCandidates[i];
-    try {
-      const result = await withTimeout(
-        `Kimi(${kimi})`,
-        MODEL_TIMEOUT_MS.apexPrimary,
-        () => chatWithApex({
-          model: kimi,
-          messages,
-          maxTokens,
-        }),
-      );
-      responseContent = result.content;
-      responseReasoning = result.reasoning;
-      responseModel = result.model;
-      primarySucceeded = true;
-      console.log(`[AI Routing][apex] Primary Kimi(${kimi}) succeeded in ${Date.now() - apexStartedAt}ms`);
-      break;
-    } catch (kimiErr) {
-      lastKimiError = kimiErr;
-      const nextKimi = primaryCandidates[i + 1];
-      if (nextKimi) {
-        logModelSwitch("apex", `Kimi(${kimi})`, `Kimi(${nextKimi})`, kimiErr);
-      }
-    }
-  }
-
-  if (!primarySucceeded) {
-    if (isDeepSeekAvailable()) {
-      logModelSwitch("apex", "Kimi", "DeepSeek Pro", lastKimiError);
-      const dsResult = await withTimeout(
-        "DeepSeek Pro",
-        MODEL_TIMEOUT_MS.apexFallback,
-        () => chatWithDeepSeekPro({ messages, maxTokens }),
-      );
-      responseContent = dsResult.content;
-      responseReasoning = undefined;
-      responseModel = dsResult.model;
-      console.log(`[AI Routing][apex] Fallback DeepSeek Pro succeeded in ${Date.now() - apexStartedAt}ms`);
-    } else {
-      throw lastKimiError || new Error("All Kimi models failed and DeepSeek Pro fallback is unavailable.");
-    }
-  }
+  const result = await withTimeout(
+    `Kimi(${primaryModel})`,
+    MODEL_TIMEOUT_MS.apexPrimary,
+    () => chatWithApex({
+      model: primaryModel,
+      messages,
+      maxTokens,
+    }),
+  );
+  responseContent = assertNonEmptyModelOutput(`Kimi(${primaryModel})`, result.content);
+  responseReasoning = result.reasoning;
+  responseModel = result.model;
+  console.log(`[AI Routing][apex] Primary Kimi(${primaryModel}) succeeded in ${Date.now() - apexStartedAt}ms`);
 
   return {
     text: enforcePakistanLawOnlyOutput(responseContent),
@@ -2316,12 +2224,26 @@ function resolveFreeTierLimit(featureRaw: string): {
   };
 }
 
-function resolveModuleRoute(modePrimary: ChatRouteMode, modeFallback: ChatRouteMode, userTier: string) {
+function resolveModuleRoute(modePrimary: ChatRouteMode, userTier: string): {
+  route: ChatRouteMode;
+  blocked?: { status: 403 | 503; message: string };
+} {
   const turboPermitted = isTurboAllowedForTier(userTier) && isDeepSeekAvailable();
-  if (modePrimary === "turbo" && !turboPermitted) {
-    return { route: modeFallback, downgraded: true as const };
+  if (modePrimary === "turbo") {
+    if (!isTurboAllowedForTier(userTier)) {
+      return {
+        route: modePrimary,
+        blocked: { status: 403, message: "Turbo mode is not included in your current subscription tier." },
+      };
+    }
+    if (!isDeepSeekAvailable()) {
+      return {
+        route: modePrimary,
+        blocked: { status: 503, message: "Turbo mode is currently unavailable because DeepSeek is not configured." },
+      };
+    }
   }
-  return { route: modePrimary, downgraded: false as const };
+  return { route: modePrimary };
 }
 
 function extractJsonObject(raw: string): string | null {
@@ -5691,32 +5613,17 @@ export async function registerRoutes(
       ];
       const preferredLanguage = resolvePublicChatLanguage(message);
 
-      let provider: "groq" | "openrouter" = "groq";
+      const provider = "groq" as const;
       let model = "openai/gpt-oss-120b";
       let aiReply = "";
-      try {
-        const primary = await chatWithGroq({
-          messages: aiMessages,
-          model: "openai/gpt-oss-120b",
-          maxTokens: 900,
-          temperature: 0.4,
-        });
-        aiReply = primary.content;
-        model = primary.model || model;
-      } catch (groqErr) {
-        if (!isOpenRouterAvailable()) {
-          throw groqErr;
-        }
-        const fallback = await chatWithOpenRouter({
-          messages: aiMessages,
-          model: "deepseek-chat",
-          maxTokens: 900,
-          temperature: 0.4,
-        });
-        provider = "openrouter";
-        model = fallback.model || "deepseek-chat";
-        aiReply = fallback.content;
-      }
+      const primary = await chatWithGroq({
+        messages: aiMessages,
+        model: "openai/gpt-oss-120b",
+        maxTokens: 900,
+        temperature: 0.4,
+      });
+      aiReply = primary.content;
+      model = primary.model || model;
 
       let normalizedReply = sanitizeInputText(aiReply, 6000);
       const needsLanguageRewrite =
@@ -5726,14 +5633,13 @@ export async function registerRoutes(
         (preferredLanguage === "romanUrdu" && (hasUrduScript(normalizedReply) || !looksLikeRomanizedSouthAsian(normalizedReply)));
       if (needsLanguageRewrite) {
         try {
-          normalizedReply = sanitizeInputText(
-            await rewritePublicChatOutput({
-              content: normalizedReply,
-              targetLanguage: preferredLanguage,
-              provider,
-            }),
-            6000,
-          );
+              normalizedReply = sanitizeInputText(
+                await rewritePublicChatOutput({
+                  content: normalizedReply,
+                  targetLanguage: preferredLanguage,
+                }),
+                6000,
+              );
         } catch (rewriteErr) {
           console.warn("[Public Chat] Language rewrite failed:", getErrorMessage(rewriteErr));
         }
@@ -5911,7 +5817,7 @@ export async function registerRoutes(
       const safeAiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse).catch(() => ensureAlWakeeloReferencesBlock(normalizedAiResponse));
 
       if (!fromCache) {
-        await logUsageCost(userId, "chat", usedModel || getOpenRouterModelName(), systemPromptFull + firstMessage, safeAiResponse);
+        await logUsageCost(userId, "chat", usedModel || getGroqModelName(), systemPromptFull + firstMessage, safeAiResponse);
       }
 
       await storage.createMessage({
@@ -7476,7 +7382,7 @@ RAG POLICY (STRICT):
         quote: m.chunkText.slice(0, 240),
       }));
 
-      const provider = result.model === getGroqModelName() ? "groq" : "openrouter";
+      const provider = "groq";
       res.json({
         answer: answerText,
         confidence: retrieval.confidence,
@@ -8122,7 +8028,7 @@ RAG POLICY (STRICT):
       const retrievalConfidence = estimateClauseSuggestionConfidence(topScore, secondScore);
       const aiFallbackThreshold = resolveConfidenceThreshold("RETRIEVAL_CLAUSE_SUGGEST_AI_THRESHOLD", 0.55);
       const shouldAiFallback = retrievalConfidence < aiFallbackThreshold;
-      const canUseAiFallback = isGroqAvailable() || isOpenRouterAvailable();
+      const canUseAiFallback = isGroqAvailable();
 
       if (shouldAiFallback && canUseAiFallback) {
         const allowed = await checkUsageLimit(userId, "contract-drafting", res);
@@ -9545,7 +9451,7 @@ ${draftedText}`;
       const aiFallbackThreshold = resolveConfidenceThreshold("RETRIEVAL_CLAUSE_GENERATE_AI_THRESHOLD", 0.58);
       const shouldAiFallback = generated.method === "fallback" || generated.confidence < aiFallbackThreshold;
       const shouldStyleRewrite = !!styleContext && generated.method === "retrieval";
-      const canUseAiFallback = isGroqAvailable() || isOpenRouterAvailable();
+      const canUseAiFallback = isGroqAvailable();
 
       if ((shouldAiFallback || shouldStyleRewrite) && canUseAiFallback) {
         const allowed = await checkUsageLimit(userId, "contract-drafting", res);
@@ -9813,60 +9719,6 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       let fallbackFrom: "deepseek" | "apex" | null = null;
       let localFallbackUsed = false;
 
-      const tryGroqFallback = async (source: "deepseek" | "apex") => {
-        if (!isGroqAvailable()) return false;
-        try {
-          const fallback = await transcribeWithGroq({
-            audioBuffer: stableFile.buffer,
-            filename: file.originalname,
-            mimeType: file.mimetype,
-            model: "whisper-large-v3-turbo",
-            prompt: commonPrompt,
-          });
-          const text = (fallback.text || "").trim();
-          if (!text) return false;
-          transcription = text;
-          provider = "groq";
-          model = fallback.model || "whisper-large-v3-turbo";
-          fallbackUsed = true;
-          fallbackFrom = source;
-          return true;
-        } catch (fallbackErr) {
-          console.warn(
-            `[Transcription] Groq fallback failed after ${source} failure:`,
-            getErrorMessage(fallbackErr),
-          );
-          return false;
-        }
-      };
-
-      const tryWhisperCppFallback = async (source: "deepseek" | "apex" | "groq") => {
-        if (!isWhisperCppConfigured()) return false;
-        try {
-          const localResult = await transcribeWithWhisperCpp({
-            audioBuffer: stableFile.buffer,
-            filename: file.originalname,
-          });
-          const text = (localResult.text || "").trim();
-          if (!text) return false;
-          transcription = text;
-          provider = "local";
-          model = localResult.model || "whisper.cpp";
-          localFallbackUsed = true;
-          if (source === "deepseek" || source === "apex") {
-            fallbackUsed = true;
-            fallbackFrom = source;
-          }
-          return true;
-        } catch (localErr) {
-          console.warn(
-            `[Transcription] whisper.cpp fallback failed after ${source} path failure:`,
-            getErrorMessage(localErr),
-          );
-          return false;
-        }
-      };
-
       if (requestedMode === "turbo") {
         if (isDeepSeekAvailable()) {
           try {
@@ -9886,10 +9738,56 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         }
 
         if (!transcription.trim()) {
-          const fallbackOk = await tryGroqFallback("deepseek");
+          let fallbackOk = false;
+          if (isGroqAvailable()) {
+            try {
+              const fallback = await transcribeWithGroq({
+                audioBuffer: stableFile.buffer,
+                filename: file.originalname,
+                mimeType: file.mimetype,
+                model: "whisper-large-v3-turbo",
+                prompt: commonPrompt,
+              });
+              const text = (fallback.text || "").trim();
+              if (text) {
+                transcription = text;
+                provider = "groq";
+                model = fallback.model || "whisper-large-v3-turbo";
+                fallbackUsed = true;
+                fallbackFrom = "deepseek";
+                fallbackOk = true;
+              }
+            } catch (fallbackErr) {
+              console.warn(
+                "[Transcription] Groq fallback failed after deepseek failure:",
+                getErrorMessage(fallbackErr),
+              );
+            }
+          }
           if (!fallbackOk) {
-            const localOk = await tryWhisperCppFallback("deepseek");
-            if (!localOk) {
+            if (isWhisperCppConfigured()) {
+              try {
+                const localResult = await transcribeWithWhisperCpp({
+                  audioBuffer: stableFile.buffer,
+                  filename: file.originalname,
+                });
+                const text = (localResult.text || "").trim();
+                if (text) {
+                  transcription = text;
+                  provider = "local";
+                  model = localResult.model || "whisper.cpp";
+                  fallbackUsed = true;
+                  fallbackFrom = "deepseek";
+                  localFallbackUsed = true;
+                }
+              } catch (localErr) {
+                console.warn(
+                  "[Transcription] whisper.cpp fallback failed after deepseek path failure:",
+                  getErrorMessage(localErr),
+                );
+              }
+            }
+            if (!transcription.trim()) {
               return res.status(503).json({
                 message: isDeepSeekAvailable()
                   ? "Turbo transcription failed and no fallback is available."
@@ -9918,10 +9816,56 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         }
 
         if (!transcription.trim()) {
-          const fallbackOk = await tryGroqFallback("apex");
+          let fallbackOk = false;
+          if (isGroqAvailable()) {
+            try {
+              const fallback = await transcribeWithGroq({
+                audioBuffer: stableFile.buffer,
+                filename: file.originalname,
+                mimeType: file.mimetype,
+                model: "whisper-large-v3-turbo",
+                prompt: commonPrompt,
+              });
+              const text = (fallback.text || "").trim();
+              if (text) {
+                transcription = text;
+                provider = "groq";
+                model = fallback.model || "whisper-large-v3-turbo";
+                fallbackUsed = true;
+                fallbackFrom = "apex";
+                fallbackOk = true;
+              }
+            } catch (fallbackErr) {
+              console.warn(
+                "[Transcription] Groq fallback failed after apex failure:",
+                getErrorMessage(fallbackErr),
+              );
+            }
+          }
           if (!fallbackOk) {
-            const localOk = await tryWhisperCppFallback("apex");
-            if (!localOk) {
+            if (isWhisperCppConfigured()) {
+              try {
+                const localResult = await transcribeWithWhisperCpp({
+                  audioBuffer: stableFile.buffer,
+                  filename: file.originalname,
+                });
+                const text = (localResult.text || "").trim();
+                if (text) {
+                  transcription = text;
+                  provider = "local";
+                  model = localResult.model || "whisper.cpp";
+                  fallbackUsed = true;
+                  fallbackFrom = "apex";
+                  localFallbackUsed = true;
+                }
+              } catch (localErr) {
+                console.warn(
+                  "[Transcription] whisper.cpp fallback failed after apex path failure:",
+                  getErrorMessage(localErr),
+                );
+              }
+            }
+            if (!transcription.trim()) {
               return res.status(503).json({
                 message: isApexAvailable()
                   ? "Apex transcription failed and no fallback is available."
@@ -9948,8 +9892,27 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           }
         }
         if (!transcription.trim()) {
-          const localOk = await tryWhisperCppFallback("groq");
-          if (!localOk) {
+          if (isWhisperCppConfigured()) {
+            try {
+              const localResult = await transcribeWithWhisperCpp({
+                audioBuffer: stableFile.buffer,
+                filename: file.originalname,
+              });
+              const text = (localResult.text || "").trim();
+              if (text) {
+                transcription = text;
+                provider = "local";
+                model = localResult.model || "whisper.cpp";
+                localFallbackUsed = true;
+              }
+            } catch (localErr) {
+              console.warn(
+                "[Transcription] whisper.cpp fallback failed after groq path failure:",
+                getErrorMessage(localErr),
+              );
+            }
+          }
+          if (!transcription.trim()) {
             return res.status(503).json({
               message:
                 "Standard transcription is unavailable because Groq failed/unconfigured and whisper.cpp fallback is unavailable.",
@@ -10229,11 +10192,12 @@ The user has attached the following documents for your reference. Analyze them c
       }
       const moduleRoute = resolveModuleRoute(
         moduleProfile.modelStrategy.primary,
-        moduleProfile.modelStrategy.fallback,
         userTier,
       );
+      if (moduleRoute.blocked) {
+        return res.status(moduleRoute.blocked.status).json({ message: moduleRoute.blocked.message });
+      }
       let selectedRoute: ChatRouteMode | "apex" = moduleRoute.route;
-      let downgraded = moduleRoute.downgraded;
       let selectedApexModel: ApexModel | null = null;
       const normalizedTier = normalizeTier(userTier);
 
@@ -10266,16 +10230,16 @@ The user has attached the following documents for your reference. Analyze them c
         }
 
         selectedRoute = "apex";
-        downgraded = false;
       } else if (requestedAiMode === "standard") {
         selectedRoute = "standard";
-        downgraded = false;
       } else if (requestedTurbo) {
         if (isTurboAllowedForTier(userTier)) {
+          if (!isDeepSeekAvailable()) {
+            return res.status(503).json({ message: "Turbo mode is currently unavailable because DeepSeek is not configured." });
+          }
           selectedRoute = "turbo";
-          downgraded = false;
         } else {
-          downgraded = true;
+          return res.status(403).json({ message: `Your ${normalizedTier} plan does not include Turbo mode` });
         }
       }
 
@@ -10311,7 +10275,6 @@ The user has attached the following documents for your reference. Analyze them c
       const routeLabel = selectedRoute === "apex" ? `apex:${selectedApexModel || "auto"}` : selectedRoute;
       const routingPath: string[] = [`profile:${moduleType}`, `route:${routeLabel}`];
       if (selectedRoute === "apex" && selectedApexModel) routingPath.push(`apexModel:${selectedApexModel}`);
-      if (downgraded) routingPath.push("policy-fallback:true");
       if (directMode) routingPath.push("direct-mode:true");
 
       const cacheRaw = lastUserMessage ? lastUserMessage.content : JSON.stringify(userMessages);
@@ -10378,46 +10341,10 @@ The user has attached the following documents for your reference. Analyze them c
             }
           }
         } catch (streamErr: any) {
-          if (selectedRoute === "turbo" && isGroqAvailable()) {
-            console.log("[AI Chat] DeepSeek stream failed, falling back to Groq:", streamErr?.message || streamErr);
-            try {
-              const fallbackMessages = buildMessages(systemPromptFull, geminiContents);
-              usedModel = getGroqModelName();
-              res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
-              fullContent = "";
-              for await (const text of streamWithGroq({ messages: fallbackMessages, maxTokens: tokenLimit, temperature })) {
-                fullContent += text;
-                res.write(`data: ${JSON.stringify({ text })}\n\n`);
-              }
-            } catch (groqFallbackErr: any) {
-              console.error("[AI Chat] Groq fallback also failed:", groqFallbackErr?.message || groqFallbackErr);
-              res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
-              res.end();
-              return;
-            }
-          } else if (selectedRoute === "standard" && isOpenRouterAvailable()) {
-            console.log("[AI Chat] Groq stream failed, falling back to OpenRouter:", streamErr?.message || streamErr);
-            try {
-              const fallbackMessages = buildMessages(systemPromptFull, geminiContents);
-              usedModel = getOpenRouterModelName();
-              res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
-              fullContent = "";
-              for await (const text of streamWithOpenRouter({ messages: fallbackMessages, maxTokens: tokenLimit, temperature })) {
-                fullContent += text;
-                res.write(`data: ${JSON.stringify({ text })}\n\n`);
-              }
-            } catch (orFallbackErr: any) {
-              console.error("[AI Chat] OpenRouter fallback also failed:", orFallbackErr?.message || orFallbackErr);
-              res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
-              res.end();
-              return;
-            }
-          } else {
-            console.error("[AI Chat] Stream error:", streamErr?.message || streamErr);
-            res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
-            res.end();
-            return;
-          }
+          console.error("[AI Chat] Stream error:", streamErr?.message || streamErr);
+          res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
+          res.end();
+          return;
         }
 
         fullContent = suppressWrongIndianJurisdictionForPakCitation(fullContent, latestUserPromptText);
@@ -10484,27 +10411,14 @@ The user has attached the following documents for your reference. Analyze them c
           extractedAttachmentCount > 0,
         );
         routingPath.push(`apex-profile:${selectedApexModel}`);
-        try {
-          const apexMessages = buildMessages(apexSystemPrompt, geminiContents);
-          const apexResult = await callApexAIWithFallback(
-            apexMessages,
-            selectedApexModel,
-            allowedApexModels,
-            tokenLimit,
-          );
-          result = { text: apexResult.text, model: apexResult.model };
-        } catch (apexErr) {
-          const fallbackRoute: ChatRouteMode = isTurboAllowedForTier(userTier) ? "turbo" : "standard";
-          const fallbackAiCall = fallbackRoute === "turbo" ? callTurboAI : callStandardAI;
-          console.warn(
-            `[AI Chat] Apex route failed for ${moduleType}${extractedAttachmentCount > 0 ? " (with attachments)" : ""}; falling back to ${fallbackRoute}: ${getErrorMessage(apexErr)}`,
-          );
-          routingPath.push(`apex-runtime-fallback:${fallbackRoute}`);
-          downgraded = true;
-          usageFeatureKey = featureKey;
-          const fallbackResult = await fallbackAiCall(apexSystemPrompt, geminiContents, tokenLimit, { timeoutProfile, temperature });
-          result = { text: fallbackResult.text, model: fallbackResult.model };
-        }
+        const apexMessages = buildMessages(apexSystemPrompt, geminiContents);
+        const apexResult = await callApexAIPrimary(
+          apexMessages,
+          selectedApexModel,
+          allowedApexModels,
+          tokenLimit,
+        );
+        result = { text: apexResult.text, model: apexResult.model };
       } else {
         const baseAiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
         result = await baseAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
@@ -10544,6 +10458,7 @@ The user has attached the following documents for your reference. Analyze them c
         requirePrimary: enforcePrimaryLinkedSourceCitations,
         requireLinkedSource: enforcePrimaryLinkedSourceCitations,
       })).content;
+      completion = assertNonEmptyModelOutput("AI route", completion);
 
       const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
       try {
@@ -10576,6 +10491,9 @@ The user has attached the following documents for your reference. Analyze them c
       }
       if (/apex monthly cap reached/i.test(detail)) {
         return res.status(429).json({ message: detail });
+      }
+      if (/empty model output/i.test(detail)) {
+        return res.status(503).json({ message: "AI model returned empty output. Please retry." });
       }
       if (/apex ai is not configured|no apex models are available|timed out|timeout|temporarily unavailable|service unavailable/i.test(detail)) {
         return res.status(503).json({ message: detail });
@@ -10929,7 +10847,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const { shortTitle, section, description } = req.body as { shortTitle: string; section: string; description: string };
       const cacheKey = `${shortTitle}::${section}::${description}`;
 
-      let briefModel = getOpenRouterModelName();
+      let briefModel = getGroqModelName();
       const { content: brief, fromCache } = await getCachedOrCall("brief", cacheKey, async () => {
         const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;
@@ -14067,71 +13985,21 @@ Instructions:
       let responseContent = "";
       let responseReasoning: string | undefined;
       let responseModel = "";
-
-      try {
-        // Apex mode primary routing: try all available Kimi models for this tier.
-        const kimiModelsOrdered = [
-          model as ApexModel,
-          ...allowedModels.map((m) => m.id).filter((id) => id !== model),
-        ] as ApexModel[];
-
-        const seen = new Set<ApexModel>();
-        const primaryCandidates = kimiModelsOrdered.filter((m) => {
-          if (seen.has(m)) return false;
-          seen.add(m);
-          return true;
-        });
-
-        let lastKimiError: unknown;
-        let primarySucceeded = false;
-        const apexStartedAt = Date.now();
-
-        for (let i = 0; i < primaryCandidates.length; i++) {
-          const kimi = primaryCandidates[i];
-          try {
-            const result = await withTimeout(
-              `Kimi(${kimi})`,
-              MODEL_TIMEOUT_MS.apexPrimary,
-              () => chatWithApex({
-                model: kimi,
-                messages,
-                maxTokens: apexRequestCap,
-              }),
-            );
-            responseContent = result.content;
-            responseReasoning = result.reasoning;
-            responseModel = result.model;
-            primarySucceeded = true;
-            console.log(`[AI Routing][apex] Primary Kimi(${kimi}) succeeded in ${Date.now() - apexStartedAt}ms`);
-            break;
-          } catch (kimiErr) {
-            lastKimiError = kimiErr;
-            const nextKimi = primaryCandidates[i + 1];
-            if (nextKimi) {
-              logModelSwitch("apex", `Kimi(${kimi})`, `Kimi(${nextKimi})`, kimiErr);
-            }
-          }
-        }
-
-        if (!primarySucceeded) {
-          if (isDeepSeekAvailable()) {
-            logModelSwitch("apex", "Kimi", "DeepSeek Pro", lastKimiError);
-            const dsResult = await withTimeout(
-              "DeepSeek Pro",
-              MODEL_TIMEOUT_MS.apexFallback,
-              () => chatWithDeepSeekPro({ messages, maxTokens: apexRequestCap }),
-            );
-            responseContent = dsResult.content;
-            responseReasoning = undefined;
-            responseModel = dsResult.model;
-            console.log(`[AI Routing][apex] Fallback DeepSeek Pro succeeded in ${Date.now() - apexStartedAt}ms`);
-          } else {
-            throw lastKimiError || new Error("All Kimi models failed and DeepSeek Pro fallback is unavailable.");
-          }
-        }
-      } catch (apexErr: any) {
-        throw apexErr;
-      }
+      const apexStartedAt = Date.now();
+      const selectedApexModel = model as ApexModel;
+      const result = await withTimeout(
+        `Kimi(${selectedApexModel})`,
+        MODEL_TIMEOUT_MS.apexPrimary,
+        () => chatWithApex({
+          model: selectedApexModel,
+          messages,
+          maxTokens: apexRequestCap,
+        }),
+      );
+      responseContent = assertNonEmptyModelOutput(`Kimi(${selectedApexModel})`, result.content);
+      responseReasoning = result.reasoning;
+      responseModel = result.model;
+      console.log(`[AI Routing][apex] Primary Kimi(${selectedApexModel}) succeeded in ${Date.now() - apexStartedAt}ms`);
 
       const actualModel = responseModel;
       let safeResponseContent = await applyAlWakeeloSafetyGuardrails(responseContent).catch(() => ensureAlWakeeloReferencesBlock(responseContent));
