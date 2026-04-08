@@ -150,7 +150,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       "turbo": "Turbo",
       "deepseek-chat": "Turbo",
       "deepseek-reasoner": "DeepSeek Pro",
-      "apex-agent": "Apex Agent",
+      "apex-pro": "Apex",
+      "apex-agent": "Apex Pro",
       "apex-agent-web": "Apex Agent Web",
     };
     if (modelNames[modelKey]) return modelNames[modelKey];
@@ -158,8 +159,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     const apexModel = apexData?.models.find(m => m.id.toLowerCase() === modelKey);
     if (apexModel) return apexModel.name;
     if (modelKey.includes("apex-agent-web") || modelKey.includes("apex agent web")) return "Apex Agent Web";
-    if (modelKey.includes("apex-agent") || modelKey.includes("apex agent")) return "Apex Agent";
-    if (modelKey.includes("apex-pro") || modelKey.includes("apex pro")) return "Apex Pro";
+    if (modelKey.includes("apex-agent") || modelKey.includes("apex agent")) return "Apex Pro";
+    if (modelKey.includes("apex-pro") || modelKey.includes("apex pro")) return "Apex";
     return "Standard";
   }, [apexData]);
 
@@ -181,13 +182,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       return "Turbo legal analysis optimized for speed and quality.";
     }
     if (id.includes("apex-pro")) {
-      return "Premium legal reasoning for complex analysis and high-quality structured drafting.";
+      return "Kimi-K2.5 Instant mode for fast, high-quality legal drafting and analysis.";
     }
     if (id === "apex-agent-web") {
       return "Kimi AI agent with live web research across Pakistani legal databases.";
     }
     if (id === "apex-agent") {
-      return "Non-web internal research agent grounded in your app context/knowledge vault and conversation history.";
+      return "Kimi-K2-Thinking mode for deeper legal reasoning in non-web internal context.";
     }
     if (id.includes("groq") || id.includes("standard")) {
       return "Default legal chat mode with reliable fast responses.";
@@ -202,7 +203,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     if (aiMode === "turbo") return { name: "Turbo", color: "text-amber-400", icon: "zap" };
     if (aiMode === "apex-agent-web") return { name: "Apex Agent Web", color: "text-cyan-400", icon: "globe" };
     const apexModel = apexData?.models.find(m => m.id === aiMode);
-    return { name: apexModel?.name || "Apex Pro", color: "text-emerald-400", icon: "sparkles" };
+    return { name: apexModel?.name || "Apex", color: "text-emerald-400", icon: "sparkles" };
   }, [aiMode, apexData]);
 
   useEffect(() => {
@@ -511,7 +512,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         const modeLabel = isApexAgentWebMode
           ? "Apex Agent Web"
           : isApexModelMode
-            ? "Apex"
+            ? getModelDisplayName(selectedApexModel || modelId)
             : (turboMode && canUseTurbo ? "Turbo" : "Standard");
         const assistantMessage: ChatMessage = {
           id: assistantId,
@@ -567,7 +568,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     const modeLabel = isApexAgentWebMode
                       ? "Apex Agent Web"
                       : isApexModelMode
-                        ? "Apex"
+                        ? getModelDisplayName(selectedApexModel || modelId)
                         : (turboMode && canUseTurbo ? "Turbo" : "Standard");
                     setMessages(prev => {
                       const last = prev[prev.length - 1];
