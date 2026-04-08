@@ -18,7 +18,6 @@ export interface ModuleAiProfile {
   outputConstraints: string[];
   modelStrategy: {
     primary: ModelRoute;
-    fallback: ModelRoute;
     stream: boolean;
     tokenLimitKey: "chat" | "draft" | "contract-drafting";
     externalModelId?: string;
@@ -41,7 +40,6 @@ export const MODULE_AI_PROFILES: Record<ModuleType, ModuleAiProfile> = {
     outputConstraints: ["Must include valid references block at end"],
     modelStrategy: {
       primary: "standard",
-      fallback: "turbo",
       stream: true,
       tokenLimitKey: "chat",
     },
@@ -61,7 +59,6 @@ export const MODULE_AI_PROFILES: Record<ModuleType, ModuleAiProfile> = {
     outputConstraints: ["Draft intent should return plain drafting text"],
     modelStrategy: {
       primary: "turbo",
-      fallback: "standard",
       stream: false,
       tokenLimitKey: "draft",
     },
@@ -84,7 +81,6 @@ export const MODULE_AI_PROFILES: Record<ModuleType, ModuleAiProfile> = {
     ],
     modelStrategy: {
       primary: "turbo",
-      fallback: "standard",
       stream: false,
       tokenLimitKey: "contract-drafting",
     },
