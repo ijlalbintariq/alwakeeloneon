@@ -68,7 +68,7 @@ function getModelConfig(model: ApexModel) {
   switch (model) {
     case "apex-pro":
       return {
-        modelId: "kimi-k2.5-instant",
+        modelId: "kimi-k2.5",
         temperature: 0.6,
         thinking: false,
         displayName: "Apex",
@@ -94,7 +94,7 @@ export function getApexModelsForTier(tier: string): Array<{ id: ApexModel; name:
     models.push({
       id: "apex-pro",
       name: "Apex",
-      description: "Kimi-K2.5 Instant mode for fast, high-quality legal drafting and analysis.",
+      description: "Kimi-K2.5 mode for fast, high-quality legal drafting and analysis.",
     });
     models.push({
       id: "apex-agent",

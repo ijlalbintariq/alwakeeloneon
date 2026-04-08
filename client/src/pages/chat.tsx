@@ -182,7 +182,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       return "Turbo legal analysis optimized for speed and quality.";
     }
     if (id.includes("apex-pro")) {
-      return "Kimi-K2.5 Instant mode for fast, high-quality legal drafting and analysis.";
+      return "Kimi-K2.5 mode for fast, high-quality legal drafting and analysis.";
     }
     if (id === "apex-agent-web") {
       return "Kimi AI agent with live web research across Pakistani legal databases.";
