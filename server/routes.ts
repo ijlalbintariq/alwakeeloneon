@@ -1984,11 +1984,11 @@ function buildMessages(systemPrompt: string, contents: Array<{ role: string; par
 }
 
 const MODEL_TIMEOUT_MS = {
-  standardPrimary: 9000,
+  standardPrimary: 30000,
   standardFallback: 12000,
-  turboPrimary: 9000,
+  turboPrimary: 30000,
   turboFallback: 12000,
-  apexPrimary: 12000,
+  apexPrimary: 30000,
   apexFallback: 15000,
 };
 
@@ -2008,15 +2008,15 @@ const MODEL_TIMEOUT_PROFILES: Record<TimeoutProfile, TimeoutConfig> = {
     turboFallback: MODEL_TIMEOUT_MS.turboFallback,
   },
   search: {
-    standardPrimary: 7000,
+    standardPrimary: 30000,
     standardFallback: 9000,
-    turboPrimary: 7500,
+    turboPrimary: 30000,
     turboFallback: 9500,
   },
   analysis: {
-    standardPrimary: 11000,
+    standardPrimary: 30000,
     standardFallback: 14000,
-    turboPrimary: 11000,
+    turboPrimary: 30000,
     turboFallback: 14000,
   },
 };
