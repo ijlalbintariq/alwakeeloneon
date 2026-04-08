@@ -60,7 +60,7 @@ function getModelFunctionDescription(modelId: string): string {
   if (id.includes("deepseek-reasoner")) return "Advanced multi-step reasoning for complex legal problems.";
   if (id.includes("deepseek")) return "Turbo legal analysis optimized for speed and quality.";
   if (id.includes("apex-agent")) return "Kimi-K2-Thinking mode for deeper legal reasoning in non-web internal context.";
-  if (id.includes("apex-pro")) return "Kimi-K2.5 Instant mode for fast, high-quality legal drafting and analysis.";
+  if (id.includes("apex-pro")) return "Kimi-K2.5 mode for fast, high-quality legal drafting and analysis.";
   if (id.includes("apex")) return "Kimi-based legal assistant focused on high-quality responses.";
   return "Default legal chat mode with reliable fast responses.";
 }
