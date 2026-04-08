@@ -3,6 +3,7 @@ import { toFile } from "openai/uploads";
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 const FALLBACK_MODEL = "openai/gpt-oss-120b";
+type GroqReasoningEffort = "low" | "medium" | "high";
 
 let groqClient: OpenAI | null = null;
 let resolvedModel: string | null = null;
@@ -64,6 +65,7 @@ interface GroqChatOptions {
   maxTokens?: number;
   model?: string;
   temperature?: number;
+  reasoningEffort?: GroqReasoningEffort;
 }
 
 interface GroqResponse {
@@ -87,17 +89,25 @@ interface GroqTranscriptionResult {
   model: string;
 }
 
+function resolveReasoningEffort(value: unknown): GroqReasoningEffort {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "low" || normalized === "medium" || normalized === "high") return normalized;
+  return "high";
+}
+
 export async function chatWithGroq(options: GroqChatOptions): Promise<GroqResponse> {
   const client = getClient();
   const model = options.model || await resolveModel();
   const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
+  const reasoningEffort = resolveReasoningEffort(options.reasoningEffort || process.env.GROQ_REASONING_EFFORT);
 
   const response = await client.chat.completions.create({
     model,
     messages: options.messages,
     max_tokens: options.maxTokens || 8192,
     temperature,
-  });
+    reasoning_effort: reasoningEffort,
+  } as any);
 
   const choice = response.choices[0];
   const content = choice?.message?.content || "No response generated.";
@@ -114,14 +124,16 @@ export async function* streamWithGroq(options: GroqChatOptions): AsyncGenerator<
   const client = getClient();
   const model = options.model || await resolveModel();
   const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
+  const reasoningEffort = resolveReasoningEffort(options.reasoningEffort || process.env.GROQ_REASONING_EFFORT);
 
   const stream = await client.chat.completions.create({
     model,
     messages: options.messages,
     max_tokens: options.maxTokens || 8192,
     temperature,
+    reasoning_effort: reasoningEffort,
     stream: true,
-  });
+  } as any);
 
   for await (const chunk of stream) {
     const text = chunk.choices[0]?.delta?.content;
