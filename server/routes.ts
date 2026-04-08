@@ -765,6 +765,28 @@ function runInBackground(label: string, task: () => Promise<void>) {
   });
 }
 
+let interactiveChatRequestsInFlight = 0;
+const BACKGROUND_CHAT_PRIORITY_PAUSE_MS = Math.max(
+  50,
+  Number(process.env.BACKGROUND_CHAT_PRIORITY_PAUSE_MS || 120),
+);
+
+function beginInteractiveChatRequest(): () => void {
+  interactiveChatRequestsInFlight += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    interactiveChatRequestsInFlight = Math.max(0, interactiveChatRequestsInFlight - 1);
+  };
+}
+
+async function pauseBackgroundForInteractiveChat(): Promise<void> {
+  while (interactiveChatRequestsInFlight > 0) {
+    await new Promise((resolve) => setTimeout(resolve, BACKGROUND_CHAT_PRIORITY_PAUSE_MS));
+  }
+}
+
 type CaseLawReindexJobState = {
   running: boolean;
   shouldStop: boolean;
@@ -2950,18 +2972,42 @@ function filterCaseLawByStructuredFields(
   });
 }
 
-async function rankCaseLawRowsBySourceRelevance(rows: CaseLaw[], userId: string, query: string): Promise<CaseLaw[]> {
+type SourceTextLoadOptions = {
+  includeMetadataFallback?: boolean;
+  allowRemoteFileRead?: boolean;
+};
+
+type SourceTextLoader = (
+  entry: {
+    sourceDocId?: number | null;
+    sourceType?: string | null;
+    summary?: string | null;
+    title?: string | null;
+    citation?: string | null;
+  },
+  options?: SourceTextLoadOptions,
+) => Promise<string>;
+
+async function rankCaseLawRowsBySourceRelevance(
+  rows: CaseLaw[],
+  userId: string,
+  query: string,
+  sourceTextLoader?: SourceTextLoader,
+): Promise<CaseLaw[]> {
   if (rows.length <= 1) return rows;
   const scored = await Promise.all(
     rows.map(async (row) => {
       let sourceText = "";
       try {
-        sourceText = await loadCaseLawSourceText(row, userId, {
+        const loadSourceText = sourceTextLoader
+          ? (opts?: SourceTextLoadOptions) => sourceTextLoader(row, opts)
+          : (opts?: SourceTextLoadOptions) => loadCaseLawSourceText(row, userId, opts);
+        sourceText = await loadSourceText({
           includeMetadataFallback: false,
           allowRemoteFileRead: false,
         });
         if (!sourceText.trim()) {
-          sourceText = await loadCaseLawSourceText(row, userId, {
+          sourceText = await loadSourceText({
             includeMetadataFallback: false,
             allowRemoteFileRead: true,
           });
@@ -2994,6 +3040,7 @@ async function searchCaseLawWithFullText(args: {
   parsedCitation?: CaseLawCitationQueryParts | null;
 }): Promise<CaseLaw[]> {
   const query = String(args.query || "").trim();
+  const sourceTextLoader = createCachedCaseLawSourceTextLoader(args.userId);
   const baseResultsPromise = storage.searchCaseLaw(args.query, args.limit, {
     year: args.year,
     report: args.report,
@@ -3069,7 +3116,7 @@ async function searchCaseLawWithFullText(args: {
   const [baseResultsRaw, ragCandidates] = await Promise.all([baseResultsPromise, ragCandidatesPromise]);
   const baseResults = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(baseResultsRaw));
   if (!query) {
-    return filterCaseLawResultsWithRealFullText(baseResults, args.userId);
+    return filterCaseLawResultsWithRealFullText(baseResults, args.userId, sourceTextLoader);
   }
 
   const merged: CaseLaw[] = [];
@@ -3081,8 +3128,8 @@ async function searchCaseLawWithFullText(args: {
     merged.push(row);
     if (merged.length >= args.limit) break;
   }
-  const strictFullTextRows = await filterCaseLawResultsWithRealFullText(merged, args.userId);
-  const rankedStrictRows = await rankCaseLawRowsBySourceRelevance(strictFullTextRows, args.userId, query);
+  const strictFullTextRows = await filterCaseLawResultsWithRealFullText(merged, args.userId, sourceTextLoader);
+  const rankedStrictRows = await rankCaseLawRowsBySourceRelevance(strictFullTextRows, args.userId, query, sourceTextLoader);
   const citationIntent = Boolean(args.parsedCitation || parseCaseLawCitationQuery(query));
   const normalizedStrictRows = citationIntent ? rankedStrictRows : collapseCaseRowsBySource(rankedStrictRows);
   if (normalizedStrictRows.length >= args.limit) {
@@ -3102,8 +3149,8 @@ async function searchCaseLawWithFullText(args: {
       includeSourceContentSearch: false,
     });
     const topUpRows = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(topUpRowsRaw));
-    const topUpFiltered = await filterCaseLawResultsWithRealFullText(topUpRows, args.userId);
-    const topUpRanked = await rankCaseLawRowsBySourceRelevance(topUpFiltered, args.userId, query);
+    const topUpFiltered = await filterCaseLawResultsWithRealFullText(topUpRows, args.userId, sourceTextLoader);
+    const topUpRanked = await rankCaseLawRowsBySourceRelevance(topUpFiltered, args.userId, query, sourceTextLoader);
     const topUpNormalized = citationIntent ? topUpRanked : collapseCaseRowsBySource(topUpRanked);
     const out: CaseLaw[] = [];
     const outSeen = new Set<string>();
@@ -3114,7 +3161,7 @@ async function searchCaseLawWithFullText(args: {
       out.push(row);
       if (out.length >= args.limit) break;
     }
-    const reranked = await rankCaseLawRowsBySourceRelevance(out, args.userId, query);
+    const reranked = await rankCaseLawRowsBySourceRelevance(out, args.userId, query, sourceTextLoader);
     const rerankedNormalized = citationIntent ? reranked : collapseCaseRowsBySource(reranked);
     return rerankedNormalized.slice(0, args.limit);
   }
@@ -3202,15 +3249,52 @@ async function loadCaseLawSourceText(
   return content.trim();
 }
 
-async function filterCaseLawResultsWithRealFullText(rows: CaseLaw[], userId: string): Promise<CaseLaw[]> {
+function createCachedCaseLawSourceTextLoader(userId: string): SourceTextLoader {
+  const cache = new Map<string, Promise<string>>();
+
+  return async (entry, options) => {
+    const sourceType = String(entry.sourceType || "").toLowerCase();
+    const sourceDocId = Number(entry.sourceDocId || 0);
+    const includeMetadataFallback = options?.includeMetadataFallback !== false ? "1" : "0";
+    const allowRemoteFileRead = options?.allowRemoteFileRead !== false ? "1" : "0";
+    const key = [
+      userId,
+      sourceType,
+      String(sourceDocId),
+      includeMetadataFallback,
+      allowRemoteFileRead,
+      String(entry.citation || ""),
+    ].join("::");
+
+    let pending = cache.get(key);
+    if (!pending) {
+      pending = loadCaseLawSourceText(entry, userId, options)
+        .then((text) => String(text || ""))
+        .catch(() => "");
+      cache.set(key, pending);
+    }
+    return pending;
+  };
+}
+
+async function filterCaseLawResultsWithRealFullText(
+  rows: CaseLaw[],
+  userId: string,
+  sourceTextLoader?: SourceTextLoader,
+): Promise<CaseLaw[]> {
   if (rows.length === 0) return [];
   const localChecks = await Promise.all(
     rows.map(async (row) => {
       try {
-        const sourceText = await loadCaseLawSourceText(row, userId, {
-          includeMetadataFallback: false,
-          allowRemoteFileRead: false,
-        });
+        const sourceText = sourceTextLoader
+          ? await sourceTextLoader(row, {
+              includeMetadataFallback: false,
+              allowRemoteFileRead: false,
+            })
+          : await loadCaseLawSourceText(row, userId, {
+              includeMetadataFallback: false,
+              allowRemoteFileRead: false,
+            });
         if (!sourceText || sourceText.trim().length < 20) return null;
         return row;
       } catch {
@@ -3224,10 +3308,15 @@ async function filterCaseLawResultsWithRealFullText(rows: CaseLaw[], userId: str
   const remoteChecks = await Promise.all(
     rows.slice(0, Math.min(12, rows.length)).map(async (row) => {
       try {
-        const sourceText = await loadCaseLawSourceText(row, userId, {
-          includeMetadataFallback: false,
-          allowRemoteFileRead: true,
-        });
+        const sourceText = sourceTextLoader
+          ? await sourceTextLoader(row, {
+              includeMetadataFallback: false,
+              allowRemoteFileRead: true,
+            })
+          : await loadCaseLawSourceText(row, userId, {
+              includeMetadataFallback: false,
+              allowRemoteFileRead: true,
+            });
         if (!sourceText || sourceText.trim().length < 20) return null;
         return row;
       } catch {
@@ -9889,6 +9978,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
   app.post(api.ai.chat.path, guardedUploadQueue, upload.array("attachments", 5), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
+    const releaseInteractiveChatRequest = beginInteractiveChatRequest();
     try {
       let body = req.body;
       if (typeof body.messages === "string") {
@@ -10484,6 +10574,8 @@ The user has attached the following documents for your reference. Analyze them c
         return res.status(503).json({ message: detail });
       }
       res.status(500).json({ message: `Failed to process AI chat: ${detail}` });
+    } finally {
+      releaseInteractiveChatRequest();
     }
   });
 
@@ -12657,6 +12749,7 @@ ${boundedRaw}`;
     runInBackground("case-law-sync-to-judgments", async () => {
       try {
         while (!caseLawSyncToJudgmentsJob.shouldStop) {
+          await pauseBackgroundForInteractiveChat();
           const batch = await fetchCaseLawEntriesForSync({
             cursorId: caseLawSyncToJudgmentsJob.nextCursorId,
             batchSize: caseLawSyncToJudgmentsJob.batchSize,
@@ -12682,6 +12775,7 @@ ${boundedRaw}`;
 
           const minId = ids.length > 0 ? Math.min(...ids) : 0;
           caseLawSyncToJudgmentsJob.nextCursorId = minId > 0 ? minId : null;
+          await pauseBackgroundForInteractiveChat();
         }
 
         await logAuditEvent("admin.caseLaw.syncToJudgments.finish", actorUserId, null, {
@@ -12748,12 +12842,14 @@ ${boundedRaw}`;
     runInBackground("case-law-process-pending-files", async () => {
       try {
         while (!caseLawProcessPendingFilesJob.shouldStop) {
+          await pauseBackgroundForInteractiveChat();
           const pendingDocs = await fetchPendingCaseLawAdminDocs(caseLawProcessPendingFilesJob.batchSize);
           if (pendingDocs.length === 0) break;
           caseLawProcessPendingFilesJob.loops += 1;
 
           for (const pending of pendingDocs) {
             if (caseLawProcessPendingFilesJob.shouldStop) break;
+            await pauseBackgroundForInteractiveChat();
             caseLawProcessPendingFilesJob.processed += 1;
             caseLawProcessPendingFilesJob.activeDocId = pending.id;
             caseLawProcessPendingFilesJob.activeFilename = sanitizeInputText(
@@ -12778,6 +12874,7 @@ ${boundedRaw}`;
             for (const message of result.errors) {
               pushCappedJobError(caseLawProcessPendingFilesJob.errors, message);
             }
+            await pauseBackgroundForInteractiveChat();
           }
         }
 
