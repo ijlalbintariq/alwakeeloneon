@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
 import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, MoreVertical, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
@@ -55,6 +55,11 @@ interface ThreadSummary {
 
 const chatStateStore: Record<string, { messages: ChatMessage[]; shareUrl: string | null; sharedThreadId: number | null }> = {};
 const ACTIVE_THREAD_KEY_PREFIX = "alwakeelo-active-thread-v1:";
+// Let the browser skip painting off-screen message blocks to keep scroll smooth on long threads.
+const OFFSCREEN_MESSAGE_STYLE: CSSProperties = {
+  contentVisibility: "auto",
+  containIntrinsicSize: "260px",
+};
 
 export default function ChatPage() {
   const initialMessage = useMemo(() => {
@@ -762,8 +767,17 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     return <File size={12} className="text-slate-400" />;
   };
 
+  const parsedAssistantMessages = useMemo(() => {
+    const parsedById = new Map<string, ReturnType<typeof parseReferences>>();
+    for (const message of messages) {
+      if (message.role !== "assistant") continue;
+      parsedById.set(message.id, parseReferences(message.content));
+    }
+    return parsedById;
+  }, [messages]);
+
   const latestAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
-  const latestParsed = latestAssistantMessage ? parseReferences(latestAssistantMessage.content) : null;
+  const latestParsed = latestAssistantMessage ? parsedAssistantMessages.get(latestAssistantMessage.id) ?? null : null;
   const latestRefs = latestParsed?.references ?? null;
   const latestRagCitations = latestAssistantMessage?.ragCitations || [];
   const latestStatuteFallback = useMemo(() => {
@@ -938,10 +952,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           )}
 
           {messages.map((m) => {
-            const parsed = m.role === "assistant" ? parseReferences(m.content) : null;
+            const parsed = m.role === "assistant" ? parsedAssistantMessages.get(m.id) ?? null : null;
             const displayContent = parsed ? parsed.cleanContent : m.content;
             return (
-              <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} slide-in-from-bottom-4`}>
+              <div
+                key={m.id}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} slide-in-from-bottom-4`}
+                style={OFFSCREEN_MESSAGE_STYLE}
+              >
                 <div
                   className={`max-w-[85%] p-6 md:p-8 rounded-[2rem] shadow-xl relative group ${
                     m.role === "user"
@@ -1465,10 +1483,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             )}
 
             {messages.map((m) => {
-              const parsed = m.role === "assistant" ? parseReferences(m.content) : null;
+              const parsed = m.role === "assistant" ? parsedAssistantMessages.get(m.id) ?? null : null;
               const displayContent = parsed ? parsed.cleanContent : m.content;
               return (
-                <div key={m.id} className={`flex items-start gap-2 sm:gap-3 w-full ${m.role === "user" ? "ml-auto flex-row-reverse" : ""}`}>
+                <div
+                  key={m.id}
+                  className={`flex items-start gap-2 sm:gap-3 w-full ${m.role === "user" ? "ml-auto flex-row-reverse" : ""}`}
+                  style={OFFSCREEN_MESSAGE_STYLE}
+                >
                   <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-amber-500 text-slate-950" : "bg-[#1e293b] border border-amber-500/30 text-amber-400"}`}>
                     {m.role === "assistant" ? <Scale size={18} /> : <UserIcon size={16} />}
                   </div>
