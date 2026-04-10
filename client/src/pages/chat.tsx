@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
-import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, MoreVertical, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink } from "lucide-react";
+import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -1356,7 +1356,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const rightRailVisible = rightRailOpen;
 
   return (
-    <div className="h-full w-full min-h-0 rounded-xl md:rounded-r-[1.8rem] md:rounded-l-none overflow-hidden border border-[hsl(var(--preview-border))] bg-[#0f172a]/70 backdrop-blur-xl fade-in">
+    <div className="h-full w-full min-h-0 rounded-2xl overflow-hidden border border-slate-700/70 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.14),transparent_36%),linear-gradient(180deg,#070d1b_0%,#0a1426_45%,#0b1629_100%)] shadow-[0_20px_80px_rgba(2,6,23,0.55)] fade-in">
       <div className="relative h-full w-full">
         <aside
           className={`hidden lg:flex absolute left-3 top-28 xl:top-20 bottom-24 z-30 transition-[width,opacity,transform] duration-300 ease-out overflow-hidden ${
@@ -1365,10 +1365,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               : "w-0 opacity-0 -translate-x-3 pointer-events-none"
           }`}
         >
-          <div className="p-5 flex flex-col h-full w-64 rounded-2xl border border-[hsl(var(--preview-border))] bg-[#1e293b]/75 backdrop-blur-xl shadow-2xl">
+          <div className="p-5 flex flex-col h-full w-64 rounded-2xl border border-amber-400/20 bg-[#081328]/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
             <button
               onClick={handleClear}
-              className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 text-slate-950 w-full py-3 rounded-xl font-bold transition-all shadow-lg shadow-amber-500/15 mb-6"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 text-slate-950 w-full py-3 rounded-xl font-bold transition-all shadow-lg shadow-amber-500/25 mb-6"
               data-testid="button-new-consultation"
             >
               <PlusCircle size={18} />
@@ -1376,7 +1376,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </button>
 
             <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-hide">
-              <h3 className="text-[11px] font-bold text-amber-500/40 uppercase tracking-widest mb-3 px-2">Recent Consultations</h3>
+              <h3 className="text-[11px] font-bold text-amber-300/70 uppercase tracking-widest mb-3 px-2">Recent Consultations</h3>
               {threads.slice(0, 12).map((thread) => {
                 const isActive = sharedThreadId === thread.id;
                 return (
@@ -1412,7 +1412,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         <div className="hidden lg:flex absolute left-3 top-1/2 -translate-y-1/2 z-40">
           <button
             onClick={() => setLeftRailOpen((prev) => !prev)}
-            className="h-16 w-6 border border-amber-400/35 rounded-r-lg bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            className="h-16 w-6 border border-amber-400/35 rounded-r-lg bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.24)]"
             data-testid="divider-toggle-left-chat-rail"
             title={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
             aria-label={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
@@ -1421,40 +1421,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </button>
         </div>
 
-        <main className="h-full flex flex-col bg-[#0f172a]/65">
-          <header className="h-16 px-3 sm:px-6 border-b border-amber-500/10 flex items-center justify-between bg-[#0f172a]/75 backdrop-blur-md">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-400/35 bg-gradient-to-br from-amber-400/30 to-amber-500/15 text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.2)]">
-                <Scale size={16} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-300/80">Legal Intelligence</p>
-                <h2 className="font-serif text-lg sm:text-xl text-slate-100 truncate leading-tight">
-                  {title || "Al Wakeelo Engine"}
-                </h2>
-              </div>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400/20 to-amber-500/10 text-amber-300 border border-amber-400/35 shadow-[0_0_14px_rgba(251,191,36,0.18)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                ACTIVE
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {messages.length >= 2 && (
-                <button
-                  onClick={shareUrl ? handleCopyShareUrl : handleShare}
-                  disabled={isSharing}
-                  data-testid="button-share-chat"
-                  className="p-2 text-slate-400 hover:text-amber-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 rounded-lg"
-                  title={shareUrl ? "Copy Share Link" : "Share Consultation"}
-                >
-                  {isSharing ? <Loader2 size={16} className="animate-spin" /> : copied ? <Check size={16} /> : <Share2 size={16} />}
-                </button>
-              )}
-              <button className="p-2 text-slate-400 hover:text-amber-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 rounded-lg" onClick={handleClear} data-testid="button-reset-chat">
-                <MoreVertical size={16} />
-              </button>
-            </div>
-          </header>
+        <main className="h-full flex flex-col bg-[#081225]/68">
 
           <section className="xl:hidden border-b border-amber-500/10 bg-[#0f172a]/55 px-3 sm:px-6 py-2">
             <details className="group">
@@ -1471,14 +1438,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </details>
           </section>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 scrollbar-hide">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 scrollbar-hide bg-[linear-gradient(180deg,rgba(2,6,23,0.1),rgba(2,6,23,0.28))]">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
-                <Scale size={44} className="text-amber-500/50" />
-                <p className="text-slate-400 italic text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <Scale size={44} className="text-amber-400/60" />
+                <p className="text-slate-300 italic text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
                   "Main hoon Al Wakeelo -- not just your lawyer, your strategy partner in justice."
                 </p>
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">Ask anything about Pakistan law</p>
+                <p className="text-[10px] text-amber-200/70 uppercase tracking-widest font-black">Ask anything about Pakistan law</p>
               </div>
             )}
 
@@ -1491,18 +1458,18 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   className={`flex items-start gap-2 sm:gap-3 w-full ${m.role === "user" ? "ml-auto flex-row-reverse" : ""}`}
                   style={OFFSCREEN_MESSAGE_STYLE}
                 >
-                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-amber-500 text-slate-950" : "bg-[#1e293b] border border-amber-500/30 text-amber-400"}`}>
+                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-amber-300 text-slate-950" : "bg-[#14233d] border border-amber-300/30 text-amber-200"}`}>
                     {m.role === "assistant" ? <Scale size={18} /> : <UserIcon size={16} />}
                   </div>
                   <div className={`min-w-0 flex-1 flex flex-col gap-2 ${m.role === "user" ? "items-end" : ""}`}>
-                    <p className={`text-[11px] font-bold uppercase tracking-widest ${m.role === "assistant" ? "text-amber-400" : "text-slate-500"}`}>
+                    <p className={`text-[11px] font-bold uppercase tracking-widest ${m.role === "assistant" ? "text-amber-200" : "text-slate-400"}`}>
                       {m.role === "assistant" ? "Al Wakeelo Assistant" : "You"}
                     </p>
                     <div
                       className={`relative group p-3 sm:p-5 rounded-2xl ${
                         m.role === "assistant"
-                          ? "w-full min-w-0 bg-amber-500/5 backdrop-blur border border-amber-500/20 rounded-tl-none"
-                          : "w-full max-w-[96%] bg-[#1e293b]/90 border border-amber-500 rounded-tr-none"
+                          ? "w-full min-w-0 bg-[#0f1c33]/85 backdrop-blur border border-amber-300/20 shadow-[0_10px_24px_rgba(251,191,36,0.08)] rounded-tl-md"
+                          : "w-full max-w-[96%] bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 border border-amber-300/70 shadow-[0_10px_30px_rgba(251,191,36,0.25)] rounded-tr-md"
                       }`}
                     >
                       {m.role === "assistant" ? (
@@ -1623,7 +1590,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             )}
           </div>
 
-          <div className="p-2 sm:p-6 pt-2 border-t border-amber-500/10">
+          <div className="p-2 sm:p-6 pt-2 border-t border-amber-400/15 bg-[#071327]/75">
             {apiError && (
               <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
                 <AlertCircle size={14} className="text-red-400" />
@@ -1631,15 +1598,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               </div>
             )}
 
-            <div className="w-full bg-[#1e293b]/80 border border-amber-500/20 rounded-2xl shadow-2xl p-2">
+            <div className="w-full bg-[#081428]/92 border border-amber-300/20 rounded-2xl shadow-[0_14px_38px_rgba(120,53,15,0.34)] p-2">
               <div className="flex items-end gap-2 p-1.5 sm:p-2 flex-wrap">
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple className="hidden" />
                 <input type="file" ref={audioInputRef} onChange={handleAudioSelect} accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" className="hidden" />
 
-                <button onClick={() => fileInputRef.current?.click()} disabled={isLoading || attachedFiles.length >= 5} className="p-2 text-slate-500 hover:text-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 rounded-lg">
+                <button onClick={() => fileInputRef.current?.click()} disabled={isLoading || attachedFiles.length >= 5} className="p-2 text-slate-500 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 rounded-lg">
                   <Paperclip size={18} />
                 </button>
-                <button onClick={() => audioInputRef.current?.click()} disabled={isLoading || isTranscribing} className="p-2 text-slate-500 hover:text-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 rounded-lg">
+                <button onClick={() => audioInputRef.current?.click()} disabled={isLoading || isTranscribing} className="p-2 text-slate-500 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 rounded-lg">
                   {isTranscribing ? <Loader2 size={18} className="animate-spin text-amber-400" /> : <Mic size={18} />}
                 </button>
                 {isAlWakeelo && (
@@ -1659,7 +1626,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 <textarea
                   ref={promptInputRef}
                   rows={1}
-                  className="flex-1 min-w-[180px] min-h-[42px] max-h-44 resize-none overflow-y-auto bg-transparent border-none focus:ring-0 text-slate-100 placeholder:text-slate-500 px-2 py-2 leading-6"
+                  className="flex-1 min-w-[180px] min-h-[42px] max-h-44 resize-none overflow-y-auto bg-transparent border-none focus:ring-0 text-slate-100 placeholder:text-slate-400 px-2 py-2 leading-6"
                   placeholder="Ask Al Wakeelo about Pakistan Law..."
                   value={input}
                   onInput={resizePromptInput}
@@ -1729,7 +1696,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   )}
                 </div>
 
-                <button onClick={() => handleSend()} disabled={isLoading || isTranscribing} data-testid="button-send" className="bg-amber-500 hover:bg-amber-400 text-slate-950 h-10 w-10 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60">
+                <button onClick={() => handleSend()} disabled={isLoading || isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-slate-950 h-10 w-10 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60">
                   <Send size={16} />
                 </button>
               </div>
@@ -1766,7 +1733,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         <div className="hidden xl:flex absolute right-3 top-1/2 -translate-y-1/2 z-40">
           <button
             onClick={() => setRightRailOpen((prev) => !prev)}
-            className="h-16 w-6 border border-amber-400/35 rounded-l-lg bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            className="h-16 w-6 border border-amber-400/35 rounded-l-lg bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.24)]"
             data-testid="divider-toggle-right-chat-rail"
             title={rightRailVisible ? "Collapse insights panel" : "Expand insights panel"}
             aria-label={rightRailVisible ? "Collapse insights panel" : "Expand insights panel"}
@@ -1782,7 +1749,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               : "w-0 opacity-0 translate-x-3 pointer-events-none"
           }`}
         >
-          <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide w-64 rounded-2xl border border-[hsl(var(--preview-border))] bg-[#1e293b]/75 backdrop-blur-xl shadow-2xl">
+          <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide w-64 rounded-2xl border border-amber-400/20 bg-[#081328]/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
             {renderInsightsCards(false)}
           </div>
         </aside>

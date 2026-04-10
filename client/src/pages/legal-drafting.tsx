@@ -1841,7 +1841,7 @@ export default function LegalDraftingPage() {
   }, []);
 
   return (
-    <div className="relative isolate h-full min-h-[620px] md:min-h-[820px] rounded-xl border border-[hsl(var(--preview-border))] overflow-hidden bg-[#0f172a]/70 backdrop-blur-xl text-slate-100 fade-in flex flex-col shadow-2xl">
+    <div className="relative isolate h-full min-h-[620px] md:min-h-[820px] rounded-2xl overflow-hidden border border-slate-700/70 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.14),transparent_36%),linear-gradient(180deg,#070d1b_0%,#0a1426_45%,#0b1629_100%)] text-slate-100 fade-in flex flex-col shadow-[0_20px_80px_rgba(2,6,23,0.55)]">
       <div className="pointer-events-none absolute -top-24 right-10 h-56 w-56 rounded-full bg-amber-500/12 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 left-8 h-60 w-60 rounded-full bg-amber-400/10 blur-3xl" />
       <div
@@ -1852,7 +1852,7 @@ export default function LegalDraftingPage() {
           backgroundSize: "28px 28px",
         }}
       />
-      <header className="h-16 border-b border-[hsl(var(--preview-border))] flex items-center justify-between px-3 md:px-6 bg-[#0f172a]/55 backdrop-blur-xl z-20">
+      <header className="h-[74px] border-b border-white/10 flex items-center justify-between px-3 md:px-6 bg-[#09162e]/80 backdrop-blur-xl z-20">
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-3">
             <div className="size-9 shrink-0 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/25 ring-1 ring-amber-100/30">

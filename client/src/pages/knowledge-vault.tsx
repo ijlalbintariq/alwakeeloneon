@@ -68,12 +68,6 @@ type VaultInsights = {
   unclassifiedCount: number;
 };
 
-const SUGGESTED_SEARCHES = [
-  "Draft Sale Deed",
-  "Summarize Case File",
-  "Find Precedents",
-];
-
 const LEGAL_CONCEPTS = [
   "jurisdiction",
   "maintainability",
@@ -630,37 +624,30 @@ export default function KnowledgeVaultPage() {
         onChange={(e) => handleFilesChosen(e.target.files)}
       />
 
-      <div className="border-b border-[hsl(var(--preview-border))] glass-shell px-4 md:px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="size-8 rounded-md bg-amber-500/20 text-amber-400 flex items-center justify-center">
-            <Lock size={15} />
-          </div>
-          <div>
-            <p className="text-base font-semibold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</p>
-            <p className="text-[10px] uppercase tracking-widest text-amber-400/80">Private Vault</p>
+      {view !== "home" && (
+        <div className="border-b border-[hsl(var(--preview-border))] glass-shell px-4 md:px-6 py-3 flex items-center justify-end">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setView("home")}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
+                view === "home" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+              }`}
+            >
+              Home
+            </button>
+            <button
+              onClick={() => setView("uploads")}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
+                view === "uploads" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+              }`}
+            >
+              My Uploads
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setView("home")}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-              view === "home" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
-            }`}
-          >
-            Home
-          </button>
-          <button
-            onClick={() => setView("uploads")}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-              view === "uploads" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
-            }`}
-          >
-            My Uploads
-          </button>
-        </div>
-      </div>
+      )}
 
-      <div className="h-[calc(100%-61px)] overflow-y-auto">
+      <div className={view === "home" || view === "processing" ? "h-full overflow-y-auto" : "h-[calc(100%-61px)] overflow-hidden"}>
         {view === "processing" && (
           <div className="min-h-full px-5 md:px-8 py-8 md:py-12">
             <div className="max-w-[1600px] w-full mx-auto flex flex-col items-center gap-8">
@@ -741,14 +728,38 @@ export default function KnowledgeVaultPage() {
         )}
 
         {view === "home" && (
-          <div className="px-4 md:px-6 lg:px-8 py-7 md:py-10">
-            <div className="w-full text-center">
-              <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Your Personalized <span className="text-amber-400">AI Legal Vault</span>
-              </h1>
-              <div className="mt-8 w-full rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-transparent p-2">
-                <div className="flex items-center gap-2 rounded-xl bg-black/20">
-                  <Search size={18} className="text-amber-400 ml-4" />
+          <div className="px-4 md:px-6 lg:px-8 py-5 md:py-6 space-y-5">
+            <div className="w-full rounded-3xl border border-amber-500/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.16),rgba(15,23,42,0.82)_45%,rgba(2,6,23,0.95)_100%)] p-4 md:p-6 shadow-[0_28px_48px_-34px_rgba(2,6,23,1)]">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] font-black text-amber-200/75 mb-2">Knowledge Vault</p>
+                  <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight text-left" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    Your Personalized <span className="text-amber-300">AI Legal Vault</span>
+                  </h1>
+                  <p className="text-sm text-slate-300 mt-2">Private legal memory, trained on your own uploaded case material.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setView("home")}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
+                      view === "home" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    Home
+                  </button>
+                  <button
+                    onClick={() => setView("uploads")}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
+                      view === "uploads" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    My Uploads
+                  </button>
+                </div>
+              </div>
+              <div className="mt-5 w-full rounded-2xl border border-amber-300/25 bg-[#0b1222]/70 p-2.5 backdrop-blur-md">
+                <div className="flex items-center gap-2 rounded-xl bg-black/25 border border-white/5">
+                  <Search size={18} className="text-amber-300 ml-4" />
                   <input
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
@@ -760,32 +771,18 @@ export default function KnowledgeVaultPage() {
                   />
                   <button
                     onClick={() => handleSearch()}
-                    className="mr-2 px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-[#211507] font-bold text-sm"
+                    className="mr-2 px-5 py-2 rounded-lg bg-gradient-to-r from-amber-300 to-amber-400 hover:from-amber-200 hover:to-amber-300 text-[#211507] font-black text-sm"
                   >
                     Search Vault
                   </button>
                 </div>
               </div>
 
-              <div className="mt-6">
-                <p className="text-xs text-slate-500 uppercase tracking-[0.2em] font-bold">Suggested Actions</p>
-                <div className="mt-3 flex flex-wrap justify-center gap-2">
-                  {SUGGESTED_SEARCHES.map((item) => (
-                    <button
-                      key={item}
-                      onClick={() => handleSearch(item)}
-                      className="px-4 py-1.5 rounded-full border border-amber-500/30 text-amber-300 text-sm hover:bg-amber-500/10"
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
-            <div className="mt-10 grid grid-cols-1 xl:grid-cols-12 gap-6">
-              <div className="xl:col-span-8 space-y-6">
-                <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-5 md:p-6 flex flex-col md:flex-row gap-5 justify-between">
+            <div className="mt-6 grid grid-cols-1 xl:grid-cols-12 gap-4">
+              <div className="xl:col-span-8 space-y-4">
+                <div className="rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-500/12 to-transparent p-5 md:p-6 flex flex-col md:flex-row gap-5 justify-between shadow-[0_20px_40px_-30px_rgba(251,191,36,0.5)]">
                   <div className="flex-1">
                     <h3 className="text-xl text-white font-bold flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
                       <Sparkles size={18} className="text-amber-400" />
@@ -811,13 +808,13 @@ export default function KnowledgeVaultPage() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>Legal Domains</h3>
-                    <button onClick={() => setView("uploads")} className="text-sm text-amber-300 hover:text-white">
+                    <button onClick={() => setView("uploads")} className="text-sm text-amber-300 hover:text-white font-semibold">
                       Manage Sources
                     </button>
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 hover:border-amber-400/60 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="w-10 h-10 rounded-xl bg-amber-500 text-[#2a1904] flex items-center justify-center">
                           <FolderOpen size={17} />
@@ -829,7 +826,7 @@ export default function KnowledgeVaultPage() {
                       <p className="text-2xl text-white mt-3 font-bold">{stats.total} <span className="text-sm text-slate-400 font-medium">Documents</span></p>
                     </div>
                     {topDomainCards.map((item) => (
-                      <div key={item.key} className="rounded-2xl border border-amber-500/20 bg-black/20 p-5">
+                      <div key={item.key} className="rounded-2xl border border-amber-500/20 bg-black/20 p-5 hover:border-amber-400/40 transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
                             <Gavel size={16} />
@@ -867,14 +864,14 @@ export default function KnowledgeVaultPage() {
               </div>
 
               <aside className="xl:col-span-4">
-                <div className="rounded-2xl border border-amber-500/20 bg-black/20 h-full p-4">
+                <div className="rounded-2xl border border-amber-500/20 bg-black/20 h-full p-4 shadow-[0_20px_36px_-30px_rgba(2,6,23,1)]">
                   <div className="flex items-center justify-between pb-3 border-b border-amber-500/20">
                     <h3 className="text-lg text-white font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>AI Insights & Updates</h3>
                     <Sparkles size={16} className="text-amber-400" />
                   </div>
                   <div className="mt-3 space-y-2">
                     {insights.map((item, idx) => (
-                      <div key={`${item.title}-${idx}`} className="p-3 rounded-xl border border-amber-500/15 bg-amber-500/5">
+                      <div key={`${item.title}-${idx}`} className="p-3 rounded-xl border border-amber-500/15 bg-amber-500/5 hover:border-amber-400/35 transition-colors">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500 text-[#291904] font-black uppercase">{item.tag}</span>
                           <span className="text-xs text-slate-500">{idx === 0 ? "Just now" : "Recent"}</span>
@@ -891,84 +888,86 @@ export default function KnowledgeVaultPage() {
         )}
 
         {view === "uploads" && (
-          <div className="px-4 md:px-6 lg:px-8 py-6 md:py-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-amber-400/70 font-bold">Private Vault</p>
-                <h1 className="text-4xl font-bold text-white mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>My Uploaded Files</h1>
-                <p className="text-slate-400 mt-2">Manage your private legal documents and vault context.</p>
+          <div className="h-full px-4 md:px-6 lg:px-8 py-4 md:py-5 flex flex-col gap-4">
+            <div className="rounded-3xl border border-amber-500/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.14),rgba(15,23,42,0.82)_46%,rgba(2,6,23,0.95)_100%)] p-4 md:p-5 shadow-[0_24px_42px_-32px_rgba(2,6,23,1)]">
+              <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] font-black text-amber-200/75 mb-2">Knowledge Vault</p>
+                  <h1 className="text-2xl md:text-4xl font-bold text-white mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>My Uploaded Files</h1>
+                  <p className="text-slate-300 mt-2 text-sm">Manage private legal documents, indexing status, and source health.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(documents.length > 0 && !showDeleteAllConfirm) && (
+                    <button
+                      onClick={() => setShowDeleteAllConfirm(true)}
+                      className="px-4 py-2.5 rounded-xl border border-red-500/30 text-red-300 hover:bg-red-500/10 font-black text-xs uppercase tracking-widest flex items-center gap-2"
+                    >
+                      <Trash2 size={14} /> Delete All
+                    </button>
+                  )}
+
+                  {showDeleteAllConfirm && (
+                    <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2">
+                      <AlertOctagon size={14} className="text-red-300" />
+                      <span className="text-[11px] text-red-200 font-bold">Delete all {documents.length} files?</span>
+                      <button
+                        onClick={() => deleteAllMutation.mutate()}
+                        disabled={deleteAllMutation.isPending}
+                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest"
+                      >
+                        {deleteAllMutation.isPending ? "Deleting..." : "Confirm"}
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteAllConfirm(false)}
+                        className="px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 text-[10px] font-black uppercase tracking-widest"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={openUploader}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-300 to-amber-400 hover:from-amber-200 hover:to-amber-300 text-[#251607] font-black flex items-center gap-2"
+                  >
+                    <Upload size={16} /> Upload New
+                  </button>
+                  {documents.length > 0 && (
+                    <button
+                      onClick={indexAllForRag}
+                      disabled={isBulkRagIndexing}
+                      className="px-4 py-2.5 rounded-xl border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 font-black text-xs uppercase tracking-widest flex items-center gap-2 disabled:opacity-60"
+                    >
+                      {isBulkRagIndexing ? <Loader2 size={14} className="animate-spin" /> : <Cpu size={14} />}
+                      {isBulkRagIndexing ? "Indexing..." : "Index All for RAG"}
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {(documents.length > 0 && !showDeleteAllConfirm) && (
-                  <button
-                    onClick={() => setShowDeleteAllConfirm(true)}
-                    className="px-4 py-3 rounded-xl border border-red-500/30 text-red-300 hover:bg-red-500/10 font-black text-xs uppercase tracking-widest flex items-center gap-2"
-                  >
-                    <Trash2 size={14} /> Delete All
-                  </button>
-                )}
 
-                {showDeleteAllConfirm && (
-                  <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2">
-                    <AlertOctagon size={14} className="text-red-300" />
-                    <span className="text-[11px] text-red-200 font-bold">Delete all {documents.length} files?</span>
-                    <button
-                      onClick={() => deleteAllMutation.mutate()}
-                      disabled={deleteAllMutation.isPending}
-                      className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest"
-                    >
-                      {deleteAllMutation.isPending ? "Deleting..." : "Confirm"}
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteAllConfirm(false)}
-                      className="px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 text-[10px] font-black uppercase tracking-widest"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-
-                <button
-                  onClick={openUploader}
-                  className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-[#251607] font-black flex items-center gap-2"
-                >
-                  <Upload size={16} /> Upload New
-                </button>
-                {documents.length > 0 && (
-                  <button
-                    onClick={indexAllForRag}
-                    disabled={isBulkRagIndexing}
-                    className="px-4 py-3 rounded-xl border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 font-black text-xs uppercase tracking-widest flex items-center gap-2 disabled:opacity-60"
-                  >
-                    {isBulkRagIndexing ? <Loader2 size={14} className="animate-spin" /> : <Cpu size={14} />}
-                    {isBulkRagIndexing ? "Indexing..." : "Index All for RAG"}
-                  </button>
-                )}
+              <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-amber-500/25 bg-black/25 p-3.5">
+                  <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Total Files</p>
+                  <p className="text-2xl text-white font-bold mt-1">{stats.total}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3.5">
+                  <p className="text-[11px] uppercase tracking-wider text-emerald-300 font-bold">Fully Trained</p>
+                  <p className="text-2xl text-white font-bold mt-1">{stats.trained}</p>
+                </div>
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3.5">
+                  <p className="text-[11px] uppercase tracking-wider text-amber-300 font-bold">Processing</p>
+                  <p className="text-2xl text-white font-bold mt-1">{stats.processing}</p>
+                </div>
+                <div className="rounded-xl border border-red-500/25 bg-red-500/10 p-3.5">
+                  <p className="text-[11px] uppercase tracking-wider text-red-300 font-bold">Issues</p>
+                  <p className="text-2xl text-white font-bold mt-1">{stats.failed}</p>
+                </div>
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="rounded-xl border border-amber-500/25 bg-black/20 p-4">
-                <p className="text-xs uppercase tracking-wider text-slate-400 font-bold">Total Files</p>
-                <p className="text-3xl text-white font-bold mt-1">{stats.total}</p>
-              </div>
-              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4">
-                <p className="text-xs uppercase tracking-wider text-emerald-300 font-bold">Fully Trained</p>
-                <p className="text-3xl text-white font-bold mt-1">{stats.trained}</p>
-              </div>
-              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-4">
-                <p className="text-xs uppercase tracking-wider text-amber-300 font-bold">Processing</p>
-                <p className="text-3xl text-white font-bold mt-1">{stats.processing}</p>
-              </div>
-              <div className="rounded-xl border border-red-500/25 bg-red-500/10 p-4">
-                <p className="text-xs uppercase tracking-wider text-red-300 font-bold">Issues</p>
-                <p className="text-3xl text-white font-bold mt-1">{stats.failed}</p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-amber-500/20 bg-black/20 overflow-hidden">
-              <div className="p-4 md:p-5 border-b border-amber-500/15 flex flex-col md:flex-row gap-3 justify-between">
-                <div className="relative w-full md:max-w-sm">
+            <div className="flex-1 min-h-0 rounded-2xl border border-amber-500/20 bg-black/20 overflow-hidden flex flex-col">
+              <div className="p-3 md:p-4 border-b border-amber-500/15 flex flex-col lg:flex-row gap-3 justify-between">
+                <div className="relative w-full lg:max-w-sm">
                   <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                   <input
                     value={uploadSearch}
@@ -1011,10 +1010,10 @@ export default function KnowledgeVaultPage() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto w-full">
+              <div className="flex-1 min-h-0 overflow-auto w-full">
                 <table className="w-full min-w-[980px]">
-                  <thead>
-                    <tr className="text-left text-xs uppercase tracking-wider text-slate-400 bg-amber-500/10">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="text-left text-xs uppercase tracking-wider text-slate-400 bg-[#111a2c]">
                       <th className="px-8 py-4">Document Name</th>
                       <th className="px-8 py-4">Upload Date</th>
                       <th className="px-8 py-4">File Size</th>
@@ -1096,7 +1095,7 @@ export default function KnowledgeVaultPage() {
                 </table>
               </div>
 
-              <div className="px-5 py-4 border-t border-amber-500/15 flex items-center justify-between text-sm text-slate-500">
+              <div className="px-5 py-3 border-t border-amber-500/15 flex items-center justify-between text-sm text-slate-500">
                 <span>
                   Showing {uploadRows.length === 0 ? 0 : (uploadPage - 1) * uploadPageSize + 1}-
                   {Math.min(uploadPage * uploadPageSize, filteredUploads.length)} of {filteredUploads.length}
@@ -1124,10 +1123,21 @@ export default function KnowledgeVaultPage() {
         )}
 
         {view === "results" && (
-          <div className="px-4 md:px-6 lg:px-8 py-6">
-            <div className="w-full">
-              <div className="rounded-2xl border border-amber-500/25 bg-black/20 p-2">
-                <div className="flex items-center gap-2">
+          <div className="h-full px-4 md:px-6 lg:px-8 py-4 md:py-5 flex flex-col gap-4">
+            <div className="rounded-3xl border border-amber-500/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.14),rgba(15,23,42,0.82)_46%,rgba(2,6,23,0.95)_100%)] p-4 md:p-5 shadow-[0_24px_42px_-32px_rgba(2,6,23,1)]">
+              <div className="flex flex-col xl:flex-row xl:items-center gap-4 justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] font-black text-amber-200/75 mb-2">Knowledge Vault Search</p>
+                  <h2 className="text-2xl md:text-4xl text-white font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Results from Your Private Files</h2>
+                  <p className="text-sm text-slate-300 mt-2">Fast semantic retrieval with citation-ready snippets.</p>
+                </div>
+                <div className="text-sm text-slate-300">
+                  Found <strong className="text-white">{results.length}</strong> result{results.length !== 1 ? "s" : ""}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-amber-300/25 bg-[#0b1222]/70 p-2.5 backdrop-blur-md">
+                <div className="flex items-center gap-2 rounded-xl bg-black/25 border border-white/5">
                   <Search size={17} className="text-amber-400 ml-4" />
                   <input
                     value={searchInput}
@@ -1135,30 +1145,23 @@ export default function KnowledgeVaultPage() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleSearch();
                     }}
-                    className="w-full bg-transparent py-2 text-white placeholder:text-slate-500 outline-none"
+                    className="w-full bg-transparent py-2.5 text-white placeholder:text-slate-500 outline-none"
                   />
-                  <button onClick={() => handleSearch()} className="mr-2 px-4 py-1.5 rounded-lg bg-amber-500 text-[#2b1b06] font-bold text-sm">
+                  <button onClick={() => handleSearch()} className="mr-2 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-300 to-amber-400 text-[#2b1b06] font-black text-sm">
                     Search
                   </button>
                 </div>
               </div>
-
-              <div className="mt-3 flex flex-wrap justify-center gap-5 text-sm text-slate-400">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Vault Active
-                </div>
-                <div>Found <strong className="text-white">{results.length}</strong> result{results.length !== 1 ? "s" : ""}</div>
-              </div>
             </div>
 
-            <div className="mt-6 grid lg:grid-cols-12 gap-6">
-              <aside className="lg:col-span-3 space-y-5">
+            <div className="flex-1 min-h-0 grid lg:grid-cols-12 gap-4">
+              <aside className="lg:col-span-3 rounded-2xl border border-amber-500/20 bg-black/20 p-4 overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
                   <h3 className="text-lg font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>Filters</h3>
                   <button onClick={clearFilters} className="text-xs text-slate-400 hover:text-amber-300">Clear All</button>
                 </div>
 
-                <div>
+                <div className="mt-4">
                   <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">Legal Domain</p>
                   <div className="space-y-2 text-sm">
                     {domainCounts.map((item) => (
@@ -1179,7 +1182,7 @@ export default function KnowledgeVaultPage() {
                   </div>
                 </div>
 
-                <div>
+                <div className="mt-4">
                   <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">Date Range</p>
                   <div className="space-y-2 text-sm text-slate-300">
                     {([
@@ -1204,7 +1207,7 @@ export default function KnowledgeVaultPage() {
                   </div>
                 </div>
 
-                <div>
+                <div className="mt-4">
                   <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">Jurisdiction</p>
                   <select
                     value={jurisdictionFilter}
@@ -1221,15 +1224,15 @@ export default function KnowledgeVaultPage() {
                   </select>
                 </div>
 
-                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-slate-300">
+                <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-slate-300">
                   <p className="text-amber-300 font-bold mb-1">Search Tip</p>
                   Use focused legal phrases for better ranking across your private documents.
                 </div>
               </aside>
 
-              <section className="lg:col-span-9 space-y-4">
+              <section className="lg:col-span-9 rounded-2xl border border-amber-500/20 bg-black/20 p-3 md:p-4 min-h-0 overflow-y-auto space-y-3">
                 {resultRows.map(({ doc, score, snippet }) => (
-                  <article key={doc.id} className="rounded-2xl border border-amber-500/20 bg-black/20 p-5 hover:border-amber-400/30 transition">
+                  <article key={doc.id} className="rounded-2xl border border-amber-500/20 bg-black/20 p-4 hover:border-amber-400/30 transition">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 text-xs text-slate-400">
                         <span className="px-2 py-0.5 rounded border border-white/15 bg-black/30 uppercase">{doc.extension}</span>
@@ -1243,11 +1246,11 @@ export default function KnowledgeVaultPage() {
                       </button>
                     </div>
 
-                    <h3 className="mt-3 text-2xl text-white font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <h3 className="mt-2 text-xl text-white font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
                       {doc.title}
                     </h3>
 
-                    <p className="mt-3 text-sm text-slate-300 leading-relaxed border-l-2 border-amber-500/60 pl-3">
+                    <p className="mt-2 text-sm text-slate-300 leading-relaxed border-l-2 border-amber-500/60 pl-3">
                       {highlightText(snippet, activeQuery)}
                     </p>
 

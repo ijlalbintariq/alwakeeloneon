@@ -440,8 +440,8 @@ export default function JudgmentSearchPage() {
   }, [pendingAutoCitation, loadingJournals, journals]);
 
   return (
-    <div className="space-y-5 md:space-y-6 fade-in pb-14" data-testid="judgment-search-page">
-      <section className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-[#0f172a] p-3 md:p-4">
+    <div className="h-full min-h-0 flex flex-col gap-4 fade-in" data-testid="judgment-search-page">
+      <section className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-[#0f172a] p-3">
         <div className="pointer-events-none absolute -top-12 right-5 h-24 w-24 rounded-full bg-amber-500/10 blur-3xl" />
         <div className="max-w-2xl space-y-2">
           <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -453,7 +453,7 @@ export default function JudgmentSearchPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-700/80 bg-[#070b12]/90 p-3 md:p-4 shadow-2xl">
+      <section className="rounded-2xl border border-slate-700/80 bg-[#070b12]/90 p-3 shadow-2xl">
         <div className="mb-3 flex justify-center">
           <div className="inline-flex rounded-xl border border-slate-700/90 bg-black/40 p-1">
             <button
@@ -647,8 +647,8 @@ export default function JudgmentSearchPage() {
         )}
       </section>
 
-      <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 space-y-6">
+      <section className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="xl:col-span-2 min-h-0 space-y-4 overflow-y-auto pr-1">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
               Recent Judgments
@@ -897,7 +897,7 @@ export default function JudgmentSearchPage() {
           ) : null}
         </div>
 
-        <aside className="space-y-6">
+        <aside className="min-h-0 space-y-4 overflow-y-auto pr-1">
           <section className="overflow-hidden rounded-xl border border-amber-500/25 bg-[#1e293b]/70">
             <div className="bg-amber-500 px-4 py-3">
               <h4 className="inline-flex items-center gap-2 text-sm font-black text-slate-950 uppercase tracking-wider">
