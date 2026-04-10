@@ -64,30 +64,30 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-3 fade-in" data-testid="dashboard-page">
-      <section className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.58] px-4 py-4 md:px-5 md:py-5">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
-          <div className="space-y-4">
+    <div className="min-h-full flex flex-col gap-2 md:gap-3 fade-in" data-testid="dashboard-page">
+      <section className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.58] px-3 py-3 md:px-5 md:py-5">
+        <div className="grid gap-3 md:gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
+          <div className="space-y-3 md:space-y-4">
             <div className="space-y-1">
-              <h2 className="text-2xl md:text-4xl font-bold leading-none tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h2 className="text-xl sm:text-2xl md:text-4xl font-bold leading-none tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                 {greeting}, <span className="text-amber-400">{user?.firstName || "Counsel"}</span>
               </h2>
-              <p className="text-xs md:text-sm text-slate-400">Welcome back to your legal workstation.</p>
+              <p className="text-[11px] sm:text-xs md:text-sm text-slate-400">Welcome back to your legal workstation.</p>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
               {stats.map((stat) => {
                 const Icon = stat.icon;
                 return (
                   <div
                     key={`hero-${stat.label}`}
-                    className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-3"
+                    className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-2.5 md:p-3"
                   >
-                    <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e]">
-                      <Icon size={13} className={stat.color} />
+                    <div className="mb-1.5 inline-flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e]">
+                      <Icon size={12} className={stat.color} />
                     </div>
-                    <p className="text-xl font-black text-slate-100 leading-none">{stat.value}</p>
-                    <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mt-1">{stat.label}</p>
+                    <p className="text-lg md:text-xl font-black text-slate-100 leading-none">{stat.value}</p>
+                    <p className="text-[8px] md:text-[9px] uppercase tracking-wider text-slate-500 font-bold mt-1">{stat.label}</p>
                   </div>
                 );
               })}
@@ -95,16 +95,16 @@ export default function DashboardPage() {
           </div>
 
           {usage && (
-            <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/60 p-4 flex flex-col">
+            <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/60 p-3 md:p-4 flex flex-col">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] uppercase tracking-wider text-slate-400 font-extrabold">Plan</p>
-                <p className="text-base font-black text-amber-400" data-testid="text-tier-label">{usage.tierLabel}</p>
+                <p className="text-sm md:text-base font-black text-amber-400" data-testid="text-tier-label">{usage.tierLabel}</p>
               </div>
-              <p className="text-sm text-slate-300 font-bold mt-1">{cycleLabel} · renews {renewalLabel}</p>
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-200 mb-1.5">
-                  <span className="text-base font-extrabold text-slate-100" data-testid="text-usage-count">{usage.used} / {usage.monthlyLimit === 999999 ? "Unlimited" : usage.monthlyLimit}</span>
-                  <span className="text-base font-extrabold text-slate-100" data-testid="text-usage-remaining">{usage.remaining === 999999 ? "Unlimited" : usage.remaining} left</span>
+              <p className="text-xs md:text-sm text-slate-300 font-bold mt-1">{cycleLabel} · renews {renewalLabel}</p>
+              <div className="mt-2.5 md:mt-3">
+                <div className="flex items-center justify-between text-[11px] md:text-xs font-bold text-slate-200 mb-1.5 gap-3">
+                  <span className="text-sm md:text-base font-extrabold text-slate-100" data-testid="text-usage-count">{usage.used} / {usage.monthlyLimit === 999999 ? "Unlimited" : usage.monthlyLimit}</span>
+                  <span className="text-sm md:text-base font-extrabold text-slate-100 text-right" data-testid="text-usage-remaining">{usage.remaining === 999999 ? "Unlimited" : usage.remaining} left</span>
                 </div>
                 <Progress
                   value={usagePercentage}
@@ -113,7 +113,7 @@ export default function DashboardPage() {
                 />
               </div>
 
-              <div className="mt-4">
+              <div className="mt-3 md:mt-4">
                 <a
                   href={upgradeHref}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/45 bg-amber-400/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-amber-300 hover:border-amber-300/70 hover:bg-amber-300/15"
@@ -138,13 +138,13 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-3">
-        <div className="min-h-0 h-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.58] px-4 py-4 md:px-5 md:py-5 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg md:text-xl font-bold leading-none tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Workspace Shortcuts</h3>
-            <p className="text-[10px] uppercase tracking-[0.18em] font-black text-slate-500">Chambers Operations</p>
+      <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-2 md:gap-3 xl:flex-1 xl:min-h-0">
+        <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.58] px-3 py-3 md:px-5 md:py-5 flex flex-col xl:min-h-0 xl:h-full">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <h3 className="text-base md:text-xl font-bold leading-none tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Workspace Shortcuts</h3>
+            <p className="text-[9px] md:text-[10px] uppercase tracking-[0.18em] font-black text-slate-500">Chambers Operations</p>
           </div>
-          <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 md:gap-3 xl:flex-1 xl:min-h-0">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
@@ -153,18 +153,18 @@ export default function DashboardPage() {
                   href={action.href}
                   className="block no-underline hover:no-underline focus:no-underline"
                 >
-                  <div className="h-full min-h-[176px] rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-4 cursor-pointer transition-all hover:border-amber-500/35 hover:bg-[#15233a]">
-                    <div className="flex h-full flex-col gap-3" data-testid={`action-${action.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <div className="h-full min-h-[138px] md:min-h-[176px] rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-3 md:p-4 cursor-pointer transition-all hover:border-amber-500/35 hover:bg-[#15233a]">
+                    <div className="flex h-full flex-col gap-2.5 md:gap-3" data-testid={`action-${action.label.toLowerCase().replace(/\s+/g, '-')}`}>
                       <div>
-                        <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e] text-slate-300">
-                          <Icon size={15} />
+                        <div className="mb-2 inline-flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e] text-slate-300">
+                          <Icon size={14} />
                         </div>
-                        <h4 className="text-lg font-bold leading-tight mb-1.5" style={{ fontFamily: "'Playfair Display', serif" }}>{action.label}</h4>
-                        <p className="text-sm text-slate-400 leading-snug">{action.desc}</p>
+                        <h4 className="text-base md:text-lg font-bold leading-tight mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>{action.label}</h4>
+                        <p className="text-xs md:text-sm text-slate-400 leading-snug">{action.desc}</p>
                       </div>
-                      <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
-                        <button className="rounded-lg border border-[hsl(var(--preview-border))] px-3 py-1.5 text-xs font-semibold text-slate-300">How to use</button>
-                        <button className="rounded-lg border border-[hsl(var(--preview-border))] bg-white text-black px-3 py-1.5 text-xs font-semibold">
+                      <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1.5">
+                        <button className="rounded-lg border border-[hsl(var(--preview-border))] px-2.5 py-1 text-[11px] md:text-xs font-semibold text-slate-300">How to use</button>
+                        <button className="rounded-lg border border-[hsl(var(--preview-border))] bg-white text-black px-2.5 py-1 text-[11px] md:text-xs font-semibold">
                           {actionLabel(action.label)}
                         </button>
                       </div>
@@ -176,21 +176,21 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <aside className="min-h-0 h-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.58] p-4 flex flex-col">
-          <div className="flex items-center gap-2 mb-3">
+        <aside className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.58] p-3 md:p-4 flex flex-col xl:min-h-0 xl:h-full">
+          <div className="flex items-center gap-2 mb-2.5 md:mb-3">
             {isAtLimit ? <AlertTriangle size={15} className="text-red-400" /> : <TrendingUp size={15} className="text-amber-400" />}
             <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-slate-300">Chamber Activity</p>
           </div>
-          <div className="space-y-2.5">
-            <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-3">
+          <div className="space-y-2">
+            <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-2.5 md:p-3">
               <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Last Activity Reminder</p>
-              <p className="text-sm font-bold text-slate-100 mt-1">Review your most recent consultation thread before drafting.</p>
+              <p className="text-xs md:text-sm font-bold text-slate-100 mt-1">Review your most recent consultation thread before drafting.</p>
               <p className="text-[11px] text-slate-400 mt-1">Continue from saved context to keep facts, citations, and strategy consistent.</p>
             </div>
 
-            <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-3">
+            <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-2.5 md:p-3">
               <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Usage Health</p>
-              <p className="text-sm font-bold text-slate-100 mt-1">
+              <p className="text-xs md:text-sm font-bold text-slate-100 mt-1">
                 {isAtLimit ? "Limit reached" : isNearLimit ? "High usage load" : "Normal capacity"}
               </p>
               <div className="mt-2">
@@ -201,16 +201,16 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-3">
+            <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-2.5 md:p-3">
               <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Workspace Focus</p>
               <p className="text-[11px] text-slate-300 mt-1">Run judgment research before drafting.</p>
               <p className="text-[11px] text-slate-300 mt-1">Attach core documents for stronger AI output.</p>
               <p className="text-[11px] text-slate-300 mt-1">Save final drafts to keep consultation continuity.</p>
             </div>
           </div>
-          <div className="mt-auto rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/60 p-3">
+          <div className="mt-2 md:mt-auto rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/60 p-2.5 md:p-3">
             <p className="text-[10px] uppercase tracking-[0.16em] font-black text-slate-500">Operational Status</p>
-            <p className="text-sm font-bold text-slate-200 mt-1">
+            <p className="text-xs md:text-sm font-bold text-slate-200 mt-1">
               {isAtLimit ? "Limit reached" : isNearLimit ? "Approaching monthly limit" : "Normal capacity"}
             </p>
             <p className="text-[11px] text-slate-400 mt-1">
