@@ -22,18 +22,122 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
-const NAVIGATION_ITEMS = [
-  { id: "dashboard", label: "Chambers Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { id: "judgments", label: "Judgments", icon: Gavel, href: "/judgments" },
-  { id: "statute-search", label: "Statute Search", icon: Book, href: "/statute-search" },
-  { id: "al-wakeelo", label: "Al Wakeelo Engine", icon: Scale, href: "/al-wakeelo" },
-  { id: "legal-drafting", label: "Legal Drafting", icon: FileText, href: "/legal-drafting" },
-  { id: "contract-drafting", label: "Contract Drafting", icon: Sparkles, href: "/contract-drafting" },
-  { id: "case-documents", label: "Case Documents", icon: FileBadge, href: "/case-documents" },
-  { id: "bookmarks", label: "Bookmarks", icon: Bookmark, href: "/bookmarks" },
-  { id: "history", label: "Search History", icon: History, href: "/history" },
-  { id: "knowledge-vault", label: "Knowledge Vault", icon: Database, href: "/knowledge-vault" },
-  { id: "organization", label: "Organization", icon: Building2, href: "/organization" },
+type NavigationItem = {
+  id: string;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  href: string;
+};
+
+type NavigationGroup = {
+  id: string;
+  label: string;
+  items: NavigationItem[];
+};
+
+const NAVIGATION_GROUPS: NavigationGroup[] = [
+  {
+    id: "workspace",
+    label: "Workspace",
+    items: [
+      {
+        id: "dashboard",
+        label: "Chambers Dashboard",
+        description: "Overview and quick actions",
+        icon: LayoutDashboard,
+        href: "/dashboard",
+      },
+      {
+        id: "al-wakeelo",
+        label: "Al Wakeelo Engine",
+        description: "Main legal AI workspace",
+        icon: Scale,
+        href: "/al-wakeelo",
+      },
+    ],
+  },
+  {
+    id: "research",
+    label: "Research",
+    items: [
+      {
+        id: "judgments",
+        label: "Judgments",
+        description: "Case law search and citations",
+        icon: Gavel,
+        href: "/judgments",
+      },
+      {
+        id: "statute-search",
+        label: "Statute Search",
+        description: "Browse laws and sections",
+        icon: Book,
+        href: "/statute-search",
+      },
+      {
+        id: "knowledge-vault",
+        label: "Knowledge Vault",
+        description: "Your legal knowledge base",
+        icon: Database,
+        href: "/knowledge-vault",
+      },
+    ],
+  },
+  {
+    id: "drafting",
+    label: "Drafting",
+    items: [
+      {
+        id: "legal-drafting",
+        label: "Legal Drafting",
+        description: "Court-ready litigation drafting",
+        icon: FileText,
+        href: "/legal-drafting",
+      },
+      {
+        id: "contract-drafting",
+        label: "Contract Drafting",
+        description: "Contracts and clause workflows",
+        icon: Sparkles,
+        href: "/contract-drafting",
+      },
+    ],
+  },
+  {
+    id: "records",
+    label: "Records",
+    items: [
+      {
+        id: "case-documents",
+        label: "Case Documents",
+        description: "Uploaded files and case records",
+        icon: FileBadge,
+        href: "/case-documents",
+      },
+      {
+        id: "bookmarks",
+        label: "Bookmarks",
+        description: "Saved AI and research outputs",
+        icon: Bookmark,
+        href: "/bookmarks",
+      },
+      {
+        id: "history",
+        label: "Search History",
+        description: "Recent legal queries",
+        icon: History,
+        href: "/history",
+      },
+      {
+        id: "organization",
+        label: "Organization",
+        description: "Chamber collaboration settings",
+        icon: Building2,
+        href: "/organization",
+      },
+    ],
+  },
 ];
 
 function AppSidebar() {
@@ -41,7 +145,10 @@ function AppSidebar() {
   const { user, logout } = useAuth();
   const tier = String(user?.subscriptionTier || "").toLowerCase();
   const canSeeOrganization = !!user && (user.isAdmin || tier === "chamber" || tier === "enterprise");
-  const visibleNavigationItems = NAVIGATION_ITEMS.filter((item) => item.id !== "organization" || canSeeOrganization);
+  const visibleNavigationGroups = NAVIGATION_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => item.id !== "organization" || canSeeOrganization),
+  })).filter((group) => group.items.length > 0);
 
   return (
     <Sidebar className={cn(
@@ -64,51 +171,67 @@ function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="scrollbar-hide px-1.5 py-2">
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[8px] font-black uppercase tracking-[0.28em] text-slate-500 px-3 pb-1.5">
-            Workspace
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {visibleNavigationItems.map((item) => {
-                const Icon = item.icon;
-                const isJudgmentsItem = item.id === "judgments";
-                const isActive =
-                  (isJudgmentsItem && location.startsWith("/judgments")) ||
-                  location === item.href ||
-                  (item.href === "/dashboard" && location === "/");
-                return (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      data-testid={`nav-${item.id}`}
-                      className={cn(
-                        "nav-glow-button rounded-xl py-2.5 border border-transparent bg-transparent transition-all",
-                        "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
-                        isActive && "bg-gradient-to-r from-amber-300 to-amber-500 text-slate-950 font-black border-amber-300/40 shadow-[0_16px_30px_-24px_rgba(251,191,36,0.8)] data-[active=true]:bg-gradient-to-r data-[active=true]:from-amber-300 data-[active=true]:to-amber-500 data-[active=true]:text-slate-950"
-                      )}
-                    >
-                      <Link href={item.href}>
-                        <Icon size={16} className={isActive ? "text-slate-900" : "text-slate-400"} />
-                        <span className="nav-label text-[9px] font-black uppercase tracking-[0.13em]">{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="scrollbar-hide px-2 py-1.5">
+        {visibleNavigationGroups.map((group) => (
+          <SidebarGroup key={group.id} className="p-1.5 mb-1 last:mb-0">
+            <SidebarGroupLabel className="h-6 px-2.5 pb-0.5 text-[8px] font-black uppercase tracking-[0.26em] text-slate-500/85">
+              {group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isJudgmentsItem = item.id === "judgments";
+                  const isActive =
+                    (isJudgmentsItem && location.startsWith("/judgments")) ||
+                    location === item.href ||
+                    (item.href === "/dashboard" && location === "/");
+                  return (
+                    <SidebarMenuItem key={item.id}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        data-testid={`nav-${item.id}`}
+                        className={cn(
+                          "nav-glow-button h-auto rounded-xl border border-transparent px-2 py-1.5 transition-all",
+                          "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
+                          isActive &&
+                            "border-amber-300/35 bg-gradient-to-r from-amber-300/15 to-amber-500/10 text-slate-100 shadow-[0_16px_30px_-24px_rgba(251,191,36,0.65)] data-[active=true]:border-amber-300/35 data-[active=true]:bg-gradient-to-r data-[active=true]:from-amber-300/15 data-[active=true]:to-amber-500/10 data-[active=true]:text-slate-100"
+                        )}
+                      >
+                        <Link href={item.href} className="flex w-full items-center gap-2" title={item.description}>
+                          <span
+                            className={cn(
+                              "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all",
+                              isActive
+                                ? "border-amber-300/45 bg-gradient-to-br from-amber-300 to-amber-500 text-slate-950 shadow-[0_10px_18px_-12px_rgba(251,191,36,0.9)]"
+                                : "border-slate-700 bg-[#121f35]/70 text-slate-400"
+                            )}
+                          >
+                            <Icon size={14} />
+                          </span>
+                          <span className="nav-label min-w-0 flex-1">
+                            <span className={cn("block truncate text-[12px] font-semibold leading-tight", isActive ? "text-slate-100" : "text-slate-200")}>
+                              {item.label}
+                            </span>
+                          </span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-[hsl(var(--preview-border))] p-3">
-        <div className="mb-2.5 rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 backdrop-blur-md px-2.5 py-2">
+        <div className="mb-2 rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 backdrop-blur-md px-2.5 py-1.5">
           <p className="text-[8px] uppercase tracking-[0.2em] text-slate-500 font-black">Signed in as</p>
           <p className="text-xs font-bold text-slate-200 truncate">{user?.email || "Advocate"}</p>
         </div>
-        <SidebarMenu className="space-y-1">
+        <SidebarMenu className="gap-0.5">
           {user?.isAdmin && (
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -116,14 +239,14 @@ function AppSidebar() {
                 isActive={location === "/admin"}
                 data-testid="nav-admin"
                 className={cn(
-                  "nav-glow-button rounded-xl py-2.5 border border-transparent transition-all",
+                  "nav-glow-button rounded-xl py-2 border border-transparent transition-all",
                   "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
                   location === "/admin" && "bg-gradient-to-r from-amber-300 to-amber-500 text-slate-950 font-black border-amber-300/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-amber-300 data-[active=true]:to-amber-500 data-[active=true]:text-slate-950"
                 )}
               >
                 <Link href="/admin">
                   <Shield size={16} className={location === "/admin" ? "text-slate-900" : "text-slate-400"} />
-                  <span className="nav-label text-[9px] font-black uppercase tracking-[0.13em]">Admin Panel</span>
+                  <span className="nav-label text-[11px] font-bold">Admin Panel</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -134,14 +257,14 @@ function AppSidebar() {
               isActive={location === "/settings"}
               data-testid="nav-settings"
               className={cn(
-                "nav-glow-button rounded-xl py-2.5 border border-transparent transition-all",
+                "nav-glow-button rounded-xl py-2 border border-transparent transition-all",
                 "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
                 location === "/settings" && "bg-gradient-to-r from-amber-300 to-amber-500 text-slate-950 font-black border-amber-300/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-amber-300 data-[active=true]:to-amber-500 data-[active=true]:text-slate-950"
               )}
             >
               <Link href="/settings">
                 <Settings size={16} className={location === "/settings" ? "text-slate-900" : "text-slate-400"} />
-                <span className="nav-label text-[9px] font-black uppercase tracking-[0.13em]">Settings</span>
+                <span className="nav-label text-[11px] font-bold">Settings</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -149,10 +272,10 @@ function AppSidebar() {
             <SidebarMenuButton
               onClick={() => logout()}
               data-testid="button-logout"
-              className="nav-glow-button rounded-xl border border-transparent py-2.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all"
+              className="nav-glow-button rounded-xl border border-transparent py-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all"
             >
               <LogOut size={16} />
-              <span className="nav-label text-[9px] font-black uppercase tracking-[0.13em]">Exit Vault</span>
+              <span className="nav-label text-[11px] font-bold">Exit Vault</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -170,16 +293,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [location] = useLocation();
   const isWideChatLayout =
+    location === "/" ||
+    location === "/dashboard" ||
     location === "/al-wakeelo" ||
     location === "/legal-drafting" ||
     location === "/contract-drafting" ||
     location === "/case-documents" ||
-    location === "/knowledge-vault" ||
-    location === "/organization";
+    location === "/organization" ||
+    location.startsWith("/judgments") ||
+    location.startsWith("/judgment") ||
+    location.startsWith("/statute") ||
+    location.startsWith("/knowledge-vault");
   const isEdgeAttachedLayout = location === "/al-wakeelo";
 
   const style = {
-    "--sidebar-width": "14.75rem",
+    "--sidebar-width": "16.5rem",
     "--sidebar-width-icon": "3rem",
   };
 
@@ -221,11 +349,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 ? "p-0"
                 : isWideChatLayout
                   ? "p-1 sm:p-1.5 md:p-2.5"
-                  : "p-1.5 sm:p-2 md:p-6"
+                  : "p-2 sm:p-3 md:p-6"
             }`,
             "mac-main-layer"
           )}>
-            <div className={`${isWideChatLayout ? "max-w-none" : "max-w-6xl"} mx-auto h-full w-full`}>
+            <div className={cn(
+              `${isWideChatLayout ? "max-w-none" : "max-w-6xl"} mx-auto h-full w-full`,
+              "module-typography-harmony",
+              !isWideChatLayout && "rounded-[1.75rem] border border-[hsl(var(--preview-border))] bg-[linear-gradient(180deg,hsl(var(--preview-surface-elevated))/0.55,hsl(var(--preview-surface))/0.45)] shadow-[0_24px_48px_-30px_rgba(2,6,23,0.95)] p-3 sm:p-4 md:p-6"
+            )}>
               {children}
             </div>
           </main>

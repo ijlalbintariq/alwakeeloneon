@@ -107,6 +107,38 @@
   height: 0.94em !important;
 }
 
+/* Shared module typography system for consistent text styling across pages */
+.module-typography-harmony {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.module-typography-harmony :where(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: -0.016em;
+  line-height: 1.12;
+  color: hsl(var(--preview-text-primary));
+}
+
+.module-typography-harmony :where(p, li, label, small) {
+  font-family: var(--font-sans);
+  line-height: 1.55;
+}
+
+.module-typography-harmony :where(button, input, textarea, select, option) {
+  font-family: var(--font-sans);
+}
+
+.module-typography-harmony :where(.font-serif) {
+  font-family: var(--font-heading) !important;
+}
+
+.module-typography-harmony :where(.font-sans) {
+  font-family: var(--font-sans) !important;
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }

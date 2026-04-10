@@ -118,107 +118,133 @@ export default function StatuteSearchPage() {
   }
 
   return (
-    <div className="space-y-7 md:space-y-10 fade-in pb-20" data-testid="statute-search-page">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Search Statutes Instantly!
-          </h2>
-          <p className="text-slate-500 mt-2 font-medium">Search, read & consult AI on Pakistani statutes.</p>
-        </div>
-      </div>
-
-      <div className="relative w-full max-w-2xl mx-auto" ref={searchRef}>
-        <div className="flex gap-2 sm:gap-3 bg-[#1e293b] p-2.5 sm:p-3 rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-800 shadow-2xl">
-          <div className="flex items-center px-2 sm:px-4">
-            <Search size={18} className="text-slate-500" />
+    <div className="h-full min-h-0 flex flex-col gap-2.5 fade-in" data-testid="statute-search-page">
+      <section className="relative overflow-hidden rounded-2xl border border-amber-300/20 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.20),rgba(15,23,42,0.85)_45%,rgba(2,6,23,0.95)_100%)] px-4 py-4 sm:px-5 sm:py-5 shadow-[0_24px_40px_-28px_rgba(2,6,23,0.95)]">
+        <div className="pointer-events-none absolute -left-8 -top-10 h-36 w-36 rounded-full bg-amber-400/15 blur-2xl" />
+        <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-blue-400/10 blur-2xl" />
+        <div className="relative z-10 flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-[0.22em] font-black text-amber-200/80">Pakistani Statute Library</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-none tracking-tight text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Statute Search
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-200/85">Search, open, and navigate Acts, Codes, Ordinances, and Rules.</p>
+            </div>
+            <div className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl border border-amber-300/25 bg-[#111b2e]/70 text-amber-300 shadow-[0_16px_30px_-22px_rgba(251,191,36,0.9)]">
+              <Book size={18} />
+            </div>
           </div>
-          <input
-            className="flex-1 bg-transparent border-none py-3 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-600"
-            placeholder="Search statutes, acts, ordinances..."
-            value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
-            onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-            data-testid="input-statute-search"
-          />
-          {query && (
-            <button
-              onClick={() => { setQuery(""); setSuggestions([]); setShowDropdown(false); }}
-              className="p-2 text-slate-500 hover:text-white transition-colors"
-              data-testid="button-clear-search"
-            >
-              <X size={16} />
-            </button>
-          )}
-          {isSearching && <Loader2 size={18} className="text-amber-500 animate-spin self-center mr-2" />}
-          <button
-            onClick={() => handleQuickSearch(query)}
-            className="p-3 sm:p-4 bg-amber-500 text-slate-950 rounded-[1rem] sm:rounded-[2rem] hover:bg-amber-400 transition-all shadow-xl active:scale-95"
-            data-testid="button-statute-search"
-          >
-            <Search size={20} />
-          </button>
-        </div>
 
-        {showDropdown && suggestions.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-[#1e293b] border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[400px] overflow-y-auto" data-testid="search-dropdown">
-            {suggestions.map((doc) => (
-              <button
-                key={doc.id}
-                className="w-full text-left px-4 sm:px-6 py-3 sm:py-4 hover:bg-slate-700/50 transition-colors border-b border-slate-800 last:border-b-0 flex items-center gap-3 sm:gap-4"
-                onClick={() => handleSelectStatute(doc)}
-                data-testid={`dropdown-item-${doc.id}`}
-              >
-                <FileText size={16} className="text-slate-500 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-white truncate">{doc.title}</p>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">{doc.category}</p>
-                </div>
-                <ChevronRight size={14} className="text-slate-600 flex-shrink-0 ml-auto" />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="bg-[#1e293b] border border-slate-800 rounded-[1.5rem] md:rounded-[3rem] p-4 sm:p-6 md:p-10 shadow-2xl space-y-6 md:space-y-8 overflow-hidden relative">
-        <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none scale-150"><Book size={200} /></div>
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl"><Book size={24} /></div>
-          <div>
-            <h4 className="text-lg font-bold text-white tracking-tight uppercase italic" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Pakistani Legal Pillars: Quick Access
-            </h4>
-            <p className="text-[9px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">Direct statutory references — tap to search.</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 relative z-10">
-          {COMMON_STATUTES.map((cat, idx) => (
-            <div key={idx} className="space-y-4">
-              <div className="border-b border-slate-800 pb-3">
-                <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500 mb-1">{cat.category}</h5>
-                <p className="text-[9px] text-slate-500 leading-relaxed italic">{cat.description}</p>
+          <div className="relative" ref={searchRef}>
+            <div className="flex items-center gap-2 rounded-2xl border border-amber-300/20 bg-[#0b1222]/75 p-2 shadow-[0_24px_42px_-28px_rgba(2,6,23,1)] backdrop-blur-md">
+              <div className="flex items-center px-2">
+                <Search size={17} className="text-amber-300/80" />
               </div>
-              <div className="space-y-2">
-                {cat.items.map((stat, i) => (
+              <input
+                className="flex-1 bg-transparent border-none py-2 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-400"
+                placeholder="Search statutes, acts, ordinances..."
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+                data-testid="input-statute-search"
+              />
+              {query && (
+                <button
+                  onClick={() => {
+                    setQuery("");
+                    setSuggestions([]);
+                    setShowDropdown(false);
+                  }}
+                  className="p-2 text-slate-500 hover:text-white transition-colors"
+                  data-testid="button-clear-search"
+                >
+                  <X size={16} />
+                </button>
+              )}
+              {isSearching && <Loader2 size={18} className="text-amber-500 animate-spin self-center mr-1" />}
+              <button
+                onClick={() => handleQuickSearch(query)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200/70 bg-gradient-to-r from-amber-300 to-amber-400 px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-950 hover:from-amber-200 hover:to-amber-300 transition-all active:scale-95"
+                data-testid="button-statute-search"
+              >
+                <Search size={13} />
+                Search
+              </button>
+            </div>
+
+            {showDropdown && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl border border-[hsl(var(--preview-border))] bg-[#111b2e] shadow-2xl z-50 overflow-hidden max-h-[420px] overflow-y-auto" data-testid="search-dropdown">
+                {suggestions.map((doc) => (
                   <button
-                    key={i}
-                    onClick={() => handleQuickSearch(stat.query)}
-                    className="w-full text-left p-3 sm:p-4 bg-[#0f172a] border border-slate-800 rounded-xl sm:rounded-2xl transition-all hover:border-amber-500/50 group"
-                    data-testid={`statute-quick-${idx}-${i}`}
+                    key={doc.id}
+                    className="w-full text-left px-4 py-3 hover:bg-slate-700/40 transition-colors border-b border-slate-800/80 last:border-b-0 flex items-center gap-3"
+                    onClick={() => handleSelectStatute(doc)}
+                    data-testid={`dropdown-item-${doc.id}`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-bold text-slate-300 group-hover:text-white transition-colors">{stat.label}</span>
-                      <ChevronRight size={12} className="text-slate-700 group-hover:text-amber-500 transition-all" />
+                    <div className="h-8 w-8 flex-shrink-0 rounded-lg border border-[hsl(var(--preview-border))] bg-[#0f172a] flex items-center justify-center">
+                      <FileText size={14} className="text-slate-400" />
                     </div>
-                    <p className="text-[9px] text-slate-600 group-hover:text-slate-400 transition-colors leading-relaxed line-clamp-2">{stat.detail}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">{doc.title}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-[0.18em]">{doc.category}</p>
+                    </div>
+                    <ChevronRight size={14} className="text-slate-600 flex-shrink-0 ml-auto" />
                   </button>
                 ))}
               </div>
-            </div>
-          ))}
+            )}
+          </div>
         </div>
-      </div>
+      </section>
+
+      <section className="flex-1 min-h-0 rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.58] p-2.5 sm:p-3 relative overflow-hidden">
+        <div className="absolute -right-8 -top-8 opacity-[0.03] pointer-events-none scale-[1.6]">
+          <Book size={220} />
+        </div>
+        <div className="relative z-10 h-full flex flex-col gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e] text-amber-400">
+              <Book size={12} />
+            </div>
+            <div>
+              <h4 className="text-sm sm:text-base font-bold leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Quick Statute Access
+              </h4>
+              <p className="text-[9px] text-slate-500 uppercase tracking-[0.12em] font-bold">
+                Tap any reference to search instantly
+              </p>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+            {COMMON_STATUTES.map((cat, idx) => (
+              <article key={idx} className="h-full rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f172a]/75 p-4 space-y-2.5">
+                <div className="pb-1 border-b border-[hsl(var(--preview-border))]">
+                  <h5 className="text-[10px] font-black uppercase tracking-[0.12em] text-amber-400 mb-1">{cat.category}</h5>
+                  <p className="text-[11px] text-slate-500 leading-snug text-justify">{cat.description}</p>
+                </div>
+                <div className="space-y-1.5">
+                  {cat.items.map((stat, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleQuickSearch(stat.query)}
+                      className="w-full text-left rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e]/80 px-3 py-2 transition-all hover:border-amber-400/45 hover:bg-[#15233a] group"
+                      data-testid={`statute-quick-${idx}-${i}`}
+                    >
+                      <div className="flex items-start justify-between gap-1.5 mb-0.5">
+                        <span className="text-[11px] font-semibold text-slate-200 group-hover:text-white transition-colors">{stat.label}</span>
+                        <ChevronRight size={11} className="text-slate-600 group-hover:text-amber-400 transition-colors flex-shrink-0" />
+                      </div>
+                      <p className="text-[10px] text-slate-500 group-hover:text-slate-400 transition-colors leading-snug text-justify">{stat.detail}</p>
+                    </button>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
