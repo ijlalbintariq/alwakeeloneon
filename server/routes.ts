@@ -10565,12 +10565,15 @@ The user has attached the following documents for your reference. Analyze them c
               temperature,
             })) {
               // Add space between chunks only when needed (word boundary)
+              // BUT: Don't add spaces around JSON structural characters
               const chunk = text || "";
               if (fullContent && chunk && 
                   !/^\s/.test(chunk) && 
                   !/\s$/.test(fullContent) &&
                   !/\n$/.test(fullContent) &&
-                  !/^\n/.test(chunk)) {
+                  !/^\n/.test(chunk) &&
+                  !/^[{[\\":,}\]:]/.test(chunk) &&  // Don't add space before JSON chars
+                  !/[{[\\":,}\]:]$/.test(fullContent)) {  // Don't add space after JSON chars
                 fullContent += " ";
               }
               fullContent += chunk;
@@ -10580,12 +10583,15 @@ The user has attached the following documents for your reference. Analyze them c
             usedModel = getGroqModelName();
             for await (const text of streamWithGroq({ messages: streamMessages, maxTokens: tokenLimit, temperature })) {
               // Add space between chunks only when needed (word boundary)
+              // BUT: Don't add spaces around JSON structural characters
               const chunk = text || "";
               if (fullContent && chunk && 
                   !/^\s/.test(chunk) && 
                   !/\s$/.test(fullContent) &&
                   !/\n$/.test(fullContent) &&
-                  !/^\n/.test(chunk)) {
+                  !/^\n/.test(chunk) &&
+                  !/^[{[\\":,}\]:]/.test(chunk) &&  // Don't add space before JSON chars
+                  !/[{[\\":,}\]:]$/.test(fullContent)) {  // Don't add space after JSON chars
                 fullContent += " ";
               }
               fullContent += chunk;
