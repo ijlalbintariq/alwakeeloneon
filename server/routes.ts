@@ -2343,6 +2343,26 @@ function isDirectModePrompt(text: string): boolean {
   return directPatterns.some((rx) => rx.test(normalized));
 }
 
+/**
+ * Detect if prompt is a search/lookup query.
+ * Returns true if user is searching for case law or statutes, not asking for general advice.
+ */
+function isSearchModePrompt(text: string): boolean {
+  const normalized = (text || "").trim().toLowerCase();
+  if (!normalized || normalized.length < 10) return false;
+  
+  const searchPatterns = [
+    /\b(search|find|look up|lookup|check|verify|retrieve|find|fetch)\b/,
+    /^(search|find|check|what is|what's)\s+/,
+    /\b(case|judgment|ruling|statute|section|provision|law)\b.*\b(search|find|check|lookup)\b/,
+  ];
+  
+  const hasSearchIntent = searchPatterns.some(p => p.test(normalized));
+  const hasLegalKeywords = /\b(case|judgment|ruling|statute|section|provision|article|law|act|code|ordinance)\b/i.test(text);
+  
+  return hasSearchIntent && hasLegalKeywords;
+}
+
 function getDirectModeSystemPrompt(): string {
   return `You are Al Wakeelo.
 Follow the latest user instruction exactly.
@@ -5432,15 +5452,76 @@ function shouldSearchCaseLaw(query: string): boolean {
   return legalPatterns.some(p => p.test(query));
 }
 
-async function gatherKnowledgeContext(query: string, userId?: string): Promise<string> {
+async function gatherKnowledgeContext(query: string, userId?: string, searchMode: boolean = false): Promise<string> {
   const normalizedQuery = normalizeQuery(query).slice(0, 320);
   if (!normalizedQuery) return "";
-  const cacheKey = `${userId || "anon"}::${normalizedQuery}`;
+  const cacheKey = `${userId || "anon"}::${normalizedQuery}${searchMode ? "::search" : ""}`;
   const cached = getTimedCacheValue(knowledgeContextCache, cacheKey);
   if (cached !== undefined) return cached;
 
   const contextParts: string[] = [];
 
+  // In search mode, ONLY search case law and statutes for speed
+  if (searchMode) {
+    const needsCaseLaw = shouldSearchCaseLaw(query);
+
+    const caseLawPromise: Promise<CaseLaw[]> = needsCaseLaw && userId
+      ? (async () => {
+          try {
+            return await withOperationTimeout(
+              searchCaseLawWithFullText({
+                userId,
+                query,
+                limit: 6, // More results for focused search
+                sort: "relevance",
+              }),
+              KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
+              `Knowledge case-law search timeout`,
+            );
+          } catch (err) {
+            console.warn("[Knowledge:Search] Case-law full-text search fallback:", getErrorMessage(err));
+            const fallbackRows = await storage.searchCaseLaw(query, 6).catch(() => []);
+            return filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(fallbackRows));
+          }
+        })()
+      : needsCaseLaw ? storage.searchCaseLaw(query, 6) : Promise.resolve([] as CaseLaw[]);
+
+    const statutePromise = storage.searchStatutes(query, 5);
+
+    const [caseLawResult, statutesResult] = await Promise.all([
+      caseLawPromise,
+      statutePromise,
+    ]);
+
+    // Add statutes
+    if (statutesResult.length > 0) {
+      contextParts.push("=== STATUTES & REGULATIONS ===");
+      for (const s of statutesResult.slice(0, 5)) {
+        contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
+      }
+    }
+
+    // Add case law
+    if (caseLawResult.length > 0) {
+      const caseLawLines: string[] = [];
+      for (const c of caseLawResult.slice(0, 6)) {
+        caseLawLines.push(`- ${c.citation} (${c.court}): ${c.title} — ${c.summary}`);
+      }
+      if (caseLawLines.length > 0) {
+        contextParts.push("=== CASE LAW & JUDGMENTS ===");
+        contextParts.push(...caseLawLines);
+      }
+    }
+
+    const finalContext = contextParts.length === 0
+      ? ""
+      : `\n\nLEGAL SEARCH RESULTS:\n\n${contextParts.join("\n\n")}`;
+
+    setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
+    return finalContext;
+  }
+
+  // Normal (non-search) mode: gather all knowledge sources
   // Skip case law for non-legal queries to improve performance
   const needsCaseLaw = shouldSearchCaseLaw(query);
 
@@ -5955,7 +6036,8 @@ export async function registerRoutes(
         content: firstMessage,
       });
 
-      const knowledgeContext = await gatherKnowledgeContext(firstMessage, userId);
+      const searchMode = isSearchModePrompt(firstMessage);
+      const knowledgeContext = await gatherKnowledgeContext(firstMessage, userId, searchMode);
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       let usedModel = "";
@@ -6177,7 +6259,8 @@ export async function registerRoutes(
         parts: [{ text: m.content }],
       }));
 
-      const knowledgeContext = await gatherKnowledgeContext(message, userId);
+      const searchMode = isSearchModePrompt(message);
+      const knowledgeContext = await gatherKnowledgeContext(message, userId, searchMode);
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       const result = await callStandardAI(systemPromptFull, geminiContents, TOKEN_LIMITS.chat);
@@ -9320,7 +9403,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
             .join("\n"),
           2600,
         );
-        const legalKnowledgeContextRaw = await gatherKnowledgeContext(legalKnowledgeQuery, userId);
+        const legalKnowledgeContextRaw = await gatherKnowledgeContext(legalKnowledgeQuery, userId, false);
         const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 3200);
         const legalKnowledgeContextBlock = legalKnowledgeContext
           ? legalKnowledgeContext
@@ -10276,7 +10359,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         ? (
           extractedAttachmentCount > 0
             ? ""
-            : await gatherKnowledgeContext(lastUserMessage.content, userId)
+            : await gatherKnowledgeContext(lastUserMessage.content, userId, isSearchModePrompt(lastUserMessage.content))
         )
         : "";
       if (attachmentContext) {
@@ -10749,7 +10832,8 @@ The user has attached the following documents for your reference. Analyze them c
       }
 
       const searchTerm = citation || title;
-      const knowledgeContext = await gatherKnowledgeContext(searchTerm, userId);
+      // Judgment summary is an explicit search/lookup, always use search mode
+      const knowledgeContext = await gatherKnowledgeContext(searchTerm, userId, true);
 
       let fullText = "";
       try {
@@ -10991,7 +11075,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const cacheKey = `${query}::${JSON.stringify(findings)}`;
 
       const { content: summary, fromCache } = await getCachedOrCall("summarize", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(query);
+        const knowledgeContext = await gatherKnowledgeContext(query, undefined, true);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`;
         const userInput = `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.`;
         const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.summarize, { timeoutProfile: "analysis", temperature: 0.3 });
@@ -11018,7 +11102,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
 
       let briefModel = getGroqModelName();
       const { content: brief, fromCache } = await getCachedOrCall("brief", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
+        const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`, undefined, true);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;
         const userInput = `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}`;
         const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.brief, { timeoutProfile: "analysis", temperature: 0.3 });
@@ -11052,7 +11136,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 14000)}`;
 
       const { content: responseText, fromCache } = await getCachedOrCall("draft-risk-analysis", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
+        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId, false);
         const sysInstruction = `${getLegalSystemPrompt()}
 
 You are a legal drafting risk scanner for Pakistani legal documents.
@@ -11175,7 +11259,7 @@ RULES:
       const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 16000)}\nmax:${safeMaxEdits}`;
 
       const { content: responseText, fromCache } = await getCachedOrCall("draft-recommendations", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
+        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId, false);
         const sysInstruction = `You are a Pakistani court drafting redline assistant.
 
 TASK:
@@ -14136,7 +14220,7 @@ Instructions:
         systemPrompt += `\n\n${systemContext}`;
       }
 
-      const knowledgeContext = await gatherKnowledgeContext(message, userId);
+      const knowledgeContext = await gatherKnowledgeContext(message, userId, isSearchModePrompt(message));
       systemPrompt += knowledgeContext;
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
@@ -14262,7 +14346,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
-      const knowledgeContext = await gatherKnowledgeContext(message, userId);
+      const knowledgeContext = await gatherKnowledgeContext(message, userId, isSearchModePrompt(message));
       systemPrompt += knowledgeContext;
 
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
