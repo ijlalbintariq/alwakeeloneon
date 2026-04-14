@@ -34,6 +34,14 @@ import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName } from "./deepseek-ai";
+import {
+  isAiRouterV2Enabled,
+  raceToDeadline,
+  streamWithFallback,
+  callWithFallback,
+  DEFAULT_STANDARD_CHAIN,
+  DEFAULT_TURBO_CHAIN,
+} from "./ai-router";
 import { getModuleProfile, normalizeModuleType, type ModuleIntent, type ModuleType } from "./ai-module-profiles";
 import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAuditEvent, unbanUser } from "./security-governance";
 import { scanUploadedBuffer } from "./file-scan";
@@ -2341,113 +2349,6 @@ function isDirectModePrompt(text: string): boolean {
     /\bjust\b/,
   ];
   return directPatterns.some((rx) => rx.test(normalized));
-}
-
-/**
- * Detect if prompt is a search/lookup query.
- * Returns true if user is searching for case law or statutes, not asking for general advice.
- */
-function isSearchModePrompt(text: string): boolean {
-  const normalized = (text || "").trim().toLowerCase();
-  if (!normalized || normalized.length < 10) return false;
-  
-  const searchPatterns = [
-    /\b(search|find|look up|lookup|check|verify|retrieve|find|fetch)\b/,
-    /^(search|find|check|what is|what's)\s+/,
-    /\b(case|judgment|ruling|statute|section|provision|law)\b.*\b(search|find|check|lookup)\b/,
-  ];
-  
-  const hasSearchIntent = searchPatterns.some(p => p.test(normalized));
-  const hasLegalKeywords = /\b(case|judgment|ruling|statute|section|provision|article|law|act|code|ordinance)\b/i.test(text);
-  
-  return hasSearchIntent && hasLegalKeywords;
-}
-
-/**
- * Classify query type: Procedural (process/mechanics) vs Substantive (rights/validity/interpretation)
- * Used for intelligent knowledge source selection
- * 
- * PROCEDURAL: How-to, time limits, fees, filing, jurisdiction → FAST PATH (statutes only)
- * SUBSTANTIVE: Rights, validity, interpretation, inheritance, property → DEEP PATH (statutes + case law)
- */
-function classifyQuery(text: string): "procedural" | "substantive" {
-  const normalized = (text || "").trim().toLowerCase();
-  if (!normalized) return "substantive"; // Default to comprehensive
-  
-  // Strong procedural indicators: process, timing, mechanics, fees
-  const proceduralPatterns = [
-    /\b(how\s+to|how\s+do|how\s+do\s+i|how\s+can\s+i|how\s+does|procedure|process|steps|filing|file|submit|apply|register)\b/,
-    /\b(time\s+limit|time\s+period|deadline|period|within|days|time\..*file|how\s+long)\b/,
-    /\b(fee|fees|cost|charges|expense|payment|pay)\b.*\b(file|court|appeal|petition)\b/,
-    /\b(jurisdiction|court|tribunal|forum|authority).*\b(appropriate|competent|can.*hear|handle)\b/,
-    /\b(requirement|requirement|eligible|eligibility|qualification|who\s+can)\b/,
-    /\breply\s+to|respond|counter|objection|response/,
-  ];
-  
-  // Strong substantive indicators: rights, validity, interpretation, principles
-  const substantivePatterns = [
-    /\b(right|rights|obligation|liability|duty|entitlement|claim|defense|defect)\b/,
-    /\b(valid|validity|invalid|enforceability|enforceable|enforceable|void|voidable)\b/,
-    /\b(interpret|interpretation|meaning|definition|scope|applicability|exception)\b/,
-    /\b(inherit|inheritance|succession|estate|gift|legacy|devise|bequest)\b/,
-    /\b(property|ownership|possession|title|lien|mortgage|encumbrance)\b/,
-    /\b(contract|agreement|consent|consideration|breach|performance|damages)\b/,
-    /\b(negligence|tort|nuisance|trespass|defamation|fraud|misrepresentation)\b/,
-    /\b(mens\s+rea|actus\s+reus|intent|motive|premeditation|provocation)\b/,
-  ];
-  
-  const hasProcedural = proceduralPatterns.some(p => p.test(normalized));
-  const hasSubstantive = substantivePatterns.some(p => p.test(normalized));
-  
-  // If both patterns match or neither matches, default to substantive (more comprehensive)
-  // If only procedural matches, return procedural (fast path)
-  if (hasProcedural && !hasSubstantive) {
-    return "procedural";
-  }
-  return "substantive";
-}
-
-/**
- * Sanitize JSON output to ensure valid, minified formatting
- * Removes any accidental spaces in JSON structural elements
- * Ensures "laws" and "judgments" keys are never malformed
- */
-function sanitizeJsonOutput(jsonStr: string): string {
-  try {
-    // First, try to parse as-is to validate structure
-    const parsed = JSON.parse(jsonStr);
-    
-    // Reconstruct with minified format (no spaces around keys/values)
-    // This ensures {"laws":[],"judgments":[]} format
-    return JSON.stringify({
-      laws: Array.isArray(parsed.laws) ? parsed.laws : [],
-      judgments: Array.isArray(parsed.judgments) ? parsed.judgments : [],
-    });
-  } catch {
-    // If JSON parse fails, return safe default
-    return JSON.stringify({ laws: [], judgments: [] });
-  }
-}
-
-/**
- * Post-processor for streaming responses: ensures JSON blocks are properly formatted
- * Called after response generation to sanitize any malformed reference blocks
- */
-function sanitizeResponseReferences(content: string): string {
-  // Find and replace malformed JSON patterns
-  // Pattern: {space*"space*laws...} or {space*"space*judgments...}
-  return content
-    .replace(/\{\s*"\s*laws\s*"/g, '{"laws"')
-    .replace(/"\s*laws\s*"\s*:/g, '"laws":')
-    .replace(/"\s*judgments\s*"/g, '"judgments"')
-    .replace(/"\s*judgments\s*"\s*:/g, '"judgments":')
-    .replace(/\[\s+\{/g, '[{')  // Remove spaces after [
-    .replace(/\}\s+\]/g, '}]')  // Remove spaces before ]
-    .replace(/\},\s+\{/g, '},{')  // Remove spaces around object separators
-    .replace(/:\s+\[/g, ':[')  // Remove spaces after :
-    .replace(/"\s*,\s*"/g, '","')  // Normalize quoted separators
-    .replace(/"\s*:\s*"/g, '":"')  // Normalize key separators
-    .trim();
 }
 
 function getDirectModeSystemPrompt(): string {
@@ -5459,12 +5360,13 @@ async function getCachedOrCall(
 const KNOWLEDGE_EXCERPT_LIMIT = 1500;
 const KNOWLEDGE_SOURCES_PER_TIER = 2;
 const KNOWLEDGE_STATUTES_LIMIT = 3;
-// Reduced default from 6 to 4 for faster retrieval (still enough for good context)
-const KNOWLEDGE_CASELAW_LIMIT = Math.max(3, Number(process.env.KNOWLEDGE_CASELAW_LIMIT || 4));
+const KNOWLEDGE_CASELAW_LIMIT = Math.max(3, Number(process.env.KNOWLEDGE_CASELAW_LIMIT || 6));
 const KNOWLEDGE_CONTEXT_CACHE_TTL_MS = Math.max(10_000, Number(process.env.KNOWLEDGE_CONTEXT_CACHE_TTL_MS || 120_000));
 const KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS = Math.max(1_000, Number(process.env.KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS || 4_000));
-const KNOWLEDGE_CASELAW_EXCERPT_DOCS = Math.max(0, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_DOCS || 2));
+const KNOWLEDGE_CASELAW_EXCERPT_DOCS = Math.max(0, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_DOCS || 1));
 const KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS = Math.max(200, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS || 1_200));
+const KNOWLEDGE_OUTER_DEADLINE_MS = Math.max(500, Number(process.env.KNOWLEDGE_OUTER_DEADLINE_MS || 2_500));
+const KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS = Math.max(500, Number(process.env.KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS || 1_500));
 const CASE_CITATION_RESOLVE_CACHE_TTL_MS = Math.max(10_000, Number(process.env.CASE_CITATION_RESOLVE_CACHE_TTL_MS || 180_000));
 
 type TimedCacheValue<T> = {
@@ -5508,139 +5410,187 @@ function setTimedCacheValue<T>(
   }
 }
 
-
-/**
- * Sanitizes AI-generated JSON by stripping invalid whitespace in keys and structural elements.
- */
-function sanitizeAiJson(text: string): string {
-  if (!text) return "";
-  // Fix broken keys like " laws " or " jud gments "
-  let sanitized = text.replace(/"\s*([^"]+?)\s*"\s*:/g, (match, key) => {
-    return `"${key.replace(/\s+/g, "")}":`;
-  });
-  // Clean up structural whitespace
-  sanitized = sanitized.replace(/:\s+/g, ":").replace(/,\s+/g, ",");
-  return sanitized;
-}
-
-/**
- * Quick intent detection to skip unnecessary case law searches.
- * Returns true if query likely needs case law, false otherwise.
- */
-function shouldSearchCaseLaw(query: string): boolean {
-  if (!query || query.length < 60) return false; // Skip very short queries
-  
-  const lq = query.toLowerCase();
-  
-  // Legal keywords that warrant case law search
-  const legalPatterns = [
-    /\b(case|judgment|ruling|precedent|court|judge|law suit|liability|tort|damages?|plaintiff|defendant|conviction|acquitted?|appeal|decree|verdict)\b/i,
-    /\b(section|article|clause|statute|ordinance|act|code|regulation|rule|provision)\b/i,
-    /\b(legal|crime|criminal|civil|contract|obligation|right|remedy|guilty|innocent)\b/i,
-    /\b(dispute|litigation|trial|evidence|witness|argument|defense|prosecution)\b/i,
-  ];
-  
-  // Non-legal patterns that can skip case law
-  const nonLegalPatterns = [
-    /\b(how do i|what is|explain|definition|meaning|tell me about|procedure|steps?|guide)\b/i,
-    /\b(contact|phone|email|address|office|hours?|appointment|schedule)\b/i,
-    /\b(fee|cost|price|payment|billing|invoice|receipt)\b/i,
-  ];
-  
-  // If matches non-legal pattern, skip case law
-  if (nonLegalPatterns.some(p => p.test(query))) return false;
-  
-  // If matches legal pattern, search case law
-  return legalPatterns.some(p => p.test(query));
-}
-
-async function gatherKnowledgeContext(
-  query: string, 
-  userId?: string, 
-  searchMode: boolean = false,
-  isFollowUp: boolean = false
-): Promise<string> {
+async function gatherKnowledgeContext(query: string, userId?: string): Promise<string> {
   const normalizedQuery = normalizeQuery(query).slice(0, 320);
   if (!normalizedQuery) return "";
-  
-  // Classify query for Fast Path (procedural vs substantive)
-  const queryType = classifyQuery(normalizedQuery);
-  const cacheKey = `${userId || "anon"}::${normalizedQuery}${searchMode ? "::search" : ""}::${queryType}::v4`;
+  const cacheKey = `${userId || "anon"}::${normalizedQuery}`;
   const cached = getTimedCacheValue(knowledgeContextCache, cacheKey);
   if (cached !== undefined) return cached;
 
+  const outerDeadline = new Promise<string>((resolve) => {
+    setTimeout(() => resolve(""), KNOWLEDGE_OUTER_DEADLINE_MS);
+  });
+
+  const inner = (async (): Promise<string> => {
   const contextParts: string[] = [];
 
-  /**
-   * ARCHITECTURE: PRIMARY SOURCES ONLY
-   * Statutes and Case Law are the ONLY primary sources.
-   * Secondary sources (GitHub, Admin, User Docs) are SKIPPED unless explicitly required.
-   */
+  const caseLawPromise: Promise<CaseLaw[]> = userId
+    ? (async () => {
+        try {
+          return await withOperationTimeout(
+            searchCaseLawWithFullText({
+              userId,
+              query,
+              limit: KNOWLEDGE_CASELAW_LIMIT,
+              sort: "relevance",
+            }),
+            KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
+            `Knowledge case-law search timeout after ${KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS}ms`,
+          );
+        } catch (err) {
+          console.warn("[Knowledge] Case-law full-text search fallback:", getErrorMessage(err));
+          const fallbackRows = await storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT).catch(() => []);
+          return filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(fallbackRows));
+        }
+      })()
+    : storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT);
 
-  // Fast Path: Procedural queries (fees, time limits, how-to) -> STATUTES ONLY
-  if (queryType === "procedural" && !searchMode) {
-    const statutes = await storage.searchStatutes(normalizedQuery, KNOWLEDGE_STATUTES_LIMIT).catch(() => []);
-    
-    if (statutes.length > 0) {
-      contextParts.push("=== PRIMARY SOURCE: STATUTES & REGULATIONS ===");
-      for (const s of statutes) {
-        contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
-      }
+  // Resolve org docs in parallel with the other lookups instead of serially at the end.
+  const orgKnowledgePromise: Promise<{ orgName: string; docs: Array<{ title: string; content: string }> } | null> = userId
+    ? (async () => {
+        try {
+          const userOrg = await withOperationTimeout(
+            storage.getUserOrganization(userId),
+            KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS,
+            `Knowledge org lookup timeout after ${KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS}ms`,
+          );
+          if (!userOrg) return null;
+          const orgDocs = await withOperationTimeout(
+            storage.searchOrgKnowledge(userOrg.id, query, 3),
+            KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS,
+            `Knowledge org search timeout after ${KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS}ms`,
+          );
+          return { orgName: userOrg.name, docs: orgDocs || [] };
+        } catch {
+          return null;
+        }
+      })()
+    : Promise.resolve(null);
+
+  const promises: Promise<any>[] = [
+    storage.searchStatutes(query, KNOWLEDGE_STATUTES_LIMIT),
+    caseLawPromise,
+    storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
+    storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
+    orgKnowledgePromise,
+  ];
+  if (userId) {
+    promises.push(storage.getDocuments(userId));
+  }
+
+  const [statutesResult, caseLawResult, githubResult, adminResult, orgResult, userDocsResult] = await Promise.allSettled(promises);
+
+  if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
+    contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
+    for (const s of statutesResult.value.slice(0, KNOWLEDGE_STATUTES_LIMIT)) {
+      contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
     }
-  } else {
-    // Deep Path: Substantive queries or Search Mode -> STATUTES + CASE LAW
-    const needsCaseLaw = searchMode || shouldSearchCaseLaw(normalizedQuery);
+  }
 
-    const caseLawPromise: Promise<CaseLaw[]> = needsCaseLaw && userId
-      ? (async () => {
+  if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
+    const caseLawLines: string[] = [];
+    const candidateRows = caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT);
+    const withExcerpts = await Promise.all(
+      candidateRows.map(async (c, index) => {
+        let sourceExcerpt = "";
+        if (userId && index < KNOWLEDGE_CASELAW_EXCERPT_DOCS) {
           try {
-            return await withOperationTimeout(
-              searchCaseLawWithFullText({
-                userId,
-                query: normalizedQuery,
-                limit: searchMode ? 6 : KNOWLEDGE_CASELAW_LIMIT,
-                sort: "relevance",
+            let sourceText = await withOperationTimeout(
+              loadCaseLawSourceText(c, userId, {
+                includeMetadataFallback: false,
+                allowRemoteFileRead: false,
               }),
-              KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
-              `Knowledge case-law search timeout`,
+              KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS,
+              `Knowledge local excerpt timeout after ${KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS}ms`,
             );
-          } catch (err) {
-            console.warn("[Knowledge:Deep] Case-law full-text search fallback:", getErrorMessage(err));
-            return storage.searchCaseLaw(normalizedQuery, searchMode ? 6 : KNOWLEDGE_CASELAW_LIMIT).catch(() => []);
+            if (!sourceText.trim()) {
+              sourceText = await withOperationTimeout(
+                loadCaseLawSourceText(c, userId, {
+                  includeMetadataFallback: false,
+                  allowRemoteFileRead: true,
+                }),
+                KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS,
+                `Knowledge remote excerpt timeout after ${KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS}ms`,
+              );
+            }
+            if (sourceText.trim()) {
+              sourceExcerpt = sourceText.slice(0, 700).replace(/\s+/g, " ").trim();
+            }
+          } catch {
+            sourceExcerpt = "";
           }
-        })()
-      : needsCaseLaw ? storage.searchCaseLaw(normalizedQuery, searchMode ? 6 : KNOWLEDGE_CASELAW_LIMIT) : Promise.resolve([]);
-
-    const statutePromise = storage.searchStatutes(normalizedQuery, KNOWLEDGE_STATUTES_LIMIT).catch(() => []);
-
-    const [statutesResult, caseLawResult] = await Promise.all([
-      statutePromise,
-      caseLawPromise,
-    ]);
-
-    if (statutesResult.length > 0) {
-      contextParts.push("=== PRIMARY SOURCE: STATUTES & REGULATIONS ===");
-      for (const s of statutesResult) {
-        contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
+        }
+        return { row: c, sourceExcerpt };
+      }),
+    );
+    for (const item of withExcerpts) {
+      if (!item) continue;
+      caseLawLines.push(`- ${item.row.citation} (${item.row.court}): ${item.row.title} — ${item.row.summary}`);
+      if (item.sourceExcerpt) {
+        caseLawLines.push(`  Key Judgment Excerpt: ${item.sourceExcerpt}${item.sourceExcerpt.length >= 700 ? "..." : ""}`);
       }
     }
+    if (caseLawLines.length > 0) {
+      contextParts.push("=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===");
+      contextParts.push(...caseLawLines);
+    }
+  }
 
-    if (caseLawResult.length > 0) {
-      contextParts.push("=== PRIMARY SOURCE: JUDGMENTS & CASE LAW ===");
-      for (const c of caseLawResult) {
-        // "Extra effort" (detailed summaries) only for follow-ups or if explicitly brief/detailed info is likely needed
-        const summary = isFollowUp ? c.summary : (c.summary?.slice(0, 250) + "...");
-        contextParts.push(`- ${c.citation} (${c.court}): ${c.title} — ${summary}`);
+  if (githubResult.status === "fulfilled" && githubResult.value.length > 0) {
+    contextParts.push("=== CHAMBERS LEGAL LIBRARY (CURATED SOURCES) ===");
+    for (const doc of githubResult.value) {
+      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
+      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
+    }
+  }
+
+  if (adminResult.status === "fulfilled" && adminResult.value.length > 0) {
+    contextParts.push("=== CHAMBERS KNOWLEDGE VAULT (ADMIN UPLOADED) ===");
+    for (const doc of adminResult.value) {
+      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
+      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
+    }
+  }
+
+  if (userDocsResult && userDocsResult.status === "fulfilled" && userDocsResult.value.length > 0) {
+    const queryLower = query.toLowerCase();
+    const relevant = userDocsResult.value
+      .filter((d: any) => d.content && (
+        d.title?.toLowerCase().includes(queryLower) ||
+        d.content.toLowerCase().includes(queryLower) ||
+        queryLower.split(/\s+/).some((w: string) => w.length > 3 && (d.title?.toLowerCase().includes(w) || d.content.toLowerCase().includes(w)))
+      ))
+      .slice(0, 2);
+    if (relevant.length > 0) {
+      contextParts.push("=== USER'S CASE DOCUMENTS ===");
+      for (const doc of relevant) {
+        const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
+        contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
       }
+    }
+  }
+
+  if (orgResult && orgResult.status === "fulfilled" && orgResult.value && orgResult.value.docs.length > 0) {
+    contextParts.push(`=== ORGANIZATION KNOWLEDGE BASE (${orgResult.value.orgName}) ===`);
+    for (const doc of orgResult.value.docs) {
+      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
+      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
     }
   }
 
   const finalContext = contextParts.length === 0
     ? ""
-    : `\n\nLEGAL KNOWLEDGE CONTEXT (PRIMARY SOURCES):\n\n${contextParts.join("\n\n")}`;
+    : `\n\nREFERENCE MATERIALS (Use these as primary sources when answering. Prioritize this curated knowledge over general knowledge. Do NOT mention these sources or how you found them — present the information as your own expert analysis):\n\n${contextParts.join("\n\n")}`;
 
   setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
   return finalContext;
+  })();
+
+  const result = await Promise.race([inner, outerDeadline]);
+  if (!result) {
+    console.warn(`[Knowledge] Gather exceeded ${KNOWLEDGE_OUTER_DEADLINE_MS}ms deadline — returning empty context`);
+  }
+  return result || "";
 }
 
 async function seedLegalData() {
@@ -6003,8 +5953,7 @@ export async function registerRoutes(
         content: firstMessage,
       });
 
-      const searchMode = isSearchModePrompt(firstMessage);
-      const knowledgeContext = await gatherKnowledgeContext(firstMessage, userId, searchMode);
+      const knowledgeContext = await gatherKnowledgeContext(firstMessage, userId);
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       let usedModel = "";
@@ -6017,7 +5966,7 @@ export async function registerRoutes(
       const safeAiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse).catch(() => ensureAlWakeeloReferencesBlock(normalizedAiResponse));
 
       if (!fromCache) {
-        logUsageCost(userId, "chat", usedModel || getGroqModelName(), systemPromptFull + firstMessage, safeAiResponse).catch(() => {});
+        await logUsageCost(userId, "chat", usedModel || getGroqModelName(), systemPromptFull + firstMessage, safeAiResponse);
       }
 
       await storage.createMessage({
@@ -6226,8 +6175,7 @@ export async function registerRoutes(
         parts: [{ text: m.content }],
       }));
 
-      const searchMode = isSearchModePrompt(message);
-      const knowledgeContext = await gatherKnowledgeContext(message, userId, searchMode);
+      const knowledgeContext = await gatherKnowledgeContext(message, userId);
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       const result = await callStandardAI(systemPromptFull, geminiContents, TOKEN_LIMITS.chat);
@@ -9370,7 +9318,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
             .join("\n"),
           2600,
         );
-        const legalKnowledgeContextRaw = await gatherKnowledgeContext(legalKnowledgeQuery, userId, false);
+        const legalKnowledgeContextRaw = await gatherKnowledgeContext(legalKnowledgeQuery, userId);
         const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 3200);
         const legalKnowledgeContextBlock = legalKnowledgeContext
           ? legalKnowledgeContext
@@ -10211,7 +10159,13 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         if (invalidFiles.length > 0) {
           return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, DOC/DOCX/DOCM/DOTX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
         }
-        for (const file of files) {
+        type AttachOk = { kind: "ok"; label: string; filename: string; text: string };
+        type AttachTerminal = { kind: "terminal"; status: number; message: string; securityEvent?: "signature" | "malware"; securityMeta?: Record<string, any> };
+        type AttachBusy = { kind: "busy" };
+        type AttachFailed = { kind: "failed"; filename: string; reason: string };
+        type AttachOutcome = AttachOk | AttachTerminal | AttachBusy | AttachFailed;
+
+        const processOneAttachment = async (file: Express.Multer.File): Promise<AttachOutcome> => {
           const stableFile = cloneUploadFile(file);
           const ext = file.originalname.includes(".")
             ? file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase()
@@ -10220,23 +10174,33 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           const mime = (file.mimetype || "").toLowerCase();
           const signatureExt = resolveAttachmentSignatureExt(normalizedExt, mime);
           if (!signatureExt) {
-            return res.status(400).json({ message: `Unsupported file type. Rejected: ${file.originalname}` });
+            return { kind: "terminal", status: 400, message: `Unsupported file type. Rejected: ${file.originalname}` };
           }
           if (!hasSafeDocumentSignature(stableFile, signatureExt)) {
-            recordSecurityEvent("upload_signature_failure", `chat-attachment:${userId}`, {
-              filename: file.originalname,
-              ext: normalizedExt || null,
-              mimetype: file.mimetype,
-            });
-            return res.status(400).json({ message: `Unsafe or invalid attachment detected: ${file.originalname}` });
+            return {
+              kind: "terminal",
+              status: 400,
+              message: `Unsafe or invalid attachment detected: ${file.originalname}`,
+              securityEvent: "signature",
+              securityMeta: {
+                filename: file.originalname,
+                ext: normalizedExt || null,
+                mimetype: file.mimetype,
+              },
+            };
           }
           const malwareCheck = await passesMalwareScan(stableFile);
           if (!malwareCheck.ok) {
-            recordSecurityEvent("malware_detected", `chat-attachment:${userId}`, {
-              filename: file.originalname,
-              reason: malwareCheck.reason || null,
-            });
-            return res.status(400).json({ message: `${file.originalname}: ${malwareCheck.reason || "malware detected"}` });
+            return {
+              kind: "terminal",
+              status: 400,
+              message: `${file.originalname}: ${malwareCheck.reason || "malware detected"}`,
+              securityEvent: "malware",
+              securityMeta: {
+                filename: file.originalname,
+                reason: malwareCheck.reason || null,
+              },
+            };
           }
           try {
             let extractedText = "";
@@ -10264,9 +10228,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
             }
 
             if (!extractedText.trim()) {
-              failedAttachments.push(file.originalname);
-              failedAttachmentReasons.push(`${file.originalname}: extracted text was empty after parse/OCR.`);
-              continue;
+              return { kind: "failed", filename: file.originalname, reason: `${file.originalname}: extracted text was empty after parse/OCR.` };
             }
 
             const boundedFileText = trimTextToTokenBudget(extractedText, ATTACHMENT_FILE_TOKEN_BUDGET);
@@ -10275,15 +10237,37 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
               : (signatureExt === ".docx" || signatureExt === ".doc")
                 ? "Attached DOC/DOCX"
                 : "Attached File";
-            attachmentContext += `\n\n--- ${label}: ${file.originalname} ---\n${boundedFileText}\n--- End ---`;
-            extractedAttachmentCount += 1;
+            return { kind: "ok", label, filename: file.originalname, text: boundedFileText };
           } catch (fileErr) {
             if (isExtractionQueueFullError(fileErr)) {
-              return sendExtractionBusy(res);
+              return { kind: "busy" };
             }
             console.error(`Error extracting text from ${file.originalname}:`, fileErr);
-            failedAttachments.push(file.originalname);
-            failedAttachmentReasons.push(`${file.originalname}: ${getErrorMessage(fileErr)}`);
+            return { kind: "failed", filename: file.originalname, reason: `${file.originalname}: ${getErrorMessage(fileErr)}` };
+          }
+        };
+
+        const attachmentOutcomes = await Promise.all(files.map(processOneAttachment));
+
+        const firstTerminal = attachmentOutcomes.find((o) => o.kind === "terminal") as AttachTerminal | undefined;
+        if (firstTerminal) {
+          if (firstTerminal.securityEvent === "signature") {
+            recordSecurityEvent("upload_signature_failure", `chat-attachment:${userId}`, firstTerminal.securityMeta || {});
+          } else if (firstTerminal.securityEvent === "malware") {
+            recordSecurityEvent("malware_detected", `chat-attachment:${userId}`, firstTerminal.securityMeta || {});
+          }
+          return res.status(firstTerminal.status).json({ message: firstTerminal.message });
+        }
+        if (attachmentOutcomes.some((o) => o.kind === "busy")) {
+          return sendExtractionBusy(res);
+        }
+        for (const outcome of attachmentOutcomes) {
+          if (outcome.kind === "ok") {
+            attachmentContext += `\n\n--- ${outcome.label}: ${outcome.filename} ---\n${outcome.text}\n--- End ---`;
+            extractedAttachmentCount += 1;
+          } else if (outcome.kind === "failed") {
+            failedAttachments.push(outcome.filename);
+            failedAttachmentReasons.push(outcome.reason);
           }
         }
 
@@ -10322,42 +10306,63 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           parts: [{ text: m.content }],
         }));
 
-      const isFollowUp = userMessages.filter(m => m.role === "user").length > 1;
-      const knowledgeContext = (!directMode && lastUserMessage)
-        ? (
-          extractedAttachmentCount > 0
-            ? ""
-            : await gatherKnowledgeContext(
-                lastUserMessage.content, 
-                userId, 
-                isSearchModePrompt(lastUserMessage.content),
-                isFollowUp
-              )
-        )
-        : "";
+      const styleModule = mapModuleTypeToStyleModule(moduleType);
+      const styleEligible = STYLE_MEMORY_ENABLED && !directMode && !!lastUserMessage && !!styleModule && shouldApplyStyleForChat(moduleType, moduleIntent);
+
+      // Run knowledge gather and style retrieval in parallel with a shared enrichment deadline.
+      // Both are optional enrichment — the chat request must proceed even if one or both time out.
+      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 2500));
+      const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
+      const knowledgePromise: Promise<string> = knowledgeNeeded
+        ? gatherKnowledgeContext(lastUserMessage!.content, userId).catch((err) => {
+            console.warn("[AI Chat] Knowledge context unavailable:", getErrorMessage(err));
+            return "";
+          })
+        : Promise.resolve("");
+
+      type StyleFetch = Awaited<ReturnType<typeof retrieveStyleContextForGeneration>> | null;
+      const stylePromise: Promise<StyleFetch> = (styleEligible && styleModule)
+        ? (async (): Promise<StyleFetch> => {
+            try {
+              const userOrg = await storage.getUserOrganization(userId).catch(() => undefined);
+              return await retrieveStyleContextForGeneration({
+                userId,
+                module: styleModule,
+                orgId: userOrg?.id ?? null,
+                userPrompt: lastUserMessage!.content,
+                draftText: userMessages
+                  .filter((m) => m.role === "user")
+                  .map((m) => m.content)
+                  .join("\n\n")
+                  .slice(0, 8000),
+              });
+            } catch (styleErr) {
+              console.warn("[StyleMemory] Retrieval failed for chat route:", getErrorMessage(styleErr));
+              return null;
+            }
+          })()
+        : Promise.resolve(null);
+
+      const [knowledgeRace, styleRace] = await Promise.all([
+        raceToDeadline<string>(knowledgePromise, ENRICHMENT_BUDGET_MS, "", "knowledge-context"),
+        raceToDeadline<StyleFetch>(stylePromise, ENRICHMENT_BUDGET_MS, null, "style-memory"),
+      ]);
+      const knowledgeContext = knowledgeRace.value;
+      const styleRetrieved = styleRace.value;
       if (attachmentContext) {
         const boundedAttachmentContext = trimTextToTokenBudget(attachmentContext, ATTACHMENT_PROMPT_TOKEN_BUDGET);
         systemPrompt += `\n\nATTACHMENT MODE (STRICT):
-      - Prioritize attached document content over general chamber knowledge.
-      - Answer from attached documents first.
-      - If the answer is not present in attachments, explicitly say it is not found in the provided files.
-      - Do not ignore attached files.
+- Prioritize attached document content over general chamber knowledge.
+- Answer from attached documents first.
+- If the answer is not present in attachments, explicitly say it is not found in the provided files.
+- Do not ignore attached files.
 
-      ATTACHED DOCUMENTS FROM USER:
-      The user has attached the following documents for your reference. Analyze them carefully and use them to inform your response.${boundedAttachmentContext}`;
+ATTACHED DOCUMENTS FROM USER:
+The user has attached the following documents for your reference. Analyze them carefully and use them to inform your response.${boundedAttachmentContext}`;
         if (failedAttachments.length > 0) {
           systemPrompt += `\n\nAttachment processing note: Some files could not be read and were excluded: ${failedAttachments.join(", ")}.`;
         }
       }
-
-      // ENFORCE STRICT RAG HIERARCHY & OUTPUT FORMATTING
-      systemPrompt += `\n\nSTRICT OUTPUT HIERARCHY:
-      1. PRIMARY SOURCES: Always highlight Statutes and Judgments (Case Law) at the top of your response.
-      2. SECONDARY SOURCES: Treat all other information as secondary.
-      3. FORMATTING: Use professional legal headers.
-      4. JSON INTEGRITY: If providing JSON blocks (e.g., [CASES] or [LAWS]), ensure minified, valid JSON keys: "laws" and "judgments". Absolutely NO spaces in keys.`;
-      const styleModule = mapModuleTypeToStyleModule(moduleType);
-      const styleEligible = STYLE_MEMORY_ENABLED && !directMode && !!lastUserMessage && !!styleModule && shouldApplyStyleForChat(moduleType, moduleIntent);
       let styleContext = "";
       let styleMemoryMeta: {
         applied: boolean;
@@ -10375,33 +10380,13 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         }
         : null;
 
-      if (styleEligible && styleModule) {
-        try {
-          const userOrg = await storage.getUserOrganization(userId).catch(() => undefined);
-          const styleRetrieved = await retrieveStyleContextForGeneration({
-            userId,
-            module: styleModule,
-            orgId: userOrg?.id ?? null,
-            userPrompt: lastUserMessage!.content,
-            draftText: userMessages
-              .filter((m) => m.role === "user")
-              .map((m) => m.content)
-              .join("\n\n")
-              .slice(0, 8000),
-          });
-          if (styleMemoryMeta) {
-            styleMemoryMeta.scopeUsed = styleRetrieved.result.scopeUsed;
-            styleMemoryMeta.confidence = styleRetrieved.result.confidence;
-            styleMemoryMeta.chunksUsed = styleRetrieved.result.chunks.length;
-          }
-          if (styleRetrieved.result.applied && styleRetrieved.result.confidence >= STYLE_CONTEXT_MIN_CONFIDENCE) {
-            styleContext = trimTextToTokenBudget(styleRetrieved.result.contextText, STYLE_PROMPT_TOKEN_BUDGET);
-            if (styleMemoryMeta) {
-              styleMemoryMeta.applied = true;
-            }
-          }
-        } catch (styleErr) {
-          console.warn("[StyleMemory] Retrieval failed for chat route:", getErrorMessage(styleErr));
+      if (styleRetrieved && styleMemoryMeta) {
+        styleMemoryMeta.scopeUsed = styleRetrieved.result.scopeUsed;
+        styleMemoryMeta.confidence = styleRetrieved.result.confidence;
+        styleMemoryMeta.chunksUsed = styleRetrieved.result.chunks.length;
+        if (styleRetrieved.result.applied && styleRetrieved.result.confidence >= STYLE_CONTEXT_MIN_CONFIDENCE) {
+          styleContext = trimTextToTokenBudget(styleRetrieved.result.contextText, STYLE_PROMPT_TOKEN_BUDGET);
+          styleMemoryMeta.applied = true;
         }
       }
       const moduleRoute = resolveModuleRoute(
@@ -10534,9 +10519,36 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         res.flushHeaders();
 
         let fullContent = "";
+        const writeChunkToClient = (text: string) => {
+          const chunk = text || "";
+          if (!chunk) return;
+          // Add space between chunks only when needed (word boundary)
+          if (fullContent && chunk &&
+              !/^\s/.test(chunk) &&
+              !/\s$/.test(fullContent) &&
+              !/\n$/.test(fullContent) &&
+              !/^\n/.test(chunk)) {
+            fullContent += " ";
+          }
+          fullContent += chunk;
+          res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+        };
         try {
           const streamMessages = buildMessages(systemPromptFull, geminiContents);
-          if (selectedRoute === "turbo") {
+          if (isAiRouterV2Enabled()) {
+            const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
+            const result = await streamWithFallback(chain, {
+              messages: streamMessages,
+              maxTokens: tokenLimit,
+              temperature,
+              onChunk: writeChunkToClient,
+              onProviderError: (p, err) => {
+                console.warn(`[AI Router] Stream provider ${p} failed: ${err instanceof Error ? err.message : String(err)}`);
+              },
+            });
+            usedModel = result.modelName;
+            routingPath.push(`router:v2:${result.provider}`);
+          } else if (selectedRoute === "turbo") {
             usedModel = getDeepSeekProModelName();
             for await (const text of streamWithDeepSeek({
               messages: streamMessages,
@@ -10544,45 +10556,29 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
               maxTokens: tokenLimit,
               temperature,
             })) {
-              // Add space between chunks only when needed (word boundary)
-              // BUT: Don't add spaces around JSON structural characters
-              const chunk = text || "";
-              if (fullContent && chunk && 
-                  !/^\s/.test(chunk) && 
-                  !/\s$/.test(fullContent) &&
-                  !/\n$/.test(fullContent) &&
-                  !/^\n/.test(chunk) &&
-                  !/^[{[\\":,}\]:]/.test(chunk) &&  // Don't add space before JSON chars
-                  !/[{[\\":,}\]:]$/.test(fullContent)) {  // Don't add space after JSON chars
-                fullContent += " ";
-              }
-              fullContent += chunk;
-              res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+              writeChunkToClient(text);
             }
           } else {
             usedModel = getGroqModelName();
             for await (const text of streamWithGroq({ messages: streamMessages, maxTokens: tokenLimit, temperature })) {
-              // Add space between chunks only when needed (word boundary)
-              // BUT: Don't add spaces around JSON structural characters
-              const chunk = text || "";
-              if (fullContent && chunk && 
-                  !/^\s/.test(chunk) && 
-                  !/\s$/.test(fullContent) &&
-                  !/\n$/.test(fullContent) &&
-                  !/^\n/.test(chunk) &&
-                  !/^[{[\\":,}\]:]/.test(chunk) &&  // Don't add space before JSON chars
-                  !/[{[\\":,}\]:]$/.test(fullContent)) {  // Don't add space after JSON chars
-                fullContent += " ";
-              }
-              fullContent += chunk;
-              res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+              writeChunkToClient(text);
             }
           }
         } catch (streamErr: any) {
           console.error("[AI Chat] Stream error:", streamErr?.message || streamErr);
-          res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
-          res.end();
-          return;
+          // If the router already committed to the wire (tokensEmitted > 0), preserve what we have.
+          const partial = (streamErr && typeof streamErr === "object" && "partialText" in streamErr)
+            ? String((streamErr as any).partialText || "")
+            : "";
+          if (!fullContent && partial) fullContent = partial;
+          if (!fullContent) {
+            res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
+            res.end();
+            return;
+          }
+          // Partial content exists — close the stream gracefully so the client
+          // keeps what it already has rather than discarding the whole response.
+          res.write(`data: ${JSON.stringify({ warning: "Upstream interrupted — returning partial response" })}\n\n`);
         }
 
         fullContent = suppressWrongIndianJurisdictionForPakCitation(fullContent, latestUserPromptText);
@@ -10612,9 +10608,6 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           res.write(`data: ${JSON.stringify({ text: fullContent })}\n\n`);
         }
 
-        // Sanitize JSON reference blocks to ensure valid formatting (no spaces in keys)
-        fullContent = sanitizeAiJson(sanitizeResponseReferences(fullContent));
-
         routingPath.push(`model:${usedModel}`);
         res.write(
           `data: ${JSON.stringify({ done: true, model: usedModel, moduleProfile: moduleProfile.id, routingPath, styleMemory: styleMemoryMeta || undefined })}\n\n`,
@@ -10623,7 +10616,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
 
         if (fullContent) {
           const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
-          logUsageCost(userId, usageFeatureKey, usedModel, inputText, fullContent).catch(() => {});
+          await logUsageCost(userId, usageFeatureKey, usedModel, inputText, fullContent);
           try {
             await storage.setCachedResponse({
               endpoint: "ai-chat",
@@ -10660,6 +10653,17 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           tokenLimit,
         );
         result = { text: apexResult.text, model: apexResult.model };
+      } else if (isAiRouterV2Enabled()) {
+        const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
+        const nonStreamMessages = buildMessages(systemPromptFull, geminiContents);
+        const routerResult = await callWithFallback(chain, {
+          messages: nonStreamMessages,
+          maxTokens: tokenLimit,
+          temperature,
+        });
+        const safeText = assertNonEmptyModelOutput(routerResult.provider, routerResult.content);
+        result = { text: enforcePakistanLawOnlyOutput(safeText), model: routerResult.modelName };
+        routingPath.push(`router:v2:${routerResult.provider}`);
       } else {
         const baseAiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
         result = await baseAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
@@ -10693,7 +10697,6 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         completion = normalizedContractJson.normalized;
       }
       completion = enforcePakistanLawOnlyOutput(completion);
-      completion = sanitizeAiJson(completion);
       completion = (await enforceInternalCaseCitationIntegrity(completion, {
         placeholder: "",
         normalizeVerified: true,
@@ -10704,7 +10707,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
 
       const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
       try {
-        logUsageCost(userId, usageFeatureKey, usedModel, inputText, completion).catch(() => {});
+        await logUsageCost(userId, usageFeatureKey, usedModel, inputText, completion);
       } catch (usageErr) {
         // Do not fail user-facing chat if analytics logging is temporarily unavailable.
         console.warn("[AI Chat] Usage logging failed:", getErrorMessage(usageErr));
@@ -10822,8 +10825,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       }
 
       const searchTerm = citation || title;
-      // Judgment summary is an explicit search/lookup, always use search mode
-      const knowledgeContext = await gatherKnowledgeContext(searchTerm, userId, true);
+      const knowledgeContext = await gatherKnowledgeContext(searchTerm, userId);
 
       let fullText = "";
       try {
@@ -11065,7 +11067,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const cacheKey = `${query}::${JSON.stringify(findings)}`;
 
       const { content: summary, fromCache } = await getCachedOrCall("summarize", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(query, undefined, true);
+        const knowledgeContext = await gatherKnowledgeContext(query);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`;
         const userInput = `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.`;
         const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.summarize, { timeoutProfile: "analysis", temperature: 0.3 });
@@ -11092,7 +11094,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
 
       let briefModel = getGroqModelName();
       const { content: brief, fromCache } = await getCachedOrCall("brief", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`, undefined, true);
+        const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;
         const userInput = `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}`;
         const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.brief, { timeoutProfile: "analysis", temperature: 0.3 });
@@ -11126,7 +11128,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 14000)}`;
 
       const { content: responseText, fromCache } = await getCachedOrCall("draft-risk-analysis", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId, false);
+        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
         const sysInstruction = `${getLegalSystemPrompt()}
 
 You are a legal drafting risk scanner for Pakistani legal documents.
@@ -11249,7 +11251,7 @@ RULES:
       const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 16000)}\nmax:${safeMaxEdits}`;
 
       const { content: responseText, fromCache } = await getCachedOrCall("draft-recommendations", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId, false);
+        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
         const sysInstruction = `You are a Pakistani court drafting redline assistant.
 
 TASK:
@@ -14210,7 +14212,7 @@ Instructions:
         systemPrompt += `\n\n${systemContext}`;
       }
 
-      const knowledgeContext = await gatherKnowledgeContext(message, userId, isSearchModePrompt(message));
+      const knowledgeContext = await gatherKnowledgeContext(message, userId);
       systemPrompt += knowledgeContext;
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
@@ -14257,7 +14259,7 @@ Instructions:
         requireLinkedSource: true,
       })).content;
       const inputText = messages.map(m => m.content).join("\n");
-      logUsageCost(userId, "chat-apex", actualModel, inputText, safeResponseContent).catch(() => {});
+      await logUsageCost(userId, "chat-apex", actualModel, inputText, safeResponseContent);
 
       res.json({
         content: safeResponseContent,
@@ -14336,7 +14338,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
-      const knowledgeContext = await gatherKnowledgeContext(message, userId, isSearchModePrompt(message));
+      const knowledgeContext = await gatherKnowledgeContext(message, userId);
       systemPrompt += knowledgeContext;
 
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
@@ -14377,7 +14379,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         requireLinkedSource: true,
       })).content;
       const inputText = messages.map(m => m.content).join("\n");
-      logUsageCost(userId, "chat-apex", agentResult.model, inputText, safeContent).catch(() => {});
+      await logUsageCost(userId, "chat-apex", agentResult.model, inputText, safeContent);
 
       res.json({
         content: safeContent,

@@ -66,6 +66,7 @@ interface GroqChatOptions {
   model?: string;
   temperature?: number;
   reasoningEffort?: GroqReasoningEffort;
+  signal?: AbortSignal;
 }
 
 interface GroqResponse {
@@ -101,13 +102,16 @@ export async function chatWithGroq(options: GroqChatOptions): Promise<GroqRespon
   const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
   const reasoningEffort = resolveReasoningEffort(options.reasoningEffort || process.env.GROQ_REASONING_EFFORT);
 
-  const response = await client.chat.completions.create({
-    model,
-    messages: options.messages,
-    max_tokens: options.maxTokens || 8192,
-    temperature,
-    reasoning_effort: reasoningEffort,
-  } as any);
+  const response = await client.chat.completions.create(
+    {
+      model,
+      messages: options.messages,
+      max_tokens: options.maxTokens || 8192,
+      temperature,
+      reasoning_effort: reasoningEffort,
+    } as any,
+    { signal: options.signal, maxRetries: 1 } as any,
+  );
 
   const choice = response.choices[0];
   const content = choice?.message?.content || "No response generated.";
@@ -126,14 +130,17 @@ export async function* streamWithGroq(options: GroqChatOptions): AsyncGenerator<
   const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
   const reasoningEffort = resolveReasoningEffort(options.reasoningEffort || process.env.GROQ_REASONING_EFFORT);
 
-  const stream = await client.chat.completions.create({
-    model,
-    messages: options.messages,
-    max_tokens: options.maxTokens || 8192,
-    temperature,
-    reasoning_effort: reasoningEffort,
-    stream: true,
-  } as any);
+  const stream = await client.chat.completions.create(
+    {
+      model,
+      messages: options.messages,
+      max_tokens: options.maxTokens || 8192,
+      temperature,
+      reasoning_effort: reasoningEffort,
+      stream: true,
+    } as any,
+    { signal: options.signal, maxRetries: 1 } as any,
+  );
 
   for await (const chunk of stream) {
     const text = chunk.choices[0]?.delta?.content;
