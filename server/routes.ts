@@ -5508,17 +5508,6 @@ function setTimedCacheValue<T>(
   }
 }
 
-/**
- * Classifies a query as Procedural or Substantive for the Fast Path logic.
- */
-function classifyQuery(query: string): "procedural" | "substantive" {
-  const proceduralKeywords = [
-    "how to", "file", "procedure", "process", "steps", "application", "fee", "cost",
-    "limitation", "time limit", "form", "stamp duty", "court fee", "schedule", "appointment"
-  ];
-  const lq = query.toLowerCase();
-  return proceduralKeywords.some(k => lq.includes(k)) ? "procedural" : "substantive";
-}
 
 /**
  * Sanitizes AI-generated JSON by stripping invalid whitespace in keys and structural elements.
