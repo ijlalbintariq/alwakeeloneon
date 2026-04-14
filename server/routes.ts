@@ -2363,6 +2363,93 @@ function isSearchModePrompt(text: string): boolean {
   return hasSearchIntent && hasLegalKeywords;
 }
 
+/**
+ * Classify query type: Procedural (process/mechanics) vs Substantive (rights/validity/interpretation)
+ * Used for intelligent knowledge source selection
+ * 
+ * PROCEDURAL: How-to, time limits, fees, filing, jurisdiction → FAST PATH (statutes only)
+ * SUBSTANTIVE: Rights, validity, interpretation, inheritance, property → DEEP PATH (statutes + case law)
+ */
+function classifyQuery(text: string): "procedural" | "substantive" {
+  const normalized = (text || "").trim().toLowerCase();
+  if (!normalized) return "substantive"; // Default to comprehensive
+  
+  // Strong procedural indicators: process, timing, mechanics, fees
+  const proceduralPatterns = [
+    /\b(how\s+to|how\s+do|how\s+do\s+i|how\s+can\s+i|how\s+does|procedure|process|steps|filing|file|submit|apply|register)\b/,
+    /\b(time\s+limit|time\s+period|deadline|period|within|days|time\..*file|how\s+long)\b/,
+    /\b(fee|fees|cost|charges|expense|payment|pay)\b.*\b(file|court|appeal|petition)\b/,
+    /\b(jurisdiction|court|tribunal|forum|authority).*\b(appropriate|competent|can.*hear|handle)\b/,
+    /\b(requirement|requirement|eligible|eligibility|qualification|who\s+can)\b/,
+    /\breply\s+to|respond|counter|objection|response/,
+  ];
+  
+  // Strong substantive indicators: rights, validity, interpretation, principles
+  const substantivePatterns = [
+    /\b(right|rights|obligation|liability|duty|entitlement|claim|defense|defect)\b/,
+    /\b(valid|validity|invalid|enforceability|enforceable|enforceable|void|voidable)\b/,
+    /\b(interpret|interpretation|meaning|definition|scope|applicability|exception)\b/,
+    /\b(inherit|inheritance|succession|estate|gift|legacy|devise|bequest)\b/,
+    /\b(property|ownership|possession|title|lien|mortgage|encumbrance)\b/,
+    /\b(contract|agreement|consent|consideration|breach|performance|damages)\b/,
+    /\b(negligence|tort|nuisance|trespass|defamation|fraud|misrepresentation)\b/,
+    /\b(mens\s+rea|actus\s+reus|intent|motive|premeditation|provocation)\b/,
+  ];
+  
+  const hasProcedural = proceduralPatterns.some(p => p.test(normalized));
+  const hasSubstantive = substantivePatterns.some(p => p.test(normalized));
+  
+  // If both patterns match or neither matches, default to substantive (more comprehensive)
+  // If only procedural matches, return procedural (fast path)
+  if (hasProcedural && !hasSubstantive) {
+    return "procedural";
+  }
+  return "substantive";
+}
+
+/**
+ * Sanitize JSON output to ensure valid, minified formatting
+ * Removes any accidental spaces in JSON structural elements
+ * Ensures "laws" and "judgments" keys are never malformed
+ */
+function sanitizeJsonOutput(jsonStr: string): string {
+  try {
+    // First, try to parse as-is to validate structure
+    const parsed = JSON.parse(jsonStr);
+    
+    // Reconstruct with minified format (no spaces around keys/values)
+    // This ensures {"laws":[],"judgments":[]} format
+    return JSON.stringify({
+      laws: Array.isArray(parsed.laws) ? parsed.laws : [],
+      judgments: Array.isArray(parsed.judgments) ? parsed.judgments : [],
+    });
+  } catch {
+    // If JSON parse fails, return safe default
+    return JSON.stringify({ laws: [], judgments: [] });
+  }
+}
+
+/**
+ * Post-processor for streaming responses: ensures JSON blocks are properly formatted
+ * Called after response generation to sanitize any malformed reference blocks
+ */
+function sanitizeResponseReferences(content: string): string {
+  // Find and replace malformed JSON patterns
+  // Pattern: {space*"space*laws...} or {space*"space*judgments...}
+  return content
+    .replace(/\{\s*"\s*laws\s*"/g, '{"laws"')
+    .replace(/"\s*laws\s*"\s*:/g, '"laws":')
+    .replace(/"\s*judgments\s*"/g, '"judgments"')
+    .replace(/"\s*judgments\s*"\s*:/g, '"judgments":')
+    .replace(/\[\s+\{/g, '[{')  // Remove spaces after [
+    .replace(/\}\s+\]/g, '}]')  // Remove spaces before ]
+    .replace(/\},\s+\{/g, '},{')  // Remove spaces around object separators
+    .replace(/:\s+\[/g, ':[')  // Remove spaces after :
+    .replace(/"\s*,\s*"/g, '","')  // Normalize quoted separators
+    .replace(/"\s*:\s*"/g, '":"')  // Normalize key separators
+    .trim();
+}
+
 function getDirectModeSystemPrompt(): string {
   return `You are Al Wakeelo.
 Follow the latest user instruction exactly.
@@ -5422,6 +5509,32 @@ function setTimedCacheValue<T>(
 }
 
 /**
+ * Classifies a query as Procedural or Substantive for the Fast Path logic.
+ */
+function classifyQuery(query: string): "procedural" | "substantive" {
+  const proceduralKeywords = [
+    "how to", "file", "procedure", "process", "steps", "application", "fee", "cost",
+    "limitation", "time limit", "form", "stamp duty", "court fee", "schedule", "appointment"
+  ];
+  const lq = query.toLowerCase();
+  return proceduralKeywords.some(k => lq.includes(k)) ? "procedural" : "substantive";
+}
+
+/**
+ * Sanitizes AI-generated JSON by stripping invalid whitespace in keys and structural elements.
+ */
+function sanitizeAiJson(text: string): string {
+  if (!text) return "";
+  // Fix broken keys like " laws " or " jud gments "
+  let sanitized = text.replace(/"\s*([^"]+?)\s*"\s*:/g, (match, key) => {
+    return `"${key.replace(/\s+/g, "")}":`;
+  });
+  // Clean up structural whitespace
+  sanitized = sanitized.replace(/:\s+/g, ":").replace(/,\s+/g, ",");
+  return sanitized;
+}
+
+/**
  * Quick intent detection to skip unnecessary case law searches.
  * Returns true if query likely needs case law, false otherwise.
  */
@@ -5452,18 +5565,42 @@ function shouldSearchCaseLaw(query: string): boolean {
   return legalPatterns.some(p => p.test(query));
 }
 
-async function gatherKnowledgeContext(query: string, userId?: string, searchMode: boolean = false): Promise<string> {
+async function gatherKnowledgeContext(
+  query: string, 
+  userId?: string, 
+  searchMode: boolean = false,
+  isFollowUp: boolean = false
+): Promise<string> {
   const normalizedQuery = normalizeQuery(query).slice(0, 320);
   if (!normalizedQuery) return "";
-  const cacheKey = `${userId || "anon"}::${normalizedQuery}${searchMode ? "::search" : ""}`;
+  
+  // Classify query for Fast Path (procedural vs substantive)
+  const queryType = classifyQuery(normalizedQuery);
+  const cacheKey = `${userId || "anon"}::${normalizedQuery}${searchMode ? "::search" : ""}::${queryType}::v4`;
   const cached = getTimedCacheValue(knowledgeContextCache, cacheKey);
   if (cached !== undefined) return cached;
 
   const contextParts: string[] = [];
 
-  // In search mode, ONLY search case law and statutes for speed
-  if (searchMode) {
-    const needsCaseLaw = shouldSearchCaseLaw(query);
+  /**
+   * ARCHITECTURE: PRIMARY SOURCES ONLY
+   * Statutes and Case Law are the ONLY primary sources.
+   * Secondary sources (GitHub, Admin, User Docs) are SKIPPED unless explicitly required.
+   */
+
+  // Fast Path: Procedural queries (fees, time limits, how-to) -> STATUTES ONLY
+  if (queryType === "procedural" && !searchMode) {
+    const statutes = await storage.searchStatutes(normalizedQuery, KNOWLEDGE_STATUTES_LIMIT).catch(() => []);
+    
+    if (statutes.length > 0) {
+      contextParts.push("=== PRIMARY SOURCE: STATUTES & REGULATIONS ===");
+      for (const s of statutes) {
+        contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
+      }
+    }
+  } else {
+    // Deep Path: Substantive queries or Search Mode -> STATUTES + CASE LAW
+    const needsCaseLaw = searchMode || shouldSearchCaseLaw(normalizedQuery);
 
     const caseLawPromise: Promise<CaseLaw[]> = needsCaseLaw && userId
       ? (async () => {
@@ -5471,196 +5608,51 @@ async function gatherKnowledgeContext(query: string, userId?: string, searchMode
             return await withOperationTimeout(
               searchCaseLawWithFullText({
                 userId,
-                query,
-                limit: 6, // More results for focused search
+                query: normalizedQuery,
+                limit: searchMode ? 6 : KNOWLEDGE_CASELAW_LIMIT,
                 sort: "relevance",
               }),
               KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
               `Knowledge case-law search timeout`,
             );
           } catch (err) {
-            console.warn("[Knowledge:Search] Case-law full-text search fallback:", getErrorMessage(err));
-            const fallbackRows = await storage.searchCaseLaw(query, 6).catch(() => []);
-            return filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(fallbackRows));
+            console.warn("[Knowledge:Deep] Case-law full-text search fallback:", getErrorMessage(err));
+            return storage.searchCaseLaw(normalizedQuery, searchMode ? 6 : KNOWLEDGE_CASELAW_LIMIT).catch(() => []);
           }
         })()
-      : needsCaseLaw ? storage.searchCaseLaw(query, 6) : Promise.resolve([] as CaseLaw[]);
+      : needsCaseLaw ? storage.searchCaseLaw(normalizedQuery, searchMode ? 6 : KNOWLEDGE_CASELAW_LIMIT) : Promise.resolve([]);
 
-    const statutePromise = storage.searchStatutes(query, 5);
+    const statutePromise = storage.searchStatutes(normalizedQuery, KNOWLEDGE_STATUTES_LIMIT).catch(() => []);
 
-    const [caseLawResult, statutesResult] = await Promise.all([
-      caseLawPromise,
+    const [statutesResult, caseLawResult] = await Promise.all([
       statutePromise,
+      caseLawPromise,
     ]);
 
-    // Add statutes
     if (statutesResult.length > 0) {
-      contextParts.push("=== STATUTES & REGULATIONS ===");
-      for (const s of statutesResult.slice(0, 5)) {
+      contextParts.push("=== PRIMARY SOURCE: STATUTES & REGULATIONS ===");
+      for (const s of statutesResult) {
         contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
       }
     }
 
-    // Add case law
     if (caseLawResult.length > 0) {
-      const caseLawLines: string[] = [];
-      for (const c of caseLawResult.slice(0, 6)) {
-        caseLawLines.push(`- ${c.citation} (${c.court}): ${c.title} — ${c.summary}`);
-      }
-      if (caseLawLines.length > 0) {
-        contextParts.push("=== CASE LAW & JUDGMENTS ===");
-        contextParts.push(...caseLawLines);
-      }
-    }
-
-    const finalContext = contextParts.length === 0
-      ? ""
-      : `\n\nLEGAL SEARCH RESULTS:\n\n${contextParts.join("\n\n")}`;
-
-    setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
-    return finalContext;
-  }
-
-  // Normal (non-search) mode: gather all knowledge sources
-  // Skip case law for non-legal queries to improve performance
-  const needsCaseLaw = shouldSearchCaseLaw(query);
-
-  const caseLawPromise: Promise<CaseLaw[]> = needsCaseLaw && userId
-    ? (async () => {
-        try {
-          return await withOperationTimeout(
-            searchCaseLawWithFullText({
-              userId,
-              query,
-              limit: KNOWLEDGE_CASELAW_LIMIT,
-              sort: "relevance",
-            }),
-            KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
-            `Knowledge case-law search timeout after ${KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS}ms`,
-          );
-        } catch (err) {
-          console.warn("[Knowledge] Case-law full-text search fallback:", getErrorMessage(err));
-          const fallbackRows = await storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT).catch(() => []);
-          return filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(fallbackRows));
-        }
-      })()
-    : needsCaseLaw ? storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT) : Promise.resolve([] as CaseLaw[]);
-
-  const promises: Promise<any>[] = [
-    storage.searchStatutes(query, KNOWLEDGE_STATUTES_LIMIT),
-    caseLawPromise,
-    storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
-    storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
-  ];
-  if (userId) {
-    promises.push(storage.getDocuments(userId));
-  }
-
-  const [statutesResult, caseLawResult, githubResult, adminResult, userDocsResult] = await Promise.allSettled(promises);
-
-  if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
-    contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
-    for (const s of statutesResult.value.slice(0, KNOWLEDGE_STATUTES_LIMIT)) {
-      contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
-    }
-  }
-
-  if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
-    const caseLawLines: string[] = [];
-    const candidateRows = caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT);
-    // Only load excerpts for top 2 results to save time (was KNOWLEDGE_CASELAW_EXCERPT_DOCS)
-    const excerptLimit = Math.min(2, KNOWLEDGE_CASELAW_EXCERPT_DOCS);
-    const withExcerpts = await Promise.all(
-      candidateRows.map(async (c, index) => {
-        let sourceExcerpt = "";
-        // Only attempt excerpt loading for top N documents
-        if (userId && index < excerptLimit) {
-          try {
-            // Try local load only (skip remote to save time)
-            const sourceText = await withOperationTimeout(
-              loadCaseLawSourceText(c, userId, {
-                includeMetadataFallback: false,
-                allowRemoteFileRead: false,
-              }),
-              Math.min(500, KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS),
-              `Knowledge local excerpt timeout`,
-            ).catch(() => "");
-            
-            if (sourceText && sourceText.trim()) {
-              sourceExcerpt = sourceText.slice(0, 700).replace(/\s+/g, " ").trim();
-            }
-          } catch {
-            sourceExcerpt = "";
-          }
-        }
-        return { row: c, sourceExcerpt };
-      }),
-    );
-    for (const item of withExcerpts) {
-      if (!item) continue;
-      caseLawLines.push(`- ${item.row.citation} (${item.row.court}): ${item.row.title} — ${item.row.summary}`);
-      if (item.sourceExcerpt) {
-        caseLawLines.push(`  Key Judgment Excerpt: ${item.sourceExcerpt}${item.sourceExcerpt.length >= 700 ? "..." : ""}`);
-      }
-    }
-    if (caseLawLines.length > 0) {
-      contextParts.push("=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===");
-      contextParts.push(...caseLawLines);
-    }
-  }
-
-  if (githubResult.status === "fulfilled" && githubResult.value.length > 0) {
-    contextParts.push("=== CHAMBERS LEGAL LIBRARY (CURATED SOURCES) ===");
-    for (const doc of githubResult.value) {
-      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-    }
-  }
-
-  if (adminResult.status === "fulfilled" && adminResult.value.length > 0) {
-    contextParts.push("=== CHAMBERS KNOWLEDGE VAULT (ADMIN UPLOADED) ===");
-    for (const doc of adminResult.value) {
-      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-    }
-  }
-
-  if (userDocsResult && userDocsResult.status === "fulfilled" && userDocsResult.value.length > 0) {
-    const queryLower = query.toLowerCase();
-    const relevant = userDocsResult.value
-      .filter((d: any) => d.content && (
-        d.title?.toLowerCase().includes(queryLower) ||
-        d.content.toLowerCase().includes(queryLower) ||
-        queryLower.split(/\s+/).some((w: string) => w.length > 3 && (d.title?.toLowerCase().includes(w) || d.content.toLowerCase().includes(w)))
-      ))
-      .slice(0, 2);
-    if (relevant.length > 0) {
-      contextParts.push("=== USER'S CASE DOCUMENTS ===");
-      for (const doc of relevant) {
-        const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-        contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
+      contextParts.push("=== PRIMARY SOURCE: JUDGMENTS & CASE LAW ===");
+      for (const c of caseLawResult) {
+        // "Extra effort" (detailed summaries) only for follow-ups or if explicitly brief/detailed info is likely needed
+        const summary = isFollowUp ? c.summary : (c.summary?.slice(0, 250) + "...");
+        contextParts.push(`- ${c.citation} (${c.court}): ${c.title} — ${summary}`);
       }
     }
   }
 
-  // Defer organization knowledge retrieval (not critical for initial response)
-  if (userId) {
-    storage.getUserOrganization(userId)
-      .then(userOrg => {
-        if (!userOrg) return;
-        return storage.searchOrgKnowledge(userOrg.id, query, 3)
-          .then(orgDocs => {
-            if (orgDocs.length > 0) {
-              const orgContext = contextParts.slice(-1); // Get last context
-              contextParts.push(`=== ORGANIZATION KNOWLEDGE BASE (${userOrg.name}) ===`);
-              for (const doc of orgDocs) {
-                const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-                contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-              }
-              // Update cache with org knowledge
-              const updatedContext = contextParts.length === 0
-                ? ""
-                : `\n\nREFERENCE MATERIALS (Use these as primary sources when answering. Prioritize this curated knowledge over general knowledge. Do NOT mention these sources or how you found them — present the information as your own expert analysis):\n\n${contextParts.join("\n\n")}`;
+  const finalContext = contextParts.length === 0
+    ? ""
+    : `\n\nLEGAL KNOWLEDGE CONTEXT (PRIMARY SOURCES):\n\n${contextParts.join("\n\n")}`;
+
+  setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
+  return finalContext;
+}
               setTimedCacheValue(knowledgeContextCache, cacheKey, updatedContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
             }
           });
@@ -10355,27 +10347,40 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           parts: [{ text: m.content }],
         }));
 
+      const isFollowUp = userMessages.filter(m => m.role === "user").length > 1;
       const knowledgeContext = (!directMode && lastUserMessage)
         ? (
           extractedAttachmentCount > 0
             ? ""
-            : await gatherKnowledgeContext(lastUserMessage.content, userId, isSearchModePrompt(lastUserMessage.content))
+            : await gatherKnowledgeContext(
+                lastUserMessage.content, 
+                userId, 
+                isSearchModePrompt(lastUserMessage.content),
+                isFollowUp
+              )
         )
         : "";
       if (attachmentContext) {
         const boundedAttachmentContext = trimTextToTokenBudget(attachmentContext, ATTACHMENT_PROMPT_TOKEN_BUDGET);
         systemPrompt += `\n\nATTACHMENT MODE (STRICT):
-- Prioritize attached document content over general chamber knowledge.
-- Answer from attached documents first.
-- If the answer is not present in attachments, explicitly say it is not found in the provided files.
-- Do not ignore attached files.
+      - Prioritize attached document content over general chamber knowledge.
+      - Answer from attached documents first.
+      - If the answer is not present in attachments, explicitly say it is not found in the provided files.
+      - Do not ignore attached files.
 
-ATTACHED DOCUMENTS FROM USER:
-The user has attached the following documents for your reference. Analyze them carefully and use them to inform your response.${boundedAttachmentContext}`;
+      ATTACHED DOCUMENTS FROM USER:
+      The user has attached the following documents for your reference. Analyze them carefully and use them to inform your response.${boundedAttachmentContext}`;
         if (failedAttachments.length > 0) {
           systemPrompt += `\n\nAttachment processing note: Some files could not be read and were excluded: ${failedAttachments.join(", ")}.`;
         }
       }
+
+      // ENFORCE STRICT RAG HIERARCHY & OUTPUT FORMATTING
+      systemPrompt += `\n\nSTRICT OUTPUT HIERARCHY:
+      1. PRIMARY SOURCES: Always highlight Statutes and Judgments (Case Law) at the top of your response.
+      2. SECONDARY SOURCES: Treat all other information as secondary.
+      3. FORMATTING: Use professional legal headers.
+      4. JSON INTEGRITY: If providing JSON blocks (e.g., [CASES] or [LAWS]), ensure minified, valid JSON keys: "laws" and "judgments". Absolutely NO spaces in keys.`;
       const styleModule = mapModuleTypeToStyleModule(moduleType);
       const styleEligible = STYLE_MEMORY_ENABLED && !directMode && !!lastUserMessage && !!styleModule && shouldApplyStyleForChat(moduleType, moduleIntent);
       let styleContext = "";
@@ -10632,6 +10637,9 @@ The user has attached the following documents for your reference. Analyze them c
           res.write(`data: ${JSON.stringify({ text: fullContent })}\n\n`);
         }
 
+        // Sanitize JSON reference blocks to ensure valid formatting (no spaces in keys)
+        fullContent = sanitizeAiJson(sanitizeResponseReferences(fullContent));
+
         routingPath.push(`model:${usedModel}`);
         res.write(
           `data: ${JSON.stringify({ done: true, model: usedModel, moduleProfile: moduleProfile.id, routingPath, styleMemory: styleMemoryMeta || undefined })}\n\n`,
@@ -10710,6 +10718,7 @@ The user has attached the following documents for your reference. Analyze them c
         completion = normalizedContractJson.normalized;
       }
       completion = enforcePakistanLawOnlyOutput(completion);
+      completion = sanitizeAiJson(completion);
       completion = (await enforceInternalCaseCitationIntegrity(completion, {
         placeholder: "",
         normalizeVerified: true,

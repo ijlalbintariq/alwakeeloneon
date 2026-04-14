@@ -92,7 +92,7 @@ interface GroqTranscriptionResult {
 function resolveReasoningEffort(value: unknown): GroqReasoningEffort {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "low" || normalized === "medium" || normalized === "high") return normalized;
-  return "high";
+  return "medium";
 }
 
 export async function chatWithGroq(options: GroqChatOptions): Promise<GroqResponse> {
