@@ -47,6 +47,7 @@ interface ApexChatOptions {
   model: ApexModel;
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   maxTokens?: number;
+  signal?: AbortSignal;
 }
 
 interface ApexResponse {
@@ -118,14 +119,17 @@ export async function chatWithApex(options: ApexChatOptions): Promise<ApexRespon
     extraBody.chat_template_kwargs = { thinking: false };
   }
 
-  const response = await client.chat.completions.create({
-    model: config.modelId,
-    messages: options.messages,
-    temperature: config.temperature,
-    max_tokens: options.maxTokens || 8192,
-    top_p: 0.95,
-    ...extraBody,
-  });
+  const response = await client.chat.completions.create(
+    {
+      model: config.modelId,
+      messages: options.messages,
+      temperature: config.temperature,
+      max_tokens: options.maxTokens || 8192,
+      top_p: 0.95,
+      ...extraBody,
+    },
+    { signal: options.signal, maxRetries: 1 } as any,
+  );
 
   const choice = response.choices[0];
   const content = choice?.message?.content || "No response generated.";
@@ -200,6 +204,13 @@ interface ApexAgentOptions {
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   maxTokens?: number;
   maxIterations?: number;
+  // Total wall-clock budget across all agent iterations. When breached,
+  // the loop exits gracefully and returns whatever partial content has been
+  // assembled. Default: 45_000 ms.
+  totalBudgetMs?: number;
+  // Per-iteration model call timeout. Default: 30_000 ms (matches SLA).
+  perIterationTimeoutMs?: number;
+  signal?: AbortSignal;
 }
 
 /**
@@ -218,6 +229,10 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
   // Use moonshot-v1-128k for agent mode — supports $web_search tool
   const agentModelId = "moonshot-v1-128k";
   const maxIterations = options.maxIterations ?? 8;
+  const totalBudgetMs = Math.max(5_000, options.totalBudgetMs ?? 45_000);
+  const perIterationTimeoutMs = Math.max(5_000, options.perIterationTimeoutMs ?? 30_000);
+  const agentStartedAt = Date.now();
+  const remainingBudgetMs = () => totalBudgetMs - (Date.now() - agentStartedAt);
 
   const steps: AgentStep[] = [];
   const searchQueries: string[] = [];
@@ -236,6 +251,7 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
   let totalOutputTokens = 0;
   let finalContent = "";
   let finalReasoning: string | undefined;
+  let budgetExhausted = false;
 
   steps.push({
     type: "thinking",
@@ -243,15 +259,50 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
   });
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
-    const response = await (client.chat.completions.create as any)({
-      model: agentModelId,
-      messages,
-      temperature: 0.3,
-      max_tokens: options.maxTokens || 8192,
-      top_p: 0.95,
-      tools: [webSearchTool],
-      tool_choice: "auto",
-    });
+    // Guard: do not start another iteration if we would breach the budget.
+    const remaining = remainingBudgetMs();
+    if (remaining <= 2_000) {
+      budgetExhausted = true;
+      steps.push({
+        type: "synthesizing",
+        content: `Time budget (${totalBudgetMs}ms) nearly exhausted — finalizing best available answer.`,
+      });
+      break;
+    }
+
+    // Cap this iteration's model call at min(perIterationTimeout, remainingBudget).
+    const iterationTimeoutMs = Math.min(perIterationTimeoutMs, Math.max(2_000, remaining - 500));
+    const iterationCtrl = new AbortController();
+    const iterationTimer = setTimeout(() => iterationCtrl.abort(), iterationTimeoutMs);
+
+    let response: any;
+    try {
+      response = await (client.chat.completions.create as any)(
+        {
+          model: agentModelId,
+          messages,
+          temperature: 0.3,
+          max_tokens: options.maxTokens || 8192,
+          top_p: 0.95,
+          tools: [webSearchTool],
+          tool_choice: "auto",
+        },
+        { signal: options.signal || iterationCtrl.signal, maxRetries: 1 } as any,
+      );
+    } catch (iterationErr) {
+      clearTimeout(iterationTimer);
+      // If we have accumulated some partial content from a prior iteration, return gracefully.
+      if (finalContent) {
+        budgetExhausted = true;
+        steps.push({
+          type: "synthesizing",
+          content: "Upstream iteration failed — returning best partial answer gathered so far.",
+        });
+        break;
+      }
+      throw iterationErr;
+    }
+    clearTimeout(iterationTimer);
 
     totalInputTokens += response.usage?.prompt_tokens || 0;
     totalOutputTokens += response.usage?.completion_tokens || 0;
@@ -335,7 +386,9 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
   }
 
   if (!finalContent) {
-    finalContent = "Agent research completed. Please review the analysis above.";
+    finalContent = budgetExhausted
+      ? `Agent research stopped early (time budget ${totalBudgetMs}ms reached). Returning partial findings where available.`
+      : "Agent research completed. Please review the analysis above.";
   }
 
   return {

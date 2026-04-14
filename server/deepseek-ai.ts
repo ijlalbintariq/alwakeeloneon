@@ -40,6 +40,7 @@ interface DeepSeekChatOptions {
   maxTokens?: number;
   model?: string;
   temperature?: number;
+  signal?: AbortSignal;
 }
 
 interface DeepSeekResponse {
@@ -60,12 +61,15 @@ export async function chatWithDeepSeek(options: DeepSeekChatOptions): Promise<De
   const model = options.model || DEEPSEEK_CHAT_MODEL;
   const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
 
-  const response = await client.chat.completions.create({
-    model,
-    messages: options.messages,
-    max_tokens: options.maxTokens || 8192,
-    temperature,
-  });
+  const response = await client.chat.completions.create(
+    {
+      model,
+      messages: options.messages,
+      max_tokens: options.maxTokens || 8192,
+      temperature,
+    },
+    { signal: options.signal, maxRetries: 1 } as any,
+  );
 
   const choice = response.choices[0];
   const content = choice?.message?.content || "No response generated.";
@@ -87,13 +91,16 @@ export async function* streamWithDeepSeek(options: DeepSeekChatOptions): AsyncGe
   const model = options.model || DEEPSEEK_CHAT_MODEL;
   const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
 
-  const stream = await client.chat.completions.create({
-    model,
-    messages: options.messages,
-    max_tokens: options.maxTokens || 8192,
-    temperature,
-    stream: true,
-  });
+  const stream = await client.chat.completions.create(
+    {
+      model,
+      messages: options.messages,
+      max_tokens: options.maxTokens || 8192,
+      temperature,
+      stream: true,
+    },
+    { signal: options.signal, maxRetries: 1 } as any,
+  );
 
   for await (const chunk of stream) {
     const text = chunk.choices[0]?.delta?.content;
