@@ -940,7 +940,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 p-6 md:p-10 overflow-y-auto space-y-6 scrollbar-hide">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 scrollbar-hide bg-[#0a0f1a] px-4 md:px-8 py-4 flex flex-col">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
               <Scale size={48} className="text-slate-700" />
@@ -951,53 +951,44 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           )}
 
+          <div className="max-w-2xl mx-auto w-full">
           {messages.map((m) => {
             const parsed = m.role === "assistant" ? parsedAssistantMessages.get(m.id) ?? null : null;
             const displayContent = parsed ? parsed.cleanContent : m.content;
             return (
               <div
                 key={m.id}
-                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} slide-in-from-bottom-4`}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} slide-in-from-bottom-2 gap-2 mb-3`}
                 style={OFFSCREEN_MESSAGE_STYLE}
               >
+                {m.role === "assistant" && (
+                  <div className="w-6 h-6 rounded-md bg-amber-500/80 flex items-center justify-center flex-shrink-0 mt-1">
+                    <Scale size={14} className="text-slate-950" />
+                  </div>
+                )}
                 <div
-                  className={`max-w-[85%] p-6 md:p-8 rounded-[2rem] shadow-xl relative group ${
+                  className={`flex-1 p-3 md:p-4 rounded-lg relative group ${
                     m.role === "user"
-                      ? "bg-amber-500 text-slate-950 font-bold rounded-tr-lg"
-                      : "bg-[#0f172a] border border-slate-700 text-slate-200 rounded-tl-lg"
+                      ? "bg-amber-600 text-white rounded-br-sm max-w-xs md:max-w-md"
+                      : "bg-slate-800 border border-slate-700/50 text-slate-100 rounded-bl-sm"
                   }`}
                 >
                   {m.role === "assistant" ? (
                     <>
                       {(m.modeName || m.modelName) && (
-                        <div className="flex items-center gap-1.5 mb-3 pb-2 border-b border-slate-700/30">
-                          <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-slate-700/20">
+                          <div className="flex flex-col gap-0.5">
                             {m.modeName && (
-                              <span className={`text-[9px] font-black uppercase tracking-widest ${
-                                m.modeName === "Turbo" ? "text-amber-400" :
-                                m.modeName === "Standard" ? "text-slate-500" :
-                                m.isAgentMode ? "text-cyan-400" :
-                                "text-emerald-400"
+                              <span className={`text-[8px] font-bold uppercase tracking-wider ${
+                                m.modeName === "Turbo" ? "text-amber-300" :
+                                m.modeName === "Standard" ? "text-slate-400" :
+                                m.isAgentMode ? "text-cyan-300" :
+                                "text-emerald-300"
                               }`}>
-                                {m.modeName === "Turbo" && <Zap size={9} className="inline mr-1" />}
-                                {m.isAgentMode && <Globe size={9} className="inline mr-1" />}
-                                {!m.isAgentMode && m.modeName !== "Turbo" && m.modeName !== "Standard" && <Sparkles size={9} className="inline mr-1" />}
-                                Mode: {m.modeName}
-                              </span>
-                            )}
-                            {m.modelName && (
-                              <span className="text-[9px] font-black uppercase tracking-widest text-amber-400">
-                                Model: {m.modelName}
-                              </span>
-                            )}
-                            {m.modelDescription && (
-                              <span className="text-[10px] text-slate-500 mt-0.5">
-                                {m.modelDescription}
-                              </span>
-                            )}
-                            {m.moduleProfile && (
-                              <span className="text-[9px] font-black uppercase tracking-widest text-cyan-300">
-                                Profile: {m.moduleProfile}
+                                {m.modeName === "Turbo" && <Zap size={8} className="inline mr-0.5" />}
+                                {m.isAgentMode && <Globe size={8} className="inline mr-0.5" />}
+                                {!m.isAgentMode && m.modeName !== "Turbo" && m.modeName !== "Standard" && <Sparkles size={8} className="inline mr-0.5" />}
+                                {m.modeName}
                               </span>
                             )}
                           </div>
@@ -1060,7 +1051,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     </>
                   ) : (
                     <>
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content.replace(/\[Attached:.*?\]/, "").trim()}</p>
+                      <p className="text-sm whitespace-pre-wrap leading-normal">{m.content.replace(/\[Attached:.*?\]/, "").trim()}</p>
                       {m.attachments && m.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-slate-950/20">
                           {m.attachments.map((name, i) => (
@@ -1092,6 +1083,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               </div>
             );
           })}
+          </div>
 
           {isLoading && (
             <div className="flex justify-start">
