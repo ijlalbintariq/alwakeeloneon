@@ -228,9 +228,11 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
 
   // Use moonshot-v1-128k for agent mode — supports $web_search tool
   const agentModelId = "moonshot-v1-128k";
-  const maxIterations = options.maxIterations ?? 8;
+  const maxIterations = options.maxIterations ?? 6;
   const totalBudgetMs = Math.max(5_000, options.totalBudgetMs ?? 45_000);
-  const perIterationTimeoutMs = Math.max(5_000, options.perIterationTimeoutMs ?? 30_000);
+  // Per-iteration capped at 8s so multiple search iterations fit within the total budget.
+  // 45s total / ~8s per = ~5 usable iterations, which matches maxIterations=6 with a buffer.
+  const perIterationTimeoutMs = Math.max(5_000, options.perIterationTimeoutMs ?? 8_000);
   const agentStartedAt = Date.now();
   const remainingBudgetMs = () => totalBudgetMs - (Date.now() - agentStartedAt);
 
