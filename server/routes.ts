@@ -5400,6 +5400,37 @@ function setTimedCacheValue<T>(
   }
 }
 
+/**
+ * Quick intent detection to skip unnecessary case law searches.
+ * Returns true if query likely needs case law, false otherwise.
+ */
+function shouldSearchCaseLaw(query: string): boolean {
+  if (!query || query.length < 60) return false; // Skip very short queries
+  
+  const lq = query.toLowerCase();
+  
+  // Legal keywords that warrant case law search
+  const legalPatterns = [
+    /\b(case|judgment|ruling|precedent|court|judge|law suit|liability|tort|damages?|plaintiff|defendant|conviction|acquitted?|appeal|decree|verdict)\b/i,
+    /\b(section|article|clause|statute|ordinance|act|code|regulation|rule|provision)\b/i,
+    /\b(legal|crime|criminal|civil|contract|obligation|right|remedy|guilty|innocent)\b/i,
+    /\b(dispute|litigation|trial|evidence|witness|argument|defense|prosecution)\b/i,
+  ];
+  
+  // Non-legal patterns that can skip case law
+  const nonLegalPatterns = [
+    /\b(how do i|what is|explain|definition|meaning|tell me about|procedure|steps?|guide)\b/i,
+    /\b(contact|phone|email|address|office|hours?|appointment|schedule)\b/i,
+    /\b(fee|cost|price|payment|billing|invoice|receipt)\b/i,
+  ];
+  
+  // If matches non-legal pattern, skip case law
+  if (nonLegalPatterns.some(p => p.test(query))) return false;
+  
+  // If matches legal pattern, search case law
+  return legalPatterns.some(p => p.test(query));
+}
+
 async function gatherKnowledgeContext(query: string, userId?: string): Promise<string> {
   const normalizedQuery = normalizeQuery(query).slice(0, 320);
   if (!normalizedQuery) return "";
@@ -5409,7 +5440,10 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
   const contextParts: string[] = [];
 
-  const caseLawPromise: Promise<CaseLaw[]> = userId
+  // Skip case law for non-legal queries to improve performance
+  const needsCaseLaw = shouldSearchCaseLaw(query);
+
+  const caseLawPromise: Promise<CaseLaw[]> = needsCaseLaw && userId
     ? (async () => {
         try {
           return await withOperationTimeout(
@@ -5428,7 +5462,7 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
           return filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(fallbackRows));
         }
       })()
-    : storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT);
+    : needsCaseLaw ? storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT) : Promise.resolve([] as CaseLaw[]);
 
   const promises: Promise<any>[] = [
     storage.searchStatutes(query, KNOWLEDGE_STATUTES_LIMIT),
@@ -5929,7 +5963,7 @@ export async function registerRoutes(
       const safeAiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse).catch(() => ensureAlWakeeloReferencesBlock(normalizedAiResponse));
 
       if (!fromCache) {
-        await logUsageCost(userId, "chat", usedModel || getGroqModelName(), systemPromptFull + firstMessage, safeAiResponse);
+        logUsageCost(userId, "chat", usedModel || getGroqModelName(), systemPromptFull + firstMessage, safeAiResponse).catch(() => {});
       }
 
       await storage.createMessage({
@@ -10512,7 +10546,7 @@ The user has attached the following documents for your reference. Analyze them c
 
         if (fullContent) {
           const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
-          await logUsageCost(userId, usageFeatureKey, usedModel, inputText, fullContent);
+          logUsageCost(userId, usageFeatureKey, usedModel, inputText, fullContent).catch(() => {});
           try {
             await storage.setCachedResponse({
               endpoint: "ai-chat",
@@ -10592,7 +10626,7 @@ The user has attached the following documents for your reference. Analyze them c
 
       const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
       try {
-        await logUsageCost(userId, usageFeatureKey, usedModel, inputText, completion);
+        logUsageCost(userId, usageFeatureKey, usedModel, inputText, completion).catch(() => {});
       } catch (usageErr) {
         // Do not fail user-facing chat if analytics logging is temporarily unavailable.
         console.warn("[AI Chat] Usage logging failed:", getErrorMessage(usageErr));
@@ -14144,7 +14178,7 @@ Instructions:
         requireLinkedSource: true,
       })).content;
       const inputText = messages.map(m => m.content).join("\n");
-      await logUsageCost(userId, "chat-apex", actualModel, inputText, safeResponseContent);
+      logUsageCost(userId, "chat-apex", actualModel, inputText, safeResponseContent).catch(() => {});
 
       res.json({
         content: safeResponseContent,
@@ -14264,7 +14298,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         requireLinkedSource: true,
       })).content;
       const inputText = messages.map(m => m.content).join("\n");
-      await logUsageCost(userId, "chat-apex", agentResult.model, inputText, safeContent);
+      logUsageCost(userId, "chat-apex", agentResult.model, inputText, safeContent).catch(() => {});
 
       res.json({
         content: safeContent,
