@@ -5352,7 +5352,8 @@ async function getCachedOrCall(
 const KNOWLEDGE_EXCERPT_LIMIT = 1500;
 const KNOWLEDGE_SOURCES_PER_TIER = 2;
 const KNOWLEDGE_STATUTES_LIMIT = 3;
-const KNOWLEDGE_CASELAW_LIMIT = Math.max(3, Number(process.env.KNOWLEDGE_CASELAW_LIMIT || 6));
+// Reduced default from 6 to 4 for faster retrieval (still enough for good context)
+const KNOWLEDGE_CASELAW_LIMIT = Math.max(3, Number(process.env.KNOWLEDGE_CASELAW_LIMIT || 4));
 const KNOWLEDGE_CONTEXT_CACHE_TTL_MS = Math.max(10_000, Number(process.env.KNOWLEDGE_CONTEXT_CACHE_TTL_MS || 120_000));
 const KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS = Math.max(1_000, Number(process.env.KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS || 4_000));
 const KNOWLEDGE_CASELAW_EXCERPT_DOCS = Math.max(0, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_DOCS || 2));
@@ -5486,30 +5487,25 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
   if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
     const caseLawLines: string[] = [];
     const candidateRows = caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT);
+    // Only load excerpts for top 2 results to save time (was KNOWLEDGE_CASELAW_EXCERPT_DOCS)
+    const excerptLimit = Math.min(2, KNOWLEDGE_CASELAW_EXCERPT_DOCS);
     const withExcerpts = await Promise.all(
       candidateRows.map(async (c, index) => {
         let sourceExcerpt = "";
-        if (userId && index < KNOWLEDGE_CASELAW_EXCERPT_DOCS) {
+        // Only attempt excerpt loading for top N documents
+        if (userId && index < excerptLimit) {
           try {
-            let sourceText = await withOperationTimeout(
+            // Try local load only (skip remote to save time)
+            const sourceText = await withOperationTimeout(
               loadCaseLawSourceText(c, userId, {
                 includeMetadataFallback: false,
                 allowRemoteFileRead: false,
               }),
-              KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS,
-              `Knowledge local excerpt timeout after ${KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS}ms`,
-            );
-            if (!sourceText.trim()) {
-              sourceText = await withOperationTimeout(
-                loadCaseLawSourceText(c, userId, {
-                  includeMetadataFallback: false,
-                  allowRemoteFileRead: true,
-                }),
-                KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS,
-                `Knowledge remote excerpt timeout after ${KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS}ms`,
-              );
-            }
-            if (sourceText.trim()) {
+              Math.min(500, KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS),
+              `Knowledge local excerpt timeout`,
+            ).catch(() => "");
+            
+            if (sourceText && sourceText.trim()) {
               sourceExcerpt = sourceText.slice(0, 700).replace(/\s+/g, " ").trim();
             }
           } catch {
@@ -5566,20 +5562,29 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     }
   }
 
+  // Defer organization knowledge retrieval (not critical for initial response)
   if (userId) {
-    try {
-      const userOrg = await storage.getUserOrganization(userId);
-      if (userOrg) {
-        const orgDocs = await storage.searchOrgKnowledge(userOrg.id, query, 3);
-        if (orgDocs.length > 0) {
-          contextParts.push(`=== ORGANIZATION KNOWLEDGE BASE (${userOrg.name}) ===`);
-          for (const doc of orgDocs) {
-            const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-            contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-          }
-        }
-      }
-    } catch (e) {}
+    storage.getUserOrganization(userId)
+      .then(userOrg => {
+        if (!userOrg) return;
+        return storage.searchOrgKnowledge(userOrg.id, query, 3)
+          .then(orgDocs => {
+            if (orgDocs.length > 0) {
+              const orgContext = contextParts.slice(-1); // Get last context
+              contextParts.push(`=== ORGANIZATION KNOWLEDGE BASE (${userOrg.name}) ===`);
+              for (const doc of orgDocs) {
+                const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
+                contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
+              }
+              // Update cache with org knowledge
+              const updatedContext = contextParts.length === 0
+                ? ""
+                : `\n\nREFERENCE MATERIALS (Use these as primary sources when answering. Prioritize this curated knowledge over general knowledge. Do NOT mention these sources or how you found them — present the information as your own expert analysis):\n\n${contextParts.join("\n\n")}`;
+              setTimedCacheValue(knowledgeContextCache, cacheKey, updatedContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
+            }
+          });
+      })
+      .catch(() => {});
   }
 
   const finalContext = contextParts.length === 0
