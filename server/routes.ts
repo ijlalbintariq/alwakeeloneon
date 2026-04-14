@@ -34,6 +34,14 @@ import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName } from "./deepseek-ai";
+import {
+  isAiRouterV2Enabled,
+  raceToDeadline,
+  streamWithFallback,
+  callWithFallback,
+  DEFAULT_STANDARD_CHAIN,
+  DEFAULT_TURBO_CHAIN,
+} from "./ai-router";
 import { getModuleProfile, normalizeModuleType, type ModuleIntent, type ModuleType } from "./ai-module-profiles";
 import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAuditEvent, unbanUser } from "./security-governance";
 import { scanUploadedBuffer } from "./file-scan";
@@ -5355,8 +5363,10 @@ const KNOWLEDGE_STATUTES_LIMIT = 3;
 const KNOWLEDGE_CASELAW_LIMIT = Math.max(3, Number(process.env.KNOWLEDGE_CASELAW_LIMIT || 6));
 const KNOWLEDGE_CONTEXT_CACHE_TTL_MS = Math.max(10_000, Number(process.env.KNOWLEDGE_CONTEXT_CACHE_TTL_MS || 120_000));
 const KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS = Math.max(1_000, Number(process.env.KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS || 4_000));
-const KNOWLEDGE_CASELAW_EXCERPT_DOCS = Math.max(0, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_DOCS || 2));
+const KNOWLEDGE_CASELAW_EXCERPT_DOCS = Math.max(0, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_DOCS || 1));
 const KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS = Math.max(200, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS || 1_200));
+const KNOWLEDGE_OUTER_DEADLINE_MS = Math.max(500, Number(process.env.KNOWLEDGE_OUTER_DEADLINE_MS || 2_500));
+const KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS = Math.max(500, Number(process.env.KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS || 1_500));
 const CASE_CITATION_RESOLVE_CACHE_TTL_MS = Math.max(10_000, Number(process.env.CASE_CITATION_RESOLVE_CACHE_TTL_MS || 180_000));
 
 type TimedCacheValue<T> = {
@@ -5407,6 +5417,11 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
   const cached = getTimedCacheValue(knowledgeContextCache, cacheKey);
   if (cached !== undefined) return cached;
 
+  const outerDeadline = new Promise<string>((resolve) => {
+    setTimeout(() => resolve(""), KNOWLEDGE_OUTER_DEADLINE_MS);
+  });
+
+  const inner = (async (): Promise<string> => {
   const contextParts: string[] = [];
 
   const caseLawPromise: Promise<CaseLaw[]> = userId
@@ -5430,17 +5445,40 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
       })()
     : storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT);
 
+  // Resolve org docs in parallel with the other lookups instead of serially at the end.
+  const orgKnowledgePromise: Promise<{ orgName: string; docs: Array<{ title: string; content: string }> } | null> = userId
+    ? (async () => {
+        try {
+          const userOrg = await withOperationTimeout(
+            storage.getUserOrganization(userId),
+            KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS,
+            `Knowledge org lookup timeout after ${KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS}ms`,
+          );
+          if (!userOrg) return null;
+          const orgDocs = await withOperationTimeout(
+            storage.searchOrgKnowledge(userOrg.id, query, 3),
+            KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS,
+            `Knowledge org search timeout after ${KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS}ms`,
+          );
+          return { orgName: userOrg.name, docs: orgDocs || [] };
+        } catch {
+          return null;
+        }
+      })()
+    : Promise.resolve(null);
+
   const promises: Promise<any>[] = [
     storage.searchStatutes(query, KNOWLEDGE_STATUTES_LIMIT),
     caseLawPromise,
     storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
     storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
+    orgKnowledgePromise,
   ];
   if (userId) {
     promises.push(storage.getDocuments(userId));
   }
 
-  const [statutesResult, caseLawResult, githubResult, adminResult, userDocsResult] = await Promise.allSettled(promises);
+  const [statutesResult, caseLawResult, githubResult, adminResult, orgResult, userDocsResult] = await Promise.allSettled(promises);
 
   if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
     contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
@@ -5532,20 +5570,12 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     }
   }
 
-  if (userId) {
-    try {
-      const userOrg = await storage.getUserOrganization(userId);
-      if (userOrg) {
-        const orgDocs = await storage.searchOrgKnowledge(userOrg.id, query, 3);
-        if (orgDocs.length > 0) {
-          contextParts.push(`=== ORGANIZATION KNOWLEDGE BASE (${userOrg.name}) ===`);
-          for (const doc of orgDocs) {
-            const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-            contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-          }
-        }
-      }
-    } catch (e) {}
+  if (orgResult && orgResult.status === "fulfilled" && orgResult.value && orgResult.value.docs.length > 0) {
+    contextParts.push(`=== ORGANIZATION KNOWLEDGE BASE (${orgResult.value.orgName}) ===`);
+    for (const doc of orgResult.value.docs) {
+      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
+      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
+    }
   }
 
   const finalContext = contextParts.length === 0
@@ -5554,6 +5584,13 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
   setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
   return finalContext;
+  })();
+
+  const result = await Promise.race([inner, outerDeadline]);
+  if (!result) {
+    console.warn(`[Knowledge] Gather exceeded ${KNOWLEDGE_OUTER_DEADLINE_MS}ms deadline — returning empty context`);
+  }
+  return result || "";
 }
 
 async function seedLegalData() {
@@ -10122,7 +10159,13 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         if (invalidFiles.length > 0) {
           return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, DOC/DOCX/DOCM/DOTX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
         }
-        for (const file of files) {
+        type AttachOk = { kind: "ok"; label: string; filename: string; text: string };
+        type AttachTerminal = { kind: "terminal"; status: number; message: string; securityEvent?: "signature" | "malware"; securityMeta?: Record<string, any> };
+        type AttachBusy = { kind: "busy" };
+        type AttachFailed = { kind: "failed"; filename: string; reason: string };
+        type AttachOutcome = AttachOk | AttachTerminal | AttachBusy | AttachFailed;
+
+        const processOneAttachment = async (file: Express.Multer.File): Promise<AttachOutcome> => {
           const stableFile = cloneUploadFile(file);
           const ext = file.originalname.includes(".")
             ? file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase()
@@ -10131,23 +10174,33 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           const mime = (file.mimetype || "").toLowerCase();
           const signatureExt = resolveAttachmentSignatureExt(normalizedExt, mime);
           if (!signatureExt) {
-            return res.status(400).json({ message: `Unsupported file type. Rejected: ${file.originalname}` });
+            return { kind: "terminal", status: 400, message: `Unsupported file type. Rejected: ${file.originalname}` };
           }
           if (!hasSafeDocumentSignature(stableFile, signatureExt)) {
-            recordSecurityEvent("upload_signature_failure", `chat-attachment:${userId}`, {
-              filename: file.originalname,
-              ext: normalizedExt || null,
-              mimetype: file.mimetype,
-            });
-            return res.status(400).json({ message: `Unsafe or invalid attachment detected: ${file.originalname}` });
+            return {
+              kind: "terminal",
+              status: 400,
+              message: `Unsafe or invalid attachment detected: ${file.originalname}`,
+              securityEvent: "signature",
+              securityMeta: {
+                filename: file.originalname,
+                ext: normalizedExt || null,
+                mimetype: file.mimetype,
+              },
+            };
           }
           const malwareCheck = await passesMalwareScan(stableFile);
           if (!malwareCheck.ok) {
-            recordSecurityEvent("malware_detected", `chat-attachment:${userId}`, {
-              filename: file.originalname,
-              reason: malwareCheck.reason || null,
-            });
-            return res.status(400).json({ message: `${file.originalname}: ${malwareCheck.reason || "malware detected"}` });
+            return {
+              kind: "terminal",
+              status: 400,
+              message: `${file.originalname}: ${malwareCheck.reason || "malware detected"}`,
+              securityEvent: "malware",
+              securityMeta: {
+                filename: file.originalname,
+                reason: malwareCheck.reason || null,
+              },
+            };
           }
           try {
             let extractedText = "";
@@ -10175,9 +10228,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
             }
 
             if (!extractedText.trim()) {
-              failedAttachments.push(file.originalname);
-              failedAttachmentReasons.push(`${file.originalname}: extracted text was empty after parse/OCR.`);
-              continue;
+              return { kind: "failed", filename: file.originalname, reason: `${file.originalname}: extracted text was empty after parse/OCR.` };
             }
 
             const boundedFileText = trimTextToTokenBudget(extractedText, ATTACHMENT_FILE_TOKEN_BUDGET);
@@ -10186,15 +10237,37 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
               : (signatureExt === ".docx" || signatureExt === ".doc")
                 ? "Attached DOC/DOCX"
                 : "Attached File";
-            attachmentContext += `\n\n--- ${label}: ${file.originalname} ---\n${boundedFileText}\n--- End ---`;
-            extractedAttachmentCount += 1;
+            return { kind: "ok", label, filename: file.originalname, text: boundedFileText };
           } catch (fileErr) {
             if (isExtractionQueueFullError(fileErr)) {
-              return sendExtractionBusy(res);
+              return { kind: "busy" };
             }
             console.error(`Error extracting text from ${file.originalname}:`, fileErr);
-            failedAttachments.push(file.originalname);
-            failedAttachmentReasons.push(`${file.originalname}: ${getErrorMessage(fileErr)}`);
+            return { kind: "failed", filename: file.originalname, reason: `${file.originalname}: ${getErrorMessage(fileErr)}` };
+          }
+        };
+
+        const attachmentOutcomes = await Promise.all(files.map(processOneAttachment));
+
+        const firstTerminal = attachmentOutcomes.find((o) => o.kind === "terminal") as AttachTerminal | undefined;
+        if (firstTerminal) {
+          if (firstTerminal.securityEvent === "signature") {
+            recordSecurityEvent("upload_signature_failure", `chat-attachment:${userId}`, firstTerminal.securityMeta || {});
+          } else if (firstTerminal.securityEvent === "malware") {
+            recordSecurityEvent("malware_detected", `chat-attachment:${userId}`, firstTerminal.securityMeta || {});
+          }
+          return res.status(firstTerminal.status).json({ message: firstTerminal.message });
+        }
+        if (attachmentOutcomes.some((o) => o.kind === "busy")) {
+          return sendExtractionBusy(res);
+        }
+        for (const outcome of attachmentOutcomes) {
+          if (outcome.kind === "ok") {
+            attachmentContext += `\n\n--- ${outcome.label}: ${outcome.filename} ---\n${outcome.text}\n--- End ---`;
+            extractedAttachmentCount += 1;
+          } else if (outcome.kind === "failed") {
+            failedAttachments.push(outcome.filename);
+            failedAttachmentReasons.push(outcome.reason);
           }
         }
 
@@ -10233,13 +10306,49 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           parts: [{ text: m.content }],
         }));
 
-      const knowledgeContext = (!directMode && lastUserMessage)
-        ? (
-          extractedAttachmentCount > 0
-            ? ""
-            : await gatherKnowledgeContext(lastUserMessage.content, userId)
-        )
-        : "";
+      const styleModule = mapModuleTypeToStyleModule(moduleType);
+      const styleEligible = STYLE_MEMORY_ENABLED && !directMode && !!lastUserMessage && !!styleModule && shouldApplyStyleForChat(moduleType, moduleIntent);
+
+      // Run knowledge gather and style retrieval in parallel with a shared enrichment deadline.
+      // Both are optional enrichment — the chat request must proceed even if one or both time out.
+      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 2500));
+      const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
+      const knowledgePromise: Promise<string> = knowledgeNeeded
+        ? gatherKnowledgeContext(lastUserMessage!.content, userId).catch((err) => {
+            console.warn("[AI Chat] Knowledge context unavailable:", getErrorMessage(err));
+            return "";
+          })
+        : Promise.resolve("");
+
+      type StyleFetch = Awaited<ReturnType<typeof retrieveStyleContextForGeneration>> | null;
+      const stylePromise: Promise<StyleFetch> = (styleEligible && styleModule)
+        ? (async (): Promise<StyleFetch> => {
+            try {
+              const userOrg = await storage.getUserOrganization(userId).catch(() => undefined);
+              return await retrieveStyleContextForGeneration({
+                userId,
+                module: styleModule,
+                orgId: userOrg?.id ?? null,
+                userPrompt: lastUserMessage!.content,
+                draftText: userMessages
+                  .filter((m) => m.role === "user")
+                  .map((m) => m.content)
+                  .join("\n\n")
+                  .slice(0, 8000),
+              });
+            } catch (styleErr) {
+              console.warn("[StyleMemory] Retrieval failed for chat route:", getErrorMessage(styleErr));
+              return null;
+            }
+          })()
+        : Promise.resolve(null);
+
+      const [knowledgeRace, styleRace] = await Promise.all([
+        raceToDeadline<string>(knowledgePromise, ENRICHMENT_BUDGET_MS, "", "knowledge-context"),
+        raceToDeadline<StyleFetch>(stylePromise, ENRICHMENT_BUDGET_MS, null, "style-memory"),
+      ]);
+      const knowledgeContext = knowledgeRace.value;
+      const styleRetrieved = styleRace.value;
       if (attachmentContext) {
         const boundedAttachmentContext = trimTextToTokenBudget(attachmentContext, ATTACHMENT_PROMPT_TOKEN_BUDGET);
         systemPrompt += `\n\nATTACHMENT MODE (STRICT):
@@ -10254,8 +10363,6 @@ The user has attached the following documents for your reference. Analyze them c
           systemPrompt += `\n\nAttachment processing note: Some files could not be read and were excluded: ${failedAttachments.join(", ")}.`;
         }
       }
-      const styleModule = mapModuleTypeToStyleModule(moduleType);
-      const styleEligible = STYLE_MEMORY_ENABLED && !directMode && !!lastUserMessage && !!styleModule && shouldApplyStyleForChat(moduleType, moduleIntent);
       let styleContext = "";
       let styleMemoryMeta: {
         applied: boolean;
@@ -10273,33 +10380,13 @@ The user has attached the following documents for your reference. Analyze them c
         }
         : null;
 
-      if (styleEligible && styleModule) {
-        try {
-          const userOrg = await storage.getUserOrganization(userId).catch(() => undefined);
-          const styleRetrieved = await retrieveStyleContextForGeneration({
-            userId,
-            module: styleModule,
-            orgId: userOrg?.id ?? null,
-            userPrompt: lastUserMessage!.content,
-            draftText: userMessages
-              .filter((m) => m.role === "user")
-              .map((m) => m.content)
-              .join("\n\n")
-              .slice(0, 8000),
-          });
-          if (styleMemoryMeta) {
-            styleMemoryMeta.scopeUsed = styleRetrieved.result.scopeUsed;
-            styleMemoryMeta.confidence = styleRetrieved.result.confidence;
-            styleMemoryMeta.chunksUsed = styleRetrieved.result.chunks.length;
-          }
-          if (styleRetrieved.result.applied && styleRetrieved.result.confidence >= STYLE_CONTEXT_MIN_CONFIDENCE) {
-            styleContext = trimTextToTokenBudget(styleRetrieved.result.contextText, STYLE_PROMPT_TOKEN_BUDGET);
-            if (styleMemoryMeta) {
-              styleMemoryMeta.applied = true;
-            }
-          }
-        } catch (styleErr) {
-          console.warn("[StyleMemory] Retrieval failed for chat route:", getErrorMessage(styleErr));
+      if (styleRetrieved && styleMemoryMeta) {
+        styleMemoryMeta.scopeUsed = styleRetrieved.result.scopeUsed;
+        styleMemoryMeta.confidence = styleRetrieved.result.confidence;
+        styleMemoryMeta.chunksUsed = styleRetrieved.result.chunks.length;
+        if (styleRetrieved.result.applied && styleRetrieved.result.confidence >= STYLE_CONTEXT_MIN_CONFIDENCE) {
+          styleContext = trimTextToTokenBudget(styleRetrieved.result.contextText, STYLE_PROMPT_TOKEN_BUDGET);
+          styleMemoryMeta.applied = true;
         }
       }
       const moduleRoute = resolveModuleRoute(
@@ -10432,9 +10519,36 @@ The user has attached the following documents for your reference. Analyze them c
         res.flushHeaders();
 
         let fullContent = "";
+        const writeChunkToClient = (text: string) => {
+          const chunk = text || "";
+          if (!chunk) return;
+          // Add space between chunks only when needed (word boundary)
+          if (fullContent && chunk &&
+              !/^\s/.test(chunk) &&
+              !/\s$/.test(fullContent) &&
+              !/\n$/.test(fullContent) &&
+              !/^\n/.test(chunk)) {
+            fullContent += " ";
+          }
+          fullContent += chunk;
+          res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+        };
         try {
           const streamMessages = buildMessages(systemPromptFull, geminiContents);
-          if (selectedRoute === "turbo") {
+          if (isAiRouterV2Enabled()) {
+            const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
+            const result = await streamWithFallback(chain, {
+              messages: streamMessages,
+              maxTokens: tokenLimit,
+              temperature,
+              onChunk: writeChunkToClient,
+              onProviderError: (p, err) => {
+                console.warn(`[AI Router] Stream provider ${p} failed: ${err instanceof Error ? err.message : String(err)}`);
+              },
+            });
+            usedModel = result.modelName;
+            routingPath.push(`router:v2:${result.provider}`);
+          } else if (selectedRoute === "turbo") {
             usedModel = getDeepSeekProModelName();
             for await (const text of streamWithDeepSeek({
               messages: streamMessages,
@@ -10442,39 +10556,29 @@ The user has attached the following documents for your reference. Analyze them c
               maxTokens: tokenLimit,
               temperature,
             })) {
-              // Add space between chunks only when needed (word boundary)
-              const chunk = text || "";
-              if (fullContent && chunk && 
-                  !/^\s/.test(chunk) && 
-                  !/\s$/.test(fullContent) &&
-                  !/\n$/.test(fullContent) &&
-                  !/^\n/.test(chunk)) {
-                fullContent += " ";
-              }
-              fullContent += chunk;
-              res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+              writeChunkToClient(text);
             }
           } else {
             usedModel = getGroqModelName();
             for await (const text of streamWithGroq({ messages: streamMessages, maxTokens: tokenLimit, temperature })) {
-              // Add space between chunks only when needed (word boundary)
-              const chunk = text || "";
-              if (fullContent && chunk && 
-                  !/^\s/.test(chunk) && 
-                  !/\s$/.test(fullContent) &&
-                  !/\n$/.test(fullContent) &&
-                  !/^\n/.test(chunk)) {
-                fullContent += " ";
-              }
-              fullContent += chunk;
-              res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+              writeChunkToClient(text);
             }
           }
         } catch (streamErr: any) {
           console.error("[AI Chat] Stream error:", streamErr?.message || streamErr);
-          res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
-          res.end();
-          return;
+          // If the router already committed to the wire (tokensEmitted > 0), preserve what we have.
+          const partial = (streamErr && typeof streamErr === "object" && "partialText" in streamErr)
+            ? String((streamErr as any).partialText || "")
+            : "";
+          if (!fullContent && partial) fullContent = partial;
+          if (!fullContent) {
+            res.write(`data: ${JSON.stringify({ error: "Failed to generate response" })}\n\n`);
+            res.end();
+            return;
+          }
+          // Partial content exists — close the stream gracefully so the client
+          // keeps what it already has rather than discarding the whole response.
+          res.write(`data: ${JSON.stringify({ warning: "Upstream interrupted — returning partial response" })}\n\n`);
         }
 
         fullContent = suppressWrongIndianJurisdictionForPakCitation(fullContent, latestUserPromptText);
@@ -10549,6 +10653,17 @@ The user has attached the following documents for your reference. Analyze them c
           tokenLimit,
         );
         result = { text: apexResult.text, model: apexResult.model };
+      } else if (isAiRouterV2Enabled()) {
+        const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
+        const nonStreamMessages = buildMessages(systemPromptFull, geminiContents);
+        const routerResult = await callWithFallback(chain, {
+          messages: nonStreamMessages,
+          maxTokens: tokenLimit,
+          temperature,
+        });
+        const safeText = assertNonEmptyModelOutput(routerResult.provider, routerResult.content);
+        result = { text: enforcePakistanLawOnlyOutput(safeText), model: routerResult.modelName };
+        routingPath.push(`router:v2:${routerResult.provider}`);
       } else {
         const baseAiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
         result = await baseAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
