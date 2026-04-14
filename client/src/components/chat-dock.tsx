@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useChatSession } from "@/hooks/use-chat-session";
 import { Scale, Send, MessageSquare } from "lucide-react";
+import { LegalMarkdown } from "@/components/legal-markdown";
 
 export function ChatDock() {
   const [open, setOpen] = useState(false);
@@ -62,7 +63,11 @@ export function ChatDock() {
                       )}
                     </div>
                   )}
-                  {m.content}
+                  {m.role === "assistant" ? (
+                    <div className="text-xs"><LegalMarkdown content={m.content} /></div>
+                  ) : (
+                    <div className="whitespace-pre-wrap">{m.content}</div>
+                  )}
                 </div>
               </div>
             ))}

@@ -31,13 +31,57 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
   );
 }
 
+function renderTextWithCitationLinks(text: string): React.ReactNode {
+  const citationRegex = /\b(\d{4})\s+(P\.?L\.?D|S\.?C\.?M\.?R|Y\.?L\.?R|M\.?L\.?D|C\.?L\.?C|P\.?C\.?R\.?L\.?J|P\.?L\.?J|N\.?L\.?R|C\.?L\.?D|P\.?T\.?D|P\.?L\.?C|PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ|NLR|CLD|PTD|PLC)\s+(\d+)\b/gi;
+
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = citationRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    const citation = match[0];
+    const searchQuery = encodeURIComponent(citation);
+    parts.push(
+      <LegalLink key={`citation-${match.index}`} href={`/judgments?q=${searchQuery}`}>
+        <span className="text-amber-400 underline">{citation}</span>
+      </LegalLink>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts.length > 1 ? parts : text;
+}
+
+function cleanExcessWhitespace(text: string): string {
+  if (!text) return "";
+  return String(text)
+    .replace(/([a-z])\s+([a-z])/gi, "$1$2")
+    .trim();
+}
+
 function LegalMarkdownComponent({ content, className }: { content: string; className?: string }) {
+  const cleanedContent = cleanExcessWhitespace(content);
   const citationPattern = /^\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+/i;
   return (
     <div className={`legal-markdown ${className || ""}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          tr: ({ children }) => {
+            const cellText = extractText(children);
+            return (
+              <tr className="border-b border-slate-800 hover:bg-slate-900/50">
+                {children}
+              </tr>
+            );
+          },
           h1: ({ children }) => (
             <h1 className="text-lg font-bold text-white mt-4 mb-2 border-b border-slate-700 pb-2" data-testid="text-heading-h1">
               {children}
@@ -58,11 +102,17 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
               {children}
             </h4>
           ),
-          p: ({ children }) => (
-            <p className="text-sm leading-relaxed mb-2 text-slate-200">{children}</p>
-          ),
+          p: ({ children }) => {
+            const textContent = extractText(children);
+            return (
+              <p className="text-sm leading-relaxed mb-2 text-slate-200">
+                {renderTextWithCitationLinks(textContent)}
+              </p>
+            );
+          },
           strong: ({ children }) => {
             const text = extractText(children);
+
             const statuteMatch = text.match(/^\[(.+?)\]$/);
             if (statuteMatch) {
               const statuteName = statuteMatch[1];
@@ -73,6 +123,25 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
                 </LegalLink>
               );
             }
+
+            const statuePatterns = [
+              /(?:Code of Criminal Procedure|Cr\.?P\.?C\.?)\s*,?\s*18\d{2}/i,
+              /(?:Pakistan Penal Code|PPC)\s*,?\s*18\d{2}/i,
+              /(?:Constitution of the Islamic Republic of Pakistan)\s*,?\s*19\d{2}/i,
+              /(?:Qanun-e-Shahadat Order|QSO)\s*,?\s*19\d{2}/i,
+            ];
+
+            for (const pattern of statuePatterns) {
+              if (pattern.test(text)) {
+                const searchQuery = encodeURIComponent(text);
+                return (
+                  <LegalLink href={`/statute-search?q=${searchQuery}`}>
+                    <strong>{text}</strong>
+                  </LegalLink>
+                );
+              }
+            }
+
             if (citationPattern.test(text)) {
               const searchQuery = encodeURIComponent(text);
               return (
@@ -129,23 +198,35 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
           },
           hr: () => <hr className="border-slate-700 my-4" />,
           table: ({ children }) => (
-            <div className="overflow-x-auto my-3">
-              <table className="min-w-full text-sm border border-slate-700 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto my-3 rounded-lg border border-slate-700">
+              <table className="min-w-full text-sm">
                 {children}
               </table>
             </div>
           ),
-          th: ({ children }) => (
-            <th className="bg-slate-800 px-3 py-2 text-left text-xs font-bold text-amber-400 uppercase tracking-wider border-b border-slate-700">
+          thead: ({ children }) => (
+            <thead className="bg-slate-800/80">
               {children}
+            </thead>
+          ),
+          tbody: ({ children }) => (
+            <tbody className="divide-y divide-slate-800">
+              {children}
+            </tbody>
+          ),
+          th: ({ children }) => (
+            <th className="px-4 py-3 text-left text-xs font-bold text-amber-400 uppercase tracking-wider border-b border-slate-700">
+              {renderTextWithCitationLinks(extractText(children))}
             </th>
           ),
           td: ({ children }) => (
-            <td className="px-3 py-2 text-slate-200 border-b border-slate-800">{children}</td>
+            <td className="px-4 py-2 text-slate-200 border-slate-800">
+              {renderTextWithCitationLinks(extractText(children))}
+            </td>
           ),
         }}
       >
-        {content}
+        {cleanedContent}
       </ReactMarkdown>
     </div>
   );
