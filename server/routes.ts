@@ -5642,20 +5642,6 @@ async function gatherKnowledgeContext(
   setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
   return finalContext;
 }
-              setTimedCacheValue(knowledgeContextCache, cacheKey, updatedContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
-            }
-          });
-      })
-      .catch(() => {});
-  }
-
-  const finalContext = contextParts.length === 0
-    ? ""
-    : `\n\nREFERENCE MATERIALS (Use these as primary sources when answering. Prioritize this curated knowledge over general knowledge. Do NOT mention these sources or how you found them — present the information as your own expert analysis):\n\n${contextParts.join("\n\n")}`;
-
-  setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
-  return finalContext;
-}
 
 async function seedLegalData() {
   try {
