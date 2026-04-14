@@ -8,6 +8,26 @@ import type { StyleMemoryModule, StyleRetrievalResult } from "./types";
 const STYLE_TOP_K = Math.max(1, Number(process.env.STYLE_MEMORY_TOP_K || 4));
 const STYLE_MIN_SCORE = Math.max(0, Number(process.env.STYLE_MEMORY_MIN_SCORE || 0.56));
 const STYLE_MAX_CONTEXT_TOKENS = Math.max(250, Number(process.env.STYLE_MEMORY_MAX_CONTEXT_TOKENS || 900));
+const STYLE_EMBED_TIMEOUT_MS = Math.max(500, Number(process.env.STYLE_MEMORY_EMBED_TIMEOUT_MS || 1500));
+const STYLE_SEARCH_TIMEOUT_MS = Math.max(500, Number(process.env.STYLE_MEMORY_SEARCH_TIMEOUT_MS || 1500));
+
+async function raceWithDeadline<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | null = null;
+  try {
+    return await Promise.race([
+      p,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => {
+          const err = new Error(`${label} timed out after ${ms}ms`);
+          (err as any).code = "STYLE_MEMORY_TIMEOUT";
+          reject(err);
+        }, ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 function computeConfidence(scores: number[]): number {
   if (scores.length === 0) return 0;
@@ -53,17 +73,25 @@ export async function retrieveStyleContextForGeneration(args: {
     };
   }
 
-  const queryEmbedding = await embedStyleQuery(queryText);
+  const queryEmbedding = await raceWithDeadline(
+    embedStyleQuery(queryText),
+    STYLE_EMBED_TIMEOUT_MS,
+    "style-memory embed",
+  );
   const includeOrg = settings.ownershipMode === "org" || settings.ownershipMode === "user-org";
-  const retrieved = await styleSimilaritySearch({
-    userId: args.userId,
-    module: args.module,
-    orgId: args.orgId ?? null,
-    includeOrg,
-    queryText,
-    queryEmbedding,
-    topK: STYLE_TOP_K,
-  });
+  const retrieved = await raceWithDeadline(
+    styleSimilaritySearch({
+      userId: args.userId,
+      module: args.module,
+      orgId: args.orgId ?? null,
+      includeOrg,
+      queryText,
+      queryEmbedding,
+      topK: STYLE_TOP_K,
+    }),
+    STYLE_SEARCH_TIMEOUT_MS,
+    "style-memory search",
+  );
 
   const filtered = retrieved.filter((row) => row.score >= STYLE_MIN_SCORE);
   const confidence = computeConfidence(filtered.map((row) => row.score));
