@@ -5368,6 +5368,10 @@ const KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS = Math.max(200, Number(process.env.KN
 const KNOWLEDGE_OUTER_DEADLINE_MS = Math.max(500, Number(process.env.KNOWLEDGE_OUTER_DEADLINE_MS || 2_500));
 const KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS = Math.max(500, Number(process.env.KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS || 1_500));
 const CASE_CITATION_RESOLVE_CACHE_TTL_MS = Math.max(10_000, Number(process.env.CASE_CITATION_RESOLVE_CACHE_TTL_MS || 180_000));
+// Retrieval-level cache: cache raw case-law search results so repeated/similar queries skip the FTS round-trip.
+const CASELAW_RETRIEVAL_CACHE_TTL_MS = Math.max(30_000, Number(process.env.CASELAW_RETRIEVAL_CACHE_TTL_MS || 60_000));
+// Statutes retrieval cache: statute content rarely changes, cache aggressively.
+const STATUTES_RETRIEVAL_CACHE_TTL_MS = Math.max(60_000, Number(process.env.STATUTES_RETRIEVAL_CACHE_TTL_MS || 300_000));
 
 type TimedCacheValue<T> = {
   value: T;
@@ -5376,6 +5380,9 @@ type TimedCacheValue<T> = {
 
 const knowledgeContextCache = new Map<string, TimedCacheValue<string>>();
 const caseCitationResolveCache = new Map<string, TimedCacheValue<CaseLaw | null>>();
+// Retrieval-level caches — cache individual search results, not full enriched context.
+const caseLawRetrievalCache = new Map<string, TimedCacheValue<CaseLaw[]>>();
+const statutesRetrievalCache = new Map<string, TimedCacheValue<any[]>>();
 
 function getTimedCacheValue<T>(cache: Map<string, TimedCacheValue<T>>, key: string): T | undefined {
   const cached = cache.get(key);
@@ -5423,27 +5430,40 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
   const inner = (async (): Promise<string> => {
   const contextParts: string[] = [];
+  const retrievalCacheKey = `${userId || "anon"}::${normalizedQuery}`;
 
-  const caseLawPromise: Promise<CaseLaw[]> = userId
-    ? (async () => {
-        try {
-          return await withOperationTimeout(
-            searchCaseLawWithFullText({
-              userId,
-              query,
-              limit: KNOWLEDGE_CASELAW_LIMIT,
-              sort: "relevance",
-            }),
-            KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
-            `Knowledge case-law search timeout after ${KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS}ms`,
-          );
-        } catch (err) {
-          console.warn("[Knowledge] Case-law full-text search fallback:", getErrorMessage(err));
-          const fallbackRows = await storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT).catch(() => []);
-          return filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(fallbackRows));
-        }
-      })()
-    : storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT);
+  const caseLawPromise: Promise<CaseLaw[]> = (() => {
+    const cachedCaseLaw = getTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey);
+    if (cachedCaseLaw !== undefined) return Promise.resolve(cachedCaseLaw);
+    return userId
+      ? (async () => {
+          try {
+            const rows = await withOperationTimeout(
+              searchCaseLawWithFullText({
+                userId,
+                query,
+                limit: KNOWLEDGE_CASELAW_LIMIT,
+                sort: "relevance",
+              }),
+              KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
+              `Knowledge case-law search timeout after ${KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS}ms`,
+            );
+            setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, rows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
+            return rows;
+          } catch (err) {
+            console.warn("[Knowledge] Case-law full-text search fallback:", getErrorMessage(err));
+            const fallbackRows = await storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT).catch(() => []);
+            const filtered = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(fallbackRows));
+            setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, filtered, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
+            return filtered;
+          }
+        })()
+      : (async () => {
+          const rows = await storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT);
+          setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, rows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
+          return rows;
+        })();
+  })();
 
   // Resolve org docs in parallel with the other lookups instead of serially at the end.
   const orgKnowledgePromise: Promise<{ orgName: string; docs: Array<{ title: string; content: string }> } | null> = userId
@@ -5467,8 +5487,17 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
       })()
     : Promise.resolve(null);
 
+  const statutesPromise: Promise<any[]> = (() => {
+    const cachedStatutes = getTimedCacheValue(statutesRetrievalCache, retrievalCacheKey);
+    if (cachedStatutes !== undefined) return Promise.resolve(cachedStatutes);
+    return storage.searchStatutes(query, KNOWLEDGE_STATUTES_LIMIT).then((rows) => {
+      setTimedCacheValue(statutesRetrievalCache, retrievalCacheKey, rows, STATUTES_RETRIEVAL_CACHE_TTL_MS, 300);
+      return rows;
+    });
+  })();
+
   const promises: Promise<any>[] = [
-    storage.searchStatutes(query, KNOWLEDGE_STATUTES_LIMIT),
+    statutesPromise,
     caseLawPromise,
     storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
     storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
@@ -5480,12 +5509,7 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
   const [statutesResult, caseLawResult, githubResult, adminResult, orgResult, userDocsResult] = await Promise.allSettled(promises);
 
-  if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
-    contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
-    for (const s of statutesResult.value.slice(0, KNOWLEDGE_STATUTES_LIMIT)) {
-      contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
-    }
-  }
+  // ── Highest-precision sources first so they survive token-budget truncation ──
 
   if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
     const caseLawLines: string[] = [];
@@ -5503,15 +5527,10 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
               KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS,
               `Knowledge local excerpt timeout after ${KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS}ms`,
             );
+            // If local read returned empty, fall back to the DB summary rather than
+            // re-hitting R2 (same API, same latency cost, no benefit over the DB row).
             if (!sourceText.trim()) {
-              sourceText = await withOperationTimeout(
-                loadCaseLawSourceText(c, userId, {
-                  includeMetadataFallback: false,
-                  allowRemoteFileRead: true,
-                }),
-                KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS,
-                `Knowledge remote excerpt timeout after ${KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS}ms`,
-              );
+              sourceText = String(c.summary || "");
             }
             if (sourceText.trim()) {
               sourceExcerpt = sourceText.slice(0, 700).replace(/\s+/g, " ").trim();
@@ -5533,6 +5552,13 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     if (caseLawLines.length > 0) {
       contextParts.push("=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===");
       contextParts.push(...caseLawLines);
+    }
+  }
+
+  if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
+    contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
+    for (const s of statutesResult.value.slice(0, KNOWLEDGE_STATUTES_LIMIT)) {
+      contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
     }
   }
 
@@ -10461,7 +10487,7 @@ The user has attached the following documents for your reference. Analyze them c
         ? getModeOutputCap(userTier, "apex")
         : getModeOutputCap(userTier, selectedRoute);
       const tokenLimit = directMode
-        ? 128
+        ? 512
         : Math.min(featureTokenLimit, planModeCap > 0 ? planModeCap : featureTokenLimit);
       const timeoutProfile: TimeoutProfile = directMode ? "search" : "default";
       const temperature = directMode ? 0 : 0.7;
