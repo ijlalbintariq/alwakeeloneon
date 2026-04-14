@@ -1562,7 +1562,7 @@ export default function LegalDraftingPage() {
         const next = prev.map((item) => {
           if (item.id !== messageId) return item;
           found = true;
-          return { ...item, content: partial, kind: cursor < total ? "typing" : undefined };
+          return { ...item, content: partial, kind: (cursor < total ? "typing" : undefined) as "typing" | undefined };
         });
         if (found) return next;
         return [
@@ -2365,7 +2365,7 @@ export default function LegalDraftingPage() {
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Draft Review</label>
                   <button
-                    onClick={runDraftReview}
+                    onClick={() => runDraftReview()}
                     className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold"
                     data-testid="button-refresh-draft-review"
                   >

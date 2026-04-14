@@ -741,7 +741,7 @@ export async function ensureIndexedForGlobalCaseLaw(args: {
       );
       sourceIds = (rows.rows || [])
         .map((row: any) => Number(row.id))
-        .filter((id) => Number.isInteger(id) && id > 0);
+        .filter((id: number) => Number.isInteger(id) && id > 0);
     } catch {
       // Fallback below when direct query fails.
     }
@@ -778,7 +778,7 @@ export async function ensureIndexedForGlobalStatutes(args: {
       );
       sourceIds = (rows.rows || [])
         .map((row: any) => Number(row.id))
-        .filter((id) => Number.isInteger(id) && id > 0);
+        .filter((id: number) => Number.isInteger(id) && id > 0);
     } catch {
       // Fallback below when direct query fails.
     }
@@ -814,7 +814,7 @@ export async function ensureIndexedForGlobalAdminKnowledge(args: {
       );
       sourceIds = (rows.rows || [])
         .map((row: any) => Number(row.id))
-        .filter((id) => Number.isInteger(id) && id > 0);
+        .filter((id: number) => Number.isInteger(id) && id > 0);
     } catch {
       // Fallback below when direct query fails.
     }

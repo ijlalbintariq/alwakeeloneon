@@ -419,7 +419,7 @@ export default function JudgmentSearchPage() {
     setSearchMode("citation");
 
     const matchedJournal = journals.find(
-      (j) => j.code.toUpperCase() === pendingAutoCitation.journal.toUpperCase(),
+      (j) => j.code.toUpperCase() === (pendingAutoCitation.journal ?? "").toUpperCase(),
     );
 
     const selectedJournal = matchedJournal?.code || "";

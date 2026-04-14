@@ -612,7 +612,7 @@ export default function CheckoutPage() {
                           onChange={(e) => setForm((prev) => ({ ...prev, walletNumber: digitsOnly(e.target.value).slice(0, 14) }))}
                           className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                           placeholder="03XXXXXXXXX"
-                          required={form.paymentMethod !== "card"}
+                          required={true}
                           data-testid="checkout-input-wallet-number"
                         />
                       </div>
