@@ -2283,41 +2283,6 @@ function CaseLawSection() {
     onError: () => toast({ title: "Failed to mark terminal docs for retry", variant: "destructive" }),
   });
 
-  const startBadIndexReextractMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/admin/case-law/bad-index/reextract/start", {
-        source: badIndexSource,
-        minRows: parsedBadIndexMinRows,
-        limit: parsedBadIndexLimit,
-        maxCitations: parsedBadIndexMaxCitations,
-      });
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      toast({ title: data?.message || "Targeted bad-index re-extract started" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/bad-index/reextract/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/bad-index/audit"] });
-    },
-    onError: (err: any) => {
-      toast({ title: err?.message || "Failed to start targeted re-extract", variant: "destructive" });
-    },
-  });
-
-  const stopBadIndexReextractMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/admin/case-law/bad-index/reextract/stop", {});
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      toast({ title: data?.message || "Stop requested" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/bad-index/reextract/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/case-law/bad-index/audit"] });
-    },
-    onError: (err: any) => {
-      toast({ title: err?.message || "Failed to stop targeted re-extract", variant: "destructive" });
-    },
-  });
-
   const processCaseLawFiles = async (files: File[], append: boolean = false) => {
     if (files.length === 0) return;
     setIsExtracting(true);

@@ -142,7 +142,7 @@ export async function* streamWithGroq(options: GroqChatOptions): AsyncGenerator<
     { signal: options.signal, maxRetries: 1 } as any,
   );
 
-  for await (const chunk of stream) {
+  for await (const chunk of stream as unknown as AsyncIterable<any>) {
     const text = chunk.choices[0]?.delta?.content;
     if (text) {
       yield text;

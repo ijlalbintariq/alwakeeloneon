@@ -26,7 +26,7 @@ type NavigationItem = {
   id: string;
   label: string;
   description: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: React.ComponentType<{ size?: number | string; className?: string }>;
   href: string;
 };
 

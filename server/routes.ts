@@ -2398,7 +2398,7 @@ function userPromptHasPakistaniCitationHint(text: string): boolean {
   const candidates = extractCaseCitationCandidates(input);
   if (candidates.length === 0) return false;
   return candidates.some((candidate) => {
-    if (parseCaseLawCitationQueryParts(candidate)) return true;
+    if (parseCaseLawCitationParts(candidate)) return true;
     return /\b(?:19|20)\d{2}\s+(?:PLD|SCMR|YLR|MLD|CLC|CLD|PLC|PLJ|PCRLJ|P\s*Cr\.?\s*L\.?\s*J|PTD|NLR|LHC|IHC|SHC|PHC|BHC|AJKHC)\s+\d{1,6}\b/i.test(candidate);
   });
 }
@@ -2756,7 +2756,7 @@ function parseCaseLawCitationQuery(query: string): CaseLawCitationQueryParts | n
   return { year, report, page };
 }
 
-function isTrustedCaseLawCitationParts(parts: CaseLawCitationQueryParts | null | undefined): boolean {
+function isTrustedCaseLawCitationParts(parts: CaseLawCitationQueryParts | null | undefined): parts is CaseLawCitationQueryParts {
   if (!parts) return false;
   const year = Number(parts.year);
   const page = Number(parts.page);
@@ -3941,7 +3941,7 @@ async function processSinglePendingCaseLawAdminDoc(
 
   if (!content && doc.extractedTextKey) {
     try {
-      content = stripNullBytes(await getR2ObjectText(doc.extractedTextKey)).trim();
+      content = stripNullBytes(await getR2ObjectText(String(doc.extractedTextKey)) ?? "").trim();
     } catch (r2TextErr: any) {
       pushCappedJobError(
         out.errors,
@@ -3954,7 +3954,7 @@ async function processSinglePendingCaseLawAdminDoc(
     try {
       if (options?.pauseForInteractive) await options.pauseForInteractive();
       const sourceBuffer = await getR2ObjectBinary(doc.objectKey);
-      if (sourceBuffer && sourceBuffer.length > 0) {
+      if (sourceBuffer && sourceBuffer.buffer.length > 0) {
         const ext = normalizeAttachmentExt(path.extname(sourceFilename || "").toLowerCase());
         let parseExt = ext;
         if (!parseExt) {
@@ -3970,8 +3970,8 @@ async function processSinglePendingCaseLawAdminDoc(
           originalname: sourceFilename,
           encoding: "7bit",
           mimetype: String(doc.mimeType || "application/octet-stream"),
-          size: Number(doc.sizeBytes || sourceBuffer.length),
-          buffer: sourceBuffer,
+          size: Number(doc.sizeBytes || sourceBuffer.buffer.length),
+          buffer: sourceBuffer.buffer,
           destination: "",
           filename: path.basename(sourceFilename),
           path: "",
@@ -5491,7 +5491,7 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     const caseLawLines: string[] = [];
     const candidateRows = caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT);
     const withExcerpts = await Promise.all(
-      candidateRows.map(async (c, index) => {
+      candidateRows.map(async (c: CaseLaw, index: number) => {
         let sourceExcerpt = "";
         if (userId && index < KNOWLEDGE_CASELAW_EXCERPT_DOCS) {
           try {

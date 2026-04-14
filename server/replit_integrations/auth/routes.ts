@@ -186,7 +186,7 @@ async function enforceAdminSessionLimit(userId: string, keepSid: string | null):
       if (keep.size >= ADMIN_MAX_CONCURRENT_SESSIONS) break;
       keep.add(sid);
     }
-    const toDelete = sids.filter((sid) => !keep.has(sid));
+    const toDelete = sids.filter((sid: string) => !keep.has(sid));
     if (toDelete.length > 0) {
       await pool.query(`delete from sessions where sid = any($1::text[])`, [toDelete]);
       recordSecurityEvent("auth_anomaly", `admin-session-trim:${userId}`, {
