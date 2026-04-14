@@ -630,7 +630,7 @@ export default function KnowledgeVaultPage() {
             <button
               onClick={() => setView("home")}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                view === "home" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+                (view as string) === "home" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
               }`}
             >
               Home
@@ -638,7 +638,7 @@ export default function KnowledgeVaultPage() {
             <button
               onClick={() => setView("uploads")}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                view === "uploads" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+                (view as string) === "uploads" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
               }`}
             >
               My Uploads
@@ -742,7 +742,7 @@ export default function KnowledgeVaultPage() {
                   <button
                     onClick={() => setView("home")}
                     className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                      view === "home" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+                      (view as string) === "home" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
                     }`}
                   >
                     Home
@@ -750,7 +750,7 @@ export default function KnowledgeVaultPage() {
                   <button
                     onClick={() => setView("uploads")}
                     className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                      view === "uploads" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+                      (view as string) === "uploads" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
                     }`}
                   >
                     My Uploads
