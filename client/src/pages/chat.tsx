@@ -1008,10 +1008,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   </div>
                 )}
                 <div
-                  className={`flex-1 p-3 sm:p-4 md:p-5 rounded-lg relative group shadow-sm ${
+                  className={`flex-1 p-3 sm:p-4 md:p-5 rounded-2xl relative group ${
                     m.role === "user"
-                      ? "bg-[#1E3A8A] text-white rounded-br-none max-w-xs sm:max-w-sm md:max-w-md"
-                      : "bg-white border border-[#CBD5E1] text-[#0F172A] rounded-bl-none"
+                      ? "bg-gradient-to-br from-[#1E3A8A] to-[#1e40af] text-white rounded-br-none max-w-2xl shadow-md hover:shadow-lg transition-shadow"
+                      : "bg-white border border-[#E2E8F0] text-[#0F172A] rounded-bl-none shadow-sm hover:shadow-md transition-shadow"
                   }`}
                 >
                   {m.role === "assistant" ? (
