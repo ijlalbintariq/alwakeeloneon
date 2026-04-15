@@ -59,15 +59,8 @@ function renderTextWithCitationLinks(text: string): React.ReactNode {
   return parts.length > 1 ? parts : text;
 }
 
-function cleanExcessWhitespace(text: string): string {
-  if (!text) return "";
-  return String(text)
-    .replace(/([a-z])\s+([a-z])/gi, "$1$2")
-    .trim();
-}
-
 function LegalMarkdownComponent({ content, className }: { content: string; className?: string }) {
-  const cleanedContent = cleanExcessWhitespace(content);
+  const cleanedContent = content;
   const citationPattern = /^\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+/i;
   return (
     <div className={`legal-markdown ${className || ""}`}>
