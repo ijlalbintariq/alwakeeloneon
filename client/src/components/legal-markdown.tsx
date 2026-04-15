@@ -32,7 +32,46 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
 }
 
 function LegalMarkdownComponent({ content, className }: { content: string; className?: string }) {
-  const citationPattern = /^\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+/i;
+  const citationPattern = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+)\b/gi;
+  const statutePattern = /\b(Section\s+\d+\s+(?:PPC|CPC|IPC|PCA|PMLA))\b/gi;
+
+  const processTextForCitations = (text: string) => {
+    const parts: (string | React.ReactNode)[] = [];
+    let lastIndex = 0;
+    const allMatches: Array<{ start: number; end: number; text: string; type: 'citation' | 'statute' }> = [];
+
+    let match;
+    while ((match = citationPattern.exec(text)) !== null) {
+      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'citation' });
+    }
+
+    while ((match = statutePattern.exec(text)) !== null) {
+      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'statute' });
+    }
+
+    allMatches.sort((a, b) => a.start - b.start);
+
+    allMatches.forEach((m) => {
+      if (m.start > lastIndex) {
+        parts.push(text.slice(lastIndex, m.start));
+      }
+      const searchQuery = encodeURIComponent(m.text);
+      const href = m.type === 'statute' ? `/statute-search?q=${searchQuery}` : `/judgments?q=${searchQuery}`;
+      parts.push(
+        <LegalLink key={`${m.type}-${m.start}`} href={href}>
+          <span className="text-amber-400 font-semibold hover:text-amber-300">{m.text}</span>
+        </LegalLink>
+      );
+      lastIndex = m.end;
+    });
+
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : text;
+  };
+
   return (
     <div className={`legal-markdown ${className || ""}`}>
       <ReactMarkdown
@@ -58,9 +97,15 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
               {children}
             </h4>
           ),
-          p: ({ children }) => (
-            <p className="text-sm leading-relaxed mb-2 text-slate-200">{children}</p>
-          ),
+          p: ({ children }) => {
+            const text = extractText(children);
+            const processed = processTextForCitations(text);
+            return (
+              <p className="text-sm leading-relaxed mb-2 text-slate-200">
+                {processed === text ? children : processed}
+              </p>
+            );
+          },
           strong: ({ children }) => {
             const text = extractText(children);
             const statuteMatch = text.match(/^\[(.+?)\]$/);
