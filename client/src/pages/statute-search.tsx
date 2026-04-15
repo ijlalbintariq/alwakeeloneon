@@ -119,7 +119,7 @@ export default function StatuteSearchPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-2.5 fade-in" data-testid="statute-search-page">
-      <section className="relative overflow-hidden rounded-2xl border border-amber-300/20 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.20),rgba(15,23,42,0.85)_45%,rgba(2,6,23,0.95)_100%)] px-4 py-4 sm:px-5 sm:py-5 shadow-[0_24px_40px_-28px_rgba(2,6,23,0.95)]">
+      <section className="relative rounded-2xl border border-amber-300/20 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.20),rgba(15,23,42,0.85)_45%,rgba(2,6,23,0.95)_100%)] px-4 py-4 sm:px-5 sm:py-5 shadow-[0_24px_40px_-28px_rgba(2,6,23,0.95)]">
         <div className="pointer-events-none absolute -left-8 -top-10 h-36 w-36 rounded-full bg-amber-400/15 blur-2xl" />
         <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-blue-400/10 blur-2xl" />
         <div className="relative z-10 flex flex-col gap-3">
