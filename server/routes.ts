@@ -5806,6 +5806,62 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/test-chat", async (req, res) => {
+    if (process.env.DEV_TEST_CHAT !== "1") {
+      return res.status(404).json({ message: "Not found" });
+    }
+    try {
+      const message = sanitizeInputText(req.body?.message, 4000);
+      if (!message) return res.status(400).json({ message: "message is required" });
+
+      const provider = String(req.body?.provider || "groq").toLowerCase();
+      const model = req.body?.model ? String(req.body.model) : undefined;
+      const maxTokens = Math.min(4096, Math.max(128, Number(req.body?.maxTokens) || 1500));
+      const temperature = Number.isFinite(Number(req.body?.temperature)) ? Number(req.body.temperature) : 0.4;
+
+      const aiMessages = [
+        { role: "system" as const, content: withPakistanLawOnlyPolicy(PUBLIC_CHAT_SYSTEM_PROMPT) },
+        { role: "user" as const, content: message },
+      ];
+
+      const t0 = Date.now();
+      let rawContent = "";
+      let usedModel = model || "";
+
+      if (provider === "deepseek") {
+        if (!isDeepSeekAvailable()) return res.status(503).json({ message: "DeepSeek not configured" });
+        const r = await chatWithDeepSeek({ messages: aiMessages, model, maxTokens, temperature });
+        rawContent = r.content; usedModel = r.model || usedModel;
+      } else if (provider === "deepseek-pro") {
+        if (!isDeepSeekAvailable()) return res.status(503).json({ message: "DeepSeek not configured" });
+        const r = await chatWithDeepSeekPro({ messages: aiMessages, maxTokens, temperature });
+        rawContent = r.content; usedModel = r.model || usedModel;
+      } else if (provider === "apex" || provider === "apex-agent") {
+        if (!isApexAvailable()) return res.status(503).json({ message: "Apex not configured" });
+        const r = await chatWithApex({ messages: aiMessages, model: (model as ApexModel) || "apex-pro", maxTokens, temperature });
+        rawContent = r.content; usedModel = r.model || usedModel;
+      } else {
+        if (!isGroqAvailable()) return res.status(503).json({ message: "Groq not configured" });
+        const r = await chatWithGroq({ messages: aiMessages, model: model || "openai/gpt-oss-120b", maxTokens, temperature });
+        rawContent = r.content; usedModel = r.model || usedModel;
+      }
+
+      const cleaned = enforcePakistanLawOnlyOutput(rawContent);
+      const latencyMs = Date.now() - t0;
+
+      return res.json({
+        provider,
+        model: usedModel,
+        latencyMs,
+        raw: rawContent,
+        cleaned,
+        changed: rawContent !== cleaned,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err?.message || "Test chat failed" });
+    }
+  });
+
   app.post(api.publicChat.send.path, async (req, res) => {
     try {
       const visitorIp = getVisitorIpAddress(req);
