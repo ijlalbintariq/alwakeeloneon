@@ -1502,21 +1502,21 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     {m.role === "assistant" ? <Scale size={18} /> : <UserIcon size={16} />}
                   </div>
                   <div className={`min-w-0 flex-1 flex flex-col gap-2 ${m.role === "user" ? "items-end" : ""}`}>
-                    <p className={`text-[11px] font-bold uppercase tracking-widest ${m.role === "assistant" ? "text-amber-200" : "text-slate-900"}`}>
+                    <p className={`text-[11px] font-bold uppercase tracking-widest ${m.role === "assistant" ? "text-amber-200" : "text-white"}`}>
                       {m.role === "assistant" ? "Al Wakeelo Assistant" : "You"}
                     </p>
                     <div
                       className={`relative group p-3 sm:p-5 rounded-2xl backdrop-blur-md ${
                         m.role === "assistant"
                           ? "w-full min-w-0 bg-[#0f1c33]/90 border border-amber-300/20 shadow-lg rounded-tl-md"
-                          : "w-full max-w-[96%] bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 border border-amber-300/70 shadow-lg rounded-tr-md"
+                          : "w-full max-w-[96%] bg-transparent text-white border-2 border-amber-400/50 shadow-lg rounded-tr-md"
                       }`}
                     >
                       {m.role === "assistant" ? (
                         <>
                           {(m.modeName || m.modelName) && (
                             <div className="mb-3 pb-2 border-b border-amber-500/15">
-                              <div className="text-[10px] text-slate-400">
+                              <div className="text-[10px] text-white">
                                 {m.modeName && (
                                   <span className={`mr-2 uppercase tracking-wider ${m.isAgentMode ? "text-cyan-400" : "text-amber-400"}`}>
                                     {m.isAgentMode && <Globe size={9} className="inline mr-1" />}
