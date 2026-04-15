@@ -776,10 +776,30 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     return parsedById;
   }, [messages]);
 
+  const extractInlineReferences = (text: string) => {
+    const citations: Array<{ citation: string; court?: string }> = [];
+    const statutes: Array<{ name: string; section?: string }> = [];
+
+    const citationPattern = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+)\b/gi;
+    const statutePattern = /\b(Section\s+\d+\s+(?:PPC|CPC|IPC|PCA|PMLA))\b/gi;
+
+    let match;
+    while ((match = citationPattern.exec(text)) !== null) {
+      citations.push({ citation: match[0] });
+    }
+
+    while ((match = statutePattern.exec(text)) !== null) {
+      statutes.push({ name: match[0] });
+    }
+
+    return { citations, statutes };
+  };
+
   const latestAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
   const latestParsed = latestAssistantMessage ? parsedAssistantMessages.get(latestAssistantMessage.id) ?? null : null;
   const latestRefs = latestParsed?.references ?? null;
   const latestRagCitations = latestAssistantMessage?.ragCitations || [];
+  const latestInlineReferences = latestAssistantMessage ? extractInlineReferences(latestAssistantMessage.content) : { citations: [], statutes: [] };
   const latestStatuteFallback = useMemo(() => {
     const statuteLike = /(?:\bact\b|\bord(?:inance)?\b|\bcode\b|\brules?\b|\bconstitution\b|\bsection\b)/i;
     return latestRagCitations
@@ -827,12 +847,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           ))}
           {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments.slice(0, compact ? 3 : 4).map((j, idx) => (
-            <div key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all">
+            <div key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer" onClick={() => window.open(`/judgments?q=${encodeURIComponent(j.citation)}`, '_blank')}>
               <div className="flex justify-between items-start mb-2 gap-2">
                 <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
               </div>
               <p className="text-xs font-bold text-slate-200 mb-1">{j.court || "Pakistani Courts"}</p>
               {j.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{j.description}</p>}
+            </div>
+          ))}
+          {(latestInlineReferences?.citations?.length || 0) > 0 && latestInlineReferences?.citations.slice(0, compact ? 2 : 3).map((c, idx) => (
+            <div key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer" onClick={() => window.open(`/judgments?q=${encodeURIComponent(c.citation)}`, '_blank')}>
+              <div className="flex justify-between items-start mb-2 gap-2">
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{c.citation}</span>
+              </div>
+              <p className="text-[10px] text-slate-500">Click to view judgment</p>
             </div>
           ))}
           {(latestRefs?.laws?.length || 0) > 0 && latestRefs?.laws.slice(0, compact ? 3 : 4).map((l, idx) => (
@@ -855,21 +883,34 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           <Scale size={13} /> Relevant Statutes
         </h3>
         <div className="space-y-2">
-          {latestStatutes.length > 0 ? (
-            latestStatutes.slice(0, compact ? 5 : 8).map((law, idx) => (
-              <div key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-default">
-                <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
-                <div>
-                  <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
-                    {law.name || "Pakistani Statute"}
-                  </p>
-                  <p className="text-[10px] text-slate-500">{law.section || "Section reference"}</p>
-                  {law.description && (
-                    <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{law.description}</p>
-                  )}
+          {latestStatutes.length > 0 || (latestInlineReferences?.statutes?.length || 0) > 0 ? (
+            <>
+              {latestStatutes.slice(0, compact ? 5 : 8).map((law, idx) => (
+                <div key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(law.name)}`, '_blank')}>
+                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
+                  <div>
+                    <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
+                      {law.name || "Pakistani Statute"}
+                    </p>
+                    <p className="text-[10px] text-slate-500">{law.section || "Section reference"}</p>
+                    {law.description && (
+                      <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{law.description}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+              {(latestInlineReferences?.statutes?.length || 0) > 0 && latestInlineReferences?.statutes.slice(0, compact ? 3 : 5).map((statute, idx) => (
+                <div key={`inline-statute-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(statute.name)}`, '_blank')}>
+                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
+                  <div>
+                    <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
+                      {statute.name}
+                    </p>
+                    <p className="text-[10px] text-slate-500">Click to view statute</p>
+                  </div>
+                </div>
+              ))}
+            </>
           ) : (
             <p className="text-xs text-slate-500">Relevant statutes will appear here when Al Wakeelo cites them in responses.</p>
           )}
