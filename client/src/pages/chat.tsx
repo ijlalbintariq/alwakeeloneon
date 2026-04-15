@@ -786,16 +786,29 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     const citations: Array<{ citation: string; court?: string }> = [];
     const statutes: Array<{ name: string; section?: string }> = [];
 
-    const citationPattern = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+)\b/gi;
-    const statutePattern = /\b(Section\s+\d+\s+(?:PPC|CPC|IPC|PCA|PMLA))\b/gi;
+    // Enhanced citation pattern to catch more Pakistani legal citation formats
+    const citationPattern = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C|SCMR|PLJ|CLD|LHC|IHC|SHC)\s+\d+)\b/gi;
+
+    // Enhanced statute pattern to catch Section X PPC/CPC/IPC and other references
+    const statutePattern = /\b(?:Section\s+\d+(?:\s+(?:PPC|CPC|IPC|PCA|PMLA|BNPL|SECP))?|(?:PPC|CPC|IPC|PMLA|BNPL|SECP|Income Tax Ordinance|Constitution|Qanun-e-Shahadat|Criminal Procedure Code|Civil Procedure Code)\s+(?:\d{4}|Section|Ordinance|Act|Code)?\s*\d*)\b/gi;
 
     let match;
+    const seenCitations = new Set<string>();
     while ((match = citationPattern.exec(text)) !== null) {
-      citations.push({ citation: match[0] });
+      const citation = match[0];
+      if (!seenCitations.has(citation)) {
+        seenCitations.add(citation);
+        citations.push({ citation });
+      }
     }
 
+    const seenStatutes = new Set<string>();
     while ((match = statutePattern.exec(text)) !== null) {
-      statutes.push({ name: match[0] });
+      const statute = match[0];
+      if (!seenStatutes.has(statute)) {
+        seenStatutes.add(statute);
+        statutes.push({ name: statute });
+      }
     }
 
     return { citations, statutes };
