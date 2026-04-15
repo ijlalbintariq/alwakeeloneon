@@ -198,7 +198,7 @@ export default function StatuteSearchPage() {
         </div>
       </section>
 
-      <section className="flex-1 min-h-0 rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.58] p-2.5 sm:p-3 relative overflow-hidden">
+      <section className="flex-1 min-h-0 rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.85] backdrop-blur-xl p-2.5 sm:p-3 relative overflow-hidden">
         <div className="absolute -right-8 -top-8 opacity-[0.03] pointer-events-none scale-[1.6]">
           <Book size={220} />
         </div>
@@ -219,7 +219,7 @@ export default function StatuteSearchPage() {
 
           <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
             {COMMON_STATUTES.map((cat, idx) => (
-              <article key={idx} className="h-full rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f172a]/75 p-4 space-y-2.5">
+              <article key={idx} className="h-full rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f172a]/90 backdrop-blur-md p-4 space-y-2.5">
                 <div className="pb-1 border-b border-[hsl(var(--preview-border))]">
                   <h5 className="text-[10px] font-black uppercase tracking-[0.12em] text-amber-400 mb-1">{cat.category}</h5>
                   <p className="text-[11px] text-slate-500 leading-snug text-justify">{cat.description}</p>
@@ -229,7 +229,7 @@ export default function StatuteSearchPage() {
                     <button
                       key={i}
                       onClick={() => handleQuickSearch(stat.query)}
-                      className="w-full text-left rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e]/80 px-3 py-2 transition-all hover:border-amber-400/45 hover:bg-[#15233a] group"
+                      className="w-full text-left rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e]/95 backdrop-blur-sm px-3 py-2 transition-all hover:border-amber-400/45 hover:bg-[#15233a] group"
                       data-testid={`statute-quick-${idx}-${i}`}
                     >
                       <div className="flex items-start justify-between gap-1.5 mb-0.5">
