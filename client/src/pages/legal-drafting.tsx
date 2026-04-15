@@ -1442,6 +1442,7 @@ export default function LegalDraftingPage() {
     onSuccess: (doc) => {
       setSelectedDraftId(doc.id);
       queryClient.invalidateQueries({ queryKey: [api.documents.list.path] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activity/summary"] });
       toast({ title: "Draft saved" });
     },
     onError: (err: any) => {
@@ -1462,6 +1463,7 @@ export default function LegalDraftingPage() {
         setSelectedDraftId(null);
       }
       queryClient.invalidateQueries({ queryKey: [api.documents.list.path] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activity/summary"] });
       toast({ title: "Draft deleted" });
     },
     onError: (err: any) => {

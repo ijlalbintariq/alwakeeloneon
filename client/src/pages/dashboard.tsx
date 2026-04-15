@@ -18,6 +18,19 @@ type UsageData = {
   percentage: number;
 };
 
+interface ActivitySummary {
+  lastActivity: {
+    threadId?: number;
+    threadTitle?: string;
+    updatedAt?: string;
+    displayDate?: string;
+    displayTime?: string;
+  };
+  recentDocuments: Array<{ id: number; title: string; createdAt?: string }>;
+  documentCount: number;
+  workspaceFocus: string[];
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const { data: bookmarks } = useQuery<any[]>({ queryKey: ["/api/bookmarks"] });
@@ -25,6 +38,7 @@ export default function DashboardPage() {
   const { data: documents } = useQuery<any[]>({ queryKey: ["/api/documents"] });
   const { data: threads } = useQuery<any[]>({ queryKey: ["/api/threads"] });
   const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
+  const { data: activitySummary } = useQuery<ActivitySummary>({ queryKey: ["/api/activity/summary"] });
 
   const stats = [
     { label: "Active Sessions", value: threads?.length || 0, icon: Scale, color: "text-amber-500" },
@@ -184,8 +198,22 @@ export default function DashboardPage() {
           <div className="space-y-2">
             <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-2.5 md:p-3">
               <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Last Activity Reminder</p>
-              <p className="text-xs md:text-sm font-bold text-slate-100 mt-1">Review your most recent consultation thread before drafting.</p>
-              <p className="text-[11px] text-slate-400 mt-1">Continue from saved context to keep facts, citations, and strategy consistent.</p>
+              {activitySummary?.lastActivity?.threadId ? (
+                <>
+                  <p className="text-xs md:text-sm font-bold text-amber-300 mt-1">
+                    {activitySummary.lastActivity.threadTitle}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Last updated: {activitySummary.lastActivity.displayDate} at {activitySummary.lastActivity.displayTime}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">Continue from saved context to keep facts, citations, and strategy consistent.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs md:text-sm font-bold text-slate-100 mt-1">No recent consultations</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Start a new consultation with Al Wakeelo to begin your legal research journey.</p>
+                </>
+              )}
             </div>
 
             <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-2.5 md:p-3">
@@ -203,9 +231,22 @@ export default function DashboardPage() {
 
             <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 p-2.5 md:p-3">
               <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Workspace Focus</p>
-              <p className="text-[11px] text-slate-300 mt-1">Run judgment research before drafting.</p>
-              <p className="text-[11px] text-slate-300 mt-1">Attach core documents for stronger AI output.</p>
-              <p className="text-[11px] text-slate-300 mt-1">Save final drafts to keep consultation continuity.</p>
+              {activitySummary?.workspaceFocus?.length ? (
+                <div className="space-y-1.5 mt-2">
+                  {activitySummary.workspaceFocus.map((suggestion, idx) => (
+                    <p key={idx} className="text-[11px] text-slate-300 flex items-start gap-2">
+                      <span className="text-amber-400 mt-0.5">•</span>
+                      <span>{suggestion}</span>
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <p className="text-[11px] text-slate-300 mt-1">Run judgment research before drafting.</p>
+                  <p className="text-[11px] text-slate-300 mt-1">Attach core documents for stronger AI output.</p>
+                  <p className="text-[11px] text-slate-300 mt-1">Save final drafts to keep consultation continuity.</p>
+                </>
+              )}
             </div>
           </div>
           <div className="mt-2 md:mt-auto rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/60 p-2.5 md:p-3">
