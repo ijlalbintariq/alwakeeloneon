@@ -1509,7 +1509,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       className={`relative group p-3 sm:p-5 rounded-2xl backdrop-blur-md ${
                         m.role === "assistant"
                           ? "w-full min-w-0 bg-[#0f1c33]/90 border border-amber-300/20 shadow-lg rounded-tl-md"
-                          : "w-full max-w-[96%] bg-transparent text-white border-2 border-amber-400/50 shadow-lg rounded-tr-md"
+                          : "w-auto max-w-[85%] bg-transparent text-white border-2 border-amber-400/50 shadow-lg rounded-tr-md"
                       }`}
                     >
                       {m.role === "assistant" ? (
