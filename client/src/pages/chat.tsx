@@ -1684,65 +1684,31 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               </div>
             )}
 
-            <div className="w-full bg-[#081428]/92 border border-amber-300/20 rounded-2xl shadow-[0_14px_38px_rgba(120,53,15,0.34)] p-2">
-              <div className="flex items-end gap-2 p-1.5 sm:p-2 flex-wrap">
-                <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple className="hidden" />
-                <input type="file" ref={audioInputRef} onChange={handleAudioSelect} accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" className="hidden" />
-
-                <button onClick={() => fileInputRef.current?.click()} disabled={isLoading || attachedFiles.length >= 5} className="p-2 text-slate-500 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 rounded-lg">
-                  <Paperclip size={18} />
-                </button>
-                <button onClick={() => audioInputRef.current?.click()} disabled={isLoading || isTranscribing} className="p-2 text-slate-500 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 rounded-lg">
-                  {isTranscribing ? <Loader2 size={18} className="animate-spin text-amber-400" /> : <Mic size={18} />}
-                </button>
-                {isAlWakeelo && (
-                  <button
-                    onClick={() => setRagEnabled((prev) => !prev)}
-                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
-                      ragEnabled
-                        ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10"
-                        : "text-slate-400 border-amber-500/20"
-                    }`}
-                    title="Use Retrieval-Augmented Generation"
-                  >
-                    RAG {ragEnabled ? "On" : "Off"}
-                  </button>
-                )}
-
-                <textarea
-                  ref={promptInputRef}
-                  rows={1}
-                  className="flex-1 min-w-[180px] min-h-[42px] max-h-44 resize-none overflow-y-auto bg-transparent border-none focus:ring-0 text-slate-100 placeholder:text-slate-400 px-2 py-2 leading-6"
-                  placeholder="Ask Al Wakeelo about Pakistan Law..."
-                  value={input}
-                  onInput={resizePromptInput}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  data-testid="input-chat"
-                />
-
-                <div className="relative border-l border-amber-500/10 pl-2 sm:pl-3 ml-1">
+            <div className="w-full bg-[#081428]/92 border border-amber-300/20 rounded-2xl shadow-[0_14px_38px_rgba(120,53,15,0.34)] overflow-hidden">
+              {/* Status Bar */}
+              <div className="flex justify-between items-center px-4 py-3 border-b border-amber-400/15 bg-[#081428]/50">
+                <div className="flex items-center gap-3">
+                  {isAlWakeelo && (
+                    <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${
+                      ragEnabled ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" : "text-slate-400 border-amber-500/20"
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${ragEnabled ? "bg-emerald-400" : "bg-slate-500"}`}></span>
+                      {ragEnabled ? "RAG ACTIVE" : "RAG OFF"}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider relative">
                   <button
                     onClick={() => setShowModelMenu(!showModelMenu)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
-                      aiMode === "turbo" ? "text-amber-300 border-amber-500/40 bg-amber-500/10" :
-                      isApexAgentWebMode ? "text-cyan-300 border-cyan-500/40 bg-cyan-500/10" :
-                      isApexMode ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" :
-                      "text-slate-300 border-amber-500/20"
-                    }`}
+                    className="text-amber-300 border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 rounded-lg flex items-center gap-1.5 hover:bg-amber-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
                     data-testid="button-model-selector"
                   >
-                    {isApexAgentWebMode ? <Globe size={11} /> : isApexMode ? <Sparkles size={11} /> : aiMode === "turbo" ? <Zap size={11} /> : <Scale size={11} />}
+                    {isApexAgentWebMode ? <Globe size={10} /> : isApexMode ? <Sparkles size={10} /> : aiMode === "turbo" ? <Zap size={10} /> : <Scale size={10} />}
                     {currentModeName().name}
-                    <ChevronDown size={10} />
+                    <ChevronDown size={9} />
                   </button>
                   {showModelMenu && (
-                    <div className="model-menu-dropdown absolute bottom-full right-0 mb-2 bg-[#1e293b] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden min-w-[280px] z-50">
+                    <div className="absolute top-full right-0 mt-2 bg-[#1e293b] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden min-w-[280px] z-50">
                       <div className="px-4 py-2 text-[9px] text-slate-400 uppercase tracking-widest font-black border-b border-amber-500/15">Select AI Model</div>
                       <button onClick={() => { setAiMode("standard"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${aiMode === "standard" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
                         <div className="font-bold">Standard</div><div className="text-[10px] text-slate-500 mt-0.5">Fast, reliable responses</div>
@@ -1756,8 +1722,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         <>
                           <div className="px-4 py-1.5 text-[9px] text-emerald-300 uppercase tracking-widest font-black border-b border-amber-500/10 bg-emerald-500/10">Apex Models</div>
                           {apexData.models.map(model => (
-                            <button key={model.id} onClick={() => { setAiMode(model.id); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${aiMode === model.id ? "bg-emerald-500/12 text-emerald-300" : "text-slate-300"}`}>
-                              <div className="font-bold">{model.name}</div><div className="text-[10px] text-slate-500 mt-0.5">{model.description}</div>
+                            <button
+                              key={model.id}
+                              onClick={() => { setAiMode(`apex-${model.id}`); setShowModelMenu(false); }}
+                              className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${aiMode === `apex-${model.id}` ? "bg-emerald-500/10 text-emerald-300" : "text-slate-300"}`}
+                            >
+                              <div className="font-bold">{model.name}</div>
+                              <div className="text-[10px] text-slate-500 mt-0.5">{model.description}</div>
                             </button>
                           ))}
                         </>
@@ -1781,9 +1752,40 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     </div>
                   )}
                 </div>
+              </div>
 
-                <button onClick={() => handleSend()} disabled={isLoading || isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-slate-950 h-10 w-10 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60">
-                  <Send size={16} />
+              {/* Input Row */}
+              <div className="flex items-end gap-3 p-3 sm:p-4">
+                <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple className="hidden" />
+                <input type="file" ref={audioInputRef} onChange={handleAudioSelect} accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" className="hidden" />
+
+                <button onClick={() => fileInputRef.current?.click()} disabled={isLoading || attachedFiles.length >= 5} className="p-2 text-slate-500 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 rounded-lg">
+                  <Paperclip size={18} />
+                </button>
+                <button onClick={() => audioInputRef.current?.click()} disabled={isLoading || isTranscribing} className="p-2.5 text-slate-400 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 rounded-lg transition-colors">
+                  {isTranscribing ? <Loader2 size={18} className="animate-spin text-amber-400" /> : <Mic size={18} />}
+                </button>
+
+                <textarea
+                  ref={promptInputRef}
+                  rows={1}
+                  className="flex-1 min-w-[200px] min-h-[50px] max-h-40 resize-none overflow-y-auto bg-transparent border-none focus:ring-0 text-base text-slate-100 placeholder:text-slate-500 px-3 py-3 leading-6 focus:outline-none"
+                  placeholder="Type your legal inquiry or command here..."
+                  value={input}
+                  onInput={resizePromptInput}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  data-testid="input-chat"
+                />
+
+
+                <button onClick={() => handleSend()} disabled={isLoading || isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 disabled:from-amber-400/50 disabled:to-amber-600/50 text-slate-950 h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 flex-shrink-0">
+                  <Send size={20} />
                 </button>
               </div>
 
