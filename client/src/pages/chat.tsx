@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
-import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink } from "lucide-react";
+import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -994,58 +994,63 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           </div>
                         </div>
                       )}
-                      {/* Agent Research Steps (non-alwakeelo view) */}
+                      {/* Agent Research Steps (compact, integrated) */}
                       {m.isAgentMode && (m.agentSteps?.length || 0) > 0 && (
-                        <div className="mb-4 rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-3">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-2 flex items-center gap-1.5">
-                            <Brain size={11} /> Research Process
+                        <div className="mt-3 pt-3 border-t border-[#E9EEF5]">
+                          <p className="text-[9px] font-semibold uppercase tracking-widest text-cyan-600 mb-2 flex items-center gap-1.5">
+                            <Brain size={12} /> Research Steps
                           </p>
-                          <div className="space-y-1.5">
-                            {m.agentSteps!.map((step, idx) => (
-                              <div key={idx} className="flex items-start gap-2 text-[11px]">
+                          <div className="space-y-1.5 text-[10px]">
+                            {m.agentSteps!.slice(0, 3).map((step, idx) => (
+                              <div key={idx} className="flex items-start gap-2">
                                 <span className="shrink-0 mt-0.5">
-                                  {step.type === "thinking" && <Brain size={11} className="text-purple-400" />}
-                                  {step.type === "searching" && <Search size={11} className="text-cyan-400" />}
-                                  {step.type === "reading" && <BookOpen size={11} className="text-blue-400" />}
-                                  {step.type === "synthesizing" && <Sparkles size={11} className="text-emerald-400" />}
+                                  {step.type === "thinking" && <Brain size={12} className="text-purple-500" />}
+                                  {step.type === "searching" && <Search size={12} className="text-cyan-500" />}
+                                  {step.type === "reading" && <BookOpen size={12} className="text-blue-500" />}
+                                  {step.type === "synthesizing" && <Sparkles size={12} className="text-emerald-500" />}
                                 </span>
-                                <span className={`${
-                                  step.type === "thinking" ? "text-purple-300" :
-                                  step.type === "searching" ? "text-cyan-300" :
-                                  step.type === "reading" ? "text-blue-300" :
-                                  "text-emerald-300"
-                                }`}>{step.content}</span>
+                                <span className="text-[#475569]">{step.content}</span>
                               </div>
                             ))}
                           </div>
-                          {(m.agentSearchQueries?.length || 0) > 0 && (
-                            <div className="mt-2 pt-2 border-t border-cyan-500/15">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-cyan-500 mb-1">Search Queries</p>
-                              <div className="flex flex-wrap gap-1">
-                                {m.agentSearchQueries!.map((q, idx) => (
-                                  <span key={idx} className="text-[10px] bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                                    {q}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       )}
                       <LegalMarkdown content={displayContent} />
-                      {parsed?.references && <ReferenceCards references={parsed.references} />}
-                      {(m.ragCitations?.length || 0) > 0 && (
-                        <div className="mt-4 rounded-lg border-l-4 border-[#B45309] bg-white p-3 shadow-sm">
-                          <p className="text-[9px] font-semibold uppercase tracking-widest text-[#B45309]">
-                            Legal Citations ({m.ragConfidence || "low"})
-                          </p>
-                          <div className="mt-2 space-y-1">
-                            {m.ragCitations!.slice(0, 5).map((c, idx) => (
-                              <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[10px] text-[#0F172A]">
-                                <span className="font-semibold">{idx + 1}.</span> {c.title} · chunk {c.chunkIndex} · {Math.round(c.score * 100)}%
-                              </div>
-                            ))}
-                          </div>
+
+                      {/* Integrated Legal Context Strip */}
+                      {((m.ragCitations?.length || 0) > 0 || (parsed?.references?.length || 0) > 0) && (
+                        <div className="mt-4 pt-4 border-t border-[#E9EEF5] space-y-2">
+                          {/* Case Law Citations */}
+                          {(m.ragCitations?.length || 0) > 0 && (
+                            <div className="space-y-2">
+                              {m.ragCitations!.slice(0, 2).map((c, idx) => (
+                                <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="flex gap-3 p-3 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] hover:border-[#B45309]/30 transition-colors duration-150">
+                                  <Gavel size={16} className="text-[#B45309] flex-shrink-0 mt-0.5" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-semibold text-[#0F172A] truncate">{c.title}</p>
+                                    <p className="text-[9px] text-[#64748B] mt-1">Relevance: {Math.round(c.score * 100)}%</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* References/Definitions */}
+                          {parsed?.references && parsed.references.length > 0 && (
+                            <div className="space-y-2">
+                              {parsed.references.slice(0, 2).map((ref, idx) => (
+                                <div key={idx} className="flex gap-3 p-3 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] hover:border-[#1E3A8A]/30 transition-colors duration-150">
+                                  <Link2 size={16} className="text-[#1E3A8A] flex-shrink-0 mt-0.5" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-semibold text-[#0F172A] truncate">{ref.title || ref.name}</p>
+                                    {ref.description && (
+                                      <p className="text-[9px] text-[#64748B] mt-1 line-clamp-1">{ref.description}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </>
