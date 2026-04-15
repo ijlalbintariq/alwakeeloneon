@@ -1363,6 +1363,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <textarea
               ref={promptInputRef}
               rows={1}
+              spellCheck="true"
+              autoCorrect="on"
               className="flex-1 min-h-[40px] sm:min-h-[44px] max-h-40 sm:max-h-44 resize-none overflow-y-auto bg-transparent border-none px-2.5 sm:px-3 py-1.5 sm:py-2 text-sm text-[#0F172A] leading-6 focus:ring-0 focus:outline-none placeholder:text-[#94A3B8]"
               placeholder="Ask about your contract..."
               value={input}
