@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
-import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink } from "lucide-react";
+import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -776,10 +776,30 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     return parsedById;
   }, [messages]);
 
+  const extractInlineReferences = (text: string) => {
+    const citations: Array<{ citation: string; court?: string }> = [];
+    const statutes: Array<{ name: string; section?: string }> = [];
+
+    const citationPattern = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+)\b/gi;
+    const statutePattern = /\b(Section\s+\d+\s+(?:PPC|CPC|IPC|PCA|PMLA))\b/gi;
+
+    let match;
+    while ((match = citationPattern.exec(text)) !== null) {
+      citations.push({ citation: match[0] });
+    }
+
+    while ((match = statutePattern.exec(text)) !== null) {
+      statutes.push({ name: match[0] });
+    }
+
+    return { citations, statutes };
+  };
+
   const latestAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
   const latestParsed = latestAssistantMessage ? parsedAssistantMessages.get(latestAssistantMessage.id) ?? null : null;
   const latestRefs = latestParsed?.references ?? null;
   const latestRagCitations = latestAssistantMessage?.ragCitations || [];
+  const latestInlineReferences = latestAssistantMessage ? extractInlineReferences(latestAssistantMessage.content) : { citations: [], statutes: [] };
   const latestStatuteFallback = useMemo(() => {
     const statuteLike = /(?:\bact\b|\bord(?:inance)?\b|\bcode\b|\brules?\b|\bconstitution\b|\bsection\b)/i;
     return latestRagCitations
@@ -827,12 +847,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           ))}
           {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments.slice(0, compact ? 3 : 4).map((j, idx) => (
-            <div key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all">
+            <div key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer" onClick={() => window.open(`/judgments?q=${encodeURIComponent(j.citation)}`, '_blank')}>
               <div className="flex justify-between items-start mb-2 gap-2">
                 <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
               </div>
               <p className="text-xs font-bold text-slate-200 mb-1">{j.court || "Pakistani Courts"}</p>
               {j.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{j.description}</p>}
+            </div>
+          ))}
+          {(latestInlineReferences?.citations?.length || 0) > 0 && latestInlineReferences?.citations.slice(0, compact ? 2 : 3).map((c, idx) => (
+            <div key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer" onClick={() => window.open(`/judgments?q=${encodeURIComponent(c.citation)}`, '_blank')}>
+              <div className="flex justify-between items-start mb-2 gap-2">
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{c.citation}</span>
+              </div>
+              <p className="text-[10px] text-slate-500">Click to view judgment</p>
             </div>
           ))}
           {(latestRefs?.laws?.length || 0) > 0 && latestRefs?.laws.slice(0, compact ? 3 : 4).map((l, idx) => (
@@ -855,21 +883,34 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           <Scale size={13} /> Relevant Statutes
         </h3>
         <div className="space-y-2">
-          {latestStatutes.length > 0 ? (
-            latestStatutes.slice(0, compact ? 5 : 8).map((law, idx) => (
-              <div key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-default">
-                <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
-                <div>
-                  <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
-                    {law.name || "Pakistani Statute"}
-                  </p>
-                  <p className="text-[10px] text-slate-500">{law.section || "Section reference"}</p>
-                  {law.description && (
-                    <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{law.description}</p>
-                  )}
+          {latestStatutes.length > 0 || (latestInlineReferences?.statutes?.length || 0) > 0 ? (
+            <>
+              {latestStatutes.slice(0, compact ? 5 : 8).map((law, idx) => (
+                <div key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(law.name)}`, '_blank')}>
+                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
+                  <div>
+                    <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
+                      {law.name || "Pakistani Statute"}
+                    </p>
+                    <p className="text-[10px] text-slate-500">{law.section || "Section reference"}</p>
+                    {law.description && (
+                      <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{law.description}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+              {(latestInlineReferences?.statutes?.length || 0) > 0 && latestInlineReferences?.statutes.slice(0, compact ? 3 : 5).map((statute, idx) => (
+                <div key={`inline-statute-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(statute.name)}`, '_blank')}>
+                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
+                  <div>
+                    <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
+                      {statute.name}
+                    </p>
+                    <p className="text-[10px] text-slate-500">Click to view statute</p>
+                  </div>
+                </div>
+              ))}
+            </>
           ) : (
             <p className="text-xs text-slate-500">Relevant statutes will appear here when Al Wakeelo cites them in responses.</p>
           )}
@@ -888,66 +929,66 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
   if (!isAlWakeelo) {
     return (
-      <div className="flex flex-col h-[calc(100vh-120px)] bg-[#1e293b] border border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl relative fade-in">
-        <div className="p-5 bg-[#0f172a]/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between z-20">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+      <div className="flex flex-col h-[calc(100vh-120px)] bg-white border border-[#CBD5E1] rounded-2xl overflow-hidden shadow-lg relative fade-in">
+        <div className="p-4 md:p-6 bg-white border-b border-[#CBD5E1] flex items-center justify-between z-20">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 rounded-lg bg-[#1E3A8A]/10 flex items-center justify-center text-[#1E3A8A]">
               <Scale size={20} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white capitalize">{title || type.replace("-", " ")} Session</h3>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${apiError ? "bg-red-500" : "bg-emerald-500"}`} />
-                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">
-                  {apiError ? "Engine Throttled" : "Counsel Engine Active"}
+              <h3 className="text-sm md:text-base font-semibold text-[#0F172A] capitalize">{title || type.replace("-", " ")}</h3>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${apiError ? "bg-[#DC2626]" : "bg-emerald-500"}`} />
+                <p className="text-[8px] md:text-[9px] text-[#64748B] font-semibold uppercase tracking-widest">
+                  {apiError ? "Engine Throttled" : "Active"}
                 </p>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {shareError && (
-              <span className="text-[9px] text-red-400 font-bold">{shareError}</span>
+              <span className="text-[9px] text-[#DC2626] font-semibold">{shareError}</span>
             )}
             {messages.length >= 2 && (
               <button
                 onClick={shareUrl ? handleCopyShareUrl : handleShare}
                 disabled={isSharing}
                 data-testid="button-share-chat"
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
+                className={`px-3 py-2 rounded-lg text-[9px] md:text-[10px] font-semibold uppercase tracking-wide flex items-center gap-2 transition-all duration-150 ${
                   shareUrl
-                    ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                    : "hover:bg-amber-500/10 text-slate-500 hover:text-amber-400"
+                    ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                    : "hover:bg-[#B45309]/10 text-[#64748B] hover:text-[#B45309]"
                 }`}
               >
                 {isSharing ? (
-                  <><Loader2 size={14} className="animate-spin" /> Sharing...</>
+                  <><Loader2 size={12} className="animate-spin" /> Sharing...</>
                 ) : copied ? (
-                  <><Check size={14} /> Link Copied</>
+                  <><Check size={12} /> Copied</>
                 ) : shareUrl ? (
-                  <><Copy size={14} /> Copy Link</>
+                  <><Copy size={12} /> Copy</>
                 ) : (
-                  <><Share2 size={14} /> Share</>
+                  <><Share2 size={12} /> Share</>
                 )}
               </button>
             )}
             <button
               onClick={handleClear}
               data-testid="button-clear-chat"
-              className="px-4 py-2 hover:bg-red-500/10 rounded-xl text-slate-500 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
+              className="px-3 py-2 hover:bg-[#DC2626]/10 rounded-lg text-[#64748B] hover:text-[#DC2626] text-[9px] md:text-[10px] font-semibold uppercase tracking-wide flex items-center gap-2 transition-all duration-150"
             >
               <Trash2 size={14} /> Reset
             </button>
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 scrollbar-hide bg-[#0a0f1a] px-4 md:px-8 py-4 flex flex-col">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 scrollbar-hide bg-[#F8FAFC] px-3 sm:px-4 md:px-8 py-3 sm:py-4 md:py-6 flex flex-col">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-              <Scale size={48} className="text-slate-700" />
-              <p className="text-slate-600 italic text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <Scale size={48} className="text-[#94A3B8]" />
+              <p className="text-[#475569] italic text-sm md:text-base" style={{ fontFamily: "'EB Garamond', serif" }}>
                 "Main hoon Al Wakeelo -- not just your lawyer, your strategy partner in justice."
               </p>
-              <p className="text-[9px] text-slate-700 uppercase tracking-widest font-black">Type your query or attach documents below</p>
+              <p className="text-[9px] text-[#64748B] uppercase tracking-widest font-semibold">Ask about your contract or legal matter</p>
             </div>
           )}
 
@@ -962,28 +1003,28 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 style={OFFSCREEN_MESSAGE_STYLE}
               >
                 {m.role === "assistant" && (
-                  <div className="w-6 h-6 rounded-md bg-amber-500/80 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Scale size={14} className="text-slate-950" />
+                  <div className="w-8 h-8 rounded-md bg-[#1E3A8A] flex items-center justify-center flex-shrink-0 mt-1">
+                    <Scale size={16} className="text-white" />
                   </div>
                 )}
                 <div
-                  className={`flex-1 p-3 md:p-4 rounded-lg relative group ${
+                  className={`flex-1 p-3 sm:p-4 md:p-5 rounded-2xl relative group ${
                     m.role === "user"
-                      ? "bg-amber-600 text-white rounded-br-sm max-w-xs md:max-w-md"
-                      : "bg-slate-800 border border-slate-700/50 text-slate-100 rounded-bl-sm"
+                      ? "bg-gradient-to-br from-[#1E3A8A] to-[#1e40af] text-white rounded-br-none max-w-2xl shadow-md hover:shadow-lg transition-shadow"
+                      : "bg-white border border-[#E2E8F0] text-[#0F172A] rounded-bl-none shadow-sm hover:shadow-md transition-shadow"
                   }`}
                 >
                   {m.role === "assistant" ? (
                     <>
                       {(m.modeName || m.modelName) && (
-                        <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-slate-700/20">
+                        <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-[#CBD5E1]">
                           <div className="flex flex-col gap-0.5">
                             {m.modeName && (
-                              <span className={`text-[8px] font-bold uppercase tracking-wider ${
-                                m.modeName === "Turbo" ? "text-amber-300" :
-                                m.modeName === "Standard" ? "text-slate-400" :
-                                m.isAgentMode ? "text-cyan-300" :
-                                "text-emerald-300"
+                              <span className={`text-[7px] font-semibold uppercase tracking-wider ${
+                                m.modeName === "Turbo" ? "text-[#B45309]" :
+                                m.modeName === "Standard" ? "text-[#64748B]" :
+                                m.isAgentMode ? "text-cyan-600" :
+                                "text-emerald-600"
                               }`}>
                                 {m.modeName === "Turbo" && <Zap size={8} className="inline mr-0.5" />}
                                 {m.isAgentMode && <Globe size={8} className="inline mr-0.5" />}
@@ -994,58 +1035,63 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           </div>
                         </div>
                       )}
-                      {/* Agent Research Steps (non-alwakeelo view) */}
+                      {/* Agent Research Steps (compact, integrated) */}
                       {m.isAgentMode && (m.agentSteps?.length || 0) > 0 && (
-                        <div className="mb-4 rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-3">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-2 flex items-center gap-1.5">
-                            <Brain size={11} /> Research Process
+                        <div className="mt-3 pt-3 border-t border-[#E9EEF5]">
+                          <p className="text-[9px] font-semibold uppercase tracking-widest text-cyan-600 mb-2 flex items-center gap-1.5">
+                            <Brain size={12} /> Research Steps
                           </p>
-                          <div className="space-y-1.5">
-                            {m.agentSteps!.map((step, idx) => (
-                              <div key={idx} className="flex items-start gap-2 text-[11px]">
+                          <div className="space-y-1.5 text-[10px]">
+                            {m.agentSteps!.slice(0, 3).map((step, idx) => (
+                              <div key={idx} className="flex items-start gap-2">
                                 <span className="shrink-0 mt-0.5">
-                                  {step.type === "thinking" && <Brain size={11} className="text-purple-400" />}
-                                  {step.type === "searching" && <Search size={11} className="text-cyan-400" />}
-                                  {step.type === "reading" && <BookOpen size={11} className="text-blue-400" />}
-                                  {step.type === "synthesizing" && <Sparkles size={11} className="text-emerald-400" />}
+                                  {step.type === "thinking" && <Brain size={12} className="text-purple-500" />}
+                                  {step.type === "searching" && <Search size={12} className="text-cyan-500" />}
+                                  {step.type === "reading" && <BookOpen size={12} className="text-blue-500" />}
+                                  {step.type === "synthesizing" && <Sparkles size={12} className="text-emerald-500" />}
                                 </span>
-                                <span className={`${
-                                  step.type === "thinking" ? "text-purple-300" :
-                                  step.type === "searching" ? "text-cyan-300" :
-                                  step.type === "reading" ? "text-blue-300" :
-                                  "text-emerald-300"
-                                }`}>{step.content}</span>
+                                <span className="text-[#475569]">{step.content}</span>
                               </div>
                             ))}
                           </div>
-                          {(m.agentSearchQueries?.length || 0) > 0 && (
-                            <div className="mt-2 pt-2 border-t border-cyan-500/15">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-cyan-500 mb-1">Search Queries</p>
-                              <div className="flex flex-wrap gap-1">
-                                {m.agentSearchQueries!.map((q, idx) => (
-                                  <span key={idx} className="text-[10px] bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                                    {q}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       )}
                       <LegalMarkdown content={displayContent} />
-                      {parsed?.references && <ReferenceCards references={parsed.references} />}
-                      {(m.ragCitations?.length || 0) > 0 && (
-                        <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
-                            RAG Citations ({m.ragConfidence || "low"})
-                          </p>
-                          <div className="mt-2 space-y-1.5">
-                            {m.ragCitations!.slice(0, 5).map((c, idx) => (
-                              <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[11px] text-emerald-100">
-                                <span className="font-bold">{idx + 1}.</span> {c.title} · chunk {c.chunkIndex} · {Math.round(c.score * 100)}%
-                              </div>
-                            ))}
-                          </div>
+
+                      {/* Integrated Legal Context Strip */}
+                      {((m.ragCitations?.length || 0) > 0 || (parsed?.references?.length || 0) > 0) && (
+                        <div className="mt-4 pt-4 border-t border-[#E9EEF5] space-y-2">
+                          {/* Case Law Citations */}
+                          {(m.ragCitations?.length || 0) > 0 && (
+                            <div className="space-y-2">
+                              {m.ragCitations!.slice(0, 2).map((c, idx) => (
+                                <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="flex gap-3 p-3 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] hover:border-[#B45309]/30 transition-colors duration-150">
+                                  <Gavel size={16} className="text-[#B45309] flex-shrink-0 mt-0.5" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-semibold text-[#0F172A] truncate">{c.title}</p>
+                                    <p className="text-[9px] text-[#64748B] mt-1">Relevance: {Math.round(c.score * 100)}%</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* References/Definitions */}
+                          {parsed?.references && parsed.references.length > 0 && (
+                            <div className="space-y-2">
+                              {parsed.references.slice(0, 2).map((ref, idx) => (
+                                <div key={idx} className="flex gap-3 p-3 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] hover:border-[#1E3A8A]/30 transition-colors duration-150">
+                                  <Link2 size={16} className="text-[#1E3A8A] flex-shrink-0 mt-0.5" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-semibold text-[#0F172A] truncate">{ref.title || ref.name}</p>
+                                    {ref.description && (
+                                      <p className="text-[9px] text-[#64748B] mt-1 line-clamp-1">{ref.description}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </>
@@ -1134,19 +1180,19 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         )}
 
-        <div className="p-4 md:p-6 bg-[#0f172a]/50 border-t border-slate-800">
-          <div className="flex items-center gap-2 mb-2 px-2 flex-wrap">
+        <div className="p-4 md:p-6 bg-white border-t border-[#CBD5E1]">
+          <div className="flex items-center gap-2 mb-3 px-2 flex-wrap">
             <div className="relative">
               <button
                 onClick={() => setShowModelMenu(!showModelMenu)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-semibold uppercase tracking-wide transition-all border duration-150 ${
                   aiMode === "turbo"
-                    ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                    ? "bg-[#B45309]/10 text-[#B45309] border-[#B45309]/30"
                     : isApexAgentWebMode
-                      ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+                      ? "bg-cyan-500/10 text-cyan-600 border-cyan-500/30"
                       : isApexMode
-                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                        : "text-slate-400 border-slate-700 hover:border-slate-600 hover:text-slate-300"
+                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                        : "text-[#64748B] border-[#CBD5E1] hover:border-[#B45309] hover:text-[#B45309]"
                 }`}
                 data-testid="button-model-selector"
               >
@@ -1275,7 +1321,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           )}
 
-          <div className="flex gap-2 bg-[#1e293b] border border-slate-700 p-2 rounded-[2rem] shadow-2xl items-end">
+          <div className="flex gap-1.5 sm:gap-2 bg-white border border-[#CBD5E1] p-2.5 sm:p-3 rounded-xl shadow-sm items-end">
             <input
               type="file"
               ref={fileInputRef}
@@ -1295,30 +1341,32 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading || attachedFiles.length >= 5}
-              className="p-3 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2 text-[#64748B] hover:text-[#B45309] hover:bg-[#B45309]/10 rounded-lg transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
               title="Attach document (TXT, PDF, DOCX)"
             >
-              <Paperclip size={18} />
+              <Paperclip size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
 
             <button
               onClick={() => audioInputRef.current?.click()}
               disabled={isLoading || isTranscribing}
-              className={`p-3 rounded-xl transition-all ${
+              className={`min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2 rounded-lg transition-all duration-150 ${
                 isTranscribing
-                  ? "text-amber-500 bg-amber-500/10"
-                  : "text-slate-500 hover:text-amber-400 hover:bg-amber-500/10"
+                  ? "text-[#B45309] bg-[#B45309]/10"
+                  : "text-[#64748B] hover:text-[#B45309] hover:bg-[#B45309]/10"
               } disabled:opacity-30 disabled:cursor-not-allowed`}
               title="Transcribe audio file (MP3, WAV, M4A)"
             >
-              <Mic size={18} />
+              <Mic size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
 
             <textarea
               ref={promptInputRef}
               rows={1}
-              className="flex-1 min-h-[44px] max-h-44 resize-none overflow-y-auto bg-transparent border-none px-3 py-2 text-sm text-white leading-6 focus:ring-0 focus:outline-none placeholder:text-slate-600"
-              placeholder="Consult Al Wakeelo..."
+              spellCheck="true"
+              autoCorrect="on"
+              className="flex-1 min-h-[40px] sm:min-h-[44px] max-h-40 sm:max-h-44 resize-none overflow-y-auto bg-transparent border-none px-2.5 sm:px-3 py-1.5 sm:py-2 text-sm text-[#0F172A] leading-6 focus:ring-0 focus:outline-none placeholder:text-[#94A3B8]"
+              placeholder="Ask about your contract..."
               value={input}
               onInput={resizePromptInput}
               onChange={(e) => setInput(e.target.value)}
@@ -1334,9 +1382,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               onClick={() => handleSend()}
               disabled={isLoading || isTranscribing}
               data-testid="button-send"
-              className="p-4 bg-amber-500 text-slate-950 rounded-xl hover:bg-amber-400 shadow-xl shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
+              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2.5 bg-[#B45309] text-white rounded-lg hover:bg-[#A23E0A] shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold flex-shrink-0"
             >
-              <Send size={18} />
+              <Send size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
           </div>
         </div>
