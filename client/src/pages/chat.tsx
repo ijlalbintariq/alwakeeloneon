@@ -1405,10 +1405,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               : "w-0 opacity-0 -translate-x-3 pointer-events-none"
           }`}
         >
-          <div className="p-5 flex flex-col h-full w-64 rounded-2xl border border-amber-400/20 bg-[#081328]/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
+          <div className="p-5 flex flex-col h-full w-64 rounded-2xl border border-[#E2E8F0] bg-white shadow-lg">
             <button
               onClick={handleClear}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 text-slate-950 w-full py-3 rounded-xl font-bold transition-all shadow-lg shadow-amber-500/25 mb-6"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-[#B45309] to-[#92400E] hover:from-[#D97706] hover:to-[#B45309] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B45309]/60 text-white w-full py-3 rounded-xl font-bold transition-all shadow-lg shadow-[#B45309]/25 mb-6"
               data-testid="button-new-consultation"
             >
               <PlusCircle size={18} />
@@ -1416,43 +1416,43 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </button>
 
             <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-hide">
-              <h3 className="text-[11px] font-bold text-amber-300/70 uppercase tracking-widest mb-3 px-2">Recent Consultations</h3>
+              <h3 className="text-[11px] font-bold text-[#B45309] uppercase tracking-widest mb-3 px-2">Recent Consultations</h3>
               {threads.slice(0, 12).map((thread) => {
                 const isActive = sharedThreadId === thread.id;
                 return (
                   <button
                     key={thread.id}
                     onClick={() => handleLoadThread(thread.id)}
-                    className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
+                    className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B45309]/60 ${
                       isActive
-                        ? "bg-amber-500/10 border-amber-500/25"
-                        : "hover:bg-white/5 border-transparent"
+                        ? "bg-[#B45309]/10 border-[#B45309]/25"
+                        : "hover:bg-[#F8FAFC] border-transparent"
                     }`}
                     data-testid={`thread-item-${thread.id}`}
                   >
-                    {isActive ? <FolderOpen size={16} className="text-amber-400 shrink-0" /> : <Folder size={16} className="text-slate-500 shrink-0" />}
+                    {isActive ? <FolderOpen size={16} className="text-[#B45309] shrink-0" /> : <Folder size={16} className="text-[#94A3B8] shrink-0" />}
                     <div className="min-w-0">
-                      <p className={`text-sm font-semibold truncate ${isActive ? "text-amber-300" : "text-slate-300"}`}>
+                      <p className={`text-sm font-semibold truncate ${isActive ? "text-[#1E3A8A]" : "text-[#64748B]"}`}>
                         {thread.title || "Untitled Consultation"}
                       </p>
-                      <p className="text-[10px] text-slate-500">{thread.createdAt ? new Date(thread.createdAt).toLocaleString() : "Recent"}</p>
+                      <p className="text-[10px] text-[#94A3B8]">{thread.createdAt ? new Date(thread.createdAt).toLocaleString() : "Recent"}</p>
                     </div>
                   </button>
                 );
               })}
               {threads.length === 0 && (
-                <p className="text-xs text-slate-500 px-2">No consultations yet.</p>
+                <p className="text-xs text-[#94A3B8] px-2">No consultations yet.</p>
               )}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-amber-500/10" />
+            <div className="mt-4 pt-4 border-t border-[#E2E8F0]" />
           </div>
         </aside>
 
         <div className="hidden lg:flex absolute left-3 top-1/2 -translate-y-1/2 z-40">
           <button
             onClick={() => setLeftRailOpen((prev) => !prev)}
-            className="h-16 w-6 border border-amber-400/35 rounded-r-lg bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.24)]"
+            className="h-16 w-6 border border-[#B45309]/35 rounded-r-lg bg-gradient-to-b from-[#B45309]/10 via-white to-[#F8FAFC] text-[#B45309] hover:from-[#B45309]/15 hover:via-white hover:to-[#F8FAFC] flex items-center justify-center transition-all shadow-sm"
             data-testid="divider-toggle-left-chat-rail"
             title={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
             aria-label={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
@@ -1461,11 +1461,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </button>
         </div>
 
-        <main className="h-full flex flex-col bg-[#081225]/68">
+        <main className="h-full flex flex-col bg-white">
 
-          <section className="xl:hidden border-b border-amber-500/10 bg-[#0f172a]/55 px-3 sm:px-6 py-2">
+          <section className="xl:hidden border-b border-[#E2E8F0] bg-white px-3 sm:px-6 py-2">
             <details className="group">
-              <summary className="list-none cursor-pointer flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-amber-300">
+              <summary className="list-none cursor-pointer flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-[#B45309]">
                 <span className="inline-flex items-center gap-2">
                   <FileText size={13} />
                   Live Legal Insights
@@ -1478,14 +1478,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </details>
           </section>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 scrollbar-hide bg-[linear-gradient(180deg,rgba(2,6,23,0.1),rgba(2,6,23,0.28))]">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 scrollbar-hide bg-[#F8FAFC]">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
-                <Scale size={44} className="text-amber-400/60" />
-                <p className="text-slate-300 italic text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <Scale size={44} className="text-[#B45309]" />
+                <p className="text-[#475569] italic text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
                   "Main hoon Al Wakeelo -- not just your lawyer, your strategy partner in justice."
                 </p>
-                <p className="text-[10px] text-amber-200/70 uppercase tracking-widest font-black">Ask anything about Pakistan law</p>
+                <p className="text-[10px] text-[#64748B] uppercase tracking-widest font-black">Ask anything about Pakistan law</p>
               </div>
             )}
 
@@ -1502,63 +1502,63 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     {m.role === "assistant" ? <Scale size={18} /> : <UserIcon size={16} />}
                   </div>
                   <div className={`min-w-0 flex-1 flex flex-col gap-2 ${m.role === "user" ? "items-end" : ""}`}>
-                    <p className={`text-[11px] font-bold uppercase tracking-widest ${m.role === "assistant" ? "text-amber-200" : "text-slate-400"}`}>
+                    <p className={`text-[11px] font-bold uppercase tracking-widest ${m.role === "assistant" ? "text-[#1E3A8A]" : "text-white"}`}>
                       {m.role === "assistant" ? "Al Wakeelo Assistant" : "You"}
                     </p>
                     <div
                       className={`relative group p-3 sm:p-5 rounded-2xl ${
                         m.role === "assistant"
-                          ? "w-full min-w-0 bg-[#0f1c33]/85 backdrop-blur border border-amber-300/20 shadow-[0_10px_24px_rgba(251,191,36,0.08)] rounded-tl-md"
-                          : "w-full max-w-[96%] bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 border border-amber-300/70 shadow-[0_10px_30px_rgba(251,191,36,0.25)] rounded-tr-md"
+                          ? "w-full min-w-0 bg-white border border-[#E2E8F0] shadow-sm rounded-tl-md"
+                          : "w-full max-w-[96%] bg-gradient-to-br from-[#1E3A8A] to-[#1e40af] text-white border border-[#1e40af] shadow-md rounded-tr-md"
                       }`}
                     >
                       {m.role === "assistant" ? (
                         <>
                           {(m.modeName || m.modelName) && (
-                            <div className="mb-3 pb-2 border-b border-amber-500/15">
-                              <div className="text-[10px] text-slate-400">
+                            <div className="mb-3 pb-2 border-b border-[#E2E8F0]">
+                              <div className="text-[10px] text-[#64748B]">
                                 {m.modeName && (
-                                  <span className={`mr-2 uppercase tracking-wider ${m.isAgentMode ? "text-cyan-400" : "text-amber-400"}`}>
+                                  <span className={`mr-2 uppercase tracking-wider ${m.isAgentMode ? "text-cyan-600" : "text-[#B45309]"}`}>
                                     {m.isAgentMode && <Globe size={9} className="inline mr-1" />}
                                     {m.modeName}
                                   </span>
                                 )}
-                                {m.modelName && <span className="uppercase tracking-wider text-emerald-300">{m.modelName}</span>}
-                                {m.moduleProfile && <span className="uppercase tracking-wider text-cyan-300 ml-2">{m.moduleProfile}</span>}
-                                {m.modelDescription && <span className="block mt-1 text-slate-500">{m.modelDescription}</span>}
+                                {m.modelName && <span className="uppercase tracking-wider text-emerald-600">{m.modelName}</span>}
+                                {m.moduleProfile && <span className="uppercase tracking-wider text-cyan-600 ml-2">{m.moduleProfile}</span>}
+                                {m.modelDescription && <span className="block mt-1 text-[#64748B]">{m.modelDescription}</span>}
                               </div>
                             </div>
                           )}
                           {/* Agent Research Steps */}
                           {m.isAgentMode && (m.agentSteps?.length || 0) > 0 && (
-                            <div className="mb-4 rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-3">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-2 flex items-center gap-1.5">
+                            <div className="mb-4 rounded-xl border border-cyan-600/25 bg-cyan-600/5 p-3">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-cyan-700 mb-2 flex items-center gap-1.5">
                                 <Brain size={11} /> Research Process
                               </p>
                               <div className="space-y-1.5">
                                 {m.agentSteps!.map((step, idx) => (
                                   <div key={idx} className="flex items-start gap-2 text-[11px]">
                                     <span className="shrink-0 mt-0.5">
-                                      {step.type === "thinking" && <Brain size={11} className="text-purple-400" />}
-                                      {step.type === "searching" && <Search size={11} className="text-cyan-400" />}
-                                      {step.type === "reading" && <BookOpen size={11} className="text-blue-400" />}
-                                      {step.type === "synthesizing" && <Sparkles size={11} className="text-emerald-400" />}
+                                      {step.type === "thinking" && <Brain size={11} className="text-purple-600" />}
+                                      {step.type === "searching" && <Search size={11} className="text-cyan-600" />}
+                                      {step.type === "reading" && <BookOpen size={11} className="text-blue-600" />}
+                                      {step.type === "synthesizing" && <Sparkles size={11} className="text-emerald-600" />}
                                     </span>
                                     <span className={`${
-                                      step.type === "thinking" ? "text-purple-300" :
-                                      step.type === "searching" ? "text-cyan-300" :
-                                      step.type === "reading" ? "text-blue-300" :
-                                      "text-emerald-300"
+                                      step.type === "thinking" ? "text-purple-700" :
+                                      step.type === "searching" ? "text-cyan-700" :
+                                      step.type === "reading" ? "text-blue-700" :
+                                      "text-emerald-700"
                                     }`}>{step.content}</span>
                                   </div>
                                 ))}
                               </div>
                               {(m.agentSearchQueries?.length || 0) > 0 && (
-                                <div className="mt-2 pt-2 border-t border-cyan-500/15">
-                                  <p className="text-[9px] font-black uppercase tracking-widest text-cyan-500 mb-1">Search Queries</p>
+                                <div className="mt-2 pt-2 border-t border-cyan-600/15">
+                                  <p className="text-[9px] font-black uppercase tracking-widest text-cyan-700 mb-1">Search Queries</p>
                                   <div className="flex flex-wrap gap-1">
                                     {m.agentSearchQueries!.map((q, idx) => (
-                                      <span key={idx} className="text-[10px] bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                                      <span key={idx} className="text-[10px] bg-cyan-600/10 text-cyan-700 px-2 py-0.5 rounded-full border border-cyan-600/20">
                                         {q}
                                       </span>
                                     ))}
@@ -1570,13 +1570,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           <LegalMarkdown content={displayContent} />
                           {parsed?.references && <ReferenceCards references={parsed.references} />}
                           {(m.ragCitations?.length || 0) > 0 && (
-                            <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                            <div className="mt-4 rounded-xl border border-emerald-600/30 bg-emerald-600/10 p-3">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
                                 RAG Citations ({m.ragConfidence || "low"})
                               </p>
                               <div className="mt-2 space-y-1.5">
                                 {m.ragCitations!.slice(0, 5).map((c, idx) => (
-                                  <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[11px] text-emerald-100">
+                                  <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[11px] text-emerald-900">
                                     <span className="font-bold">{idx + 1}.</span> {c.title} · chunk {c.chunkIndex} · {Math.round(c.score * 100)}%
                                   </div>
                                 ))}
@@ -1586,11 +1586,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         </>
                       ) : (
                         <>
-                          <p className="text-slate-100 leading-relaxed whitespace-pre-wrap">{m.content.replace(/\[Attached:.*?\]/, "").trim()}</p>
+                          <p className="text-[#0F172A] leading-relaxed whitespace-pre-wrap">{m.content.replace(/\[Attached:.*?\]/, "").trim()}</p>
                           {m.attachments && m.attachments.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
                               {m.attachments.map((name, i) => (
-                                <span key={i} className="text-[10px] bg-black/20 border border-white/10 px-2 py-1 rounded text-slate-300 inline-flex items-center gap-1">
+                                <span key={i} className="text-[10px] bg-white/20 border border-white/30 px-2 py-1 rounded text-white inline-flex items-center gap-1">
                                   {getFileIcon(name)} {name}
                                 </span>
                               ))}
