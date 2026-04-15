@@ -78,22 +78,22 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
         remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ children }) => (
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mt-6 mb-4 pb-3 border-b-3 border-amber-400/50" data-testid="text-heading-h1">
+            <h1 className="text-lg sm:text-xl font-bold text-white mt-4 mb-3 pb-2 border-b-3 border-amber-400/50" data-testid="text-heading-h1">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-xl sm:text-2xl font-bold text-white mt-5 mb-3 pb-2 border-b-2 border-amber-400/30" data-testid="text-heading-h2">
+            <h2 className="text-base sm:text-lg font-bold text-white mt-4 mb-2 pb-2 border-b-2 border-amber-400/30" data-testid="text-heading-h2">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-lg font-bold text-[#B45309] mt-4 mb-2.5 uppercase tracking-wider" data-testid="text-heading-h3">
+            <h3 className="text-sm font-bold text-amber-400 mt-3 mb-2 uppercase tracking-wider" data-testid="text-heading-h3">
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className="text-base sm:text-lg font-semibold text-white mt-3.5 mb-2" data-testid="text-heading-h4">
+            <h4 className="text-sm font-semibold text-white mt-3 mb-2" data-testid="text-heading-h4">
               {children}
             </h4>
           ),
@@ -101,7 +101,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const text = extractText(children);
             const processed = processTextForCitations(text);
             return (
-              <p className="text-sm sm:text-base leading-relaxed mb-3.5 text-white font-medium">
+              <p className="text-xs sm:text-sm leading-relaxed mb-3 text-white font-medium">
                 {processed === text ? children : processed}
               </p>
             );
@@ -129,10 +129,10 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             return <strong className="text-white font-bold">{children}</strong>;
           },
           ul: ({ children }) => (
-            <ul className="list-disc list-outside space-y-2 mb-4 ml-6 text-sm sm:text-base text-white">{children}</ul>
+            <ul className="list-disc list-outside space-y-1.5 mb-3 ml-6 text-xs sm:text-sm text-white">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-outside space-y-2 mb-4 ml-6 text-sm sm:text-base text-white">{children}</ol>
+            <ol className="list-decimal list-outside space-y-1.5 mb-3 ml-6 text-xs sm:text-sm text-white">{children}</ol>
           ),
           li: ({ children }) => {
             const text = extractText(children);
@@ -173,8 +173,8 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
               );
             }
             return (
-              <pre className="bg-slate-900 border border-slate-700 rounded-xl p-4 my-3 overflow-x-auto shadow-sm">
-                <code className="text-sm font-mono text-slate-100 leading-relaxed">{children}</code>
+              <pre className="bg-slate-900 border border-slate-700 rounded-xl p-3 my-2 overflow-x-auto shadow-sm">
+                <code className="text-xs font-mono text-slate-100 leading-relaxed">{children}</code>
               </pre>
             );
           },
