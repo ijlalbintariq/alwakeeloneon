@@ -232,9 +232,67 @@ function withPakistanLawOnlyPolicy(systemPrompt: string): string {
   return `${base}\n\n${PAKISTAN_LAW_ONLY_POLICY}`;
 }
 
+const BROKEN_LEGAL_TERMS: Array<[RegExp, string]> = [
+  [/\bCr\s+iminal\b/g, "Criminal"],
+  [/\bcr\s+iminal\b/g, "criminal"],
+  [/\bMand\s+ates\b/g, "Mandates"],
+  [/\bmand\s+ates\b/g, "mandates"],
+  [/\bEmp\s+owers\b/g, "Empowers"],
+  [/\bemp\s+owers\b/g, "empowers"],
+  [/\bfrivol\s+ous\b/gi, "frivolous"],
+  [/\bvex\s+at\s+ious\b/gi, "vexatious"],
+  [/\bqu\s+ash\b/gi, "quash"],
+  [/\bcert\s+ior\s+ari\b/gi, "certiorari"],
+  [/\bcogn\s+izable\b/gi, "cognizable"],
+  [/\bPenal\s+ises\b/g, "Penalises"],
+  [/\bpenal\s+ises\b/g, "penalises"],
+  [/\bcomplain\s+ant\b/gi, "complainant"],
+  [/\bdef\s+amation\b/gi, "defamation"],
+  [/\bfac\s+ie\b/gi, "facie"],
+  [/\bCon\s+stitution\b/g, "Constitution"],
+  [/\bcon\s+stitution\b/g, "constitution"],
+  [/\brestr\s+ain\b/gi, "restrain"],
+  [/\bprec\s+ed\s+ents\b/gi, "precedents"],
+  [/\bPRE\s+CED\s+ENTS\b/g, "PRECEDENTS"],
+  [/\bcompl\s+aint\b/gi, "complaint"],
+  [/\binvest\s+igation\b/gi, "investigation"],
+  [/\bProv\s+isions\b/gi, "Provisions"],
+  [/\bSTAT\s+UT\s+ORY\b/g, "STATUTORY"],
+  [/\bSTAT\s+UTE\b/g, "STATUTE"],
+  [/\bJud\s+icial\b/gi, "Judicial"],
+  [/\bPR\s+ACT\s+ICAL\b/g, "PRACTICAL"],
+  [/\bCASE\s+LAW\b/g, "CASE LAW"],
+  [/\bLEGAL\s+CONT\s+EXT\b/g, "LEGAL CONTEXT"],
+  [/\bPRE\s+PAR\s+ATION\b/g, "PREPARATION"],
+  [/\bLE\s+AD\s+ING\b/g, "LEADING"],
+  [/\bKnowl\s+edge\b/gi, "Knowledge"],
+  [/\bInfor\s+mation\b/gi, "Information"],
+  [/\bProced\s+ure\b/gi, "Procedure"],
+  [/\bProsec\s+ution\b/gi, "Prosecution"],
+  [/\bexe\s+cution\b/gi, "execution"],
+  [/\bjur\s+isdiction\b/gi, "jurisdiction"],
+  [/\bConst\s+itutional\b/gi, "Constitutional"],
+  [/\bReg\s+ulations\b/gi, "Regulations"],
+  [/\bAmend\s+ments\b/gi, "Amendments"],
+  [/\bOrd\s+inance\b/gi, "Ordinance"],
+  [/\bLeg\s+islation\b/gi, "Legislation"],
+  [/\bSup\s+reme\b/gi, "Supreme"],
+  [/\bHigh\s+Court\s+s\b/gi, "High Courts"],
+];
+
+function repairBrokenTokens(text: string): string {
+  if (!text) return "";
+  let out = text;
+  out = out.replace(/\b((?:18|19|20)\d)\s+(\d)\b/g, "$1$2");
+  for (const [pattern, replacement] of BROKEN_LEGAL_TERMS) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
+}
+
 function stripCitationPlaceholderArtifacts(text: string): string {
   if (!text) return "";
-  return String(text)
+  return repairBrokenTokens(String(text)
     .replace(/\[\s*CASE CITATION REQUIRED\s*\]/gi, "")
     .replace(/\[\s*Pakistani case citation required\s*\]/gi, "")
     .replace(/\(\s*\)/g, "")
@@ -244,7 +302,7 @@ function stripCitationPlaceholderArtifacts(text: string): string {
     .replace(/\s+:/g, ":")
     .replace(/[ \t]{2,}/g, " ")
     .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\n{3,}/g, "\n\n"))
     .trim();
 }
 
