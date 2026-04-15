@@ -59,8 +59,56 @@ function renderTextWithCitationLinks(text: string): React.ReactNode {
   return parts.length > 1 ? parts : text;
 }
 
+const BROKEN_LEGAL_TERMS: Array<[RegExp, string]> = [
+  [/\bCr\s+iminal\b/g, "Criminal"],
+  [/\bcr\s+iminal\b/g, "criminal"],
+  [/\bMand\s+ates\b/g, "Mandates"],
+  [/\bmand\s+ates\b/g, "mandates"],
+  [/\bEmp\s+owers\b/g, "Empowers"],
+  [/\bemp\s+owers\b/g, "empowers"],
+  [/\bfrivol\s+ous\b/gi, "frivolous"],
+  [/\bvex\s+at\s+ious\b/gi, "vexatious"],
+  [/\bqu\s+ash\b/gi, "quash"],
+  [/\bcert\s+ior\s+ari\b/gi, "certiorari"],
+  [/\bcogn\s+izable\b/gi, "cognizable"],
+  [/\bPenal\s+ises\b/g, "Penalises"],
+  [/\bpenal\s+ises\b/g, "penalises"],
+  [/\bcomplain\s+ant\b/gi, "complainant"],
+  [/\bdef\s+amation\b/gi, "defamation"],
+  [/\bfac\s+ie\b/gi, "facie"],
+  [/\bCon\s+stitution\b/g, "Constitution"],
+  [/\bcon\s+stitution\b/g, "constitution"],
+  [/\brestr\s+ain\b/gi, "restrain"],
+  [/\bprec\s+ed\s+ents\b/gi, "precedents"],
+  [/\bPRE\s+CED\s+ENTS\b/g, "PRECEDENTS"],
+  [/\bcompl\s+aint\b/gi, "complaint"],
+  [/\binvest\s+igation\b/gi, "investigation"],
+  [/\bProv\s+isions\b/gi, "Provisions"],
+  [/\bSTAT\s+UT\s+ORY\b/g, "STATUTORY"],
+  [/\bSTAT\s+UTE\b/g, "STATUTE"],
+  [/\bJud\s+icial\b/gi, "Judicial"],
+  [/\bPR\s+ACT\s+ICAL\b/g, "PRACTICAL"],
+  [/\bProcess\s+ual\b/gi, "Procedural"],
+  [/\bCASE\s+LAW\b/g, "CASE LAW"],
+  [/\bLEGAL\s+CONT\s+EXT\b/g, "LEGAL CONTEXT"],
+  [/\bPRE\s+PAR\s+ATION\b/g, "PREPARATION"],
+  [/\bLE\s+AD\s+ING\b/g, "LEADING"],
+];
+
+const BROKEN_YEAR = /\b((?:18|19|20)\d)\s+(\d)\b/g;
+
+function repairBrokenTokens(text: string): string {
+  if (!text) return "";
+  let out = text;
+  out = out.replace(BROKEN_YEAR, "$1$2");
+  for (const [pattern, replacement] of BROKEN_LEGAL_TERMS) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
+}
+
 function LegalMarkdownComponent({ content, className }: { content: string; className?: string }) {
-  const cleanedContent = content;
+  const cleanedContent = repairBrokenTokens(content);
   const citationPattern = /^\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+/i;
   return (
     <div className={`legal-markdown ${className || ""}`}>
