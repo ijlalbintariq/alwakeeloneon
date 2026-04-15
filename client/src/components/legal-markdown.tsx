@@ -24,136 +24,125 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
     <a
       href={href}
       onClick={handleClick}
-      className="text-amber-400 hover:text-amber-300 underline underline-offset-2 decoration-amber-500/40 hover:decoration-amber-400 transition-colors cursor-pointer"
+      className="text-[#B45309] hover:text-[#92400E] font-semibold underline underline-offset-2 decoration-[#B45309]/40 hover:decoration-[#B45309] transition-colors cursor-pointer"
     >
       {children}
     </a>
   );
 }
 
-function renderTextWithCitationLinks(text: string): React.ReactNode {
-  const citationRegex = /\b(\d{4})\s+(P\.?L\.?D|S\.?C\.?M\.?R|Y\.?L\.?R|M\.?L\.?D|C\.?L\.?C|P\.?C\.?R\.?L\.?J|P\.?L\.?J|N\.?L\.?R|C\.?L\.?D|P\.?T\.?D|P\.?L\.?C|PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ|NLR|CLD|PTD|PLC)\s+(\d+)\b/gi;
-
-  const parts = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = citationRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.substring(lastIndex, match.index));
-    }
-    const citation = match[0];
-    const searchQuery = encodeURIComponent(citation);
-    parts.push(
-      <LegalLink key={`citation-${match.index}`} href={`/judgments?q=${searchQuery}`}>
-        <span className="text-amber-400 underline">{citation}</span>
-      </LegalLink>
-    );
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
-  }
-
-  return parts.length > 1 ? parts : text;
-}
-
 function LegalMarkdownComponent({ content, className }: { content: string; className?: string }) {
-  const cleanedContent = content;
-  const citationPattern = /^\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+/i;
+  const citationPattern = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+)\b/gi;
+  const statutePattern = /\b(?:(Section\s+\d+(?:\s*[A-Za-z]*)?(?:\s+(?:PPC|CPC|IPC|PCA|PMLA|BNPL|SECP))?)|(?:(?:PPC|CPC|IPC|PCA|PMLA|BNPL|SECP|Constitution|Qanun-e-Shahadat)\s+(?:Order|Act|Code|Rule|Ordinance|1997|1998|1999|2000|2001|2002|2003|2004|2005|2006|2007|2008|2009|2010|2011|2012|2013|2014|2015|2016|2017|2018|2019|2020|2021|2022|2023|2024)))\b/gi;
+
+  const processTextForCitations = (text: string) => {
+    const parts: (string | React.ReactNode)[] = [];
+    let lastIndex = 0;
+    const allMatches: Array<{ start: number; end: number; text: string; type: 'citation' | 'statute' }> = [];
+
+    let match;
+    while ((match = citationPattern.exec(text)) !== null) {
+      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'citation' });
+    }
+
+    while ((match = statutePattern.exec(text)) !== null) {
+      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'statute' });
+    }
+
+    allMatches.sort((a, b) => a.start - b.start);
+
+    allMatches.forEach((m) => {
+      if (m.start > lastIndex) {
+        parts.push(text.slice(lastIndex, m.start));
+      }
+      const searchQuery = encodeURIComponent(m.text);
+      const href = m.type === 'statute' ? `/statute-search?q=${searchQuery}` : `/judgments?q=${searchQuery}`;
+      parts.push(
+        <LegalLink key={`${m.type}-${m.start}`} href={href}>
+          {m.text}
+        </LegalLink>
+      );
+      lastIndex = m.end;
+    });
+
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : text;
+  };
+
   return (
     <div className={`legal-markdown ${className || ""}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          tr: ({ children }) => {
-            const cellText = extractText(children);
-            return (
-              <tr className="border-b border-slate-800 hover:bg-slate-900/50">
-                {children}
-              </tr>
-            );
-          },
           h1: ({ children }) => (
-            <h1 className="text-lg font-bold text-white mt-4 mb-2 border-b border-slate-700 pb-2" data-testid="text-heading-h1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#1E3A8A] mt-6 mb-4 pb-3 border-b-3 border-[#B45309]" data-testid="text-heading-h1">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-base font-bold text-white mt-4 mb-2 border-b border-slate-700/50 pb-1.5" data-testid="text-heading-h2">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#1E3A8A] mt-5 mb-3 pb-2 border-b-2 border-[#B45309]/40" data-testid="text-heading-h2">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-sm font-bold text-amber-400 mt-4 mb-2 uppercase tracking-wide" data-testid="text-heading-h3">
+            <h3 className="text-lg font-bold text-[#B45309] mt-4 mb-2.5 uppercase tracking-wider" data-testid="text-heading-h3">
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className="text-sm font-semibold text-slate-200 mt-3 mb-1" data-testid="text-heading-h4">
+            <h4 className="text-base sm:text-lg font-semibold text-[#1E3A8A] mt-3.5 mb-2" data-testid="text-heading-h4">
               {children}
             </h4>
           ),
           p: ({ children }) => {
-            const textContent = extractText(children);
+            const text = extractText(children);
+            const processed = processTextForCitations(text);
             return (
-              <p className="text-sm leading-relaxed mb-2 text-slate-200">
-                {renderTextWithCitationLinks(textContent)}
+              <p className="text-sm sm:text-base leading-relaxed mb-3.5 text-[#0F172A] font-medium">
+                {processed === text ? children : processed}
               </p>
             );
           },
           strong: ({ children }) => {
             const text = extractText(children);
-
             const statuteMatch = text.match(/^\[(.+?)\]$/);
             if (statuteMatch) {
               const statuteName = statuteMatch[1];
               const searchQuery = encodeURIComponent(statuteName);
               return (
                 <LegalLink href={`/statute-search?q=${searchQuery}`}>
-                  <strong>{statuteName}</strong>
+                  <strong className="font-bold">{statuteName}</strong>
                 </LegalLink>
               );
             }
-
-            const statuePatterns = [
-              /(?:Code of Criminal Procedure|Cr\.?P\.?C\.?)\s*,?\s*18\d{2}/i,
-              /(?:Pakistan Penal Code|PPC)\s*,?\s*18\d{2}/i,
-              /(?:Constitution of the Islamic Republic of Pakistan)\s*,?\s*19\d{2}/i,
-              /(?:Qanun-e-Shahadat Order|QSO)\s*,?\s*19\d{2}/i,
-            ];
-
-            for (const pattern of statuePatterns) {
-              if (pattern.test(text)) {
-                const searchQuery = encodeURIComponent(text);
-                return (
-                  <LegalLink href={`/statute-search?q=${searchQuery}`}>
-                    <strong>{text}</strong>
-                  </LegalLink>
-                );
-              }
-            }
-
             if (citationPattern.test(text)) {
               const searchQuery = encodeURIComponent(text);
               return (
                 <LegalLink href={`/judgments?q=${searchQuery}`}>
-                  <strong>{text}</strong>
+                  <strong className="font-bold">{text}</strong>
                 </LegalLink>
               );
             }
-            return <strong className="text-white font-semibold">{children}</strong>;
+            return <strong className="text-[#1E3A8A] font-bold">{children}</strong>;
           },
           ul: ({ children }) => (
-            <ul className="list-disc list-inside space-y-1 mb-3 ml-2 text-sm text-slate-200">{children}</ul>
+            <ul className="list-disc list-outside space-y-2 mb-4 ml-6 text-sm sm:text-base text-[#0F172A]">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-inside space-y-1 mb-3 ml-2 text-sm text-slate-200">{children}</ol>
+            <ol className="list-decimal list-outside space-y-2 mb-4 ml-6 text-sm sm:text-base text-[#0F172A]">{children}</ol>
           ),
-          li: ({ children }) => (
-            <li className="leading-relaxed">{children}</li>
-          ),
+          li: ({ children }) => {
+            const text = extractText(children);
+            const processed = processTextForCitations(text);
+            return (
+              <li className="leading-relaxed pl-2 font-medium">
+                {processed === text ? children : processed}
+              </li>
+            );
+          },
           a: ({ href, children }) => {
             if (href && (href.startsWith("/statute") || href.startsWith("/judgment"))) {
               return <LegalLink href={href}>{children}</LegalLink>;
@@ -163,14 +152,14 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-amber-400 hover:text-amber-300 underline underline-offset-2 transition-colors"
+                className="text-[#B45309] hover:text-[#92400E] font-semibold underline underline-offset-2 transition-colors"
               >
                 {children}
               </a>
             );
           },
           blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-amber-500/50 pl-4 my-3 text-slate-300 italic">
+            <blockquote className="border-l-4 border-[#B45309] bg-gradient-to-r from-[#FEF3C7]/30 to-[#F8FAFC] pl-5 pr-4 py-3 my-4 text-[#1E3A8A] italic rounded-r-lg font-medium">
               {children}
             </blockquote>
           ),
@@ -178,48 +167,36 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const isInline = !codeClassName;
             if (isInline) {
               return (
-                <code className="bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded text-xs font-mono">
+                <code className="bg-[#F1F5F9] text-[#B45309] px-2 py-1 rounded-md text-xs font-mono border border-[#E2E8F0] font-semibold">
                   {children}
                 </code>
               );
             }
             return (
-              <pre className="bg-slate-900 border border-slate-700 rounded-lg p-3 my-2 overflow-x-auto">
-                <code className="text-xs font-mono text-slate-200">{children}</code>
+              <pre className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl p-4 my-3 overflow-x-auto shadow-sm">
+                <code className="text-sm font-mono text-[#0F172A] leading-relaxed">{children}</code>
               </pre>
             );
           },
-          hr: () => <hr className="border-slate-700 my-4" />,
+          hr: () => <hr className="border-[#CBD5E1] my-4" />,
           table: ({ children }) => (
-            <div className="overflow-x-auto my-3 rounded-lg border border-slate-700">
-              <table className="min-w-full text-sm">
+            <div className="overflow-x-auto my-3">
+              <table className="min-w-full text-sm border border-[#CBD5E1] rounded-lg overflow-hidden">
                 {children}
               </table>
             </div>
           ),
-          thead: ({ children }) => (
-            <thead className="bg-slate-800/80">
-              {children}
-            </thead>
-          ),
-          tbody: ({ children }) => (
-            <tbody className="divide-y divide-slate-800">
-              {children}
-            </tbody>
-          ),
           th: ({ children }) => (
-            <th className="px-4 py-3 text-left text-xs font-bold text-amber-400 uppercase tracking-wider border-b border-slate-700">
-              {renderTextWithCitationLinks(extractText(children))}
+            <th className="bg-[#1E3A8A] px-3 py-2 text-left text-xs font-bold text-white uppercase tracking-wider border-b border-[#CBD5E1]">
+              {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="px-4 py-2 text-slate-200 border-slate-800">
-              {renderTextWithCitationLinks(extractText(children))}
-            </td>
+            <td className="px-3 py-2 text-[#0F172A] border-b border-[#E2E8F0]">{children}</td>
           ),
         }}
       >
-        {cleanedContent}
+        {content}
       </ReactMarkdown>
     </div>
   );
