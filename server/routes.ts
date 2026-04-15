@@ -4850,7 +4850,22 @@ async function enforceInternalCaseCitationIntegrity(
   if (removed.size > 0) {
     const longestFirst = Array.from(removed).filter(Boolean).sort((a, b) => b.length - a.length);
     for (const raw of longestFirst) {
-      cleaned = cleaned.replace(new RegExp(escapeRegExp(raw), "gi"), placeholder || "");
+      // Remove citation and any orphaned context on same line/paragraph
+      // Pattern: citation followed by tabs and details, or citation followed by newline and details
+      const escapedCitation = escapeRegExp(raw);
+
+      // Remove entire lines containing only the citation followed by tabs/metadata
+      cleaned = cleaned.replace(new RegExp(`^[\\s]*${escapedCitation}\\s*[\\t\\s]+[^\\n]*$`, "gim"), "");
+
+      // Remove citation followed by context on same line
+      cleaned = cleaned.replace(new RegExp(`${escapedCitation}\\s*[\\t\\s]+[^\\n]*`, "gi"), "");
+
+      // Finally, remove any remaining standalone citation
+      cleaned = cleaned.replace(new RegExp(escapedCitation, "gi"), placeholder || "");
+
+      // Clean up leftover tabs and extra whitespace
+      cleaned = cleaned.replace(/\n\s*\n\s*\n/g, "\n\n");
+      cleaned = cleaned.replace(/^\s*[\t\s]+$/gm, "");
     }
   }
 
