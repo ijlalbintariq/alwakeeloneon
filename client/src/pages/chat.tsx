@@ -354,6 +354,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         setSharedThreadId(nextThreadId);
       }
       queryClient.invalidateQueries({ queryKey: ["/api/threads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activity/summary"] });
     } catch (err) {
       console.warn("Failed to persist consultation turn:", err);
     }

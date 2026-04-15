@@ -8303,6 +8303,75 @@ RAG POLICY (STRICT):
     }
   });
 
+  app.get("/api/activity/summary", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      // Get latest thread (last activity)
+      const userThreads = await storage.getThreads(userId);
+      const latestThread = userThreads?.[0];
+
+      // Get recent documents
+      const allDocuments = await db.select().from(documents)
+        .where(eq(documents.userId, userId))
+        .orderBy(desc(documents.createdAt))
+        .limit(5);
+
+      // Get document count
+      const docCountResult = await db.select({ count: count() }).from(documents)
+        .where(eq(documents.userId, userId));
+      const documentCount = docCountResult?.[0]?.count || 0;
+
+      // Prepare workspace focus suggestions based on activity
+      const suggestions: string[] = [];
+
+      if (documentCount === 0) {
+        suggestions.push("Attach core case documents to strengthen AI analysis.");
+      } else {
+        suggestions.push("Your documents are loaded. Ready for research and drafting.");
+      }
+
+      if (latestThread) {
+        suggestions.push("Review recent consultation thread for context continuity.");
+      } else {
+        suggestions.push("Start a new consultation with Al Wakeelo for legal guidance.");
+      }
+
+      if (allDocuments.length === 0) {
+        suggestions.push("Upload judgment PDFs or legal documents to enhance responses.");
+      } else {
+        suggestions.push("Current documents available for reference in drafting.");
+      }
+
+      const lastActivityDate = latestThread?.updatedAt
+        ? new Date(latestThread.updatedAt).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })
+        : null;
+      const lastActivityTime = latestThread?.updatedAt
+        ? new Date(latestThread.updatedAt).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })
+        : null;
+
+      res.json({
+        lastActivity: {
+          threadId: latestThread?.id,
+          threadTitle: latestThread?.title,
+          updatedAt: latestThread?.updatedAt ? new Date(latestThread.updatedAt).toISOString() : null,
+          displayDate: lastActivityDate,
+          displayTime: lastActivityTime,
+        },
+        recentDocuments: allDocuments.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          createdAt: doc.createdAt?.toISOString(),
+        })),
+        documentCount,
+        workspaceFocus: suggestions,
+      });
+    } catch (err) {
+      console.error("Error fetching activity summary:", err);
+      res.status(500).json({ message: "Failed to fetch activity summary" });
+    }
+  });
+
   app.post("/api/retrieval/clauses/suggest", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
