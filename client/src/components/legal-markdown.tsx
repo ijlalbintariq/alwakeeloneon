@@ -88,7 +88,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-lg font-bold text-amber-400 mt-4 mb-2.5 uppercase tracking-wider" data-testid="text-heading-h3">
+            <h3 className="text-lg font-bold text-[#B45309] mt-4 mb-2.5 uppercase tracking-wider" data-testid="text-heading-h3">
               {children}
             </h3>
           ),
@@ -126,13 +126,13 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
                 </LegalLink>
               );
             }
-            return <strong className="text-[#1E3A8A] font-bold">{children}</strong>;
+            return <strong className="text-white font-bold">{children}</strong>;
           },
           ul: ({ children }) => (
-            <ul className="list-disc list-outside space-y-2 mb-4 ml-6 text-sm sm:text-base text-[#0F172A]">{children}</ul>
+            <ul className="list-disc list-outside space-y-2 mb-4 ml-6 text-sm sm:text-base text-white">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-outside space-y-2 mb-4 ml-6 text-sm sm:text-base text-[#0F172A]">{children}</ol>
+            <ol className="list-decimal list-outside space-y-2 mb-4 ml-6 text-sm sm:text-base text-white">{children}</ol>
           ),
           li: ({ children }) => {
             const text = extractText(children);
@@ -159,7 +159,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             );
           },
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-[#B45309] bg-gradient-to-r from-[#FEF3C7]/30 to-[#F8FAFC] pl-5 pr-4 py-3 my-4 text-[#1E3A8A] italic rounded-r-lg font-medium">
+            <blockquote className="border-l-4 border-amber-400 bg-amber-400/10 pl-5 pr-4 py-3 my-4 text-white italic rounded-r-lg font-medium">
               {children}
             </blockquote>
           ),
@@ -167,14 +167,14 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const isInline = !codeClassName;
             if (isInline) {
               return (
-                <code className="bg-[#F1F5F9] text-[#B45309] px-2 py-1 rounded-md text-xs font-mono border border-[#E2E8F0] font-semibold">
+                <code className="bg-slate-800 text-amber-300 px-2 py-1 rounded-md text-xs font-mono border border-slate-700 font-semibold">
                   {children}
                 </code>
               );
             }
             return (
-              <pre className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl p-4 my-3 overflow-x-auto shadow-sm">
-                <code className="text-sm font-mono text-[#0F172A] leading-relaxed">{children}</code>
+              <pre className="bg-slate-900 border border-slate-700 rounded-xl p-4 my-3 overflow-x-auto shadow-sm">
+                <code className="text-sm font-mono text-slate-100 leading-relaxed">{children}</code>
               </pre>
             );
           },
