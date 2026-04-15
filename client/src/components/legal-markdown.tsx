@@ -178,21 +178,21 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
               </pre>
             );
           },
-          hr: () => <hr className="border-[#CBD5E1] my-4" />,
+          hr: () => <hr className="border-amber-400/20 my-4" />,
           table: ({ children }) => (
             <div className="overflow-x-auto my-3">
-              <table className="min-w-full text-sm border border-[#CBD5E1] rounded-lg overflow-hidden">
+              <table className="min-w-full text-xs border border-amber-400/20 rounded-lg overflow-hidden">
                 {children}
               </table>
             </div>
           ),
           th: ({ children }) => (
-            <th className="bg-[#1E3A8A] px-3 py-2 text-left text-xs font-bold text-white uppercase tracking-wider border-b border-[#CBD5E1]">
+            <th className="bg-amber-400/15 px-3 py-2 text-left text-xs font-bold text-amber-300 uppercase tracking-wider border-b border-amber-400/20">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="px-3 py-2 text-[#0F172A] border-b border-[#E2E8F0]">{children}</td>
+            <td className="px-3 py-2 text-white text-xs border-b border-amber-400/10 bg-slate-800/30">{children}</td>
           ),
         }}
       >
