@@ -1684,7 +1684,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               </div>
             )}
 
-            <div className="w-full bg-[#081428]/92 border border-amber-300/20 rounded-2xl shadow-[0_14px_38px_rgba(120,53,15,0.34)] overflow-hidden">
+            <div className="w-full bg-[#081428]/92 border border-amber-300/20 rounded-2xl shadow-[0_14px_38px_rgba(120,53,15,0.34)] relative">
               {/* Status Bar */}
               <div className="flex justify-between items-center px-4 py-3 border-b border-amber-400/15 bg-[#081428]/50">
                 <div className="flex items-center gap-3">
