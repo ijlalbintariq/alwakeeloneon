@@ -742,7 +742,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         await navigator.clipboard.writeText(fullUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 3000);
-      } catch {}
+      } catch (err) {
+        console.error("Failed to copy share URL:", err);
+      }
     } catch (err) {
       console.error("Share error:", err);
       setShareError("Failed to create share link. Please try again.");
@@ -757,7 +759,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
-    } catch {}
+    } catch (err) {
+      console.error("Failed to copy share URL:", err);
+      setShareError("Failed to copy link. Please try again.");
+    }
   };
 
   const getFileIcon = (name: string) => {
@@ -847,21 +852,21 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           ))}
           {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments.slice(0, compact ? 3 : 4).map((j, idx) => (
-            <div key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer" onClick={() => window.open(`/judgments?q=${encodeURIComponent(j.citation)}`, '_blank')}>
+            <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgments?q=${encodeURIComponent(j.citation)}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgments?q=${encodeURIComponent(j.citation)}`, '_blank')}>
               <div className="flex justify-between items-start mb-2 gap-2">
                 <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
               </div>
               <p className="text-xs font-bold text-slate-200 mb-1">{j.court || "Pakistani Courts"}</p>
               {j.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{j.description}</p>}
-            </div>
+            </button>
           ))}
           {(latestInlineReferences?.citations?.length || 0) > 0 && latestInlineReferences?.citations.slice(0, compact ? 2 : 3).map((c, idx) => (
-            <div key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer" onClick={() => window.open(`/judgments?q=${encodeURIComponent(c.citation)}`, '_blank')}>
+            <button key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgments?q=${encodeURIComponent(c.citation)}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgments?q=${encodeURIComponent(c.citation)}`, '_blank')}>
               <div className="flex justify-between items-start mb-2 gap-2">
                 <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{c.citation}</span>
               </div>
               <p className="text-[10px] text-slate-500">Click to view judgment</p>
-            </div>
+            </button>
           ))}
           {(latestRefs?.laws?.length || 0) > 0 && latestRefs?.laws.slice(0, compact ? 3 : 4).map((l, idx) => (
             <div key={`${l.name}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all">
@@ -886,7 +891,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           {latestStatutes.length > 0 || (latestInlineReferences?.statutes?.length || 0) > 0 ? (
             <>
               {latestStatutes.slice(0, compact ? 5 : 8).map((law, idx) => (
-                <div key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(law.name)}`, '_blank')}>
+                <button key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors w-full text-left" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(law.name)}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/statute-search?q=${encodeURIComponent(law.name)}`, '_blank')}>
                   <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
                   <div>
                     <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
@@ -897,10 +902,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{law.description}</p>
                     )}
                   </div>
-                </div>
+                </button>
               ))}
               {(latestInlineReferences?.statutes?.length || 0) > 0 && latestInlineReferences?.statutes.slice(0, compact ? 3 : 5).map((statute, idx) => (
-                <div key={`inline-statute-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(statute.name)}`, '_blank')}>
+                <button key={`inline-statute-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors w-full text-left" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(statute.name)}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/statute-search?q=${encodeURIComponent(statute.name)}`, '_blank')}>
                   <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
                   <div>
                     <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
@@ -908,7 +913,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     </p>
                     <p className="text-[10px] text-slate-500">Click to view statute</p>
                   </div>
-                </div>
+                </button>
               ))}
             </>
           ) : (
@@ -1112,8 +1117,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   {m.role === "assistant" && (
                     <div className={`absolute top-3 right-3 transition-opacity ${bookmarkedIds.has(m.id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
                       <button
-                        onClick={() => !bookmarkedIds.has(m.id) && bookmarkMutation.mutate(m)}
-                        className={`p-2 rounded-xl border transition-colors ${
+                        onClick={() => !bookmarkedIds.has(m.id) && !bookmarkMutation.isPending && bookmarkMutation.mutate(m)}
+                        disabled={bookmarkMutation.isPending}
+                        className={`p-2 rounded-xl border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                           bookmarkedIds.has(m.id)
                             ? "border-amber-500/50 text-amber-500 bg-amber-500/10"
                             : "border-slate-700 text-slate-400 hover:text-amber-500"
@@ -1621,9 +1627,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       )}
                       {m.role === "assistant" && (
                         <button
-                          onClick={() => !bookmarkedIds.has(m.id) && bookmarkMutation.mutate(m)}
-                          className={`absolute top-3 right-3 p-1.5 rounded-lg border transition-opacity ${bookmarkedIds.has(m.id) ? "opacity-100 border-amber-500/50 text-amber-400 bg-amber-500/10" : "opacity-0 group-hover:opacity-100 border-amber-500/20 text-slate-400 hover:text-amber-400"}`}
+                          onClick={() => !bookmarkedIds.has(m.id) && !bookmarkMutation.isPending && bookmarkMutation.mutate(m)}
+                          disabled={bookmarkMutation.isPending}
+                          className={`absolute top-3 right-3 p-1.5 rounded-lg border transition-opacity disabled:opacity-50 disabled:cursor-not-allowed ${bookmarkedIds.has(m.id) ? "opacity-100 border-amber-500/50 text-amber-400 bg-amber-500/10" : "opacity-0 group-hover:opacity-100 border-amber-500/20 text-slate-400 hover:text-amber-400"}`}
                           data-testid="button-bookmark"
+                          title={bookmarkedIds.has(m.id) ? "Bookmarked" : "Save to bookmarks"}
                         >
                           {bookmarkedIds.has(m.id) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
                         </button>
@@ -1802,6 +1810,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       <button onClick={() => removeFile(i)} className="text-slate-500 hover:text-red-400"><X size={11} /></button>
                     </div>
                   ))}
+                </div>
+              )}
+              {attachedFiles.length >= 5 && (
+                <div className="px-2 pb-2 text-[10px] text-amber-400">
+                  Maximum 5 files reached. Remove a file to add more.
                 </div>
               )}
             </div>
