@@ -1689,12 +1689,16 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               <div className="flex justify-between items-center px-4 py-3 border-b border-amber-400/15 bg-[#081428]/50">
                 <div className="flex items-center gap-3">
                   {isAlWakeelo && (
-                    <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${
-                      ragEnabled ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" : "text-slate-400 border-amber-500/20"
-                    }`}>
+                    <button
+                      onClick={() => setRagEnabled((prev) => !prev)}
+                      className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60 cursor-pointer ${
+                        ragEnabled ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" : "text-slate-400 border-amber-500/20"
+                      }`}
+                      title="Toggle Retrieval-Augmented Generation"
+                    >
                       <span className={`w-2 h-2 rounded-full ${ragEnabled ? "bg-emerald-400" : "bg-slate-500"}`}></span>
                       {ragEnabled ? "RAG ACTIVE" : "RAG OFF"}
-                    </div>
+                    </button>
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider relative">
@@ -1708,7 +1712,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     <ChevronDown size={9} />
                   </button>
                   {showModelMenu && (
-                    <div className="absolute top-full right-0 mt-2 bg-[#1e293b] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden min-w-[280px] z-50">
+                    <div className="absolute bottom-full right-0 mb-2 bg-[#1e293b] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden min-w-[280px] z-50">
                       <div className="px-4 py-2 text-[9px] text-slate-400 uppercase tracking-widest font-black border-b border-amber-500/15">Select AI Model</div>
                       <button onClick={() => { setAiMode("standard"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${aiMode === "standard" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
                         <div className="font-bold">Standard</div><div className="text-[10px] text-slate-500 mt-0.5">Fast, reliable responses</div>
