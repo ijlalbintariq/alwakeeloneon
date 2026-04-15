@@ -78,22 +78,22 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
         remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ children }) => (
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#1E3A8A] mt-6 mb-4 pb-3 border-b-3 border-[#B45309]" data-testid="text-heading-h1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mt-6 mb-4 pb-3 border-b-3 border-amber-400/50" data-testid="text-heading-h1">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-xl sm:text-2xl font-bold text-[#1E3A8A] mt-5 mb-3 pb-2 border-b-2 border-[#B45309]/40" data-testid="text-heading-h2">
+            <h2 className="text-xl sm:text-2xl font-bold text-white mt-5 mb-3 pb-2 border-b-2 border-amber-400/30" data-testid="text-heading-h2">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-lg font-bold text-[#B45309] mt-4 mb-2.5 uppercase tracking-wider" data-testid="text-heading-h3">
+            <h3 className="text-lg font-bold text-amber-400 mt-4 mb-2.5 uppercase tracking-wider" data-testid="text-heading-h3">
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className="text-base sm:text-lg font-semibold text-[#1E3A8A] mt-3.5 mb-2" data-testid="text-heading-h4">
+            <h4 className="text-base sm:text-lg font-semibold text-white mt-3.5 mb-2" data-testid="text-heading-h4">
               {children}
             </h4>
           ),
@@ -101,7 +101,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const text = extractText(children);
             const processed = processTextForCitations(text);
             return (
-              <p className="text-sm sm:text-base leading-relaxed mb-3.5 text-[#0F172A] font-medium">
+              <p className="text-sm sm:text-base leading-relaxed mb-3.5 text-white font-medium">
                 {processed === text ? children : processed}
               </p>
             );
