@@ -1461,7 +1461,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </button>
         </div>
 
-        <main className="h-full flex flex-col bg-white">
+        <main className="h-full flex flex-col bg-gradient-to-br from-[#F8FAFC] via-white to-[#F1F5F9]">
 
           <section className="xl:hidden border-b border-[#E2E8F0] bg-white px-3 sm:px-6 py-2">
             <details className="group">
@@ -1478,7 +1478,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </details>
           </section>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 scrollbar-hide bg-[#F8FAFC]">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 scrollbar-hide bg-gradient-to-br from-[#F8FAFC]/95 to-[#F1F5F9]/95 backdrop-blur-sm">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
                 <Scale size={44} className="text-[#B45309]" />
@@ -1506,10 +1506,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       {m.role === "assistant" ? "Al Wakeelo Assistant" : "You"}
                     </p>
                     <div
-                      className={`relative group p-3 sm:p-5 rounded-2xl ${
+                      className={`relative group p-3 sm:p-5 rounded-2xl backdrop-blur-md ${
                         m.role === "assistant"
-                          ? "w-full min-w-0 bg-white border border-[#E2E8F0] shadow-sm rounded-tl-md"
-                          : "w-full max-w-[96%] bg-gradient-to-br from-[#1E3A8A] to-[#1e40af] text-white border border-[#1e40af] shadow-md rounded-tr-md"
+                          ? "w-full min-w-0 bg-white/90 border border-[#E2E8F0] shadow-lg rounded-tl-md"
+                          : "w-full max-w-[96%] bg-gradient-to-br from-[#1E3A8A]/95 to-[#1e40af]/95 text-white border border-[#1e40af] shadow-lg rounded-tr-md"
                       }`}
                     >
                       {m.role === "assistant" ? (
