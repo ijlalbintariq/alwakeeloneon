@@ -888,66 +888,66 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
   if (!isAlWakeelo) {
     return (
-      <div className="flex flex-col h-[calc(100vh-120px)] bg-[#1e293b] border border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl relative fade-in">
-        <div className="p-5 bg-[#0f172a]/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between z-20">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+      <div className="flex flex-col h-[calc(100vh-120px)] bg-white border border-[#CBD5E1] rounded-2xl overflow-hidden shadow-lg relative fade-in">
+        <div className="p-4 md:p-6 bg-white border-b border-[#CBD5E1] flex items-center justify-between z-20">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 rounded-lg bg-[#1E3A8A]/10 flex items-center justify-center text-[#1E3A8A]">
               <Scale size={20} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white capitalize">{title || type.replace("-", " ")} Session</h3>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${apiError ? "bg-red-500" : "bg-emerald-500"}`} />
-                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">
-                  {apiError ? "Engine Throttled" : "Counsel Engine Active"}
+              <h3 className="text-sm md:text-base font-semibold text-[#0F172A] capitalize">{title || type.replace("-", " ")}</h3>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${apiError ? "bg-[#DC2626]" : "bg-emerald-500"}`} />
+                <p className="text-[8px] md:text-[9px] text-[#64748B] font-semibold uppercase tracking-widest">
+                  {apiError ? "Engine Throttled" : "Active"}
                 </p>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {shareError && (
-              <span className="text-[9px] text-red-400 font-bold">{shareError}</span>
+              <span className="text-[9px] text-[#DC2626] font-semibold">{shareError}</span>
             )}
             {messages.length >= 2 && (
               <button
                 onClick={shareUrl ? handleCopyShareUrl : handleShare}
                 disabled={isSharing}
                 data-testid="button-share-chat"
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
+                className={`px-3 py-2 rounded-lg text-[9px] md:text-[10px] font-semibold uppercase tracking-wide flex items-center gap-2 transition-all duration-150 ${
                   shareUrl
-                    ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                    : "hover:bg-amber-500/10 text-slate-500 hover:text-amber-400"
+                    ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                    : "hover:bg-[#B45309]/10 text-[#64748B] hover:text-[#B45309]"
                 }`}
               >
                 {isSharing ? (
-                  <><Loader2 size={14} className="animate-spin" /> Sharing...</>
+                  <><Loader2 size={12} className="animate-spin" /> Sharing...</>
                 ) : copied ? (
-                  <><Check size={14} /> Link Copied</>
+                  <><Check size={12} /> Copied</>
                 ) : shareUrl ? (
-                  <><Copy size={14} /> Copy Link</>
+                  <><Copy size={12} /> Copy</>
                 ) : (
-                  <><Share2 size={14} /> Share</>
+                  <><Share2 size={12} /> Share</>
                 )}
               </button>
             )}
             <button
               onClick={handleClear}
               data-testid="button-clear-chat"
-              className="px-4 py-2 hover:bg-red-500/10 rounded-xl text-slate-500 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
+              className="px-3 py-2 hover:bg-[#DC2626]/10 rounded-lg text-[#64748B] hover:text-[#DC2626] text-[9px] md:text-[10px] font-semibold uppercase tracking-wide flex items-center gap-2 transition-all duration-150"
             >
               <Trash2 size={14} /> Reset
             </button>
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 scrollbar-hide bg-[#0a0f1a] px-4 md:px-8 py-4 flex flex-col">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 scrollbar-hide bg-[#F8FAFC] px-4 md:px-8 py-6 flex flex-col">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-              <Scale size={48} className="text-slate-700" />
-              <p className="text-slate-600 italic text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <Scale size={48} className="text-[#94A3B8]" />
+              <p className="text-[#475569] italic text-sm md:text-base" style={{ fontFamily: "'EB Garamond', serif" }}>
                 "Main hoon Al Wakeelo -- not just your lawyer, your strategy partner in justice."
               </p>
-              <p className="text-[9px] text-slate-700 uppercase tracking-widest font-black">Type your query or attach documents below</p>
+              <p className="text-[9px] text-[#64748B] uppercase tracking-widest font-semibold">Ask about your contract or legal matter</p>
             </div>
           )}
 
@@ -962,28 +962,28 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 style={OFFSCREEN_MESSAGE_STYLE}
               >
                 {m.role === "assistant" && (
-                  <div className="w-6 h-6 rounded-md bg-amber-500/80 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Scale size={14} className="text-slate-950" />
+                  <div className="w-8 h-8 rounded-md bg-[#1E3A8A] flex items-center justify-center flex-shrink-0 mt-1">
+                    <Scale size={16} className="text-white" />
                   </div>
                 )}
                 <div
-                  className={`flex-1 p-3 md:p-4 rounded-lg relative group ${
+                  className={`flex-1 p-4 md:p-5 rounded-lg relative group shadow-sm ${
                     m.role === "user"
-                      ? "bg-amber-600 text-white rounded-br-sm max-w-xs md:max-w-md"
-                      : "bg-slate-800 border border-slate-700/50 text-slate-100 rounded-bl-sm"
+                      ? "bg-[#1E3A8A] text-white rounded-br-none max-w-xs md:max-w-md"
+                      : "bg-white border border-[#CBD5E1] text-[#0F172A] rounded-bl-none"
                   }`}
                 >
                   {m.role === "assistant" ? (
                     <>
                       {(m.modeName || m.modelName) && (
-                        <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-slate-700/20">
+                        <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-[#CBD5E1]">
                           <div className="flex flex-col gap-0.5">
                             {m.modeName && (
-                              <span className={`text-[8px] font-bold uppercase tracking-wider ${
-                                m.modeName === "Turbo" ? "text-amber-300" :
-                                m.modeName === "Standard" ? "text-slate-400" :
-                                m.isAgentMode ? "text-cyan-300" :
-                                "text-emerald-300"
+                              <span className={`text-[7px] font-semibold uppercase tracking-wider ${
+                                m.modeName === "Turbo" ? "text-[#B45309]" :
+                                m.modeName === "Standard" ? "text-[#64748B]" :
+                                m.isAgentMode ? "text-cyan-600" :
+                                "text-emerald-600"
                               }`}>
                                 {m.modeName === "Turbo" && <Zap size={8} className="inline mr-0.5" />}
                                 {m.isAgentMode && <Globe size={8} className="inline mr-0.5" />}
@@ -1035,14 +1035,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       <LegalMarkdown content={displayContent} />
                       {parsed?.references && <ReferenceCards references={parsed.references} />}
                       {(m.ragCitations?.length || 0) > 0 && (
-                        <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
-                            RAG Citations ({m.ragConfidence || "low"})
+                        <div className="mt-4 rounded-lg border-l-4 border-[#B45309] bg-white p-3 shadow-sm">
+                          <p className="text-[9px] font-semibold uppercase tracking-widest text-[#B45309]">
+                            Legal Citations ({m.ragConfidence || "low"})
                           </p>
-                          <div className="mt-2 space-y-1.5">
+                          <div className="mt-2 space-y-1">
                             {m.ragCitations!.slice(0, 5).map((c, idx) => (
-                              <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[11px] text-emerald-100">
-                                <span className="font-bold">{idx + 1}.</span> {c.title} · chunk {c.chunkIndex} · {Math.round(c.score * 100)}%
+                              <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[10px] text-[#0F172A]">
+                                <span className="font-semibold">{idx + 1}.</span> {c.title} · chunk {c.chunkIndex} · {Math.round(c.score * 100)}%
                               </div>
                             ))}
                           </div>
@@ -1134,19 +1134,19 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         )}
 
-        <div className="p-4 md:p-6 bg-[#0f172a]/50 border-t border-slate-800">
-          <div className="flex items-center gap-2 mb-2 px-2 flex-wrap">
+        <div className="p-4 md:p-6 bg-white border-t border-[#CBD5E1]">
+          <div className="flex items-center gap-2 mb-3 px-2 flex-wrap">
             <div className="relative">
               <button
                 onClick={() => setShowModelMenu(!showModelMenu)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-semibold uppercase tracking-wide transition-all border duration-150 ${
                   aiMode === "turbo"
-                    ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                    ? "bg-[#B45309]/10 text-[#B45309] border-[#B45309]/30"
                     : isApexAgentWebMode
-                      ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+                      ? "bg-cyan-500/10 text-cyan-600 border-cyan-500/30"
                       : isApexMode
-                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                        : "text-slate-400 border-slate-700 hover:border-slate-600 hover:text-slate-300"
+                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                        : "text-[#64748B] border-[#CBD5E1] hover:border-[#B45309] hover:text-[#B45309]"
                 }`}
                 data-testid="button-model-selector"
               >
@@ -1275,7 +1275,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           )}
 
-          <div className="flex gap-2 bg-[#1e293b] border border-slate-700 p-2 rounded-[2rem] shadow-2xl items-end">
+          <div className="flex gap-2 bg-white border border-[#CBD5E1] p-3 rounded-xl shadow-sm items-end">
             <input
               type="file"
               ref={fileInputRef}
@@ -1295,7 +1295,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading || attachedFiles.length >= 5}
-              className="p-3 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              className="p-2 text-[#64748B] hover:text-[#B45309] hover:bg-[#B45309]/10 rounded-lg transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
               title="Attach document (TXT, PDF, DOCX)"
             >
               <Paperclip size={18} />
@@ -1304,10 +1304,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <button
               onClick={() => audioInputRef.current?.click()}
               disabled={isLoading || isTranscribing}
-              className={`p-3 rounded-xl transition-all ${
+              className={`p-2 rounded-lg transition-all duration-150 ${
                 isTranscribing
-                  ? "text-amber-500 bg-amber-500/10"
-                  : "text-slate-500 hover:text-amber-400 hover:bg-amber-500/10"
+                  ? "text-[#B45309] bg-[#B45309]/10"
+                  : "text-[#64748B] hover:text-[#B45309] hover:bg-[#B45309]/10"
               } disabled:opacity-30 disabled:cursor-not-allowed`}
               title="Transcribe audio file (MP3, WAV, M4A)"
             >
@@ -1317,8 +1317,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <textarea
               ref={promptInputRef}
               rows={1}
-              className="flex-1 min-h-[44px] max-h-44 resize-none overflow-y-auto bg-transparent border-none px-3 py-2 text-sm text-white leading-6 focus:ring-0 focus:outline-none placeholder:text-slate-600"
-              placeholder="Consult Al Wakeelo..."
+              className="flex-1 min-h-[44px] max-h-44 resize-none overflow-y-auto bg-transparent border-none px-3 py-2 text-sm text-[#0F172A] leading-6 focus:ring-0 focus:outline-none placeholder:text-[#94A3B8]"
+              placeholder="Ask about your contract..."
               value={input}
               onInput={resizePromptInput}
               onChange={(e) => setInput(e.target.value)}
@@ -1334,7 +1334,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               onClick={() => handleSend()}
               disabled={isLoading || isTranscribing}
               data-testid="button-send"
-              className="p-4 bg-amber-500 text-slate-950 rounded-xl hover:bg-amber-400 shadow-xl shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
+              className="p-3 bg-[#B45309] text-white rounded-lg hover:bg-[#A23E0A] shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold"
             >
               <Send size={18} />
             </button>
