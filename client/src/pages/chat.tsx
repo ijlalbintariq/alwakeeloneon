@@ -1498,7 +1498,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </details>
           </section>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 scrollbar-hide bg-[linear-gradient(180deg,rgba(10,14,39,0.5),rgba(15,23,50,0.8))] flex flex-col items-center">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-7 scrollbar-hide bg-[linear-gradient(180deg,rgba(10,14,39,0.5),rgba(15,23,50,0.8))] flex flex-col items-center">
             <div className="w-full max-w-2xl">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
