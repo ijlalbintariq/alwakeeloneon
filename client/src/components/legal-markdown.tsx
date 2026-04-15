@@ -24,7 +24,7 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
     <a
       href={href}
       onClick={handleClick}
-      className="text-amber-400 hover:text-amber-300 underline underline-offset-2 decoration-amber-500/40 hover:decoration-amber-400 transition-colors cursor-pointer"
+      className="text-[#B45309] hover:text-[#92400E] font-semibold underline underline-offset-2 decoration-[#B45309]/40 hover:decoration-[#B45309] transition-colors cursor-pointer"
     >
       {children}
     </a>
@@ -33,7 +33,7 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
 
 function LegalMarkdownComponent({ content, className }: { content: string; className?: string }) {
   const citationPattern = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+)\b/gi;
-  const statutePattern = /\b(Section\s+\d+\s+(?:PPC|CPC|IPC|PCA|PMLA))\b/gi;
+  const statutePattern = /\b(?:(Section\s+\d+(?:\s*[A-Za-z]*)?(?:\s+(?:PPC|CPC|IPC|PCA|PMLA|BNPL|SECP))?)|(?:(?:PPC|CPC|IPC|PCA|PMLA|BNPL|SECP|Constitution|Qanun-e-Shahadat)\s+(?:Order|Act|Code|Rule|Ordinance|1997|1998|1999|2000|2001|2002|2003|2004|2005|2006|2007|2008|2009|2010|2011|2012|2013|2014|2015|2016|2017|2018|2019|2020|2021|2022|2023|2024)))\b/gi;
 
   const processTextForCitations = (text: string) => {
     const parts: (string | React.ReactNode)[] = [];
@@ -59,7 +59,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
       const href = m.type === 'statute' ? `/statute-search?q=${searchQuery}` : `/judgments?q=${searchQuery}`;
       parts.push(
         <LegalLink key={`${m.type}-${m.start}`} href={href}>
-          <span className="text-amber-400 font-semibold hover:text-amber-300">{m.text}</span>
+          {m.text}
         </LegalLink>
       );
       lastIndex = m.end;
@@ -78,22 +78,22 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
         remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ children }) => (
-            <h1 className="text-lg font-bold text-white mt-4 mb-2 border-b border-slate-700 pb-2" data-testid="text-heading-h1">
+            <h1 className="text-xl font-bold text-[#1E3A8A] mt-5 mb-3 pb-2 border-b-2 border-[#B45309]" data-testid="text-heading-h1">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-base font-bold text-white mt-4 mb-2 border-b border-slate-700/50 pb-1.5" data-testid="text-heading-h2">
+            <h2 className="text-lg font-bold text-[#1E3A8A] mt-4 mb-2.5 pb-1.5 border-b border-[#B45309]/30" data-testid="text-heading-h2">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-sm font-bold text-amber-400 mt-4 mb-2 uppercase tracking-wide" data-testid="text-heading-h3">
+            <h3 className="text-base font-bold text-[#B45309] mt-4 mb-2 uppercase tracking-wide" data-testid="text-heading-h3">
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className="text-sm font-semibold text-slate-200 mt-3 mb-1" data-testid="text-heading-h4">
+            <h4 className="text-sm font-semibold text-[#1E3A8A] mt-3 mb-1.5" data-testid="text-heading-h4">
               {children}
             </h4>
           ),
@@ -101,7 +101,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const text = extractText(children);
             const processed = processTextForCitations(text);
             return (
-              <p className="text-sm leading-relaxed mb-2 text-slate-200">
+              <p className="text-sm leading-relaxed mb-3 text-[#0F172A]">
                 {processed === text ? children : processed}
               </p>
             );
@@ -126,17 +126,23 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
                 </LegalLink>
               );
             }
-            return <strong className="text-white font-semibold">{children}</strong>;
+            return <strong className="text-[#1E3A8A] font-semibold">{children}</strong>;
           },
           ul: ({ children }) => (
-            <ul className="list-disc list-inside space-y-1 mb-3 ml-2 text-sm text-slate-200">{children}</ul>
+            <ul className="list-disc list-outside space-y-1.5 mb-4 ml-5 text-sm text-[#0F172A]">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-inside space-y-1 mb-3 ml-2 text-sm text-slate-200">{children}</ol>
+            <ol className="list-decimal list-outside space-y-1.5 mb-4 ml-5 text-sm text-[#0F172A]">{children}</ol>
           ),
-          li: ({ children }) => (
-            <li className="leading-relaxed">{children}</li>
-          ),
+          li: ({ children }) => {
+            const text = extractText(children);
+            const processed = processTextForCitations(text);
+            return (
+              <li className="leading-relaxed pl-1">
+                {processed === text ? children : processed}
+              </li>
+            );
+          },
           a: ({ href, children }) => {
             if (href && (href.startsWith("/statute") || href.startsWith("/judgment"))) {
               return <LegalLink href={href}>{children}</LegalLink>;
@@ -146,14 +152,14 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-amber-400 hover:text-amber-300 underline underline-offset-2 transition-colors"
+                className="text-[#B45309] hover:text-[#92400E] font-semibold underline underline-offset-2 transition-colors"
               >
                 {children}
               </a>
             );
           },
           blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-amber-500/50 pl-4 my-3 text-slate-300 italic">
+            <blockquote className="border-l-4 border-[#B45309] bg-[#F8FAFC] pl-4 pr-3 py-2 my-3 text-[#475569] italic rounded-r">
               {children}
             </blockquote>
           ),
@@ -161,32 +167,32 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const isInline = !codeClassName;
             if (isInline) {
               return (
-                <code className="bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded text-xs font-mono">
+                <code className="bg-[#F1F5F9] text-[#B45309] px-1.5 py-0.5 rounded text-xs font-mono border border-[#E2E8F0]">
                   {children}
                 </code>
               );
             }
             return (
-              <pre className="bg-slate-900 border border-slate-700 rounded-lg p-3 my-2 overflow-x-auto">
-                <code className="text-xs font-mono text-slate-200">{children}</code>
+              <pre className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-3 my-2 overflow-x-auto">
+                <code className="text-xs font-mono text-[#0F172A]">{children}</code>
               </pre>
             );
           },
-          hr: () => <hr className="border-slate-700 my-4" />,
+          hr: () => <hr className="border-[#CBD5E1] my-4" />,
           table: ({ children }) => (
             <div className="overflow-x-auto my-3">
-              <table className="min-w-full text-sm border border-slate-700 rounded-lg overflow-hidden">
+              <table className="min-w-full text-sm border border-[#CBD5E1] rounded-lg overflow-hidden">
                 {children}
               </table>
             </div>
           ),
           th: ({ children }) => (
-            <th className="bg-slate-800 px-3 py-2 text-left text-xs font-bold text-amber-400 uppercase tracking-wider border-b border-slate-700">
+            <th className="bg-[#1E3A8A] px-3 py-2 text-left text-xs font-bold text-white uppercase tracking-wider border-b border-[#CBD5E1]">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="px-3 py-2 text-slate-200 border-b border-slate-800">{children}</td>
+            <td className="px-3 py-2 text-[#0F172A] border-b border-[#E2E8F0]">{children}</td>
           ),
         }}
       >
