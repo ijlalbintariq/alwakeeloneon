@@ -981,7 +981,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 scrollbar-hide bg-[#F8FAFC] px-4 md:px-8 py-6 flex flex-col">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 scrollbar-hide bg-[#F8FAFC] px-3 sm:px-4 md:px-8 py-3 sm:py-4 md:py-6 flex flex-col">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
               <Scale size={48} className="text-[#94A3B8]" />
@@ -1008,9 +1008,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   </div>
                 )}
                 <div
-                  className={`flex-1 p-4 md:p-5 rounded-lg relative group shadow-sm ${
+                  className={`flex-1 p-3 sm:p-4 md:p-5 rounded-lg relative group shadow-sm ${
                     m.role === "user"
-                      ? "bg-[#1E3A8A] text-white rounded-br-none max-w-xs md:max-w-md"
+                      ? "bg-[#1E3A8A] text-white rounded-br-none max-w-xs sm:max-w-sm md:max-w-md"
                       : "bg-white border border-[#CBD5E1] text-[#0F172A] rounded-bl-none"
                   }`}
                 >
@@ -1321,7 +1321,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           )}
 
-          <div className="flex gap-2 bg-white border border-[#CBD5E1] p-3 rounded-xl shadow-sm items-end">
+          <div className="flex gap-1.5 sm:gap-2 bg-white border border-[#CBD5E1] p-2.5 sm:p-3 rounded-xl shadow-sm items-end">
             <input
               type="file"
               ref={fileInputRef}
@@ -1341,29 +1341,29 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading || attachedFiles.length >= 5}
-              className="p-2 text-[#64748B] hover:text-[#B45309] hover:bg-[#B45309]/10 rounded-lg transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2 text-[#64748B] hover:text-[#B45309] hover:bg-[#B45309]/10 rounded-lg transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
               title="Attach document (TXT, PDF, DOCX)"
             >
-              <Paperclip size={18} />
+              <Paperclip size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
 
             <button
               onClick={() => audioInputRef.current?.click()}
               disabled={isLoading || isTranscribing}
-              className={`p-2 rounded-lg transition-all duration-150 ${
+              className={`min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2 rounded-lg transition-all duration-150 ${
                 isTranscribing
                   ? "text-[#B45309] bg-[#B45309]/10"
                   : "text-[#64748B] hover:text-[#B45309] hover:bg-[#B45309]/10"
               } disabled:opacity-30 disabled:cursor-not-allowed`}
               title="Transcribe audio file (MP3, WAV, M4A)"
             >
-              <Mic size={18} />
+              <Mic size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
 
             <textarea
               ref={promptInputRef}
               rows={1}
-              className="flex-1 min-h-[44px] max-h-44 resize-none overflow-y-auto bg-transparent border-none px-3 py-2 text-sm text-[#0F172A] leading-6 focus:ring-0 focus:outline-none placeholder:text-[#94A3B8]"
+              className="flex-1 min-h-[40px] sm:min-h-[44px] max-h-40 sm:max-h-44 resize-none overflow-y-auto bg-transparent border-none px-2.5 sm:px-3 py-1.5 sm:py-2 text-sm text-[#0F172A] leading-6 focus:ring-0 focus:outline-none placeholder:text-[#94A3B8]"
               placeholder="Ask about your contract..."
               value={input}
               onInput={resizePromptInput}
@@ -1380,9 +1380,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               onClick={() => handleSend()}
               disabled={isLoading || isTranscribing}
               data-testid="button-send"
-              className="p-3 bg-[#B45309] text-white rounded-lg hover:bg-[#A23E0A] shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold"
+              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2.5 bg-[#B45309] text-white rounded-lg hover:bg-[#A23E0A] shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold flex-shrink-0"
             >
-              <Send size={18} />
+              <Send size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
           </div>
         </div>
