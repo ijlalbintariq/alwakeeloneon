@@ -1132,14 +1132,34 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
 
           {isLoading && (
-            <div className="flex justify-start">
-              <div className={`bg-[#0f172a] p-5 rounded-2xl border flex items-center gap-3 ${isApexAgentWebMode ? "border-cyan-800" : "border-slate-800"}`}>
-                <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} />
-                <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "75ms" }} />
-                <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "150ms" }} />
-                <span className={`text-[10px] font-black uppercase tracking-widest ml-2 ${isApexAgentWebMode ? "text-cyan-400" : "text-slate-500"}`}>
-                  {agentStatus || (isApexAgentWebMode ? "Agent Researching Web..." : "Reasoning Protocol...")}
-                </span>
+            <div className="flex items-start gap-3">
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 ${isApexAgentWebMode ? "bg-cyan-600 text-white" : "bg-white text-[#0F172A]"}`}>
+                {isApexAgentWebMode ? <Globe size={16} /> : <Scale size={16} />}
+              </div>
+              <div className="flex-1">
+                <div className={`p-4 rounded-2xl border ${isApexAgentWebMode ? "border-cyan-700/30 bg-cyan-900/20" : "border-slate-700/30 bg-slate-800/20"}`}>
+                  <style>{`
+                    @keyframes shimmer {
+                      0% { background-position: -1000px 0; }
+                      100% { background-position: 1000px 0; }
+                    }
+                    .animate-shimmer {
+                      background: linear-gradient(
+                        90deg,
+                        rgba(255, 255, 255, 0.05) 0%,
+                        rgba(255, 255, 255, 0.15) 50%,
+                        rgba(255, 255, 255, 0.05) 100%
+                      );
+                      background-size: 1000px 100%;
+                      animation: shimmer 2s infinite;
+                    }
+                  `}</style>
+                  <div className="space-y-2.5">
+                    <div className="h-4 bg-slate-600/40 rounded animate-shimmer"></div>
+                    <div className="h-4 bg-slate-600/40 rounded animate-shimmer" style={{ animationDelay: "0.2s", width: "95%" }}></div>
+                    <div className="h-4 bg-slate-600/40 rounded animate-shimmer" style={{ animationDelay: "0.4s", width: "90%" }}></div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1614,17 +1634,41 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             })}
 
             {isLoading && (
-              <div className="flex items-center gap-3 w-full">
-                <div className={`h-10 w-10 rounded-full text-slate-950 flex items-center justify-center ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`}>
+              <div className="flex items-start gap-3 w-full">
+                <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full text-slate-950 flex items-center justify-center ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-300"}`}>
                   {isApexAgentWebMode ? <Globe size={18} /> : <Scale size={18} />}
                 </div>
-                <div className={`p-4 rounded-xl border flex items-center gap-2 ${isApexAgentWebMode ? "border-cyan-500/20 bg-cyan-500/5" : "border-amber-500/20 bg-amber-500/5"}`}>
-                  <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} />
-                  <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "75ms" }} />
-                  <div className={`w-2 h-2 rounded-full animate-bounce ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-500"}`} style={{ animationDelay: "150ms" }} />
-                  <span className={`text-[10px] font-black uppercase tracking-widest ml-2 ${isApexAgentWebMode ? "text-cyan-400" : "text-slate-500"}`}>
-                    {agentStatus || (isApexAgentWebMode ? "Agent researching web..." : "Reasoning...")}
-                  </span>
+                <div className="flex-1 flex flex-col gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-amber-200">
+                    Al Wakeelo Assistant
+                  </p>
+                  <div className="p-3 sm:p-5 rounded-2xl bg-[#0f1c33]/90 border border-amber-300/20 shadow-lg rounded-tl-md">
+                    <style>{`
+                      @keyframes shimmer {
+                        0% { background-position: -1000px 0; }
+                        100% { background-position: 1000px 0; }
+                      }
+                      .animate-shimmer {
+                        background: linear-gradient(
+                          90deg,
+                          rgba(255, 255, 255, 0.05) 0%,
+                          rgba(255, 255, 255, 0.15) 50%,
+                          rgba(255, 255, 255, 0.05) 100%
+                        );
+                        background-size: 1000px 100%;
+                        animation: shimmer 2s infinite;
+                      }
+                    `}</style>
+                    <div className="space-y-2.5">
+                      <div className="h-4 bg-slate-700/40 rounded animate-shimmer"></div>
+                      <div className="h-4 bg-slate-700/40 rounded animate-shimmer" style={{ animationDelay: "0.2s", width: "95%" }}></div>
+                      <div className="h-4 bg-slate-700/40 rounded animate-shimmer" style={{ animationDelay: "0.4s", width: "90%" }}></div>
+                      <div className="mt-4 pt-3 border-t border-amber-500/15 space-y-2.5">
+                        <div className="h-3 bg-slate-700/40 rounded animate-shimmer" style={{ animationDelay: "0.6s", width: "80%" }}></div>
+                        <div className="h-3 bg-slate-700/40 rounded animate-shimmer" style={{ animationDelay: "0.8s", width: "85%" }}></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
