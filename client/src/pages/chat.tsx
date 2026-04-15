@@ -1498,7 +1498,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </details>
           </section>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 scrollbar-hide bg-[linear-gradient(180deg,rgba(10,14,39,0.5),rgba(15,23,50,0.8))]">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 scrollbar-hide bg-[linear-gradient(180deg,rgba(10,14,39,0.5),rgba(15,23,50,0.8))] flex flex-col items-center">
+            <div className="w-full max-w-2xl">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
                 <Scale size={44} className="text-amber-400/60" />
@@ -1672,6 +1673,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 </div>
               </div>
             )}
+            </div>
           </div>
 
           <div className="p-2 sm:p-6 pt-2 border-t border-amber-400/15 bg-[#071327]/75">
