@@ -1,8 +1,125 @@
 # Al Wakeelo Engineering Handoff Guide
 
-Last updated: 2026-03-07
+Last updated: 2026-04-16
 
 This document is a practical handoff for developers joining the project. It reflects the current implementation in this repository.
+
+---
+
+## RECENT SESSION UPDATES (April 16, 2026)
+
+### 18.1) User Activity Tracking - `/api/activity/summary`
+
+**Status:** ✅ Deployed (Commit: `fdd72fb`)
+
+New endpoint `GET /api/activity/summary` aggregates real-time user activity for the dashboard:
+
+```typescript
+// Returns:
+{
+  lastActivity: {
+    threadId: number,
+    threadTitle: string,
+    updatedAt: ISO8601,
+    displayDate: string,   // "16 Apr"
+    displayTime: string    // "10:30"
+  },
+  recentDocuments: Array<{ id, title, createdAt }>,
+  documentCount: number,
+  workspaceFocus: string[] // Dynamic suggestions
+}
+```
+
+**Files:**
+- Backend: `server/routes.ts` (line ~8191, new endpoint after `/api/usage`)
+- Frontend: `client/src/pages/dashboard.tsx` (queries this endpoint)
+- Invalidation: `client/src/pages/chat.tsx` + `legal-drafting.tsx` (invalidate on message/document save)
+
+**How it works:**
+1. User sends message → `threads.updatedAt` updated in DB (existing behavior)
+2. Dashboard queries `/api/activity/summary`
+3. Returns latest thread + recent documents + context-aware suggestions
+4. "Last Activity Reminder" displays latest thread with timestamp
+5. "Workspace Focus" shows dynamic suggestions based on activity state
+
+**Key implementation detail:**
+- Uses existing `thread.updatedAt` field (no schema changes)
+- Fallback statute suggestions based on RAG citations if no threads exist
+- Frontend invalidates cache when messages sent or documents saved
+
+### 18.2) Citation & Statute References Display
+
+**Status:** ✅ Deployed (Commit: `b21d982`)
+
+**Problem:** Legal Citations and Relevant Statutes sections were empty despite AI responses citing laws/judgments.
+
+**Root cause:** System prompt required structured references block but AI wasn't consistently outputting it.
+
+**Solution:**
+
+System prompt now **critically enforces** structured references requirement:
+```
+```references
+{"laws":[{"name":"Full Statute Name, Year","section":"Section X","description":"..."}],"judgments":[{"citation":"PLD 2024 Supreme Court 123","court":"Supreme Court of Pakistan","description":"..."}]}
+```
+```
+
+Location: `server/routes.ts`, function `getLegalSystemPrompt()` (line ~5206, section at line ~5280)
+
+Changes:
+- Made requirement MANDATORY with emphasis
+- Added explicit examples
+- Instructions: Every statute/judgment cited in response must appear in block
+- Emphasized user dependency on these reference cards
+
+**Fallback extraction** (`client/src/pages/chat.tsx`, `extractInlineReferences`):
+- Enhanced regex patterns to catch more Pakistani legal formats
+  - Added: SCMR, PLJ, CLD, LHC, IHC, SHC formats
+  - Improved statute pattern matching
+- Deduplication to prevent duplicates
+- Safety net: If AI forgets structured block, fallback still extracts most citations from response text
+
+### 18.3) UI Accessibility & Semantic HTML
+
+**Status:** ✅ Deployed (Commit: `a1575b8`)
+
+**Accessibility improvements** (`client/src/pages/chat.tsx`):
+- **Converted 4 div elements to semantic `<button>` elements:**
+  - Citation cards (lines ~855, 864)
+  - Statute cards (lines ~894, 908)
+  - Added `text-left w-full` classes to preserve layout
+
+- **Added keyboard support (Enter key):**
+  - `onKeyDown={(e) => e.key === 'Enter' && window.open(..., '_blank')}`
+  - All citation/statute cards now keyboard-navigable
+
+- **Fixed bookmark button race condition:**
+  - Added `bookmarkMutation.isPending` check in onClick
+  - Added `disabled={bookmarkMutation.isPending}` attribute
+  - Added `disabled:opacity-50 disabled:cursor-not-allowed` styles
+  - Prevents rapid-click duplicate submissions
+
+- **Improved error handling:**
+  - Clipboard operations now log errors instead of silently failing
+  - Share URL copy failures now show in error UI
+
+- **File upload UX:**
+  - Added message when reaching 5-file limit: "Maximum 5 files reached. Remove a file to add more."
+
+### 18.4) Statute Search Dropdown Visibility
+
+**Status:** ✅ Deployed (Commit: `5a32845`)
+
+**Problem:** Search results dropdown was hidden behind UI and unusable.
+
+**Root cause:** Parent section had `overflow-hidden` which clipped the absolutely-positioned dropdown (even with `z-50`).
+
+**Solution:**
+- Removed `overflow-hidden` from section (line 122 in `statute-search.tsx`)
+- Rounded corners and gradient background preserved
+- Dropdown now renders with `z-50` above all content
+
+---
 
 ## 1) Product Summary
 
