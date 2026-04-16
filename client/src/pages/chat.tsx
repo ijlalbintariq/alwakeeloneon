@@ -1763,8 +1763,23 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         background-size: 1000px 100%;
                         animation: shimmer 2s infinite;
                       }
+                      @keyframes pulse-text {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.6; }
+                      }
+                      .animate-pulse-text {
+                        animation: pulse-text 1.5s ease-in-out infinite;
+                      }
                     `}</style>
                     <div className="space-y-2.5">
+                      <p className="text-sm text-amber-200 font-semibold animate-pulse-text flex items-center gap-2">
+                        <span className="inline-flex gap-1">
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce"></span>
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                        </span>
+                        Generating response...
+                      </p>
                       <div className="h-4 bg-slate-700/40 rounded animate-shimmer"></div>
                       <div className="h-4 bg-slate-700/40 rounded animate-shimmer" style={{ animationDelay: "0.2s", width: "95%" }}></div>
                       <div className="h-4 bg-slate-700/40 rounded animate-shimmer" style={{ animationDelay: "0.4s", width: "90%" }}></div>
