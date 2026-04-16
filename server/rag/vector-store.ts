@@ -149,26 +149,38 @@ export async function insertDocumentChunkBatch(entries: RagChunkInsert[]): Promi
   assertDb();
   if (entries.length === 0) return 0;
 
+  // Build a single multi-row INSERT for performance.
+  // Each row occupies 8 consecutive $N placeholders.
+  const valuePlaceholders: string[] = [];
+  const params: unknown[] = [];
+  let p = 1;
+
   for (const chunk of entries) {
-    await pool.query(
-      `
-      INSERT INTO rag_chunks (rag_document_id, user_id, source_document_id, chunk_index, token_count, chunk_text, metadata, embedding)
-      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::vector)
-      `,
-      [
-        chunk.ragDocumentId,
-        chunk.userId,
-        chunk.sourceDocumentId,
-        chunk.chunkIndex,
-        chunk.tokenCount,
-        chunk.chunkText,
-        JSON.stringify(chunk.metadata || {}),
-        vectorLiteral(chunk.embedding),
-      ],
+    valuePlaceholders.push(
+      `($${p},$${p+1},$${p+2},$${p+3},$${p+4},$${p+5},$${p+6}::jsonb,$${p+7}::vector)`,
     );
+    params.push(
+      chunk.ragDocumentId,
+      chunk.userId,
+      chunk.sourceDocumentId,
+      chunk.chunkIndex,
+      chunk.tokenCount,
+      chunk.chunkText,
+      JSON.stringify(chunk.metadata || {}),
+      vectorLiteral(chunk.embedding),
+    );
+    p += 8;
   }
 
-  return entries.length;
+  const sql = `
+    INSERT INTO rag_chunks
+      (rag_document_id, user_id, source_document_id, chunk_index, token_count, chunk_text, metadata, embedding)
+    VALUES ${valuePlaceholders.join(",")}
+    ON CONFLICT (rag_document_id, chunk_index) DO NOTHING
+  `;
+
+  const result = await pool.query(sql, params);
+  return result.rowCount ?? entries.length;
 }
 
 export async function markRagDocumentIndexed(ragDocumentId: number, chunkCount: number): Promise<void> {

@@ -57,7 +57,7 @@ export type RAGGlobalEnsureSummary = {
   indexedNow: number;
 };
 
-const MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.5);
+const MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.55);
 const TOP_K = Number(process.env.RAG_TOP_K || 5);
 const VECTOR_WEIGHT_RAW = Number(process.env.RAG_VECTOR_WEIGHT || 0.72);
 const KEYWORD_WEIGHT_RAW = Number(process.env.RAG_KEYWORD_WEIGHT || 0.28);
@@ -70,7 +70,6 @@ const STOP_TOKENS = new Set([
   "the", "and", "for", "that", "with", "from", "this", "have", "your", "will", "shall", "into", "under",
   "where", "there", "about", "what", "when", "which", "whose", "their", "were", "been", "is", "are", "was",
   "to", "of", "in", "on", "a", "an", "or", "at", "by", "as", "it", "be", "if", "than", "then", "also", "any",
-  "law", "legal", "case", "section",
 ]);
 
 function clamp(value: number, min: number, max: number): number {
@@ -665,16 +664,9 @@ export async function retrieveForQuery(args: {
     .sort((a, b) => b.score - a.score)
     .slice(0, Math.max(candidateTopK, requestedTopK));
 
-  let filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= MIN_SCORE);
-  if (filtered.length === 0 && matches.length > 0) {
-    // Soft fallback to avoid false negatives on short/simple legal queries.
-    const relaxedCutoff = Math.max(0.35, MIN_SCORE - 0.08);
-    filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= relaxedCutoff).slice(0, Math.max(1, Math.min(2, requestedTopK)));
-  }
-  if (filtered.length === 0 && matches.length > 0) {
-    // Last-resort fallback: keep top semantic hits as low-confidence context instead of returning empty retrieval.
-    filtered = matches.slice(0, Math.max(1, Math.min(2, requestedTopK)));
-  }
+  // Strict filter: only return results that meet the minimum relevance threshold.
+  // No last-resort fallbacks — returning wrong documents is worse than returning nothing.
+  const filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= MIN_SCORE);
 
   const reranked = rerankAndDiversify(filtered, queryText, requestedTopK);
   const confidence = resolveConfidence(reranked.map((m) => m.score));
