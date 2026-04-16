@@ -115,6 +115,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const [ragEnabled, setRagEnabled] = useState(false);
   const [agentStatus, setAgentStatus] = useState<string | null>(null);
   const [leftRailOpen, setLeftRailOpen] = useState(true);
+  // Map<citation_text, judgment_id> — only citations verified to exist in DB
+  const [verifiedJudgmentIds, setVerifiedJudgmentIds] = useState<Map<string, string>>(new Map());
   const [rightRailOpen, setRightRailOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -848,6 +850,39 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     return { pct, level, basis: "Current response references (laws + judgments)." };
   }, [latestRagCitations, latestRefs]);
 
+  // Verify all citations against DB after each AI response — only show ones that actually exist
+  useEffect(() => {
+    if (isLoading || !latestAssistantMessage) {
+      setVerifiedJudgmentIds(new Map());
+      return;
+    }
+
+    const allCitations = new Set<string>();
+    latestRefs?.judgments?.forEach(j => j.citation && allCitations.add(j.citation));
+    latestInlineReferences?.citations?.forEach(c => c.citation && allCitations.add(c.citation));
+
+    if (allCitations.size === 0) {
+      setVerifiedJudgmentIds(new Map());
+      return;
+    }
+
+    Promise.all(
+      [...allCitations].map(async (citation) => {
+        try {
+          const res = await fetch(`/api/caseLaw/lookup?q=${encodeURIComponent(citation)}`);
+          const data = await res.json();
+          return data.found && data.id ? ([citation, String(data.id)] as [string, string]) : null;
+        } catch {
+          return null;
+        }
+      })
+    ).then(results => {
+      const verified = new Map<string, string>();
+      results.forEach(r => r && verified.set(r[0], r[1]));
+      setVerifiedJudgmentIds(verified);
+    });
+  }, [latestAssistantMessage?.id, isLoading]);
+
   // Helper function to open statute directly if found, else fallback to search
   const openStatute = async (statuteName: string) => {
     try {
@@ -904,23 +939,33 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{c.quote}</p>
             </div>
           ))}
-          {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments.slice(0, compact ? 3 : 4).map((j, idx) => (
-            <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer text-left w-full" onClick={() => openJudgment(j.citation)} onKeyDown={(e) => e.key === 'Enter' && openJudgment(j.citation)}>
-              <div className="flex justify-between items-start mb-2 gap-2">
-                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
-              </div>
-              <p className="text-xs font-bold text-slate-200 mb-1">{j.court || "Pakistani Courts"}</p>
-              {j.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{j.description}</p>}
-            </button>
-          ))}
-          {(latestInlineReferences?.citations?.length || 0) > 0 && latestInlineReferences?.citations.slice(0, compact ? 2 : 3).map((c, idx) => (
-            <button key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer text-left w-full" onClick={() => openJudgment(c.citation)} onKeyDown={(e) => e.key === 'Enter' && openJudgment(c.citation)}>
-              <div className="flex justify-between items-start mb-2 gap-2">
-                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{c.citation}</span>
-              </div>
-              <p className="text-[10px] text-slate-500">Click to view judgment</p>
-            </button>
-          ))}
+          {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments
+            .filter(j => verifiedJudgmentIds.has(j.citation))
+            .slice(0, compact ? 3 : 4).map((j, idx) => {
+              const jid = verifiedJudgmentIds.get(j.citation)!;
+              return (
+                <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgments/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgments/${jid}`, '_blank')}>
+                  <div className="flex justify-between items-start mb-2 gap-2">
+                    <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-200 mb-1">{j.court || "Pakistani Courts"}</p>
+                  {j.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{j.description}</p>}
+                </button>
+              );
+            })}
+          {(latestInlineReferences?.citations?.length || 0) > 0 && latestInlineReferences?.citations
+            .filter(c => verifiedJudgmentIds.has(c.citation))
+            .slice(0, compact ? 2 : 3).map((c, idx) => {
+              const jid = verifiedJudgmentIds.get(c.citation)!;
+              return (
+                <button key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgments/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgments/${jid}`, '_blank')}>
+                  <div className="flex justify-between items-start mb-2 gap-2">
+                    <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{c.citation}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500">Click to view judgment</p>
+                </button>
+              );
+            })}
           {(latestRefs?.laws?.length || 0) > 0 && latestRefs?.laws.slice(0, compact ? 3 : 4).map((l, idx) => (
             <button key={`${l.name}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 hover:bg-white/10 transition-all cursor-pointer text-left w-full" onClick={() => openStatute(l.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(l.name)}>
               <div className="flex justify-between items-start mb-2 gap-2">
