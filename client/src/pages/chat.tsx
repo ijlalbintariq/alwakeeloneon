@@ -847,6 +847,45 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     const level = pct >= 80 ? "High" : pct >= 60 ? "Medium" : "Low";
     return { pct, level, basis: "Current response references (laws + judgments)." };
   }, [latestRagCitations, latestRefs]);
+
+  // Helper function to open statute directly if found, else fallback to search
+  const openStatute = async (statuteName: string) => {
+    try {
+      const res = await apiRequest("GET", `/api/statute/lookup?q=${encodeURIComponent(statuteName)}`);
+      const data = await res.json();
+      if (data.found && data.id) {
+        // Open statute directly
+        window.open(`/statute-view/${data.id}`, '_blank');
+      } else {
+        // Fallback to search if not found
+        window.open(`/statute-search?q=${encodeURIComponent(statuteName)}`, '_blank');
+      }
+    } catch (err) {
+      console.error("Error looking up statute:", err);
+      // Fallback to search on error
+      window.open(`/statute-search?q=${encodeURIComponent(statuteName)}`, '_blank');
+    }
+  };
+
+  // Helper function to open judgment directly if found, else fallback to search
+  const openJudgment = async (citation: string) => {
+    try {
+      const res = await apiRequest("GET", `/api/caseLaw/lookup?q=${encodeURIComponent(citation)}`);
+      const data = await res.json();
+      if (data.found && data.id) {
+        // Open judgment directly
+        window.open(`/judgments/${data.id}`, '_blank');
+      } else {
+        // Fallback to search if not found
+        window.open(`/judgments?q=${encodeURIComponent(citation)}`, '_blank');
+      }
+    } catch (err) {
+      console.error("Error looking up judgment:", err);
+      // Fallback to search on error
+      window.open(`/judgments?q=${encodeURIComponent(citation)}`, '_blank');
+    }
+  };
+
   const renderInsightsCards = (compact = false) => (
     <div className={compact ? "space-y-5" : "space-y-8 max-w-[15rem] mx-auto"}>
       <div>
@@ -866,7 +905,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           ))}
           {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments.slice(0, compact ? 3 : 4).map((j, idx) => (
-            <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgments?q=${encodeURIComponent(j.citation)}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgments?q=${encodeURIComponent(j.citation)}`, '_blank')}>
+            <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer text-left w-full" onClick={() => openJudgment(j.citation)} onKeyDown={(e) => e.key === 'Enter' && openJudgment(j.citation)}>
               <div className="flex justify-between items-start mb-2 gap-2">
                 <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
               </div>
@@ -875,7 +914,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </button>
           ))}
           {(latestInlineReferences?.citations?.length || 0) > 0 && latestInlineReferences?.citations.slice(0, compact ? 2 : 3).map((c, idx) => (
-            <button key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgments?q=${encodeURIComponent(c.citation)}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgments?q=${encodeURIComponent(c.citation)}`, '_blank')}>
+            <button key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer text-left w-full" onClick={() => openJudgment(c.citation)} onKeyDown={(e) => e.key === 'Enter' && openJudgment(c.citation)}>
               <div className="flex justify-between items-start mb-2 gap-2">
                 <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{c.citation}</span>
               </div>
@@ -883,7 +922,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </button>
           ))}
           {(latestRefs?.laws?.length || 0) > 0 && latestRefs?.laws.slice(0, compact ? 3 : 4).map((l, idx) => (
-            <button key={`${l.name}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 hover:bg-white/10 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(l.name)}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/statute-search?q=${encodeURIComponent(l.name)}`, '_blank')}>
+            <button key={`${l.name}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 hover:bg-white/10 transition-all cursor-pointer text-left w-full" onClick={() => openStatute(l.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(l.name)}>
               <div className="flex justify-between items-start mb-2 gap-2">
                 <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{l.section || "Section"}</span>
               </div>
@@ -906,7 +945,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           {latestStatutes.length > 0 || (latestInlineReferences?.statutes?.length || 0) > 0 ? (
             <>
               {latestStatutes.slice(0, compact ? 5 : 8).map((law, idx) => (
-                <button key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors w-full text-left" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(law.name)}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/statute-search?q=${encodeURIComponent(law.name)}`, '_blank')}>
+                <button key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors w-full text-left" onClick={() => openStatute(law.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(law.name)}>
                   <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
                   <div>
                     <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
@@ -920,7 +959,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 </button>
               ))}
               {(latestInlineReferences?.statutes?.length || 0) > 0 && latestInlineReferences?.statutes.slice(0, compact ? 3 : 5).map((statute, idx) => (
-                <button key={`inline-statute-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors w-full text-left" onClick={() => window.open(`/statute-search?q=${encodeURIComponent(statute.name)}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/statute-search?q=${encodeURIComponent(statute.name)}`, '_blank')}>
+                <button key={`inline-statute-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors w-full text-left" onClick={() => openStatute(statute.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(statute.name)}>
                   <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
                   <div>
                     <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
