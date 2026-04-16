@@ -54,6 +54,7 @@ import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-lib
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import { retrieveLegalCaseLaw } from "./legal-retrieval";
+import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import {
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
   GLOBAL_CASELAW_RAG_USER_ID,
@@ -5610,6 +5611,12 @@ function setTimedCacheValue<T>(
   }
 }
 
+/**
+ * DECOMMISSIONED — no longer called in the main request path.
+ * Replaced by gatherKnowledgeContextV2 (server/pipeline/knowledge-pipeline.ts).
+ * Kept as fallback only. Do not restore calls to this function.
+ * @deprecated Use gatherKnowledgeContextV2 instead.
+ */
 async function gatherKnowledgeContext(query: string, userId?: string): Promise<string> {
   const normalizedQuery = normalizeQuery(query).slice(0, 320);
   if (!normalizedQuery) return "";
@@ -10824,9 +10831,10 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       // Both are optional enrichment — the chat request must proceed even if one or both time out.
       const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 2500));
       const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
+      // V2 pipeline: intent classify → topic-validated retrieval → structured context
       const knowledgePromise: Promise<string> = knowledgeNeeded
-        ? gatherKnowledgeContext(lastUserMessage!.content, userId).catch((err) => {
-            console.warn("[AI Chat] Knowledge context unavailable:", getErrorMessage(err));
+        ? gatherKnowledgeContextV2(lastUserMessage!.content, userId).catch((err) => {
+            console.warn("[AI Chat] Knowledge pipeline unavailable:", getErrorMessage(err));
             return "";
           })
         : Promise.resolve("");
