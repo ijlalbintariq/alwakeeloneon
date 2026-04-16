@@ -8218,6 +8218,62 @@ RAG POLICY (STRICT):
     }
   });
 
+  // Lookup statute by name or section - returns statute ID for direct opening
+  app.get("/api/statute/lookup", async (req, res) => {
+    try {
+      const q = String(req.query.q || "").trim();
+      if (!q) {
+        return res.status(400).json({ message: "Query required" });
+      }
+
+      // Search by shortTitle (name) or section
+      const results = await db.query.statutes.findFirst({
+        where: (statute, { or, like }) =>
+          or(
+            like(statute.shortTitle, `%${q}%`),
+            like(statute.section, `%${q}%`),
+          ),
+      });
+
+      if (results) {
+        return res.json({ found: true, id: results.id, statute: results });
+      }
+
+      res.json({ found: false });
+    } catch (err) {
+      console.error("Error looking up statute:", err);
+      res.status(500).json({ message: "Failed to lookup statute" });
+    }
+  });
+
+  // Lookup case law / judgment by citation - returns judgment ID for direct opening
+  app.get("/api/caseLaw/lookup", async (req, res) => {
+    try {
+      const q = String(req.query.q || "").trim();
+      if (!q) {
+        return res.status(400).json({ message: "Query required" });
+      }
+
+      // Search by citation (exact or partial match)
+      const results = await db.query.caseLaw.findFirst({
+        where: (caselaw, { or, like }) =>
+          or(
+            like(caselaw.citation, `%${q}%`),
+            like(caselaw.title, `%${q}%`),
+          ),
+      });
+
+      if (results) {
+        return res.json({ found: true, id: results.id, judgment: results });
+      }
+
+      res.json({ found: false });
+    } catch (err) {
+      console.error("Error looking up case law:", err);
+      res.status(500).json({ message: "Failed to lookup case law" });
+    }
+  });
+
   app.post("/api/judgments", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
