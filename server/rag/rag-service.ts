@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import { storage } from "../storage";
-import { dbAvailable, pool } from "../db";
+import { db, dbAvailable, pool } from "../db";
+import { judgments, courtsRef, lawJournals } from "../../shared/schema";
+import { eq } from "drizzle-orm";
 import { chunkTextByTokens } from "./chunker";
 import { embedTextLocal, embedTextsLocal } from "./embedding-local";
 import { cleanLegalDocumentText } from "./text-cleaner";
@@ -40,10 +42,12 @@ export type RAGEnsureIndexResult = {
 export const GLOBAL_CASELAW_RAG_USER_ID = "global-admin-case-law";
 export const GLOBAL_STATUTE_RAG_USER_ID = "global-admin-statute";
 export const GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID = "global-admin-knowledge";
+export const GLOBAL_JUDGMENTS_RAG_USER_ID = "global-admin-judgments";
 export const GLOBAL_ADMIN_RAG_USER_IDS = [
   GLOBAL_CASELAW_RAG_USER_ID,
   GLOBAL_STATUTE_RAG_USER_ID,
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
+  GLOBAL_JUDGMENTS_RAG_USER_ID,
 ] as const;
 
 export type RAGGlobalEnsureSummary = {
@@ -514,6 +518,101 @@ export async function indexAdminStatuteDocument(statuteDocumentId: number): Prom
     ragDocumentId: ragDoc.id,
     sourceDocumentId: doc.id,
     title: doc.title || `Statute ${doc.id}`,
+    chunks: inserted,
+    status: "indexed",
+  };
+}
+
+// Index a single judgment from the judgments table into RAG vector store.
+// The fullText + headnotes are embedded so semantic search can find real DB judgments.
+export async function indexJudgmentDocument(judgmentId: string): Promise<RAGIndexResult> {
+  await ensureRagSchema();
+
+  const [row] = await db
+    .select({
+      id: judgments.id,
+      citationString: judgments.citationString,
+      title: judgments.title,
+      petitioner: judgments.petitioner,
+      respondent: judgments.respondent,
+      headnotes: judgments.headnotes,
+      fullText: judgments.fullText,
+      decisionDate: judgments.decisionDate,
+      courtName: courtsRef.name,
+      journalCode: lawJournals.code,
+    })
+    .from(judgments)
+    .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+    .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
+    .where(eq(judgments.id, judgmentId))
+    .limit(1);
+
+  if (!row) throw new Error(`Judgment not found: ${judgmentId}`);
+
+  // Build rich text: citation + title + parties + headnotes + full text
+  const parts: string[] = [];
+  parts.push(`CITATION: ${row.citationString}`);
+  parts.push(`COURT: ${row.courtName || ""}`);
+  if (row.title) parts.push(`TITLE: ${row.title}`);
+  if (row.petitioner) parts.push(`PETITIONER: ${row.petitioner}`);
+  if (row.respondent) parts.push(`RESPONDENT: ${row.respondent}`);
+  if (row.headnotes) parts.push(`HEADNOTES:\n${row.headnotes}`);
+  if (row.fullText) parts.push(`JUDGMENT:\n${row.fullText}`);
+
+  const raw = parts.join("\n\n");
+  const cleaned = cleanLegalDocumentText(raw);
+  if (!cleaned) throw new Error(`Judgment ${judgmentId} has no indexable text`);
+
+  const contentHash = sha256(cleaned);
+
+  // Use numeric hash of UUID as sourceDocumentId (vector store expects integer)
+  const sourceDocumentId = Math.abs(
+    parseInt(judgmentId.replace(/-/g, "").slice(0, 8), 16),
+  );
+
+  const ragDoc = await upsertRagDocument({
+    userId: GLOBAL_JUDGMENTS_RAG_USER_ID,
+    sourceDocumentId,
+    title: `${row.citationString} — ${row.title || "Judgment"}`,
+    fileName: null,
+    mimeType: null,
+    contentHash,
+    status: "pending",
+  });
+
+  const chunks = chunkTextByTokens(cleaned).slice(0, MAX_CHUNKS_PER_DOC);
+  await resetDocumentChunks(ragDoc.id);
+
+  let inserted = 0;
+  for (let start = 0; start < chunks.length; start += INDEX_BATCH_SIZE) {
+    const batch = chunks.slice(start, start + INDEX_BATCH_SIZE);
+    const embeddings = await embedTextsLocal(batch.map((c) => c.text));
+    const entries = batch.map((chunk, idx) => ({
+      ragDocumentId: ragDoc.id,
+      userId: GLOBAL_JUDGMENTS_RAG_USER_ID,
+      sourceDocumentId,
+      chunkIndex: chunk.chunkIndex,
+      tokenCount: chunk.tokenCount,
+      chunkText: chunk.text,
+      embedding: embeddings[idx],
+      metadata: {
+        sourceType: "judgment",
+        category: "judgment",
+        judgmentId: row.id,
+        citationString: row.citationString,
+        court: row.courtName || "",
+        title: row.title || "",
+      },
+    }));
+    inserted += await insertDocumentChunkBatch(entries);
+  }
+
+  await markRagDocumentIndexed(ragDoc.id, inserted);
+
+  return {
+    ragDocumentId: ragDoc.id,
+    sourceDocumentId,
+    title: `${row.citationString} — ${row.title || "Judgment"}`,
     chunks: inserted,
     status: "indexed",
   };

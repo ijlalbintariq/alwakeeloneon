@@ -57,6 +57,7 @@ import {
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
   GLOBAL_CASELAW_RAG_USER_ID,
   GLOBAL_STATUTE_RAG_USER_ID,
+  GLOBAL_JUDGMENTS_RAG_USER_ID,
   buildRagContext,
   deleteDocumentVectors,
   ensureIndexedForGlobalAdminSources,
@@ -64,6 +65,7 @@ import {
   indexAdminStatuteDocument,
   ensureIndexedForUserDocuments,
   indexAdminCaseLawDocument,
+  indexJudgmentDocument,
   indexUserDocument,
   retrieveForQuery,
 } from "./rag/rag-service";
@@ -1140,6 +1142,20 @@ const caseLawProcessPendingFilesJob: CaseLawProcessPendingFilesJobState = {
 
 const globalAdminRagReindexJob: GlobalAdminRagReindexJobState = createGlobalAdminRagReindexJobState();
 
+const judgementsRagReindexJob = {
+  running: false,
+  shouldStop: false,
+  batchSize: 100,
+  processed: 0,
+  indexed: 0,
+  failed: 0,
+  totalEstimate: 0,
+  startedAt: null as Date | null,
+  finishedAt: null as Date | null,
+  lastError: null as string | null,
+  lastCursorId: null as string | null,
+};
+
 function snapshotCaseLawReindexJob() {
   return {
     ...caseLawReindexJob,
@@ -1994,6 +2010,56 @@ async function reindexAdminKnowledgeBatch(
     totalDocuments,
     hasMore: remaining > 0,
   };
+}
+
+// Reindex a batch of judgments from the judgments table into RAG vector store.
+// Uses cursor-based pagination on UUID (alphabetically ordered).
+async function reindexJudgmentsBatch(
+  batchSize: number,
+  cursorId: string | null,
+  onProgress?: (processed: number, indexed: number, failed: number) => void,
+): Promise<{ processed: number; indexed: number; failed: number; nextCursorId: string | null; hasMore: boolean }> {
+  if (!dbAvailable || !pool) throw new Error("Database unavailable");
+
+  const limit = Math.max(1, Math.min(500, batchSize));
+
+  const rows = await db
+    .select({ id: judgments.id })
+    .from(judgments)
+    .where(
+      and(
+        eq(judgments.isActive, true),
+        cursorId ? sql`${judgments.id}::text > ${cursorId}` : sql`1=1`,
+      ),
+    )
+    .orderBy(sql`${judgments.id}::text ASC`)
+    .limit(limit);
+
+  let processed = 0;
+  let indexed = 0;
+  let failed = 0;
+  let nextCursorId: string | null = null;
+
+  for (const row of rows) {
+    const judgmentId = String(row.id);
+    nextCursorId = judgmentId;
+    try {
+      const result = await withOperationTimeout(
+        indexJudgmentDocument(judgmentId),
+        CASELAW_RAG_INDEX_DOC_TIMEOUT_MS,
+        `Judgment index timeout after ${CASELAW_RAG_INDEX_DOC_TIMEOUT_MS}ms`,
+      );
+      if (result.chunks > 0) indexed += 1;
+      else failed += 1;
+    } catch (err) {
+      failed += 1;
+      console.warn(`[Judgments RAG] Failed to index ${judgmentId}: ${getErrorMessage(err)}`);
+    }
+    processed += 1;
+    onProgress?.(processed, indexed, failed);
+  }
+
+  return { processed, indexed, failed, nextCursorId, hasMore: rows.length === limit };
 }
 
 function maybeIndexAdminCaseLawInBackground(args: { adminKnowledgeId: number; category?: string | null }) {
@@ -5593,13 +5659,47 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     });
   })();
 
-  // Search judgments table directly — these are verified DB records with real IDs.
-  // AI must only cite these exact citation strings; no fabrication allowed.
+  // Search judgments table via RAG vector search (semantic) — finds topically relevant judgments
+  // even when user doesn't type the exact citation. Falls back to keyword search if RAG unavailable.
   const judgmentsPromise: Promise<Array<{ id: string; citationString: string; title: string; court: string | null; decisionDate: string | null; headnotes: string | null }>> = (async () => {
     try {
+      // Try RAG semantic search first (works once judgments are indexed)
+      // Pass a non-existent userId so only global sources are searched, then filter to judgment sourceType
+      const ragRetrieval = await retrieveForQuery({
+        userId: "__judgments_context_query__",
+        query,
+        topK: 24,
+      });
+      const ragJudgmentIds: string[] = ragRetrieval.matches
+        .filter(m => String((m.metadata || {}).sourceType || "") === "judgment")
+        .map(m => String((m.metadata || {}).judgmentId || ""))
+        .filter(Boolean)
+        .slice(0, 6);
+
+      if (ragJudgmentIds.length > 0) {
+        const rows = await db
+          .select({
+            id: judgments.id,
+            citationString: judgments.citationString,
+            title: judgments.title,
+            court: courtsRef.name,
+            decisionDate: judgments.decisionDate,
+            headnotes: judgments.headnotes,
+          })
+          .from(judgments)
+          .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+          .where(sql`${judgments.id}::text = ANY(ARRAY[${sql.join(ragJudgmentIds.map(id => sql`${id}`), sql`, `)}])`)
+          .limit(6);
+        if (rows.length > 0) return rows;
+      }
+
+      // Fallback: keyword search on citationString and title
       const words = query.split(/\s+/).filter(w => w.length > 3).slice(0, 4);
       if (words.length === 0) return [];
-      const orConditions = words.map(w => like(judgments.citationString, `%${w}%`));
+      const orConditions = words.flatMap(w => [
+        like(judgments.citationString, `%${w}%`),
+        like(judgments.title, `%${w}%`),
+      ]);
       const rows = await db
         .select({
           id: judgments.id,
@@ -7417,6 +7517,77 @@ export async function registerRoutes(
       message: "Stop signal sent. Job will stop after current batch.",
       status: snapshotCaseLawReindexJob(),
     });
+  });
+
+  // ── Judgments RAG Reindex Endpoints ────────────────────────────────────
+
+  app.post("/api/admin/rag/reindex-judgments/start", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (judgementsRagReindexJob.running) {
+      return res.status(409).json({ message: "Judgments reindex already running", status: judgementsRagReindexJob });
+    }
+    const batchSize = Math.max(10, Math.min(500, Number(req.body?.batchSize) || 100));
+    judgementsRagReindexJob.running = true;
+    judgementsRagReindexJob.shouldStop = false;
+    judgementsRagReindexJob.batchSize = batchSize;
+    judgementsRagReindexJob.processed = 0;
+    judgementsRagReindexJob.indexed = 0;
+    judgementsRagReindexJob.failed = 0;
+    judgementsRagReindexJob.lastCursorId = null;
+    judgementsRagReindexJob.startedAt = new Date();
+    judgementsRagReindexJob.finishedAt = null;
+    judgementsRagReindexJob.lastError = null;
+
+    // Get total count estimate
+    const [countRow] = await db.select({ count: sql<number>`count(*)` }).from(judgments).where(eq(judgments.isActive, true));
+    judgementsRagReindexJob.totalEstimate = Number(countRow?.count || 0);
+
+    res.json({ ok: true, message: "Judgments RAG reindex started", status: judgementsRagReindexJob });
+
+    // Run in background
+    (async () => {
+      let cursorId: string | null = null;
+      try {
+        while (!judgementsRagReindexJob.shouldStop) {
+          const result = await reindexJudgmentsBatch(
+            judgementsRagReindexJob.batchSize,
+            cursorId,
+            (p, i, f) => {
+              judgementsRagReindexJob.processed += p > 0 ? 1 : 0;
+              judgementsRagReindexJob.indexed += i > 0 ? 1 : 0;
+              judgementsRagReindexJob.failed += f > 0 ? 1 : 0;
+            },
+          );
+          judgementsRagReindexJob.processed += result.processed;
+          judgementsRagReindexJob.indexed += result.indexed;
+          judgementsRagReindexJob.failed += result.failed;
+          judgementsRagReindexJob.lastCursorId = result.nextCursorId;
+          cursorId = result.nextCursorId;
+          if (!result.hasMore) break;
+        }
+      } catch (err) {
+        judgementsRagReindexJob.lastError = getErrorMessage(err);
+        console.error("[Judgments RAG] Reindex error:", judgementsRagReindexJob.lastError);
+      } finally {
+        judgementsRagReindexJob.running = false;
+        judgementsRagReindexJob.finishedAt = new Date();
+        console.log(`[Judgments RAG] Reindex complete. Indexed: ${judgementsRagReindexJob.indexed}, Failed: ${judgementsRagReindexJob.failed}`);
+      }
+    })();
+  });
+
+  app.get("/api/admin/rag/reindex-judgments/status", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    res.json({ ...judgementsRagReindexJob, startedAt: judgementsRagReindexJob.startedAt?.toISOString() || null, finishedAt: judgementsRagReindexJob.finishedAt?.toISOString() || null });
+  });
+
+  app.post("/api/admin/rag/reindex-judgments/stop", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    if (!judgementsRagReindexJob.running) {
+      return res.json({ ok: true, message: "No running judgments reindex job" });
+    }
+    judgementsRagReindexJob.shouldStop = true;
+    res.json({ ok: true, message: "Stop signal sent. Job will stop after current batch.", status: judgementsRagReindexJob });
   });
 
   app.post("/api/admin/rag/reindex-global/start", async (req, res) => {
