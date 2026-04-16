@@ -5337,6 +5337,8 @@ VERIFICATION CONSEQUENCE: The frontend system will attempt to verify every citat
 - Look broken to the user
 Therefore, ONLY use citations from the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section. Hallucinated citations will be caught and will embarrass the platform and waste user time.
 
+DATA QUALITY WARNING: If a judgment in the VERIFIED JUDGMENTS section has an EMPTY or MISSING citation field (appears as blank), DO NOT try to use it. Skip that judgment entirely. Better to omit a case than cite it incorrectly with empty brackets [] or made-up citation numbers.
+
 MANDATORY CITATION FORMAT: When citing a verified judgment, use this format in your text:
 **[CITATION STRING]** — Brief explanation of the holding and its relevance.
 Example: **[PLD 2020 Supreme Court 456]** — The court held that intent is essential for murder conviction under Section 302 PPC.
@@ -5766,6 +5768,13 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
     for (const c of caseLawRows) {
       const citation = String(c.citation || "").trim();
+
+      // CRITICAL: Skip records with empty citations — cannot cite without citation string
+      if (!citation) {
+        console.warn(`[Knowledge] Skipping caseLaw record (ID: ${c.id}) — citation field is empty`);
+        continue;
+      }
+
       const court = String(c.court || "Pakistani Court");
       const title = String(c.title || "");
       const summary = c.summary ? ` — ${String(c.summary).slice(0, 250)}` : "";
@@ -5824,7 +5833,13 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     );
     for (const item of withExcerpts) {
       if (!item) continue;
-      caseLawLines.push(`- ${item.row.citation} (${item.row.court}): ${item.row.title} — ${item.row.summary}`);
+      // Skip records with empty citations
+      const citation = String(item.row.citation || "").trim();
+      if (!citation) {
+        console.warn(`[Knowledge] Skipping caseLaw excerpt (ID: ${item.row.id}) — citation field is empty`);
+        continue;
+      }
+      caseLawLines.push(`- ${citation} (${item.row.court}): ${item.row.title} — ${item.row.summary}`);
       if (item.sourceExcerpt) {
         caseLawLines.push(`  Key Judgment Excerpt: ${item.sourceExcerpt}${item.sourceExcerpt.length >= 700 ? "..." : ""}`);
       }
