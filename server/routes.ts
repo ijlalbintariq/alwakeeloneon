@@ -5349,7 +5349,13 @@ For simple questions, you may omit sections that are not applicable, but always 
 STRUCTURED REFERENCES (MANDATORY - DO NOT SKIP):
 At the VERY END of every legal response, you MUST include a structured references block in the following exact format (even if empty). This block is parsed by the system to create clickable reference cards that users rely on.
 
-CRITICAL: Every single time you cite a statute, section, or judgment in your response, you MUST include it in the references block below. If you mention "Section 424 PPC" in the text, it MUST appear in the references block.
+CRITICAL BIDIRECTIONAL CONSISTENCY:
+1. Every statute/section/judgment mentioned in your response text MUST appear in the references block.
+2. Every statute/section/judgment in the references block MUST be cited and explained in the response text.
+3. NO ORPHANED CITATIONS: If you list a statute in the block but don't use it in the explanation, DELETE it from the block.
+4. NO ORPHANED EXPLANATIONS: If you mention a law in the text, you MUST include it in the block so users can click it.
+If you mention "Section 424 PPC" in the text, it MUST appear in the references block with its description.
+If you add something to the references block, explain its relevance in the response text.
 
 FORMAT (exactly as shown - do not modify):
 \`\`\`references
@@ -5357,8 +5363,8 @@ FORMAT (exactly as shown - do not modify):
 \`\`\`
 
 INSTRUCTIONS:
-1. Extract EVERY statute/law cited in your response
-2. Extract EVERY judgment/case cited in your response
+1. Extract EVERY statute/law cited in your response — no exceptions
+2. Extract EVERY judgment/case cited in your response — no exceptions
 3. Include full formal names (e.g., "Pakistan Penal Code, 1860" not "PPC")
 4. Include exact section numbers cited
 5. Use proper court names (e.g., "Supreme Court of Pakistan", "Lahore High Court")
@@ -5366,13 +5372,20 @@ INSTRUCTIONS:
 7. IF NO CITATIONS/STATUTES MENTIONED: Use empty arrays: {"laws":[],"judgments":[]}
 8. DO NOT put this block inside any other code block or markdown section
 9. This must be the VERY LAST element in your response
+10. DO NOT add a law/judgment to the references block unless you explain its relevance in the response text
+11. DO NOT mention a law/judgment in the text without adding it to the references block
 
 EXAMPLES OF CORRECT FORMAT:
-- Citation mentioned: "Section 424 PPC deals with forgery" → Include in references block
-- Case cited: "In PLD 2020 Supreme Court 456..." → Include in references block
-- Statute named: "Under the Income Tax Ordinance, 2001..." → Include in references block
+- Citation mentioned: "Section 424 PPC deals with forgery" → Must include in references block + use in text explanation
+- Case cited: "In PLD 2020 Supreme Court 456..." → Must include in references block + explain its relevance
+- Statute named: "Under the Income Tax Ordinance, 2001..." → Must include in references block + connect to your analysis
 
-Your users depend on these reference cards to navigate legal databases and court records. Failing to include this block breaks their workflow. Include it ALWAYS.
+ANTI-PATTERNS (NEVER DO THIS):
+- WRONG: Mention "Section 424 PPC" in text but omit it from references block → citation becomes invisible/unclickable
+- WRONG: Add "PPC Section 424" to references block but don't explain it in the text → orphaned, confusing citation
+- WRONG: Use abbreviated "PPC" in text but put full name "Pakistan Penal Code, 1860" in block without matching → might not be recognized
+
+Your users depend on these reference cards to navigate legal databases and court records. Failing to include this block breaks their workflow. Include it ALWAYS, and ensure every reference in the block is explained in the text.
 
 Rules for the references block:
 - Include ALL statutes and judgments you referenced in your response
