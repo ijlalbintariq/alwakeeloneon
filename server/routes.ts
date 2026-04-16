@@ -5262,14 +5262,13 @@ Cite specific sections of relevant Pakistani statutes with their full names in b
 Examples: **[Pakistan Penal Code, 1860]**, **[Code of Civil Procedure, 1908]**, **[Income Tax Ordinance, 2001]**
 
 ### Leading Case Law and Judicial Precedents
-Cite relevant Pakistani court judgments with proper citations. For each case:
-- **Citation** (e.g., PLD 2024 Supreme Court 123, 2025 SCMR 456, 2024 YLR 789)
-- **Court Name** and **Decision Date** (only if known from internal records; never guess)
+STRICT RULE: You may ONLY cite judgments that are explicitly listed in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section of your reference materials. If no judgments appear there, do NOT cite any case at all — instead write "No relevant judgments are currently available in the internal database for this query."
+NEVER use your training memory to recall or invent citations. A fabricated citation is worse than no citation on a professional legal platform.
+For each verified judgment from the database:
+- **Citation** — use the exact citation string as shown in the database
+- **Court Name** and **Decision Date** (as shown in the database record)
 - **Legal Principle Established**: What the court held
 - **Practitioner Application**: How this applies to the user's situation
-Use ONLY official Pakistani citations: PLD, SCMR, YLR, MLD, CLC, CLD, PLC, PCRLJ, PLJ, PTD, and neutral citations (LHC/IHC/SHC/PHC/BHC/AJKHC).
-Important: PLC is Pakistan Labour Cases (Pakistani), not Indian.
-DUAL CITATION: If reported in PLD and PLJ, cite BOTH.
 
 ### Practical Legal Strategy and Case Preparation
 Provide actionable litigation strategy including:
@@ -5594,20 +5593,63 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     });
   })();
 
+  // Search judgments table directly — these are verified DB records with real IDs.
+  // AI must only cite these exact citation strings; no fabrication allowed.
+  const judgmentsPromise: Promise<Array<{ id: string; citationString: string; title: string; court: string | null; decisionDate: string | null; headnotes: string | null }>> = (async () => {
+    try {
+      const words = query.split(/\s+/).filter(w => w.length > 3).slice(0, 4);
+      if (words.length === 0) return [];
+      const orConditions = words.map(w => like(judgments.citationString, `%${w}%`));
+      const rows = await db
+        .select({
+          id: judgments.id,
+          citationString: judgments.citationString,
+          title: judgments.title,
+          court: courtsRef.name,
+          decisionDate: judgments.decisionDate,
+          headnotes: judgments.headnotes,
+        })
+        .from(judgments)
+        .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+        .where(or(...orConditions))
+        .limit(6);
+      return rows;
+    } catch {
+      return [];
+    }
+  })();
+
   const promises: Promise<any>[] = [
     statutesPromise,
     caseLawPromise,
     storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
     storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
     orgKnowledgePromise,
+    judgmentsPromise,
   ];
   if (userId) {
     promises.push(storage.getDocuments(userId));
   }
 
-  const [statutesResult, caseLawResult, githubResult, adminResult, orgResult, userDocsResult] = await Promise.allSettled(promises);
+  const [statutesResult, caseLawResult, githubResult, adminResult, orgResult, judgmentsResult, userDocsResult] = await Promise.allSettled(promises);
 
   // ── Highest-precision sources first so they survive token-budget truncation ──
+
+  // Verified judgments from the judgments table — these have real DB IDs and must be cited exactly as shown.
+  if (judgmentsResult && judgmentsResult.status === "fulfilled" && judgmentsResult.value.length > 0) {
+    const lines: string[] = [];
+    for (const j of judgmentsResult.value) {
+      const court = j.court || "Pakistani Court";
+      const date = j.decisionDate ? ` (${j.decisionDate})` : "";
+      const headnote = j.headnotes ? ` — ${String(j.headnotes).slice(0, 300)}` : "";
+      lines.push(`- CITATION: ${j.citationString} | COURT: ${court}${date} | TITLE: ${j.title}${headnote}`);
+    }
+    if (lines.length > 0) {
+      contextParts.push("=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===");
+      contextParts.push("IMPORTANT: These are the ONLY judgment citations you are permitted to cite. Do NOT cite any other case or judgment not listed here. Use the exact citation string as shown.");
+      contextParts.push(...lines);
+    }
+  }
 
   if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
     const caseLawLines: string[] = [];
@@ -5704,7 +5746,7 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
   const finalContext = contextParts.length === 0
     ? ""
-    : `\n\nREFERENCE MATERIALS (Use these as primary sources when answering. Prioritize this curated knowledge over general knowledge. Do NOT mention these sources or how you found them — present the information as your own expert analysis):\n\n${contextParts.join("\n\n")}`;
+    : `\n\nREFERENCE MATERIALS (Use these as your primary sources. Prioritize this curated internal knowledge over your general training knowledge.\n\nCRITICAL CITATION RULE: You may ONLY cite judgments that appear in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section above. If a judgment is not listed there, do NOT cite it — say instead that it is not available in the current database. Never invent or recall citations from your training memory. Cite the exact citation string as shown.):\n\n${contextParts.join("\n\n")}`;
 
   setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
   return finalContext;
