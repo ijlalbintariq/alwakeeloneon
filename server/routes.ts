@@ -53,7 +53,6 @@ import { classifyDocumentMetadata, type DocumentMetadata } from "./document-clas
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
-import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import {
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
@@ -5611,273 +5610,6 @@ function setTimedCacheValue<T>(
   }
 }
 
-/**
- * DECOMMISSIONED — no longer called in the main request path.
- * Replaced by gatherKnowledgeContextV2 (server/pipeline/knowledge-pipeline.ts).
- * Kept as fallback only. Do not restore calls to this function.
- * @deprecated Use gatherKnowledgeContextV2 instead.
- */
-async function gatherKnowledgeContext(query: string, userId?: string): Promise<string> {
-  const normalizedQuery = normalizeQuery(query).slice(0, 320);
-  if (!normalizedQuery) return "";
-  const cacheKey = `${userId || "anon"}::${normalizedQuery}`;
-  const cached = getTimedCacheValue(knowledgeContextCache, cacheKey);
-  if (cached !== undefined) return cached;
-
-  const outerDeadline = new Promise<string>((resolve) => {
-    setTimeout(() => resolve(""), KNOWLEDGE_OUTER_DEADLINE_MS);
-  });
-
-  const inner = (async (): Promise<string> => {
-  const contextParts: string[] = [];
-  const retrievalCacheKey = `${userId || "anon"}::${normalizedQuery}`;
-
-  const caseLawPromise: Promise<CaseLaw[]> = (() => {
-    const cachedCaseLaw = getTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey);
-    if (cachedCaseLaw !== undefined) return Promise.resolve(cachedCaseLaw);
-    return (async () => {
-      try {
-        const result = await withOperationTimeout(
-          retrieveLegalCaseLaw({
-            userId: userId || "",
-            query,
-            limit: KNOWLEDGE_CASELAW_LIMIT,
-          }),
-          KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
-          `Knowledge case-law search timeout after ${KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS}ms`,
-        );
-        const rows = result.rows;
-        if (rows.length > 0) {
-          console.log(`[Knowledge] Legal retrieval: strategy=${result.retrievalStrategy} topics=${result.topicsDetected.join(",")} found=${rows.length}`);
-        } else {
-          console.log(`[Knowledge] Legal retrieval: no relevant results for query="${query.slice(0, 60)}" topics=${result.topicsDetected.join(",") || "none"}`);
-        }
-        setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, rows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
-        return rows;
-      } catch (err) {
-        console.warn("[Knowledge] Legal retrieval failed:", getErrorMessage(err));
-        return [];
-      }
-    })();
-  })();
-
-  // Resolve org docs in parallel with the other lookups instead of serially at the end.
-  const orgKnowledgePromise: Promise<{ orgName: string; docs: Array<{ title: string; content: string }> } | null> = userId
-    ? (async () => {
-        try {
-          const userOrg = await withOperationTimeout(
-            storage.getUserOrganization(userId),
-            KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS,
-            `Knowledge org lookup timeout after ${KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS}ms`,
-          );
-          if (!userOrg) return null;
-          const orgDocs = await withOperationTimeout(
-            storage.searchOrgKnowledge(userOrg.id, query, 3),
-            KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS,
-            `Knowledge org search timeout after ${KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS}ms`,
-          );
-          return { orgName: userOrg.name, docs: orgDocs || [] };
-        } catch {
-          return null;
-        }
-      })()
-    : Promise.resolve(null);
-
-  const statutesPromise: Promise<any[]> = (() => {
-    const cachedStatutes = getTimedCacheValue(statutesRetrievalCache, retrievalCacheKey);
-    if (cachedStatutes !== undefined) return Promise.resolve(cachedStatutes);
-    return storage.searchStatutes(query, KNOWLEDGE_STATUTES_LIMIT).then((rows) => {
-      setTimedCacheValue(statutesRetrievalCache, retrievalCacheKey, rows, STATUTES_RETRIEVAL_CACHE_TTL_MS, 300);
-      return rows;
-    });
-  })();
-
-  const promises: Promise<any>[] = [
-    statutesPromise,
-    caseLawPromise,
-    storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
-    storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
-    orgKnowledgePromise,
-  ];
-  if (userId) {
-    promises.push(storage.getDocuments(userId));
-  }
-
-  const [statutesResult, caseLawResult, githubResult, adminResult, orgResult, userDocsResult] = await Promise.allSettled(promises);
-
-  // caseLaw and judgments are the same data in two tables.
-  // ── Highest-precision sources first so they survive token-budget truncation ──
-
-  // caseLaw RAG found relevant cases — inject them as verified citations.
-  // caseLaw table IS the judgment database (same data, different table name).
-  // Try to enrich with judgments.id for direct opening; if judgments table is
-  // empty (sync not run), fall back to caseLaw records directly.
-  if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
-    const caseLawRows = (caseLawResult.value as CaseLaw[]).slice(0, 6);
-    const lines: string[] = [];
-
-    // Try to get judgments.id for direct-open links
-    let judgmentIdMap = new Map<string, string>(); // citation -> judgments.id
-    try {
-      const citations = caseLawRows.map(c => String(c.citation || "").trim()).filter(Boolean);
-      if (citations.length > 0) {
-        const rows = await db
-          .select({ id: judgments.id, citationString: judgments.citationString })
-          .from(judgments)
-          .where(or(...citations.map(c => ilike(judgments.citationString, c))))
-          .limit(6);
-        rows.forEach(r => judgmentIdMap.set(r.citationString, String(r.id)));
-      }
-    } catch { /* judgments table may be empty — proceed with caseLaw data */ }
-
-    for (const c of caseLawRows) {
-      const citation = String(c.citation || "").trim();
-
-      // CRITICAL: Skip records with empty citations — cannot cite without citation string
-      if (!citation) {
-        console.warn(`[Knowledge] Skipping caseLaw record (ID: ${c.id}) — citation field is empty`);
-        continue;
-      }
-
-      const court = String(c.court || "Pakistani Court");
-      const title = String(c.title || "");
-      const summary = c.summary ? ` — ${String(c.summary).slice(0, 250)}` : "";
-      lines.push(`- CITATION: ${citation} | COURT: ${court} | TITLE: ${title}${summary}`);
-    }
-
-    if (lines.length > 0) {
-      contextParts.push("=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===");
-      contextParts.push("These judgments are from the internal database. Cite them using the exact CITATION string shown. You may cite these freely.");
-      contextParts.push(...lines);
-    }
-  }
-
-  if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
-    const statLines: string[] = [];
-    for (const s of statutesResult.value.slice(0, 8)) {
-      statLines.push(`- STATUTE: ${s.shortTitle} | SECTION: ${s.section} | ${s.description}`);
-    }
-    if (statLines.length > 0) {
-      contextParts.push("=== VERIFIED STATUTES FROM INTERNAL DATABASE ===");
-      contextParts.push("Use these exact statute names when citing in your response and in the references block:");
-      contextParts.push(...statLines);
-    }
-  }
-
-  if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
-    const caseLawLines: string[] = [];
-    const candidateRows = caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT);
-    const withExcerpts = await Promise.all(
-      candidateRows.map(async (c: CaseLaw, index: number) => {
-        let sourceExcerpt = "";
-        if (userId && index < KNOWLEDGE_CASELAW_EXCERPT_DOCS) {
-          try {
-            let sourceText = await withOperationTimeout(
-              loadCaseLawSourceText(c, userId, {
-                includeMetadataFallback: false,
-                allowRemoteFileRead: false,
-              }),
-              KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS,
-              `Knowledge local excerpt timeout after ${KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS}ms`,
-            );
-            // If local read returned empty, fall back to the DB summary rather than
-            // re-hitting R2 (same API, same latency cost, no benefit over the DB row).
-            if (!sourceText.trim()) {
-              sourceText = String(c.summary || "");
-            }
-            if (sourceText.trim()) {
-              sourceExcerpt = sourceText.slice(0, 700).replace(/\s+/g, " ").trim();
-            }
-          } catch {
-            sourceExcerpt = "";
-          }
-        }
-        return { row: c, sourceExcerpt };
-      }),
-    );
-    for (const item of withExcerpts) {
-      if (!item) continue;
-      // Skip records with empty citations
-      const citation = String(item.row.citation || "").trim();
-      if (!citation) {
-        console.warn(`[Knowledge] Skipping caseLaw excerpt (ID: ${item.row.id}) — citation field is empty`);
-        continue;
-      }
-      caseLawLines.push(`- ${citation} (${item.row.court}): ${item.row.title} — ${item.row.summary}`);
-      if (item.sourceExcerpt) {
-        caseLawLines.push(`  Key Judgment Excerpt: ${item.sourceExcerpt}${item.sourceExcerpt.length >= 700 ? "..." : ""}`);
-      }
-    }
-    if (caseLawLines.length > 0) {
-      contextParts.push("=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===");
-      contextParts.push(...caseLawLines);
-    }
-  }
-
-  if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
-    contextParts.push("=== INTERNAL KNOWLEDGE VAULT: STATUTES ===");
-    for (const s of statutesResult.value.slice(0, KNOWLEDGE_STATUTES_LIMIT)) {
-      contextParts.push(`- ${s.shortTitle} (Section ${s.section}): ${s.description}. Punishment: ${s.punishment}`);
-    }
-  }
-
-  if (githubResult.status === "fulfilled" && githubResult.value.length > 0) {
-    contextParts.push("=== CHAMBERS LEGAL LIBRARY (CURATED SOURCES) ===");
-    for (const doc of githubResult.value) {
-      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-    }
-  }
-
-  if (adminResult.status === "fulfilled" && adminResult.value.length > 0) {
-    contextParts.push("=== CHAMBERS KNOWLEDGE VAULT (ADMIN UPLOADED) ===");
-    for (const doc of adminResult.value) {
-      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-    }
-  }
-
-  if (userDocsResult && userDocsResult.status === "fulfilled" && userDocsResult.value.length > 0) {
-    const queryLower = query.toLowerCase();
-    const relevant = userDocsResult.value
-      .filter((d: any) => d.content && (
-        d.title?.toLowerCase().includes(queryLower) ||
-        d.content.toLowerCase().includes(queryLower) ||
-        queryLower.split(/\s+/).some((w: string) => w.length > 3 && (d.title?.toLowerCase().includes(w) || d.content.toLowerCase().includes(w)))
-      ))
-      .slice(0, 2);
-    if (relevant.length > 0) {
-      contextParts.push("=== USER'S CASE DOCUMENTS ===");
-      for (const doc of relevant) {
-        const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-        contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-      }
-    }
-  }
-
-  if (orgResult && orgResult.status === "fulfilled" && orgResult.value && orgResult.value.docs.length > 0) {
-    contextParts.push(`=== ORGANIZATION KNOWLEDGE BASE (${orgResult.value.orgName}) ===`);
-    for (const doc of orgResult.value.docs) {
-      const excerpt = doc.content.length > KNOWLEDGE_EXCERPT_LIMIT ? doc.content.substring(0, KNOWLEDGE_EXCERPT_LIMIT) + "..." : doc.content;
-      contextParts.push(`--- ${doc.title} ---\n${excerpt}`);
-    }
-  }
-
-  const finalContext = contextParts.length === 0
-    ? ""
-    : `\n\nREFERENCE MATERIALS:\n\nIMPORTANT — CASE LAW RULE: You may ONLY cite judgments listed in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section below. If that section is missing or empty, write that no relevant judgments are in the database. Never fabricate citations from training memory.\n\nFor statutes (PPC, CPC, Constitution, etc.): you may cite from your training knowledge using full formal names.\n\n${contextParts.join("\n\n")}`;
-
-  setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
-  return finalContext;
-  })();
-
-  const result = await Promise.race([inner, outerDeadline]);
-  if (!result) {
-    console.warn(`[Knowledge] Gather exceeded ${KNOWLEDGE_OUTER_DEADLINE_MS}ms deadline — returning empty context`);
-  }
-  return result || "";
-}
-
 async function seedLegalData() {
   try {
     const [statutesCountRow] = await db.select({ total: count() }).from(statutes);
@@ -6296,7 +6028,7 @@ export async function registerRoutes(
         content: firstMessage,
       });
 
-      const knowledgeContext = await gatherKnowledgeContext(firstMessage, userId);
+      const knowledgeContext = await gatherKnowledgeContextV2(firstMessage, userId);
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       let usedModel = "";
@@ -6518,7 +6250,7 @@ export async function registerRoutes(
         parts: [{ text: m.content }],
       }));
 
-      const knowledgeContext = await gatherKnowledgeContext(message, userId);
+      const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       const result = await callStandardAI(systemPromptFull, geminiContents, TOKEN_LIMITS.chat);
@@ -9893,7 +9625,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
             .join("\n"),
           2600,
         );
-        const legalKnowledgeContextRaw = await gatherKnowledgeContext(legalKnowledgeQuery, userId);
+        const legalKnowledgeContextRaw = await gatherKnowledgeContextV2(legalKnowledgeQuery, userId);
         const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 3200);
         const legalKnowledgeContextBlock = legalKnowledgeContext
           ? legalKnowledgeContext
@@ -11341,7 +11073,7 @@ The user has attached the following documents for your reference. Analyze them c
       }
 
       const searchTerm = citation || title;
-      const knowledgeContext = await gatherKnowledgeContext(searchTerm, userId);
+      const knowledgeContext = await gatherKnowledgeContextV2(searchTerm, userId);
 
       let fullText = "";
       try {
@@ -11583,7 +11315,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const cacheKey = `${query}::${JSON.stringify(findings)}`;
 
       const { content: summary, fromCache } = await getCachedOrCall("summarize", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(query);
+        const knowledgeContext = await gatherKnowledgeContextV2(query);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`;
         const userInput = `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.`;
         const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.summarize, { timeoutProfile: "analysis", temperature: 0.3 });
@@ -11610,7 +11342,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
 
       let briefModel = "deepseek"; // UPDATED: Changed from getGroqModelName() (Groq deprecated 2026-04-16)
       const { content: brief, fromCache } = await getCachedOrCall("brief", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
+        const knowledgeContext = await gatherKnowledgeContextV2(`${shortTitle} ${section} ${description}`);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;
         const userInput = `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}`;
         const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.brief, { timeoutProfile: "analysis", temperature: 0.3 });
@@ -11644,7 +11376,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 14000)}`;
 
       const { content: responseText, fromCache } = await getCachedOrCall("draft-risk-analysis", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
+        const knowledgeContext = await gatherKnowledgeContextV2(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
         const sysInstruction = `${getLegalSystemPrompt()}
 
 You are a legal drafting risk scanner for Pakistani legal documents.
@@ -11767,7 +11499,7 @@ RULES:
       const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 16000)}\nmax:${safeMaxEdits}`;
 
       const { content: responseText, fromCache } = await getCachedOrCall("draft-recommendations", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContext(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
+        const knowledgeContext = await gatherKnowledgeContextV2(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
         const sysInstruction = `You are a Pakistani court drafting redline assistant.
 
 TASK:
@@ -14728,7 +14460,7 @@ Instructions:
         systemPrompt += `\n\n${systemContext}`;
       }
 
-      const knowledgeContext = await gatherKnowledgeContext(message, userId);
+      const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
       systemPrompt += knowledgeContext;
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
@@ -14854,7 +14586,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
-      const knowledgeContext = await gatherKnowledgeContext(message, userId);
+      const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
       systemPrompt += knowledgeContext;
 
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
