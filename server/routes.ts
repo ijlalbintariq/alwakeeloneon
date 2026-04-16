@@ -9,6 +9,8 @@ import {
   insertSearchHistorySchema,
   statutes,
   caseLaw,
+  judgments,
+  courtsRef,
   threads,
   documents,
   adminKnowledge,
@@ -16,7 +18,7 @@ import {
   TIER_LIMITS,
   type CaseLaw,
 } from "@shared/schema";
-import { and, count, desc, eq, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, lt, sql, like, or } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
 import {
@@ -8254,17 +8256,36 @@ RAG POLICY (STRICT):
         return res.status(400).json({ message: "Query required" });
       }
 
-      // Search by citation (exact or partial match)
-      const results = await db.query.caseLaw.findFirst({
-        where: (caselaw, { or, like }) =>
+      // Search in judgments table by citation string or title
+      const [result] = await db
+        .select({
+          id: judgments.id,
+          citationString: judgments.citationString,
+          title: judgments.title,
+          court: courtsRef.name,
+          decisionDate: judgments.decisionDate,
+        })
+        .from(judgments)
+        .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+        .where(
           or(
-            like(caselaw.citation, `%${q}%`),
-            like(caselaw.title, `%${q}%`),
+            like(judgments.citationString, `%${q}%`),
+            like(judgments.title, `%${q}%`),
           ),
-      });
+        )
+        .limit(1);
 
-      if (results) {
-        return res.json({ found: true, id: results.id, judgment: results });
+      if (result) {
+        return res.json({
+          found: true,
+          id: result.id,
+          judgment: {
+            citation: result.citationString,
+            title: result.title,
+            court: result.court,
+            decisionDate: result.decisionDate,
+          },
+        });
       }
 
       res.json({ found: false });
