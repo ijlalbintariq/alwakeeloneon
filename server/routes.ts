@@ -32,7 +32,8 @@ import os from "node:os";
 import path from "node:path";
 import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
-import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
+// DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
+// import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName } from "./deepseek-ai";
 import {
   isAiRouterV2Enabled,
@@ -477,9 +478,9 @@ async function rewritePublicChatOutput(args: {
       content: `Rewrite the following in ${languageLabel}.\nRules:\n${scriptRule}\n- No Hindi.\n- No Devanagari script.\n- Keep it concise and professional.\n- Output only rewritten text.\n\nText:\n${args.content}`,
     },
   ];
-  const rewritten = await chatWithGroq({
+  // UPDATED: Using DeepSeek instead of Groq (Groq deprecated 2026-04-16)
+  const rewritten = await chatWithDeepSeek({
     messages: rewriteMessages,
-    model: "openai/gpt-oss-120b",
     maxTokens: 700,
     temperature: 0.1,
   });
@@ -2113,9 +2114,10 @@ async function callStandardAI(
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, contents);
   const startedAt = Date.now();
-  const result = await withTimeout("Groq", timeoutConfig.standardPrimary, () => chatWithGroq({ messages, maxTokens, temperature }));
-  const safeText = assertNonEmptyModelOutput("Groq", result.content);
-  console.log(`[AI Routing][standard] Primary Groq succeeded in ${Date.now() - startedAt}ms`);
+  // UPDATED: Using DeepSeek instead of Groq (Groq deprecated 2026-04-16)
+  const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () => chatWithDeepSeek({ messages, maxTokens, temperature }));
+  const safeText = assertNonEmptyModelOutput("DeepSeek", result.content);
+  console.log(`[AI Routing][standard] Primary DeepSeek succeeded in ${Date.now() - startedAt}ms`);
   return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
 }
 
@@ -5850,7 +5852,8 @@ export async function registerRoutes(
       const message = sanitizeInputText(req.body?.message, 4000);
       if (!message) return res.status(400).json({ message: "message is required" });
 
-      const provider = String(req.body?.provider || "groq").toLowerCase();
+      // UPDATED: Default provider changed from "groq" to "deepseek" (Groq deprecated 2026-04-16)
+      const provider = String(req.body?.provider || "deepseek").toLowerCase();
       const model = req.body?.model ? String(req.body.model) : undefined;
       const maxTokens = Math.min(4096, Math.max(128, Number(req.body?.maxTokens) || 1500));
       const temperature = Number.isFinite(Number(req.body?.temperature)) ? Number(req.body.temperature) : 0.4;
@@ -5877,8 +5880,9 @@ export async function registerRoutes(
         const r = await chatWithApex({ messages: aiMessages, model: (model as ApexModel) || "apex-pro", maxTokens, temperature });
         rawContent = r.content; usedModel = r.model || usedModel;
       } else {
-        if (!isGroqAvailable()) return res.status(503).json({ message: "Groq not configured" });
-        const r = await chatWithGroq({ messages: aiMessages, model: model || "openai/gpt-oss-120b", maxTokens, temperature });
+        // DEPRECATED: Groq provider removed - defaulting to DeepSeek (2026-04-16)
+        if (!isDeepSeekAvailable()) return res.status(503).json({ message: "DeepSeek not configured" });
+        const r = await chatWithDeepSeek({ messages: aiMessages, model, maxTokens, temperature });
         rawContent = r.content; usedModel = r.model || usedModel;
       }
 
@@ -5938,12 +5942,12 @@ export async function registerRoutes(
       ];
       const preferredLanguage = resolvePublicChatLanguage(message);
 
-      const provider = "groq" as const;
-      let model = "openai/gpt-oss-120b";
+      // UPDATED: Using DeepSeek instead of Groq (Groq deprecated 2026-04-16)
+      const provider = "deepseek" as const;
+      let model = "deepseek-chat";
       let aiReply = "";
-      const primary = await chatWithGroq({
+      const primary = await chatWithDeepSeek({
         messages: aiMessages,
-        model: "openai/gpt-oss-120b",
         maxTokens: 900,
         temperature: 0.4,
       });
@@ -6142,7 +6146,7 @@ export async function registerRoutes(
       const safeAiResponse = await applyAlWakeeloSafetyGuardrails(normalizedAiResponse).catch(() => ensureAlWakeeloReferencesBlock(normalizedAiResponse));
 
       if (!fromCache) {
-        await logUsageCost(userId, "chat", usedModel || getGroqModelName(), systemPromptFull + firstMessage, safeAiResponse);
+        await logUsageCost(userId, "chat", usedModel || "deepseek", systemPromptFull + firstMessage, safeAiResponse);
       }
 
       await storage.createMessage({
@@ -7707,7 +7711,7 @@ RAG POLICY (STRICT):
         quote: m.chunkText.slice(0, 240),
       }));
 
-      const provider = "groq";
+      const provider = "deepseek"; // UPDATED: Changed from groq (Groq deprecated 2026-04-16)
       res.json({
         answer: answerText,
         confidence: retrieval.confidence,
@@ -8422,7 +8426,7 @@ RAG POLICY (STRICT):
       const retrievalConfidence = estimateClauseSuggestionConfidence(topScore, secondScore);
       const aiFallbackThreshold = resolveConfidenceThreshold("RETRIEVAL_CLAUSE_SUGGEST_AI_THRESHOLD", 0.55);
       const shouldAiFallback = retrievalConfidence < aiFallbackThreshold;
-      const canUseAiFallback = isGroqAvailable();
+      const canUseAiFallback = isDeepSeekAvailable(); // UPDATED: Changed from isGroqAvailable (Groq deprecated 2026-04-16)
 
       if (shouldAiFallback && canUseAiFallback) {
         const allowed = await checkUsageLimit(userId, "contract-drafting", res);
@@ -9845,7 +9849,7 @@ ${draftedText}`;
       const aiFallbackThreshold = resolveConfidenceThreshold("RETRIEVAL_CLAUSE_GENERATE_AI_THRESHOLD", 0.58);
       const shouldAiFallback = generated.method === "fallback" || generated.confidence < aiFallbackThreshold;
       const shouldStyleRewrite = !!styleContext && generated.method === "retrieval";
-      const canUseAiFallback = isGroqAvailable();
+      const canUseAiFallback = isDeepSeekAvailable(); // UPDATED: Changed from isGroqAvailable (Groq deprecated 2026-04-16)
 
       if ((shouldAiFallback || shouldStyleRewrite) && canUseAiFallback) {
         const allowed = await checkUsageLimit(userId, "contract-drafting", res);
@@ -10107,7 +10111,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       const base64Audio = stableFile.buffer.toString("base64");
 
       let transcription = "";
-      let provider = "groq";
+      let provider = "deepseek"; // UPDATED: Default changed from groq to deepseek (Groq deprecated 2026-04-16)
       let model = "whisper-large-v3-turbo";
       let fallbackUsed = false;
       let fallbackFrom: "deepseek" | "apex" | null = null;
@@ -10132,62 +10136,35 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         }
 
         if (!transcription.trim()) {
-          let fallbackOk = false;
-          if (isGroqAvailable()) {
+          // UPDATED: Removed Groq fallback (deprecated 2026-04-16), using whisper.cpp instead
+          if (isWhisperCppConfigured()) {
             try {
-              const fallback = await transcribeWithGroq({
+              const localResult = await transcribeWithWhisperCpp({
                 audioBuffer: stableFile.buffer,
                 filename: file.originalname,
-                mimeType: file.mimetype,
-                model: "whisper-large-v3-turbo",
-                prompt: commonPrompt,
               });
-              const text = (fallback.text || "").trim();
+              const text = (localResult.text || "").trim();
               if (text) {
                 transcription = text;
-                provider = "groq";
-                model = fallback.model || "whisper-large-v3-turbo";
+                provider = "local";
+                model = localResult.model || "whisper.cpp";
                 fallbackUsed = true;
                 fallbackFrom = "deepseek";
-                fallbackOk = true;
+                localFallbackUsed = true;
               }
-            } catch (fallbackErr) {
+            } catch (localErr) {
               console.warn(
-                "[Transcription] Groq fallback failed after deepseek failure:",
-                getErrorMessage(fallbackErr),
+                "[Transcription] whisper.cpp fallback failed after deepseek path failure:",
+                getErrorMessage(localErr),
               );
             }
           }
-          if (!fallbackOk) {
-            if (isWhisperCppConfigured()) {
-              try {
-                const localResult = await transcribeWithWhisperCpp({
-                  audioBuffer: stableFile.buffer,
-                  filename: file.originalname,
-                });
-                const text = (localResult.text || "").trim();
-                if (text) {
-                  transcription = text;
-                  provider = "local";
-                  model = localResult.model || "whisper.cpp";
-                  fallbackUsed = true;
-                  fallbackFrom = "deepseek";
-                  localFallbackUsed = true;
-                }
-              } catch (localErr) {
-                console.warn(
-                  "[Transcription] whisper.cpp fallback failed after deepseek path failure:",
-                  getErrorMessage(localErr),
-                );
-              }
-            }
-            if (!transcription.trim()) {
-              return res.status(503).json({
-                message: isDeepSeekAvailable()
-                  ? "Turbo transcription failed and no fallback is available."
-                  : "Turbo transcription is unavailable because DeepSeek is not configured and no fallback is available.",
-              });
-            }
+          if (!transcription.trim()) {
+            return res.status(503).json({
+              message: isDeepSeekAvailable()
+                ? "Turbo transcription failed and no fallback is available."
+                : "Turbo transcription is unavailable because DeepSeek is not configured and no fallback is available.",
+            });
           }
         }
       } else if (requestedMode === "apex-pro" || requestedMode === "apex-agent") {
@@ -10205,84 +10182,54 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           } catch (apexErr) {
             console.warn("[Transcription] Apex transcription failed:", getErrorMessage(apexErr));
           }
-        } else {
-          console.warn("[Transcription] Apex/Kimi not configured for apex mode; trying Groq fallback.");
         }
 
         if (!transcription.trim()) {
-          let fallbackOk = false;
-          if (isGroqAvailable()) {
+          // UPDATED: Removed Groq fallback (deprecated 2026-04-16), using whisper.cpp instead
+          if (isWhisperCppConfigured()) {
             try {
-              const fallback = await transcribeWithGroq({
+              const localResult = await transcribeWithWhisperCpp({
                 audioBuffer: stableFile.buffer,
                 filename: file.originalname,
-                mimeType: file.mimetype,
-                model: "whisper-large-v3-turbo",
-                prompt: commonPrompt,
               });
-              const text = (fallback.text || "").trim();
+              const text = (localResult.text || "").trim();
               if (text) {
                 transcription = text;
-                provider = "groq";
-                model = fallback.model || "whisper-large-v3-turbo";
+                provider = "local";
+                model = localResult.model || "whisper.cpp";
                 fallbackUsed = true;
                 fallbackFrom = "apex";
-                fallbackOk = true;
+                localFallbackUsed = true;
               }
-            } catch (fallbackErr) {
+            } catch (localErr) {
               console.warn(
-                "[Transcription] Groq fallback failed after apex failure:",
-                getErrorMessage(fallbackErr),
+                "[Transcription] whisper.cpp fallback failed after apex path failure:",
+                getErrorMessage(localErr),
               );
             }
           }
-          if (!fallbackOk) {
-            if (isWhisperCppConfigured()) {
-              try {
-                const localResult = await transcribeWithWhisperCpp({
-                  audioBuffer: stableFile.buffer,
-                  filename: file.originalname,
-                });
-                const text = (localResult.text || "").trim();
-                if (text) {
-                  transcription = text;
-                  provider = "local";
-                  model = localResult.model || "whisper.cpp";
-                  fallbackUsed = true;
-                  fallbackFrom = "apex";
-                  localFallbackUsed = true;
-                }
-              } catch (localErr) {
-                console.warn(
-                  "[Transcription] whisper.cpp fallback failed after apex path failure:",
-                  getErrorMessage(localErr),
-                );
-              }
-            }
-            if (!transcription.trim()) {
-              return res.status(503).json({
-                message: isApexAvailable()
-                  ? "Apex transcription failed and no fallback is available."
-                  : "Apex transcription is unavailable because Kimi is not configured and no fallback is available.",
-              });
-            }
+          if (!transcription.trim()) {
+            return res.status(503).json({
+              message: isApexAvailable()
+                ? "Apex transcription failed and no fallback is available."
+                : "Apex transcription is unavailable because Kimi is not configured and no fallback is available.",
+            });
           }
         }
       } else {
-        if (isGroqAvailable()) {
+        // UPDATED: Using DeepSeek instead of Groq for standard transcription (Groq deprecated 2026-04-16)
+        if (isDeepSeekAvailable()) {
           try {
-            const result = await transcribeWithGroq({
-              audioBuffer: stableFile.buffer,
-              filename: file.originalname,
-              mimeType: file.mimetype,
-              model: "whisper-large-v3-turbo",
+            const result = await transcribeWithDeepSeek({
+              audioBase64: base64Audio,
+              audioFormat,
               prompt: commonPrompt,
             });
-            transcription = (result.text || "").trim();
-            provider = "groq";
-            model = result.model || "whisper-large-v3-turbo";
-          } catch (groqErr) {
-            console.warn("[Transcription] Groq standard transcription failed:", getErrorMessage(groqErr));
+            transcription = (result.content || "").trim();
+            provider = "deepseek";
+            model = result.model || "deepseek-chat";
+          } catch (deepseekErr) {
+            console.warn("[Transcription] DeepSeek standard transcription failed:", getErrorMessage(deepseekErr));
           }
         }
         if (!transcription.trim()) {
@@ -10301,7 +10248,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
               }
             } catch (localErr) {
               console.warn(
-                "[Transcription] whisper.cpp fallback failed after groq path failure:",
+                "[Transcription] whisper.cpp fallback failed after deepseek path failure:",
                 getErrorMessage(localErr),
               );
             }
@@ -10309,7 +10256,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           if (!transcription.trim()) {
             return res.status(503).json({
               message:
-                "Standard transcription is unavailable because Groq failed/unconfigured and whisper.cpp fallback is unavailable.",
+                "Standard transcription is unavailable because DeepSeek failed/unconfigured and whisper.cpp fallback is unavailable.",
             });
           }
         }
@@ -10691,7 +10638,7 @@ The user has attached the following documents for your reference. Analyze them c
         ? (selectedApexModel || "apex-pro")
         : selectedRoute === "turbo"
           ? getDeepSeekProModelName()
-          : getGroqModelName();
+          : "deepseek"; // Using deepseek-chat for standard mode (Groq deprecated)
       const enforcePrimaryLinkedSourceCitations = moduleProfile.features.strictCitations;
       if (enforcePrimaryLinkedSourceCitations) {
         systemPrompt += `\n\nCITATION INTEGRITY POLICY (ABSOLUTE):
@@ -10796,8 +10743,13 @@ The user has attached the following documents for your reference. Analyze them c
               writeChunkToClient(text);
             }
           } else {
-            usedModel = getGroqModelName();
-            for await (const text of streamWithGroq({ messages: streamMessages, maxTokens: tokenLimit, temperature })) {
+            // Standard mode (non-router v2): use DeepSeek instead of Groq (Groq deprecated 2026-04-16)
+            usedModel = "deepseek";
+            for await (const text of streamWithDeepSeek({
+              messages: streamMessages,
+              maxTokens: tokenLimit,
+              temperature,
+            })) {
               writeChunkToClient(text);
             }
           }
@@ -11329,7 +11281,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const { shortTitle, section, description } = req.body as { shortTitle: string; section: string; description: string };
       const cacheKey = `${shortTitle}::${section}::${description}`;
 
-      let briefModel = getGroqModelName();
+      let briefModel = "deepseek"; // UPDATED: Changed from getGroqModelName() (Groq deprecated 2026-04-16)
       const { content: brief, fromCache } = await getCachedOrCall("brief", cacheKey, async () => {
         const knowledgeContext = await gatherKnowledgeContext(`${shortTitle} ${section} ${description}`);
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are generating a detailed legal brief about a specific statute or legal provision. Provide comprehensive analysis including: scope, application, relevant case law citations, practical implications, and strategic considerations. Use the "Extensive yet Brief" style.${knowledgeContext}`;

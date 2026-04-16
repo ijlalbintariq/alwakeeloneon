@@ -320,5 +320,5 @@ export async function callWithFallback(
 
 // ─── Default chains ──────────────────────────────────────────────────────
 
-export const DEFAULT_STANDARD_CHAIN: ProviderId[] = ["groq", "deepseek"];
-export const DEFAULT_TURBO_CHAIN: ProviderId[] = ["deepseek-pro", "groq"];
+export const DEFAULT_STANDARD_CHAIN: ProviderId[] = ["deepseek", "deepseek-pro"];
+export const DEFAULT_TURBO_CHAIN: ProviderId[] = ["deepseek-pro", "deepseek"];
