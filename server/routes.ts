@@ -5723,6 +5723,18 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     }
   }
 
+  if (statutesResult.status === "fulfilled" && statutesResult.value.length > 0) {
+    const statLines: string[] = [];
+    for (const s of statutesResult.value.slice(0, 8)) {
+      statLines.push(`- STATUTE: ${s.shortTitle} | SECTION: ${s.section} | ${s.description}`);
+    }
+    if (statLines.length > 0) {
+      contextParts.push("=== VERIFIED STATUTES FROM INTERNAL DATABASE ===");
+      contextParts.push("Use these exact statute names when citing in your response and in the references block:");
+      contextParts.push(...statLines);
+    }
+  }
+
   if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
     const caseLawLines: string[] = [];
     const candidateRows = caseLawResult.value.slice(0, KNOWLEDGE_CASELAW_LIMIT);
@@ -5818,7 +5830,7 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
   const finalContext = contextParts.length === 0
     ? ""
-    : `\n\nREFERENCE MATERIALS (Use these as your primary sources. Prioritize this curated internal knowledge over your general training knowledge.\n\nCRITICAL CITATION RULE: You may ONLY cite judgments that appear in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section above. If a judgment is not listed there, do NOT cite it — say instead that it is not available in the current database. Never invent or recall citations from your training memory. Cite the exact citation string as shown.):\n\n${contextParts.join("\n\n")}`;
+    : `\n\nREFERENCE MATERIALS (Use these as your primary sources. Prioritize this curated internal knowledge over your general training knowledge.\n\nCRITICAL CITATION RULE FOR JUDGMENTS: You may ONLY cite case judgments that appear in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section above. If a judgment is not listed there, do NOT cite it — say instead that it is not available in the current database. Never invent or recall judgment citations from your training memory.\n\nFor statutes and legislation: you MAY cite statutes from your knowledge (PPC, CPC, Constitution, etc.) as they are well-established law. Always use full formal names.):\n\n${contextParts.join("\n\n")}`;
 
   setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
   return finalContext;
@@ -8414,13 +8426,30 @@ RAG POLICY (STRICT):
       }
 
       // Search by shortTitle (name) or section
-      const results = await db.query.statutes.findFirst({
-        where: (statute, { or, like }) =>
+      // Try exact/partial ilike match first
+      let results = await db.query.statutes.findFirst({
+        where: (statute, { or, ilike }) =>
           or(
-            like(statute.shortTitle, `%${q}%`),
-            like(statute.section, `%${q}%`),
+            ilike(statute.shortTitle, `%${q}%`),
+            ilike(statute.section, `%${q}%`),
+            ilike(statute.description, `%${q}%`),
           ),
       });
+
+      // Fallback: try each token individually (handles "Code of Civil Procedure, 1908")
+      if (!results) {
+        const tokens = q.split(/[\s,]+/).filter(t => t.length > 2);
+        for (const token of tokens) {
+          results = await db.query.statutes.findFirst({
+            where: (statute, { or, ilike }) =>
+              or(
+                ilike(statute.shortTitle, `%${token}%`),
+                ilike(statute.description, `%${token}%`),
+              ),
+          });
+          if (results) break;
+        }
+      }
 
       if (results) {
         return res.json({ found: true, id: results.id, statute: results });
