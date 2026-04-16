@@ -130,6 +130,41 @@ WHERE citation ~ '(PLD|SCMR|...)';
 
 ---
 
+## What Gets Enhanced
+
+When citations are validated, the system automatically enriches them with:
+
+### Court Name Extraction
+```
+Citation: "1970 SCMR 869"
+→ Court: "Supreme Court" (extracted from SCMR = Supreme Court Monthly Report)
+
+Citation: "C.A. 8-Q of 2017"
+→ Court: From database OR case type (Court of Appeals)
+```
+
+### Reporting Type Enrichment
+```
+Citation: "1970 SCMR 869"
+→ Reporting Type: "Supreme Court Monthly Report"
+
+Citation: "2020 YLR 456"
+→ Reporting Type: "Year Law Reports" (Lahore High Court)
+
+Citation: "Civil Petition No.32-Q of 2017"
+→ Type: "Civil Petition"
+```
+
+**When AI cites**, it will show:
+```
+CITATION: 1970 SCMR 869 | COURT: Supreme Court | REPORTING: Supreme Court Monthly Report
+CITATION: C.A. 8-Q of 2017 | COURT: Court of Appeals | REPORTING: Civil Appeal
+
+This gives users full context about where the judgment was reported and which court decided it.
+```
+
+---
+
 ## After Running the Fix
 
 ### 2. Reindex Documents (Optional but Recommended)

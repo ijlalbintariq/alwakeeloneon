@@ -75,16 +75,78 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 }
 
 // ---------------------------------------------------------------------------
-// Citation format validation
+// Citation format validation with court + reporting type enrichment
 // ---------------------------------------------------------------------------
 
 // Citation formats: Two valid systems in Pakistani legal documents
 // 1. JUDGMENT CITATION: "1970 SCMR 869" (reported in law journals)
+//    - Metadata: Court (extracted from citation), Reporting Type (legal code meaning)
 // 2. CASE NUMBER: "C.A. 8-Q of 2017" (case number before judgment is reported)
+//    - Metadata: Case Type (Appeal, Petition, etc.), Year
+
+// Legal code to reporting system mapping
+const LEGAL_CODE_MAPPING: Record<string, { reportingType: string; court: string }> = {
+  pld: { reportingType: "Pakistan Law Digest", court: "Supreme Court" },
+  scmr: { reportingType: "Supreme Court Monthly Report", court: "Supreme Court" },
+  ylr: { reportingType: "Year Law Reports", court: "High Court" },
+  mld: { reportingType: "Mohammedan Law Digest", court: "Various" },
+  clc: { reportingType: "Criminal Law Cases", court: "Various" },
+  plj: { reportingType: "Pakistan Law Journal", court: "Various" },
+  nlr: { reportingType: "National Law Reports", court: "High Court" },
+  pcrlj: { reportingType: "Pakistan Criminal Law Journal", court: "Various" },
+  ptcl: { reportingType: "Pakistan Trade & Commercial Law", court: "Various" },
+  ptd: { reportingType: "Pakistan Tax Digest", court: "Various" },
+  psc: { reportingType: "Pakistan Supreme Court", court: "Supreme Court" },
+  ald: { reportingType: "All Pakistan Legal Digest", court: "Various" },
+  klr: { reportingType: "Karachi Law Reports", court: "Sindh High Court" },
+  plc: { reportingType: "Pakistan Law Cases", court: "Various" },
+  cld: { reportingType: "Criminal Law Digest", court: "Various" },
+  air: { reportingType: "All India Reports (Historical)", court: "Various" },
+  lhc: { reportingType: "Lahore High Court Reports", court: "Lahore High Court" },
+  ihc: { reportingType: "Islamabad High Court Reports", court: "Islamabad High Court" },
+  shc: { reportingType: "Sindh High Court Reports", court: "Sindh High Court" },
+  phc: { reportingType: "Peshawar High Court Reports", court: "Peshawar High Court" },
+  bhc: { reportingType: "Balochistan High Court Reports", court: "Balochistan High Court" },
+  ajkhc: { reportingType: "Azad Jammu & Kashmir High Court", court: "AJK High Court" },
+};
+
+// Case type to court mapping
+const CASE_TYPE_MAPPING: Record<string, string> = {
+  "c.a": "Court of Appeals",
+  "ca": "Court of Appeals",
+  "civil appeal": "Court of Appeals",
+  "appeal": "Court of Appeals",
+  "petition": "Petition",
+  "civil petition": "Civil Petition",
+  "r.p.a": "Review Petition Appeal",
+  "writ petition": "Writ Petition",
+};
 
 const LEGAL_CODE_RE = /\b(pld|scmr|ylr|mld|clc|plj|nlr|pcrlj|ptcl|ptd|psc|ald|klr|plc|cld|air|lhc|ihc|shc|phc|bhc|ajkhc)\b/i;
 const CASE_NUMBER_RE = /\b(c\.?a\.?|ca|civil\s+appeal|appeal|petition|writ|r\.?p\.?a\.?)\s*[\d\-a-z]+\s*of\s*\d{4}/i;
 const YEAR_RE = /\b(19|20)\d{2}\b/;
+
+/**
+ * Extract reporting type and court from legal code
+ * Example: "SCMR" → { reportingType: "Supreme Court Monthly Report", court: "Supreme Court" }
+ */
+function extractReportingMetadata(code: string): { reportingType: string; court: string } {
+  const normalized = code.toLowerCase();
+  return LEGAL_CODE_MAPPING[normalized] || { reportingType: "Unknown Law Report", court: "Unknown" };
+}
+
+/**
+ * Extract case type from case number
+ * Example: "C.A. 8-Q" → "Court of Appeals"
+ */
+function extractCaseType(caseNumber: string): string {
+  const match = caseNumber.match(/\b(c\.?a\.?|ca|civil\s+appeal|appeal|petition|writ|r\.?p\.?a\.?)/i);
+  if (match) {
+    const caseType = match[0].toLowerCase();
+    return CASE_TYPE_MAPPING[caseType] || match[0];
+  }
+  return "Unknown Case Type";
+}
 
 function hasTrustedCitation(row: CaseLaw): boolean {
   const c = String(row.citation || "").trim();
@@ -92,10 +154,12 @@ function hasTrustedCitation(row: CaseLaw): boolean {
 
   // Format 1: Judgment Citation (has legal code + year)
   // Example: "1970 SCMR 869", "2020 PLD SC 456"
+  // Enriches: reportingType (SCMR = Supreme Court Monthly Report), court (extracted)
   const isJudgmentCitation = LEGAL_CODE_RE.test(c) && YEAR_RE.test(c);
 
   // Format 2: Case Number (has case identifier + year)
   // Example: "C.A. 8-Q of 2017", "Civil Petition No.32-Q of 2017"
+  // Enriches: caseType (Appeal, Petition, etc.), year
   const isCaseNumber = CASE_NUMBER_RE.test(c) || YEAR_RE.test(c);
 
   return isJudgmentCitation || isCaseNumber;
@@ -311,6 +375,9 @@ async function fetchAdminDocs(intent: QueryIntent, limit: number, userId?: strin
 // ---------------------------------------------------------------------------
 // Main retrieval function
 // ---------------------------------------------------------------------------
+
+// Export metadata extraction helpers for use in context building
+export { extractReportingMetadata, extractCaseType };
 
 export async function runRetrieval(intent: QueryIntent, userId: string, limits: {
   caseLaw?: number;

@@ -18,6 +18,7 @@
  */
 
 import type { RetrievalResult, RetrievedCaseLaw, RetrievedStatute, RetrievedDoc } from "./retrieval-engine";
+import { extractReportingMetadata, extractCaseType } from "./retrieval-engine";
 import type { QueryIntent } from "./intent-classifier";
 
 // ---------------------------------------------------------------------------
@@ -53,10 +54,31 @@ function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSect
   for (const { row } of caseLaw) {
     const citation = String(row.citation || "").trim();
     if (!citation) continue; // belt-and-suspenders: should be filtered upstream
-    const court = String(row.court || "Pakistani Court");
+
+    // Extract metadata based on citation format
+    let courtName = String(row.court || "Pakistani Court");
+    let reportingType = "";
+
+    // If citation contains a legal code (PLD, SCMR, YLR, etc.), extract reporting type
+    const legalCodeMatch = citation.match(/\b(pld|scmr|ylr|mld|clc|plj|nlr|pcrlj|ptcl|ptd|psc|ald|klr|plc|cld|air|lhc|ihc|shc|phc|bhc|ajkhc)\b/i);
+    if (legalCodeMatch) {
+      const metadata = extractReportingMetadata(legalCodeMatch[0]);
+      reportingType = metadata.reportingType;
+      // Use extracted court if row.court is generic
+      if (courtName === "Pakistani Court" || !courtName) {
+        courtName = metadata.court;
+      }
+    }
+    // If citation is a case number, extract case type
+    else if (/\b(c\.?a\.?|ca|civil\s+appeal|appeal|petition|writ|r\.?p\.?a\.?)\s*[\d\-a-z]+\s+of\s+\d{4}/i.test(citation)) {
+      reportingType = extractCaseType(citation);
+    }
+
     const title = String(row.title || "");
     const summary = row.summary ? ` — ${String(row.summary).slice(0, 250)}` : "";
-    lines.push(`- CITATION: ${citation} | COURT: ${court} | TITLE: ${title}${summary}`);
+
+    const reportingInfo = reportingType ? ` | REPORTING: ${reportingType}` : "";
+    lines.push(`- CITATION: ${citation} | COURT: ${courtName}${reportingInfo} | TITLE: ${title}${summary}`);
   }
 
   if (lines.length === 0) return null;
