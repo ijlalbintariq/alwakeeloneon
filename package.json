@@ -13,6 +13,10 @@
     "caselaw:dedupe:apply": "npx tsx script/caselaw_dedupe_hardening.ts --apply",
     "caselaw:reextract:plan": "npx tsx script/caselaw_reextract_problem_docs.ts",
     "caselaw:reextract:apply": "npx tsx script/caselaw_reextract_problem_docs.ts --apply",
+    "fix:citations": "node scripts/fix-citations.js",
+    "reindex:admin-caselaw": "npx tsx script/reindex.ts admin-caselaw",
+    "reindex:statutes": "npx tsx script/reindex.ts statutes",
+    "reindex:admin-knowledge": "npx tsx script/reindex.ts admin-knowledge",
     "test": "DATABASE_URL= PGHOST= node --import tsx --test tests/unit/**/*.test.ts",
     "test:e2e": "node --import tsx --test tests/e2e/**/*.test.ts"
   },
