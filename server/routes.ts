@@ -5341,21 +5341,29 @@ MANDATORY CITATION FORMAT: When citing a verified judgment, use this format in y
 **[CITATION STRING]** — Brief explanation of the holding and its relevance.
 Example: **[PLD 2020 Supreme Court 456]** — The court held that intent is essential for murder conviction under Section 302 PPC.
 
-CRITICAL - USE EXACT CITATION STRINGS:
+CRITICAL - USE EXACT CITATION STRINGS (NO BRACKET NOTATION):
 The citations you see in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section are stored in the database.
 YOU MUST use the EXACT citation string as shown — do NOT abbreviate, paraphrase, or create variations.
 - DO NOT change "PLD 2020 Supreme Court 456" to "PLD 2020 SC 456"
 - DO NOT change "Lahore High Court" to "LHC"
 - DO NOT create citation variations that differ from the database format
-- Copy the exact CITATION text from the database section and use it in your response
+- ABSOLUTELY FORBIDDEN: Do NOT use bracket notation like [I], [II], [III], [A], [B] for citations
+- DO NOT use numbered references like (1), (2), (3) or other placeholder notation
+- Copy the EXACT CITATION text from the database section and use it in your response with the format **[CITATION]**
+- Example: **[PLD 2020 Supreme Court 456]** — The court held that...
+- Every case law explanation MUST have its exact citation string, not placeholder numbers
 - This ensures the frontend can verify and make the citation clickable
 
 For each verified judgment from the database:
-- Copy the **exact CITATION string** from the injected context and include it in square brackets
+- Copy the **exact CITATION string** from the injected context and include it in square brackets: **[CITATION]**
 - State the **Court Name** and **Decision Date** from the database record
 - Explain the **Legal Principle Established**: What the court held (the holding, not your paraphrase)
 - Apply it to the **User's Situation**: How this case supports or affects their query
 - The EXACT citation MUST appear in both the text AND the references block
+- PROFESSIONAL STANDARD: Never use placeholder notation like [I], [II], [A], [B], (1), (2), etc. for case law
+- Always use real citations like **[PLD 2020 Supreme Court 456]**, **[SCMR 2023 XXX]**, **[YLR 2022 Lahore High Court]**
+- If you cannot find the exact citation in the VERIFIED JUDGMENTS section, do NOT cite the case at all
+- Placeholder notation makes the platform look unprofessional and breaks the user's workflow
 
 ### Practical Legal Strategy and Case Preparation
 Provide actionable litigation strategy including:
@@ -5406,6 +5414,9 @@ ANTI-PATTERNS (NEVER DO THIS):
 - WRONG: Mention "Section 424 PPC" in text but omit it from references block → citation becomes invisible/unclickable
 - WRONG: Add "PPC Section 424" to references block but don't explain it in the text → orphaned, confusing citation
 - WRONG: Use abbreviated "PPC" in text but put full name "Pakistan Penal Code, 1860" in block without matching → might not be recognized
+- WRONG: Use bracket notation [I], [II], [III], [A], [B] or any placeholder numbers instead of actual case citations
+- WRONG: Write "[I] established that..." instead of "**[PLD 2020 Supreme Court 456]** established that..."
+- This destroys professional credibility and makes citations non-clickable
 
 Your users depend on these reference cards to navigate legal databases and court records. Failing to include this block breaks their workflow. Include it ALWAYS, and ensure every reference in the block is explained in the text.
 
