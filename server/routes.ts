@@ -5673,52 +5673,41 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
   const [statutesResult, caseLawResult, githubResult, adminResult, orgResult, userDocsResult] = await Promise.allSettled(promises);
 
   // caseLaw and judgments are the same data in two tables.
-  // caseLaw RAG already found the right cases. Now look up their judgments.id
-  // by matching caseLaw.citation = judgments.citationString so the AI gets
-  // verified IDs that the judgment viewer can open directly.
-  let judgmentsResult: Array<{ id: string; citationString: string; title: string; court: string | null; decisionDate: string | null; headnotes: string | null }> = [];
-  if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
-    try {
-      const citations = (caseLawResult.value as CaseLaw[])
-        .map(c => String(c.citation || "").trim())
-        .filter(Boolean)
-        .slice(0, 6);
-      if (citations.length > 0) {
-        const orConditions = citations.map(c => ilike(judgments.citationString, c));
-        judgmentsResult = await db
-          .select({
-            id: judgments.id,
-            citationString: judgments.citationString,
-            title: judgments.title,
-            court: courtsRef.name,
-            decisionDate: judgments.decisionDate,
-            headnotes: judgments.headnotes,
-          })
-          .from(judgments)
-          .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
-          .where(or(...orConditions))
-          .limit(6);
-      }
-    } catch {
-      judgmentsResult = [];
-    }
-  }
-
   // ── Highest-precision sources first so they survive token-budget truncation ──
 
-  // Verified judgments — caseLaw RAG found these cases; now we have their judgments.id
-  // so the AI cites the exact citation string and the frontend can open the record directly.
-  if (judgmentsResult.length > 0) {
+  // caseLaw RAG found relevant cases — inject them as verified citations.
+  // caseLaw table IS the judgment database (same data, different table name).
+  // Try to enrich with judgments.id for direct opening; if judgments table is
+  // empty (sync not run), fall back to caseLaw records directly.
+  if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
+    const caseLawRows = (caseLawResult.value as CaseLaw[]).slice(0, 6);
     const lines: string[] = [];
-    for (const j of judgmentsResult) {
-      const court = j.court || "Pakistani Court";
-      const date = j.decisionDate ? ` (${j.decisionDate})` : "";
-      const headnote = j.headnotes ? ` — ${String(j.headnotes).slice(0, 300)}` : "";
-      lines.push(`- CITATION: ${j.citationString} | COURT: ${court}${date} | TITLE: ${j.title}${headnote}`);
+
+    // Try to get judgments.id for direct-open links
+    let judgmentIdMap = new Map<string, string>(); // citation -> judgments.id
+    try {
+      const citations = caseLawRows.map(c => String(c.citation || "").trim()).filter(Boolean);
+      if (citations.length > 0) {
+        const rows = await db
+          .select({ id: judgments.id, citationString: judgments.citationString })
+          .from(judgments)
+          .where(or(...citations.map(c => ilike(judgments.citationString, c))))
+          .limit(6);
+        rows.forEach(r => judgmentIdMap.set(r.citationString, String(r.id)));
+      }
+    } catch { /* judgments table may be empty — proceed with caseLaw data */ }
+
+    for (const c of caseLawRows) {
+      const citation = String(c.citation || "").trim();
+      const court = String(c.court || "Pakistani Court");
+      const title = String(c.title || "");
+      const summary = c.summary ? ` — ${String(c.summary).slice(0, 250)}` : "";
+      lines.push(`- CITATION: ${citation} | COURT: ${court} | TITLE: ${title}${summary}`);
     }
+
     if (lines.length > 0) {
       contextParts.push("=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===");
-      contextParts.push("IMPORTANT: These are the ONLY judgment citations you are permitted to cite. Do NOT cite any other case or judgment not listed here. Use the exact citation string as shown.");
+      contextParts.push("These judgments are from the internal database. Cite them using the exact CITATION string shown. You may cite these freely.");
       contextParts.push(...lines);
     }
   }
