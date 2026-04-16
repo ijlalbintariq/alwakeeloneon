@@ -53,6 +53,7 @@ import { classifyDocumentMetadata, type DocumentMetadata } from "./document-clas
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
+import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import {
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
   GLOBAL_CASELAW_RAG_USER_ID,
@@ -5328,44 +5329,25 @@ Cite specific sections of relevant Pakistani statutes with their full names in b
 Examples: **[Pakistan Penal Code, 1860]**, **[Code of Civil Procedure, 1908]**, **[Income Tax Ordinance, 2001]**
 
 ### Leading Case Law and Judicial Precedents
-STRICT RULE: You may ONLY cite judgments that are explicitly listed in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section of your reference materials. If no judgments appear there, do NOT cite any case at all — instead write "No relevant judgments are currently available in the internal database for this query."
-NEVER use your training memory to recall or invent citations. A fabricated citation is worse than no citation on a professional legal platform.
 
-VERIFICATION CONSEQUENCE: The frontend system will attempt to verify every citation you include. Citations NOT in the database will:
-- Fail lookup
-- Not appear as clickable cards in the sidebar
-- Look broken to the user
-Therefore, ONLY use citations from the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section. Hallucinated citations will be caught and will embarrass the platform and waste user time.
+RETRIEVAL SYSTEM: The database uses semantic topic matching. Citations injected into the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section are ALREADY filtered for relevance to your query. They are the correct cases for this specific legal topic.
 
-DATA QUALITY WARNING: If a judgment in the VERIFIED JUDGMENTS section has an EMPTY or MISSING citation field (appears as blank), DO NOT try to use it. Skip that judgment entirely. Better to omit a case than cite it incorrectly with empty brackets [] or made-up citation numbers.
+ABSOLUTE RULE: You may ONLY cite judgments that appear in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section.
+- If the section is absent or empty: write "No relevant judgments are currently available in the internal database for this query." DO NOT cite any case from training memory.
+- The retrieval system returns EMPTY when no relevant cases exist — this is intentional. An empty result means the database genuinely has no matching case law, not that you should hallucinate alternatives.
+- A fabricated citation is ALWAYS worse than no citation on a legal platform.
 
-MANDATORY CITATION FORMAT: When citing a verified judgment, use this format in your text:
-**[CITATION STRING]** — Brief explanation of the holding and its relevance.
-Example: **[PLD 2020 Supreme Court 456]** — The court held that intent is essential for murder conviction under Section 302 PPC.
+VERIFICATION: The frontend verifies every citation via database lookup. Citations not in the database produce broken cards and embarrass the platform. Only use exact strings from the injected section.
 
-CRITICAL - USE EXACT CITATION STRINGS (NO BRACKET NOTATION):
-The citations you see in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section are stored in the database.
-YOU MUST use the EXACT citation string as shown — do NOT abbreviate, paraphrase, or create variations.
-- DO NOT change "PLD 2020 Supreme Court 456" to "PLD 2020 SC 456"
-- DO NOT change "Lahore High Court" to "LHC"
-- DO NOT create citation variations that differ from the database format
-- ABSOLUTELY FORBIDDEN: Do NOT use bracket notation like [I], [II], [III], [A], [B] for citations
-- DO NOT use numbered references like (1), (2), (3) or other placeholder notation
-- Copy the EXACT CITATION text from the database section and use it in your response with the format **[CITATION]**
-- Example: **[PLD 2020 Supreme Court 456]** — The court held that...
-- Every case law explanation MUST have its exact citation string, not placeholder numbers
-- This ensures the frontend can verify and make the citation clickable
+CITATION FORMAT (mandatory):
+**[EXACT CITATION STRING FROM DATABASE]** — What the court held and why it applies here.
+Example: **[PLD 2020 Supreme Court 456]** — The court held that intent is essential for conviction under Section 302 PPC.
 
-For each verified judgment from the database:
-- Copy the **exact CITATION string** from the injected context and include it in square brackets: **[CITATION]**
-- State the **Court Name** and **Decision Date** from the database record
-- Explain the **Legal Principle Established**: What the court held (the holding, not your paraphrase)
-- Apply it to the **User's Situation**: How this case supports or affects their query
-- The EXACT citation MUST appear in both the text AND the references block
-- PROFESSIONAL STANDARD: Never use placeholder notation like [I], [II], [A], [B], (1), (2), etc. for case law
-- Always use real citations like **[PLD 2020 Supreme Court 456]**, **[SCMR 2023 XXX]**, **[YLR 2022 Lahore High Court]**
-- If you cannot find the exact citation in the VERIFIED JUDGMENTS section, do NOT cite the case at all
-- Placeholder notation makes the platform look unprofessional and breaks the user's workflow
+EXACT STRING RULES:
+- Copy the CITATION verbatim from the "VERIFIED JUDGMENTS" section — do not abbreviate
+- DO NOT write [I], [II], [III], [A], [B], (1), (2), (3) — these are forbidden placeholder notations
+- DO NOT invent citation variations or recall citations from training
+- If a record has an empty citation field: skip it entirely
 
 ### Practical Legal Strategy and Case Preparation
 Provide actionable litigation strategy including:
@@ -5646,55 +5628,30 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
   const caseLawPromise: Promise<CaseLaw[]> = (() => {
     const cachedCaseLaw = getTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey);
     if (cachedCaseLaw !== undefined) return Promise.resolve(cachedCaseLaw);
-    return userId
-      ? (async () => {
-          try {
-            const rows = await withOperationTimeout(
-              searchCaseLawWithFullText({
-                userId,
-                query,
-                limit: KNOWLEDGE_CASELAW_LIMIT,
-                sort: "relevance",
-              }),
-              KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
-              `Knowledge case-law search timeout after ${KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS}ms`,
-            );
-            // If query-specific search returned results, use them.
-            // Otherwise fall back to most recent case law so every query has DB citations.
-            if (rows.length > 0) {
-              setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, rows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
-              return rows;
-            }
-            const recentPage = await storage.getCaseLawPage(KNOWLEDGE_CASELAW_LIMIT, 0).catch(() => ({ items: [] as CaseLaw[] }));
-            const recentRows = recentPage.items || [];
-            setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, recentRows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
-            return recentRows;
-          } catch (err) {
-            console.warn("[Knowledge] Case-law full-text search fallback:", getErrorMessage(err));
-            const fallbackRows = await storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT).catch(() => []);
-            const filtered = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(fallbackRows));
-            // Final fallback: if keyword search also empty, use recent case law
-            if (filtered.length === 0) {
-              const recentPage = await storage.getCaseLawPage(KNOWLEDGE_CASELAW_LIMIT, 0).catch(() => ({ items: [] as CaseLaw[] }));
-              const recentRows = recentPage.items || [];
-              setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, recentRows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
-              return recentRows;
-            }
-            setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, filtered, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
-            return filtered;
-          }
-        })()
-      : (async () => {
-          const rows = await storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT);
-          if (rows.length > 0) {
-            setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, rows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
-            return rows;
-          }
-          const recentPage = await storage.getCaseLawPage(KNOWLEDGE_CASELAW_LIMIT, 0).catch(() => ({ items: [] as CaseLaw[] }));
-          const recentRows = recentPage.items || [];
-          setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, recentRows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
-          return recentRows;
-        })();
+    return (async () => {
+      try {
+        const result = await withOperationTimeout(
+          retrieveLegalCaseLaw({
+            userId: userId || "",
+            query,
+            limit: KNOWLEDGE_CASELAW_LIMIT,
+          }),
+          KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
+          `Knowledge case-law search timeout after ${KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS}ms`,
+        );
+        const rows = result.rows;
+        if (rows.length > 0) {
+          console.log(`[Knowledge] Legal retrieval: strategy=${result.retrievalStrategy} topics=${result.topicsDetected.join(",")} found=${rows.length}`);
+        } else {
+          console.log(`[Knowledge] Legal retrieval: no relevant results for query="${query.slice(0, 60)}" topics=${result.topicsDetected.join(",") || "none"}`);
+        }
+        setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, rows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
+        return rows;
+      } catch (err) {
+        console.warn("[Knowledge] Legal retrieval failed:", getErrorMessage(err));
+        return [];
+      }
+    })();
   })();
 
   // Resolve org docs in parallel with the other lookups instead of serially at the end.
@@ -5901,7 +5858,7 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
 
   const finalContext = contextParts.length === 0
     ? ""
-    : `\n\nREFERENCE MATERIALS (Use these as your primary sources. Prioritize this curated internal knowledge over your general training knowledge.\n\nCRITICAL CITATION RULE FOR JUDGMENTS: You may ONLY cite case judgments that appear in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section above. If a judgment is not listed there, do NOT cite it — say instead that it is not available in the current database. Never invent or recall judgment citations from your training memory.\n\nFor statutes and legislation: you MAY cite statutes from your knowledge (PPC, CPC, Constitution, etc.) as they are well-established law. Always use full formal names.):\n\n${contextParts.join("\n\n")}`;
+    : `\n\nREFERENCE MATERIALS:\n\nIMPORTANT — CASE LAW RULE: You may ONLY cite judgments listed in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section below. If that section is missing or empty, write that no relevant judgments are in the database. Never fabricate citations from training memory.\n\nFor statutes (PPC, CPC, Constitution, etc.): you may cite from your training knowledge using full formal names.\n\n${contextParts.join("\n\n")}`;
 
   setTimedCacheValue(knowledgeContextCache, cacheKey, finalContext, KNOWLEDGE_CONTEXT_CACHE_TTL_MS, 500);
   return finalContext;
