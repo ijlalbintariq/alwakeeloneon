@@ -12,32 +12,45 @@ Your database has **18,691 documents** with malformed or missing citations, prev
 
 ## Root Cause
 
-The new retrieval system validates every citation:
+Your documents use **two different citation systems**, and the old validation only accepted one:
 
 ```typescript
 function hasTrustedCitation(row: CaseLaw): boolean {
-  const citation = String(row.citation || "").trim();
-  if (!citation) return false;
-  // Must match: PLD|SCMR|YLR|MLD|CLC|... (Pakistani legal codes)
-  return CITATION_FORMAT_RE.test(c) && YEAR_RE.test(c);
+  const c = String(row.citation || "").trim();
+  if (!c || c.length < 5) return false;
+
+  // Format 1: Judgment Citation (reported in law journals)
+  const isJudgmentCitation = LEGAL_CODE_RE.test(c) && YEAR_RE.test(c);
+
+  // Format 2: Case Number (case before judgment is reported)
+  const isCaseNumber = CASE_NUMBER_RE.test(c) || YEAR_RE.test(c);
+
+  return isJudgmentCitation || isCaseNumber;
 }
 ```
 
-**Your data has citations like:**
+**Your data has two types:**
+
+### Type 1: Judgment Citations (from law journals)
 ```
-❌ "Muhammad v. State"          (no legal code)
-❌ "Case #12345"                (no legal code/year)
-❌ "LHC 2020"                   (missing number)
-❌ NULL or ""                   (empty)
-❌ "1995"                       (just year, no code)
+✅ "1970 SCMR 869"       (year + legal code + page)
+✅ "2020 PLD SC 456"     (year + code + court + number)
+✅ "2019 YLR 145"        (year + code + number)
 ```
 
-**Need format like:**
+### Type 2: Case Numbers (before judgment reported)
 ```
-✅ "PLD 1992 SC 235"
-✅ "2020 YLR 456"
-✅ "SCMR 2019 145"
-✅ "LHC 1998 HC 789"
+✅ "C.A. 8-Q of 2017"              (Civil Appeal)
+✅ "Civil Petition No.32-Q of 2017" (Petition)
+✅ "R.P.A No.155/2014"             (Review Petition Appeal)
+✅ "Writ Petition No.123 of 2020"   (Writ Petition)
+```
+
+**Problem citations:**
+```
+❌ "Muhammad v. State"          (no citation number)
+❌ NULL or ""                   (empty)
+❌ "1995"                       (just year, no case number)
 ```
 
 ---
@@ -155,22 +168,60 @@ NEW SYSTEM: "Here are verified judgments... PLC 1992 SC 235..."
 
 ### What Citations Look Like
 
-**Pakistani Legal Citation Format:**
-```
-PLD 1992 SC 235
+**System 1: Judgment Citation (Reported in Law Journals)**
 
-├─ PLD        = Pakistan Law Digest (legal code)
-├─ 1992       = Year
-├─ SC         = Court (Supreme Court)
-└─ 235        = Page number or case number
+Format: YEAR LEGAL_CODE COURT PAGE
+
+```
+1970 SCMR 869
+
+├─ 1970      = Year
+├─ SCMR      = Supreme Court Monthly Report (legal code)
+└─ 869       = Page number
+
+Valid legal codes:
+  PLD  = Pakistan Law Digest
+  SCMR = Supreme Court Monthly Report
+  YLR  = Year Law Reports
+  MLD  = Mohammedan Law Digest
+  CLC  = Criminal Law Cases
+  PLJ  = Pakistan Law Journal
 ```
 
-**Variations:**
+**System 2: Case Number (Before Judgment Reported)**
+
+Format: CASE_TYPE NUMBER of YEAR
+
+```
+C.A. 8-Q of 2017
+
+├─ C.A.      = Civil Appeal
+├─ 8-Q       = Case number
+└─ 2017      = Year
+
+Valid case types:
+  C.A.              = Civil Appeal
+  Civil Appeal      = Civil Appeal (spelled out)
+  Petition          = Petition
+  Civil Petition    = Civil Petition
+  R.P.A.            = Review Petition Appeal
+  Writ Petition     = Writ Petition
+```
+
+**Variations of Judgment Citations:**
 ```
 YLR 2020 456              (Year Law Reports)
 SCMR 2019 145             (Supreme Court Monthly Report)
 LHC 1998 HC 789           (Lahore High Court)
 2020 PLD SC 456           (Year first, then rest)
+```
+
+**Variations of Case Numbers:**
+```
+C.A._8_Q_2017              (Underscore notation)
+CA 8Q 2017                 (No periods/hyphens)
+Civil Appeal No.8-Q of 2017 (Spelled out)
+Petition No.32-Q of 2017   (Petition)
 ```
 
 ### Why Citations Matter

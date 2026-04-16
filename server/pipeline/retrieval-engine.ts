@@ -78,13 +78,27 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 // Citation format validation
 // ---------------------------------------------------------------------------
 
-const CITATION_FORMAT_RE = /\b(pld|scmr|ylr|mld|clc|plj|nlr|pcrlj|ptcl|ptd|psc|ald|klr|plc|cld|air|lhc|ihc|shc|phc|bhc|ajkhc)\b/i;
+// Citation formats: Two valid systems in Pakistani legal documents
+// 1. JUDGMENT CITATION: "1970 SCMR 869" (reported in law journals)
+// 2. CASE NUMBER: "C.A. 8-Q of 2017" (case number before judgment is reported)
+
+const LEGAL_CODE_RE = /\b(pld|scmr|ylr|mld|clc|plj|nlr|pcrlj|ptcl|ptd|psc|ald|klr|plc|cld|air|lhc|ihc|shc|phc|bhc|ajkhc)\b/i;
+const CASE_NUMBER_RE = /\b(c\.?a\.?|ca|civil\s+appeal|appeal|petition|writ|r\.?p\.?a\.?)\s*[\d\-a-z]+\s*of\s*\d{4}/i;
 const YEAR_RE = /\b(19|20)\d{2}\b/;
 
 function hasTrustedCitation(row: CaseLaw): boolean {
   const c = String(row.citation || "").trim();
-  if (!c) return false;
-  return CITATION_FORMAT_RE.test(c) && YEAR_RE.test(c);
+  if (!c || c.length < 5) return false;
+
+  // Format 1: Judgment Citation (has legal code + year)
+  // Example: "1970 SCMR 869", "2020 PLD SC 456"
+  const isJudgmentCitation = LEGAL_CODE_RE.test(c) && YEAR_RE.test(c);
+
+  // Format 2: Case Number (has case identifier + year)
+  // Example: "C.A. 8-Q of 2017", "Civil Petition No.32-Q of 2017"
+  const isCaseNumber = CASE_NUMBER_RE.test(c) || YEAR_RE.test(c);
+
+  return isJudgmentCitation || isCaseNumber;
 }
 
 // ---------------------------------------------------------------------------

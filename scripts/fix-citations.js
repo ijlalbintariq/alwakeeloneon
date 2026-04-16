@@ -24,7 +24,9 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+// Two valid citation formats in Pakistani legal documents
 const LEGAL_CODE_PATTERN = /\b(PLD|SCMR|YLR|MLD|CLC|PLJ|NLR|PCRLJ|PTCL|PTD|PSC|ALD|KLR|PLC|CLD|AIR|LHC|IHC|SHC|PHC|BHC|AJKHC)\b/i;
+const CASE_NUMBER_PATTERN = /\b(C\.?A\.?|CA|Civil\s+Appeal|Appeal|Petition|Writ|R\.?P\.?A\.?)\s*[\d\-a-z]+\s+of\s+\d{4}/i;
 const YEAR_PATTERN = /\b(19|20)\d{2}\b/;
 
 async function analyzeCurrentState() {
@@ -37,16 +39,17 @@ async function analyzeCurrentState() {
       SUM(CASE WHEN citation = '' THEN 1 ELSE 0 END) as empty_citations,
       SUM(CASE WHEN citation ~ '(PLD|SCMR|YLR|MLD|CLC|PLJ|NLR|PCRLJ|PTCL|PTD|PSC|ALD|KLR|PLC|CLD|AIR|LHC|IHC|SHC|PHC|BHC|AJKHC)'
         THEN 1 ELSE 0 END) as valid_legal_code,
-      SUM(CASE WHEN citation ~ '\\b(19|20)\\d{2}\\b' THEN 1 ELSE 0 END) as has_year
+      SUM(CASE WHEN citation ~ '(C\\.?A\\.?|CA|Civil\\s+Appeal|Petition|Writ|R\\.?P\\.?A\\.?).*\\d{4}'
+        THEN 1 ELSE 0 END) as has_year
     FROM "caseLaw"
   `);
 
   const stats = result.rows[0];
-  console.log(`Total records:          ${stats.total_records}`);
-  console.log(`NULL citations:         ${stats.null_citations} (${((stats.null_citations / stats.total_records) * 100).toFixed(1)}%)`);
-  console.log(`Empty citations:        ${stats.empty_citations} (${((stats.empty_citations / stats.total_records) * 100).toFixed(1)}%)`);
-  console.log(`Valid legal code:       ${stats.valid_legal_code} (${((stats.valid_legal_code / stats.total_records) * 100).toFixed(1)}%)`);
-  console.log(`Has year:               ${stats.has_year} (${((stats.has_year / stats.total_records) * 100).toFixed(1)}%)`);
+  console.log(`Total records:              ${stats.total_records}`);
+  console.log(`NULL citations:             ${stats.null_citations} (${((stats.null_citations / stats.total_records) * 100).toFixed(1)}%)`);
+  console.log(`Empty citations:            ${stats.empty_citations} (${((stats.empty_citations / stats.total_records) * 100).toFixed(1)}%)`);
+  console.log(`Judgment citations (code):  ${stats.valid_legal_code} (${((stats.valid_legal_code / stats.total_records) * 100).toFixed(1)}%)`);
+  console.log(`Case numbers (C.A./etc):    ${stats.has_year} (${((stats.has_year / stats.total_records) * 100).toFixed(1)}%)`);
 
   const needsFix = (stats.null_citations || 0) + (stats.empty_citations || 0);
   console.log(`\n⚠️  Records needing citation fix: ${needsFix}`);
@@ -143,11 +146,11 @@ async function validateResults() {
   `);
 
   const stats = result.rows[0];
-  console.log(`Total records:          ${stats.total_records}`);
-  console.log(`Remaining NULL:         ${stats.remaining_null} (${((stats.remaining_null / stats.total_records) * 100).toFixed(1)}%)`);
-  console.log(`Remaining empty:        ${stats.remaining_empty} (${((stats.remaining_empty / stats.total_records) * 100).toFixed(1)}%)`);
-  console.log(`Valid legal code:       ${stats.valid_legal_code} (${((stats.valid_legal_code / stats.total_records) * 100).toFixed(1)}%)`);
-  console.log(`Now has year:           ${stats.now_has_year} (${((stats.now_has_year / stats.total_records) * 100).toFixed(1)}%)`);
+  console.log(`Total records:                  ${stats.total_records}`);
+  console.log(`Remaining NULL:                 ${stats.remaining_null} (${((stats.remaining_null / stats.total_records) * 100).toFixed(1)}%)`);
+  console.log(`Remaining empty:                ${stats.remaining_empty} (${((stats.remaining_empty / stats.total_records) * 100).toFixed(1)}%)`);
+  console.log(`Valid judgment citations:       ${stats.valid_legal_code} (${((stats.valid_legal_code / stats.total_records) * 100).toFixed(1)}%)`);
+  console.log(`Valid case numbers (C.A./etc):  ${stats.now_has_year} (${((stats.now_has_year / stats.total_records) * 100).toFixed(1)}%)`);
 
   // Show sample fixed citations
   const samples = await pool.query(`
