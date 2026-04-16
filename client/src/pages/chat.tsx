@@ -909,7 +909,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       const data = await res.json();
       if (data.found && data.id) {
         // Open judgment directly
-        window.open(`/judgments/${data.id}`, '_blank');
+        window.open(`/judgment/${data.id}`, '_blank');
       } else {
         // Fallback to search if not found
         window.open(`/judgments?q=${encodeURIComponent(citation)}`, '_blank');
@@ -944,7 +944,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             .slice(0, compact ? 3 : 4).map((j, idx) => {
               const jid = verifiedJudgmentIds.get(j.citation)!;
               return (
-                <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgments/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgments/${jid}`, '_blank')}>
+                <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgment/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgment/${jid}`, '_blank')}>
                   <div className="flex justify-between items-start mb-2 gap-2">
                     <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
                   </div>
@@ -958,7 +958,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             .slice(0, compact ? 2 : 3).map((c, idx) => {
               const jid = verifiedJudgmentIds.get(c.citation)!;
               return (
-                <button key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgments/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgments/${jid}`, '_blank')}>
+                <button key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgment/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgment/${jid}`, '_blank')}>
                   <div className="flex justify-between items-start mb-2 gap-2">
                     <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{c.citation}</span>
                   </div>
