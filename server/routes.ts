@@ -18,7 +18,7 @@ import {
   TIER_LIMITS,
   type CaseLaw,
 } from "@shared/schema";
-import { and, count, desc, eq, lt, sql, like, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, lt, sql, like, or } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
 import {
@@ -5659,25 +5659,33 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
     });
   })();
 
-  // Search judgments table via RAG vector search (semantic) — finds topically relevant judgments
-  // even when user doesn't type the exact citation. Falls back to keyword search if RAG unavailable.
-  const judgmentsPromise: Promise<Array<{ id: string; citationString: string; title: string; court: string | null; decisionDate: string | null; headnotes: string | null }>> = (async () => {
+  const promises: Promise<any>[] = [
+    statutesPromise,
+    caseLawPromise,
+    storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
+    storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
+    orgKnowledgePromise,
+  ];
+  if (userId) {
+    promises.push(storage.getDocuments(userId));
+  }
+
+  const [statutesResult, caseLawResult, githubResult, adminResult, orgResult, userDocsResult] = await Promise.allSettled(promises);
+
+  // caseLaw and judgments are the same data in two tables.
+  // caseLaw RAG already found the right cases. Now look up their judgments.id
+  // by matching caseLaw.citation = judgments.citationString so the AI gets
+  // verified IDs that the judgment viewer can open directly.
+  let judgmentsResult: Array<{ id: string; citationString: string; title: string; court: string | null; decisionDate: string | null; headnotes: string | null }> = [];
+  if (caseLawResult.status === "fulfilled" && caseLawResult.value.length > 0) {
     try {
-      // Try RAG semantic search first (works once judgments are indexed)
-      // Pass a non-existent userId so only global sources are searched, then filter to judgment sourceType
-      const ragRetrieval = await retrieveForQuery({
-        userId: "__judgments_context_query__",
-        query,
-        topK: 24,
-      });
-      const ragJudgmentIds: string[] = ragRetrieval.matches
-        .filter(m => String((m.metadata || {}).sourceType || "") === "judgment")
-        .map(m => String((m.metadata || {}).judgmentId || ""))
+      const citations = (caseLawResult.value as CaseLaw[])
+        .map(c => String(c.citation || "").trim())
         .filter(Boolean)
         .slice(0, 6);
-
-      if (ragJudgmentIds.length > 0) {
-        const rows = await db
+      if (citations.length > 0) {
+        const orConditions = citations.map(c => ilike(judgments.citationString, c));
+        judgmentsResult = await db
           .select({
             id: judgments.id,
             citationString: judgments.citationString,
@@ -5688,57 +5696,21 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
           })
           .from(judgments)
           .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
-          .where(sql`${judgments.id}::text = ANY(ARRAY[${sql.join(ragJudgmentIds.map(id => sql`${id}`), sql`, `)}])`)
+          .where(or(...orConditions))
           .limit(6);
-        if (rows.length > 0) return rows;
       }
-
-      // Fallback: keyword search on citationString and title
-      const words = query.split(/\s+/).filter(w => w.length > 3).slice(0, 4);
-      if (words.length === 0) return [];
-      const orConditions = words.flatMap(w => [
-        like(judgments.citationString, `%${w}%`),
-        like(judgments.title, `%${w}%`),
-      ]);
-      const rows = await db
-        .select({
-          id: judgments.id,
-          citationString: judgments.citationString,
-          title: judgments.title,
-          court: courtsRef.name,
-          decisionDate: judgments.decisionDate,
-          headnotes: judgments.headnotes,
-        })
-        .from(judgments)
-        .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
-        .where(or(...orConditions))
-        .limit(6);
-      return rows;
     } catch {
-      return [];
+      judgmentsResult = [];
     }
-  })();
-
-  const promises: Promise<any>[] = [
-    statutesPromise,
-    caseLawPromise,
-    storage.searchGithubKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
-    storage.searchAdminKnowledge(query, KNOWLEDGE_SOURCES_PER_TIER),
-    orgKnowledgePromise,
-    judgmentsPromise,
-  ];
-  if (userId) {
-    promises.push(storage.getDocuments(userId));
   }
-
-  const [statutesResult, caseLawResult, githubResult, adminResult, orgResult, judgmentsResult, userDocsResult] = await Promise.allSettled(promises);
 
   // ── Highest-precision sources first so they survive token-budget truncation ──
 
-  // Verified judgments from the judgments table — these have real DB IDs and must be cited exactly as shown.
-  if (judgmentsResult && judgmentsResult.status === "fulfilled" && judgmentsResult.value.length > 0) {
+  // Verified judgments — caseLaw RAG found these cases; now we have their judgments.id
+  // so the AI cites the exact citation string and the frontend can open the record directly.
+  if (judgmentsResult.length > 0) {
     const lines: string[] = [];
-    for (const j of judgmentsResult.value) {
+    for (const j of judgmentsResult) {
       const court = j.court || "Pakistani Court";
       const date = j.decisionDate ? ` (${j.decisionDate})` : "";
       const headnote = j.headnotes ? ` — ${String(j.headnotes).slice(0, 300)}` : "";
