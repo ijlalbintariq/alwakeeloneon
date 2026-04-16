@@ -5611,20 +5611,41 @@ async function gatherKnowledgeContext(query: string, userId?: string): Promise<s
               KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS,
               `Knowledge case-law search timeout after ${KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS}ms`,
             );
-            setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, rows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
-            return rows;
+            // If query-specific search returned results, use them.
+            // Otherwise fall back to most recent case law so every query has DB citations.
+            if (rows.length > 0) {
+              setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, rows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
+              return rows;
+            }
+            const recentPage = await storage.getCaseLawPage(KNOWLEDGE_CASELAW_LIMIT, 0).catch(() => ({ items: [] as CaseLaw[] }));
+            const recentRows = recentPage.items || [];
+            setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, recentRows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
+            return recentRows;
           } catch (err) {
             console.warn("[Knowledge] Case-law full-text search fallback:", getErrorMessage(err));
             const fallbackRows = await storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT).catch(() => []);
             const filtered = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(fallbackRows));
+            // Final fallback: if keyword search also empty, use recent case law
+            if (filtered.length === 0) {
+              const recentPage = await storage.getCaseLawPage(KNOWLEDGE_CASELAW_LIMIT, 0).catch(() => ({ items: [] as CaseLaw[] }));
+              const recentRows = recentPage.items || [];
+              setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, recentRows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
+              return recentRows;
+            }
             setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, filtered, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
             return filtered;
           }
         })()
       : (async () => {
           const rows = await storage.searchCaseLaw(query, KNOWLEDGE_CASELAW_LIMIT);
-          setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, rows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
-          return rows;
+          if (rows.length > 0) {
+            setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, rows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
+            return rows;
+          }
+          const recentPage = await storage.getCaseLawPage(KNOWLEDGE_CASELAW_LIMIT, 0).catch(() => ({ items: [] as CaseLaw[] }));
+          const recentRows = recentPage.items || [];
+          setTimedCacheValue(caseLawRetrievalCache, retrievalCacheKey, recentRows, CASELAW_RETRIEVAL_CACHE_TTL_MS, 300);
+          return recentRows;
         })();
   })();
 
