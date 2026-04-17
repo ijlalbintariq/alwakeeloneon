@@ -103,7 +103,45 @@ const NEUTRAL_COURT_NORMALIZERS = NEUTRAL_COURT_CODES.map((code) => ({
 const NEUTRAL_COURT_ABBRS = NEUTRAL_COURT_CODES.map(buildFlexibleReportPattern).join("|");
 const COURT_NAMES = "Supreme\\s+Court|Lahore|Sindh|Peshawar|Balochistan|Islamabad|ISB|Federal\\s+Shariat|FSC|Rawalpindi|Multan|Bahawalpur|Azad\\s+J(?:ammu)?\\s*(?:&|and)\\s*K(?:ashmir)?|AJK|Privy\\s+Council";
 
+// Case number prefix patterns (C.A., Civil Appeal, Criminal Petition, Writ, etc.)
+const CASE_NUM_SEP = "\\s*[-/]?\\s*";
+const CASE_NUM_ID  = "\\d+[A-Za-z\\-\\/]*\\d*"; // e.g. 8-Q, 32-Q, 155, 123-K
+
+const CASE_NUMBER_PATTERNS: RegExp[] = [
+  // C.A. 8-Q of 2017  /  CA 8Q of 2017
+  new RegExp(`\\bC\\.?A\\.?\\s+${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Civil Appeal No. 123-Q of 2020
+  new RegExp(`\\bCivil\\s+Appeal\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Civil Petition No. 32-Q of 2017
+  new RegExp(`\\bCivil\\s+Petition\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Criminal Appeal No. 123 of 2020
+  new RegExp(`\\bCriminal\\s+Appeal\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Criminal Petition No. 123 of 2020
+  new RegExp(`\\bCriminal\\s+Petition\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Criminal Revision No. 123 of 2020
+  new RegExp(`\\bCriminal\\s+Revision\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Writ Petition No. 123 of 2020
+  new RegExp(`\\bWrit\\s+Petition\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // R.P.A No. 155/2014  /  RPA 155/2014
+  new RegExp(`\\bR\\.?P\\.?A\\.?\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Review Petition No. 123 of 2020
+  new RegExp(`\\bReview\\s+Petition\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Constitution Petition No. 123 of 2020
+  new RegExp(`\\bConstitution(?:al)?\\s+Petition\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Human Rights Case No. 123-K of 2020
+  new RegExp(`\\bHuman\\s+Rights\\s+Case\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Contempt Petition No. 123 of 2020
+  new RegExp(`\\bContempt\\s+Petition\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Company Appeal / Company Petition No. 123 of 2020
+  new RegExp(`\\bCompany\\s+(?:Appeal|Petition)\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // Suit No. 123 of 2020 / O.S. No. 123/2020
+  new RegExp(`\\b(?:Suit|O\\.?S\\.?)\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+  // FCA (Federal Court Appeal) No. 123 of 2020
+  new RegExp(`\\bFCA\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
+];
+
 const CITATION_PATTERNS: RegExp[] = [
+  // --- Judgment/Report citations ---
   new RegExp(`\\b${YEAR_PATTERN}\\s*(?:${NEUTRAL_COURT_ABBRS})\\s*${PAGE_PATTERN}\\b`, "gi"),
   new RegExp(`(?:${REPORT_ABBRS})${SEP}${YEAR_PATTERN}${SEP}(?:${COURT_NAMES})${SEP}${PAGE_PATTERN}`, "gi"),
   new RegExp(`(?:${REPORT_ABBRS})${SEP}${YEAR_PATTERN}${SEP}${PAGE_PATTERN}`, "gi"),
@@ -111,6 +149,8 @@ const CITATION_PATTERNS: RegExp[] = [
   new RegExp(`${YEAR_PATTERN}${SEP}(?:${REPORT_ABBRS})${SEP}${PAGE_PATTERN}`, "gi"),
   new RegExp(`\\(${YEAR_PATTERN}\\)${SEP}(?:${REPORT_ABBRS})${SEP}(?:${COURT_NAMES})?${SEP}${PAGE_PATTERN}`, "gi"),
   new RegExp(`(?:${REPORT_ABBRS})${SEP}\\(${YEAR_PATTERN}\\)${SEP}(?:${COURT_NAMES})?${SEP}${PAGE_PATTERN}`, "gi"),
+  // --- Case number patterns (spread at end so report patterns win primary) ---
+  ...CASE_NUMBER_PATTERNS,
 ];
 
 const COURT_MAP: Array<[RegExp, string]> = [
@@ -252,6 +292,30 @@ function looksLikeReportCitation(citation: string): boolean {
   return new RegExp(REPORT_ABBRS, "i").test(n);
 }
 
+function looksLikeCaseNumber(citation: string): boolean {
+  return CASE_NUMBER_PATTERNS.some((p) => {
+    p.lastIndex = 0;
+    return p.test(citation);
+  });
+}
+
+/** Extract case type label from case number for use as keyword */
+function caseTypeFromCitation(citation: string): string {
+  const c = String(citation || "").toLowerCase();
+  if (/\bc\.?a\.?\b/.test(c) || /civil\s+appeal/i.test(c))    return "civil appeal";
+  if (/criminal\s+appeal/i.test(c))                             return "criminal appeal";
+  if (/civil\s+petition/i.test(c))                              return "civil petition";
+  if (/criminal\s+petition/i.test(c))                           return "criminal petition";
+  if (/writ\s+petition/i.test(c))                               return "writ petition";
+  if (/constitution(?:al)?\s+petition/i.test(c))                return "constitutional petition";
+  if (/review\s+petition/i.test(c))                             return "review petition";
+  if (/r\.?p\.?a\.?/i.test(c))                                  return "review petition appeal";
+  if (/human\s+rights/i.test(c))                                return "human rights case";
+  if (/contempt/i.test(c))                                      return "contempt petition";
+  if (/criminal\s+revision/i.test(c))                           return "criminal revision";
+  return "";
+}
+
 function escapeRegex(value: string): string {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -376,24 +440,34 @@ function inferCourtFromTextContext(text: string, sourceFilename?: string): strin
 // Title extraction
 // ---------------------------------------------------------------------------
 
+// Pattern to find "Petitioner vs Respondent" style titles
+const TITLE_VS_RE = /(?:(?:Mst\.?|Dr\.?|Mr\.?|Mrs\.?|M\/s\.?|Haji|Ch\.?|S\/O|D\/O|W\/O|Govt\.?|Government|State|Federation|Province|Commissioner|Secretary|Inspector|SHO|DSP|SSP|DIG|IG)\s+)?([A-Z][A-Za-z0-9.'_\s]+?)(?:\s+and\s+others?|\s+etc\.?)?\s+(?:vs?\.?|versus|Vs?\.?)\s+(?:(?:Mst\.?|Dr\.?|Mr\.?|Mrs\.?|M\/s\.?|Haji|Ch\.?|Govt\.?|Government|State|Federation|Province|Commissioner|Inspector|SHO)\s+)?([A-Z][A-Za-z0-9.'_\s]+?)(?:\s+and\s+others?|\s+etc\.?)?(?=\s*\n|\s*$|\s*(?:PLD|SCMR|YLR|MLD|CLC|\d{4}|Civil|Criminal|Writ))/gim;
+
 function findTitleNearCitation(text: string, citation: string, hintIndex?: number): string {
   const idx = text.indexOf(citation);
   const searchIdx = idx !== -1 ? idx : (Number.isInteger(hintIndex) ? Number(hintIndex) : 0);
 
-  const start = Math.max(0, searchIdx - 500);
-  const end   = Math.min(text.length, searchIdx + citation.length + 500);
+  // Search window: 800 chars around citation first, then fall back to document head
+  const start = Math.max(0, searchIdx - 800);
+  const end   = Math.min(text.length, searchIdx + citation.length + 800);
   const context = text.substring(start, end);
 
-  const patterns = [
-    /(?:(?:Mst\.?|Dr\.?|Mr\.?|Mrs\.?|M\/s\.?|Govt\.?|Government|State|Federation|Province|Commissioner|Secretary|Inspector|SHO|DSP|SSP)\s+)?([A-Z][\w.']+(?:\s+(?:and|&)\s+(?:others?|another|etc\.?))?(?:\s+[\w.']+)*)\s+(?:vs?\.?|versus|Vs?\.?)\s+(?:(?:Mst\.?|Dr\.?|Mr\.?|Mrs\.?|M\/s\.?|Govt\.?|Government|State|Federation|Province)\s+)?([A-Z][\w.']+(?:\s+(?:and|&)\s+(?:others?|another))?(?:\s+[\w.']+)*)/gi,
-  ];
+  TITLE_VS_RE.lastIndex = 0;
+  const match = TITLE_VS_RE.exec(context);
+  if (match) {
+    const full = match[0].trim();
+    if (full.length > 5 && full.length < 300) {
+      return full.replace(/\s+/g, " ").replace(/[,.]$/, "").trim();
+    }
+  }
 
-  for (const pattern of patterns) {
-    pattern.lastIndex = 0;
-    const match = pattern.exec(context);
-    if (match) {
-      const full = match[0].trim();
-      if (full.length > 5 && full.length < 250) {
+  // Fall back: search the document head for a vs-title (captures cases where citation is deep)
+  if (searchIdx > 2000) {
+    TITLE_VS_RE.lastIndex = 0;
+    const headMatch = TITLE_VS_RE.exec(text.slice(0, 3000));
+    if (headMatch) {
+      const full = headMatch[0].trim();
+      if (full.length > 5 && full.length < 300) {
         return full.replace(/\s+/g, " ").replace(/[,.]$/, "").trim();
       }
     }
@@ -405,18 +479,41 @@ function findTitleNearCitation(text: string, citation: string, hintIndex?: numbe
 // Summary extraction
 // ---------------------------------------------------------------------------
 
+/** Extract best available summary: HELD/HEADNOTE section preferred, fallback to context after citation */
 function extractSummaryNearCitation(text: string, citation: string, hintIndex?: number): string {
+  // Priority 1: HELD section (most authoritative — the actual decision)
+  const heldMatch = text.match(/\b(?:HELD|HOLDING|DECISION|ORDER|RELIEF|PER CURIAM)\s*[:\-–—]?\s*([\s\S]{50,800}?)(?=\n{2,}|\b(?:FACTS|LAW|STATUTE|STATUTES|PETITIONER|RESPONDENT|JUDGMENT)\b)/i);
+  if (heldMatch) {
+    const held = heldMatch[1].replace(/\s+/g, " ").trim();
+    if (held.length > 30) return held.slice(0, 600).trim();
+  }
+
+  // Priority 2: HEADNOTES section
+  const headnoteMatch = text.match(/\b(?:HEADNOTES?|HEAD\s*NOTES?)\s*[:\-–—]?\s*([\s\S]{50,800}?)(?=\n{2,})/i);
+  if (headnoteMatch) {
+    const hn = headnoteMatch[1].replace(/\s+/g, " ").trim();
+    if (hn.length > 30) return hn.slice(0, 500).trim();
+  }
+
+  // Priority 3: RATIO DECIDENDI
+  const ratioMatch = text.match(/\bRATIO\s+DECIDENDI\s*[:\-–—]?\s*([\s\S]{30,600}?)(?=\n{2,})/i);
+  if (ratioMatch) {
+    const ratio = ratioMatch[1].replace(/\s+/g, " ").trim();
+    if (ratio.length > 20) return ratio.slice(0, 400).trim();
+  }
+
+  // Priority 4: Context after the citation itself
   const idx = text.indexOf(citation);
   const searchIdx = idx !== -1 ? idx : (Number.isInteger(hintIndex) ? Number(hintIndex) : -1);
   if (searchIdx === -1) return "";
 
-  const after = text.substring(searchIdx + citation.length, searchIdx + citation.length + 800);
+  const after = text.substring(searchIdx + citation.length, searchIdx + citation.length + 1000);
   const cleaned = after.replace(/^\s*[,;:\-–—.)\]]+\s*/, "");
   const sentences = cleaned.split(/[.!?]\s+/)
     .map((s) => s.trim())
-    .filter((s) => s.length > 15 && s.length < 500 && /[a-zA-Z]/.test(s));
+    .filter((s) => s.length > 15 && s.length < 600 && /[a-zA-Z]/.test(s));
 
-  if (sentences.length >= 2) return sentences.slice(0, 2).join(". ").trim() + ".";
+  if (sentences.length >= 2) return sentences.slice(0, 3).join(". ").trim() + ".";
   if (sentences.length === 1) return sentences[0].trim() + ".";
   return "";
 }
@@ -431,32 +528,70 @@ function extractSummaryNearCitation(text: string, citation: string, hintIndex?: 
 
 const KEYWORD_CONTEXT_RADIUS = 150;
 
+// Statute code detection for keyword enrichment
+const STATUTE_KEYWORD_MAP: Array<[RegExp, string[]]> = [
+  [/\bPPC\s+\d/i,                        ["PPC", "criminal law"]],
+  [/\bCrPC\s+\d|\bCriminal\s+Procedure/i, ["CrPC", "criminal procedure"]],
+  [/\bCPC\s+\d|\bCivil\s+Procedure/i,     ["CPC", "civil procedure"]],
+  [/\bQSO\b/i,                            ["QSO", "evidence", "Qanun-e-Shahadat"]],
+  [/\bFCRA?\b|\bFamily\s+Courts\s+Act/i,  ["family law", "Family Courts Act"]],
+  [/\bHBLA?\b|\bHajj\s+&?\s*Umra/i,       ["Hajj", "religious law"]],
+  [/\bNAB\b|\bNational\s+Accountability/i, ["NAB", "accountability", "corruption"]],
+  [/\bATA\b|\bAnti.Terrorism/i,            ["anti-terrorism", "ATA"]],
+  [/\bCNSA\b|\bNarcotics/i,               ["narcotics", "CNSA"]],
+  [/\bNIC\b|\bCitizenship/i,              ["citizenship", "NADRA"]],
+  [/\bSECP\b|\bCompanies\s+Act/i,         ["company law", "SECP"]],
+  [/\bFBR\b|\bIncome\s+Tax/i,             ["income tax", "FBR"]],
+  [/\bLand\s+Revenue\s+Act/i,             ["land revenue", "mutation"]],
+  [/\bTransfer\s+of\s+Property/i,         ["property law", "transfer of property"]],
+  [/\bConstitution.+?(?:Art(?:icle)?|Art\.)\s*\d/i, ["constitutional law", "fundamental rights"]],
+];
+
 function extractKeywords(text: string, citation: string, hintIndex?: number): string[] {
   const idx = text.indexOf(citation);
   const searchIdx = idx !== -1 ? idx : (Number.isInteger(hintIndex) ? Number(hintIndex) : 0);
+
+  // Primary: narrow ±150-char window around citation (avoids cross-topic contamination)
   const start   = Math.max(0, searchIdx - KEYWORD_CONTEXT_RADIUS);
   const end     = Math.min(text.length, searchIdx + citation.length + KEYWORD_CONTEXT_RADIUS);
-  const context = text.substring(start, end).toLowerCase();
+  const nearCtx = text.substring(start, end).toLowerCase();
 
+  // Secondary: document heading (first 600 chars) — captures subject stated at the top
+  const headCtx = text.slice(0, 600).toLowerCase();
+
+  const combined = `${nearCtx} ${headCtx}`;
   const keywords = new Set<string>();
 
+  // Legal topic keywords
   for (const [term, related] of Object.entries(LEGAL_KEYWORDS_MAP)) {
-    if (context.includes(term.toLowerCase())) {
+    if (combined.includes(term.toLowerCase())) {
       for (const kw of related.slice(0, 2)) keywords.add(kw);
     }
   }
 
+  // Statute/Act references
+  for (const [pattern, kws] of STATUTE_KEYWORD_MAP) {
+    if (pattern.test(combined)) {
+      for (const kw of kws) keywords.add(kw);
+    }
+  }
+
+  // Report code
   const reportMatch = citation.match(new RegExp(REPORT_ABBRS, "i"));
   if (reportMatch) {
     keywords.add(reportMatch[0].toUpperCase().replace(/[^A-Z0-9]/g, ""));
   }
+
+  // Case type from case number
+  const caseType = caseTypeFromCitation(citation);
+  if (caseType) keywords.add(caseType);
 
   if (keywords.size === 0) {
     keywords.add("Pakistani law");
     keywords.add("case law");
   }
 
-  return Array.from(keywords).slice(0, 8);
+  return Array.from(keywords).slice(0, 12);
 }
 
 // ---------------------------------------------------------------------------
@@ -492,12 +627,27 @@ export function nlpExtractCases(text: string, options?: CitationRoleAssignmentOp
     const isPrimary = !assignedPrimary && citKey === inferredPrimaryKey;
     if (isPrimary) assignedPrimary = true;
 
+    // Build descriptive fallback title incorporating citation and case type
+    let fallbackTitle: string;
+    if (looksLikeReportCitation(citation)) {
+      fallbackTitle = `Case reported at ${citation}`;
+    } else if (looksLikeCaseNumber(citation)) {
+      const ct = caseTypeFromCitation(citation);
+      fallbackTitle = ct ? `${ct} — ${citation}` : `Case No. ${citation}`;
+    } else {
+      fallbackTitle = `Case No. ${citation}`;
+    }
+
+    const fallbackSummary = looksLikeReportCitation(citation)
+      ? `Case cited as ${citation}`
+      : `Case identified as ${citation}`;
+
     cases.push({
       citation,
       citationRole: isPrimary ? "primary" : "cited",
       court,
-      title: title || (looksLikeReportCitation(citation) ? `Case reported at ${citation}` : `Case No. ${citation}`),
-      summary: summary || (looksLikeReportCitation(citation) ? `Case cited as ${citation}` : `Case identified as ${citation}`),
+      title: title || fallbackTitle,
+      summary: summary || fallbackSummary,
       keywords,
     });
   }

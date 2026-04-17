@@ -35,6 +35,8 @@ export interface RetrievedStatute {
   description: string;
   punishment: string;
   relevanceScore: number;
+  /** Full statute name when resolved from an abbreviation, e.g. "Pakistan Penal Code" */
+  statuteDocumentTitle?: string;
 }
 
 export interface RetrievedDoc {
@@ -110,20 +112,37 @@ const LEGAL_CODE_MAPPING: Record<string, { reportingType: string; court: string 
   ajkhc: { reportingType: "Azad Jammu & Kashmir High Court", court: "AJK High Court" },
 };
 
-// Case type to court mapping
+// Case type to descriptive label mapping
 const CASE_TYPE_MAPPING: Record<string, string> = {
-  "c.a": "Court of Appeals",
-  "ca": "Court of Appeals",
-  "civil appeal": "Court of Appeals",
-  "appeal": "Court of Appeals",
-  "petition": "Petition",
-  "civil petition": "Civil Petition",
-  "r.p.a": "Review Petition Appeal",
-  "writ petition": "Writ Petition",
+  "c.a":                      "Civil Appeal",
+  "ca":                       "Civil Appeal",
+  "civil appeal":             "Civil Appeal",
+  "criminal appeal":          "Criminal Appeal",
+  "appeal":                   "Appeal",
+  "civil petition":           "Civil Petition",
+  "criminal petition":        "Criminal Petition",
+  "criminal revision":        "Criminal Revision",
+  "petition":                 "Petition",
+  "writ petition":            "Writ Petition",
+  "writ":                     "Writ Petition",
+  "r.p.a":                    "Review Petition Appeal",
+  "rpa":                      "Review Petition Appeal",
+  "review petition":          "Review Petition",
+  "constitutional petition":  "Constitutional Petition",
+  "constitution petition":    "Constitutional Petition",
+  "human rights case":        "Human Rights Case",
+  "contempt petition":        "Contempt Petition",
+  "company appeal":           "Company Appeal",
+  "company petition":         "Company Petition",
+  "fca":                      "Federal Court Appeal",
 };
 
 const LEGAL_CODE_RE = /\b(pld|scmr|ylr|mld|clc|plj|nlr|pcrlj|ptcl|ptd|psc|ald|klr|plc|cld|air|lhc|ihc|shc|phc|bhc|ajkhc)\b/i;
-const CASE_NUMBER_RE = /\b(c\.?a\.?|ca|civil\s+appeal|appeal|petition|writ|r\.?p\.?a\.?)\s*[\d\-a-z]+\s*of\s*\d{4}/i;
+
+// Comprehensive case number patterns — must contain a case-type prefix AND a year
+// Covers: C.A., Civil/Criminal Appeal/Petition, Writ, Review, Constitution, HRC, etc.
+const CASE_NUMBER_RE = /\b(?:C\.?A\.?|Civil\s+Appeal|Criminal\s+Appeal|Civil\s+Petition|Criminal\s+Petition|Criminal\s+Revision|Writ\s+Petition|Review\s+Petition|R\.?P\.?A\.?|Constitution(?:al)?\s+Petition|Human\s+Rights\s+Case|Contempt\s+Petition|Company\s+(?:Appeal|Petition)|FCA)\s+(?:No\.?\s*)?\d+[\w\-\/]*\s+(?:of\s+)?\d{4}\b/i;
+
 const YEAR_RE = /\b(19|20)\d{2}\b/;
 
 /**
@@ -137,32 +156,54 @@ function extractReportingMetadata(code: string): { reportingType: string; court:
 
 /**
  * Extract case type from case number
- * Example: "C.A. 8-Q" → "Court of Appeals"
+ * Example: "Civil Petition No. 32-Q of 2017" → "Civil Petition"
  */
 function extractCaseType(caseNumber: string): string {
-  const match = caseNumber.match(/\b(c\.?a\.?|ca|civil\s+appeal|appeal|petition|writ|r\.?p\.?a\.?)/i);
-  if (match) {
-    const caseType = match[0].toLowerCase();
-    return CASE_TYPE_MAPPING[caseType] || match[0];
+  const c = String(caseNumber || "");
+  // Try longest match first (most specific)
+  const ordered = Object.keys(CASE_TYPE_MAPPING).sort((a, b) => b.length - a.length);
+  for (const key of ordered) {
+    if (new RegExp(`\\b${key.replace(/\./g, "\\.?")}\\b`, "i").test(c)) {
+      return CASE_TYPE_MAPPING[key];
+    }
   }
-  return "Unknown Case Type";
+  // Generic fallback
+  const match = c.match(/\b(c\.?a\.?|civil\s+appeal|criminal\s+appeal|civil\s+petition|criminal\s+petition|writ\s+petition|review\s+petition|r\.?p\.?a\.?)/i);
+  if (match) return match[0].trim();
+  return "Case Number";
 }
 
 function hasTrustedCitation(row: CaseLaw): boolean {
   const c = String(row.citation || "").trim();
   if (!c || c.length < 5) return false;
 
-  // Format 1: Judgment Citation (has legal code + year)
-  // Example: "1970 SCMR 869", "2020 PLD SC 456"
-  // Enriches: reportingType (SCMR = Supreme Court Monthly Report), court (extracted)
-  const isJudgmentCitation = LEGAL_CODE_RE.test(c) && YEAR_RE.test(c);
+  // Criterion 1: Sourced directly from the judgments table — always trusted.
+  // These have verified year, journal, page from the structured DB.
+  if (row.sourceType === "judgment") return true;
 
-  // Format 2: Case Number (has case identifier + year)
-  // Example: "C.A. 8-Q of 2017", "Civil Petition No.32-Q of 2017"
-  // Enriches: caseType (Appeal, Petition, etc.), year
-  const isCaseNumber = CASE_NUMBER_RE.test(c) || YEAR_RE.test(c);
+  // Criterion 2: Structured citation fields were successfully parsed.
+  // citationYear being set means the enrichment function extracted a valid year,
+  // which is proof the citation string follows a recognized format.
+  if (Number.isInteger(row.citationYear) && row.citationYear! >= 1900) return true;
 
-  return isJudgmentCitation || isCaseNumber;
+  // Criterion 3: Known law report code + year in the citation string.
+  // Examples: "1970 SCMR 869", "2020 PLD SC 456", "2019 LHC 1260", "PLJ 2019 SC 33"
+  if (LEGAL_CODE_RE.test(c) && YEAR_RE.test(c)) return true;
+
+  // Criterion 4: Recognized case number format with year.
+  // Examples: "C.A. 8-Q of 2017", "Civil Petition No. 32-Q of 2017"
+  if (CASE_NUMBER_RE.test(c)) return true;
+
+  // Criterion 5: Citation contains a 4-digit year AND a page/volume number
+  // Catches non-standard formats like "2015 (2) ILR 45", "NLR 2020 Civ 33"
+  if (YEAR_RE.test(c) && /\b\d{1,5}\b/.test(c) && c.length >= 8) return true;
+
+  // Criterion 6: Citation has a known court name in it — still a real citation
+  // even if the report code is missing or uses an uncommon abbreviation
+  const COURT_NAME_RE = /\b(supreme\s+court|high\s+court|lahore|sindh|islamabad|peshawar|balochistan|federal\s+shariat|privy\s+council|ajk|azad\s+kashmir)\b/i;
+  if (COURT_NAME_RE.test(c) && YEAR_RE.test(c)) return true;
+
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -174,10 +215,12 @@ function norm(s: string): string {
 }
 
 function scoreCaseLawRow(row: CaseLaw, intent: QueryIntent): number {
-  const title = norm(String(row.title || ""));
-  const summary = norm(String(row.summary || ""));
-  const kws = (row.keywords || []).map((k) => norm(k)).join(" ");
-  const combined = `${title} ${summary} ${kws}`;
+  const title    = norm(String(row.title || ""));
+  const summary  = norm(String(row.summary || ""));
+  const citation = norm(String(row.citation || ""));
+  const court    = norm(String(row.court || ""));
+  const kws      = (row.keywords || []).map((k) => norm(k)).join(" ");
+  const combined = `${title} ${summary} ${kws} ${court}`;
 
   let score = 0;
 
@@ -185,35 +228,49 @@ function scoreCaseLawRow(row: CaseLaw, intent: QueryIntent): number {
   for (const topic of intent.topics) {
     for (const term of topic.primary) {
       if (combined.includes(term)) score += 20;
-      if (title.includes(term)) score += 15;
+      if (title.includes(term))    score += 15;
+      if (kws.includes(term))      score += 10;
     }
     for (const term of topic.synonyms) {
       if (combined.includes(term)) score += 6;
-      if (title.includes(term)) score += 5;
+      if (title.includes(term))    score += 5;
     }
   }
 
   // Score against raw query words
   const queryWords = intent.normalized.split(/\s+/).filter((w) => w.length >= 3);
   for (const word of queryWords) {
-    if (title.includes(word)) score += 10;
-    if (summary.includes(word)) score += 6;
-    if (kws.includes(word)) score += 7;
+    if (title.includes(word))    score += 10;
+    if (summary.includes(word))  score += 6;
+    if (kws.includes(word))      score += 7;
+    if (citation.includes(word)) score += 8; // citation year/code match
+    if (court.includes(word))    score += 4;
   }
+
+  // Boost if citation year matches query year
+  const queryYear = intent.normalized.match(/\b(19|20)\d{2}\b/)?.[0];
+  if (queryYear && citation.includes(queryYear)) score += 12;
 
   return score;
 }
 
 function scoreCaseLawRowForCitationLookup(row: CaseLaw, intent: QueryIntent): number {
-  // For direct citation lookup just return all results that match citation format
   const c = norm(String(row.citation || ""));
-  const q = intent.normalized;
+  const t = norm(String(row.title || ""));
+  const q = intent.normalized.toLowerCase();
+
+  // Full citation match
   if (c.includes(q) || q.includes(c)) return 100;
-  // partial match on year / report code
+
+  // Title match (case number in title)
+  if (t.includes(q) || q.includes(t.slice(0, 30))) return 80;
+
+  // Partial token match on citation
   const words = q.split(/\s+/);
   let score = 0;
   for (const word of words) {
     if (c.includes(word)) score += 20;
+    if (t.includes(word)) score += 8;
   }
   return score;
 }
@@ -231,39 +288,53 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
     includeSourceContentSearch: false,
   }).catch(() => [] as CaseLaw[]);
 
-  // Path 2: RAG vector search (only for users, returns admin-case-law sourceType)
+  // Path 2: RAG vector search — admin-case-law AND judgment chunks
   const ragPromise = userId
-    ? retrieveForQuery({ userId, query: expandedQuery, topK: limit * 5 })
+    ? retrieveForQuery({ userId, query: expandedQuery, topK: limit * 6 })
         .then(async (retrieval) => {
-          const sourceDocIds: number[] = [];
-          const seen = new Set<number>();
+          const adminDocIds: number[] = [];
+          const seenAdmin = new Set<number>();
+
           for (const match of retrieval.matches) {
             const sType = String((match.metadata || {}).sourceType || "").toLowerCase();
             if (sType !== "admin-case-law") continue;
             const docId = Number(match.sourceDocumentId);
-            if (!Number.isInteger(docId) || docId <= 0 || seen.has(docId)) continue;
-            seen.add(docId);
-            sourceDocIds.push(docId);
-            if (sourceDocIds.length >= limit * 4) break;
+            if (!Number.isInteger(docId) || docId <= 0 || seenAdmin.has(docId)) continue;
+            seenAdmin.add(docId);
+            adminDocIds.push(docId);
+            if (adminDocIds.length >= limit * 4) break;
           }
-          if (sourceDocIds.length === 0) return [] as CaseLaw[];
-          return storage.getCaseLawBySourceDocuments(sourceDocIds, "admin");
+
+          const adminCaseLaw = adminDocIds.length > 0
+            ? await storage.getCaseLawBySourceDocuments(adminDocIds, "admin").catch(() => [] as CaseLaw[])
+            : [] as CaseLaw[];
+
+          return adminCaseLaw;
         })
         .catch(() => [] as CaseLaw[])
     : Promise.resolve([] as CaseLaw[]);
 
-  const [keywordRaw, ragRaw] = await Promise.all([
+  // Path 3: Direct judgment table keyword search — the same DB the search UI uses
+  const judgmentKeywordPromise = withTimeout(
+    storage.searchJudgmentsByKeywords(expandedQuery, limit * 3).catch(() => [] as CaseLaw[]),
+    CASELAW_TIMEOUT_MS,
+    [] as CaseLaw[],
+  );
+
+  const [keywordRaw, ragRaw, judgmentRaw] = await Promise.all([
     withTimeout(keywordPromise, CASELAW_TIMEOUT_MS, [] as CaseLaw[]),
     withTimeout(ragPromise, CASELAW_TIMEOUT_MS, [] as CaseLaw[]),
+    judgmentKeywordPromise,
   ]);
 
-  // Merge, deduplicate
+  // Merge all three paths; citation-dedup to avoid showing the same case twice
   const seen = new Set<string>();
   const merged: CaseLaw[] = [];
-  for (const row of [...keywordRaw, ...ragRaw]) {
-    const key = `${norm(String(row.citation || ""))}|${row.id}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+  // Judgment rows first — they have richer data (headnotes, full citation parts)
+  for (const row of [...judgmentRaw, ...keywordRaw, ...ragRaw]) {
+    const citKey = norm(String(row.citation || ""));
+    if (!citKey || seen.has(citKey)) continue;
+    seen.add(citKey);
     merged.push(row);
   }
 
@@ -274,15 +345,23 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
   const isCitationLookup = intent.type === "citation-lookup";
   const scoreFn = isCitationLookup ? scoreCaseLawRowForCitationLookup : scoreCaseLawRow;
 
-  const minScore = isCitationLookup
+  // Relaxed minimum score: judgments from the DB table need lower bar since
+  // their headnotes/title are authoritative — keyword scoring alone may be low
+  const rawMinScore = isCitationLookup
     ? 0
     : intent.topics.length > 0
       ? Math.min(...intent.topics.map((t) => t.minRelevanceScore))
       : 10;
 
+  // Apply a floor to not over-filter judgment-sourced rows which are already verified
   const scored = withCitation
-    .map((row) => ({ row, relevanceScore: scoreFn(row, intent) }))
-    .filter((item) => item.relevanceScore >= minScore)
+    .map((row) => {
+      const relevanceScore = scoreFn(row, intent);
+      // Judgment DB rows get a 5-point bonus — they are pre-verified, full-text indexed
+      const adjustedScore = row.sourceType === "judgment" ? relevanceScore + 5 : relevanceScore;
+      return { row, relevanceScore: adjustedScore };
+    })
+    .filter((item) => item.relevanceScore >= rawMinScore)
     .sort((a, b) => b.relevanceScore - a.relevanceScore);
 
   return scored.slice(0, limit);
@@ -293,6 +372,43 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
 // ---------------------------------------------------------------------------
 
 async function fetchStatutes(intent: QueryIntent, limit: number): Promise<RetrievedStatute[]> {
+  // Direct section lookup when user explicitly typed e.g. "PPC 392" or "Article 25 Constitution"
+  if (intent.statuteRef) {
+    const { fullName, sectionOrArticle } = intent.statuteRef;
+    // Search by full statute name + section number for exact match
+    const directRows = await withTimeout(
+      storage.searchStatutes(`${fullName}`, limit * 3).catch(() => []),
+      STATUTE_TIMEOUT_MS,
+      [],
+    ) as any[];
+    // Filter to matching section
+    const sectionPattern = sectionOrArticle.toLowerCase();
+    const matched = directRows.filter((r: any) => {
+      const sec = String(r.section || "").toLowerCase();
+      return sec === sectionPattern || sec.startsWith(sectionPattern + " ") || sec.includes(`(${sectionPattern})`);
+    });
+    if (matched.length > 0) {
+      return matched.slice(0, limit).map((s: any) => ({
+        shortTitle: String(s.shortTitle || ""),
+        section: String(s.section || ""),
+        description: String(s.description || ""),
+        punishment: String(s.punishment || ""),
+        relevanceScore: 100,
+        statuteDocumentTitle: fullName,
+      } as RetrievedStatute));
+    }
+    // Fallback: return all rows for this statute (top sections by relevance)
+    const fallback = directRows.slice(0, limit).map((s: any) => ({
+      shortTitle: String(s.shortTitle || ""),
+      section: String(s.section || ""),
+      description: String(s.description || ""),
+      punishment: String(s.punishment || ""),
+      relevanceScore: 80,
+      statuteDocumentTitle: fullName,
+    } as RetrievedStatute));
+    if (fallback.length > 0) return fallback;
+  }
+
   const query = intent.expandedQuery || intent.normalized;
   const rawRows = await withTimeout(
     storage.searchStatutes(query, limit * 2).catch(() => []),

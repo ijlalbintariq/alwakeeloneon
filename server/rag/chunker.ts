@@ -28,6 +28,12 @@ export type TextChunk = {
   chunkIndex: number;
   text: string;
   tokenCount: number;
+  /** Section type: FACTS, LAW, JUDGMENT, HELD, RATIO, DISMISSAL, etc. */
+  sectionType?: string;
+  /** Statute citations found in this chunk (PPC 392, CPC 123, etc.) */
+  statuteCitations?: string[];
+  /** Judgment result indicator: approved, dismissed, partial, etc. */
+  judgmentResult?: string;
 };
 
 export type ChunkingConfig = {
@@ -52,11 +58,78 @@ const CITATION_RE = /\b(?:PLD|SCMR|YLR|MLD|CLC|PLJ|NLR|PCRLJ|PTCL|PTD|PSC|ALD|KL
 const SECTION_BOUNDARY_RE = /\n(?=\s*(?:\d+[\.\)]\s|\b(?:whereas|held|facts|judgment|order|section|article|rule|schedule|petitioner|respondent|bench|court|per|before|date)\b))/i;
 
 // ---------------------------------------------------------------------------
+// Metadata extraction patterns
+// ---------------------------------------------------------------------------
+
+// Section type detection: identifies legal section boundaries
+const SECTION_HEADINGS_RE = /^(FACTS|LAW|JUDGMENT|HELD|RATIO|DISMISSAL|COURT|FINDINGS|ORDER|DECISION|RELIEF|ARGUMENTS|CONCLUSION|OBSERVATIONS|REASONS)\b/im;
+
+// Statute citation pattern: PPC 392, CPC 123, Constitution Article 25, etc.
+const STATUTE_CITATION_RE = /\b(PPC|CPC|Constitution|FCA|LTO|SOPs|Rules|Ordinance|Act|Article|Section)\s+(?:No\.?\s*)?(?:Article\s+)?(?:Section\s+)?(\d{1,4}(?:[A-Z])?|\d+\.\d+)/ig;
+
+// Judgment result keywords
+const JUDGMENT_RESULT_RE = /\b(allowed|dismissed|approved|upheld|set\s+aside|overruled|granted|denied|rejected|accepted|upheld|partially\s+allowed|allowed\s+in\s+part|partly\s+allowed)\b/i;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function countTokens(text: string): number {
   return tokenizeText(text).tokens.length;
+}
+
+/**
+ * Extract the primary section type from chunk text
+ * Returns the first detected section heading (FACTS, LAW, JUDGMENT, etc.)
+ */
+function extractSectionType(text: string): string | undefined {
+  const lines = text.split('\n').slice(0, 10); // Check first 10 lines for section heading
+  for (const line of lines) {
+    const match = line.match(SECTION_HEADINGS_RE);
+    if (match) {
+      return match[1].toUpperCase();
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Extract all statute citations from chunk text
+ * Examples: PPC 392, CPC 123, Constitution Article 25
+ */
+function extractStatuteCitations(text: string): string[] {
+  const citations = new Set<string>();
+  let match;
+
+  // Reset regex state
+  const regex = new RegExp(STATUTE_CITATION_RE.source, STATUTE_CITATION_RE.flags);
+
+  while ((match = regex.exec(text)) !== null) {
+    // Construct citation: "PPC 392" or "Constitution Article 25"
+    const code = match[1];
+    const number = match[2];
+    const citation = `${code} ${number}`.trim();
+
+    // Avoid duplicates and excessively long strings
+    if (citation.length < 50) {
+      citations.add(citation);
+    }
+  }
+
+  return Array.from(citations);
+}
+
+/**
+ * Extract the judgment result/outcome from chunk text
+ * Returns: approved, dismissed, upheld, set aside, etc.
+ */
+function extractJudgmentResult(text: string): string | undefined {
+  // Look for judgment result keywords
+  const match = text.match(JUDGMENT_RESULT_RE);
+  if (match) {
+    return match[1].toLowerCase();
+  }
+  return undefined;
 }
 
 /**
@@ -156,10 +229,13 @@ export function chunkTextByTokens(
     }
   }
 
-  // Assign chunk indices
+  // Assign chunk indices and extract metadata
   return rawChunks.map((text, idx) => ({
     chunkIndex: idx,
     text,
     tokenCount: countTokens(text),
+    sectionType: extractSectionType(text),
+    statuteCitations: extractStatuteCitations(text) || undefined,
+    judgmentResult: extractJudgmentResult(text),
   }));
 }

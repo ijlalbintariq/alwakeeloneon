@@ -96,13 +96,20 @@ function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSect
 
 function buildVerifiedStatutesSection(statutes: RetrievedStatute[]): ContextSection | null {
   if (statutes.length === 0) return null;
-  const lines = statutes.map(
-    (s) => `- STATUTE: ${s.shortTitle} | SECTION: ${s.section} | ${s.description}`,
-  );
+  const lines = statutes.map((s) => {
+    const fullTitle = s.statuteDocumentTitle || s.shortTitle;
+    const punishmentPart = s.punishment ? ` | PUNISHMENT: ${s.punishment}` : "";
+    const openRef = fullTitle ? ` | [Open full statute: "${fullTitle}"]` : "";
+    return `- STATUTE: ${fullTitle} | SECTION: ${s.section} | ${s.description}${punishmentPart}${openRef}`;
+  });
   return {
     id: "verified-statutes",
     heading: "=== VERIFIED STATUTES FROM INTERNAL DATABASE ===",
-    lines: ["Cite these statute names and sections exactly as shown:", ...lines],
+    lines: [
+      "Cite these statute names and sections exactly as shown. Show the full statute name, not the abbreviation.",
+      "When referencing a section, tell the user they can open the full statute document from the statute library.",
+      ...lines,
+    ],
   };
 }
 

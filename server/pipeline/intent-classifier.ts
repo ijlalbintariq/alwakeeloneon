@@ -50,6 +50,113 @@ export interface QueryIntent {
   needsStatutes: boolean;
   /** Whether to run admin-knowledge retrieval */
   needsAdminDocs: boolean;
+  /** Detected statute reference (e.g. PPC 392), if present */
+  statuteRef?: StatuteRef;
+}
+
+// ---------------------------------------------------------------------------
+// Statute Abbreviation Map (Pakistan)
+// ---------------------------------------------------------------------------
+
+export interface StatuteRef {
+  /** Short abbreviation as typed by the user, e.g. "PPC" */
+  abbr: string;
+  /** Full statutory name */
+  fullName: string;
+  /** Section or article number extracted from query, e.g. "392" */
+  sectionOrArticle: string;
+}
+
+export const STATUTE_ABBREVIATION_MAP: Record<string, string> = {
+  // Criminal law
+  ppc: "Pakistan Penal Code",
+  crpc: "Code of Criminal Procedure",
+  cpc: "Code of Civil Procedure",
+  // Evidence
+  qso: "Qanun-e-Shahadat Order 1984",
+  qe: "Qanun-e-Shahadat Order 1984",
+  // Constitution
+  constitution: "Constitution of Pakistan 1973",
+  "constitution of pakistan": "Constitution of Pakistan 1973",
+  // Family
+  mflo: "Muslim Family Laws Ordinance 1961",
+  gwa: "Guardians and Wards Act 1890",
+  fca: "Family Courts Act 1964",
+  // Terrorism / accountability
+  ata: "Anti-Terrorism Act 1997",
+  nao: "National Accountability Ordinance 1999",
+  poca: "Prevention of Corruption Act 1947",
+  // Narcotics
+  cnsa: "Control of Narcotic Substances Act 1997",
+  // Cybercrime
+  peca: "Prevention of Electronic Crimes Act 2016",
+  // Immigration / passports
+  fia: "Federal Investigation Agency Act 1974",
+  // Property / land
+  tpa: "Transfer of Property Act 1882",
+  ra: "Registration Act 1908",
+  // Tax
+  ito: "Income Tax Ordinance 2001",
+  sta: "Sales Tax Act 1990",
+  // Labor
+  ira: "Industrial Relations Act 2012",
+  // Corporate
+  ca: "Companies Act 2017",
+  // Financial
+  fcra: "Foreign Contributions Regulation Act",
+  // Arms
+  aa: "Arms Act 1878",
+  // Other common ones
+  mvoa: "Motor Vehicles Ordinance 1965",
+  pa: "Partnership Act 1932",
+};
+
+/**
+ * Detect statute references like "PPC 392", "Section 302 PPC", "Article 25 Constitution",
+ * "CrPC 497", "section 489-F PPC".
+ * Returns null if no statute reference is found.
+ */
+export function detectStatuteRef(query: string): StatuteRef | null {
+  const q = query.toLowerCase().replace(/[^a-z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
+
+  // Pattern: ABBR <section> — e.g. "ppc 392", "crpc 497", "peca 20"
+  const abbrFirst = /\b(ppc|crpc|cpc|qso|qe|mflo|gwa|fca|ata|nao|poca|cnsa|peca|fia|tpa|ra|ito|sta|ira|ca|aa|mvoa|pa)\s+(\d[\d\-a-z]*)\b/i.exec(q);
+  if (abbrFirst) {
+    const abbr = abbrFirst[1].toLowerCase();
+    const fullName = STATUTE_ABBREVIATION_MAP[abbr];
+    if (fullName) return { abbr: abbrFirst[1].toUpperCase(), fullName, sectionOrArticle: abbrFirst[2] };
+  }
+
+  // Pattern: section/article <num> ABBR — e.g. "section 302 ppc", "article 25 constitution"
+  const sectionFirst = /\b(?:section|s\.|art(?:icle)?\.?)\s+(\d[\d\-a-z]*)\s+(?:of\s+)?([a-z\s]+)/i.exec(q);
+  if (sectionFirst) {
+    const sectionNum = sectionFirst[1];
+    const afterSection = sectionFirst[2].trim().split(/\s+/);
+    for (const word of afterSection) {
+      const abbr = word.toLowerCase();
+      const fullName = STATUTE_ABBREVIATION_MAP[abbr];
+      if (fullName) return { abbr: word.toUpperCase(), fullName, sectionOrArticle: sectionNum };
+    }
+    // Also check multi-word like "constitution of pakistan"
+    const tail = sectionFirst[2].trim();
+    const fullName = STATUTE_ABBREVIATION_MAP[tail.toLowerCase()];
+    if (fullName) return { abbr: tail, fullName, sectionOrArticle: sectionNum };
+  }
+
+  // Pattern: "Article 25 Constitution" (article first)
+  const articleFirst = /\barticle\s+(\d[\d\-a-z]*)\s+(?:of\s+)?(?:the\s+)?([a-z\s]+)/i.exec(q);
+  if (articleFirst) {
+    const sectionNum = articleFirst[1];
+    const tail = articleFirst[2].trim().split(/\s+/)[0].toLowerCase();
+    const fullName = STATUTE_ABBREVIATION_MAP[tail];
+    if (fullName) return { abbr: tail.toUpperCase(), fullName, sectionOrArticle: sectionNum };
+    // Try longer match
+    const longTail = articleFirst[2].trim().toLowerCase();
+    const fullName2 = STATUTE_ABBREVIATION_MAP[longTail];
+    if (fullName2) return { abbr: longTail, fullName: fullName2, sectionOrArticle: sectionNum };
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +275,8 @@ export const LEGAL_TOPICS: LegalTopic[] = [
 // Helpers
 // ---------------------------------------------------------------------------
 
-const CITATION_PATTERN = /\b(pld|scmr|ylr|mld|clc|plj|nlr|pcrlj|ptcl|ptd)\s+\d{4}\b/i;
+// Matches both report-style citations (1970 SCMR 869) AND case numbers (C.A. 8-Q of 2017)
+const CITATION_PATTERN = /\b(?:pld|scmr|ylr|mld|clc|plj|nlr|pcrlj|ptcl|ptd|lhc|ihc|shc|phc|bhc)\s+\d{4}|(?:19|20)\d{2}\s+(?:pld|scmr|ylr|mld|clc|plj|nlr|pcrlj|ptcl|ptd)\b|\bc\.?a\.?\s+\d+[\w\-]*\s+of\s+(?:19|20)\d{2}\b|\b(?:civil|criminal)\s+(?:appeal|petition)\s+(?:no\.?\s*)?\d+[\w\-]*\s+of\s+(?:19|20)\d{2}\b|\bwrit\s+petition\s+(?:no\.?\s*)?\d+[\w\-]*\s+of\s+(?:19|20)\d{2}\b|\br\.?p\.?a\.?\s+\d+[\w\-]*\s+of\s+(?:19|20)\d{2}\b/i;
 
 function norm(s: string): string {
   return s
@@ -199,6 +307,24 @@ export function classifyQueryIntent(rawQuery: string): QueryIntent {
       needsCaseLaw: true,
       needsStatutes: false,
       needsAdminDocs: false,
+    };
+  }
+
+  // --- Statute section reference? (e.g. "PPC 392", "Article 25 Constitution") ---
+  const statuteRef = detectStatuteRef(raw);
+  if (statuteRef) {
+    const expandedStat = `${statuteRef.fullName} section ${statuteRef.sectionOrArticle} ${normalized}`;
+    return {
+      raw,
+      normalized,
+      type: "statute",
+      topics: [],
+      expandedQuery: expandedStat,
+      expandedTerms: expandedStat.split(/\s+/),
+      needsCaseLaw: false,
+      needsStatutes: true,
+      needsAdminDocs: false,
+      statuteRef,
     };
   }
 

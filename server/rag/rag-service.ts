@@ -260,6 +260,9 @@ export async function indexUserDocument(userId: string, sourceDocumentId: number
       metadata: {
         sourceType: doc.sourceType || "other",
         fileExtension: doc.fileExtension || null,
+        sectionType: chunk.sectionType,
+        statuteCitations: chunk.statuteCitations,
+        judgmentResult: chunk.judgmentResult,
       },
     }));
     inserted += await insertDocumentChunkBatch(entries);
@@ -343,6 +346,9 @@ export async function indexAdminCaseLawDocument(adminKnowledgeId: number): Promi
         category: "case-law",
         adminKnowledgeId: doc.id,
         filename: fileName,
+        sectionType: chunk.sectionType,
+        statuteCitations: chunk.statuteCitations,
+        judgmentResult: chunk.judgmentResult,
       },
     }));
     inserted += await insertDocumentChunkBatch(entries);
@@ -426,6 +432,9 @@ export async function indexAdminKnowledgeDocument(adminKnowledgeId: number): Pro
         category: doc.category || "general",
         adminKnowledgeId: doc.id,
         filename: fileName,
+        sectionType: chunk.sectionType,
+        statuteCitations: chunk.statuteCitations,
+        judgmentResult: chunk.judgmentResult,
       },
     }));
     inserted += await insertDocumentChunkBatch(entries);
@@ -506,6 +515,9 @@ export async function indexAdminStatuteDocument(statuteDocumentId: number): Prom
         category: doc.category || "general",
         statuteDocumentId: doc.id,
         filename: fileName,
+        sectionType: chunk.sectionType,
+        statuteCitations: chunk.statuteCitations,
+        judgmentResult: chunk.judgmentResult,
       },
     }));
     inserted += await insertDocumentChunkBatch(entries);
@@ -601,6 +613,9 @@ export async function indexJudgmentDocument(judgmentId: string): Promise<RAGInde
         citationString: row.citationString,
         court: row.courtName || "",
         title: row.title || "",
+        sectionType: chunk.sectionType,
+        statuteCitations: chunk.statuteCitations,
+        judgmentResult: chunk.judgmentResult,
       },
     }));
     inserted += await insertDocumentChunkBatch(entries);

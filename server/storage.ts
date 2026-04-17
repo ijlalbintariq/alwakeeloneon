@@ -232,12 +232,14 @@ function extractKnownCaseLawReport(raw: string): string | null {
 function parseCaseLawCitationParts(citation: string): CaseLawCitationParts | null {
   const raw = String(citation || "").trim();
   if (!raw) return null;
+
+  // Strip brackets/parens content but preserve the text inside (for "PLJ 2019 SC (AJK) 123")
   const normalized = raw
     .replace(/[()[\],;:]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-  // Neutral compact format: 2014LHC5158 / 2022IHC77
+  // ── Format 1: Neutral compact  2014LHC5158 / 2022IHC77 ─────────────────────
   const compactNeutral = normalized.match(/\b((?:19|20)\d{2})(LHC|IHC|SHC|PHC|BHC|AJKHC)(\d{1,6})\b/i);
   if (compactNeutral) {
     const year = Number(compactNeutral[1]);
@@ -248,9 +250,10 @@ function parseCaseLawCitationParts(citation: string): CaseLawCitationParts | nul
     }
   }
 
-  // Year-first format: 1974 SCMR 184 / 1976 P Cr. L J 944
-  const yearFirst =
-    normalized.match(/\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+(\d{1,6})\b/i);
+  // ── Format 2: Year-first  1974 SCMR 184 / 1976 P Cr. L J 944 ───────────────
+  const yearFirst = normalized.match(
+    /\b((?:19|20)\d{2})\s+([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+(\d{1,6})\b/i,
+  );
   if (yearFirst) {
     const year = Number(yearFirst[1]);
     const report = extractKnownCaseLawReport(yearFirst[2]) || normalizeCaseLawCitationReport(yearFirst[2]);
@@ -260,15 +263,67 @@ function parseCaseLawCitationParts(citation: string): CaseLawCitationParts | nul
     }
   }
 
-  // Report-first format: SCMR 1974 184 / P Cr. L J 1976 944
-  const reportFirst =
-    normalized.match(/\b([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+((?:19|20)\d{2})\s+(\d{1,6})\b/i);
-  if (!reportFirst) return null;
-  const report = extractKnownCaseLawReport(reportFirst[1]) || normalizeCaseLawCitationReport(reportFirst[1]);
-  const year = Number(reportFirst[2]);
-  const page = Number(reportFirst[3]);
-  if (!Number.isInteger(year) || !Number.isInteger(page) || page < 1 || !report) return null;
-  return { year, report, page };
+  // ── Format 3: Report-first  SCMR 1974 184 / P Cr. L J 1976 944 ─────────────
+  const reportFirst = normalized.match(
+    /\b([A-Za-z][A-Za-z0-9.]{0,12}(?:\s+[A-Za-z][A-Za-z0-9.]{0,12}){0,4})\s+((?:19|20)\d{2})\s+(\d{1,6})\b/i,
+  );
+  if (reportFirst) {
+    const report = extractKnownCaseLawReport(reportFirst[1]) || normalizeCaseLawCitationReport(reportFirst[1]);
+    const year = Number(reportFirst[2]);
+    const page = Number(reportFirst[3]);
+    if (Number.isInteger(year) && Number.isInteger(page) && page > 0 && report) {
+      return { year, report, page };
+    }
+  }
+
+  // ── Format 4: Year + volume + code + page  "2015 (2) ILR 45" / "(2019) 3 SCC 100"
+  // After normalization: "2015 2 ILR 45" / "2019 3 SCC 100"
+  // Pattern: YEAR  VOL_NUM  CODE  PAGE
+  const yearVolFirst = normalized.match(
+    /\b((?:19|20)\d{2})\s+\d{1,4}\s+([A-Za-z][A-Za-z0-9.]{0,15}(?:\s+[A-Za-z][A-Za-z0-9.]{0,15}){0,3})\s+(\d{1,6})\b/i,
+  );
+  if (yearVolFirst) {
+    const year = Number(yearVolFirst[1]);
+    const report = extractKnownCaseLawReport(yearVolFirst[2]) || normalizeCaseLawCitationReport(yearVolFirst[2]);
+    const page = Number(yearVolFirst[3]);
+    if (Number.isInteger(year) && Number.isInteger(page) && page > 0 && report) {
+      return { year, report, page };
+    }
+  }
+
+  // ── Format 5: Report + year + qualifier + page  "NLR 2020 Civ 33" / "PLD 2019 SC 456"
+  // Pattern: CODE  YEAR  QUALIFIER  PAGE  (qualifier is non-numeric text between year and page)
+  const reportQualFirst = normalized.match(
+    /\b([A-Za-z][A-Za-z0-9.]{0,12})\s+((?:19|20)\d{2})\s+[A-Za-z&]+(?:\s+[A-Za-z&]+){0,2}\s+(\d{1,6})\b/i,
+  );
+  if (reportQualFirst) {
+    const report = extractKnownCaseLawReport(reportQualFirst[1]) || normalizeCaseLawCitationReport(reportQualFirst[1]);
+    const year = Number(reportQualFirst[2]);
+    const page = Number(reportQualFirst[3]);
+    if (Number.isInteger(year) && Number.isInteger(page) && page > 0 && report) {
+      return { year, report, page };
+    }
+  }
+
+  // ── Format 6: Any known report code with a year anywhere in the string ───────
+  // Last resort: extract year for hasTrustedCitation Criterion 2 even if page is unknown.
+  // Return with page=0 sentinel — callers that require page>0 will ignore this,
+  // but citationYear will be populated for the citation validity check.
+  const knownCodeMatch = normalized.match(
+    new RegExp(`\\b(${[...CASELAW_REPORT_CODES].join("|")})\\b`, "i"),
+  );
+  const anyYearMatch = normalized.match(/\b((?:19|20)\d{2})\b/);
+  if (knownCodeMatch && anyYearMatch) {
+    const year = Number(anyYearMatch[1]);
+    const report = normalizeCaseLawCitationReport(knownCodeMatch[1]);
+    if (Number.isInteger(year) && report) {
+      // page is unknown — use 0 so callers requiring page>0 skip structured match
+      // but citationYear and citationReport ARE set correctly
+      return { year, report, page: 0 };
+    }
+  }
+
+  return null;
 }
 
 function enrichCaseLawCitationFields<T extends Partial<InsertCaseLaw>>(entry: T): T {
@@ -296,6 +351,28 @@ function enrichCaseLawCitationFields<T extends Partial<InsertCaseLaw>>(entry: T)
   if (hasPage || parsed) {
     const value = Number(normalized.citationPage);
     normalized.citationPage = Number.isInteger(value) && value > 0 ? value : (parsed?.page ?? null);
+  }
+
+  // Fallback year extraction — runs when parseCaseLawCitationParts returned null or no year.
+  // Covers patterns that structured parsing misses:
+  //   "C.A. 8-Q of 2017"        → "of YYYY"
+  //   "R.P.A 155/2014"           → "/YYYY"
+  //   "2015 (2) ILR 45"          → year at start
+  //   "(2019) 3 SCC 100"         → year in brackets (already stripped by normalization)
+  //   "Unreported 2022"          → bare year at end
+  if (!normalized.citationYear && hasCitation) {
+    const citStr = String(entry.citation || "");
+    // Priority 1: "of YEAR" or "/YEAR" — case numbers
+    const ofYear = citStr.match(/\b(?:of\s+|\/)((?:19|20)\d{2})\b/i);
+    // Priority 2: Any 4-digit year in the string
+    const anyYear = citStr.match(/\b((?:19|20)\d{2})\b/);
+    const raw = ofYear?.[1] ?? anyYear?.[1];
+    if (raw) {
+      const y = Number(raw);
+      if (Number.isInteger(y) && y >= 1900 && y <= 2100) {
+        normalized.citationYear = y;
+      }
+    }
   }
 
   return normalized as T;
@@ -436,6 +513,8 @@ export interface IStorage {
   getLawJournals(): Promise<Array<{ id: number; code: string; name: string }>>;
   getCourtsRef(): Promise<Array<{ id: number; code: string; name: string; level: string }>>;
   searchJudgmentsByCitation(params: { year: number; journalCode?: string; page: number; court?: string }): Promise<CitationSearchResult[]>;
+  /** Full-text search the judgments table by keywords. Returns CaseLaw-shaped objects for pipeline compatibility. */
+  searchJudgmentsByKeywords(query: string, limit: number): Promise<CaseLaw[]>;
   getJudgmentDetail(id: string): Promise<JudgmentDetail | undefined>;
   createJudgment(entry: InsertJudgment): Promise<Judgment>;
   createCitationLinks(entries: InsertCitationLink[]): Promise<number>;
@@ -1738,22 +1817,68 @@ export class DatabaseStorage implements IStorage {
 
   async bulkCreateCaseLaw(entries: InsertCaseLaw[]): Promise<CaseLaw[]> {
     if (entries.length === 0) return [];
+
+    // Normalize and in-batch dedup
     const normalizedEntries = entries.map((entry) => enrichCaseLawCitationFields(entry));
     const perBatchDeduped: InsertCaseLaw[] = [];
-    const seen = new Set<string>();
+    const batchKeys = new Set<string>();
     for (const entry of normalizedEntries) {
       const key = buildCaseLawDedupKey(entry as Partial<CaseLaw>);
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
+      if (!key || batchKeys.has(key)) continue;
+      batchKeys.add(key);
       perBatchDeduped.push(entry);
     }
+    if (perBatchDeduped.length === 0) return [];
 
-    const results: CaseLaw[] = [];
-    for (const entry of perBatchDeduped) {
-      const created = await this.createCaseLaw(entry);
-      results.push(created);
+    // Bulk lookup to find already-existing records by citation text
+    const citationTexts = perBatchDeduped.map((e) =>
+      normalizeCaseLawCitationText(String(e.citation || "")).toLowerCase(),
+    );
+    const existingRows = await db
+      .select()
+      .from(caseLaw)
+      .where(sql`lower(trim(${caseLaw.citation})) = ANY(${citationTexts})`);
+
+    const existingByCit = new Map<string, CaseLaw>();
+    for (const row of existingRows) {
+      existingByCit.set(
+        normalizeCaseLawCitationText(row.citation).toLowerCase(),
+        row,
+      );
     }
-    return results;
+
+    // Split into truly-new vs already-existing
+    const toInsert: InsertCaseLaw[] = [];
+    const alreadyExist: CaseLaw[] = [];
+    for (const entry of perBatchDeduped) {
+      const key = normalizeCaseLawCitationText(String(entry.citation || "")).toLowerCase();
+      if (existingByCit.has(key)) {
+        alreadyExist.push(existingByCit.get(key)!);
+      } else {
+        toInsert.push(entry);
+      }
+    }
+
+    // Batch INSERT in chunks of 100 — use ON CONFLICT DO NOTHING via try/catch per chunk
+    const CHUNK = 100;
+    const inserted: CaseLaw[] = [];
+    for (let i = 0; i < toInsert.length; i += CHUNK) {
+      const chunk = toInsert.slice(i, i + CHUNK);
+      try {
+        const rows = await db.insert(caseLaw).values(chunk).returning();
+        inserted.push(...rows);
+      } catch {
+        // Chunk had a collision — fall back to individual inserts for safety
+        for (const entry of chunk) {
+          try {
+            const created = await this.createCaseLaw(entry);
+            inserted.push(created);
+          } catch { /* skip true duplicates */ }
+        }
+      }
+    }
+
+    return [...alreadyExist, ...inserted];
   }
 
   async getLawJournals(): Promise<Array<{ id: number; code: string; name: string }>> {
@@ -1820,6 +1945,108 @@ export class DatabaseStorage implements IStorage {
       decisionDate: row.decisionDate,
       pdfUrl: row.pdfUrl,
     }));
+  }
+
+  async searchJudgmentsByKeywords(query: string, limit: number): Promise<CaseLaw[]> {
+    const safeQuery = String(query || "").trim();
+    if (!safeQuery) return [];
+    const safeLimit = Math.max(1, Math.min(200, Number(limit) || 20));
+
+    const textPattern = `%${safeQuery}%`;
+    const tokenQuery = safeQuery
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length >= 2)
+      .slice(0, 12)
+      .join(" ");
+
+    const tsvRank = tokenQuery
+      ? sql<number>`COALESCE(ts_rank_cd(
+          to_tsvector('simple',
+            COALESCE(${judgments.title}, '') || ' ' ||
+            COALESCE(${judgments.headnotes}, '') || ' ' ||
+            COALESCE(${judgments.petitioner}, '') || ' ' ||
+            COALESCE(${judgments.respondent}, '') || ' ' ||
+            COALESCE(${judgments.citationString}, '')
+          ),
+          plainto_tsquery('simple', ${tokenQuery})
+        ), 0)`
+      : sql<number>`0`;
+
+    const whereClause = and(
+      eq(judgments.isActive, true),
+      or(
+        ilike(judgments.citationString, textPattern),
+        ilike(judgments.title, textPattern),
+        ilike(judgments.petitioner, textPattern),
+        ilike(judgments.respondent, textPattern),
+        ilike(judgments.headnotes, textPattern),
+        tokenQuery
+          ? sql`to_tsvector('simple',
+              COALESCE(${judgments.title}, '') || ' ' ||
+              COALESCE(${judgments.headnotes}, '') || ' ' ||
+              COALESCE(${judgments.petitioner}, '') || ' ' ||
+              COALESCE(${judgments.respondent}, '')
+            ) @@ plainto_tsquery('simple', ${tokenQuery})`
+          : sql`false`,
+      ),
+    );
+
+    const rows = await db
+      .select({
+        id:            judgments.id,
+        year:          judgments.year,
+        page:          judgments.page,
+        citationString: judgments.citationString,
+        title:         judgments.title,
+        petitioner:    judgments.petitioner,
+        respondent:    judgments.respondent,
+        headnotes:     judgments.headnotes,
+        courtName:     courtsRef.name,
+        courtSnapshot: judgments.courtNameSnapshot,
+        journalCode:   lawJournals.code,
+      })
+      .from(judgments)
+      .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+      .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
+      .where(whereClause!)
+      .orderBy(desc(tsvRank), desc(judgments.year))
+      .limit(safeLimit * 4);
+
+    // Convert judgment rows to CaseLaw-compatible objects for the AI pipeline
+    const seen = new Set<string>();
+    const results: CaseLaw[] = [];
+    for (const row of rows) {
+      const citation = String(row.citationString || "").trim();
+      if (!citation || seen.has(citation.toLowerCase())) continue;
+      seen.add(citation.toLowerCase());
+
+      // Derive a stable numeric id from UUID for dedup compatibility
+      const numericId = Math.abs(parseInt(String(row.id || "").replace(/-/g, "").slice(0, 8), 16)) || 0;
+      const courtStr = String(row.courtName || row.courtSnapshot || "");
+      const parties = [row.petitioner, row.respondent].filter(Boolean).join(" vs ");
+      const titleStr = String(row.title || parties || `Case ${citation}`).trim();
+      const summaryStr = String(row.headnotes || "").slice(0, 600).trim();
+
+      results.push({
+        id: numericId,
+        citation,
+        citationYear: Number.isInteger(row.year) ? row.year : null,
+        citationReport: row.journalCode || null,
+        citationPage: Number.isInteger(row.page) && row.page > 0 ? row.page : null,
+        citationRole: "primary",
+        court: courtStr,
+        title: titleStr,
+        summary: summaryStr,
+        keywords: [],
+        sourceDocId: null,
+        sourceType: "judgment",
+        sourceFilename: null,
+      } as CaseLaw);
+
+      if (results.length >= safeLimit) break;
+    }
+    return results;
   }
 
   async getJudgmentDetail(id: string): Promise<JudgmentDetail | undefined> {
