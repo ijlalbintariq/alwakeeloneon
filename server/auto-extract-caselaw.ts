@@ -39,6 +39,9 @@ interface ExtractedCase {
   title: string;
   summary: string;
   keywords: string[];
+  documentClassification?: "case_law" | "statute_document" | "legal_analysis" | "contract" | "procedure_guide" | "other";
+  fallbackExtraction?: boolean;
+  statuteReferences?: string[];
 }
 
 interface CitationMention {
@@ -595,6 +598,104 @@ function extractKeywords(text: string, citation: string, hintIndex?: number): st
 }
 
 // ---------------------------------------------------------------------------
+// Fallback Classifier: statute references + document type
+// ---------------------------------------------------------------------------
+
+const STATUTE_REFERENCE_PATTERN = /\b(PPC|CrPC|CPC|QSO|MFLO|ATA|NAB|CNSA|PECA|FIA|Constitution)\s*(?:Section|Article|No\.?)?\s*(\d[\d\-a-z]*)\b/gi;
+
+function createFallbackDocumentClassification(text: string, sourceFilename?: string): ExtractedCase | null {
+  if (!text || text.length < 100) return null;
+
+  // 1. Extract statute references
+  const statuteMatches: string[] = [];
+  let match: RegExpExecArray | null;
+  const pattern = new RegExp(STATUTE_REFERENCE_PATTERN.source, STATUTE_REFERENCE_PATTERN.flags);
+  while ((match = pattern.exec(text)) !== null) {
+    const fullRef = `${match[1]} ${match[2]}`.trim();
+    if (!statuteMatches.includes(fullRef)) {
+      statuteMatches.push(fullRef);
+    }
+  }
+
+  if (statuteMatches.length === 0) return null;
+
+  // 2. Classify document type based on keyword frequency
+  const lowerText = text.toLowerCase();
+  const headCtx = text.slice(0, 600).toLowerCase();
+  const combined = `${lowerText} ${headCtx}`;
+
+  let documentClassification: "case_law" | "statute_document" | "legal_analysis" | "contract" | "procedure_guide" | "other" = "other";
+
+  // Count keyword matches for classification
+  const statuteDocScore = (combined.match(/section|article|punishment|penalty|amended|repeal|gazette/gi) || []).length;
+  const legalAnalysisScore = (combined.match(/facts|held|judgment|decision|court|bench|petition|suit/gi) || []).length;
+  const contractScore = (combined.match(/party|consideration|whereas|hereby|agreement|contract|signed|witness/gi) || []).length;
+  const procedureScore = (combined.match(/application|form|procedure|provision|rule|guideline|requirement|step/gi) || []).length;
+
+  const maxScore = Math.max(statuteDocScore, legalAnalysisScore, contractScore, procedureScore);
+
+  if (maxScore > 0) {
+    if (statuteDocScore === maxScore) {
+      documentClassification = "statute_document";
+    } else if (legalAnalysisScore === maxScore) {
+      documentClassification = "legal_analysis";
+    } else if (contractScore === maxScore) {
+      documentClassification = "contract";
+    } else if (procedureScore === maxScore) {
+      documentClassification = "procedure_guide";
+    }
+  }
+
+  // 3. Extract keywords from the document
+  const keywords = new Set<string>();
+
+  // Add statute references as keywords
+  for (const ref of statuteMatches) {
+    const parts = ref.split(/\s+/);
+    if (parts[0]) keywords.add(parts[0]); // Add statute code like "PPC", "CrPC"
+  }
+
+  // Add document classification as keyword
+  keywords.add(documentClassification.replace(/_/g, " "));
+
+  // Add legal topic keywords
+  for (const [term, related] of Object.entries(LEGAL_KEYWORDS_MAP)) {
+    if (combined.includes(term.toLowerCase())) {
+      for (const kw of related.slice(0, 2)) keywords.add(kw);
+    }
+  }
+
+  // Add statute-related keywords
+  for (const [pattern, kws] of STATUTE_KEYWORD_MAP) {
+    if (pattern.test(combined)) {
+      for (const kw of kws) keywords.add(kw);
+    }
+  }
+
+  if (keywords.size === 0) {
+    keywords.add("statute reference");
+    keywords.add("legal document");
+  }
+
+  // 4. Build fallback record
+  const pseudoCitation = sourceFilename ? sourceFilename.replace(/\.[^.]+$/, "") : `statute-ref`;
+  const title = `Statute Reference: ${statuteMatches.join(", ")}`;
+  const summary = `Document containing references to: ${statuteMatches.join(", ")}`;
+
+  return {
+    citation: pseudoCitation,
+    citationRole: "primary",
+    court: "Statute Reference",
+    title,
+    summary,
+    keywords: Array.from(keywords).slice(0, 12),
+    documentClassification,
+    fallbackExtraction: true,
+    statuteReferences: statuteMatches,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Public: nlpExtractCases
 // ---------------------------------------------------------------------------
 
@@ -606,7 +707,11 @@ export function nlpExtractCases(text: string, options?: CitationRoleAssignmentOp
     mentions = [{ citation: normalizeCitation(preferredPrimary), index: 0 }];
   }
 
-  if (mentions.length === 0) return [];
+  if (mentions.length === 0) {
+    // Try fallback classifier to detect statute references
+    const fallback = createFallbackDocumentClassification(text, options?.sourceFilename);
+    return fallback ? [fallback] : [];
+  }
 
   const inferredPrimary    = inferPrimaryCitation(text, mentions, preferredPrimary);
   const inferredPrimaryKey = inferredPrimary ? normalizeCitationKey(inferredPrimary) : "";
