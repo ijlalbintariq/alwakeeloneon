@@ -601,7 +601,9 @@ function extractKeywords(text: string, citation: string, hintIndex?: number): st
 // Fallback Classifier: statute references + document type
 // ---------------------------------------------------------------------------
 
-const STATUTE_REFERENCE_PATTERN = /\b(PPC|CrPC|CPC|QSO|MFLO|ATA|NAB|CNSA|PECA|FIA|Constitution)\s*(?:Section|Article|No\.?)?\s*(\d[\d\-a-z]*)\b/gi;
+// Matches statute references in multiple formats:
+// "PPC 302", "CrPC 497", "PPC Section 302", "Section 302 PPC", "Section 302 of the PPC", "Article 25 of the Constitution"
+const STATUTE_REFERENCE_PATTERN = /(?:(?:Section|Article|No\.?)\s+(\d[\d\-a-z]*)\s+(?:of\s+)?(?:the\s+)?)?(PPC|CrPC|CPC|QSO|MFLO|ATA|NAB|CNSA|PECA|FIA|Constitution)(?:\s+(?:Section|Article|No\.?)?\s*(\d[\d\-a-z]*))?|(PPC|CrPC|CPC|QSO|MFLO|ATA|NAB|CNSA|PECA|FIA)\s+(\d[\d\-a-z]*)/gi;
 
 function createFallbackDocumentClassification(text: string, sourceFilename?: string): ExtractedCase | null {
   if (!text || text.length < 100) return null;
@@ -611,9 +613,22 @@ function createFallbackDocumentClassification(text: string, sourceFilename?: str
   let match: RegExpExecArray | null;
   const pattern = new RegExp(STATUTE_REFERENCE_PATTERN.source, STATUTE_REFERENCE_PATTERN.flags);
   while ((match = pattern.exec(text)) !== null) {
-    const fullRef = `${match[1]} ${match[2]}`.trim();
-    if (!statuteMatches.includes(fullRef)) {
-      statuteMatches.push(fullRef);
+    // Pattern has multiple alternatives with different group structures
+    // Alternative 1: "Section 302 of PPC" => groups: [1]num, [2]code, [3]num
+    // Alternative 2: "PPC 302" => groups: [4]code, [5]num
+    let code = match[2] || match[4];
+    let num = match[1] || match[3] || match[5];
+
+    if (code && num) {
+      const fullRef = `${code} ${num}`;
+      if (!statuteMatches.includes(fullRef)) {
+        statuteMatches.push(fullRef);
+      }
+    } else if (code) {
+      // Just code without number (e.g., "Constitution")
+      if (!statuteMatches.includes(code)) {
+        statuteMatches.push(code);
+      }
     }
   }
 
