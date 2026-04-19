@@ -39,9 +39,9 @@ interface ExtractedCase {
   title: string;
   summary: string;
   keywords: string[];
-  documentClassification?: "case_law" | "statute_document" | "legal_analysis" | "contract" | "procedure_guide" | "other";
-  fallbackExtraction?: boolean;
-  statuteReferences?: string[];
+  documentClassification: "case_law" | "statute_document" | "legal_analysis" | "contract" | "procedure_guide" | "other";
+  fallbackExtraction: boolean;
+  statuteReferences: string[];
 }
 
 interface CitationMention {
@@ -769,6 +769,9 @@ export function nlpExtractCases(text: string, options?: CitationRoleAssignmentOp
       title: title || fallbackTitle,
       summary: summary || fallbackSummary,
       keywords,
+      documentClassification: "case_law",
+      fallbackExtraction: false,
+      statuteReferences: [],
     });
   }
 
