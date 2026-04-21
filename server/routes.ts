@@ -10776,8 +10776,8 @@ The user has attached the following documents for your reference. Analyze them c
           const citationCheckedCached = await enforceInternalCaseCitationIntegrity(scopedCachedContent, {
             placeholder: "",
             normalizeVerified: true,
-            requirePrimary: enforcePrimaryLinkedSourceCitations,
-            requireLinkedSource: enforcePrimaryLinkedSourceCitations,
+            requirePrimary: citationPolicy.strict,
+            requireLinkedSource: citationPolicy.strict,
             policy: citationPolicy,
           });
           return res.json({
@@ -10885,8 +10885,8 @@ The user has attached the following documents for your reference. Analyze them c
         const citationCheckedStream = await enforceInternalCaseCitationIntegrity(fullContent, {
           placeholder: "",
           normalizeVerified: true,
-          requirePrimary: enforcePrimaryLinkedSourceCitations,
-          requireLinkedSource: enforcePrimaryLinkedSourceCitations,
+          requirePrimary: citationPolicy.strict,
+          requireLinkedSource: citationPolicy.strict,
           policy: citationPolicy,
         });
         if (citationCheckedStream.content !== fullContent) {
