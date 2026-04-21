@@ -2436,6 +2436,9 @@ function stripTrailingReferencesArtifacts(content: string): string {
     /\n?\s*\{\s*"judgments"\s*:\s*\[[\s\S]*?\]\s*,\s*"laws"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/i,
     /\n?\s*\{\s*"laws"\s*:\s*[^,\}\n]*\s*,\s*"judgments"\s*:\s*[^\}\n]*\s*\}\s*$/i,
     /\n?\s*\{\s*"judgments"\s*:\s*[^,\}\n]*\s*,\s*"laws"\s*:\s*[^\}\n]*\s*\}\s*$/i,
+    // Catch malformed JSON artifacts like {"laws","judgments"} or incomplete refs
+    /\n?\s*\{\s*"laws"\s*[,:]?\s*,?\s*"judgments"\s*[,:]?\s*\}\s*$/i,
+    /\n?\s*\{\s*"judgments"\s*[,:]?\s*,?\s*"laws"\s*[,:]?\s*\}\s*$/i,
   ];
   while (body !== prev) {
     prev = body;

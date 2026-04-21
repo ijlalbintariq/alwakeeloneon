@@ -131,11 +131,17 @@ export function parseReferences(content: string): { cleanContent: string; refere
   }
 
   if (!chosenPayload) {
-    const malformedTailPattern =
-      /\n?\s*(?:references\s*)?\{\s*"laws"\s*:\s*[^,\}\n]*\s*,\s*"judgments"\s*:\s*[^\}\n]*\s*\}\s*$/i;
-    const malformedTailMatch = content.match(malformedTailPattern);
-    if (malformedTailMatch && typeof malformedTailMatch.index === "number") {
-      return { cleanContent: content.slice(0, malformedTailMatch.index).trimEnd(), references: null };
+    const malformedTailPatterns = [
+      /\n?\s*(?:references\s*)?\{\s*"laws"\s*:\s*[^,\}\n]*\s*,\s*"judgments"\s*:\s*[^\}\n]*\s*\}\s*$/i,
+      // Also catch malformed JSON like {"laws","judgments"} or missing colons/values
+      /\n?\s*(?:references\s*)?\{\s*"laws"\s*[,:]?\s*,?\s*"judgments"\s*[,:]?\s*\}\s*$/i,
+      /\n?\s*(?:references\s*)?\{\s*"judgments"\s*[,:]?\s*,?\s*"laws"\s*[,:]?\s*\}\s*$/i,
+    ];
+    for (const pattern of malformedTailPatterns) {
+      const malformedTailMatch = content.match(pattern);
+      if (malformedTailMatch && typeof malformedTailMatch.index === "number") {
+        return { cleanContent: content.slice(0, malformedTailMatch.index).trimEnd(), references: null };
+      }
     }
     return { cleanContent: content, references: null };
   }
