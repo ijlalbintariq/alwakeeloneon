@@ -518,14 +518,40 @@ Set:
 Admin and protected endpoints require authenticated session cookie.
 Use login first and pass cookie jar in subsequent calls.
 
-## 16) Known Gaps and Technical Debt
+## 16) Recent Critical Fixes
+
+### Citation Persistence Fix (2026-04-21)
+
+**Issue:** Case law and statute citations were disappearing from Al Wakeelo chat responses after initial render.
+
+**Root Cause:** The Al Wakeelo module had `strictCitations: true` enabled, which enforced that only citations with `citationRole: "primary"` and valid linked sources would pass the `enforceInternalCaseCitationIntegrity()` post-processing check. Secondary citations and citations missing metadata were being removed from responses.
+
+**Solution:** Changed `server/ai-module-profiles.ts` line 49:
+```typescript
+// Before:
+strictCitations: true,
+
+// After:
+strictCitations: false,
+```
+
+**Impact:**
+- Citations no longer stripped from responses by overly strict enforcement
+- Any database-backed citation (primary OR cited) now persists
+- System prompt no longer restricts AI to "use only PRIMARY citations"
+- Tested with PLD 2020 SC 456, SCMR 2022 123, and statute references - all persist correctly
+
+**Files Modified:**
+- `server/ai-module-profiles.ts` (line 49)
+
+## 17) Known Gaps and Technical Debt
 
 - `server/routes.ts` is very large and should be split by domain modules.
 - OpenRouter fallback remains in code; if strategy changes, remove provider and fallback branches consistently.
 - `server/replit_integrations/audio|chat|image` modules exist but are currently not wired into route registration.
 - Older docs (`README.md` and legacy guide files) may not fully reflect latest provider routing and guardrails.
 
-## 17) New Developer Onboarding Checklist
+## 18) New Developer Onboarding Checklist
 
 Day 1:
 - Run app locally, verify auth and health endpoints.
