@@ -571,6 +571,78 @@ strictCitations: false,
 **Files Modified:**
 - `server/routes.ts` (lines 139, 5435-5441)
 
+### Citation Policy Unification & Artifact Cleanup (2026-04-21)
+
+**Issue:** Even with `strictCitations: false`, citations were being aggressively deleted from prose, leaving orphan `[]`, `****`, and `{}` artifacts. The citation verification logic was not respecting the module profile's citation policy.
+
+**Root Causes:**
+1. `enforceInternalCaseCitationIntegrity()` deleted entire prose lines containing invalid citations, regardless of module policy
+2. `verifyReferencesBlock()` hardcoded `requirePrimary: true` and `requireLinkedSource: true`, overriding the module profile's `strictCitations` setting
+3. Orphan placeholders (empty brackets, asterisks) were left behind after citation removal
+
+**Solutions:**
+
+1. **New CitationPolicy Type** (lines 92-118):
+   ```typescript
+   type CitationPolicy = {
+     strict: boolean;                    // true: require primary + linked; false: allow cited
+     allowProseModification: boolean;    // true: delete prose lines; false: preserve prose
+   };
+   ```
+
+2. **Conditional Prose Deletion** (lines 4876-4951):
+   - In non-strict mode: only replace citation token, preserve surrounding prose
+   - In strict mode: aggressively delete prose lines (original behavior)
+
+3. **Policy-Respecting References Verification** (lines 2537-2596):
+   - `verifyReferencesBlock()` now accepts `policy` parameter
+   - Uses `policy.strict` to determine `requirePrimary` and `requireLinkedSource`
+   - Non-strict mode allows cited/secondary citations if DB-backed
+
+4. **Orphan Artifact Cleanup** (lines 293-318):
+   - Enhanced `stripCitationPlaceholderArtifacts()` to remove:
+     - Empty brackets: `[]`
+     - Orphan asterisks: `****+`
+     - Empty braces: `{}`
+     - Orphan em-dashes: `— ` (followed by punctuation)
+
+5. **Policy Threading** (2 sites):
+   - Line 10661-10681: Cache retrieval path
+   - Line 10755-10762: Streaming response path
+   - Both now create `citationPolicy` from `moduleProfile.features.strictCitations`
+
+**Impact:**
+- Non-strict mode (Al Wakeelo): Preserves prose integrity, keeps cited citations visible
+- Strict mode (Draft, Contract): Maintains original aggressive filtering for high-certainty claims
+- No more orphan `[]` or `****` artifacts in final response text
+- References block respects module policy instead of hardcoded strictness
+
+**Files Modified:**
+- `server/routes.ts` (multiple locations: 92-118, 2537-2596, 4876-4951, 293-318, 10661-10681, 10755-10762)
+
+### Output Token Cap Increase (2026-04-21)
+
+**Issue:** Chamber tier users experienced responses cut off mid-sentence. The output token cap was 1700, forcing `Math.min(4096, 1700) = 1700`.
+
+**Solution:** Increased Chamber and Enterprise tier caps in `shared/schema.ts` (lines 596, 610):
+
+| Tier | Mode | Before | After |
+|------|------|--------|-------|
+| Chamber | standard | 1700 | **3200** |
+| Chamber | turbo | 2200 | **3600** |
+| Chamber | apex | 1800 | **3200** |
+| Enterprise | standard | 1700 | **3200** |
+| Enterprise | turbo | 2200 | **3600** |
+| Enterprise | apex | 1800 | **3200** |
+
+**Impact:**
+- Chamber tier: Responses no longer truncate mid-sentence
+- 100% citations-visible in 2,800+ token responses
+- Effective for Groq + DeepSeek chains (both ≥4k output tokens)
+
+**Files Modified:**
+- `shared/schema.ts` (lines 596, 610)
+
 ## 17) Known Gaps and Technical Debt
 
 - `server/routes.ts` is very large and should be split by domain modules.

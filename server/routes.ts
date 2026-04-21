@@ -105,6 +105,17 @@ const TOKEN_LIMITS = {
   "contract-drafting": 4096,
 };
 
+// Citation strictness policy: controls how aggressively citations are filtered
+type CitationPolicy = {
+  strict: boolean; // true: require primary + linked source; false: allow DB-backed primary or cited
+  allowProseModification: boolean; // true: delete prose lines containing removed citations; false: preserve prose
+};
+
+const DEFAULT_CITATION_POLICY: CitationPolicy = {
+  strict: false,
+  allowProseModification: false, // Non-strict mode: preserve prose integrity
+};
+
 const COST_PER_1K_TOKENS: Record<string, { input: number; output: number }> = {
   "gemini-3-flash-preview": { input: 0.00015, output: 0.0006 },
   "gemini-3-pro-preview": { input: 0.00125, output: 0.005 },
@@ -301,7 +312,11 @@ function stripCitationPlaceholderArtifacts(text: string): string {
   return repairBrokenTokens(String(text)
     .replace(/\[\s*CASE CITATION REQUIRED\s*\]/gi, "")
     .replace(/\[\s*Pakistani case citation required\s*\]/gi, "")
+    .replace(/\*{2,}\s*\*{2,}/g, "")
+    .replace(/\[\s*\]/g, "")
     .replace(/\(\s*\)/g, "")
+    .replace(/\{\s*\}/g, "")
+    .replace(/—\s*(?=[.,;:\n]|$)/g, "")
     .replace(/\s+,/g, ",")
     .replace(/\s+\./g, ".")
     .replace(/\s+;/g, ";")
@@ -2570,7 +2585,8 @@ function hasLinkedPrimaryCaseLawSource(
   return sourceType === "admin" || sourceType === "user" || sourceType === "statute";
 }
 
-async function verifyReferencesBlock(content: string): Promise<string> {
+async function verifyReferencesBlock(content: string, policy?: CitationPolicy): Promise<string> {
+  const effectivePolicy = policy || DEFAULT_CITATION_POLICY;
   const match = content.match(REFERENCES_BLOCK_REGEX);
   if (!match) return ensureAlWakeeloReferencesBlock(content);
 
@@ -2617,11 +2633,15 @@ async function verifyReferencesBlock(content: string): Promise<string> {
       const court = sanitizeReferenceText(judgment?.court || "", 120);
       const description = sanitizeReferenceText(judgment?.description || "", 320);
       if (!citation) return null;
+      // Phase 3: Apply policy-based verification
       const matched = await resolveCaseCitationFromInternalDb(citation, {
-        requirePrimary: true,
-        requireLinkedSource: true,
+        requirePrimary: effectivePolicy.strict,
+        requireLinkedSource: effectivePolicy.strict,
       }).catch(() => null);
-      if (!matched || !isCaseLawRowCitationTrusted(matched) || !hasLinkedPrimaryCaseLawSource(matched)) return null;
+      // In strict mode, require linked source; in non-strict, just verify DB-backed
+      const isValid = matched && isCaseLawRowCitationTrusted(matched)
+        && (effectivePolicy.strict ? hasLinkedPrimaryCaseLawSource(matched) : true);
+      if (!isValid) return null;
       return {
         citation: sanitizeReferenceText(matched.citation, 140),
         court: sanitizeReferenceText(matched.court || court || "Pakistani Courts", 120),
@@ -2644,9 +2664,9 @@ async function verifyReferencesBlock(content: string): Promise<string> {
   return renderSingleReferencesBlock(content, JSON.parse(normalized));
 }
 
-async function applyAlWakeeloSafetyGuardrails(content: string): Promise<string> {
+async function applyAlWakeeloSafetyGuardrails(content: string, policy?: CitationPolicy): Promise<string> {
   const withRefs = ensureAlWakeeloReferencesBlock(content);
-  const verifiedRefs = await verifyReferencesBlock(withRefs);
+  const verifiedRefs = await verifyReferencesBlock(withRefs, policy);
   return verifiedRefs;
 }
 
@@ -4931,6 +4951,7 @@ async function enforceInternalCaseCitationIntegrity(
     normalizeVerified?: boolean;
     requirePrimary?: boolean;
     requireLinkedSource?: boolean;
+    policy?: CitationPolicy;
   },
 ): Promise<{ content: string; removed: string[]; verified: string[] }> {
   const text = String(content || "");
@@ -4943,10 +4964,12 @@ async function enforceInternalCaseCitationIntegrity(
     return { content: text, removed: [], verified: [] };
   }
 
+  const policy = options?.policy || DEFAULT_CITATION_POLICY;
   const placeholder = normalizeSpaces(String(options?.placeholder ?? ""));
   const normalizeVerified = options?.normalizeVerified !== false;
-  const requirePrimary = options?.requirePrimary === true;
-  const requireLinkedSource = options?.requireLinkedSource === true;
+  // Use policy-based filtering: strict mode requires primary + linked, non-strict allows cited
+  const requirePrimary = options?.requirePrimary !== undefined ? options.requirePrimary : policy.strict;
+  const requireLinkedSource = options?.requireLinkedSource !== undefined ? options.requireLinkedSource : policy.strict;
   const resolvedByKey = new Map<string, CaseLaw | null>();
   const removed = new Set<string>();
   const verifiedByKey = new Map<string, string>();
@@ -4979,17 +5002,17 @@ async function enforceInternalCaseCitationIntegrity(
   if (removed.size > 0) {
     const longestFirst = Array.from(removed).filter(Boolean).sort((a, b) => b.length - a.length);
     for (const raw of longestFirst) {
-      // Remove citation and any orphaned context on same line/paragraph
-      // Pattern: citation followed by tabs and details, or citation followed by newline and details
       const escapedCitation = escapeRegExp(raw);
 
-      // Remove entire lines containing only the citation followed by tabs/metadata
-      cleaned = cleaned.replace(new RegExp(`^[\\s]*${escapedCitation}\\s*[\\t\\s]+[^\\n]*$`, "gim"), "");
+      if (policy.allowProseModification) {
+        // Strict mode: aggressively remove prose containing invalid citations
+        // Remove entire lines containing only the citation followed by tabs/metadata
+        cleaned = cleaned.replace(new RegExp(`^[\\s]*${escapedCitation}\\s*[\\t\\s]+[^\\n]*$`, "gim"), "");
+        // Remove citation followed by context on same line
+        cleaned = cleaned.replace(new RegExp(`${escapedCitation}\\s*[\\t\\s]+[^\\n]*`, "gi"), "");
+      }
 
-      // Remove citation followed by context on same line
-      cleaned = cleaned.replace(new RegExp(`${escapedCitation}\\s*[\\t\\s]+[^\\n]*`, "gi"), "");
-
-      // Finally, remove any remaining standalone citation
+      // Non-strict or common: just replace the citation token itself, preserve surrounding prose
       cleaned = cleaned.replace(new RegExp(escapedCitation, "gi"), placeholder || "");
 
       // Clean up leftover tabs and extra whitespace
@@ -10739,8 +10762,12 @@ The user has attached the following documents for your reference. Analyze them c
         const cached = await storage.getCachedResponse("ai-chat", hash);
         if (cached && isCacheFresh(cached.createdAt)) {
           await storage.incrementCacheHit(cached.id).catch(() => {});
+          const citationPolicy: CitationPolicy = {
+            strict: moduleProfile.features.strictCitations,
+            allowProseModification: moduleProfile.features.strictCitations,
+          };
           const cachedContent = moduleType === "al-wakeelo" && !directMode
-            ? await applyAlWakeeloSafetyGuardrails(cached.response).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
+            ? await applyAlWakeeloSafetyGuardrails(cached.response, citationPolicy).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
             : cached.response;
           const scopedCachedContent = suppressWrongIndianJurisdictionForPakCitation(
             enforcePakistanLawOnlyOutput(cachedContent),
@@ -10751,6 +10778,7 @@ The user has attached the following documents for your reference. Analyze them c
             normalizeVerified: true,
             requirePrimary: enforcePrimaryLinkedSourceCitations,
             requireLinkedSource: enforcePrimaryLinkedSourceCitations,
+            policy: citationPolicy,
           });
           return res.json({
             content: citationCheckedCached.content,
@@ -10830,8 +10858,13 @@ The user has attached the following documents for your reference. Analyze them c
         }
 
         fullContent = suppressWrongIndianJurisdictionForPakCitation(fullContent, latestUserPromptText);
+        // Phase 1+3: Pass policy to guardrails
         if (moduleType === "al-wakeelo" && !directMode) {
-          const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
+          const citationPolicy: CitationPolicy = {
+            strict: moduleProfile.features.strictCitations,
+            allowProseModification: moduleProfile.features.strictCitations,
+          };
+          const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent, citationPolicy).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
           if (adjusted !== fullContent) {
             fullContent = adjusted;
             res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
@@ -10844,11 +10877,17 @@ The user has attached the following documents for your reference. Analyze them c
           res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
           res.write(`data: ${JSON.stringify({ text: scopedFullContent })}\n\n`);
         }
+        // Phase 1: Use module profile to determine citation policy
+        const citationPolicy: CitationPolicy = {
+          strict: moduleProfile.features.strictCitations,
+          allowProseModification: moduleProfile.features.strictCitations, // Only modify prose in strict mode
+        };
         const citationCheckedStream = await enforceInternalCaseCitationIntegrity(fullContent, {
           placeholder: "",
           normalizeVerified: true,
           requirePrimary: enforcePrimaryLinkedSourceCitations,
           requireLinkedSource: enforcePrimaryLinkedSourceCitations,
+          policy: citationPolicy,
         });
         if (citationCheckedStream.content !== fullContent) {
           fullContent = citationCheckedStream.content;
