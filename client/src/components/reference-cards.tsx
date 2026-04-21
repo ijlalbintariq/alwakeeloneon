@@ -131,16 +131,29 @@ export function parseReferences(content: string): { cleanContent: string; refere
   }
 
   if (!chosenPayload) {
-    const malformedTailPatterns = [
+    // Patterns to detect and remove malformed JSON artifacts
+    const malformedJsonPatterns = [
+      // Pattern 1: Properly formed JSON at end but incomplete
       /\n?\s*(?:references\s*)?\{\s*"laws"\s*:\s*[^,\}\n]*\s*,\s*"judgments"\s*:\s*[^\}\n]*\s*\}\s*$/i,
-      // Also catch malformed JSON like {"laws","judgments"} or missing colons/values
-      /\n?\s*(?:references\s*)?\{\s*"laws"\s*[,:]?\s*,?\s*"judgments"\s*[,:]?\s*\}\s*$/i,
-      /\n?\s*(?:references\s*)?\{\s*"judgments"\s*[,:]?\s*,?\s*"laws"\s*[,:]?\s*\}\s*$/i,
+      // Pattern 2: Malformed JSON without proper colons/values anywhere in content
+      /\n?\s*(?:references\s*)?\{\s*"laws"\s*[:;,]?\s*[,:]?\s*"judgments"\s*[:;,]?\s*\}\s*?(?=\n|$)/i,
+      /\n?\s*(?:references\s*)?\{\s*"judgments"\s*[:;,]?\s*[,:]?\s*"laws"\s*[:;,]?\s*\}\s*?(?=\n|$)/i,
+      // Pattern 3: Catch anywhere in content (not just at end)
+      /\n?\s*\{\s*"laws"\s*[:;,]?\s*[,:]?\s*"judgments"\s*[:;,]?\s*\}/i,
+      /\n?\s*\{\s*"judgments"\s*[:;,]?\s*[,:]?\s*"laws"\s*[:;,]?\s*\}/i,
     ];
-    for (const pattern of malformedTailPatterns) {
-      const malformedTailMatch = content.match(pattern);
-      if (malformedTailMatch && typeof malformedTailMatch.index === "number") {
-        return { cleanContent: content.slice(0, malformedTailMatch.index).trimEnd(), references: null };
+
+    // Try to find and remove malformed JSON
+    for (const pattern of malformedJsonPatterns) {
+      const match = content.match(pattern);
+      if (match && typeof match.index === "number") {
+        // For end-of-content patterns, cut at the match
+        if (pattern.source.includes("$")) {
+          return { cleanContent: content.slice(0, match.index).trimEnd(), references: null };
+        }
+        // For mid-content patterns, remove the matched JSON and continue
+        const cleaned = content.slice(0, match.index) + content.slice(match.index + match[0].length);
+        return { cleanContent: cleaned.trimEnd(), references: null };
       }
     }
     return { cleanContent: content, references: null };
