@@ -142,7 +142,7 @@ const CASELAW_PENDING_PROCESSING_STALE_MINUTES = Math.max(5, Number(process.env.
 const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
 const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
 const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_TOKEN_BUDGET || 900));
-const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 1800));
+const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 2500));
 const ATTACHMENT_PROMPT_TOKEN_BUDGET = Math.max(500, Number(process.env.ATTACHMENT_PROMPT_TOKEN_BUDGET || 2200));
 const ATTACHMENT_FILE_TOKEN_BUDGET = Math.max(150, Number(process.env.ATTACHMENT_FILE_TOKEN_BUDGET || 800));
 const CASELAW_RAG_INDEX_DOC_TIMEOUT_MS = Math.max(5000, Number(process.env.CASELAW_RAG_INDEX_DOC_TIMEOUT_MS || 45000));
@@ -5552,13 +5552,13 @@ async function getCachedOrCall(
 
 const KNOWLEDGE_EXCERPT_LIMIT = 1500;
 const KNOWLEDGE_SOURCES_PER_TIER = 2;
-const KNOWLEDGE_STATUTES_LIMIT = 3;
-const KNOWLEDGE_CASELAW_LIMIT = Math.max(3, Number(process.env.KNOWLEDGE_CASELAW_LIMIT || 6));
+const KNOWLEDGE_STATUTES_LIMIT = Math.max(3, Number(process.env.KNOWLEDGE_STATUTES_LIMIT || 5));
+const KNOWLEDGE_CASELAW_LIMIT = Math.max(3, Number(process.env.KNOWLEDGE_CASELAW_LIMIT || 10));
 const KNOWLEDGE_CONTEXT_CACHE_TTL_MS = Math.max(10_000, Number(process.env.KNOWLEDGE_CONTEXT_CACHE_TTL_MS || 120_000));
 const KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS = Math.max(1_000, Number(process.env.KNOWLEDGE_CASELAW_SEARCH_TIMEOUT_MS || 4_000));
-const KNOWLEDGE_CASELAW_EXCERPT_DOCS = Math.max(0, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_DOCS || 1));
-const KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS = Math.max(200, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS || 1_200));
-const KNOWLEDGE_OUTER_DEADLINE_MS = Math.max(500, Number(process.env.KNOWLEDGE_OUTER_DEADLINE_MS || 2_500));
+const KNOWLEDGE_CASELAW_EXCERPT_DOCS = Math.max(0, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_DOCS || 3));
+const KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS = Math.max(200, Number(process.env.KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS || 2_000));
+const KNOWLEDGE_OUTER_DEADLINE_MS = Math.max(500, Number(process.env.KNOWLEDGE_OUTER_DEADLINE_MS || 4_000));
 const KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS = Math.max(500, Number(process.env.KNOWLEDGE_ORG_SEARCH_TIMEOUT_MS || 1_500));
 const CASE_CITATION_RESOLVE_CACHE_TTL_MS = Math.max(10_000, Number(process.env.CASE_CITATION_RESOLVE_CACHE_TTL_MS || 180_000));
 // Retrieval-level cache: cache raw case-law search results so repeated/similar queries skip the FTS round-trip.
