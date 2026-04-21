@@ -544,6 +544,33 @@ strictCitations: false,
 **Files Modified:**
 - `server/ai-module-profiles.ts` (line 49)
 
+### Case Law Retrieval Depth Improvement (2026-04-21)
+
+**Goal:** Increase how many case law records and judgment excerpts are injected into the AI context per query.
+
+**Changes made in `server/routes.ts`:**
+
+| Constant | Before | After | Env Var |
+|----------|--------|-------|---------|
+| `KNOWLEDGE_CASELAW_LIMIT` | 6 | **10** | `KNOWLEDGE_CASELAW_LIMIT` |
+| `KNOWLEDGE_STATUTES_LIMIT` | 3 (hardcoded) | **5** | `KNOWLEDGE_STATUTES_LIMIT` |
+| `KNOWLEDGE_CASELAW_EXCERPT_DOCS` | 1 | **3** | `KNOWLEDGE_CASELAW_EXCERPT_DOCS` |
+| `KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS` | 1,200ms | **2,000ms** | `KNOWLEDGE_CASELAW_EXCERPT_TIMEOUT_MS` |
+| `KNOWLEDGE_OUTER_DEADLINE_MS` | 2,500ms | **4,000ms** | `KNOWLEDGE_OUTER_DEADLINE_MS` |
+| `KNOWLEDGE_PROMPT_TOKEN_BUDGET` | 1,800 tokens | **2,500 tokens** | `KNOWLEDGE_PROMPT_TOKEN_BUDGET` |
+
+**Impact:**
+- AI now receives up to 10 case law records per query (was 6)
+- Top 3 cases include full judgment excerpts up to 700 chars each (was only 1)
+- 5 statutes injected instead of 3
+- Larger token budget prevents context truncation
+- 4s deadline reduces silent empty-context failures under DB load
+
+**All values are env-var overridable** — tune from Render dashboard without a code deploy.
+
+**Files Modified:**
+- `server/routes.ts` (lines 139, 5435-5441)
+
 ## 17) Known Gaps and Technical Debt
 
 - `server/routes.ts` is very large and should be split by domain modules.
