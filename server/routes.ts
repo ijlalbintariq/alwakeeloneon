@@ -2633,15 +2633,30 @@ async function verifyReferencesBlock(content: string, policy?: CitationPolicy): 
       const court = sanitizeReferenceText(judgment?.court || "", 120);
       const description = sanitizeReferenceText(judgment?.description || "", 320);
       if (!citation) return null;
-      // Phase 3: Apply policy-based verification
+      // Attempt DB lookup to get canonical data (normalization only — not a gate)
       const matched = await resolveCaseCitationFromInternalDb(citation, {
         requirePrimary: effectivePolicy.strict,
         requireLinkedSource: effectivePolicy.strict,
       }).catch(() => null);
-      // In strict mode, require linked source; in non-strict, just verify DB-backed
-      const isValid = matched && isCaseLawRowCitationTrusted(matched)
-        && (effectivePolicy.strict ? hasLinkedPrimaryCaseLawSource(matched) : true);
-      if (!isValid) return null;
+      const isDbVerified = Boolean(matched && isCaseLawRowCitationTrusted(matched));
+
+      if (!effectivePolicy.strict) {
+        // Non-strict mode: ALWAYS include citations in sidebar.
+        // Prefer DB-verified data; fall back to AI-provided values.
+        // This ensures judgments from the knowledge context appear even if the
+        // DB lookup fails due to format mismatch or incomplete row metadata.
+        return {
+          citation: sanitizeReferenceText(isDbVerified ? matched!.citation : citation, 140),
+          court: sanitizeReferenceText(
+            isDbVerified ? (matched!.court || court || "Pakistani Courts") : court || "Pakistani Courts",
+            120,
+          ),
+          description: sanitizeReferenceText(description || (isDbVerified ? matched!.summary : null) || "", 320),
+        };
+      }
+
+      // Strict mode: require full DB verification + linked primary source
+      if (!isDbVerified || !matched || !hasLinkedPrimaryCaseLawSource(matched)) return null;
       return {
         citation: sanitizeReferenceText(matched.citation, 140),
         court: sanitizeReferenceText(matched.court || court || "Pakistani Courts", 120),
@@ -4999,20 +5014,22 @@ async function enforceInternalCaseCitationIntegrity(
 
   let cleaned = text;
 
-  if (removed.size > 0) {
+  // In non-strict mode: NEVER remove unresolved citations.
+  // The AI received these citations from the knowledge context injected into the prompt.
+  // Removing them on a DB-lookup miss degrades response quality and hides valid case law.
+  // Only strict mode (e.g. drafting modules) should strip unverified citations.
+  if (removed.size > 0 && policy.strict) {
     const longestFirst = Array.from(removed).filter(Boolean).sort((a, b) => b.length - a.length);
     for (const raw of longestFirst) {
       const escapedCitation = escapeRegExp(raw);
 
       if (policy.allowProseModification) {
         // Strict mode: aggressively remove prose containing invalid citations
-        // Remove entire lines containing only the citation followed by tabs/metadata
         cleaned = cleaned.replace(new RegExp(`^[\\s]*${escapedCitation}\\s*[\\t\\s]+[^\\n]*$`, "gim"), "");
-        // Remove citation followed by context on same line
         cleaned = cleaned.replace(new RegExp(`${escapedCitation}\\s*[\\t\\s]+[^\\n]*`, "gi"), "");
       }
 
-      // Non-strict or common: just replace the citation token itself, preserve surrounding prose
+      // Strict mode: replace unresolved citation token with placeholder (empty or custom)
       cleaned = cleaned.replace(new RegExp(escapedCitation, "gi"), placeholder || "");
 
       // Clean up leftover tabs and extra whitespace
