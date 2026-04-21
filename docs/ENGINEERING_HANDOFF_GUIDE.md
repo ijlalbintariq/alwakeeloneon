@@ -611,14 +611,25 @@ strictCitations: false,
    - Line 10755-10762: Streaming response path
    - Both now create `citationPolicy` from `moduleProfile.features.strictCitations`
 
+6. **CRITICAL: Fix Policy Override in enforceInternalCaseCitationIntegrity** (2026-04-21 - Commit 728754f):
+   - **Problem:** Hardcoded `requirePrimary: enforcePrimaryLinkedSourceCitations` and `requireLinkedSource: enforcePrimaryLinkedSourceCitations` parameters were overriding the policy framework
+   - **Fix:** Changed both cached path (line ~10779-10780) and streaming path (line ~10888-10889) to use:
+     ```typescript
+     requirePrimary: citationPolicy.strict,
+     requireLinkedSource: citationPolicy.strict,
+     ```
+   - **Result:** Policy framework now actually controls citation verification instead of being ignored
+   - This fix is CRITICAL: Without it, the strictCitations=false setting and CitationPolicy framework had no effect
+
 **Impact:**
 - Non-strict mode (Al Wakeelo): Preserves prose integrity, keeps cited citations visible
 - Strict mode (Draft, Contract): Maintains original aggressive filtering for high-certainty claims
 - No more orphan `[]` or `****` artifacts in final response text
 - References block respects module policy instead of hardcoded strictness
+- **Citations no longer removed after response completion** (critical fix applied)
 
 **Files Modified:**
-- `server/routes.ts` (multiple locations: 92-118, 2537-2596, 4876-4951, 293-318, 10661-10681, 10755-10762)
+- `server/routes.ts` (multiple locations: 92-118, 2537-2596, 4876-4951, 293-318, 10661-10681, 10755-10762, 10779-10780, 10888-10889)
 
 ### Output Token Cap Increase (2026-04-21)
 
