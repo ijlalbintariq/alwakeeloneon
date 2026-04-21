@@ -46,7 +46,7 @@ export const MODULE_AI_PROFILES: Record<ModuleType, ModuleAiProfile> = {
     features: {
       knowledgeRetrieval: true,
       attachments: true,
-      strictCitations: true,
+      strictCitations: false,
       clauseModeStrictness: "low",
     },
   },
