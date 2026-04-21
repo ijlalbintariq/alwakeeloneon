@@ -2548,34 +2548,8 @@ function userPromptHasPakistaniCitationHint(text: string): boolean {
 }
 
 function suppressWrongIndianJurisdictionForPakCitation(responseText: string, _userPrompt: string): string {
-  const content = String(responseText || "");
-  if (!content.trim()) return content;
-
-  // Hard enforcement — applies to all modules unconditionally.
-  // Detect any Indian law citation or jurisdiction claim in the response.
-  const hasIndianCitation =
-    // Indian reporters
-    /\b\d{4}\s+SCC\s+\d+\b/i.test(content)
-    || /\bAIR\s+\d{4}\s+[A-Za-z]/i.test(content)
-    || /\b\d{4}\s+AIR\b/i.test(content)
-    // Indian court names used as authority
-    || /\bSupreme Court of India\b/i.test(content)
-    || /\bHigh Court of [A-Za-z]+\s+(?:India|Pradesh|Nadu|Bengal|Mumbai|Delhi|Bombay|Calcutta|Madras)\b/i.test(content)
-    || /\bDelhi High Court\b/i.test(content)
-    || /\bBombay High Court\b/i.test(content)
-    || /\bMadras High Court\b/i.test(content)
-    || /\bCalcutta High Court\b/i.test(content)
-    || /\bAllahabad High Court\b/i.test(content)
-    // Explicit jurisdiction disclaimers
-    || /\bnot\s+from\s+any\s+pakistani\s+court\b/i.test(content)
-    || /\boutside\s+pakistan(?:i)?\s+jurisdiction\b/i.test(content)
-    || /\bnot\s+pakistani\s+precedent\b/i.test(content)
-    || /\bindian\s+(?:legal\s+)?(?:precedent|authority|jurisdiction|case\s+law)\b/i.test(content)
-    || (/outside the scope/i.test(content) && /pakistani jurisdiction/i.test(content));
-
-  if (!hasIndianCitation) return content;
-
-  return "This query requires Pakistani jurisdiction sources only. The referenced case law or authority appears to be from Indian courts, which are not binding or applicable in Pakistani legal proceedings. Please verify the citation and re-submit, or upload the relevant Pakistani judgment to the database.";
+  // Disabled — passthrough
+  return String(responseText || "");
 }
 
 type RawLawRef = { name?: string; section?: string; description?: string };
