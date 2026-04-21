@@ -2547,20 +2547,10 @@ function userPromptHasPakistaniCitationHint(text: string): boolean {
   });
 }
 
-function suppressWrongIndianJurisdictionForPakCitation(responseText: string, userPrompt: string): string {
-  let content = String(responseText || "");
-  if (!content.trim()) return content;
-  if (!userPromptHasPakistaniCitationHint(userPrompt)) return content;
-  const wrongScopeSignal =
-    /indian courts?/i.test(content)
-    || /\bindian decision\b/i.test(content)
-    || /\bnot\s+from\s+any\s+pakistani\s+court\b/i.test(content)
-    || /\boutside\s+pakistan(?:i)?\s+jurisdiction\b/i.test(content)
-    || /\bnot\s+pakistani\s+precedent\b/i.test(content)
-    || (/outside the scope/i.test(content) && /pakistani jurisdiction/i.test(content))
-    || (/i can only provide/i.test(content) && /pakistani jurisdiction/i.test(content));
-  if (!wrongScopeSignal) return content;
-  return "I could not find a verified internal-database match for the cited Pakistani case in the current indexed records. Please upload/index that judgment and ask again; I will answer from internal database sources only.";
+function suppressWrongIndianJurisdictionForPakCitation(responseText: string, _userPrompt: string): string {
+  // Disabled: replacing the full response on jurisdiction signals is too aggressive
+  // and causes false positives whenever the AI compares or contrasts jurisdictions.
+  return String(responseText || "");
 }
 
 type RawLawRef = { name?: string; section?: string; description?: string };
@@ -2633,29 +2623,24 @@ async function verifyReferencesBlock(content: string, policy?: CitationPolicy): 
       const court = sanitizeReferenceText(judgment?.court || "", 120);
       const description = sanitizeReferenceText(judgment?.description || "", 320);
       if (!citation) return null;
-      // Attempt DB lookup to get canonical data (normalization only — not a gate)
-      const matched = await resolveCaseCitationFromInternalDb(citation, {
-        requirePrimary: effectivePolicy.strict,
-        requireLinkedSource: effectivePolicy.strict,
-      }).catch(() => null);
-      const isDbVerified = Boolean(matched && isCaseLawRowCitationTrusted(matched));
 
       if (!effectivePolicy.strict) {
-        // Non-strict mode: ALWAYS include citations in sidebar.
-        // Prefer DB-verified data; fall back to AI-provided values.
-        // This ensures judgments from the knowledge context appear even if the
-        // DB lookup fails due to format mismatch or incomplete row metadata.
+        // Non-strict mode: skip DB lookup entirely — trust the AI-provided citation data.
+        // The AI already received verified case law from the knowledge context;
+        // re-querying the DB introduces unnecessary latency and format mismatches.
         return {
-          citation: sanitizeReferenceText(isDbVerified ? matched!.citation : citation, 140),
-          court: sanitizeReferenceText(
-            isDbVerified ? (matched!.court || court || "Pakistani Courts") : court || "Pakistani Courts",
-            120,
-          ),
-          description: sanitizeReferenceText(description || (isDbVerified ? matched!.summary : null) || "", 320),
+          citation: sanitizeReferenceText(citation, 140),
+          court: sanitizeReferenceText(court || "Pakistani Courts", 120),
+          description: sanitizeReferenceText(description, 320),
         };
       }
 
       // Strict mode: require full DB verification + linked primary source
+      const matched = await resolveCaseCitationFromInternalDb(citation, {
+        requirePrimary: true,
+        requireLinkedSource: true,
+      }).catch(() => null);
+      const isDbVerified = Boolean(matched && isCaseLawRowCitationTrusted(matched));
       if (!isDbVerified || !matched || !hasLinkedPrimaryCaseLawSource(matched)) return null;
       return {
         citation: sanitizeReferenceText(matched.citation, 140),
@@ -4980,9 +4965,16 @@ async function enforceInternalCaseCitationIntegrity(
   }
 
   const policy = options?.policy || DEFAULT_CITATION_POLICY;
+
+  // Non-strict mode: skip all DB lookups, normalization, and removal entirely.
+  // Citations came from the knowledge context already injected into the prompt;
+  // post-processing them serves no purpose and risks unwanted format changes.
+  if (!policy.strict) {
+    return { content: text, removed: [], verified: [] };
+  }
+
   const placeholder = normalizeSpaces(String(options?.placeholder ?? ""));
   const normalizeVerified = options?.normalizeVerified !== false;
-  // Use policy-based filtering: strict mode requires primary + linked, non-strict allows cited
   const requirePrimary = options?.requirePrimary !== undefined ? options.requirePrimary : policy.strict;
   const requireLinkedSource = options?.requireLinkedSource !== undefined ? options.requireLinkedSource : policy.strict;
   const resolvedByKey = new Map<string, CaseLaw | null>();
