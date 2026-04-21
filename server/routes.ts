@@ -173,7 +173,7 @@ const PUBLIC_CHAT_LIMIT_MESSAGE = "You have reached the free AI consultation lim
 const PAKISTAN_LAW_ONLY_POLICY = `PAKISTAN LAW ONLY POLICY (ABSOLUTE):
 - Restrict all legal analysis, drafting, citations, and recommendations to Pakistani law only.
 - Never cite, quote, or rely on Indian law or non-Pakistani legal authorities.
-- Disallowed references include: IPC, Indian Penal Code, CrPC 1973, Constitution of India, Indian Evidence Act, SCC, AIR, and Indian Supreme/High Court precedents.
+- Disallowed references include: IPC, Indian Penal Code, CrPC 1973, Constitution of India, Indian Evidence Act, and Indian Supreme/High Court precedents as binding authority.
 - If a user asks for non-Pakistani law, briefly refuse and ask them to reframe under Pakistani law.
 - Prefer Pakistani authorities such as PPC, Cr.P.C. 1898, C.P.C. 1908, Constitution of Islamic Republic of Pakistan 1973.
 - Treat these as Pakistani citation/report families: PLD, SCMR, YLR, MLD, CLC, CLD, PLC (Pakistan Labour Cases), PLJ, PCRLJ/P Cr. L J, PTD, NLR, and neutral citations (LHC/IHC/SHC/PHC/BHC/AJKHC).
@@ -357,8 +357,7 @@ function enforcePakistanLawOnlyOutput(text: string): string {
     .replace(/\bIndian Evidence Act(?:,\s*1872)?\b/gi, "Qanun-e-Shahadat Order, 1984")
     .replace(/\bSupreme Court of India\b/gi, "Supreme Court of Pakistan")
     .replace(/\bIndian High Court\b/gi, "Pakistani High Court")
-    .replace(/\b(?:\d{4}\s*)?\(?\d+\)?\s+SCC\s+\d+\b/gi, "")
-    .replace(/\bAIR\s+\d{4}\s+[A-Za-z.\s]+\s+\d+\b/gi, "");
+    // SCC and AIR citations allowed — not removed
   return stripCitationPlaceholderArtifacts(scoped);
 }
 
@@ -11573,7 +11572,7 @@ RULES:
 - Use plain legal text only inside snippets and suggested text (no markdown symbols).
 - Keep originalSnippet short and exact.
 - Keep suggestedText specific and filing-ready for Pakistani court drafting.
-- Use Pakistan law only. Never cite or rely on Indian law, IPC, Indian Penal Code, CrPC 1973, Constitution of India, SCC, or AIR.
+- Use Pakistan law only. Never cite or rely on Indian law, IPC, Indian Penal Code, CrPC 1973, Constitution of India as binding authority.
 - Use Pakistani legal references only (for example: PPC, Cr.P.C., Constitution of Islamic Republic of Pakistan 1973, PLD, SCMR, YLR, MLD, CLC, CLD, PCRLJ).
 - If a safe Pakistani equivalent is unclear, use a neutral placeholder like [Pakistani legal provision required] instead of inventing or using Indian citations.
 - Do not include markdown, code fences, or extra keys.${knowledgeContext}`;
