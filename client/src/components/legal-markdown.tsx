@@ -33,33 +33,47 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
 
 function LegalMarkdownComponent({ content, className }: { content: string; className?: string }) {
   const citationPattern = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+)\b/gi;
+  // Matches: [Full Statute Name, Year] or [Full Statute Name Year] — full names in brackets
+  const bracketStatutePattern = /\[([^\]]*(?:Act|Ordinance|Code|Order|Rules?|Constitution|Regulation|Decree|Qanun)[^\]]*\d{4}[^\]]*)\]/gi;
+  // Matches: Section X or short abbreviations
   const statutePattern = /\b(?:(Section\s+\d+(?:\s*[A-Za-z]*)?(?:\s+(?:PPC|CPC|IPC|PCA|PMLA|BNPL|SECP))?)|(?:(?:PPC|CPC|IPC|PCA|PMLA|BNPL|SECP|Constitution|Qanun-e-Shahadat)\s+(?:Order|Act|Code|Rule|Ordinance|1997|1998|1999|2000|2001|2002|2003|2004|2005|2006|2007|2008|2009|2010|2011|2012|2013|2014|2015|2016|2017|2018|2019|2020|2021|2022|2023|2024)))\b/gi;
 
   const processTextForCitations = (text: string) => {
     const parts: (string | React.ReactNode)[] = [];
     let lastIndex = 0;
-    const allMatches: Array<{ start: number; end: number; text: string; type: 'citation' | 'statute' }> = [];
+    const allMatches: Array<{ start: number; end: number; text: string; label: string; type: 'citation' | 'statute' }> = [];
 
     let match;
     while ((match = citationPattern.exec(text)) !== null) {
-      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'citation' });
+      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[0], type: 'citation' });
+    }
+
+    // Full statute names in brackets e.g. [Islamabad Rent Restriction Ordinance, 2001]
+    while ((match = bracketStatutePattern.exec(text)) !== null) {
+      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[1], type: 'statute' });
     }
 
     while ((match = statutePattern.exec(text)) !== null) {
-      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'statute' });
+      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[0], type: 'statute' });
     }
 
     allMatches.sort((a, b) => a.start - b.start);
 
-    allMatches.forEach((m) => {
+    // Remove overlaps - keep first match when ranges overlap
+    const deduped = allMatches.filter((m, i) => {
+      if (i === 0) return true;
+      return m.start >= allMatches[i - 1].end;
+    });
+
+    deduped.forEach((m) => {
       if (m.start > lastIndex) {
         parts.push(text.slice(lastIndex, m.start));
       }
-      const searchQuery = encodeURIComponent(m.text);
+      const searchQuery = encodeURIComponent(m.label);
       const href = m.type === 'statute' ? `/statute-search?q=${searchQuery}` : `/judgments?q=${searchQuery}`;
       parts.push(
         <LegalLink key={`${m.type}-${m.start}`} href={href}>
-          {m.text}
+          {m.label}
         </LegalLink>
       );
       lastIndex = m.end;
