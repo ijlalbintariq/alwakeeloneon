@@ -10919,7 +10919,7 @@ The user has attached the following documents for your reference. Analyze them c
             const heartbeat = setInterval(() => {
               try { res.write(": keep-alive\n\n"); } catch { /* stream may already be closed */ }
             }, 15_000);
-            let toolResult: { text: string; model: string };
+            let toolResult: { text: string; model: string } | null = null;
             try {
               toolResult = await callStandardAIWithTools(systemPromptFull, geminiContents, tokenLimit);
             } catch (toolErr: any) {
@@ -10930,10 +10930,12 @@ The user has attached the following documents for your reference. Analyze them c
               for await (const text of streamWithDeepSeek({ messages: streamMessages, maxTokens: tokenLimit, temperature })) {
                 writeChunkToClient(text);
               }
-              // skip post-processing done below for tool path
-              throw toolErr; // re-throw so the outer catch handles cleanup
+              // Fallback streaming complete — continue to the response finalization code below.
+              // Skip the tool-calling post-processing since we didn't use tools.
             }
-            clearInterval(heartbeat);
+            if (toolResult) {
+              // Tool-calling succeeded — run post-processing
+              clearInterval(heartbeat);
             usedModel = toolResult.model;
             const _toolCitationPolicy: CitationPolicy = {
               strict: moduleProfile.features.strictCitations,
@@ -10948,6 +10950,7 @@ The user has attached the following documents for your reference. Analyze them c
               policy: _toolCitationPolicy,
             });
             writeChunkToClient(_toolCitationChecked.content);
+            } // end if (toolResult)
           } else if (isAiRouterV2Enabled()) {
             // V2 router: used for all non-al-wakeelo modules (draft, contract, etc.)
             const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
