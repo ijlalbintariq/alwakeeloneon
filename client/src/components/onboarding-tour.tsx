@@ -143,7 +143,9 @@ export function OnboardingTour() {
           <div className="p-8">
             {/* Header */}
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/30 mb-4 text-3xl">⚖️</div>
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden mb-4 shadow-lg shadow-amber-500/20">
+                <img src="/icon-192.png" alt="Al Wakeelo" className="w-full h-full object-cover" />
+              </div>
               <h1 className="text-3xl font-bold text-white mb-2">Welcome to Al Wakeelo</h1>
               <p className="text-slate-400 text-sm">Pakistan's AI-powered legal intelligence platform</p>
             </div>
