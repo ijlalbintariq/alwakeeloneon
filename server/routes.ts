@@ -4931,6 +4931,17 @@ async function resolveCaseCitationFromInternalDb(
     }
   }
 
+  // Fallback: if no case_law results, also check judgments table (used as tool search fallback)
+  if (rows.length === 0) {
+    const judgmentHits = await storage.searchJudgmentsByKeywords(candidate, 10).catch(() => []);
+    for (const row of judgmentHits) {
+      if (!seen.has(row.id)) {
+        seen.add(row.id);
+        rows.push(row);
+      }
+    }
+  }
+
   let best: CaseLaw | null = null;
   let bestScore = -1;
   for (const row of rows) {
