@@ -2265,17 +2265,25 @@ async function callStandardAIWithTools(
 ): Promise<{ text: string; model: string }> {
   const augmentedPrompt = systemPrompt + TOOL_CALLING_CITATION_ADDON;
   const messages = buildMessages(augmentedPrompt, contents);
-  const result = await chatWithDeepSeekTools({
-    messages,
-    tools: [CITATION_SEARCH_TOOL],
-    toolExecutor: async (name: string, args: Record<string, unknown>) => {
-      if (name === "search_judgments") return executeCitationSearch(args as unknown as CitationSearchArgs);
-      return JSON.stringify({ error: "Unknown tool" });
-    },
-    maxTokens,
-    maxToolRounds: 5,
-  });
-  return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
+  // 90-second hard timeout — prevents indefinite hang when DeepSeek API is slow
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90_000);
+  try {
+    const result = await chatWithDeepSeekTools({
+      messages,
+      tools: [CITATION_SEARCH_TOOL],
+      toolExecutor: async (name: string, args: Record<string, unknown>) => {
+        if (name === "search_judgments") return executeCitationSearch(args as unknown as CitationSearchArgs);
+        return JSON.stringify({ error: "Unknown tool" });
+      },
+      maxTokens,
+      maxToolRounds: 5,
+      signal: controller.signal,
+    });
+    return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function callLegalDraftingAI(
@@ -10904,7 +10912,28 @@ The user has attached the following documents for your reference. Analyze them c
             // This guarantees real DB citations even when user has selected Turbo mode.
             // Pre-process the buffered result BEFORE sending to client so citations are
             // never shown then removed (avoids the jarring "citation disappears" UX).
-            const toolResult = await callStandardAIWithTools(systemPromptFull, geminiContents, tokenLimit);
+            //
+            // SSE heartbeat: tool-calling buffers the full response before writing anything.
+            // Send a keep-alive SSE comment every 15s so the browser/proxy does not drop
+            // the connection during the tool-call loop (which can take 30-60s).
+            const heartbeat = setInterval(() => {
+              try { res.write(": keep-alive\n\n"); } catch { /* stream may already be closed */ }
+            }, 15_000);
+            let toolResult: { text: string; model: string };
+            try {
+              toolResult = await callStandardAIWithTools(systemPromptFull, geminiContents, tokenLimit);
+            } catch (toolErr: any) {
+              clearInterval(heartbeat);
+              // Timeout or API failure — fall back to regular streaming so the user gets a response
+              console.warn("[Al Wakeelo] Tool-calling failed, falling back to plain streaming:", toolErr?.message || toolErr);
+              usedModel = "deepseek";
+              for await (const text of streamWithDeepSeek({ messages: streamMessages, maxTokens: tokenLimit, temperature })) {
+                writeChunkToClient(text);
+              }
+              // skip post-processing done below for tool path
+              throw toolErr; // re-throw so the outer catch handles cleanup
+            }
+            clearInterval(heartbeat);
             usedModel = toolResult.model;
             const _toolCitationPolicy: CitationPolicy = {
               strict: moduleProfile.features.strictCitations,
