@@ -36,8 +36,8 @@ import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
-import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, chatWithDeepSeekTools } from "./deepseek-ai";
-import { CITATION_SEARCH_TOOL, executeCitationSearch, type CitationSearchArgs } from "./tools/citation-search-tool";
+import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName } from "./deepseek-ai";
+// Tool-calling disabled (2026-04-24): using RAG-injected cases instead
 import {
   isAiRouterV2Enabled,
   raceToDeadline,
@@ -2232,59 +2232,27 @@ async function callStandardAISimple(
   return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens, options);
 }
 
-// Appended to system prompt when tool-calling is active so AI trusts tool results
-// as equivalent to the pre-injected VERIFIED JUDGMENTS section.
-const TOOL_CALLING_CITATION_ADDON = `
+// Addon for system prompt emphasizing citation from injected verified cases
+const VERIFIED_JUDGMENTS_CITATION_ADDON = `
 
-=== TOOL-CALLING CITATION OVERRIDE ===
-You have access to the search_judgments tool which queries the SAME internal database that
-populates the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section.
-IMPORTANT: Results returned by search_judgments ARE verified database citations.
+=== CITING FROM VERIFIED JUDGMENTS SECTION ===
+The "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section below contains ONLY real, verified
+case law from our internal Pakistani legal database. These are the ONLY citations you should use.
 
-MANDATORY SEARCH STRATEGY — before writing any response that involves case law:
-1. Call search_judgments 2-3 times with DIFFERENT short queries (2-4 words each).
-2. Use SHORT focused queries — the database uses full-text matching where every word must appear.
-   GOOD: "bail cancellation", "Section 302 murder", "tenant eviction rent"
-   BAD: "legal grounds for cancellation of bail in Supreme Court" (too many words = zero results)
-3. Vary the angle each call: first call broad term, second call statute/section, third call legal concept.
-   Example for bail: call 1 "bail cancellation", call 2 "Section 497 liberty", call 3 "supervening circumstances bail"
-   Example for contract: call 1 "breach contract", call 2 "specific performance", call 3 "damages compensation"
-4. Use Pakistani legal terminology where relevant: qatl, diyat, tazir, fasad, khula, mehr, hiba, musha, wakf.
-5. Do NOT put court name in query — use the court parameter for that.
+CRITICAL RULE:
+- Cite ONLY from the section below
+- Never cite cases from your training data that are not in the section below
+- Do NOT hallucinate or invent citations
+- If a relevant case is not in the section, say "This specific case is not in our database"
 
-After tools return results, treat citations exactly like entries in the
-"VERIFIED JUDGMENTS" section — copy the "citation" field verbatim and format as
-**[CITATION]** — explanation.
-If ALL tool calls return found:0, follow RULE 2 (write the no-judgments message).
+Format all citations as: **[CITATION]** — brief explanation
+Example: **[PLD 2020 SC 456]** — Supreme Court held that bail cancellation requires proof of...
+
+If the VERIFIED JUDGMENTS section is empty, write: "No relevant judgments found in our database for this query. However, Section [number] of [Code] establishes that..."
 `;
 
-async function callStandardAIWithTools(
-  systemPrompt: string,
-  contents: Array<{ role: string; parts: Array<{ text: string }> }>,
-  maxTokens: number,
-): Promise<{ text: string; model: string }> {
-  const augmentedPrompt = systemPrompt + TOOL_CALLING_CITATION_ADDON;
-  const messages = buildMessages(augmentedPrompt, contents);
-  // 90-second hard timeout — prevents indefinite hang when DeepSeek API is slow
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 90_000);
-  try {
-    const result = await chatWithDeepSeekTools({
-      messages,
-      tools: [CITATION_SEARCH_TOOL],
-      toolExecutor: async (name: string, args: Record<string, unknown>) => {
-        if (name === "search_judgments") return executeCitationSearch(args as unknown as CitationSearchArgs);
-        return JSON.stringify({ error: "Unknown tool" });
-      },
-      maxTokens,
-      maxToolRounds: 5,
-      signal: controller.signal,
-    });
-    return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
+// Removed: callStandardAIWithTools function (tool-calling disabled)
+// Removed: chatWithDeepSeekTools call (using RAG-injected cases instead)
 
 async function callLegalDraftingAI(
   systemPrompt: string,
@@ -10664,7 +10632,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       );
       let systemPrompt = directMode
         ? getDirectModeSystemPrompt()
-        : `${getLegalSystemPrompt()}\n\nMODULE PROFILE: ${moduleProfile.label}\n${moduleProfile.systemPromptAddon}`;
+        : `${getLegalSystemPrompt()}${moduleType === "al-wakeelo" ? VERIFIED_JUDGMENTS_CITATION_ADDON : ""}\n\nMODULE PROFILE: ${moduleProfile.label}\n${moduleProfile.systemPromptAddon}`;
 
       const systemMessages = userMessages.filter((m) => m.role === "system");
       if (!directMode && systemMessages.length > 0) {
@@ -10905,53 +10873,10 @@ The user has attached the following documents for your reference. Analyze them c
         };
         try {
           const streamMessages = buildMessages(systemPromptFull, geminiContents);
-          // Al Wakeelo tool-calling MUST be checked first — before V2 router — so it is
-          // never bypassed regardless of which router variant is active.
-          if (moduleType === "al-wakeelo" && !directMode) {
-            // Al Wakeelo: always use tool-calling regardless of turbo/standard route
-            // This guarantees real DB citations even when user has selected Turbo mode.
-            // Pre-process the buffered result BEFORE sending to client so citations are
-            // never shown then removed (avoids the jarring "citation disappears" UX).
-            //
-            // SSE heartbeat: tool-calling buffers the full response before writing anything.
-            // Send a keep-alive SSE comment every 15s so the browser/proxy does not drop
-            // the connection during the tool-call loop (which can take 30-60s).
-            const heartbeat = setInterval(() => {
-              try { res.write(": keep-alive\n\n"); } catch { /* stream may already be closed */ }
-            }, 15_000);
-            let toolResult: { text: string; model: string } | null = null;
-            try {
-              toolResult = await callStandardAIWithTools(systemPromptFull, geminiContents, tokenLimit);
-            } catch (toolErr: any) {
-              clearInterval(heartbeat);
-              // Timeout or API failure — fall back to regular streaming so the user gets a response
-              console.warn("[Al Wakeelo] Tool-calling failed, falling back to plain streaming:", toolErr?.message || toolErr);
-              usedModel = "deepseek";
-              for await (const text of streamWithDeepSeek({ messages: streamMessages, maxTokens: tokenLimit, temperature })) {
-                writeChunkToClient(text);
-              }
-              // Fallback streaming complete — continue to the response finalization code below.
-              // Skip the tool-calling post-processing since we didn't use tools.
-            }
-            if (toolResult) {
-              // Tool-calling succeeded — run post-processing
-              clearInterval(heartbeat);
-            usedModel = toolResult.model;
-            const _toolCitationPolicy: CitationPolicy = {
-              strict: moduleProfile.features.strictCitations,
-              allowProseModification: moduleProfile.features.strictCitations,
-            };
-            const _toolGuarded = await applyAlWakeeloSafetyGuardrails(toolResult.text, _toolCitationPolicy).catch(() => ensureAlWakeeloReferencesBlock(toolResult.text));
-            const _toolCitationChecked = await enforceInternalCaseCitationIntegrity(_toolGuarded, {
-              placeholder: "",
-              normalizeVerified: true,
-              requirePrimary: _toolCitationPolicy.strict,
-              requireLinkedSource: _toolCitationPolicy.strict,
-              policy: _toolCitationPolicy,
-            });
-            writeChunkToClient(_toolCitationChecked.content);
-            } // end if (toolResult)
-          } else if (isAiRouterV2Enabled()) {
+          // Al Wakeelo now uses RAG-injected verified cases instead of tool-calling.
+          // Citations come from the VERIFIED JUDGMENTS section in the system prompt,
+          // injected by the knowledge retrieval pipeline.
+          if (isAiRouterV2Enabled()) {
             // V2 router: used for all non-al-wakeelo modules (draft, contract, etc.)
             const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
             const result = await streamWithFallback(chain, {
@@ -11098,13 +11023,9 @@ The user has attached the following documents for your reference. Analyze them c
         result = { text: enforcePakistanLawOnlyOutput(safeText), model: routerResult.modelName };
         routingPath.push(`router:v2:${routerResult.provider}`);
       } else {
-        if (moduleType === "al-wakeelo" && !directMode) {
-          // Al Wakeelo: use tool-calling to guarantee real citations from DB
-          result = await callStandardAIWithTools(systemPromptFull, geminiContents, tokenLimit);
-        } else {
-          const baseAiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
-          result = await baseAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
-        }
+        // All modules use regular AI (tool-calling disabled, using RAG-injected cases instead)
+        const baseAiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
+        result = await baseAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
       }
       usedModel = result.model;
       routingPath.push(`model:${usedModel}`);
