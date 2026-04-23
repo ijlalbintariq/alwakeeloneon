@@ -11045,11 +11045,16 @@ The user has attached the following documents for your reference. Analyze them c
         completion = normalizedContractJson.normalized;
       }
       completion = enforcePakistanLawOnlyOutput(completion);
+      const citationPolicy: CitationPolicy = {
+        strict: enforcePrimaryLinkedSourceCitations,
+        allowProseModification: enforcePrimaryLinkedSourceCitations,
+      };
       completion = (await enforceInternalCaseCitationIntegrity(completion, {
         placeholder: "",
         normalizeVerified: true,
         requirePrimary: enforcePrimaryLinkedSourceCitations,
         requireLinkedSource: enforcePrimaryLinkedSourceCitations,
+        policy: citationPolicy,
       })).content;
       completion = assertNonEmptyModelOutput("AI route", completion);
 
