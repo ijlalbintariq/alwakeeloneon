@@ -10912,10 +10912,24 @@ The user has attached the following documents for your reference. Analyze them c
             routingPath.push(`router:v2:${result.provider}`);
           } else if (moduleType === "al-wakeelo" && !directMode) {
             // Al Wakeelo: always use tool-calling regardless of turbo/standard route
-            // This guarantees real DB citations even when user has selected Turbo mode
+            // This guarantees real DB citations even when user has selected Turbo mode.
+            // Pre-process the buffered result BEFORE sending to client so citations are
+            // never shown then removed (avoids the jarring "citation disappears" UX).
             const toolResult = await callStandardAIWithTools(systemPromptFull, geminiContents, tokenLimit);
             usedModel = toolResult.model;
-            writeChunkToClient(toolResult.text);
+            const _toolCitationPolicy: CitationPolicy = {
+              strict: moduleProfile.features.strictCitations,
+              allowProseModification: moduleProfile.features.strictCitations,
+            };
+            const _toolGuarded = await applyAlWakeeloSafetyGuardrails(toolResult.text, _toolCitationPolicy).catch(() => ensureAlWakeeloReferencesBlock(toolResult.text));
+            const _toolCitationChecked = await enforceInternalCaseCitationIntegrity(_toolGuarded, {
+              placeholder: "",
+              normalizeVerified: true,
+              requirePrimary: _toolCitationPolicy.strict,
+              requireLinkedSource: _toolCitationPolicy.strict,
+              policy: _toolCitationPolicy,
+            });
+            writeChunkToClient(_toolCitationChecked.content);
           } else if (selectedRoute === "turbo") {
             usedModel = getDeepSeekProModelName();
             for await (const text of streamWithDeepSeek({
