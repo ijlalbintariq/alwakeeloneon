@@ -11020,7 +11020,8 @@ The user has attached the following documents for your reference. Analyze them c
       let completion = suppressWrongIndianJurisdictionForPakCitation(result.text, latestUserPromptText);
 
       if (moduleType === "al-wakeelo" && !directMode) {
-        completion = await applyAlWakeeloSafetyGuardrails(completion).catch(() => ensureAlWakeeloReferencesBlock(completion));
+        // Enforce strict DB verification for tool-calling results to prevent fabricated citations
+        completion = await applyAlWakeeloSafetyGuardrails(completion, { strict: true, allowProseModification: false }).catch(() => ensureAlWakeeloReferencesBlock(completion));
       }
       if (moduleType === "draft" && moduleIntent?.startsWith("draft.")) {
         completion = normalizeCourtReadyDraftingText(completion);
