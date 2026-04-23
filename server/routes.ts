@@ -10880,6 +10880,12 @@ The user has attached the following documents for your reference. Analyze them c
             });
             usedModel = result.modelName;
             routingPath.push(`router:v2:${result.provider}`);
+          } else if (moduleType === "al-wakeelo" && !directMode) {
+            // Al Wakeelo: always use tool-calling regardless of turbo/standard route
+            // This guarantees real DB citations even when user has selected Turbo mode
+            const toolResult = await callStandardAIWithTools(systemPromptFull, geminiContents, tokenLimit);
+            usedModel = toolResult.model;
+            writeChunkToClient(toolResult.text);
           } else if (selectedRoute === "turbo") {
             usedModel = getDeepSeekProModelName();
             for await (const text of streamWithDeepSeek({
@@ -10890,11 +10896,6 @@ The user has attached the following documents for your reference. Analyze them c
             })) {
               writeChunkToClient(text);
             }
-          } else if (moduleType === "al-wakeelo" && !directMode) {
-            // Al Wakeelo: use tool-calling to guarantee real citations from DB
-            const toolResult = await callStandardAIWithTools(systemPromptFull, geminiContents, tokenLimit);
-            usedModel = toolResult.model;
-            writeChunkToClient(toolResult.text);
           } else {
             // Standard mode (non-router v2): use DeepSeek instead of Groq (Groq deprecated 2026-04-16)
             usedModel = "deepseek";

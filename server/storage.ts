@@ -1967,7 +1967,8 @@ export class DatabaseStorage implements IStorage {
             COALESCE(${judgments.headnotes}, '') || ' ' ||
             COALESCE(${judgments.petitioner}, '') || ' ' ||
             COALESCE(${judgments.respondent}, '') || ' ' ||
-            COALESCE(${judgments.citationString}, '')
+            COALESCE(${judgments.citationString}, '') || ' ' ||
+            LEFT(COALESCE(${judgments.fullText}, ''), 4000)
           ),
           plainto_tsquery('simple', ${tokenQuery})
         ), 0)`
@@ -1986,7 +1987,8 @@ export class DatabaseStorage implements IStorage {
               COALESCE(${judgments.title}, '') || ' ' ||
               COALESCE(${judgments.headnotes}, '') || ' ' ||
               COALESCE(${judgments.petitioner}, '') || ' ' ||
-              COALESCE(${judgments.respondent}, '')
+              COALESCE(${judgments.respondent}, '') || ' ' ||
+              LEFT(COALESCE(${judgments.fullText}, ''), 4000)
             ) @@ plainto_tsquery('simple', ${tokenQuery})`
           : sql`false`,
       ),
