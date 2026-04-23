@@ -29,6 +29,7 @@ export const users = pgTable("users", {
   sessionEpoch: integer("session_epoch").default(0).notNull(),
   activeSessionIp: text("active_session_ip"),
   activeSessionAt: timestamp("active_session_at"),
+  onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

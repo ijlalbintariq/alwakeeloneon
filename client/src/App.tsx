@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { PublicLegalChatWidget } from "@/components/public-legal-chat-widget";
+import { OnboardingTour } from "@/components/onboarding-tour";
 
 import { AppShell } from "@/components/app-shell";
 import { ThemeProvider, useTheme } from "@/hooks/use-theme";
@@ -186,6 +187,7 @@ function AppContent({ onReady }: { onReady?: () => void }) {
       >
         <Router onReady={onReady} />
       </Suspense>
+      <OnboardingTour />
       <PublicLegalChatWidget />
       <Toaster />
     </div>

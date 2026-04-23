@@ -138,6 +138,9 @@ export const caseLaw = pgTable("case_law", {
   sourceDocId: integer("source_doc_id"),
   sourceType: text("source_type"),
   sourceFilename: text("source_filename"),
+  documentClassification: text("document_classification", { enum: ["case_law", "statute_document", "legal_analysis", "contract", "procedure_guide", "other"] }).default("case_law").notNull(),
+  fallbackExtraction: boolean("fallback_extraction").default(false).notNull(),
+  statuteReferences: text("statute_references").array().default([]).notNull(),
 });
 
 export const lawJournals = pgTable(

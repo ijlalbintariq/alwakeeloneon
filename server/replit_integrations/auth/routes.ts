@@ -858,4 +858,24 @@ export function registerAuthRoutes(app: Express): void {
       res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
+
+  app.post("/api/auth/complete-onboarding", async (req, res) => {
+    try {
+      const session = req.session as any;
+      if (!session?.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await authStorage.getUser(session.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await authStorage.updateUser(user.id, { onboardingCompleted: true });
+      res.json({ message: "Onboarding completed", onboardingCompleted: true });
+    } catch (error) {
+      console.error("Complete onboarding error:", error);
+      res.status(500).json({ message: "Could not complete onboarding" });
+    }
+  });
 }

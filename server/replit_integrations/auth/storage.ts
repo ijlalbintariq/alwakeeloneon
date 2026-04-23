@@ -25,6 +25,7 @@ export interface IAuthStorage {
   issueSingleSessionLock(userId: string, ipAddress: string): Promise<{ sessionEpoch: number; activeSessionIp: string | null }>;
   clearSingleSessionLock(userId: string, expectedSessionEpoch?: number | null): Promise<void>;
   updateUserPassword(userId: string, passwordHash: string): Promise<void>;
+  updateUser(userId: string, updates: Partial<User>): Promise<void>;
   createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void>;
   getValidResetToken(token: string): Promise<{ id: string; userId: string } | undefined>;
   markResetTokenUsed(tokenId: string): Promise<void>;
@@ -187,6 +188,16 @@ class AuthStorage implements IAuthStorage {
 
   async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
     await db.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, userId));
+  }
+
+  async updateUser(userId: string, updates: Partial<User>): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
   }
 
   async createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void> {
