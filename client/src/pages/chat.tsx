@@ -1823,7 +1823,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider relative">
                   <button
                     onClick={() => setShowModelMenu(!showModelMenu)}
-                    className="text-amber-300 border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 rounded-lg flex items-center gap-1.5 hover:bg-amber-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
+                    className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 border text-[10px] font-black uppercase tracking-wider ${
+                      isApexAgentWebMode
+                        ? "text-cyan-300 border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 focus-visible:ring-cyan-300/60"
+                        : isApexMode
+                          ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 focus-visible:ring-emerald-300/60"
+                          : aiMode === "turbo"
+                            ? "text-amber-300 border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 focus-visible:ring-amber-300/60"
+                            : "text-slate-300 border-slate-600/60 bg-slate-700/30 hover:bg-slate-700/60 focus-visible:ring-slate-300/60"
+                    }`}
                     data-testid="button-model-selector"
                   >
                     {isApexAgentWebMode ? <Globe size={10} /> : isApexMode ? <Sparkles size={10} /> : aiMode === "turbo" ? <Zap size={10} /> : <Scale size={10} />}
