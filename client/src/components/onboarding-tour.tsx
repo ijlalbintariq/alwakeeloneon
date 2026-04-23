@@ -1,89 +1,89 @@
 import { useState, useEffect } from "react";
-import { X, ChevronRight, Gavel, Book, MessageSquare, FileText, Sparkles } from "lucide-react";
+import { X, ChevronRight, Gavel, Book, MessageSquare, FileText, Sparkles, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-interface TourStep {
+interface OnboardingStep {
   id: string;
   title: string;
   description: string;
   icon: React.ReactNode;
-  highlight?: string;
-  cta?: string;
+  moduleRoute?: string;
+  tooltip?: string;
 }
 
-const tourSteps: TourStep[] = [
+const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: "welcome",
     title: "Welcome to Al Wakeelo",
     description: "Your AI-powered legal research and drafting assistant. Let's explore the key features that will supercharge your legal practice.",
-    icon: <span className="text-3xl">⚖️</span>,
-    cta: "Let's Begin",
+    icon: <span className="text-4xl">⚖️</span>,
   },
   {
     id: "judgments",
     title: "Judgment Vault",
-    description:
-      "Search Pakistani case law with advanced filters. Find judgments by citation, keyword, court, and year. Save your favorite cases for quick reference.",
+    description: "Search Pakistani case law with advanced filters. Find judgments by citation, keyword, court, and year. Save your favorite cases for quick reference.",
     icon: <Gavel className="w-8 h-8 text-amber-400" />,
-    highlight: "judgments-link",
-    cta: "Next",
+    moduleRoute: "/judgments",
+    tooltip: "Use filters to narrow down your search. Click 'Save' to bookmark important cases.",
   },
   {
     id: "chat",
     title: "Al Wakeelo Engine",
-    description:
-      "Consult your AI legal advisor. Ask about cases, statutes, legal procedures, and get instant analysis with cited sources.",
+    description: "Consult your AI legal advisor. Ask about cases, statutes, legal procedures, and get instant analysis with cited sources.",
     icon: <MessageSquare className="w-8 h-8 text-blue-400" />,
-    highlight: "chat-link",
-    cta: "Next",
+    moduleRoute: "/al-wakeelo",
+    tooltip: "Ask anything about Pakistani law. The AI will provide detailed answers with citations.",
   },
   {
     id: "statutes",
     title: "Statute Search",
     description: "Browse and search Pakistani legal codes, penal codes, and constitutional provisions. Quick access to statute text and details.",
     icon: <Book className="w-8 h-8 text-emerald-400" />,
-    highlight: "statute-link",
-    cta: "Next",
+    moduleRoute: "/statute-search",
+    tooltip: "Search by statute name, section, or keyword to find the law you need.",
   },
   {
     id: "drafting",
     title: "Legal Drafting",
-    description:
-      "Generate contracts, agreements, and legal documents with AI assistance. Save drafts and iterate with intelligent suggestions.",
+    description: "Generate contracts, agreements, and legal documents with AI assistance. Save drafts and iterate with intelligent suggestions.",
     icon: <FileText className="w-8 h-8 text-indigo-400" />,
-    highlight: "drafting-link",
-    cta: "Next",
+    moduleRoute: "/legal-drafting",
+    tooltip: "Upload a template or start from scratch. AI will help you draft faster.",
   },
   {
     id: "contracts",
     title: "Contract Drafting",
     description: "Create professional contracts with pre-built templates and AI-powered generation. Perfect for agreements, NDAs, and more.",
     icon: <Sparkles className="w-8 h-8 text-pink-400" />,
-    highlight: "contracts-link",
-    cta: "Explore",
+    moduleRoute: "/contract-drafting",
+    tooltip: "Choose a template and customize it. Save your contract for future use.",
   },
   {
     id: "complete",
     title: "Ready to Begin!",
-    description:
-      "You're all set. Start with Judgment search, chat with the AI, or dive into drafting. Your legal practice just got smarter.",
-    icon: <span className="text-3xl">✨</span>,
-    cta: "Go to Dashboard",
+    description: "You're all set. Start exploring any module above, or go to the dashboard to manage your workspace.",
+    icon: <span className="text-4xl">✨</span>,
   },
 ];
 
 export function OnboardingTour() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [location, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
+  const [visitedSteps, setVisitedSteps] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user && !user.onboardingCompleted) {
-      setIsVisible(true);
+      // Check if user is on a module page - if so, mark that step as visited
+      const currentStepId = ONBOARDING_STEPS.find(s => s.moduleRoute === location)?.id;
+      if (currentStepId) {
+        setVisitedSteps(prev => new Set([...prev, currentStepId]));
+      }
     }
-  }, [user]);
+  }, [user, location]);
 
   const completeOnboardingMutation = useMutation({
     mutationFn: async () => {
@@ -96,14 +96,22 @@ export function OnboardingTour() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      setIsVisible(false);
     },
   });
 
   const handleNext = () => {
-    if (currentStep < tourSteps.length - 1) {
+    const step = ONBOARDING_STEPS[currentStep];
+
+    if (step.moduleRoute) {
+      // Mark this step as visited
+      setVisitedSteps(prev => new Set([...prev, step.id]));
+      // Navigate to the module
+      setLocation(step.moduleRoute);
+    } else if (currentStep < ONBOARDING_STEPS.length - 1) {
+      // Move to next step
       setCurrentStep(currentStep + 1);
     } else {
+      // Complete onboarding
       completeOnboardingMutation.mutate();
     }
   };
@@ -112,28 +120,38 @@ export function OnboardingTour() {
     completeOnboardingMutation.mutate();
   };
 
-  const handleClose = () => {
-    completeOnboardingMutation.mutate();
-  };
+  if (!user || user.onboardingCompleted) {
+    return null;
+  }
 
-  if (!isVisible) return null;
-
-  const step = tourSteps[currentStep];
-  const progress = ((currentStep + 1) / tourSteps.length) * 100;
+  const step = ONBOARDING_STEPS[currentStep];
+  const isModuleStep = !!step.moduleRoute;
+  const isCompleteStep = step.id === "complete";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-amber-500/20 bg-gradient-to-br from-[#0f1722] to-[#0b1222] p-6 shadow-2xl md:max-w-lg">
+    <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-md rounded-2xl border border-amber-500/20 bg-gradient-to-br from-[#0f1722] to-[#0b1222] p-6 shadow-2xl">
+
         {/* Progress Bar */}
-        <div className="mb-6 h-1 w-full rounded-full bg-slate-700">
-          <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+        <div className="mb-6 space-y-2">
+          <div className="h-1 w-full rounded-full bg-slate-700">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-300"
+              style={{ width: `${((currentStep + 1) / ONBOARDING_STEPS.length) * 100}%` }}
+            />
+          </div>
+          <p className="text-xs text-slate-400">
+            {currentStep + 1} of {ONBOARDING_STEPS.length}
+          </p>
         </div>
 
-        {/* Header */}
+        {/* Icon & Title */}
         <div className="mb-6 flex items-start justify-between">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30">{step.icon}</div>
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30">
+            {step.icon}
+          </div>
           <button
-            onClick={handleClose}
+            onClick={handleSkip}
             className="p-1 text-slate-400 hover:text-white transition-colors"
             aria-label="Close tour"
           >
@@ -145,12 +163,36 @@ export function OnboardingTour() {
         <div className="mb-8 space-y-3">
           <h2 className="text-2xl font-bold text-white">{step.title}</h2>
           <p className="text-sm text-slate-300 leading-relaxed">{step.description}</p>
+          {step.tooltip && (
+            <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-3 mt-4">
+              <p className="text-xs text-blue-200">💡 {step.tooltip}</p>
+            </div>
+          )}
         </div>
 
-        {/* Step Counter */}
-        <div className="mb-6 text-xs text-slate-400">
-          Step {currentStep + 1} of {tourSteps.length}
-        </div>
+        {/* Visited Steps Indicator */}
+        {!isCompleteStep && (
+          <div className="mb-6 space-y-2">
+            <p className="text-xs text-slate-400 font-medium">Modules to explore:</p>
+            <div className="space-y-1">
+              {ONBOARDING_STEPS.filter(s => s.moduleRoute).map(s => (
+                <div key={s.id} className="flex items-center gap-2 text-xs">
+                  {visitedSteps.has(s.id) ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      <span className="text-emerald-300">{s.title}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-4 h-4 rounded-full border border-slate-500" />
+                      <span className="text-slate-400">{s.title}</span>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-3">
@@ -158,15 +200,15 @@ export function OnboardingTour() {
             onClick={handleSkip}
             className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white transition-colors"
           >
-            {currentStep === 0 ? "Skip" : "Skip Tour"}
+            {isCompleteStep ? "Done" : "Skip"}
           </button>
           <button
             onClick={handleNext}
             disabled={completeOnboardingMutation.isPending}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {step.cta || "Next"}
-            {currentStep < tourSteps.length - 1 && <ChevronRight className="w-4 h-4" />}
+            {isModuleStep ? "Explore Module" : isCompleteStep ? "Get Started" : "Next"}
+            {!isCompleteStep && <ChevronRight className="w-4 h-4" />}
           </button>
         </div>
       </div>
