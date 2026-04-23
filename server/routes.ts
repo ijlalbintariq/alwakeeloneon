@@ -2240,11 +2240,22 @@ const TOOL_CALLING_CITATION_ADDON = `
 You have access to the search_judgments tool which queries the SAME internal database that
 populates the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section.
 IMPORTANT: Results returned by search_judgments ARE verified database citations.
-You MUST call search_judgments before citing any case law.
-After the tool returns results, treat those citations exactly like entries in the
+
+MANDATORY SEARCH STRATEGY — before writing any response that involves case law:
+1. Call search_judgments 2-3 times with DIFFERENT short queries (2-4 words each).
+2. Use SHORT focused queries — the database uses full-text matching where every word must appear.
+   GOOD: "bail cancellation", "Section 302 murder", "tenant eviction rent"
+   BAD: "legal grounds for cancellation of bail in Supreme Court" (too many words = zero results)
+3. Vary the angle each call: first call broad term, second call statute/section, third call legal concept.
+   Example for bail: call 1 "bail cancellation", call 2 "Section 497 liberty", call 3 "supervening circumstances bail"
+   Example for contract: call 1 "breach contract", call 2 "specific performance", call 3 "damages compensation"
+4. Use Pakistani legal terminology where relevant: qatl, diyat, tazir, fasad, khula, mehr, hiba, musha, wakf.
+5. Do NOT put court name in query — use the court parameter for that.
+
+After tools return results, treat citations exactly like entries in the
 "VERIFIED JUDGMENTS" section — copy the "citation" field verbatim and format as
 **[CITATION]** — explanation.
-If the tool returns found:0, follow RULE 2 (write the no-judgments message).
+If ALL tool calls return found:0, follow RULE 2 (write the no-judgments message).
 `;
 
 async function callStandardAIWithTools(
@@ -2262,7 +2273,7 @@ async function callStandardAIWithTools(
       return JSON.stringify({ error: "Unknown tool" });
     },
     maxTokens,
-    maxToolRounds: 3,
+    maxToolRounds: 5,
   });
   return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
 }

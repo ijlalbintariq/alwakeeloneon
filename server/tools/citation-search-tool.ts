@@ -9,25 +9,33 @@ export const CITATION_SEARCH_TOOL: ChatCompletionTool = {
     name: "search_judgments",
     description:
       "Search the Al Wakeelo internal Pakistani case law database for real, verified judgments. " +
-      "ALWAYS call this tool before citing any case law in your response. " +
-      "Never cite a judgment that did not appear in the results of this tool.",
+      "ALWAYS call this tool before citing any case law. Never cite a judgment not returned by this tool. " +
+      "STRATEGY: Call this tool 2-3 times with DIFFERENT short queries to maximise results. " +
+      "Example for bail cancellation: call 1 → query:'bail cancellation', call 2 → query:'Section 497 misuse liberty', call 3 → query:'supervening circumstances bail'. " +
+      "Example for murder: call 1 → query:'Section 302 intention qatl', call 2 → query:'culpable homicide PPC', call 3 → query:'murder conviction evidence'. " +
+      "Use all results from all calls to build your citation list.",
     parameters: {
       type: "object",
       properties: {
         query: {
           type: "string",
           description:
-            "Legal topic, statute, or keywords to search for. " +
-            "Examples: 'tenant eviction holdover', 'Section 302 PPC murder intent', 'bail cancellation Supreme Court'",
+            "SHORT specific legal keywords — 2 to 4 words maximum. " +
+            "The database uses full-text matching: shorter queries find MORE results. " +
+            "GOOD: 'bail cancellation', 'Section 302 murder', 'tenant eviction', 'fraud cheque'. " +
+            "BAD (too long, will miss results): 'legal grounds for cancellation of bail in Supreme Court Pakistan'. " +
+            "Use Pakistani legal terminology: qatl, diyat, tazir, fasad, khula, mehr, hiba, musha, wakf. " +
+            "Do NOT put court name in query — use the court parameter instead.",
         },
         court: {
           type: "string",
           description:
-            "Optional court filter. Examples: 'Supreme Court', 'Lahore High Court', 'Sindh High Court'",
+            "Optional court filter. Use ONLY when question is court-specific. " +
+            "Examples: 'Supreme Court', 'Lahore High Court', 'Sindh High Court', 'Peshawar High Court', 'Federal Shariat Court'",
         },
         limit: {
           type: "number",
-          description: "Max results to return. Default 5, max 8.",
+          description: "Max results per call. Default 5, max 8. Use 8 when broad coverage needed.",
         },
       },
       required: ["query"],
