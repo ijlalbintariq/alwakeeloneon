@@ -2608,7 +2608,10 @@ function hasLinkedPrimaryCaseLawSource(
   const sourceDocId = Number(entry.sourceDocId || 0);
   if (!Number.isInteger(sourceDocId) || sourceDocId <= 0) return false;
   const sourceType = String(entry.sourceType || "").toLowerCase();
-  // Strict "document-backed" scope for chat citations.
+  // Include "judgment" — citations resolved from the judgments table have sourceType:"judgment"
+  // and no sourceDocId, but are real verified DB records, not hallucinations.
+  if (sourceType === "judgment") return true;
+  // Document-backed: require a valid sourceDocId for these types
   return sourceType === "admin" || sourceType === "user" || sourceType === "statute";
 }
 
@@ -11048,8 +11051,8 @@ The user has attached the following documents for your reference. Analyze them c
       let completion = suppressWrongIndianJurisdictionForPakCitation(result.text, latestUserPromptText);
 
       if (moduleType === "al-wakeelo" && !directMode) {
-        // Enforce strict DB verification for tool-calling results to prevent fabricated citations
-        completion = await applyAlWakeeloSafetyGuardrails(completion, { strict: true, allowProseModification: false }).catch(() => ensureAlWakeeloReferencesBlock(completion));
+        // Use module profile strictCitations — hardcoded true was stripping valid judgments-table citations
+        completion = await applyAlWakeeloSafetyGuardrails(completion, { strict: enforcePrimaryLinkedSourceCitations, allowProseModification: false }).catch(() => ensureAlWakeeloReferencesBlock(completion));
       }
       if (moduleType === "draft" && moduleIntent?.startsWith("draft.")) {
         completion = normalizeCourtReadyDraftingText(completion);
