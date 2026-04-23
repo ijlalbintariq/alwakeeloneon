@@ -10897,20 +10897,9 @@ The user has attached the following documents for your reference. Analyze them c
         };
         try {
           const streamMessages = buildMessages(systemPromptFull, geminiContents);
-          if (isAiRouterV2Enabled()) {
-            const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
-            const result = await streamWithFallback(chain, {
-              messages: streamMessages,
-              maxTokens: tokenLimit,
-              temperature,
-              onChunk: writeChunkToClient,
-              onProviderError: (p, err) => {
-                console.warn(`[AI Router] Stream provider ${p} failed: ${err instanceof Error ? err.message : String(err)}`);
-              },
-            });
-            usedModel = result.modelName;
-            routingPath.push(`router:v2:${result.provider}`);
-          } else if (moduleType === "al-wakeelo" && !directMode) {
+          // Al Wakeelo tool-calling MUST be checked first — before V2 router — so it is
+          // never bypassed regardless of which router variant is active.
+          if (moduleType === "al-wakeelo" && !directMode) {
             // Al Wakeelo: always use tool-calling regardless of turbo/standard route
             // This guarantees real DB citations even when user has selected Turbo mode.
             // Pre-process the buffered result BEFORE sending to client so citations are
@@ -10930,6 +10919,20 @@ The user has attached the following documents for your reference. Analyze them c
               policy: _toolCitationPolicy,
             });
             writeChunkToClient(_toolCitationChecked.content);
+          } else if (isAiRouterV2Enabled()) {
+            // V2 router: used for all non-al-wakeelo modules (draft, contract, etc.)
+            const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
+            const result = await streamWithFallback(chain, {
+              messages: streamMessages,
+              maxTokens: tokenLimit,
+              temperature,
+              onChunk: writeChunkToClient,
+              onProviderError: (p, err) => {
+                console.warn(`[AI Router] Stream provider ${p} failed: ${err instanceof Error ? err.message : String(err)}`);
+              },
+            });
+            usedModel = result.modelName;
+            routingPath.push(`router:v2:${result.provider}`);
           } else if (selectedRoute === "turbo") {
             usedModel = getDeepSeekProModelName();
             for await (const text of streamWithDeepSeek({
