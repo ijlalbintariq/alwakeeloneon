@@ -56,37 +56,40 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
   const safeLimit = Math.min(8, Math.max(1, limit));
 
   try {
-    const results = await storage.searchCaseLaw(query, safeLimit, {
-      court: court || undefined,
-    });
+    // Search both tables in parallel — same as Judgments search page behaviour.
+    // Previously case_law was searched first and judgments only as fallback,
+    // meaning case_law results (often unrelated extracted citations) blocked
+    // the richer judgments table from being searched at all.
+    const [caseLawResults, judgmentResults] = await Promise.all([
+      storage.searchCaseLaw(query, safeLimit, { court: court || undefined }),
+      storage.searchJudgmentsByKeywords(query, safeLimit),
+    ]);
 
-    if (!results || results.length === 0) {
-      // Also try the judgments table full-text search
-      const fallback = await storage.searchJudgmentsByKeywords(query, safeLimit);
-      if (!fallback || fallback.length === 0) {
-        return JSON.stringify({
-          found: 0,
-          message: "No judgments found in the database for this query.",
-          results: [],
-        });
-      }
+    // Merge, deduplicate by normalised citation string, judgments table preferred
+    // (it has richer headnotes/fullText; case_law has extracted summaries).
+    const seen = new Set<string>();
+    const merged: typeof caseLawResults = [];
 
+    for (const r of [...judgmentResults, ...caseLawResults]) {
+      const key = (r.citation || "").toLowerCase().replace(/\s+/g, " ").trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(r);
+      if (merged.length >= safeLimit) break;
+    }
+
+    if (merged.length === 0) {
       return JSON.stringify({
-        found: fallback.length,
-        message: `Found ${fallback.length} judgment(s). Use ONLY these citations in your response.`,
-        results: fallback.map((r) => ({
-          citation: r.citation,
-          court: r.court,
-          title: r.title,
-          summary: (r.summary || "").slice(0, 300),
-        })),
+        found: 0,
+        message: "No judgments found in the database for this query.",
+        results: [],
       });
     }
 
     return JSON.stringify({
-      found: results.length,
-      message: `Found ${results.length} judgment(s). Use ONLY these citations in your response.`,
-      results: results.map((r) => ({
+      found: merged.length,
+      message: `Found ${merged.length} judgment(s). Use ONLY these citations in your response.`,
+      results: merged.map((r) => ({
         citation: r.citation,
         court: r.court,
         title: r.title,
