@@ -2232,12 +2232,28 @@ async function callStandardAISimple(
   return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens, options);
 }
 
+// Appended to system prompt when tool-calling is active so AI trusts tool results
+// as equivalent to the pre-injected VERIFIED JUDGMENTS section.
+const TOOL_CALLING_CITATION_ADDON = `
+
+=== TOOL-CALLING CITATION OVERRIDE ===
+You have access to the search_judgments tool which queries the SAME internal database that
+populates the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section.
+IMPORTANT: Results returned by search_judgments ARE verified database citations.
+You MUST call search_judgments before citing any case law.
+After the tool returns results, treat those citations exactly like entries in the
+"VERIFIED JUDGMENTS" section — copy the "citation" field verbatim and format as
+**[CITATION]** — explanation.
+If the tool returns found:0, follow RULE 2 (write the no-judgments message).
+`;
+
 async function callStandardAIWithTools(
   systemPrompt: string,
   contents: Array<{ role: string; parts: Array<{ text: string }> }>,
   maxTokens: number,
 ): Promise<{ text: string; model: string }> {
-  const messages = buildMessages(systemPrompt, contents);
+  const augmentedPrompt = systemPrompt + TOOL_CALLING_CITATION_ADDON;
+  const messages = buildMessages(augmentedPrompt, contents);
   const result = await chatWithDeepSeekTools({
     messages,
     tools: [CITATION_SEARCH_TOOL],
