@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { ChatCompletionTool, ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 const DEEPSEEK_CHAT_MODEL = "deepseek-chat";
@@ -108,6 +109,114 @@ export async function* streamWithDeepSeek(options: DeepSeekChatOptions): AsyncGe
       yield text;
     }
   }
+}
+
+// ── Tool-calling support ─────────────────────────────────────────────────────
+
+export interface ToolCallOptions {
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+  tools: ChatCompletionTool[];
+  toolExecutor: (name: string, args: Record<string, unknown>) => Promise<string>;
+  maxTokens?: number;
+  maxToolRounds?: number; // safety limit on tool call iterations
+  signal?: AbortSignal;
+}
+
+/**
+ * Chat with DeepSeek using function/tool calling.
+ * Runs a tool-call loop: AI calls tool → executor runs it → results fed back → AI responds.
+ * Returns the final text response after all tool calls are resolved.
+ */
+export async function chatWithDeepSeekTools(options: ToolCallOptions): Promise<DeepSeekResponse> {
+  const client = getClient();
+  const { tools, toolExecutor, maxToolRounds = 4, maxTokens = 8192 } = options;
+
+  const messages: ChatCompletionMessageParam[] = options.messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
+
+  let inputTokensTotal = 0;
+  let outputTokensTotal = 0;
+  let rounds = 0;
+
+  while (rounds < maxToolRounds) {
+    rounds++;
+
+    const response = await client.chat.completions.create(
+      {
+        model: DEEPSEEK_CHAT_MODEL,
+        messages,
+        tools,
+        tool_choice: "auto",
+        max_tokens: maxTokens,
+        temperature: 0.3, // lower temp for more deterministic tool use
+      },
+      { signal: options.signal, maxRetries: 1 } as any,
+    );
+
+    inputTokensTotal += response.usage?.prompt_tokens ?? 0;
+    outputTokensTotal += response.usage?.completion_tokens ?? 0;
+
+    const choice = response.choices[0];
+    const message = choice?.message;
+
+    // Push assistant message to history
+    messages.push(message as ChatCompletionMessageParam);
+
+    // If no tool calls → we have the final response
+    if (!message?.tool_calls || message.tool_calls.length === 0) {
+      return {
+        content: message?.content || "No response generated.",
+        model: response.model || DEEPSEEK_CHAT_MODEL,
+        inputTokens: inputTokensTotal,
+        outputTokens: outputTokensTotal,
+      };
+    }
+
+    // Execute each tool call and push results back
+    for (const toolCall of message.tool_calls) {
+      const tc = toolCall as any;
+      const fnName = tc.function?.name ?? "";
+      let args: Record<string, unknown> = {};
+      try {
+        args = JSON.parse(tc.function?.arguments || "{}");
+      } catch {
+        args = {};
+      }
+
+      let result = "";
+      try {
+        result = await toolExecutor(fnName, args);
+      } catch (err) {
+        result = JSON.stringify({ error: "Tool execution failed", message: String(err) });
+      }
+
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: result,
+      } as ChatCompletionMessageParam);
+    }
+  }
+
+  // Fallback: ask for final response without tools after max rounds
+  const fallbackResponse = await client.chat.completions.create(
+    {
+      model: DEEPSEEK_CHAT_MODEL,
+      messages,
+      max_tokens: maxTokens,
+      temperature: 0.3,
+    },
+    { signal: options.signal, maxRetries: 1 } as any,
+  );
+
+  return {
+    content: fallbackResponse.choices[0]?.message?.content || "No response generated.",
+    model: fallbackResponse.model || DEEPSEEK_CHAT_MODEL,
+    inputTokens: inputTokensTotal + (fallbackResponse.usage?.prompt_tokens ?? 0),
+    outputTokens: outputTokensTotal + (fallbackResponse.usage?.completion_tokens ?? 0),
+  };
 }
 
 export async function transcribeWithDeepSeek(options: DeepSeekTranscriptionOptions): Promise<DeepSeekResponse> {

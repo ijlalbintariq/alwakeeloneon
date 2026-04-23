@@ -36,7 +36,8 @@ import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
-import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName } from "./deepseek-ai";
+import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, chatWithDeepSeekTools } from "./deepseek-ai";
+import { CITATION_SEARCH_TOOL, executeCitationSearch, type CitationSearchArgs } from "./tools/citation-search-tool";
 import {
   isAiRouterV2Enabled,
   raceToDeadline,
@@ -2229,6 +2230,25 @@ async function callStandardAISimple(
   options?: { timeoutProfile?: TimeoutProfile; temperature?: number },
 ): Promise<{ text: string; model: string }> {
   return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens, options);
+}
+
+async function callStandardAIWithTools(
+  systemPrompt: string,
+  contents: Array<{ role: string; parts: Array<{ text: string }> }>,
+  maxTokens: number,
+): Promise<{ text: string; model: string }> {
+  const messages = buildMessages(systemPrompt, contents);
+  const result = await chatWithDeepSeekTools({
+    messages,
+    tools: [CITATION_SEARCH_TOOL],
+    toolExecutor: async (name: string, args: Record<string, unknown>) => {
+      if (name === "search_judgments") return executeCitationSearch(args as unknown as CitationSearchArgs);
+      return JSON.stringify({ error: "Unknown tool" });
+    },
+    maxTokens,
+    maxToolRounds: 3,
+  });
+  return { text: enforcePakistanLawOnlyOutput(result.content), model: result.model };
 }
 
 async function callLegalDraftingAI(
@@ -10859,6 +10879,11 @@ The user has attached the following documents for your reference. Analyze them c
             })) {
               writeChunkToClient(text);
             }
+          } else if (moduleType === "al-wakeelo" && !directMode) {
+            // Al Wakeelo: use tool-calling to guarantee real citations from DB
+            const toolResult = await callStandardAIWithTools(systemPromptFull, geminiContents, tokenLimit);
+            usedModel = toolResult.model;
+            writeChunkToClient(toolResult.text);
           } else {
             // Standard mode (non-router v2): use DeepSeek instead of Groq (Groq deprecated 2026-04-16)
             usedModel = "deepseek";
@@ -10982,8 +11007,13 @@ The user has attached the following documents for your reference. Analyze them c
         result = { text: enforcePakistanLawOnlyOutput(safeText), model: routerResult.modelName };
         routingPath.push(`router:v2:${routerResult.provider}`);
       } else {
-        const baseAiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
-        result = await baseAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
+        if (moduleType === "al-wakeelo" && !directMode) {
+          // Al Wakeelo: use tool-calling to guarantee real citations from DB
+          result = await callStandardAIWithTools(systemPromptFull, geminiContents, tokenLimit);
+        } else {
+          const baseAiCall = selectedRoute === "turbo" ? callTurboAI : callStandardAI;
+          result = await baseAiCall(systemPromptFull, geminiContents, tokenLimit, { timeoutProfile, temperature });
+        }
       }
       usedModel = result.model;
       routingPath.push(`model:${usedModel}`);
