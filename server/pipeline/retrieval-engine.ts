@@ -291,8 +291,9 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
   );
 
   // Path 2 (SECONDARY): keyword search on case_law table — extracted citations from
-  // uploaded documents. Smaller limit since judgments cover most of the same corpus.
-  const keywordPromise = storage.searchCaseLaw(expandedQuery, limit * 2, {
+  // uploaded documents. Use original query (not expanded) to avoid expanded terms
+  // (e.g. "crpc 497 498 application") matching procedure docs instead of real judgments.
+  const keywordPromise = storage.searchCaseLaw(intent.normalized, limit * 2, {
     sort: "relevance",
     includeSourceContentSearch: false,
   }).catch(() => [] as CaseLaw[]);
