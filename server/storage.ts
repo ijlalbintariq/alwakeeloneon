@@ -3332,6 +3332,11 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "judgments_year_journal_page_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS judgments_year_journal_page_unique ON judgments (year, journal_id, page)` },
     { label: "idx_judgments_citation_string_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_citation_string_trgm ON judgments USING gin (citation_string gin_trgm_ops)` },
     { label: "idx_judgments_full_text_tsv", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_full_text_tsv ON judgments USING gin (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(headnotes,'') || ' ' || coalesce(full_text,'')))` },
+    // GIN trigram indexes for fast ILIKE on judgments — makes headnotes/title/parties search <500ms
+    { label: "idx_judgments_headnotes_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_headnotes_trgm ON judgments USING gin (headnotes gin_trgm_ops)` },
+    { label: "idx_judgments_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_title_trgm ON judgments USING gin (title gin_trgm_ops)` },
+    { label: "idx_judgments_petitioner_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_petitioner_trgm ON judgments USING gin (petitioner gin_trgm_ops)` },
+    { label: "idx_judgments_respondent_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_respondent_trgm ON judgments USING gin (respondent gin_trgm_ops)` },
     { label: "idx_citation_links_source", stmt: sql`CREATE INDEX IF NOT EXISTS idx_citation_links_source ON citation_links (source_judgment_id)` },
     { label: "idx_citation_links_target", stmt: sql`CREATE INDEX IF NOT EXISTS idx_citation_links_target ON citation_links (target_judgment_id)` },
     { label: "citation_links_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS citation_links_unique ON citation_links (source_judgment_id, target_judgment_id, citation_type, citation_text)` },

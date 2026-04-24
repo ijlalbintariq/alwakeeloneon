@@ -46,39 +46,42 @@ export interface ContextOutput {
 // Section builders
 // ---------------------------------------------------------------------------
 
-const EXCERPT_CHARS = 700;
+// Excerpt lengths by source: judgment rows have rich headnotes so get more chars
+const EXCERPT_CHARS_JUDGMENT = 600;
+const EXCERPT_CHARS_EXTRACTED = 300;
 
 function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSection | null {
   const lines: string[] = [];
 
   for (const { row } of caseLaw) {
     const citation = String(row.citation || "").trim();
-    if (!citation) continue; // belt-and-suspenders: should be filtered upstream
+    if (!citation) continue;
 
     // Extract metadata based on citation format
     let courtName = String(row.court || "Pakistani Court");
     let reportingType = "";
 
-    // If citation contains a legal code (PLD, SCMR, YLR, etc.), extract reporting type
     const legalCodeMatch = citation.match(/\b(pld|scmr|ylr|mld|clc|plj|nlr|pcrlj|ptcl|ptd|psc|ald|klr|plc|cld|air|lhc|ihc|shc|phc|bhc|ajkhc)\b/i);
     if (legalCodeMatch) {
       const metadata = extractReportingMetadata(legalCodeMatch[0]);
       reportingType = metadata.reportingType;
-      // Use extracted court if row.court is generic
       if (courtName === "Pakistani Court" || !courtName) {
         courtName = metadata.court;
       }
-    }
-    // If citation is a case number, extract case type
-    else if (/\b(c\.?a\.?|ca|civil\s+appeal|appeal|petition|writ|r\.?p\.?a\.?)\s*[\d\-a-z]+\s+of\s+\d{4}/i.test(citation)) {
+    } else if (/\b(c\.?a\.?|ca|civil\s+appeal|appeal|petition|writ|r\.?p\.?a\.?)\s*[\d\-a-z]+\s+of\s+\d{4}/i.test(citation)) {
       reportingType = extractCaseType(citation);
     }
 
     const title = String(row.title || "");
-    const summary = row.summary ? ` — ${String(row.summary).slice(0, 250)}` : "";
+    // Judgment rows store headnotes in summary (set by searchJudgmentsByKeywords).
+    // Give them a longer excerpt — headnotes are the most legally precise part of a judgment.
+    const excerptLen = row.sourceType === "judgment" ? EXCERPT_CHARS_JUDGMENT : EXCERPT_CHARS_EXTRACTED;
+    const summary = row.summary ? ` — ${String(row.summary).slice(0, excerptLen)}` : "";
 
     const reportingInfo = reportingType ? ` | REPORTING: ${reportingType}` : "";
-    lines.push(`- CITATION: ${citation} | COURT: ${courtName}${reportingInfo} | TITLE: ${title}${summary}`);
+    // Judgment rows: mark explicitly so AI knows this is from the verified DB
+    const sourceTag = row.sourceType === "judgment" ? " | SOURCE: Verified Judgment DB" : "";
+    lines.push(`- CITATION: ${citation} | COURT: ${courtName}${reportingInfo}${sourceTag} | TITLE: ${title}${summary}`);
   }
 
   if (lines.length === 0) return null;
@@ -119,11 +122,13 @@ function buildCaseLawDetailSection(caseLaw: RetrievedCaseLaw[]): ContextSection 
   for (const { row } of caseLaw) {
     const citation = String(row.citation || "").trim();
     if (!citation) continue;
-    const excerptParts: string[] = [];
-    if (row.summary) excerptParts.push(String(row.summary).slice(0, EXCERPT_CHARS));
-    const detail = excerptParts.join(" ").trim();
-    lines.push(`- ${citation} (${row.court}): ${row.title}`);
-    if (detail) lines.push(`  Excerpt: ${detail}${detail.length >= EXCERPT_CHARS ? "..." : ""}`);
+    const isJudgment = row.sourceType === "judgment";
+    const excerptLen = isJudgment ? EXCERPT_CHARS_JUDGMENT : EXCERPT_CHARS_EXTRACTED;
+    const detail = row.summary ? String(row.summary).slice(0, excerptLen) : "";
+    // Judgment rows get a clear label so the AI treats them as authoritative
+    const rowLabel = isJudgment ? "JUDGMENT" : "CASE";
+    lines.push(`- [${rowLabel}] ${citation} (${row.court}): ${row.title}`);
+    if (detail) lines.push(`  ${isJudgment ? "Headnotes" : "Excerpt"}: ${detail}${detail.length >= excerptLen ? "..." : ""}`);
   }
   if (lines.length === 0) return null;
   return {

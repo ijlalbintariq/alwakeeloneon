@@ -282,15 +282,24 @@ function scoreCaseLawRowForCitationLookup(row: CaseLaw, intent: QueryIntent): nu
 async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number): Promise<RetrievedCaseLaw[]> {
   const expandedQuery = intent.expandedQuery || intent.normalized;
 
-  // Path 1: keyword search with expanded terms
-  const keywordPromise = storage.searchCaseLaw(expandedQuery, limit * 3, {
+  // Path 1 (PRIMARY): Direct judgment table search — 204k verified, structured records.
+  // This is now the main source. Gets the largest limit.
+  const judgmentKeywordPromise = withTimeout(
+    storage.searchJudgmentsByKeywords(expandedQuery, limit * 5).catch(() => [] as CaseLaw[]),
+    CASELAW_TIMEOUT_MS,
+    [] as CaseLaw[],
+  );
+
+  // Path 2 (SECONDARY): keyword search on case_law table — extracted citations from
+  // uploaded documents. Smaller limit since judgments cover most of the same corpus.
+  const keywordPromise = storage.searchCaseLaw(expandedQuery, limit * 2, {
     sort: "relevance",
     includeSourceContentSearch: false,
   }).catch(() => [] as CaseLaw[]);
 
-  // Path 2: RAG vector search — admin-case-law AND judgment chunks
+  // Path 3 (TERTIARY): RAG vector search — admin-uploaded case law documents
   const ragPromise = userId
-    ? retrieveForQuery({ userId, query: expandedQuery, topK: limit * 6 })
+    ? retrieveForQuery({ userId, query: expandedQuery, topK: limit * 4 })
         .then(async (retrieval) => {
           const adminDocIds: number[] = [];
           const seenAdmin = new Set<number>();
@@ -302,7 +311,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
             if (!Number.isInteger(docId) || docId <= 0 || seenAdmin.has(docId)) continue;
             seenAdmin.add(docId);
             adminDocIds.push(docId);
-            if (adminDocIds.length >= limit * 4) break;
+            if (adminDocIds.length >= limit * 2) break;
           }
 
           const adminCaseLaw = adminDocIds.length > 0
@@ -314,23 +323,17 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
         .catch(() => [] as CaseLaw[])
     : Promise.resolve([] as CaseLaw[]);
 
-  // Path 3: Direct judgment table keyword search — the same DB the search UI uses
-  const judgmentKeywordPromise = withTimeout(
-    storage.searchJudgmentsByKeywords(expandedQuery, limit * 3).catch(() => [] as CaseLaw[]),
-    CASELAW_TIMEOUT_MS,
-    [] as CaseLaw[],
-  );
-
-  const [keywordRaw, ragRaw, judgmentRaw] = await Promise.all([
+  const [judgmentRaw, keywordRaw, ragRaw] = await Promise.all([
+    judgmentKeywordPromise,
     withTimeout(keywordPromise, CASELAW_TIMEOUT_MS, [] as CaseLaw[]),
     withTimeout(ragPromise, CASELAW_TIMEOUT_MS, [] as CaseLaw[]),
-    judgmentKeywordPromise,
   ]);
 
-  // Merge all three paths; citation-dedup to avoid showing the same case twice
+  console.log(`[Retrieval:Paths] judgment=${judgmentRaw.length} caseLaw=${keywordRaw.length} rag=${ragRaw.length}`);
+
+  // Merge: judgments first (primary source), then case_law, then RAG
   const seen = new Set<string>();
   const merged: CaseLaw[] = [];
-  // Judgment rows first — they have richer data (headnotes, full citation parts)
   for (const row of [...judgmentRaw, ...keywordRaw, ...ragRaw]) {
     const citKey = norm(String(row.citation || ""));
     if (!citKey || seen.has(citKey)) continue;

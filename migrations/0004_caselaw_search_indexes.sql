@@ -43,3 +43,17 @@ CREATE INDEX IF NOT EXISTS idx_case_law_source_type ON case_law (source_type);
 -- Composite index for common query pattern: year + report + role
 CREATE INDEX IF NOT EXISTS idx_case_law_year_report_role
   ON case_law (citation_year, citation_report, citation_role);
+
+-- GIN trigram indexes on judgments table (204k records, primary AI source)
+-- Without these, ILIKE on headnotes/title/petitioner/respondent = full sequential scan
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_judgments_headnotes_trgm
+  ON judgments USING gin (headnotes gin_trgm_ops);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_judgments_title_trgm
+  ON judgments USING gin (title gin_trgm_ops);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_judgments_petitioner_trgm
+  ON judgments USING gin (petitioner gin_trgm_ops);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_judgments_respondent_trgm
+  ON judgments USING gin (respondent gin_trgm_ops);
