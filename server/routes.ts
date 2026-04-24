@@ -2232,23 +2232,30 @@ async function callStandardAISimple(
   return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens, options);
 }
 
-// Addon for system prompt emphasizing citation from injected verified cases
+// Addon for system prompt emphasizing citation from injected verified cases via judgment search database
 const VERIFIED_JUDGMENTS_CITATION_ADDON = `
 
-=== CITING FROM VERIFIED JUDGMENTS SECTION ===
-The "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section below contains ONLY real, verified
-case law from our internal Pakistani legal database. These are the ONLY citations you should use.
+=== CASE LAW RETRIEVAL: JUDGMENT SEARCH DATABASE ===
+These verified cases come from Al Wakeelo's Judgment Search database (searchable by users at /judgment-search).
+The "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section below contains ONLY real, verified case law
+from our internal Pakistani legal database. These are the ONLY citations you should use.
 
-CRITICAL RULE:
+WHEN RESPONDING TO CASE LAW QUERIES:
+1. Use cases from the VERIFIED JUDGMENTS section exclusively
+2. For deeper case law research, suggest: "You can also search our Judgment Search database at /judgment-search"
+3. If no cases found, guide user: "No relevant judgments in our database. Try searching /judgment-search with keywords like '[relevant statute/case type]'"
+
+CRITICAL RULES:
 - Cite ONLY from the section below
 - Never cite cases from your training data that are not in the section below
 - Do NOT hallucinate or invent citations
-- If a relevant case is not in the section, say "This specific case is not in our database"
+- If a relevant case is not in the section, say "This specific case is not in our database" then suggest /judgment-search
 
 Format all citations as: **[CITATION]** — brief explanation
-Example: **[PLD 2020 SC 456]** — Supreme Court held that bail cancellation requires proof of...
+Example: **[PLD 2020 SC 456]** — Supreme Court held that bail cancellation requires proof of supervening circumstances...
 
-If the VERIFIED JUDGMENTS section is empty, write: "No relevant judgments found in our database for this query. However, Section [number] of [Code] establishes that..."
+If the VERIFIED JUDGMENTS section is empty, write: "No relevant judgments found in our database for this query.
+However, you can search our Judgment Search database for more cases, or I can explain Section [number] of [Code]..."
 `;
 
 // Removed: callStandardAIWithTools function (tool-calling disabled)
@@ -5400,7 +5407,12 @@ Examples: **[Pakistan Penal Code, 1860]**, **[Code of Civil Procedure, 1908]**, 
 
 ### Leading Case Law and Judicial Precedents
 
-RETRIEVAL SYSTEM: The database uses semantic topic matching. Citations injected into the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section are ALREADY filtered for relevance to your query. They are the correct cases for this specific legal topic.
+RETRIEVAL SYSTEM: The database uses semantic topic matching via the Judgment Search database. Citations injected into the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section are ALREADY filtered for relevance to your query. They are the correct cases for this specific legal topic.
+
+JUDGMENT SEARCH GUIDANCE:
+- When the user asks about specific cases or needs more case law, mention: "You can search our Judgment Search database directly at /judgment-search for additional cases"
+- If verified judgments are available but incomplete for the topic, suggest: "I've provided the most relevant cases from our database. Try /judgment-search with keywords like '[statute/case type]' for broader results"
+- When helping with case research, reference the Judgment Search database as the primary source for discovering and verifying Pakistani case law
 
 ━━━ CITATION INTEGRITY — NON-NEGOTIABLE ━━━
 
