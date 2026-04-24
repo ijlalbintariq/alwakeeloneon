@@ -29,6 +29,10 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_case_law_fts
     )
   );
 
+-- GIN trigram index on keywords array (array_to_string avoids sequential scan on ILIKE)
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_case_law_keywords_trgm
+  ON case_law USING gin (array_to_string(keywords, ' ') gin_trgm_ops);
+
 -- B-tree indexes for structured field lookups (year, report, page)
 CREATE INDEX IF NOT EXISTS idx_case_law_year ON case_law (citation_year);
 CREATE INDEX IF NOT EXISTS idx_case_law_report ON case_law (citation_report);

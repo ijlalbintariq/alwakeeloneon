@@ -3315,6 +3315,7 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_case_law_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_title_trgm ON case_law USING gin (title gin_trgm_ops)` },
     { label: "idx_case_law_court_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_court_trgm ON case_law USING gin (court gin_trgm_ops)` },
     { label: "idx_case_law_summary_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_summary_trgm ON case_law USING gin (summary gin_trgm_ops)` },
+    { label: "idx_case_law_keywords_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_keywords_trgm ON case_law USING gin (array_to_string(keywords, ' ') gin_trgm_ops)` },
     { label: "idx_github_knowledge_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_title_trgm ON github_knowledge USING gin (title gin_trgm_ops)` },
     { label: "idx_github_knowledge_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_content_trgm ON github_knowledge USING gin (content gin_trgm_ops)` },
     { label: "idx_admin_knowledge_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_admin_knowledge_content_trgm ON admin_knowledge USING gin (content gin_trgm_ops)` },
