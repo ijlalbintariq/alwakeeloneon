@@ -10683,7 +10683,8 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
 
       // Run knowledge gather and style retrieval in parallel with a shared enrichment deadline.
       // Both are optional enrichment — the chat request must proceed even if one or both time out.
-      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 25000));  // Increased from 10000 — DB queries take 8-10s, pipeline needs 20s
+      // Tool search caps at 14s, pipeline at 15s — 18s is a safe outer bound.
+      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 18000));
       const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
       // V2 pipeline: intent classify → topic-validated retrieval → structured context
       // For al-wakeelo: pipeline handles statutes + admin docs; tool search handles case law.
@@ -10868,8 +10869,16 @@ The user has attached the following documents for your reference. Analyze them c
       const knowledgeTokensBudget = styleContext
         ? Math.max(300, KNOWLEDGE_PROMPT_TOKEN_BUDGET - estimateTokens(styleContext))
         : KNOWLEDGE_PROMPT_TOKEN_BUDGET;
-      const boundedKnowledgeContext = trimTextToTokenBudget(knowledgeContext, knowledgeTokensBudget);
-      // Tool search results prepended before pipeline context (tool-verified judgments take priority)
+      // When tool search found judgments, strip the pipeline's case law section to avoid
+      // two conflicting "VERIFIED JUDGMENTS" lists confusing the AI. Keep statutes + admin docs.
+      const pipelineContext = (toolSearchResult.foundCount > 0 && knowledgeContext)
+        ? knowledgeContext
+            .replace(/=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===[\s\S]*?(?===|$)/g, "")
+            .replace(/=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===[\s\S]*?(?===|$)/g, "")
+            .trim()
+        : knowledgeContext;
+      const boundedKnowledgeContext = trimTextToTokenBudget(pipelineContext, knowledgeTokensBudget);
+      // Tool search results come first — AI-chosen precise queries, direct DB hits.
       const toolContextBlock = toolSearchResult.contextString
         ? `\n\n${toolSearchResult.contextString}`
         : "";

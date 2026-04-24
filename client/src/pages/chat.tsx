@@ -121,6 +121,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     totalFound: number;
     totalMs: number;
   }>({ active: false, queries: [], totalFound: 0, totalMs: 0 });
+  // Elapsed time counter — starts when user sends, ticks every 100ms while waiting
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const loadStartRef = useRef<number | null>(null);
   const [leftRailOpen, setLeftRailOpen] = useState(true);
   // Map<citation_text, judgment_id> — only citations verified to exist in DB
   const [verifiedJudgmentIds, setVerifiedJudgmentIds] = useState<Map<string, string>>(new Map());
@@ -267,6 +270,22 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   useEffect(() => {
     resizePromptInput();
   }, [input, resizePromptInput]);
+
+  // Elapsed timer — ticks every 100ms while waiting for a response
+  useEffect(() => {
+    if (isLoading) {
+      loadStartRef.current = Date.now();
+      setElapsedMs(0);
+      const id = setInterval(() => {
+        if (loadStartRef.current !== null) {
+          setElapsedMs(Date.now() - loadStartRef.current);
+        }
+      }, 100);
+      return () => clearInterval(id);
+    } else {
+      loadStartRef.current = null;
+    }
+  }, [isLoading]);
 
   const bookmarkMutation = useMutation({
     mutationFn: async (msg: ChatMessage) => {
@@ -1266,26 +1285,66 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               </div>
               <div className="flex-1">
                 <div className={`p-4 rounded-2xl border ${isApexAgentWebMode ? "border-cyan-700/30 bg-cyan-900/20" : "border-slate-700/30 bg-slate-800/20"}`}>
+                  {/* Phase indicator + elapsed timer */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Loader2 size={11} className="animate-spin text-amber-400" />
+                      <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+                        {toolSearchStatus.queries.length > 0
+                          ? toolSearchStatus.active
+                            ? "Searching case law"
+                            : "Writing response"
+                          : elapsedMs < 2000
+                            ? "Preparing"
+                            : "Retrieving context"}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-400/80 tabular-nums">
+                      {(elapsedMs / 1000).toFixed(1)}s
+                    </span>
+                  </div>
+
+                  {/* Tool search queries — shown once events arrive */}
+                  {toolSearchStatus.queries.length > 0 && (
+                    <div className="mb-3 space-y-1">
+                      {toolSearchStatus.queries.map((q, i) => (
+                        <div key={i} className="flex items-center gap-2 text-[9px]">
+                          <Search size={8} className="text-cyan-600 flex-shrink-0" />
+                          <span className="text-slate-400 font-mono truncate">{q.query}</span>
+                          <span className="ml-auto text-slate-600 flex-shrink-0">
+                            {q.found > 0 ? (
+                              <span className="text-cyan-600">{q.found} found</span>
+                            ) : (
+                              <span>0 found</span>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                      {!toolSearchStatus.active && toolSearchStatus.totalFound > 0 && (
+                        <div className="flex items-center gap-1.5 pt-0.5 text-[9px] text-cyan-500/80">
+                          <Gavel size={8} />
+                          <span>{toolSearchStatus.totalFound} judgment{toolSearchStatus.totalFound !== 1 ? "s" : ""} retrieved</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Shimmer bars */}
                   <style>{`
                     @keyframes shimmer {
                       0% { background-position: -1000px 0; }
                       100% { background-position: 1000px 0; }
                     }
                     .animate-shimmer {
-                      background: linear-gradient(
-                        90deg,
-                        rgba(255, 255, 255, 0.05) 0%,
-                        rgba(255, 255, 255, 0.15) 50%,
-                        rgba(255, 255, 255, 0.05) 100%
-                      );
+                      background: linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.10) 50%,rgba(255,255,255,0.04) 100%);
                       background-size: 1000px 100%;
                       animation: shimmer 2s infinite;
                     }
                   `}</style>
-                  <div className="space-y-2.5">
-                    <div className="h-4 bg-slate-600/40 rounded animate-shimmer"></div>
-                    <div className="h-4 bg-slate-600/40 rounded animate-shimmer" style={{ animationDelay: "0.2s", width: "95%" }}></div>
-                    <div className="h-4 bg-slate-600/40 rounded animate-shimmer" style={{ animationDelay: "0.4s", width: "90%" }}></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-slate-700/50 rounded animate-shimmer"></div>
+                    <div className="h-3 bg-slate-700/50 rounded animate-shimmer" style={{ animationDelay: "0.3s", width: "90%" }}></div>
+                    <div className="h-3 bg-slate-700/50 rounded animate-shimmer" style={{ animationDelay: "0.6s", width: "75%" }}></div>
                   </div>
                 </div>
               </div>
@@ -1469,29 +1528,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           )}
 
-          {/* Tool-search status bar — shown while AI searches case law DB */}
-          {isLoading && (toolSearchStatus.active || toolSearchStatus.queries.length > 0) && (
-            <div className="mb-2 px-3 py-2 bg-[#0F172A]/90 border border-cyan-800/40 rounded-lg mx-1">
-              <div className="flex items-center gap-2 mb-1">
-                <Search size={11} className={toolSearchStatus.active ? "text-cyan-400 animate-pulse" : "text-cyan-600"} />
-                <span className="text-[9px] font-semibold uppercase tracking-widest text-cyan-500">
-                  {toolSearchStatus.active ? "Searching Case Law Database" : `Found ${toolSearchStatus.totalFound} judgment${toolSearchStatus.totalFound !== 1 ? "s" : ""} in ${(toolSearchStatus.totalMs / 1000).toFixed(1)}s`}
-                </span>
-                {toolSearchStatus.active && (
-                  <Loader2 size={9} className="animate-spin text-cyan-500 ml-auto" />
-                )}
-              </div>
-              <div className="space-y-0.5">
-                {toolSearchStatus.queries.map((q, i) => (
-                  <div key={i} className="flex items-center gap-2 text-[9px] text-slate-400">
-                    <span className="text-cyan-700">&#8250;</span>
-                    <span className="font-mono truncate max-w-[200px]">{q.query}</span>
-                    <span className="ml-auto text-slate-500">{q.found} found &middot; {(q.elapsedMs / 1000).toFixed(1)}s</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="flex gap-1.5 sm:gap-2 bg-white border border-[#CBD5E1] p-2.5 sm:p-3 rounded-xl shadow-sm items-end">
             <input
