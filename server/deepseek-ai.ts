@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { ChatCompletionTool, ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { CITATION_SEARCH_TOOL, executeCitationSearch } from "./tools/citation-search-tool";
 
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 const DEEPSEEK_CHAT_MODEL = "deepseek-chat";
@@ -263,4 +264,115 @@ export async function transcribeWithDeepSeek(options: DeepSeekTranscriptionOptio
     inputTokens: response.usage?.prompt_tokens,
     outputTokens: response.usage?.completion_tokens,
   };
+}
+
+// ── Tool-based judgment search ────────────────────────────────────────────────
+// AI calls search_judgments 2-3 times with its own chosen short queries.
+// Same DB function as the Judgment Search UI — no pipeline, no classifiers.
+
+export interface ToolJudgmentSearchResult {
+  contextString: string;
+  foundCount: number;
+  queriesUsed: string[];
+}
+
+export async function runToolJudgmentSearch(
+  userQuery: string,
+  onStatus: (query: string, found: number) => void,
+  signal?: AbortSignal,
+): Promise<ToolJudgmentSearchResult> {
+  const client = getClient();
+
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: "system",
+      content:
+        "You are a Pakistani case law search assistant. " +
+        "Call search_judgments 2-3 times with SHORT different queries (2-4 words each) to find relevant judgments. " +
+        "Use specific Pakistani legal terms. Different angles per call. After all searches respond: DONE",
+    },
+    { role: "user", content: userQuery },
+  ];
+
+  const allResults: Array<{ citation: string; court: string; title: string; summary: string }> = [];
+  const queriesUsed: string[] = [];
+  let rounds = 0;
+
+  while (rounds < 3) {
+    rounds++;
+    let response;
+    try {
+      response = await client.chat.completions.create(
+        {
+          model: DEEPSEEK_CHAT_MODEL,
+          messages,
+          tools: [CITATION_SEARCH_TOOL],
+          tool_choice: rounds === 1 ? "required" : "auto",
+          max_tokens: 300,
+          temperature: 0.1,
+        },
+        { signal, maxRetries: 1 } as any,
+      );
+    } catch {
+      break;
+    }
+
+    const message = response.choices[0]?.message;
+    if (!message) break;
+    messages.push(message as ChatCompletionMessageParam);
+
+    if (!message.tool_calls?.length) break;
+
+    for (const toolCall of message.tool_calls) {
+      const tc = toolCall as any;
+      let args: { query: string; court?: string; limit?: number } = { query: "" };
+      try { args = JSON.parse(tc.function?.arguments || "{}"); } catch { /* ignore */ }
+      if (!args.query) continue;
+
+      queriesUsed.push(args.query);
+      const resultStr = await executeCitationSearch(args).catch(() =>
+        JSON.stringify({ found: 0, results: [] }),
+      );
+
+      let parsed: { found: number; results: typeof allResults } = { found: 0, results: [] };
+      try { parsed = JSON.parse(resultStr); } catch { /* ignore */ }
+
+      onStatus(args.query, parsed.found || 0);
+      if (parsed.results?.length) allResults.push(...parsed.results);
+
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: resultStr,
+      } as ChatCompletionMessageParam);
+    }
+  }
+
+  // Deduplicate by normalised citation string
+  const seen = new Set<string>();
+  const unique = allResults.filter((r) => {
+    const key = (r.citation || "").toLowerCase().replace(/\s+/g, " ").trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  if (unique.length === 0) {
+    return { contextString: "", foundCount: 0, queriesUsed };
+  }
+
+  const lines = unique.map(
+    (r) =>
+      `- CITATION: ${r.citation} | COURT: ${r.court} | TITLE: ${r.title}` +
+      (r.summary ? ` — ${r.summary.slice(0, 400)}` : ""),
+  );
+
+  const contextString = [
+    "=== AI-SEARCHED JUDGMENTS (DIRECT DB — TOOL VERIFIED) ===",
+    "Use ONLY these citations. Copy each CITATION string EXACTLY. Format: **[CITATION]** — explanation.",
+    "FORBIDDEN: Do NOT invent citations. Every citation must appear in this list.",
+    ...lines,
+  ].join("\n");
+
+  return { contextString, foundCount: unique.length, queriesUsed };
 }

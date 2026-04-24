@@ -114,6 +114,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [ragEnabled, setRagEnabled] = useState(false);
   const [agentStatus, setAgentStatus] = useState<string | null>(null);
+  // Tool-search status: shown as a timer while AI searches case law DB
+  const [toolSearchStatus, setToolSearchStatus] = useState<{
+    active: boolean;
+    queries: Array<{ query: string; found: number; elapsedMs: number }>;
+    totalFound: number;
+    totalMs: number;
+  }>({ active: false, queries: [], totalFound: 0, totalMs: 0 });
   const [leftRailOpen, setLeftRailOpen] = useState(true);
   // Map<citation_text, judgment_id> — only citations verified to exist in DB
   const [verifiedJudgmentIds, setVerifiedJudgmentIds] = useState<Map<string, string>>(new Map());
@@ -386,6 +393,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     setMessages(updated);
     setInput("");
     setIsLoading(true);
+    setToolSearchStatus({ active: false, queries: [], totalFound: 0, totalMs: 0 });
 
     const currentFiles = [...attachedFiles];
     setAttachedFiles([]);
@@ -557,6 +565,28 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   const parsed = JSON.parse(jsonStr);
                   if (parsed.error) {
                     throw { message: parsed.error, isLimit: false };
+                  }
+                  // Tool-search status events — show searching indicator with timer
+                  if (parsed.searching === true) {
+                    setToolSearchStatus(prev => ({
+                      ...prev,
+                      active: true,
+                      queries: [...prev.queries, { query: parsed.query, found: parsed.found ?? 0, elapsedMs: parsed.elapsedMs ?? 0 }],
+                    }));
+                    continue;
+                  }
+                  if (parsed.searching === false) {
+                    setToolSearchStatus(prev => ({
+                      ...prev,
+                      active: false,
+                      totalFound: parsed.found ?? prev.totalFound,
+                      totalMs: parsed.totalMs ?? prev.totalMs,
+                    }));
+                    continue;
+                  }
+                  // Clear tool search state when AI starts writing
+                  if (parsed.text && toolSearchStatus.active) {
+                    setToolSearchStatus(prev => ({ ...prev, active: false }));
                   }
                   if (parsed.reset) {
                     accumulated = "";
@@ -1440,6 +1470,30 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <div className="flex items-center gap-2 mb-2 px-3">
               <Loader2 size={14} className="animate-spin text-amber-500" />
               <span className="text-[10px] text-amber-400 font-black uppercase tracking-widest">Transcribing audio...</span>
+            </div>
+          )}
+
+          {/* Tool-search status bar — shown while AI searches case law DB */}
+          {isLoading && (toolSearchStatus.active || toolSearchStatus.queries.length > 0) && (
+            <div className="mb-2 px-3 py-2 bg-[#0F172A]/90 border border-cyan-800/40 rounded-lg mx-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Search size={11} className={toolSearchStatus.active ? "text-cyan-400 animate-pulse" : "text-cyan-600"} />
+                <span className="text-[9px] font-semibold uppercase tracking-widest text-cyan-500">
+                  {toolSearchStatus.active ? "Searching Case Law Database" : `Found ${toolSearchStatus.totalFound} judgment${toolSearchStatus.totalFound !== 1 ? "s" : ""} in ${(toolSearchStatus.totalMs / 1000).toFixed(1)}s`}
+                </span>
+                {toolSearchStatus.active && (
+                  <Loader2 size={9} className="animate-spin text-cyan-500 ml-auto" />
+                )}
+              </div>
+              <div className="space-y-0.5">
+                {toolSearchStatus.queries.map((q, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[9px] text-slate-400">
+                    <span className="text-cyan-700">&#8250;</span>
+                    <span className="font-mono truncate max-w-[200px]">{q.query}</span>
+                    <span className="ml-auto text-slate-500">{q.found} found &middot; {(q.elapsedMs / 1000).toFixed(1)}s</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

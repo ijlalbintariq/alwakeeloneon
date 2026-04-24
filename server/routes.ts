@@ -36,8 +36,7 @@ import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
-import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName } from "./deepseek-ai";
-// Tool-calling disabled (2026-04-24): using RAG-injected cases instead
+import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, runToolJudgmentSearch } from "./deepseek-ai";
 import {
   isAiRouterV2Enabled,
   raceToDeadline,
@@ -10687,12 +10686,34 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 25000));  // Increased from 10000 — DB queries take 8-10s, pipeline needs 20s
       const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
       // V2 pipeline: intent classify → topic-validated retrieval → structured context
+      // For al-wakeelo: pipeline handles statutes + admin docs; tool search handles case law.
       const knowledgePromise: Promise<string> = knowledgeNeeded
         ? gatherKnowledgeContextV2(lastUserMessage!.content, userId).catch((err) => {
             console.warn("[AI Chat] Knowledge pipeline unavailable:", getErrorMessage(err));
             return "";
           })
         : Promise.resolve("");
+
+      // Tool-based judgment search: AI calls search_judgments with its own short queries.
+      // Runs in parallel with the pipeline — same DB function as the Judgment Search UI.
+      // Status messages buffered here, flushed after SSE headers are sent.
+      interface ToolStatusEvent { query: string; found: number; elapsedMs: number }
+      const toolStatusBuffer: ToolStatusEvent[] = [];
+      const toolSearchStartMs = Date.now();
+      const toolSearchEnabled = knowledgeNeeded && moduleType === "al-wakeelo" && !directMode;
+      interface ToolSearchResult { contextString: string; foundCount: number; queriesUsed: string[] }
+      const toolSearchPromise: Promise<ToolSearchResult> = toolSearchEnabled
+        ? runToolJudgmentSearch(
+            lastUserMessage!.content,
+            (query, found) => {
+              toolStatusBuffer.push({ query, found, elapsedMs: Date.now() - toolSearchStartMs });
+              console.log(`[ToolSearch] query="${query}" found=${found} elapsed=${Date.now() - toolSearchStartMs}ms`);
+            },
+          ).catch((err) => {
+            console.warn("[ToolSearch] Failed:", err?.message || err);
+            return { contextString: "", foundCount: 0, queriesUsed: [] };
+          })
+        : Promise.resolve({ contextString: "", foundCount: 0, queriesUsed: [] });
 
       type StyleFetch = Awaited<ReturnType<typeof retrieveStyleContextForGeneration>> | null;
       const stylePromise: Promise<StyleFetch> = (styleEligible && styleModule)
@@ -10717,12 +10738,17 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           })()
         : Promise.resolve(null);
 
-      const [knowledgeRace, styleRace] = await Promise.all([
+      const [knowledgeRace, styleRace, toolSearchRace] = await Promise.all([
         raceToDeadline<string>(knowledgePromise, ENRICHMENT_BUDGET_MS, "", "knowledge-context"),
         raceToDeadline<StyleFetch>(stylePromise, ENRICHMENT_BUDGET_MS, null, "style-memory"),
+        raceToDeadline<ToolSearchResult>(toolSearchPromise, ENRICHMENT_BUDGET_MS, { contextString: "", foundCount: 0, queriesUsed: [] }, "tool-search"),
       ]);
       const knowledgeContext = knowledgeRace.value;
       const styleRetrieved = styleRace.value;
+      const toolSearchResult = toolSearchRace.value;
+      if (toolSearchResult.foundCount > 0) {
+        console.log(`[ToolSearch:Done] found=${toolSearchResult.foundCount} queries=${JSON.stringify(toolSearchResult.queriesUsed)}`);
+      }
       if (attachmentContext) {
         const boundedAttachmentContext = trimTextToTokenBudget(attachmentContext, ATTACHMENT_PROMPT_TOKEN_BUDGET);
         systemPrompt += `\n\nATTACHMENT MODE (STRICT):
@@ -10843,7 +10869,11 @@ The user has attached the following documents for your reference. Analyze them c
         ? Math.max(300, KNOWLEDGE_PROMPT_TOKEN_BUDGET - estimateTokens(styleContext))
         : KNOWLEDGE_PROMPT_TOKEN_BUDGET;
       const boundedKnowledgeContext = trimTextToTokenBudget(knowledgeContext, knowledgeTokensBudget);
-      const systemPromptFull = systemPrompt + boundedKnowledgeContext + (styleContext ? `\n\nPERSONAL STYLE MEMORY (generation-only):\n${styleContext}` : "");
+      // Tool search results prepended before pipeline context (tool-verified judgments take priority)
+      const toolContextBlock = toolSearchResult.contextString
+        ? `\n\n${toolSearchResult.contextString}`
+        : "";
+      const systemPromptFull = systemPrompt + toolContextBlock + boundedKnowledgeContext + (styleContext ? `\n\nPERSONAL STYLE MEMORY (generation-only):\n${styleContext}` : "");
       const useStream = requestedStream && moduleProfile.modelStrategy.stream && selectedRoute !== "apex";
       const routeLabel = selectedRoute === "apex" ? `apex:${selectedApexModel || "auto"}` : selectedRoute;
       const routingPath: string[] = [`profile:${moduleType}`, `route:${routeLabel}`];
@@ -10896,6 +10926,15 @@ The user has attached the following documents for your reference. Analyze them c
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
         res.flushHeaders();
+
+        // Flush buffered tool-search status events now that SSE is open.
+        // Client shows these as a "Searching case law..." indicator with timer.
+        for (const ev of toolStatusBuffer) {
+          res.write(`data: ${JSON.stringify({ searching: true, query: ev.query, found: ev.found, elapsedMs: ev.elapsedMs })}\n\n`);
+        }
+        if (toolSearchEnabled) {
+          res.write(`data: ${JSON.stringify({ searching: false, found: toolSearchResult.foundCount, totalMs: Date.now() - toolSearchStartMs })}\n\n`);
+        }
 
         let fullContent = "";
         const writeChunkToClient = (text: string) => {
