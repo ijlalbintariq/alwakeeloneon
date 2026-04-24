@@ -57,7 +57,7 @@ function cacheSet(key: string, value: string): void {
 // Pipeline
 // ---------------------------------------------------------------------------
 
-const OUTER_DEADLINE_MS = Number(process.env.KNOWLEDGE_OUTER_DEADLINE_MS || 5000);
+const OUTER_DEADLINE_MS = Number(process.env.KNOWLEDGE_OUTER_DEADLINE_MS || 12000);  // Increased from 5000 — must exceed CASELAW_TIMEOUT_MS (8000) + overhead
 
 function normKey(q: string): string {
   return q.toLowerCase().replace(/\s+/g, " ").trim().slice(0, 280);
