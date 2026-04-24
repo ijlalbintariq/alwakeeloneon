@@ -1957,19 +1957,40 @@ export class DatabaseStorage implements IStorage {
     // Per-token ILIKEs (%bail%, %cancellation%, %narcotics%) use GIN indexes → <500ms.
     // DO NOT add to_tsvector() @@ plainto_tsquery() to WHERE — the stored index uses
     // 'english' but queries use 'simple', Postgres can't use it → full scan → 15s timeout.
-    const tokens = safeQuery
+
+    // Common English stop words that appear in user queries but NOT in legal headnotes.
+    // Including them in the AND filter causes 0 results (e.g. "can", "the" vs legal terms).
+    const STOP_WORDS = new Set([
+      "can","the","and","for","are","was","has","have","had","been","that","this",
+      "with","from","his","her","its","they","them","will","may","not","out","any",
+      "all","who","what","when","how","why","but","yet","nor","too","also","she",
+      "him","our","your","their","give","seek","case","law","legal","does","would",
+      "could","should","being","against","about","into","than","then","just","like",
+      "which","there","where","here","such","after","before","under","over","upon",
+      "without","within","between","through","during","while","although","however",
+      "therefore","whether","both","each","some","more","most","other","only","also",
+      "very","even","still","well","back","way","first","last","long","little","own",
+      "right","old","same","new","want","need","take","make","come","get","put","ask",
+    ]);
+
+    const allTokens = safeQuery
       .toLowerCase()
       .split(/\s+/)
       .map((t) => t.replace(/[^a-z0-9]/g, ""))
-      .filter((t) => t.length >= 3)
-      .slice(0, 10);
+      .filter((t) => t.length >= 3);
 
-    const tokenQuery = tokens.join(" ");
+    // Prefer specific tokens (not stop words) for WHERE filter.
+    // Fallback: if all tokens are stop words, use any token of length >= 4.
+    const specificTokens = allTokens.filter((t) => !STOP_WORDS.has(t));
+    const tokens = specificTokens.length > 0
+      ? specificTokens.slice(0, 10)
+      : allTokens.filter((t) => t.length >= 4).slice(0, 10);
+
+    const tokenQuery = allTokens.slice(0, 10).join(" ");
     if (tokens.length === 0) return [];
 
-    // WHERE uses only first 3 tokens (AND). All-token AND is too strict:
-    // a 7-token query drops valid results missing any single word.
-    // 3-token AND gives precision; ts_rank handles further relevance sorting.
+    // WHERE uses only first 3 specific tokens (AND). All-token AND is too strict.
+    // Using specific terms (not stop words) avoids 0-result matches on common words.
     const filterTokens = tokens.slice(0, 3);
     const filterConditions = filterTokens.map((token) => {
       const pat = `%${token}%`;
@@ -3329,7 +3350,9 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_case_law_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_title_trgm ON case_law USING gin (title gin_trgm_ops)` },
     { label: "idx_case_law_court_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_court_trgm ON case_law USING gin (court gin_trgm_ops)` },
     { label: "idx_case_law_summary_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_summary_trgm ON case_law USING gin (summary gin_trgm_ops)` },
-    // idx_case_law_keywords_trgm removed — array_to_string() not IMMUTABLE on this Postgres version.
+    // NOTE: array_to_string() expression GIN index removed — Postgres requires IMMUTABLE
+    // functions in index expressions; array_to_string is not IMMUTABLE on all versions.
+    // Keyword search falls back to the summary GIN index which covers the same content.
     { label: "idx_github_knowledge_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_title_trgm ON github_knowledge USING gin (title gin_trgm_ops)` },
     { label: "idx_github_knowledge_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_content_trgm ON github_knowledge USING gin (content gin_trgm_ops)` },
     { label: "idx_admin_knowledge_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_admin_knowledge_content_trgm ON admin_knowledge USING gin (content gin_trgm_ops)` },
