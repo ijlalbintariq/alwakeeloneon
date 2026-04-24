@@ -10684,7 +10684,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
 
       // Run knowledge gather and style retrieval in parallel with a shared enrichment deadline.
       // Both are optional enrichment — the chat request must proceed even if one or both time out.
-      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 2500));
+      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 10000));  // Increased from 2500 to allow 8s case law + 2s style retrieval
       const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
       // V2 pipeline: intent classify → topic-validated retrieval → structured context
       const knowledgePromise: Promise<string> = knowledgeNeeded

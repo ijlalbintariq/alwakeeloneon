@@ -65,8 +65,8 @@ export interface RetrievalResult {
 // Timeouts
 // ---------------------------------------------------------------------------
 
-const CASELAW_TIMEOUT_MS = 4000;
-const STATUTE_TIMEOUT_MS = 1500;
+const CASELAW_TIMEOUT_MS = 8000;  // Increased from 4000 - DB searches need 5-7s
+const STATUTE_TIMEOUT_MS = 3000;  // Increased from 1500
 const ADMIN_DOC_TIMEOUT_MS = 1500;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
