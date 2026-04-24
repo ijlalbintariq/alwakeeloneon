@@ -78,7 +78,9 @@ export async function runKnowledgePipeline(
   const t0 = Date.now();
   const key = `${userId || "anon"}::${normKey(rawQuery)}`;
   const cached = cacheGet(key);
-  if (cached !== undefined) {
+  // Never use a cached empty string — it means a previous request timed out or found nothing.
+  // Retry the DB every time until we get real results, then cache them.
+  if (cached !== undefined && cached.length > 0) {
     return {
       contextString: cached,
       hasCaseLaw: cached.includes("VERIFIED JUDGMENTS"),
@@ -130,7 +132,10 @@ export async function runKnowledgePipeline(
     const durationMs = Date.now() - t0;
     console.log(`[Pipeline:Done] totalMs=${durationMs}`);
 
-    cacheSet(key, ctx.contextString);
+    // Only cache non-empty results. Empty means timeout or no data — don't poison the cache.
+    if (ctx.contextString.length > 0) {
+      cacheSet(key, ctx.contextString);
+    }
 
     return {
       contextString: ctx.contextString,

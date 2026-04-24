@@ -317,11 +317,11 @@ export function classifyQueryIntent(rawQuery: string): QueryIntent {
     return {
       raw,
       normalized,
-      type: "statute",
+      type: "general-legal",  // Not "statute" — users asking about a section also want case law on it
       topics: [],
       expandedQuery: expandedStat,
       expandedTerms: expandedStat.split(/\s+/),
-      needsCaseLaw: false,
+      needsCaseLaw: true,   // Always fetch case law — rulings on this section are valuable
       needsStatutes: true,
       needsAdminDocs: false,
       statuteRef,
@@ -363,7 +363,9 @@ export function classifyQueryIntent(rawQuery: string): QueryIntent {
     for (const t of topic.primary) termSet.add(t);
   }
   const expandedTerms = Array.from(termSet);
-  const expandedQuery = expandedTerms.slice(0, 5).join(" ");
+  // 15 terms: the DB splits these into individual tokens for ILIKE matching (storage.ts queryTokens).
+  // 5 was too few — topic synonyms were truncated, missing key retrieval terms.
+  const expandedQuery = expandedTerms.slice(0, 15).join(" ");
 
   // --- Detect intent type ---
   const statuteIndicators = ["section", "act", "ordinance", "ppc", "crpc", "statute", "provision", "law", "code"];
@@ -391,8 +393,13 @@ export function classifyQueryIntent(rawQuery: string): QueryIntent {
     topics: topTopics,
     expandedQuery,
     expandedTerms,
-    needsCaseLaw: type !== "statute",
-    needsStatutes: type !== "case-law",
+    // If any legal topics were detected, ALWAYS fetch case law — the classifier's
+    // statute/case-law split is imperfect. Queries like "what PPC sections apply to murder"
+    // score higher on statute indicators but the user wants relevant judgments too.
+    needsCaseLaw: type !== "statute" || topTopics.length > 0,
+    // Similarly, always fetch statutes when topics are present — most legal questions
+    // benefit from seeing both the law text and the case law applying it.
+    needsStatutes: type !== "case-law" || topTopics.length > 0,
     needsAdminDocs: true,
   };
 }

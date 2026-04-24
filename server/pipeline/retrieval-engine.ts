@@ -340,18 +340,20 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
 
   // Discard records with no valid citation
   const withCitation = merged.filter(hasTrustedCitation);
+  // Diagnostic: log how many were dropped by hasTrustedCitation
+  if (merged.length > 0 && withCitation.length < merged.length) {
+    console.log(`[Retrieval:CitationFilter] merged=${merged.length} trusted=${withCitation.length} dropped=${merged.length - withCitation.length}`);
+  }
 
   // Score and filter by topic relevance
   const isCitationLookup = intent.type === "citation-lookup";
   const scoreFn = isCitationLookup ? scoreCaseLawRowForCitationLookup : scoreCaseLawRow;
 
-  // Relaxed minimum score: judgments from the DB table need lower bar since
-  // their headnotes/title are authoritative — keyword scoring alone may be low
-  const rawMinScore = isCitationLookup
-    ? 0
-    : intent.topics.length > 0
-      ? Math.min(...intent.topics.map((t) => t.minRelevanceScore))
-      : 10;
+  // The DB already filtered results for relevance via ILIKE — the results came back
+  // because they matched the query. Don't re-filter them heavily with a second scorer.
+  // The client-side scorer adds a relevance RANKING signal but must not drop valid results.
+  // Use a flat low threshold of 5 — just enough to exclude truly unrelated rows.
+  const rawMinScore = isCitationLookup ? 0 : 5;
 
   // Apply a floor to not over-filter judgment-sourced rows which are already verified
   const scored = withCitation
@@ -525,6 +527,7 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
     adminDocs: adminDocResults,
     diagnostics: {
       caseLawFetched: caseLawResults.length,
+      // caseLawAfterFilter = results with score > 0 (genuinely scored, not just trusted-citation passthrough)
       caseLawAfterFilter: caseLawResults.filter((r) => r.relevanceScore > 0).length,
       statutesFetched: statuteResults.length,
       adminDocsFetched: adminDocResults.length,
