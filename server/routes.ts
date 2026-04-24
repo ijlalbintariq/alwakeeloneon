@@ -10700,7 +10700,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       interface ToolStatusEvent { query: string; found: number; elapsedMs: number }
       const toolStatusBuffer: ToolStatusEvent[] = [];
       const toolSearchStartMs = Date.now();
-      const toolSearchEnabled = knowledgeNeeded && moduleType === "al-wakeelo" && !directMode;
+      const toolSearchEnabled = knowledgeNeeded && moduleType === "al-wakeelo" && !directMode && isDeepSeekAvailable();
       interface ToolSearchResult { contextString: string; foundCount: number; queriesUsed: string[] }
       const toolSearchPromise: Promise<ToolSearchResult> = toolSearchEnabled
         ? runToolJudgmentSearch(
@@ -10945,9 +10945,7 @@ The user has attached the following documents for your reference. Analyze them c
         };
         try {
           const streamMessages = buildMessages(systemPromptFull, geminiContents);
-          // Al Wakeelo now uses RAG-injected verified cases instead of tool-calling.
-          // Citations come from the VERIFIED JUDGMENTS section in the system prompt,
-          // injected by the knowledge retrieval pipeline.
+          // Al Wakeelo: tool-searched judgments + pipeline statutes injected via systemPromptFull.
           if (isAiRouterV2Enabled()) {
             // V2 router: used for all non-al-wakeelo modules (draft, contract, etc.)
             const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;

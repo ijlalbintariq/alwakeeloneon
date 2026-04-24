@@ -280,8 +280,14 @@ export async function runToolJudgmentSearch(
   userQuery: string,
   onStatus: (query: string, found: number) => void,
   signal?: AbortSignal,
+  totalTimeoutMs = 14000,
 ): Promise<ToolJudgmentSearchResult> {
   const client = getClient();
+  const deadline = Date.now() + totalTimeoutMs;
+
+  // Truncate long user messages — tool search only needs the legal topic,
+  // not a full scenario. 300 chars is enough for the AI to pick search terms.
+  const safeQuery = userQuery.slice(0, 300);
 
   const messages: ChatCompletionMessageParam[] = [
     {
@@ -291,7 +297,7 @@ export async function runToolJudgmentSearch(
         "Call search_judgments 2-3 times with SHORT different queries (2-4 words each) to find relevant judgments. " +
         "Use specific Pakistani legal terms. Different angles per call. After all searches respond: DONE",
     },
-    { role: "user", content: userQuery },
+    { role: "user", content: safeQuery },
   ];
 
   const allResults: Array<{ citation: string; court: string; title: string; summary: string }> = [];
@@ -299,7 +305,17 @@ export async function runToolJudgmentSearch(
   let rounds = 0;
 
   while (rounds < 3) {
+    // Abort if overall deadline exceeded — prevents hanging the entire chat request
+    if (Date.now() >= deadline) break;
     rounds++;
+
+    // Per-round abort controller — each DeepSeek call gets max 6s
+    const roundAbort = new AbortController();
+    const roundTimer = setTimeout(() => roundAbort.abort(), 6000);
+    // Propagate parent signal to round abort
+    const onParentAbort = () => roundAbort.abort();
+    signal?.addEventListener("abort", onParentAbort);
+
     let response;
     try {
       response = await client.chat.completions.create(
@@ -311,10 +327,13 @@ export async function runToolJudgmentSearch(
           max_tokens: 300,
           temperature: 0.1,
         },
-        { signal, maxRetries: 1 } as any,
+        { signal: roundAbort.signal, maxRetries: 0 } as any,
       );
     } catch {
       break;
+    } finally {
+      clearTimeout(roundTimer);
+      signal?.removeEventListener("abort", onParentAbort);
     }
 
     const message = response.choices[0]?.message;

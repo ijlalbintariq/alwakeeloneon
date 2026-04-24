@@ -584,10 +584,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     }));
                     continue;
                   }
-                  // Clear tool search state when AI starts writing
-                  if (parsed.text && toolSearchStatus.active) {
-                    setToolSearchStatus(prev => ({ ...prev, active: false }));
-                  }
                   if (parsed.reset) {
                     accumulated = "";
                     setMessages(prev => {
