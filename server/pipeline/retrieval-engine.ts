@@ -65,7 +65,7 @@ export interface RetrievalResult {
 // Timeouts
 // ---------------------------------------------------------------------------
 
-const CASELAW_TIMEOUT_MS = 8000;  // Increased from 4000 - DB searches need 5-7s
+const CASELAW_TIMEOUT_MS = 15000;  // Increased from 8000 - DB ILIKE queries take 8-10s server-side
 const STATUTE_TIMEOUT_MS = 3000;  // Increased from 1500
 const ADMIN_DOC_TIMEOUT_MS = 1500;
 
