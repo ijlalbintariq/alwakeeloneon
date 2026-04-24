@@ -1967,9 +1967,11 @@ export class DatabaseStorage implements IStorage {
     const tokenQuery = tokens.join(" ");
     if (tokens.length === 0) return [];
 
-    // Per-token ILIKE conditions, each checked across all searchable columns.
-    // AND across tokens (all must match), OR across columns per token.
-    const tokenConditions = tokens.map((token) => {
+    // WHERE uses only first 3 tokens (AND). All-token AND is too strict:
+    // a 7-token query drops valid results missing any single word.
+    // 3-token AND gives precision; ts_rank handles further relevance sorting.
+    const filterTokens = tokens.slice(0, 3);
+    const filterConditions = filterTokens.map((token) => {
       const pat = `%${token}%`;
       return or(
         ilike(judgments.citationString, pat),
@@ -1980,10 +1982,9 @@ export class DatabaseStorage implements IStorage {
       )!;
     });
 
-    const searchCondition = tokenConditions.length === 1
-      ? tokenConditions[0]
-      : and(...tokenConditions)!;
-
+    const searchCondition = filterConditions.length === 1
+      ? filterConditions[0]
+      : and(...filterConditions)!;
     const whereClause = and(
       eq(judgments.isActive, true),
       searchCondition,
@@ -3328,7 +3329,7 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_case_law_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_title_trgm ON case_law USING gin (title gin_trgm_ops)` },
     { label: "idx_case_law_court_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_court_trgm ON case_law USING gin (court gin_trgm_ops)` },
     { label: "idx_case_law_summary_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_summary_trgm ON case_law USING gin (summary gin_trgm_ops)` },
-    { label: "idx_case_law_keywords_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_keywords_trgm ON case_law USING gin (array_to_string(keywords, ' ') gin_trgm_ops)` },
+    // idx_case_law_keywords_trgm removed — array_to_string() not IMMUTABLE on this Postgres version.
     { label: "idx_github_knowledge_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_title_trgm ON github_knowledge USING gin (title gin_trgm_ops)` },
     { label: "idx_github_knowledge_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_github_knowledge_content_trgm ON github_knowledge USING gin (content gin_trgm_ops)` },
     { label: "idx_admin_knowledge_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_admin_knowledge_content_trgm ON admin_knowledge USING gin (content gin_trgm_ops)` },

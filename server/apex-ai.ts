@@ -70,14 +70,14 @@ function getModelConfig(model: ApexModel) {
     case "apex-pro":
       return {
         modelId: "kimi-k2.5",
-        temperature: 0.6,
+        temperature: 1,
         thinking: false,
         displayName: "Apex",
       };
     case "apex-agent":
       return {
         modelId: "kimi-k2-thinking",
-        temperature: 0.7,
+        temperature: 1,
         thinking: true,
         displayName: "Apex Pro",
       };
@@ -132,8 +132,9 @@ export async function chatWithApex(options: ApexChatOptions): Promise<ApexRespon
   );
 
   const choice = response.choices[0];
-  const content = choice?.message?.content || "No response generated.";
+  const rawContent = choice?.message?.content || "";
   const reasoning = (choice?.message as any)?.reasoning_content || undefined;
+  const content = rawContent.trim() || reasoning || "No response generated.";
 
   return {
     content,
