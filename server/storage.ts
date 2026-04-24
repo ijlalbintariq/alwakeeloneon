@@ -1952,14 +1952,44 @@ export class DatabaseStorage implements IStorage {
     if (!safeQuery) return [];
     const safeLimit = Math.max(1, Math.min(200, Number(limit) || 20));
 
-    const textPattern = `%${safeQuery}%`;
-    const tokenQuery = safeQuery
+    // Tokenize: search each word individually so GIN trigram indexes are used.
+    // Full-phrase ILIKE (%bail cancellation in narcotics case%) almost never matches.
+    // Per-token ILIKEs (%bail%, %cancellation%, %narcotics%) use GIN indexes → <500ms.
+    // DO NOT add to_tsvector() @@ plainto_tsquery() to WHERE — the stored index uses
+    // 'english' but queries use 'simple', Postgres can't use it → full scan → 15s timeout.
+    const tokens = safeQuery
       .toLowerCase()
       .split(/\s+/)
-      .filter((t) => t.length >= 2)
-      .slice(0, 12)
-      .join(" ");
+      .map((t) => t.replace(/[^a-z0-9]/g, ""))
+      .filter((t) => t.length >= 3)
+      .slice(0, 10);
 
+    const tokenQuery = tokens.join(" ");
+    if (tokens.length === 0) return [];
+
+    // Per-token ILIKE conditions, each checked across all searchable columns.
+    // AND across tokens (all must match), OR across columns per token.
+    const tokenConditions = tokens.map((token) => {
+      const pat = `%${token}%`;
+      return or(
+        ilike(judgments.citationString, pat),
+        ilike(judgments.title,          pat),
+        ilike(judgments.petitioner,     pat),
+        ilike(judgments.respondent,     pat),
+        ilike(judgments.headnotes,      pat),
+      )!;
+    });
+
+    const searchCondition = tokenConditions.length === 1
+      ? tokenConditions[0]
+      : and(...tokenConditions)!;
+
+    const whereClause = and(
+      eq(judgments.isActive, true),
+      searchCondition,
+    );
+
+    // tsvRank only used in ORDER BY — computed on already-filtered rows, not all 204k.
     const tsvRank = tokenQuery
       ? sql<number>`COALESCE(ts_rank_cd(
           to_tsvector('simple',
@@ -1973,26 +2003,6 @@ export class DatabaseStorage implements IStorage {
           plainto_tsquery('simple', ${tokenQuery})
         ), 0)`
       : sql<number>`0`;
-
-    const whereClause = and(
-      eq(judgments.isActive, true),
-      or(
-        ilike(judgments.citationString, textPattern),
-        ilike(judgments.title, textPattern),
-        ilike(judgments.petitioner, textPattern),
-        ilike(judgments.respondent, textPattern),
-        ilike(judgments.headnotes, textPattern),
-        tokenQuery
-          ? sql`to_tsvector('simple',
-              COALESCE(${judgments.title}, '') || ' ' ||
-              COALESCE(${judgments.headnotes}, '') || ' ' ||
-              COALESCE(${judgments.petitioner}, '') || ' ' ||
-              COALESCE(${judgments.respondent}, '') || ' ' ||
-              LEFT(COALESCE(${judgments.fullText}, ''), 4000)
-            ) @@ plainto_tsquery('simple', ${tokenQuery})`
-          : sql`false`,
-      ),
-    );
 
     const rows = await db
       .select({
@@ -2036,15 +2046,18 @@ export class DatabaseStorage implements IStorage {
         citationYear: Number.isInteger(row.year) ? row.year : null,
         citationReport: row.journalCode || null,
         citationPage: Number.isInteger(row.page) && row.page > 0 ? row.page : null,
-        citationRole: "primary",
+        citationRole: "primary" as const,
         court: courtStr,
         title: titleStr,
         summary: summaryStr,
-        keywords: [],
+        keywords: [] as string[],
         sourceDocId: null,
         sourceType: "judgment",
         sourceFilename: null,
-      } as CaseLaw);
+        documentClassification: null,
+        fallbackExtraction: false,
+        statuteReferences: [] as string[],
+      } as unknown as CaseLaw);
 
       if (results.length >= safeLimit) break;
     }
