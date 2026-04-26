@@ -10699,9 +10699,6 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
 
       // Tool-based judgment search: AI calls search_judgments with its own short queries.
       // Runs in parallel with the pipeline — same DB function as the Judgment Search UI.
-      // Status messages buffered here, flushed after SSE headers are sent.
-      interface ToolStatusEvent { query: string; found: number; elapsedMs: number }
-      const toolStatusBuffer: ToolStatusEvent[] = [];
       const toolSearchStartMs = Date.now();
       // Tool routing: prefer OpenRouter (gpt-4o-mini, parallel calls, ~2s p50)
       // Fallback to DeepSeek V3 (~6-8s p50, sequential rounds) if OpenRouter not configured.
@@ -10712,12 +10709,40 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         !directMode &&
         (useOpenRouterTools || isDeepSeekAvailable());
       interface ToolSearchResult { contextString: string; foundCount: number; queriesUsed: string[] }
-      const toolStatusCallback = (query: string, found: number) => {
-        toolStatusBuffer.push({ query, found, elapsedMs: Date.now() - toolSearchStartMs });
-        console.log(
-          `[ToolSearch:${useOpenRouterTools ? "OR" : "DS"}] query="${query}" found=${found} elapsed=${Date.now() - toolSearchStartMs}ms`,
-        );
+
+      // Live-stream tool search status events when the request will stream AND tool search is enabled.
+      // Compute willStream early (before selectedRoute is assigned) so we can open SSE BEFORE awaiting enrichment.
+      // Apex requests don't stream — detect via requestedApexModelRaw which is set early.
+      const willStream = requestedStream && moduleProfile.modelStrategy.stream && !requestedApexModelRaw;
+      const willStreamLiveStatus = willStream && toolSearchEnabled;
+      let sseHeadersFlushed = false;
+      const ensureSseOpen = () => {
+        if (sseHeadersFlushed) return;
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.flushHeaders();
+        sseHeadersFlushed = true;
       };
+      if (willStreamLiveStatus) {
+        ensureSseOpen();
+      }
+
+      const toolStatusCallback = (query: string, found: number) => {
+        const elapsedMs = Date.now() - toolSearchStartMs;
+        console.log(
+          `[ToolSearch:${useOpenRouterTools ? "OR" : "DS"}] query="${query}" found=${found} elapsed=${elapsedMs}ms`,
+        );
+        if (sseHeadersFlushed) {
+          // Live: write directly to the SSE stream — user sees feedback within ~1s
+          try {
+            res.write(`data: ${JSON.stringify({ searching: true, query, found, elapsedMs })}\n\n`);
+          } catch {
+            /* client disconnected */
+          }
+        }
+      };
+
       const toolSearchPromise: Promise<ToolSearchResult> = toolSearchEnabled
         ? (useOpenRouterTools
             ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 8000)
@@ -10761,6 +10786,15 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       const toolSearchResult = toolSearchRace.value;
       if (toolSearchResult.foundCount > 0) {
         console.log(`[ToolSearch:Done] found=${toolSearchResult.foundCount} queries=${JSON.stringify(toolSearchResult.queriesUsed)}`);
+      }
+      // Live status: emit "searching done" terminator the moment enrichment finishes.
+      // Client switches the loading bubble from "Searching case law" → "Writing response".
+      if (sseHeadersFlushed && toolSearchEnabled) {
+        try {
+          res.write(`data: ${JSON.stringify({ searching: false, found: toolSearchResult.foundCount, totalMs: Date.now() - toolSearchStartMs })}\n\n`);
+        } catch {
+          /* client disconnected */
+        }
       }
       if (attachmentContext) {
         const boundedAttachmentContext = trimTextToTokenBudget(attachmentContext, ATTACHMENT_PROMPT_TOKEN_BUDGET);
@@ -10931,6 +10965,16 @@ The user has attached the following documents for your reference. Analyze them c
             requireLinkedSource: citationPolicy.strict,
             policy: citationPolicy,
           });
+          // Cache hit: if SSE is already flushed (live-status path), emit cached content as SSE chunks.
+          // Otherwise fall through to the normal JSON response.
+          if (sseHeadersFlushed) {
+            try {
+              res.write(`data: ${JSON.stringify({ text: citationCheckedCached.content })}\n\n`);
+              res.write(`data: ${JSON.stringify({ done: true, model: usedModel, fromCache: true, moduleProfile: moduleProfile.id, routingPath })}\n\n`);
+            } catch {}
+            res.end();
+            return;
+          }
           return res.json({
             content: citationCheckedCached.content,
             model: usedModel,
@@ -10943,19 +10987,8 @@ The user has attached the following documents for your reference. Analyze them c
       } catch {}
 
       if (useStream) {
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders();
-
-        // Flush buffered tool-search status events now that SSE is open.
-        // Client shows these as a "Searching case law..." indicator with timer.
-        for (const ev of toolStatusBuffer) {
-          res.write(`data: ${JSON.stringify({ searching: true, query: ev.query, found: ev.found, elapsedMs: ev.elapsedMs })}\n\n`);
-        }
-        if (toolSearchEnabled) {
-          res.write(`data: ${JSON.stringify({ searching: false, found: toolSearchResult.foundCount, totalMs: Date.now() - toolSearchStartMs })}\n\n`);
-        }
+        // Open SSE if not already done (live-status path opened it earlier).
+        ensureSseOpen();
 
         let fullContent = "";
         const writeChunkToClient = (text: string) => {
