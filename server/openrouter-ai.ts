@@ -11,7 +11,7 @@
 
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { CITATION_SEARCH_TOOL, executeCitationSearch } from "./tools/citation-search-tool";
+import { CITATION_SEARCH_TOOL, executeCitationSearch, normalizeCitationKey } from "./tools/citation-search-tool";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const TOOL_MODEL = process.env.OPENROUTER_TOOL_MODEL || "openai/gpt-4o-mini";
@@ -145,10 +145,10 @@ export async function runToolJudgmentSearchOR(
     }),
   );
 
-  // Dedupe by normalised citation
+  // Dedupe by normalised citation — handles "PLD 2020 SC 456" vs "PLD 2020 SC 456." vs "P L D 2020 SC 456" etc.
   const seen = new Set<string>();
   const unique = allResults.filter((r) => {
-    const key = (r.citation || "").toLowerCase().replace(/\s+/g, " ").trim();
+    const key = normalizeCitationKey(r.citation);
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;

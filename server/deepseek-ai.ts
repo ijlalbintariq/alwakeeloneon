@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import type { ChatCompletionTool, ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { CITATION_SEARCH_TOOL, executeCitationSearch } from "./tools/citation-search-tool";
+import { CITATION_SEARCH_TOOL, executeCitationSearch, normalizeCitationKey } from "./tools/citation-search-tool";
 
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 const DEEPSEEK_CHAT_MODEL = "deepseek-chat";
@@ -367,10 +367,10 @@ export async function runToolJudgmentSearch(
     }
   }
 
-  // Deduplicate by normalised citation string
+  // Deduplicate by normalised citation string — handles formatting variants ("PLD 2020 SC 456" vs "PLD 2020 SC 456." etc.)
   const seen = new Set<string>();
   const unique = allResults.filter((r) => {
-    const key = (r.citation || "").toLowerCase().replace(/\s+/g, " ").trim();
+    const key = normalizeCitationKey(r.citation);
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;

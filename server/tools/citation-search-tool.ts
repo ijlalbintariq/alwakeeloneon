@@ -59,6 +59,42 @@ export interface CitationResult {
   keywords: string[];
 }
 
+/**
+ * Normalize a citation string for dedupe comparison.
+ *
+ * Pakistani citations come in many formats from different sources:
+ *   - "PLD 2020 SC 456"
+ *   - "P L D 2020 SC 456"          (spaces between letters — common in scraped data)
+ *   - "PLD 2020 SC 456."           (trailing period)
+ *   - "[PLD 2020 SC 456]"          (square brackets)
+ *   - "PLD (2020) SC 456"          (parenthesised year)
+ *   - "PLD\u00A02020\u00A0SC\u00A0456" (non-breaking spaces from HTML scraping)
+ *   - "1970 S C M R 869"           (spaced acronyms)
+ *   - "1970-SCMR-869"              (hyphen-separated)
+ *
+ * All of the above refer to the same judgment and must collapse to one key.
+ *
+ * Strategy:
+ *   1. Lowercase
+ *   2. Replace non-breaking spaces, em/en dashes, hyphens with regular space
+ *   3. Strip brackets [] {} and parens around years
+ *   4. Strip trailing punctuation (. , ; :)
+ *   5. Collapse whitespace
+ *   6. Remove spaces between consecutive single uppercase letters (P L D → pld)
+ */
+export function normalizeCitationKey(citation: string | undefined | null): string {
+  if (!citation) return "";
+  return citation
+    .toLowerCase()
+    .replace(/[\u00A0\u2007\u202F]/g, " ")     // non-breaking spaces
+    .replace(/[\u2010-\u2015\-]/g, " ")          // hyphens, em-dash, en-dash
+    .replace(/[\[\]{}()]/g, " ")                 // strip brackets and parens
+    .replace(/[.,;:]+\s*$/g, "")                 // trailing punctuation
+    .replace(/\b([a-z])\s+(?=[a-z]\b)/g, "$1")   // collapse "p l d" → "pld"
+    .replace(/\s+/g, " ")                        // collapse whitespace
+    .trim();
+}
+
 export async function executeCitationSearch(args: CitationSearchArgs): Promise<string> {
   const { query, court, limit = 5 } = args;
   const safeLimit = Math.min(8, Math.max(1, limit));
@@ -79,7 +115,7 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
     const merged: typeof caseLawResults = [];
 
     for (const r of [...judgmentResults, ...caseLawResults]) {
-      const key = (r.citation || "").toLowerCase().replace(/\s+/g, " ").trim();
+      const key = normalizeCitationKey(r.citation);
       if (!key || seen.has(key)) continue;
       seen.add(key);
       merged.push(r);
