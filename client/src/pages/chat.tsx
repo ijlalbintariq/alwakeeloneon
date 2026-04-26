@@ -1824,7 +1824,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               );
             })}
 
-            {isLoading && (
+            {isLoading && !(messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && (messages[messages.length - 1]?.content?.length ?? 0) > 0) && (
               <div className="flex items-start gap-3 w-full">
                 <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full text-slate-950 flex items-center justify-center ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-300"}`}>
                   {isApexAgentWebMode ? <Globe size={18} /> : <Scale size={18} />}
@@ -1833,46 +1833,65 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   <p className="text-[11px] font-bold uppercase tracking-widest text-amber-200">
                     Al Wakeelo Assistant
                   </p>
-                  <div className="p-3 sm:p-5 rounded-2xl bg-[#0f1c33]/90 border border-amber-300/20 shadow-lg rounded-tl-md">
+                  <div className="p-3 sm:p-4 rounded-2xl bg-[#0f1c33]/90 border border-amber-300/20 shadow-lg rounded-tl-md">
+                    {/* Phase + timer row */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Loader2 size={12} className="animate-spin text-amber-400 flex-shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-200/80">
+                          {toolSearchStatus.queries.length > 0
+                            ? toolSearchStatus.active
+                              ? "Searching case law"
+                              : "Writing response"
+                            : elapsedMs < 2000
+                              ? "Preparing"
+                              : "Retrieving context"}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-mono text-amber-400 tabular-nums">
+                        {(elapsedMs / 1000).toFixed(1)}s
+                      </span>
+                    </div>
+                    {/* Tool search queries */}
+                    {toolSearchStatus.queries.length > 0 && (
+                      <div className="mb-3 space-y-1.5">
+                        {toolSearchStatus.queries.map((q, i) => (
+                          <div key={i} className="flex items-center gap-2 text-[10px]">
+                            <Search size={9} className="text-cyan-400 flex-shrink-0" />
+                            <span className="text-slate-300 font-mono truncate">{q.query}</span>
+                            <span className="ml-auto flex-shrink-0">
+                              {q.found > 0 ? (
+                                <span className="text-cyan-400 font-bold">{q.found} found</span>
+                              ) : (
+                                <span className="text-slate-500">0 found</span>
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                        {!toolSearchStatus.active && toolSearchStatus.totalFound > 0 && (
+                          <div className="flex items-center gap-1.5 pt-1 text-[10px] text-amber-400/80">
+                            <Gavel size={9} />
+                            <span>{toolSearchStatus.totalFound} judgment{toolSearchStatus.totalFound !== 1 ? "s" : ""} retrieved</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Shimmer skeleton */}
                     <style>{`
-                      @keyframes shimmer {
+                      @keyframes shimmer-aw {
                         0% { background-position: -1000px 0; }
                         100% { background-position: 1000px 0; }
                       }
-                      .animate-shimmer {
-                        background: linear-gradient(
-                          90deg,
-                          rgba(255, 255, 255, 0.05) 0%,
-                          rgba(255, 255, 255, 0.15) 50%,
-                          rgba(255, 255, 255, 0.05) 100%
-                        );
+                      .animate-shimmer-aw {
+                        background: linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.12) 50%,rgba(255,255,255,0.04) 100%);
                         background-size: 1000px 100%;
-                        animation: shimmer 2s infinite;
-                      }
-                      @keyframes pulse-text {
-                        0%, 100% { opacity: 1; }
-                        50% { opacity: 0.6; }
-                      }
-                      .animate-pulse-text {
-                        animation: pulse-text 1.5s ease-in-out infinite;
+                        animation: shimmer-aw 2s infinite;
                       }
                     `}</style>
-                    <div className="space-y-2.5">
-                      <p className="text-sm text-amber-200 font-semibold animate-pulse-text flex items-center gap-2">
-                        <span className="inline-flex gap-1">
-                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce"></span>
-                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: "0.2s" }}></span>
-                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: "0.4s" }}></span>
-                        </span>
-                        Generating response...
-                      </p>
-                      <div className="h-4 bg-slate-700/40 rounded animate-shimmer"></div>
-                      <div className="h-4 bg-slate-700/40 rounded animate-shimmer" style={{ animationDelay: "0.2s", width: "95%" }}></div>
-                      <div className="h-4 bg-slate-700/40 rounded animate-shimmer" style={{ animationDelay: "0.4s", width: "90%" }}></div>
-                      <div className="mt-4 pt-3 border-t border-amber-500/15 space-y-2.5">
-                        <div className="h-3 bg-slate-700/40 rounded animate-shimmer" style={{ animationDelay: "0.6s", width: "80%" }}></div>
-                        <div className="h-3 bg-slate-700/40 rounded animate-shimmer" style={{ animationDelay: "0.8s", width: "85%" }}></div>
-                      </div>
+                    <div className="space-y-2">
+                      <div className="h-3 bg-slate-700/50 rounded animate-shimmer-aw"></div>
+                      <div className="h-3 bg-slate-700/50 rounded animate-shimmer-aw" style={{ animationDelay: "0.25s", width: "92%" }}></div>
+                      <div className="h-3 bg-slate-700/50 rounded animate-shimmer-aw" style={{ animationDelay: "0.5s", width: "78%" }}></div>
                     </div>
                   </div>
                 </div>
@@ -1930,10 +1949,16 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       <button onClick={() => { setAiMode("standard"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${aiMode === "standard" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
                         <div className="font-bold">Standard</div><div className="text-[10px] text-slate-500 mt-0.5">Fast, reliable responses</div>
                       </button>
-                      {canUseTurbo && (
+                      {canUseTurbo ? (
                         <button onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${aiMode === "turbo" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
-                          <div className="font-bold">Turbo</div><div className="text-[10px] text-slate-500 mt-0.5">Deep reasoning & analysis</div>
+                          <div className="font-bold flex items-center gap-1.5"><Zap size={11} className="text-amber-400" />Turbo</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">Deep reasoning & analysis</div>
                         </button>
+                      ) : (
+                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-amber-500/10">
+                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-slate-600" />Turbo<span className="text-[8px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
+                          <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Pro to unlock</div>
+                        </div>
                       )}
                       {canUseTurbo && apexData?.available && apexData.models.length > 0 && (
                         <>
@@ -1944,13 +1969,19 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                               onClick={() => { setAiMode(`apex-${model.id}`); setShowModelMenu(false); }}
                               className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${aiMode === `apex-${model.id}` ? "bg-emerald-500/10 text-emerald-300" : "text-slate-300"}`}
                             >
-                              <div className="font-bold">{model.name}</div>
+                              <div className="font-bold flex items-center gap-1.5"><Sparkles size={11} className="text-emerald-400" />{model.name}</div>
                               <div className="text-[10px] text-slate-500 mt-0.5">{model.description}</div>
                             </button>
                           ))}
                         </>
                       )}
-                      {canUseApex && (
+                      {!canUseTurbo && (
+                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-amber-500/10">
+                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-slate-600" />Apex Models<span className="text-[8px] bg-emerald-500/20 text-emerald-500 px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
+                          <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Pro to unlock</div>
+                        </div>
+                      )}
+                      {canUseApex ? (
                         <>
                           <div className="px-4 py-1.5 text-[9px] text-cyan-300 uppercase tracking-widest font-black border-b border-amber-500/10 bg-cyan-500/10">Agent Mode</div>
                           <button
@@ -1965,6 +1996,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                             <div className="text-[10px] text-slate-500 mt-0.5">Live web research across Pakistani legal databases</div>
                           </button>
                         </>
+                      ) : (
+                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-amber-500/10 last:border-0">
+                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-slate-600" />Apex Agent Web<span className="text-[8px] bg-cyan-500/20 text-cyan-500 px-1.5 py-0.5 rounded-full font-black">CHAMBER</span></div>
+                          <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Chamber to unlock</div>
+                        </div>
                       )}
                     </div>
                   )}
