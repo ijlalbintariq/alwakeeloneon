@@ -37,6 +37,7 @@ import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, runToolJudgmentSearch } from "./deepseek-ai";
+import { runToolJudgmentSearchOR, isOpenRouterAvailable } from "./openrouter-ai";
 import {
   isAiRouterV2Enabled,
   raceToDeadline,
@@ -10684,7 +10685,8 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       // Run knowledge gather and style retrieval in parallel with a shared enrichment deadline.
       // Both are optional enrichment — the chat request must proceed even if one or both time out.
       // Tool search caps at 14s, pipeline at 15s — 18s is a safe outer bound.
-      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 18000));
+      // Reduced from 18000 → 12000: gpt-4o-mini parallel tool search runs in ~2s p50 (was 6-8s with DeepSeek sequential rounds)
+      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 12000));
       const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
       // V2 pipeline: intent classify → topic-validated retrieval → structured context
       // For al-wakeelo: pipeline handles statutes + admin docs; tool search handles case law.
@@ -10701,15 +10703,25 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       interface ToolStatusEvent { query: string; found: number; elapsedMs: number }
       const toolStatusBuffer: ToolStatusEvent[] = [];
       const toolSearchStartMs = Date.now();
-      const toolSearchEnabled = knowledgeNeeded && moduleType === "al-wakeelo" && !directMode && isDeepSeekAvailable();
+      // Tool routing: prefer OpenRouter (gpt-4o-mini, parallel calls, ~2s p50)
+      // Fallback to DeepSeek V3 (~6-8s p50, sequential rounds) if OpenRouter not configured.
+      const useOpenRouterTools = isOpenRouterAvailable();
+      const toolSearchEnabled =
+        knowledgeNeeded &&
+        moduleType === "al-wakeelo" &&
+        !directMode &&
+        (useOpenRouterTools || isDeepSeekAvailable());
       interface ToolSearchResult { contextString: string; foundCount: number; queriesUsed: string[] }
+      const toolStatusCallback = (query: string, found: number) => {
+        toolStatusBuffer.push({ query, found, elapsedMs: Date.now() - toolSearchStartMs });
+        console.log(
+          `[ToolSearch:${useOpenRouterTools ? "OR" : "DS"}] query="${query}" found=${found} elapsed=${Date.now() - toolSearchStartMs}ms`,
+        );
+      };
       const toolSearchPromise: Promise<ToolSearchResult> = toolSearchEnabled
-        ? runToolJudgmentSearch(
-            lastUserMessage!.content,
-            (query, found) => {
-              toolStatusBuffer.push({ query, found, elapsedMs: Date.now() - toolSearchStartMs });
-              console.log(`[ToolSearch] query="${query}" found=${found} elapsed=${Date.now() - toolSearchStartMs}ms`);
-            },
+        ? (useOpenRouterTools
+            ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 8000)
+            : runToolJudgmentSearch(lastUserMessage!.content, toolStatusCallback)
           ).catch((err) => {
             console.warn("[ToolSearch] Failed:", err?.message || err);
             return { contextString: "", foundCount: 0, queriesUsed: [] };
