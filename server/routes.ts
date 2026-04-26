@@ -2642,8 +2642,8 @@ async function verifyReferencesBlock(content: string, policy?: CitationPolicy): 
     parsed = {};
   }
 
-  const inputLaws = Array.isArray(parsed.laws) ? parsed.laws.slice(0, 6) : [];
-  const inputJudgments = Array.isArray(parsed.judgments) ? parsed.judgments.slice(0, 6) : [];
+  const inputLaws = Array.isArray(parsed.laws) ? parsed.laws.slice(0, 12) : [];
+  const inputJudgments = Array.isArray(parsed.judgments) ? parsed.judgments.slice(0, 12) : [];
   const verifiedLaws: Array<{ name: string; section: string; description: string }> = [];
   const verifiedJudgments: Array<{ citation: string; court: string; description: string }> = [];
   const seenLaws = new Set<string>();
@@ -2713,8 +2713,8 @@ async function verifyReferencesBlock(content: string, policy?: CitationPolicy): 
   }
 
   const normalized = JSON.stringify({
-    laws: verifiedLaws.slice(0, 5),
-    judgments: verifiedJudgments.slice(0, 5),
+    laws: verifiedLaws.slice(0, 10),
+    judgments: verifiedJudgments.slice(0, 10),
   });
   return renderSingleReferencesBlock(content, JSON.parse(normalized));
 }

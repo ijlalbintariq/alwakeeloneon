@@ -108,7 +108,7 @@ export async function runKnowledgePipeline(
     const retrieval = await runRetrieval(
       intent,
       userId || "",
-      { caseLaw: 6, statutes: 4, adminDocs: 3 },
+      { caseLaw: 10, statutes: 4, adminDocs: 3 },
     );
     console.log(
       `[Pipeline:2:Retrieve] ` +

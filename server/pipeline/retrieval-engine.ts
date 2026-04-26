@@ -507,7 +507,7 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
   adminDocs?: number;
 } = {}): Promise<RetrievalResult> {
   const t0 = Date.now();
-  const caseLawLimit = limits.caseLaw ?? 6;
+  const caseLawLimit = limits.caseLaw ?? 10;
   const statuteLimit = limits.statutes ?? 4;
   const adminDocLimit = limits.adminDocs ?? 3;
 

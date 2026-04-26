@@ -35,7 +35,7 @@ export const CITATION_SEARCH_TOOL: ChatCompletionTool = {
         },
         limit: {
           type: "number",
-          description: "Max results per call. Default 5, max 8. Use 8 when broad coverage needed.",
+          description: "Max results per call. Default 8, max 10. Use 10 when broad coverage needed.",
         },
       },
       required: ["query"],
@@ -96,8 +96,8 @@ export function normalizeCitationKey(citation: string | undefined | null): strin
 }
 
 export async function executeCitationSearch(args: CitationSearchArgs): Promise<string> {
-  const { query, court, limit = 5 } = args;
-  const safeLimit = Math.min(8, Math.max(1, limit));
+  const { query, court, limit = 8 } = args;
+  const safeLimit = Math.min(10, Math.max(1, limit));
 
   try {
     // Search both tables in parallel — same as Judgments search page behaviour.
