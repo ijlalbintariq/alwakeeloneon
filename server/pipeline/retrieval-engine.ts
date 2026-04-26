@@ -18,6 +18,7 @@ import { storage } from "../storage";
 import { retrieveForQuery } from "../rag/rag-service";
 import type { CaseLaw } from "../../shared/schema";
 import type { QueryIntent, LegalTopic } from "./intent-classifier";
+import { normalizeCitationKey } from "../tools/citation-search-tool";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -333,10 +334,12 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
   console.log(`[Retrieval:Paths] judgment=${judgmentRaw.length} caseLaw=${keywordRaw.length} rag=${ragRaw.length}`);
 
   // Merge: judgments first (primary source), then case_law, then RAG
+  // Use normalizeCitationKey (same helper as tool-call path) so format variants
+  // like "P L D 2020 SC 456" and "PLD 2020 SC 456" collapse to the same key.
   const seen = new Set<string>();
   const merged: CaseLaw[] = [];
   for (const row of [...judgmentRaw, ...keywordRaw, ...ragRaw]) {
-    const citKey = norm(String(row.citation || ""));
+    const citKey = normalizeCitationKey(String(row.citation || ""));
     if (!citKey || seen.has(citKey)) continue;
     seen.add(citKey);
     merged.push(row);
@@ -357,7 +360,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
   // because they matched the query. Don't re-filter them heavily with a second scorer.
   // The client-side scorer adds a relevance RANKING signal but must not drop valid results.
   // Use a flat low threshold of 5 — just enough to exclude truly unrelated rows.
-  const rawMinScore = isCitationLookup ? 0 : 5;
+  const rawMinScore = isCitationLookup ? 0 : 2;
 
   // Apply a floor to not over-filter judgment-sourced rows which are already verified
   const scored = withCitation
