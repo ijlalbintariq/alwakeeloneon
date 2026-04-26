@@ -2636,10 +2636,41 @@ async function verifyReferencesBlock(content: string, policy?: CitationPolicy): 
   if (!match) return ensureAlWakeeloReferencesBlock(content);
 
   let parsed: { laws?: RawLawRef[]; judgments?: RawJudgmentRef[] } = {};
+  let parseFailed = false;
   try {
     parsed = JSON.parse(match[1].trim() || "{}");
   } catch {
     parsed = {};
+    parseFailed = true;
+  }
+
+  // Some LLMs (notably deepseek-v4-flash) occasionally emit malformed JSON like
+  // {"laws":,"judgments":} — leaving the user with zero references even though
+  // the body text cites real judgments. Detect this and fall back to extracting
+  // citations from the prose using the existing candidate extractor.
+  const isMalformed =
+    parseFailed ||
+    (parsed && Array.isArray(parsed.laws) === false && Array.isArray(parsed.judgments) === false);
+  if (isMalformed || (Array.isArray(parsed.judgments) && parsed.judgments.length === 0)) {
+    const proseBody = content.replace(REFERENCES_BLOCK_REGEX, "");
+    const candidates = extractCaseCitationCandidates(proseBody);
+    if (candidates.length > 0) {
+      const dedupe = new Set<string>();
+      const recovered: RawJudgmentRef[] = [];
+      for (const c of candidates) {
+        const key = c.toLowerCase().replace(/\s+/g, " ").trim();
+        if (dedupe.has(key)) continue;
+        dedupe.add(key);
+        recovered.push({ citation: c, court: "Pakistani Courts", description: "" });
+        if (recovered.length >= 12) break;
+      }
+      if (recovered.length > 0) {
+        parsed = {
+          laws: Array.isArray(parsed.laws) ? parsed.laws : [],
+          judgments: recovered,
+        };
+      }
+    }
   }
 
   const inputLaws = Array.isArray(parsed.laws) ? parsed.laws.slice(0, 12) : [];
