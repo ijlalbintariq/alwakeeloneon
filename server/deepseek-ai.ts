@@ -266,6 +266,55 @@ export async function transcribeWithDeepSeek(options: DeepSeekTranscriptionOptio
   };
 }
 
+// ── JSON repair ─────────────────────────────────────────────────────────────
+// Used when deepseek-v4-flash emits malformed references JSON like
+// {"laws":,"judgments":}. Sends the broken block to deepseek-chat with
+// response_format:json_object so the API enforces valid JSON output.
+
+export async function repairReferencesJson(
+  brokenJson: string,
+  signal?: AbortSignal,
+): Promise<{ laws: unknown[]; judgments: unknown[] } | null> {
+  if (!resolveDeepSeekApiKey()) return null;
+  const client = getClient();
+  try {
+    const response = await client.chat.completions.create(
+      {
+        model: DEEPSEEK_CHAT_MODEL,
+        messages: [
+          {
+            role: "system",
+            content:
+              'You are a JSON repair assistant. ' +
+              'Return ONLY valid JSON matching this exact schema: ' +
+              '{"laws":[{"name":"string","section":"string","description":"string"}],' +
+              '"judgments":[{"citation":"string","court":"string","description":"string"}]}. ' +
+              'If an array is missing or corrupt, use an empty array []. ' +
+              'Never invent new entries — only repair what is there.',
+          },
+          {
+            role: "user",
+            content: `Repair this broken JSON:\n${brokenJson}`,
+          },
+        ],
+        max_tokens: 600,
+        temperature: 0,
+        response_format: { type: "json_object" },
+      } as any,
+      { signal, maxRetries: 1 } as any,
+    );
+    const raw = response.choices[0]?.message?.content || "";
+    const parsed = JSON.parse(raw);
+    return {
+      laws: Array.isArray(parsed.laws) ? parsed.laws : [],
+      judgments: Array.isArray(parsed.judgments) ? parsed.judgments : [],
+    };
+  } catch (err) {
+    console.warn("[repairReferencesJson] Failed:", err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
 // ── Tool-based judgment search ────────────────────────────────────────────────
 // AI calls search_judgments 2-3 times with its own chosen short queries.
 // Same DB function as the Judgment Search UI — no pipeline, no classifiers.

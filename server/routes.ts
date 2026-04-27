@@ -36,7 +36,7 @@ import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
-import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, runToolJudgmentSearch } from "./deepseek-ai";
+import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, runToolJudgmentSearch, repairReferencesJson } from "./deepseek-ai";
 import { runToolJudgmentSearchOR, isOpenRouterAvailable } from "./openrouter-ai";
 import {
   isAiRouterV2Enabled,
@@ -2645,30 +2645,43 @@ async function verifyReferencesBlock(content: string, policy?: CitationPolicy): 
   }
 
   // Some LLMs (notably deepseek-v4-flash) occasionally emit malformed JSON like
-  // {"laws":,"judgments":} — leaving the user with zero references even though
-  // the body text cites real judgments. Detect this and fall back to extracting
-  // citations from the prose using the existing candidate extractor.
+  // {"laws":,"judgments":} — leaving the user with zero references.
+  // Recovery strategy (in order):
+  //   1. Send the broken block to deepseek-chat with response_format:json_object
+  //      (the stable model repairs it reliably in ~1s with tiny token cost).
+  //   2. If repair call fails/times out, extract citations from prose as fallback.
   const isMalformed =
     parseFailed ||
     (parsed && Array.isArray(parsed.laws) === false && Array.isArray(parsed.judgments) === false);
   if (isMalformed || (Array.isArray(parsed.judgments) && parsed.judgments.length === 0)) {
-    const proseBody = content.replace(REFERENCES_BLOCK_REGEX, "");
-    const candidates = extractCaseCitationCandidates(proseBody);
-    if (candidates.length > 0) {
-      const dedupe = new Set<string>();
-      const recovered: RawJudgmentRef[] = [];
-      for (const c of candidates) {
-        const key = c.toLowerCase().replace(/\s+/g, " ").trim();
-        if (dedupe.has(key)) continue;
-        dedupe.add(key);
-        recovered.push({ citation: c, court: "Pakistani Courts", description: "" });
-        if (recovered.length >= 12) break;
-      }
-      if (recovered.length > 0) {
-        parsed = {
-          laws: Array.isArray(parsed.laws) ? parsed.laws : [],
-          judgments: recovered,
-        };
+    // Step 1: attempt AI-powered JSON repair
+    if (isMalformed) {
+      const brokenJson = match[1].trim();
+      const repaired = await repairReferencesJson(brokenJson).catch(() => null);
+      if (repaired && (repaired.judgments.length > 0 || repaired.laws.length > 0)) {
+        console.log(`[verifyReferencesBlock] AI repair succeeded: laws=${repaired.laws.length} judgments=${repaired.judgments.length}`);
+        parsed = repaired as { laws?: RawLawRef[]; judgments?: RawJudgmentRef[] };
+      } else {
+        // Step 2: prose extraction fallback
+        const proseBody = content.replace(REFERENCES_BLOCK_REGEX, "");
+        const candidates = extractCaseCitationCandidates(proseBody);
+        if (candidates.length > 0) {
+          const dedupe = new Set<string>();
+          const recovered: RawJudgmentRef[] = [];
+          for (const c of candidates) {
+            const key = c.toLowerCase().replace(/\s+/g, " ").trim();
+            if (dedupe.has(key)) continue;
+            dedupe.add(key);
+            recovered.push({ citation: c, court: "Pakistani Courts", description: "" });
+            if (recovered.length >= 12) break;
+          }
+          if (recovered.length > 0) {
+            parsed = {
+              laws: Array.isArray(parsed.laws) ? parsed.laws : [],
+              judgments: recovered,
+            };
+          }
+        }
       }
     }
   }
