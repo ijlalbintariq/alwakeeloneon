@@ -7,6 +7,7 @@ const DEEPSEEK_CHAT_MODEL = "deepseek-chat";
 const DEEPSEEK_REASONER_MODEL = "deepseek-reasoner";
 
 let deepseekClient: OpenAI | null = null;
+let modelVersionLogged = false;
 
 function resolveDeepSeekApiKey(): string | undefined {
   return process.env.DEEPSEEK_API_KEY || process.env.DeepSeek_API_KEY;
@@ -75,6 +76,13 @@ export async function chatWithDeepSeek(options: DeepSeekChatOptions): Promise<De
 
   const choice = response.choices[0];
   const content = choice?.message?.content || "No response generated.";
+
+  // One-time prod log: confirm which DeepSeek version `deepseek-chat` resolves to.
+  // V4 launched 2026-04-24; this tells us if our slug is on V4 or still V3.
+  if (!modelVersionLogged) {
+    modelVersionLogged = true;
+    console.log(`[DeepSeek] requested="${model}" served="${response.model || "unknown"}"`);
+  }
 
   return {
     content,
@@ -432,7 +440,9 @@ export async function runToolJudgmentSearch(
   const lines = unique.map(
     (r) =>
       `- CITATION: ${r.citation} | COURT: ${r.court} | TITLE: ${r.title}` +
-      (r.summary ? ` — ${r.summary.slice(0, 400)}` : ""),
+      // V4 1M context — 1200 chars per case gives the answer model enough
+      // substance to cite specifically rather than paraphrase short snippets.
+      (r.summary ? ` — ${r.summary.slice(0, 1200)}` : ""),
   );
 
   const contextString = [

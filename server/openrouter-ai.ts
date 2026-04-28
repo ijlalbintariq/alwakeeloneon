@@ -172,7 +172,10 @@ export async function runToolJudgmentSearchOR(
   const lines = unique.map(
     (r) =>
       `- CITATION: ${r.citation} | COURT: ${r.court} | TITLE: ${r.title}` +
-      (r.summary ? ` — ${r.summary.slice(0, 400)}` : ""),
+      // V4-flash supports 1M token context — give the answer model 3× more
+      // legal substance per case (1200 chars) so it can write specific
+      // analysis instead of guessing/hallucinating from short snippets.
+      (r.summary ? ` — ${r.summary.slice(0, 1200)}` : ""),
   );
 
   const contextString = [
