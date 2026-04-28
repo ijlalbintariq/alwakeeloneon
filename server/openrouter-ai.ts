@@ -114,7 +114,11 @@ export async function runToolJudgmentSearchOR(
     return { contextString: "", foundCount: 0, queriesUsed: [] };
   }
 
-  // Run all DB searches concurrently
+  // Run all DB searches concurrently with a per-query timeout.
+  // executeCitationSearch() does ILIKE queries that can take 8-12s on a cold
+  // DB connection. Without a guard the Promise.all hangs and blows past the
+  // outer ENRICHMENT_BUDGET_MS, causing the AI to receive zero case law context.
+  const DB_SEARCH_TIMEOUT_MS = 8000;
   const allResults: Array<{ citation: string; court: string; title: string; summary: string }> = [];
   const queriesUsed: string[] = [];
 
@@ -130,7 +134,14 @@ export async function runToolJudgmentSearchOR(
 
       queriesUsed.push(args.query);
 
-      const resultStr = await executeCitationSearch(args).catch(() =>
+      const searchWithTimeout = Promise.race([
+        executeCitationSearch(args),
+        new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error("DB search timeout")), DB_SEARCH_TIMEOUT_MS),
+        ),
+      ]);
+
+      const resultStr = await searchWithTimeout.catch(() =>
         JSON.stringify({ found: 0, results: [] }),
       );
       let parsed: { found: number; results: typeof allResults } = { found: 0, results: [] };

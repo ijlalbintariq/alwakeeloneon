@@ -10728,9 +10728,9 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
 
       // Run knowledge gather and style retrieval in parallel with a shared enrichment deadline.
       // Both are optional enrichment — the chat request must proceed even if one or both time out.
-      // Tool search caps at 14s, pipeline at 15s — 18s is a safe outer bound.
-      // Reduced from 18000 → 12000: gpt-4o-mini parallel tool search runs in ~2s p50 (was 6-8s with DeepSeek sequential rounds)
-      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 12000));
+      // OR tool search: ~2s API + up to 3x8s DB queries (each guarded) = ~26s worst case.
+      // 20s outer budget gives DB searches enough runway without hanging chat indefinitely.
+      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 20000));
       const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
       // V2 pipeline: intent classify → topic-validated retrieval → structured context
       // For al-wakeelo: pipeline handles statutes + admin docs; tool search handles case law.
@@ -10789,7 +10789,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
 
       const toolSearchPromise: Promise<ToolSearchResult> = toolSearchEnabled
         ? (useOpenRouterTools
-            ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 8000)
+            ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 18000)
             : runToolJudgmentSearch(lastUserMessage!.content, toolStatusCallback)
           ).catch((err) => {
             console.warn("[ToolSearch] Failed:", err?.message || err);
