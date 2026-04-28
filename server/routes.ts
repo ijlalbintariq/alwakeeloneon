@@ -2633,58 +2633,124 @@ function hasLinkedPrimaryCaseLawSource(
 async function verifyReferencesBlock(content: string, policy?: CitationPolicy): Promise<string> {
   const effectivePolicy = policy || DEFAULT_CITATION_POLICY;
   const match = content.match(REFERENCES_BLOCK_REGEX);
-  if (!match) return ensureAlWakeeloReferencesBlock(content);
+  const proseBody = content.replace(REFERENCES_BLOCK_REGEX, "");
 
-  let parsed: { laws?: RawLawRef[]; judgments?: RawJudgmentRef[] } = {};
-  let parseFailed = false;
-  try {
-    parsed = JSON.parse(match[1].trim() || "{}");
-  } catch {
-    parsed = {};
-    parseFailed = true;
-  }
-
-  // Some LLMs (notably deepseek-v4-flash) occasionally emit malformed JSON like
-  // {"laws":,"judgments":} — leaving the user with zero references.
-  // Recovery strategy (in order):
-  //   1. Send the broken block to deepseek-chat with response_format:json_object
-  //      (the stable model repairs it reliably in ~1s with tiny token cost).
-  //   2. If repair call fails/times out, extract citations from prose as fallback.
-  const isMalformed =
-    parseFailed ||
-    (parsed && Array.isArray(parsed.laws) === false && Array.isArray(parsed.judgments) === false);
-  if (isMalformed || (Array.isArray(parsed.judgments) && parsed.judgments.length === 0)) {
-    // Step 1: attempt AI-powered JSON repair
-    if (isMalformed) {
-      const brokenJson = match[1].trim();
-      const repaired = await repairReferencesJson(brokenJson).catch(() => null);
-      if (repaired && (repaired.judgments.length > 0 || repaired.laws.length > 0)) {
-        console.log(`[verifyReferencesBlock] AI repair succeeded: laws=${repaired.laws.length} judgments=${repaired.judgments.length}`);
-        parsed = repaired as { laws?: RawLawRef[]; judgments?: RawJudgmentRef[] };
+  // JSON-failure-proof strategy: NEVER depend on the model's inline JSON.
+  // We always rebuild the references block server-side from the prose.
+  // The model's JSON (when valid) is used only as a description-enrichment hint.
+  let modelParsed: { laws?: RawLawRef[]; judgments?: RawJudgmentRef[] } = { laws: [], judgments: [] };
+  if (match) {
+    try {
+      const candidate = JSON.parse(match[1].trim() || "{}");
+      modelParsed = {
+        laws: Array.isArray(candidate.laws) ? candidate.laws : [],
+        judgments: Array.isArray(candidate.judgments) ? candidate.judgments : [],
+      };
+    } catch {
+      // Malformed JSON — try one repair attempt for description hints, but never block on it.
+      const repaired = await repairReferencesJson(match[1].trim()).catch(() => null);
+      if (repaired) {
+        modelParsed = {
+          laws: Array.isArray(repaired.laws) ? (repaired.laws as RawLawRef[]) : [],
+          judgments: Array.isArray(repaired.judgments) ? (repaired.judgments as RawJudgmentRef[]) : [],
+        };
+        console.log(`[verifyReferencesBlock] AI repair succeeded: laws=${modelParsed.laws!.length} judgments=${modelParsed.judgments!.length}`);
       } else {
-        // Step 2: prose extraction fallback
-        const proseBody = content.replace(REFERENCES_BLOCK_REGEX, "");
-        const candidates = extractCaseCitationCandidates(proseBody);
-        if (candidates.length > 0) {
-          const dedupe = new Set<string>();
-          const recovered: RawJudgmentRef[] = [];
-          for (const c of candidates) {
-            const key = c.toLowerCase().replace(/\s+/g, " ").trim();
-            if (dedupe.has(key)) continue;
-            dedupe.add(key);
-            recovered.push({ citation: c, court: "Pakistani Courts", description: "" });
-            if (recovered.length >= 12) break;
-          }
-          if (recovered.length > 0) {
-            parsed = {
-              laws: Array.isArray(parsed.laws) ? parsed.laws : [],
-              judgments: recovered,
-            };
-          }
-        }
+        console.log("[verifyReferencesBlock] Model JSON malformed — rebuilding from prose");
       }
     }
   }
+
+  // Build prose-extracted judgment list (always, regardless of model JSON state).
+  const proseJudgmentRefs: RawJudgmentRef[] = [];
+  {
+    const seen = new Set<string>();
+    for (const c of extractCaseCitationCandidates(proseBody)) {
+      const key = c.toLowerCase().replace(/\s+/g, " ").trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      proseJudgmentRefs.push({ citation: c, court: "Pakistani Courts", description: "" });
+      if (proseJudgmentRefs.length >= 12) break;
+    }
+  }
+
+  // Build prose-extracted law list (always).
+  const proseLawRefs: RawLawRef[] = [];
+  {
+    const seen = new Set<string>();
+    for (const m of extractStatuteMentions(proseBody)) {
+      const name = m.statuteName || "";
+      const section = m.sectionLabel || (m.section ? `Section ${m.section}` : "");
+      const key = `${name.toLowerCase()}::${section.toLowerCase()}`;
+      if (!name || seen.has(key)) continue;
+      seen.add(key);
+      proseLawRefs.push({ name, section, description: "" });
+      if (proseLawRefs.length >= 12) break;
+    }
+  }
+
+  // Merge: prose entries are authoritative; model JSON enriches descriptions when citation matches.
+  const judgmentDescByKey = new Map<string, string>();
+  for (const j of modelParsed.judgments || []) {
+    const cit = sanitizeReferenceText(j?.citation || "", 140);
+    const desc = sanitizeReferenceText(j?.description || "", 320);
+    if (cit && desc) judgmentDescByKey.set(cit.toLowerCase().replace(/\s+/g, " ").trim(), desc);
+  }
+  const lawDescByKey = new Map<string, string>();
+  for (const l of modelParsed.laws || []) {
+    const name = sanitizeReferenceText(l?.name || "", 180);
+    const section = sanitizeReferenceText(l?.section || "", 80);
+    const desc = sanitizeReferenceText(l?.description || "", 320);
+    if (name && desc) lawDescByKey.set(`${name.toLowerCase()}::${section.toLowerCase()}`, desc);
+  }
+
+  // Enrich prose entries with model descriptions where available.
+  for (const j of proseJudgmentRefs) {
+    const k = String(j.citation).toLowerCase().replace(/\s+/g, " ").trim();
+    const d = judgmentDescByKey.get(k);
+    if (d) j.description = d;
+  }
+  for (const l of proseLawRefs) {
+    const k = `${String(l.name).toLowerCase()}::${String(l.section || "").toLowerCase()}`;
+    const d = lawDescByKey.get(k);
+    if (d) l.description = d;
+  }
+
+  // Add model entries that prose missed (e.g. citation styles regex doesn't catch).
+  const proseJudgmentKeys = new Set(
+    proseJudgmentRefs.map((j) => String(j.citation).toLowerCase().replace(/\s+/g, " ").trim()),
+  );
+  for (const j of modelParsed.judgments || []) {
+    const cit = sanitizeReferenceText(j?.citation || "", 140);
+    if (!cit) continue;
+    const k = cit.toLowerCase().replace(/\s+/g, " ").trim();
+    if (proseJudgmentKeys.has(k)) continue;
+    proseJudgmentKeys.add(k);
+    proseJudgmentRefs.push({
+      citation: cit,
+      court: sanitizeReferenceText(j?.court || "Pakistani Courts", 120),
+      description: sanitizeReferenceText(j?.description || "", 320),
+    });
+    if (proseJudgmentRefs.length >= 12) break;
+  }
+  const proseLawKeys = new Set(
+    proseLawRefs.map((l) => `${String(l.name).toLowerCase()}::${String(l.section || "").toLowerCase()}`),
+  );
+  for (const l of modelParsed.laws || []) {
+    const name = sanitizeReferenceText(l?.name || "", 180);
+    const section = sanitizeReferenceText(l?.section || "", 80);
+    if (!name && !section) continue;
+    const k = `${name.toLowerCase()}::${section.toLowerCase()}`;
+    if (proseLawKeys.has(k)) continue;
+    proseLawKeys.add(k);
+    proseLawRefs.push({ name, section, description: sanitizeReferenceText(l?.description || "", 320) });
+    if (proseLawRefs.length >= 12) break;
+  }
+
+  const parsed: { laws?: RawLawRef[]; judgments?: RawJudgmentRef[] } = {
+    laws: proseLawRefs,
+    judgments: proseJudgmentRefs,
+  };
 
   const inputLaws = Array.isArray(parsed.laws) ? parsed.laws.slice(0, 12) : [];
   const inputJudgments = Array.isArray(parsed.judgments) ? parsed.judgments.slice(0, 12) : [];
