@@ -252,6 +252,20 @@ function scoreCaseLawRow(row: CaseLaw, intent: QueryIntent): number {
   const queryYear = intent.normalized.match(/\b(19|20)\d{2}\b/)?.[0];
   if (queryYear && citation.includes(queryYear)) score += 12;
 
+  // Court hierarchy bonus — higher courts produce more authoritative precedent.
+  // City names (lahore, sindh, etc.) only count when paired with "high court"
+  // so "Sessions Court Lahore" doesn't incorrectly earn a high court bonus.
+  if (court.includes("supreme court"))            score += 15;
+  else if (court.includes("federal shariat"))     score += 12;
+  else if (court.includes("high court"))          score += 8;
+
+  // Recency bonus — recent cases reflect current law
+  const rowYear = row.citationYear || 0;
+  const currentYear = new Date().getFullYear();
+  if (rowYear >= currentYear - 5)       score += 10;
+  else if (rowYear >= currentYear - 10) score += 5;
+  else if (rowYear >= currentYear - 20) score += 2;
+
   return score;
 }
 
@@ -514,8 +528,17 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
   const statuteLimit = limits.statutes ?? 4;
   const adminDocLimit = limits.adminDocs ?? 3;
 
+  // Statute-first routing: when the user typed an explicit statute ref (e.g. "PPC 302",
+  // "Article 199 Constitution"), skip the 15s case law fetch entirely.
+  // The statute section is the primary answer; tool search runs in parallel in routes.ts
+  // and will surface any relevant case law applying that section.
+  const skipCaseLaw = !!intent.statuteRef;
+  if (skipCaseLaw) {
+    console.log(`[Retrieval:StatuteFirst] Skipping case law fetch — explicit statute ref detected (${intent.statuteRef!.abbr} ${intent.statuteRef!.sectionOrArticle})`);
+  }
+
   const [caseLawResults, statuteResults, adminDocResults] = await Promise.all([
-    intent.needsCaseLaw
+    (intent.needsCaseLaw && !skipCaseLaw)
       ? fetchCaseLaw(intent, userId, caseLawLimit)
       : Promise.resolve([] as RetrievedCaseLaw[]),
     intent.needsStatutes
