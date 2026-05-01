@@ -142,15 +142,18 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const upgradeCheckoutHref = getUpgradeCheckoutPath(usage?.tier);
   const canUseTurbo = usage?.tier === "pro" || usage?.tier === "chamber" || usage?.tier === "enterprise";
   const canUseApex = usage?.tier === "chamber" || usage?.tier === "enterprise";
-  const isApexAgentWebMode = aiMode === "apex-agent-web";
-  const isApexModelMode = aiMode === "apex-pro" || aiMode === "apex-agent";
+  const normalizedAiMode = String(aiMode || "").trim().toLowerCase();
+  const apexModeFromSelection =
+    normalizedAiMode === "apex-pro" || normalizedAiMode === "apex-apex-pro" || normalizedAiMode === "apex"
+      ? "apex-pro"
+      : normalizedAiMode === "apex-agent" || normalizedAiMode === "apex-apex-agent" || normalizedAiMode === "apex-agent-web"
+        ? "apex-agent"
+        : null;
+  const isApexAgentWebMode = normalizedAiMode === "apex-agent-web";
+  const isApexModelMode = Boolean(apexModeFromSelection) && !isApexAgentWebMode;
   const isApexMode = isApexModelMode || isApexAgentWebMode;
-  const selectedApexModel = isApexModelMode
-    ? aiMode
-    : isApexAgentWebMode
-      ? "apex-agent"
-      : null;
-  const turboMode = aiMode === "turbo";
+  const selectedApexModel = isApexAgentWebMode ? "apex-agent" : apexModeFromSelection;
+  const turboMode = normalizedAiMode === "turbo";
 
   const { data: apexData } = useQuery<ApexModelsData>({
     queryKey: ["/api/apex/models"],
@@ -168,7 +171,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       "deepseek-chat": "Turbo",
       "deepseek-reasoner": "DeepSeek Pro",
       "apex-pro": "Apex",
+      "apex-apex-pro": "Apex",
       "apex-agent": "Apex Pro",
+      "apex-apex-agent": "Apex Pro",
       "apex-agent-web": "Apex Agent Web",
     };
     if (modelNames[modelKey]) return modelNames[modelKey];
@@ -216,12 +221,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   }, [apexData]);
 
   const currentModeName = useCallback((): { name: string; color: string; icon: "zap" | "sparkles" | "standard" | "globe" } => {
-    if (aiMode === "standard") return { name: "Standard", color: "text-slate-400", icon: "standard" };
-    if (aiMode === "turbo") return { name: "Turbo", color: "text-amber-400", icon: "zap" };
-    if (aiMode === "apex-agent-web") return { name: "Apex Agent Web", color: "text-cyan-400", icon: "globe" };
-    const apexModel = apexData?.models.find(m => m.id === aiMode);
-    return { name: apexModel?.name || "Apex", color: "text-emerald-400", icon: "sparkles" };
-  }, [aiMode, apexData]);
+    if (normalizedAiMode === "standard") return { name: "Standard", color: "text-slate-400", icon: "standard" };
+    if (normalizedAiMode === "turbo") return { name: "Turbo", color: "text-amber-400", icon: "zap" };
+    if (isApexAgentWebMode) return { name: "Apex Agent Web", color: "text-cyan-400", icon: "globe" };
+    const apexModelId = selectedApexModel || normalizedAiMode;
+    const apexModel = apexData?.models.find((m) => m.id.toLowerCase() === apexModelId);
+    return { name: apexModel?.name || getModelDisplayName(apexModelId), color: "text-emerald-400", icon: "sparkles" };
+  }, [normalizedAiMode, isApexAgentWebMode, selectedApexModel, apexData, getModelDisplayName]);
 
   useEffect(() => {
     chatStateStore[type] = { messages, shareUrl, sharedThreadId };
@@ -541,7 +547,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       let persistedAssistantContent = "";
       if (contentType.includes("application/json")) {
         const data = await response.json();
-        const modelId = data.model || (isApexMode ? aiMode : aiMode);
+        const modelId = data.model || selectedApexModel || normalizedAiMode || "standard";
         const modelLabel = modelId ? getModelDisplayName(modelId) : undefined;
         const modelDescription = modelId ? getModelFunctionDescription(modelId) : undefined;
         const modeLabel = isApexAgentWebMode
@@ -615,7 +621,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     continue;
                   }
                   if (parsed.done) {
-                    const modelId = parsed.model || aiMode;
+                    const modelId = parsed.model || selectedApexModel || normalizedAiMode || "standard";
                     const modelLabel = getModelDisplayName(modelId);
                     const modelDescription = getModelFunctionDescription(modelId);
                     const modeLabel = isApexAgentWebMode
@@ -1966,8 +1972,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           {apexData.models.map(model => (
                             <button
                               key={model.id}
-                              onClick={() => { setAiMode(`apex-${model.id}`); setShowModelMenu(false); }}
-                              className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${aiMode === `apex-${model.id}` ? "bg-emerald-500/10 text-emerald-300" : "text-slate-300"}`}
+                              onClick={() => { setAiMode(model.id); setShowModelMenu(false); }}
+                              className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${aiMode === model.id ? "bg-emerald-500/10 text-emerald-300" : "text-slate-300"}`}
                             >
                               <div className="font-bold flex items-center gap-1.5"><Sparkles size={11} className="text-emerald-400" />{model.name}</div>
                               <div className="text-[10px] text-slate-500 mt-0.5">{model.description}</div>
