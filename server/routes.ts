@@ -55,6 +55,7 @@ import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-lib
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
+import { detectQueryComplexity, isFollowUpQuestion, type QueryComplexity } from "./pipeline/intent-classifier";
 import {
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
   GLOBAL_CASELAW_RAG_USER_ID,
@@ -10777,6 +10778,39 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         ? getDirectModeSystemPrompt()
         : `${getLegalSystemPrompt()}${moduleType === "al-wakeelo" ? VERIFIED_JUDGMENTS_CITATION_ADDON : ""}\n\nMODULE PROFILE: ${moduleProfile.label}\n${moduleProfile.systemPromptAddon}`;
 
+      // ----- Query Complexity Detection (response length scaling) -----
+      // Simple/follow-up queries get short answers; complex queries get full analysis.
+      // Only applies to al-wakeelo module; other modules unchanged.
+      let queryComplexity: QueryComplexity = "moderate";
+      if (!directMode && lastUserMessage && moduleType === "al-wakeelo") {
+        queryComplexity = detectQueryComplexity(lastUserMessage.content);
+        // Treat brief follow-ups as simple regardless of base classification.
+        const hasPriorAssistantTurn = userMessages.some((m) => m.role === "assistant");
+        if (hasPriorAssistantTurn && isFollowUpQuestion(lastUserMessage.content, 0)) {
+          queryComplexity = "simple";
+        }
+        const lengthGuidance =
+          queryComplexity === "simple"
+            ? `\n\nRESPONSE LENGTH POLICY (THIS QUERY):
+- This is a SIMPLE / FOLLOW-UP question. Be BRIEF.
+- Target: 80-250 words. One short paragraph + at most ONE supporting case or section.
+- Do NOT repeat context already provided in earlier turns.
+- Do NOT pad with general background, headers, or multi-section structure.
+- The references block can be empty or contain 1-2 entries — only what you actually cite.`
+            : queryComplexity === "complex"
+              ? `\n\nRESPONSE LENGTH POLICY (THIS QUERY):
+- This is a COMPLEX query (drafting / comparison / multi-part scenario).
+- Target: 1200-2200 words. Comprehensive legal analysis.
+- Include multiple relevant cases and statute sections.
+- Use headers/sections where it aids clarity.`
+              : `\n\nRESPONSE LENGTH POLICY (THIS QUERY):
+- This is a MODERATE query.
+- Target: 350-800 words. Direct, focused answer.
+- Cite 2-4 relevant cases or sections — only what is actually on point.
+- Avoid filler, restated context, or unrelated background.`;
+        systemPrompt += lengthGuidance;
+      }
+
       const systemMessages = userMessages.filter((m) => m.role === "system");
       if (!directMode && systemMessages.length > 0) {
         systemPrompt += "\n\n" + systemMessages.map((m) => m.content).join("\n");
@@ -11017,9 +11051,18 @@ The user has attached the following documents for your reference. Analyze them c
       const planModeCap = selectedRoute === "apex"
         ? getModeOutputCap(userTier, "apex")
         : getModeOutputCap(userTier, selectedRoute);
-      const tokenLimit = directMode
+      const baseTokenLimit = directMode
         ? 512
         : Math.min(featureTokenLimit, planModeCap > 0 ? planModeCap : featureTokenLimit);
+      // Scale max output by query complexity for al-wakeelo. Hard ceilings prevent
+      // verbose responses to "is it bailable?"-style follow-ups.
+      const tokenLimit = (!directMode && moduleType === "al-wakeelo")
+        ? (queryComplexity === "simple"
+            ? Math.min(600, baseTokenLimit)
+            : queryComplexity === "moderate"
+              ? Math.min(1500, baseTokenLimit)
+              : baseTokenLimit)
+        : baseTokenLimit;
       const timeoutProfile: TimeoutProfile = directMode ? "search" : "default";
       const temperature = directMode ? 0 : 0.7;
       const knowledgeTokensBudget = styleContext

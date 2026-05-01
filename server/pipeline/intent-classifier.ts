@@ -403,3 +403,62 @@ export function classifyQueryIntent(rawQuery: string): QueryIntent {
     needsAdminDocs: true,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Query Complexity Detection
+// ---------------------------------------------------------------------------
+
+export type QueryComplexity = "simple" | "moderate" | "complex";
+
+const SIMPLE_QUERY_STARTERS = /^(is|are|can|could|should|would|do|does|did|will|won't|isn't|aren't|define|what is|whats|what's|who is|when|where|why)\b/i;
+
+const COMPLEX_QUERY_INDICATORS = /\b(compare|comparison|vs\.?|versus|difference|differences|scenario|draft|drafting|prepare|write|analyze|analysis|explain in detail|step.?by.?step|elaborate|comprehensive|my client|i am charged|i was charged|i have been|advise me|advice on|case study|hypothetical)\b/i;
+
+const FOLLOWUP_QUESTION_STARTERS = /^(is it|are they|can it|can they|does it|do they|will it|what about|how about|and|but|so|then|also|why|how|when|where)\b/i;
+
+/**
+ * Classify a query into simple/moderate/complex to scale response length.
+ *
+ * Heuristics (no LLM, no DB):
+ *  - SIMPLE   : short (<100 chars) AND starts with a yes/no or definition word
+ *  - COMPLEX  : long (>200 chars) OR contains comparison/drafting/scenario words
+ *  - MODERATE : everything else
+ */
+export function detectQueryComplexity(rawQuery: string): QueryComplexity {
+  const q = (rawQuery || "").trim();
+  if (!q) return "simple";
+
+  const len = q.length;
+  const wordCount = q.split(/\s+/).length;
+
+  // Complex signals — explicit drafting/comparison/long-form work
+  if (len > 200 || wordCount > 35) return "complex";
+  if (COMPLEX_QUERY_INDICATORS.test(q)) return "complex";
+
+  // Simple signals — short, yes/no or definition style
+  if (len < 100 && SIMPLE_QUERY_STARTERS.test(q)) return "simple";
+  if (len < 60 && wordCount <= 8) return "simple";
+
+  return "moderate";
+}
+
+/**
+ * Detect a brief follow-up question in an ongoing conversation.
+ *
+ * Used to force "simple" classification when the user is clearly continuing
+ * a thread (so they don't get a 2000-word essay for "is it bailable?").
+ */
+export function isFollowUpQuestion(
+  currentQuery: string,
+  previousMessageAgeMs: number | null,
+): boolean {
+  const q = (currentQuery || "").trim();
+  if (!q) return false;
+  if (previousMessageAgeMs == null) return false;
+  // Must be within 10 minutes of last message
+  if (previousMessageAgeMs > 10 * 60 * 1000) return false;
+  // Short message
+  if (q.length >= 120) return false;
+  // Question-style opener
+  return FOLLOWUP_QUESTION_STARTERS.test(q);
+}
