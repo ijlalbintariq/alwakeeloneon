@@ -23,6 +23,7 @@
 import { classifyQueryIntent } from "./intent-classifier";
 import { runRetrieval } from "./retrieval-engine";
 import { buildContext } from "./context-builder";
+import { rewriteFollowUpQuery, type ConversationTurn } from "./query-rewriter";
 
 // ---------------------------------------------------------------------------
 // Cache (mirrors old knowledgeContextCache behaviour)
@@ -74,6 +75,7 @@ export interface PipelineRunResult {
 export async function runKnowledgePipeline(
   rawQuery: string,
   userId?: string,
+  conversationHistory?: ConversationTurn[],
 ): Promise<PipelineRunResult> {
   const t0 = Date.now();
   const key = `${userId || "anon"}::${normKey(rawQuery)}`;
@@ -95,10 +97,17 @@ export async function runKnowledgePipeline(
   );
 
   const inner = (async (): Promise<PipelineRunResult> => {
+    // ---- Stage 0: Rewrite follow-up query ----
+    // Resolves pronouns/vague references so retrieval gets a self-contained phrase.
+    // e.g. "what about the punishment?" → "punishment for narcotics CNSA Section 9"
+    // Skipped when no prior context or query is already self-contained.
+    const history = conversationHistory || [];
+    const queryForRetrieval = await rewriteFollowUpQuery(rawQuery, history);
+
     // ---- Stage 1: Classify intent ----
-    const intent = classifyQueryIntent(rawQuery);
+    const intent = classifyQueryIntent(queryForRetrieval);
     console.log(
-      `[Pipeline:1:Classify] query="${rawQuery.slice(0, 60)}" ` +
+      `[Pipeline:1:Classify] query="${queryForRetrieval.slice(0, 60)}"${queryForRetrieval !== rawQuery ? ` (rewritten from "${rawQuery.slice(0, 40)}")` : ""} ` +
       `type=${intent.type} ` +
       `topics=[${intent.topics.map((t) => t.id).join(",")}] ` +
       `expandedQuery="${intent.expandedQuery.slice(0, 80)}"`,
@@ -162,12 +171,15 @@ export async function runKnowledgePipeline(
 export async function gatherKnowledgeContextV2(
   query: string,
   userId?: string,
+  conversationHistory?: ConversationTurn[],
 ): Promise<string> {
   try {
-    const result = await runKnowledgePipeline(query, userId);
+    const result = await runKnowledgePipeline(query, userId, conversationHistory);
     return result.contextString;
   } catch (err) {
     console.error("[Pipeline:Error]", err instanceof Error ? err.message : String(err));
     return "";
   }
 }
+
+export type { ConversationTurn };

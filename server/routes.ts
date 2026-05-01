@@ -54,7 +54,7 @@ import { classifyDocumentMetadata, type DocumentMetadata } from "./document-clas
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
-import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
+import { gatherKnowledgeContextV2, type ConversationTurn } from "./pipeline/knowledge-pipeline";
 import { detectQueryComplexity, isFollowUpQuestion, type QueryComplexity } from "./pipeline/intent-classifier";
 import {
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
@@ -10834,8 +10834,16 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
       // V2 pipeline: intent classify → topic-validated retrieval → structured context
       // For al-wakeelo: pipeline handles statutes + admin docs; tool search handles case law.
+      // Build conversation history for the query rewriter (prior turns only, no system msgs).
+      // Excludes the last user message itself — that's the rawQuery being rewritten.
+      const priorTurns: ConversationTurn[] = userMessages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .slice(0, -1) // drop last entry (= lastUserMessage)
+        .slice(-6)    // keep last 3 exchanges max (cheap on tokens)
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
       const knowledgePromise: Promise<string> = knowledgeNeeded
-        ? gatherKnowledgeContextV2(lastUserMessage!.content, userId).catch((err) => {
+        ? gatherKnowledgeContextV2(lastUserMessage!.content, userId, priorTurns).catch((err) => {
             console.warn("[AI Chat] Knowledge pipeline unavailable:", getErrorMessage(err));
             return "";
           })
