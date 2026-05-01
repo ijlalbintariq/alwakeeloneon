@@ -1399,7 +1399,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               <button
                 onClick={() => setShowModelMenu(!showModelMenu)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-semibold uppercase tracking-wide transition-all border duration-150 ${
-                  aiMode === "turbo"
+                  normalizedAiMode === "turbo"
                     ? "bg-[#B45309]/10 text-[#B45309] border-[#B45309]/30"
                     : isApexAgentWebMode
                       ? "bg-cyan-500/10 text-cyan-600 border-cyan-500/30"
@@ -1409,7 +1409,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 }`}
                 data-testid="button-model-selector"
               >
-                {aiMode === "turbo" ? (
+                {normalizedAiMode === "turbo" ? (
                   <Zap size={12} className="text-amber-400" />
                 ) : isApexAgentWebMode ? (
                   <Globe size={12} className="text-cyan-400" />
@@ -1428,7 +1428,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   </div>
                   <button
                     onClick={() => { setAiMode("standard"); setShowModelMenu(false); }}
-                    className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 ${aiMode === "standard" ? "bg-slate-800 text-white" : "text-slate-400"}`}
+                    className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 ${normalizedAiMode === "standard" ? "bg-slate-800 text-white" : "text-slate-400"}`}
                   >
                     <div className="font-bold flex items-center gap-1.5">
                       <Scale size={11} className="text-slate-400" />
@@ -1439,7 +1439,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   {canUseTurbo && (
                     <button
                       onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }}
-                      className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 ${aiMode === "turbo" ? "bg-amber-500/10 text-amber-400" : "text-slate-400"}`}
+                      className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 ${normalizedAiMode === "turbo" ? "bg-amber-500/10 text-amber-400" : "text-slate-400"}`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
                         <Zap size={11} className="text-amber-500" />
@@ -1467,7 +1467,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         <button
                           key={model.id}
                           onClick={() => { setAiMode(model.id); setShowModelMenu(false); }}
-                          className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 last:border-0 ${aiMode === model.id ? "bg-emerald-500/10 text-emerald-400" : "text-slate-400"}`}
+                          className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 last:border-0 ${normalizedAiMode === model.id.toLowerCase() ? "bg-emerald-500/10 text-emerald-400" : "text-slate-400"}`}
                         >
                           <div className="font-bold flex items-center gap-1.5">
                             <Sparkles size={11} className="text-emerald-500" />
@@ -1485,7 +1485,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       </div>
                       <button
                         onClick={() => { setAiMode("apex-agent-web"); setShowModelMenu(false); }}
-                        className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 last:border-0 ${aiMode === "apex-agent-web" ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400"}`}
+                        className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 last:border-0 ${normalizedAiMode === "apex-agent-web" ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400"}`}
                       >
                         <div className="font-bold flex items-center gap-1.5">
                           <Globe size={11} className="text-cyan-400" />
@@ -1506,8 +1506,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
 
             <span className={`text-[9px] tracking-wide ${currentModeName().color}`}>
-              {aiMode === "standard" ? "" :
-                aiMode === "turbo" ? "Deep reasoning mode" :
+              {normalizedAiMode === "standard" ? "" :
+                normalizedAiMode === "turbo" ? "Deep reasoning mode" :
                 `Using ${currentModeName().name}`}
             </span>
           </div>
@@ -1939,24 +1939,24 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         ? "text-cyan-300 border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 focus-visible:ring-cyan-300/60"
                         : isApexMode
                           ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 focus-visible:ring-emerald-300/60"
-                          : aiMode === "turbo"
+                          : normalizedAiMode === "turbo"
                             ? "text-amber-300 border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 focus-visible:ring-amber-300/60"
                             : "text-slate-300 border-slate-600/60 bg-slate-700/30 hover:bg-slate-700/60 focus-visible:ring-slate-300/60"
                     }`}
                     data-testid="button-model-selector"
                   >
-                    {isApexAgentWebMode ? <Globe size={10} /> : isApexMode ? <Sparkles size={10} /> : aiMode === "turbo" ? <Zap size={10} /> : <Scale size={10} />}
+                    {isApexAgentWebMode ? <Globe size={10} /> : isApexMode ? <Sparkles size={10} /> : normalizedAiMode === "turbo" ? <Zap size={10} /> : <Scale size={10} />}
                     {currentModeName().name}
                     <ChevronDown size={9} />
                   </button>
                   {showModelMenu && (
                     <div className="absolute bottom-full right-0 mb-2 bg-[#1e293b] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden min-w-[280px] z-50">
                       <div className="px-4 py-2 text-[9px] text-slate-400 uppercase tracking-widest font-black border-b border-amber-500/15">Select AI Model</div>
-                      <button onClick={() => { setAiMode("standard"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${aiMode === "standard" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
+                      <button onClick={() => { setAiMode("standard"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${normalizedAiMode === "standard" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
                         <div className="font-bold">Standard</div><div className="text-[10px] text-slate-500 mt-0.5">Fast, reliable responses</div>
                       </button>
                       {canUseTurbo ? (
-                        <button onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${aiMode === "turbo" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
+                        <button onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${normalizedAiMode === "turbo" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
                           <div className="font-bold flex items-center gap-1.5"><Zap size={11} className="text-amber-400" />Turbo</div>
                           <div className="text-[10px] text-slate-500 mt-0.5">Deep reasoning & analysis</div>
                         </button>
@@ -1973,7 +1973,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                             <button
                               key={model.id}
                               onClick={() => { setAiMode(model.id); setShowModelMenu(false); }}
-                              className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${aiMode === model.id ? "bg-emerald-500/10 text-emerald-300" : "text-slate-300"}`}
+                              className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${normalizedAiMode === model.id.toLowerCase() ? "bg-emerald-500/10 text-emerald-300" : "text-slate-300"}`}
                             >
                               <div className="font-bold flex items-center gap-1.5"><Sparkles size={11} className="text-emerald-400" />{model.name}</div>
                               <div className="text-[10px] text-slate-500 mt-0.5">{model.description}</div>
@@ -1992,7 +1992,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           <div className="px-4 py-1.5 text-[9px] text-cyan-300 uppercase tracking-widest font-black border-b border-amber-500/10 bg-cyan-500/10">Agent Mode</div>
                           <button
                             onClick={() => { setAiMode("apex-agent-web"); setShowModelMenu(false); }}
-                            className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${aiMode === "apex-agent-web" ? "bg-cyan-500/12 text-cyan-300" : "text-slate-300"}`}
+                            className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${normalizedAiMode === "apex-agent-web" ? "bg-cyan-500/12 text-cyan-300" : "text-slate-300"}`}
                           >
                             <div className="font-bold flex items-center gap-1.5">
                               <Globe size={11} className="text-cyan-400" />

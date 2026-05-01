@@ -528,18 +528,22 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
   const statuteLimit = limits.statutes ?? 4;
   const adminDocLimit = limits.adminDocs ?? 3;
 
-  // Statute-first routing: when the user typed an explicit statute ref (e.g. "PPC 302",
-  // "Article 199 Constitution"), skip the 15s case law fetch entirely.
-  // The statute section is the primary answer; tool search runs in parallel in routes.ts
-  // and will surface any relevant case law applying that section.
-  const skipCaseLaw = !!intent.statuteRef;
-  if (skipCaseLaw) {
-    console.log(`[Retrieval:StatuteFirst] Skipping case law fetch — explicit statute ref detected (${intent.statuteRef!.abbr} ${intent.statuteRef!.sectionOrArticle})`);
+  // Statute-first routing: when an explicit statute ref is detected (e.g. "PPC 302"),
+  // keep statute priority but still fetch a small case-law set so answers don't end up
+  // statute-only when the user expects supporting judgments.
+  const statuteFirst = !!intent.statuteRef;
+  const effectiveCaseLawLimit = statuteFirst
+    ? Math.max(4, Math.min(caseLawLimit, 6))
+    : caseLawLimit;
+  if (statuteFirst) {
+    console.log(
+      `[Retrieval:StatuteFirst] Explicit statute ref detected (${intent.statuteRef!.abbr} ${intent.statuteRef!.sectionOrArticle}) — fetching capped case law (limit=${effectiveCaseLawLimit})`,
+    );
   }
 
   const [caseLawResults, statuteResults, adminDocResults] = await Promise.all([
-    (intent.needsCaseLaw && !skipCaseLaw)
-      ? fetchCaseLaw(intent, userId, caseLawLimit)
+    intent.needsCaseLaw
+      ? fetchCaseLaw(intent, userId, effectiveCaseLawLimit)
       : Promise.resolve([] as RetrievedCaseLaw[]),
     intent.needsStatutes
       ? fetchStatutes(intent, statuteLimit)

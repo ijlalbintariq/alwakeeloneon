@@ -27,7 +27,7 @@ import { isDeepSeekAvailable } from "../deepseek-ai";
 const VAGUE_REFERENCE_RE = /\b(it|its|that|this|the case|the section|the same|the above|the punishment|the penalty|the offence|what about|and also|and what|how about|applicable here|apply here|related to that|regarding that|regarding this)\b/i;
 
 // Starters that are obviously a follow-up even without a pronoun.
-const FOLLOWUP_STARTER_RE = /^(what about|how about|and |but |so |then |also |why |what if|does it|is it|are they|can it|can they)\b/i;
+const FOLLOWUP_STARTER_RE = /^(what about|how about|and |but |so |then |also |why |what if|does it|is it|are they|can it|can they|give more|more case law|more cases|any more)\b/i;
 
 const REWRITE_TIMEOUT_MS = 2000;
 
