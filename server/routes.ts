@@ -311,7 +311,16 @@ function repairBrokenTokens(text: string): string {
 
 function stripCitationPlaceholderArtifacts(text: string): string {
   if (!text) return "";
-  return repairBrokenTokens(String(text)
+  // Protect the ```references JSON block from prose-cleanup regexes.
+  // The `[\s*\]` and `\{\s*\}` rules below indiscriminately strip empty arrays
+  // and empty objects — which is correct for prose artifacts but corrupts
+  // valid JSON like `"judgments":[]` -> `"judgments":` (the broken-JSON bug).
+  const REFS_RE = /```references\s*[\s\S]*?```/i;
+  const refsMatch = String(text).match(REFS_RE);
+  const refsBlock = refsMatch ? refsMatch[0] : "";
+  const proseOnly = refsBlock ? String(text).replace(REFS_RE, "") : String(text);
+
+  const cleanedProse = repairBrokenTokens(proseOnly
     .replace(/\[\s*CASE CITATION REQUIRED\s*\]/gi, "")
     .replace(/\[\s*Pakistani case citation required\s*\]/gi, "")
     .replace(/\[\s*\]/g, "")
@@ -327,6 +336,8 @@ function stripCitationPlaceholderArtifacts(text: string): string {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n"))
     .trim();
+
+  return refsBlock ? `${cleanedProse}\n\n${refsBlock}` : cleanedProse;
 }
 
 function shouldAutoIndexAdminUploads(): boolean {
