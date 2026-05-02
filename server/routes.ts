@@ -5155,6 +5155,15 @@ async function enforceInternalCaseCitationIntegrity(
     requirePrimary?: boolean;
     requireLinkedSource?: boolean;
     policy?: CitationPolicy;
+    /**
+     * Pool of citations already verified upstream (e.g. via tool-search direct
+     * DB hits). Citations matching any entry in this set bypass the DB
+     * resolver — they're real by construction, and going through the strict
+     * resolver risks false-negatives on tiny formatting variants ("2024 SCMR
+     * 1234" vs "SCMR 2024 1234"), which would silently strip valid citations
+     * in strict mode.
+     */
+    trustedCitations?: Iterable<string>;
   },
 ): Promise<{ content: string; removed: string[]; verified: string[] }> {
   const rawInput = String(content || "");
@@ -5206,8 +5215,25 @@ async function enforceInternalCaseCitationIntegrity(
     }
   }
 
+  // Build a normalized lookup for the upstream-trusted pool (tool-search hits).
+  const trustedKeys = new Set<string>();
+  if (options?.trustedCitations) {
+    for (const c of options.trustedCitations) {
+      const k = normalizeCitationForMatch(String(c || ""));
+      if (k) trustedKeys.add(k);
+    }
+  }
+
   await Promise.all(
     Array.from(representativeByKey.entries()).map(async ([key, candidate]) => {
+      // Trusted-pool fast path: citation came from a verified DB hit upstream
+      // (tool-search). Skip the strict resolver — it would false-negative on
+      // formatting variants and erase a real citation.
+      if (trustedKeys.has(key)) {
+        verifiedByKey.set(key, normalizeSpaces(candidate));
+        resolvedByKey.set(key, null);
+        return;
+      }
       const resolved = await resolveCaseCitationFromInternalDb(candidate, {
         requirePrimary,
         requireLinkedSource,
@@ -11179,6 +11205,9 @@ The user has attached the following documents for your reference. Analyze them c
             requirePrimary: citationPolicy.strict,
             requireLinkedSource: citationPolicy.strict,
             policy: citationPolicy,
+            // Tool-search citations came directly from the DB — bypass the
+            // resolver to avoid format-variant false-negatives stripping them.
+            trustedCitations: toolSearchResult?.verifiedCitations,
           });
           // Cache hit: if SSE is already flushed (live-status path), emit cached content as SSE chunks.
           // Otherwise fall through to the normal JSON response.
@@ -11298,6 +11327,9 @@ The user has attached the following documents for your reference. Analyze them c
           requirePrimary: citationPolicy.strict,
           requireLinkedSource: citationPolicy.strict,
           policy: citationPolicy,
+          // Tool-search verified citations bypass the resolver — they came
+          // straight from the DB, format-variant lookups should not strip them.
+          trustedCitations: toolSearchResult?.verifiedCitations,
         });
         if (citationCheckedStream.content !== fullContent) {
           fullContent = citationCheckedStream.content;
@@ -11406,6 +11438,7 @@ The user has attached the following documents for your reference. Analyze them c
         requirePrimary: enforcePrimaryLinkedSourceCitations,
         requireLinkedSource: enforcePrimaryLinkedSourceCitations,
         policy: citationPolicy,
+        trustedCitations: toolSearchResult?.verifiedCitations,
       })).content;
       completion = assertNonEmptyModelOutput("AI route", completion);
 

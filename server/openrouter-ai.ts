@@ -51,6 +51,13 @@ export interface ToolJudgmentSearchResult {
   contextString: string;
   foundCount: number;
   queriesUsed: string[];
+  /**
+   * Exact citation strings of every judgment surfaced by the tool search.
+   * These came directly from the DB and can be passed to the citation
+   * integrity check as a trusted pool (bypasses the strict resolver, which
+   * would false-negative on tiny formatting variants).
+   */
+  verifiedCitations: string[];
 }
 
 /**
@@ -104,14 +111,14 @@ export async function runToolJudgmentSearchOR(
     clearTimeout(budgetTimer);
     signal?.removeEventListener("abort", onParentAbort);
     console.warn("[OpenRouterToolSearch] Call failed:", err instanceof Error ? err.message : String(err));
-    return { contextString: "", foundCount: 0, queriesUsed: [] };
+    return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [] };
   }
   clearTimeout(budgetTimer);
   signal?.removeEventListener("abort", onParentAbort);
 
   const toolCalls = response.choices[0]?.message?.tool_calls ?? [];
   if (!toolCalls.length) {
-    return { contextString: "", foundCount: 0, queriesUsed: [] };
+    return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [] };
   }
 
   // Run all DB searches concurrently with a per-query timeout.
@@ -166,7 +173,7 @@ export async function runToolJudgmentSearchOR(
   });
 
   if (unique.length === 0) {
-    return { contextString: "", foundCount: 0, queriesUsed };
+    return { contextString: "", foundCount: 0, queriesUsed, verifiedCitations: [] };
   }
 
   const lines = unique.map(
@@ -185,5 +192,5 @@ export async function runToolJudgmentSearchOR(
     ...lines,
   ].join("\n");
 
-  return { contextString, foundCount: unique.length, queriesUsed };
+  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation) };
 }

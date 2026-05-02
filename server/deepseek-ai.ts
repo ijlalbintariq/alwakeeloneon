@@ -331,6 +331,7 @@ export interface ToolJudgmentSearchResult {
   contextString: string;
   foundCount: number;
   queriesUsed: string[];
+  verifiedCitations: string[];
 }
 
 export async function runToolJudgmentSearch(
@@ -434,7 +435,7 @@ export async function runToolJudgmentSearch(
   });
 
   if (unique.length === 0) {
-    return { contextString: "", foundCount: 0, queriesUsed };
+    return { contextString: "", foundCount: 0, queriesUsed, verifiedCitations: [] };
   }
 
   const lines = unique.map(
@@ -452,5 +453,5 @@ export async function runToolJudgmentSearch(
     ...lines,
   ].join("\n");
 
-  return { contextString, foundCount: unique.length, queriesUsed };
+  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation) };
 }
