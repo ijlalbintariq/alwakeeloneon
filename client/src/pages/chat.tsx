@@ -1029,13 +1029,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 </button>
               );
             })}
-          {(latestRefs?.laws?.length || 0) > 0 && latestRefs?.laws.slice(0, compact ? 3 : 4).map((l, idx) => (
-            <button key={`${l.name}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 hover:bg-white/10 transition-all cursor-pointer text-left w-full" onClick={() => openStatute(l.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(l.name)}>
-              <p className="text-xs font-bold text-amber-300 hover:underline mb-1">{l.name || "Pakistani Statute"}</p>
-              {l.section && <span className="text-[10px] text-slate-500 bg-slate-800/60 px-1.5 py-0.5 rounded">{l.section}</span>}
-              {l.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-2 mt-1">{l.description}</p>}
-            </button>
-          ))}
           {!latestRefs && (latestRagCitations?.length || 0) === 0 && (
             <p className="text-xs text-slate-500">Citations from Al Wakeelo responses will appear here.</p>
           )}
