@@ -118,7 +118,7 @@ export async function runToolJudgmentSearchOR(
   // executeCitationSearch() does ILIKE queries that can take 8-12s on a cold
   // DB connection. Without a guard the Promise.all hangs and blows past the
   // outer ENRICHMENT_BUDGET_MS, causing the AI to receive zero case law context.
-  const DB_SEARCH_TIMEOUT_MS = 8000;
+  const DB_SEARCH_TIMEOUT_MS = 12000;
   const allResults: Array<{ citation: string; court: string; title: string; summary: string }> = [];
   const queriesUsed: string[] = [];
 

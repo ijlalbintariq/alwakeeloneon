@@ -66,7 +66,7 @@ export interface RetrievalResult {
 // Timeouts
 // ---------------------------------------------------------------------------
 
-const CASELAW_TIMEOUT_MS = 15000;  // Increased from 8000 - DB ILIKE queries take 8-10s server-side
+const CASELAW_TIMEOUT_MS = 20000;  // Increased from 15000 - headnotes removed from ILIKE but still giving buffer
 const STATUTE_TIMEOUT_MS = 3000;  // Increased from 1500
 const ADMIN_DOC_TIMEOUT_MS = 1500;
 
