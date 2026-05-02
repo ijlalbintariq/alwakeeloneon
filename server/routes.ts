@@ -5092,7 +5092,10 @@ async function resolveCaseCitationFromInternalDb(
   for (const row of rows) {
     if (!isCaseLawRowCitationTrusted(row)) continue;
     if (requirePrimary && String(row.citationRole || "").toLowerCase() !== "primary") continue;
-    if (requireLinkedSource && !hasLinkedPrimaryCaseLawSource(row)) continue;
+    // Judgment-table rows are verified by DB structure — they don't have sourceDocId.
+    // Skip the linkedSource check for them so strict mode doesn't strip valid citations.
+    const isJudgmentTableRow = String(row.sourceType || "") === "judgment";
+    if (requireLinkedSource && !isJudgmentTableRow && !hasLinkedPrimaryCaseLawSource(row)) continue;
     const rowParts = getTrustedCaseLawCitationPartsFromRow(row);
     if (hasTrustedCandidateParts) {
       if (!rowParts) continue;

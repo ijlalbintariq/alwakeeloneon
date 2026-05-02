@@ -46,7 +46,7 @@ export const MODULE_AI_PROFILES: Record<ModuleType, ModuleAiProfile> = {
     features: {
       knowledgeRetrieval: true,
       attachments: true,
-      strictCitations: false,  // false = verify citation exists in DB but don't require linked sourceDocId (allows judgments table hits)
+      strictCitations: true,  // judgment-table rows now exempt from requireLinkedSource check in resolveCaseCitationFromInternalDb
       clauseModeStrictness: "low",
     },
   },
