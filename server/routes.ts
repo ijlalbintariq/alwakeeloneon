@@ -5195,14 +5195,18 @@ async function enforceInternalCaseCitationIntegrity(
     for (const raw of longestFirst) {
       const escapedCitation = escapeRegExp(raw);
 
+      // Pattern matches both raw "PLD 2020 SC 456" and markdown-wrapped "**[PLD 2020 SC 456]**"
+      const mdWrapped = `(?:\\*{1,3}\\[)?${escapedCitation}(?:\\]\\*{1,3})?`;
+
       if (policy.allowProseModification) {
-        // Strict mode: aggressively remove prose containing invalid citations
-        cleaned = cleaned.replace(new RegExp(`^[\\s]*${escapedCitation}\\s*[\\t\\s]+[^\\n]*$`, "gim"), "");
-        cleaned = cleaned.replace(new RegExp(`${escapedCitation}\\s*[\\t\\s]+[^\\n]*`, "gi"), "");
+        // Remove entire line/sentence containing the invalid citation (anchored: line starts with it)
+        cleaned = cleaned.replace(new RegExp(`^[\\s]*${mdWrapped}[\\s\\S]*?(?=\\n|$)`, "gim"), "");
+        // Remove from citation to end of logical sentence (non-anchored)
+        cleaned = cleaned.replace(new RegExp(`${mdWrapped}\\s*(?:—|–|-)?\\s*[^\\n]*`, "gi"), "");
       }
 
-      // Strict mode: replace unresolved citation token with placeholder (empty or custom)
-      cleaned = cleaned.replace(new RegExp(escapedCitation, "gi"), placeholder || "");
+      // Replace any remaining citation token (with or without markdown wrapper) with placeholder
+      cleaned = cleaned.replace(new RegExp(mdWrapped, "gi"), placeholder || "");
 
       // Clean up leftover tabs and extra whitespace
       cleaned = cleaned.replace(/\n\s*\n\s*\n/g, "\n\n");
