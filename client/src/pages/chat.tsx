@@ -1216,7 +1216,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       <LegalMarkdown content={displayContent} />
 
                       {/* Integrated Legal Context Strip */}
-                      {((m.ragCitations?.length || 0) > 0 || (parsed?.references?.length || 0) > 0) && (
+                      {((m.ragCitations?.length || 0) > 0 || (parsed?.references && (parsed.references.judgments.length + parsed.references.laws.length) > 0)) && (
                         <div className="mt-4 pt-4 border-t border-[#E9EEF5] space-y-2">
                           {/* Case Law Citations */}
                           {(m.ragCitations?.length || 0) > 0 && (
@@ -1234,9 +1234,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           )}
 
                           {/* References/Definitions */}
-                          {parsed?.references && parsed.references.length > 0 && (
+                          {parsed?.references && (parsed.references.judgments.length > 0 || parsed.references.laws.length > 0) && (
                             <div className="space-y-2">
-                              {parsed.references.slice(0, 2).map((ref, idx) => (
+                              {[...parsed.references.judgments.slice(0, 2).map((ref) => ({ title: ref.citation, name: ref.citation, description: ref.description })),
+                                ...parsed.references.laws.slice(0, 2).map((ref) => ({ title: ref.name, name: ref.name, description: ref.description })),
+                              ].slice(0, 2).map((ref, idx) => (
                                 <div key={idx} className="flex gap-3 p-3 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] hover:border-[#1E3A8A]/30 transition-colors duration-150">
                                   <Link2 size={16} className="text-[#1E3A8A] flex-shrink-0 mt-0.5" />
                                   <div className="flex-1 min-w-0">

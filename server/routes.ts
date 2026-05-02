@@ -6018,7 +6018,7 @@ export async function registerRoutes(
         rawContent = r.content; usedModel = r.model || usedModel;
       } else if (provider === "apex" || provider === "apex-agent") {
         if (!isApexAvailable()) return res.status(503).json({ message: "Apex not configured" });
-        const r = await chatWithApex({ messages: aiMessages, model: (model as ApexModel) || "apex-pro", maxTokens, temperature });
+        const r = await chatWithApex({ messages: aiMessages, model: (model as ApexModel) || "apex-pro", maxTokens });
         rawContent = r.content; usedModel = r.model || usedModel;
       } else {
         // DEPRECATED: Groq provider removed - defaulting to DeepSeek (2026-04-16)
@@ -8440,26 +8440,24 @@ RAG POLICY (STRICT):
 
       // Search by shortTitle (name) or section
       // Try exact/partial ilike match first
-      let results = await db.query.statutes.findFirst({
-        where: (statute, { or, ilike }) =>
-          or(
-            ilike(statute.shortTitle, `%${q}%`),
-            ilike(statute.section, `%${q}%`),
-            ilike(statute.description, `%${q}%`),
-          ),
-      });
+      let results = (await db.select().from(statutes).where(
+        or(
+          ilike(statutes.shortTitle, `%${q}%`),
+          ilike(statutes.section, `%${q}%`),
+          ilike(statutes.description, `%${q}%`),
+        ),
+      ).limit(1))[0] ?? null;
 
       // Fallback: try each token individually (handles "Code of Civil Procedure, 1908")
       if (!results) {
-        const tokens = q.split(/[\s,]+/).filter(t => t.length > 2);
+        const tokens = q.split(/[\s,]+/).filter((t: string) => t.length > 2);
         for (const token of tokens) {
-          results = await db.query.statutes.findFirst({
-            where: (statute, { or, ilike }) =>
-              or(
-                ilike(statute.shortTitle, `%${token}%`),
-                ilike(statute.description, `%${token}%`),
-              ),
-          });
+          results = (await db.select().from(statutes).where(
+            or(
+              ilike(statutes.shortTitle, `%${token}%`),
+              ilike(statutes.description, `%${token}%`),
+            ),
+          ).limit(1))[0] ?? null;
           if (results) break;
         }
       }
@@ -8687,7 +8685,7 @@ RAG POLICY (STRICT):
           displayDate: lastActivityDate,
           displayTime: lastActivityTime,
         },
-        recentDocuments: allDocuments.map(doc => ({
+        recentDocuments: allDocuments.map((doc: typeof allDocuments[number]) => ({
           id: doc.id,
           title: doc.title,
           createdAt: doc.createdAt?.toISOString(),
