@@ -5224,14 +5224,30 @@ async function enforceInternalCaseCitationIntegrity(
     }
   }
 
+  // When the trusted pool is non-empty (tool-search returned hits), it
+  // represents the canonical set of allowed citations for this query. Any
+  // citation the model writes that is NOT in the pool — even if it happens
+  // to exist somewhere in the 200k judgments table — is rejected. This is
+  // intentional: the pool is the precision-filtered DB result for this exact
+  // query, so off-pool citations are either (a) the model "remembering"
+  // unrelated cases or (b) hallucinations whose formatting happens to match a
+  // real row. Both should be stripped to keep every reference card clickable
+  // and on-topic.
+  const poolMode = trustedKeys.size > 0 && policy.strict;
+
   await Promise.all(
     Array.from(representativeByKey.entries()).map(async ([key, candidate]) => {
-      // Trusted-pool fast path: citation came from a verified DB hit upstream
-      // (tool-search). Skip the strict resolver — it would false-negative on
-      // formatting variants and erase a real citation.
+      // Trusted-pool fast path: citation came from a verified DB hit upstream.
+      // Skip the strict resolver — it would false-negative on formatting
+      // variants and erase a real citation.
       if (trustedKeys.has(key)) {
         verifiedByKey.set(key, normalizeSpaces(candidate));
         resolvedByKey.set(key, null);
+        return;
+      }
+      // Pool mode: reject any citation not in the pool without a DB call.
+      if (poolMode) {
+        removed.add(normalizeSpaces(candidate));
         return;
       }
       const resolved = await resolveCaseCitationFromInternalDb(candidate, {
@@ -11166,8 +11182,22 @@ The user has attached the following documents for your reference. Analyze them c
         : knowledgeContext;
       const boundedKnowledgeContext = trimTextToTokenBudget(pipelineContext, knowledgeTokensBudget);
       // Tool search results come first — AI-chosen precise queries, direct DB hits.
+      // When tool-search returned judgments, append a hard mandate: the model
+      // MUST cite at least 3 of them by their exact formal citation. The
+      // trusted-pool integrity check downstream will strip any citation that
+      // isn't in this list, so writing case names instead of citations means
+      // the user sees nothing in the references panel.
+      const toolMandateBlock =
+        toolSearchResult.foundCount > 0
+          ? `\n\nCITATION MANDATE (REQUIRED):\n` +
+            `- You MUST cite at least 3 judgments from the AI-SEARCHED JUDGMENTS list above.\n` +
+            `- Copy each citation string EXACTLY as it appears (e.g. "2024 SCMR 1419", "PLD 2020 SC 456").\n` +
+            `- Do NOT cite any case that is not in that list — citations outside the list will be removed.\n` +
+            `- Do NOT use case-name-only references ("Malik vs State"); always use the formal citation.\n` +
+            `- Each cited judgment must appear in your prose AND in the final references block.`
+          : "";
       const toolContextBlock = toolSearchResult.contextString
-        ? `\n\n${toolSearchResult.contextString}`
+        ? `\n\n${toolSearchResult.contextString}${toolMandateBlock}`
         : "";
       const systemPromptFull = systemPrompt + toolContextBlock + boundedKnowledgeContext + (styleContext ? `\n\nPERSONAL STYLE MEMORY (generation-only):\n${styleContext}` : "");
       const useStream = requestedStream && moduleProfile.modelStrategy.stream && selectedRoute !== "apex";
