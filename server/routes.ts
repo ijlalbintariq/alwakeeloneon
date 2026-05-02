@@ -5063,25 +5063,23 @@ async function resolveCaseCitationFromInternalDb(
 
   const rows: CaseLaw[] = [];
   const seen = new Set<number>();
-  const direct = await storage.getCaseLawByCitation(candidate).catch(() => undefined);
-  if (direct?.id && !seen.has(direct.id)) {
-    seen.add(direct.id);
-    rows.push(direct);
-  }
-  const hits = await storage.searchCaseLaw(candidate, 25).catch(() => []);
-  for (const row of hits) {
-    if (!seen.has(row.id)) {
-      seen.add(row.id);
-      rows.push(row);
-    }
-  }
 
-  // Always check the judgments table (204k verified records).
-  // Previously this was a fallback only when case_law returned 0 rows, causing
-  // tool-search citations (which come FROM the judgments table) to fail verification
-  // because case_law returned unrelated partial-token matches that blocked the fallback.
-  const judgmentHits = await storage.searchJudgmentsByKeywords(candidate, 10).catch(() => []);
-  for (const row of judgmentHits) {
+  // Run all lookups in parallel: case_law exact, case_law keyword, judgments ILIKE, judgments keyword.
+  // This ensures citations from the 204k judgments table are always found quickly.
+  const [direct, caseLawHits, judgmentCitationHits, judgmentKeywordHits] = await Promise.all([
+    storage.getCaseLawByCitation(candidate).catch(() => undefined),
+    storage.searchCaseLaw(candidate, 25).catch(() => [] as CaseLaw[]),
+    storage.findJudgmentByCitationString(candidate, 10).catch(() => [] as CaseLaw[]),
+    storage.searchJudgmentsByKeywords(candidate, 10).catch(() => [] as CaseLaw[]),
+  ]);
+
+  // Merge: judgments citation ILIKE first (highest precision), then case_law, then keyword
+  for (const row of [
+    ...(direct ? [direct] : []),
+    ...judgmentCitationHits,
+    ...caseLawHits,
+    ...judgmentKeywordHits,
+  ]) {
     if (!seen.has(row.id)) {
       seen.add(row.id);
       rows.push(row);

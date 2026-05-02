@@ -515,6 +515,7 @@ export interface IStorage {
   searchJudgmentsByCitation(params: { year: number; journalCode?: string; page: number; court?: string }): Promise<CitationSearchResult[]>;
   /** Full-text search the judgments table by keywords. Returns CaseLaw-shaped objects for pipeline compatibility. */
   searchJudgmentsByKeywords(query: string, limit: number): Promise<CaseLaw[]>;
+  findJudgmentByCitationString(citation: string, limit: number): Promise<CaseLaw[]>;
   getJudgmentDetail(id: string): Promise<JudgmentDetail | undefined>;
   createJudgment(entry: InsertJudgment): Promise<Judgment>;
   createCitationLinks(entries: InsertCitationLink[]): Promise<number>;
@@ -2119,6 +2120,62 @@ export class DatabaseStorage implements IStorage {
       if (results.length >= safeLimit) break;
     }
     return results;
+  }
+
+  // Direct citation string lookup on the 204k judgments table.
+  // Uses ILIKE on citationString only — single indexed column, fast even on large tables.
+  // Used by citation verification so tool-search citations (from this table) are found quickly.
+  async findJudgmentByCitationString(citation: string, limit: number): Promise<CaseLaw[]> {
+    const safe = String(citation || "").trim();
+    if (!safe) return [];
+    const safeLimit = Math.max(1, Math.min(20, limit));
+    const pat = `%${safe}%`;
+    const rows = await db
+      .select({
+        id:             judgments.id,
+        year:           judgments.year,
+        page:           judgments.page,
+        citationString: judgments.citationString,
+        title:          judgments.title,
+        petitioner:     judgments.petitioner,
+        respondent:     judgments.respondent,
+        headnotes:      judgments.headnotes,
+        courtName:      courtsRef.name,
+        courtSnapshot:  judgments.courtNameSnapshot,
+        journalCode:    lawJournals.code,
+      })
+      .from(judgments)
+      .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+      .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
+      .where(and(eq(judgments.isActive, true), ilike(judgments.citationString, pat)))
+      .limit(safeLimit);
+
+    type JudgmentRow = (typeof rows)[number];
+    return rows.map((row: JudgmentRow) => {
+      const citation = String(row.citationString || "").trim();
+      const numericId = Math.abs(parseInt(String(row.id || "").replace(/-/g, "").slice(0, 8), 16)) || 0;
+      const courtStr = String(row.courtName || row.courtSnapshot || "");
+      const parties = [row.petitioner, row.respondent].filter(Boolean).join(" vs ");
+      const titleStr = String(row.title || parties || `Case ${citation}`).trim();
+      return {
+        id: numericId,
+        citation,
+        citationYear: Number.isInteger(row.year) ? row.year : null,
+        citationReport: row.journalCode || null,
+        citationPage: Number.isInteger(row.page) && row.page > 0 ? row.page : null,
+        citationRole: "primary" as const,
+        court: courtStr,
+        title: titleStr,
+        summary: String(row.headnotes || "").slice(0, 600).trim(),
+        keywords: [] as string[],
+        sourceDocId: null,
+        sourceType: "judgment",
+        sourceFilename: null,
+        documentClassification: null,
+        fallbackExtraction: false,
+        statuteReferences: [] as string[],
+      } as unknown as CaseLaw;
+    });
   }
 
   async getJudgmentDetail(id: string): Promise<JudgmentDetail | undefined> {
