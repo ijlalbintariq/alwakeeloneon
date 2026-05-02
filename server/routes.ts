@@ -2655,7 +2655,11 @@ function hasLinkedPrimaryCaseLawSource(
   return sourceType === "admin" || sourceType === "user" || sourceType === "statute";
 }
 
-async function verifyReferencesBlock(content: string, policy?: CitationPolicy): Promise<string> {
+async function verifyReferencesBlock(
+  content: string,
+  policy?: CitationPolicy,
+  trustedCitations?: Iterable<string>,
+): Promise<string> {
   const effectivePolicy = policy || DEFAULT_CITATION_POLICY;
   const match = content.match(REFERENCES_BLOCK_REGEX);
   const proseBody = content.replace(REFERENCES_BLOCK_REGEX, "");
@@ -2807,6 +2811,17 @@ async function verifyReferencesBlock(content: string, policy?: CitationPolicy): 
     verifiedLaws.push(normalizedLaw);
   }
 
+  // Build the normalized trusted-pool keys once (citations from upstream
+  // tool-search hits — already verified to exist in the DB).
+  const trustedPoolKeys = new Set<string>();
+  if (trustedCitations) {
+    for (const c of trustedCitations) {
+      const k = normalizeCitationForMatch(String(c || ""));
+      if (k) trustedPoolKeys.add(k);
+    }
+  }
+  const poolMode = trustedPoolKeys.size > 0 && effectivePolicy.strict;
+
   const judgmentRows = await Promise.all(
     inputJudgments.map(async (judgment) => {
       const citation = sanitizeReferenceText(judgment?.citation || "", 140);
@@ -2814,10 +2829,11 @@ async function verifyReferencesBlock(content: string, policy?: CitationPolicy): 
       const description = sanitizeReferenceText(judgment?.description || "", 320);
       if (!citation) return null;
 
-      if (!effectivePolicy.strict) {
-        // Non-strict mode: skip DB lookup entirely — trust the AI-provided citation data.
-        // The AI already received verified case law from the knowledge context;
-        // re-querying the DB introduces unnecessary latency and format mismatches.
+      // Trusted-pool fast path: citation is in the tool-search pool. Real by
+      // construction; bypass the strict resolver (which false-negatives on
+      // formatting variants).
+      const citationKey = normalizeCitationForMatch(citation);
+      if (citationKey && trustedPoolKeys.has(citationKey)) {
         return {
           citation: sanitizeReferenceText(citation, 140),
           court: sanitizeReferenceText(court || "Pakistani Courts", 120),
@@ -2825,7 +2841,21 @@ async function verifyReferencesBlock(content: string, policy?: CitationPolicy): 
         };
       }
 
-      // Strict mode: require full DB verification + linked primary source
+      // Pool mode: in strict mode with a non-empty pool, off-pool citations
+      // are rejected without a DB call. The pool IS the canonical set for
+      // this query.
+      if (poolMode) return null;
+
+      if (!effectivePolicy.strict) {
+        // Non-strict mode: trust the AI-provided citation data.
+        return {
+          citation: sanitizeReferenceText(citation, 140),
+          court: sanitizeReferenceText(court || "Pakistani Courts", 120),
+          description: sanitizeReferenceText(description, 320),
+        };
+      }
+
+      // Strict mode + empty pool: full DB verification + linked primary source
       const matched = await resolveCaseCitationFromInternalDb(citation, {
         requirePrimary: true,
         requireLinkedSource: true,
@@ -2854,9 +2884,13 @@ async function verifyReferencesBlock(content: string, policy?: CitationPolicy): 
   return renderSingleReferencesBlock(content, JSON.parse(normalized));
 }
 
-async function applyAlWakeeloSafetyGuardrails(content: string, policy?: CitationPolicy): Promise<string> {
+async function applyAlWakeeloSafetyGuardrails(
+  content: string,
+  policy?: CitationPolicy,
+  trustedCitations?: Iterable<string>,
+): Promise<string> {
   const withRefs = ensureAlWakeeloReferencesBlock(content);
-  const verifiedRefs = await verifyReferencesBlock(withRefs, policy);
+  const verifiedRefs = await verifyReferencesBlock(withRefs, policy, trustedCitations);
   return verifiedRefs;
 }
 
@@ -11199,7 +11233,18 @@ The user has attached the following documents for your reference. Analyze them c
       const toolContextBlock = toolSearchResult.contextString
         ? `\n\n${toolSearchResult.contextString}${toolMandateBlock}`
         : "";
-      const systemPromptFull = systemPrompt + toolContextBlock + boundedKnowledgeContext + (styleContext ? `\n\nPERSONAL STYLE MEMORY (generation-only):\n${styleContext}` : "");
+      // Order: base prompt -> general knowledge -> style memory -> tool-search.
+      // Tool-search appears LAST so it has the highest attention weight when
+      // the model decodes its first tokens. Empirically, when tool-search was
+      // sandwiched between the base prompt and other context, the model would
+      // ignore the pool on common-topic questions (e.g. Section 302 PPC) and
+      // cite from training-data memory instead. Placing it last + the citation
+      // mandate forces the pool into recent context.
+      const systemPromptFull =
+        systemPrompt
+        + boundedKnowledgeContext
+        + (styleContext ? `\n\nPERSONAL STYLE MEMORY (generation-only):\n${styleContext}` : "")
+        + toolContextBlock;
       const useStream = requestedStream && moduleProfile.modelStrategy.stream && selectedRoute !== "apex";
       const routeLabel = selectedRoute === "apex" ? `apex:${selectedApexModel || "auto"}` : selectedRoute;
       const routingPath: string[] = [`profile:${moduleType}`, `route:${routeLabel}`];
@@ -11223,7 +11268,7 @@ The user has attached the following documents for your reference. Analyze them c
             allowProseModification: moduleProfile.features.strictCitations,
           };
           const cachedContent = moduleType === "al-wakeelo" && !directMode
-            ? await applyAlWakeeloSafetyGuardrails(cached.response, citationPolicy).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
+            ? await applyAlWakeeloSafetyGuardrails(cached.response, citationPolicy, toolSearchResult?.verifiedCitations).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
             : cached.response;
           const scopedCachedContent = suppressWrongIndianJurisdictionForPakCitation(
             enforcePakistanLawOnlyOutput(cachedContent),
@@ -11333,7 +11378,7 @@ The user has attached the following documents for your reference. Analyze them c
             strict: moduleProfile.features.strictCitations,
             allowProseModification: moduleProfile.features.strictCitations,
           };
-          const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent, citationPolicy).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
+          const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent, citationPolicy, toolSearchResult?.verifiedCitations).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
           if (adjusted !== fullContent) {
             fullContent = adjusted;
             res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
@@ -11434,7 +11479,7 @@ The user has attached the following documents for your reference. Analyze them c
 
       if (moduleType === "al-wakeelo" && !directMode) {
         // Use module profile strictCitations — hardcoded true was stripping valid judgments-table citations
-        completion = await applyAlWakeeloSafetyGuardrails(completion, { strict: enforcePrimaryLinkedSourceCitations, allowProseModification: false }).catch(() => ensureAlWakeeloReferencesBlock(completion));
+        completion = await applyAlWakeeloSafetyGuardrails(completion, { strict: enforcePrimaryLinkedSourceCitations, allowProseModification: false }, toolSearchResult?.verifiedCitations).catch(() => ensureAlWakeeloReferencesBlock(completion));
       }
       if (moduleType === "draft" && moduleIntent?.startsWith("draft.")) {
         completion = normalizeCourtReadyDraftingText(completion);
