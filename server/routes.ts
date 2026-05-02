@@ -2469,15 +2469,24 @@ function normalizeReferencesPayload(payload: unknown): { laws: unknown[]; judgme
 }
 
 function parseLooseReferencesJsonAtEnd(content: string): { laws: unknown[]; judgments: unknown[] } | null {
-  const tail = String(content || "").slice(-4000);
-  const match = tail.match(/\{\s*"laws"\s*:\s*\[[\s\S]*?\]\s*,\s*"judgments"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/i);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(match[0]);
-    return normalizeReferencesPayload(parsed);
-  } catch {
-    return null;
+  // Strip trailing code-fence closing backticks before matching (AI sometimes wraps JSON in ```...```)
+  const tail = String(content || "").slice(-4000).replace(/`{1,3}\s*$/, "").trimEnd();
+  // Try laws-first then judgments-first ordering
+  const patterns = [
+    /\{\s*"laws"\s*:\s*\[[\s\S]*?\]\s*,\s*"judgments"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/i,
+    /\{\s*"judgments"\s*:\s*\[[\s\S]*?\]\s*,\s*"laws"\s*:\s*\[[\s\S]*?\]\s*\}\s*$/i,
+  ];
+  for (const pat of patterns) {
+    const match = tail.match(pat);
+    if (!match) continue;
+    try {
+      const parsed = JSON.parse(match[0]);
+      return normalizeReferencesPayload(parsed);
+    } catch {
+      continue;
+    }
   }
+  return null;
 }
 
 function stripTrailingReferencesArtifacts(content: string): string {
@@ -2505,8 +2514,10 @@ function renderSingleReferencesBlock(content: string, payload: unknown): string 
   const safePayload = normalizeReferencesPayload(payload);
   const normalizedJson = JSON.stringify(safePayload);
 
-  // Remove any existing fenced references block(s) first.
+  // Remove any existing fenced references block(s) first (canonical and generic fences).
   let body = String(content || "").replace(/```references\s*[\s\S]*?```/gi, "").trimEnd();
+  // Also strip generic ```json or ``` fences that the AI sometimes wraps the refs block in.
+  body = body.replace(/```(?:json)?\s*\{\s*"(?:laws|judgments)"[\s\S]*?\}\s*```/gi, "").trimEnd();
   body = stripTrailingReferencesArtifacts(body);
 
   if (!body) return `\`\`\`references\n${normalizedJson}\n\`\`\``;
@@ -2519,9 +2530,11 @@ function ensureAlWakeeloReferencesBlock(content: string): string {
   let payload: unknown = { laws: [], judgments: [] };
 
   if (!match) {
-    const loosePayload = parseLooseReferencesJsonAtEnd(content);
+    // Also strip generic ```json or ``` code fences that wrap the refs JSON before parsing
+    const stripped = String(content || "").replace(/```(?:json)?\s*([\s\S]*?)```\s*$/i, (_, inner) => inner.trimEnd());
+    const loosePayload = parseLooseReferencesJsonAtEnd(stripped);
     if (loosePayload) payload = loosePayload;
-    return renderSingleReferencesBlock(String(content || "").trim(), payload);
+    return renderSingleReferencesBlock(stripped.trim(), payload);
   }
 
   try {
@@ -5133,14 +5146,28 @@ async function enforceInternalCaseCitationIntegrity(
     policy?: CitationPolicy;
   },
 ): Promise<{ content: string; removed: string[]; verified: string[] }> {
-  const text = String(content || "");
-  if (!text.trim()) {
+  const rawInput = String(content || "");
+  if (!rawInput.trim()) {
     return { content: "", removed: [], verified: [] };
   }
 
+  // Protect the ```references JSON block from regex-based citation scrubbing.
+  // The strict-mode line-deletion regexes (lines ~5215-5217) are designed for
+  // human prose; if they fire on the JSON line they corrupt it (e.g. turning
+  // `"judgments":[{...}]` into `"judgments":}`). Strip the block, scrub the
+  // prose only, then re-append the block verbatim.
+  const REFS_RE = /```references\s*[\s\S]*?```/i;
+  const refsMatch = rawInput.match(REFS_RE);
+  const refsBlock = refsMatch ? refsMatch[0] : "";
+  const text = refsBlock ? rawInput.replace(REFS_RE, "").trimEnd() : rawInput;
+
+  // Helper to re-attach the protected refs block on every early return path.
+  const withRefs = (body: string): string =>
+    refsBlock ? `${body.trimEnd()}\n\n${refsBlock}` : body;
+
   const candidates = extractCaseCitationCandidates(text);
   if (candidates.length === 0) {
-    return { content: text, removed: [], verified: [] };
+    return { content: withRefs(text), removed: [], verified: [] };
   }
 
   const policy = options?.policy || DEFAULT_CITATION_POLICY;
@@ -5149,7 +5176,7 @@ async function enforceInternalCaseCitationIntegrity(
   // Citations came from the knowledge context already injected into the prompt;
   // post-processing them serves no purpose and risks unwanted format changes.
   if (!policy.strict) {
-    return { content: text, removed: [], verified: [] };
+    return { content: withRefs(text), removed: [], verified: [] };
   }
 
   const placeholder = normalizeSpaces(String(options?.placeholder ?? ""));
@@ -5232,8 +5259,14 @@ async function enforceInternalCaseCitationIntegrity(
     }
   }
 
+  // Re-append the protected references block exactly as received.
+  let finalContent = stripCitationPlaceholderArtifacts(cleaned);
+  if (refsBlock) {
+    finalContent = `${finalContent.trimEnd()}\n\n${refsBlock}`;
+  }
+
   return {
-    content: stripCitationPlaceholderArtifacts(cleaned),
+    content: finalContent,
     removed: Array.from(removed),
     verified: Array.from(new Set(Array.from(verifiedByKey.values()))),
   };
