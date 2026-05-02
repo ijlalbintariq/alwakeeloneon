@@ -1973,6 +1973,20 @@ export class DatabaseStorage implements IStorage {
       "right","old","same","new","want","need","take","make","come","get","put","ask",
     ]);
 
+    // Legal signal tokens to prioritize for WHERE filtering over narrative filler words.
+    // Example:
+    //   "A issues a post-dated cheque ..." should prioritize "cheque" (and related legal
+    //   terms), not first-seen narrative tokens like "issues post dated".
+    const LEGAL_SIGNAL_TOKENS = new Set([
+      "section", "article", "ppc", "crpc", "qso", "cpc", "cnsa",
+      "cheque", "dishonour", "dishonor", "bail", "murder", "qatl", "diyat",
+      "contract", "agreement", "fraud", "forgery", "theft", "robbery",
+      "narcotics", "zina", "inheritance", "succession", "custody",
+      "maintenance", "divorce", "khula", "rent", "tenancy", "eviction",
+      "appeal", "petition", "revision", "writ", "constitutional", "injunction",
+      "conviction", "acquittal", "evidence", "fir",
+    ]);
+
     const allTokens = safeQuery
       .toLowerCase()
       .split(/\s+/)
@@ -1989,27 +2003,30 @@ export class DatabaseStorage implements IStorage {
     const tokenQuery = allTokens.slice(0, 10).join(" ");
     if (tokens.length === 0) return [];
 
-    // WHERE uses only first 3 specific tokens (AND). All-token AND is too strict.
-    // Using specific terms (not stop words) avoids 0-result matches on common words.
-    const filterTokens = tokens.slice(0, 3);
+    // Prioritize legal/domain tokens first. If none exist, fall back to longest specific tokens.
+    const legalSignalTokens = tokens.filter((token) =>
+      LEGAL_SIGNAL_TOKENS.has(token) || /^\d{3,4}[a-z]?$/.test(token),
+    );
+    const longTokens = tokens.filter((token) => token.length >= 6);
+    const prioritizedTokens = legalSignalTokens.length > 0 ? legalSignalTokens : longTokens;
+    const filterTokens = Array.from(new Set(
+      (prioritizedTokens.length > 0 ? prioritizedTokens : tokens).slice(0, 6),
+    )).slice(0, 3);
     const filterConditions = filterTokens.map((token) => {
       const pat = `%${token}%`;
+      // headnotes excluded from WHERE filter — it's a long text column that kills ILIKE perf.
+      // It's still used in tsvRank ORDER BY for relevance scoring.
       return or(
         ilike(judgments.citationString, pat),
         ilike(judgments.title,          pat),
         ilike(judgments.petitioner,     pat),
         ilike(judgments.respondent,     pat),
-        ilike(judgments.headnotes,      pat),
       )!;
     });
 
-    const searchCondition = filterConditions.length === 1
+    const strictSearchCondition = filterConditions.length === 1
       ? filterConditions[0]
       : and(...filterConditions)!;
-    const whereClause = and(
-      eq(judgments.isActive, true),
-      searchCondition,
-    );
 
     // tsvRank only used in ORDER BY — computed on already-filtered rows, not all 204k.
     const tsvRank = tokenQuery
@@ -2026,26 +2043,44 @@ export class DatabaseStorage implements IStorage {
         ), 0)`
       : sql<number>`0`;
 
-    const rows = await db
-      .select({
-        id:            judgments.id,
-        year:          judgments.year,
-        page:          judgments.page,
-        citationString: judgments.citationString,
-        title:         judgments.title,
-        petitioner:    judgments.petitioner,
-        respondent:    judgments.respondent,
-        headnotes:     judgments.headnotes,
-        courtName:     courtsRef.name,
-        courtSnapshot: judgments.courtNameSnapshot,
-        journalCode:   lawJournals.code,
-      })
-      .from(judgments)
-      .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
-      .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
-      .where(whereClause!)
-      .orderBy(desc(tsvRank), desc(judgments.year))
-      .limit(safeLimit * 4);
+    const fetchRows = async (searchCondition: ReturnType<typeof and> | ReturnType<typeof or>) => {
+      const whereClause = and(
+        eq(judgments.isActive, true),
+        searchCondition,
+      );
+      return await db
+        .select({
+          id:            judgments.id,
+          year:          judgments.year,
+          page:          judgments.page,
+          citationString: judgments.citationString,
+          title:         judgments.title,
+          petitioner:    judgments.petitioner,
+          respondent:    judgments.respondent,
+          headnotes:     judgments.headnotes,
+          courtName:     courtsRef.name,
+          courtSnapshot: judgments.courtNameSnapshot,
+          journalCode:   lawJournals.code,
+        })
+        .from(judgments)
+        .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+        .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
+        .where(whereClause!)
+        .orderBy(desc(tsvRank), desc(judgments.year))
+        .limit(safeLimit * 4);
+    };
+
+    let rows = await fetchRows(strictSearchCondition);
+
+    // Fallback: if strict AND returns 0, retry with OR across the same tokens.
+    // This prevents false zero-results for long narrative queries.
+    if (rows.length === 0 && filterConditions.length > 1) {
+      const fallbackSearchCondition = or(...filterConditions)!;
+      rows = await fetchRows(fallbackSearchCondition);
+      console.log(
+        `[JudgmentSearch:FallbackOR] query="${safeQuery.slice(0, 80)}" tokens=[${filterTokens.join(",")}] rows=${rows.length}`,
+      );
+    }
 
     // Convert judgment rows to CaseLaw-compatible objects for the AI pipeline
     const seen = new Set<string>();

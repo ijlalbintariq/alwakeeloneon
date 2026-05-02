@@ -178,9 +178,8 @@ function hasTrustedCitation(row: CaseLaw): boolean {
   const c = String(row.citation || "").trim();
   if (!c || c.length < 5) return false;
 
-  // Criterion 1: Sourced directly from the judgments table — always trusted.
-  // These have verified year, journal, page from the structured DB.
-  if (row.sourceType === "judgment") return true;
+  // Criterion 1: Sourced directly from the judgments table or the case_law DB table — always trusted.
+  if (row.sourceType === "judgment" || row.sourceType === "db-case-law") return true;
 
   // Criterion 2: Structured citation fields were successfully parsed.
   // citationYear being set means the enrichment function extracted a valid year,
@@ -347,12 +346,19 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
 
   console.log(`[Retrieval:Paths] judgment=${judgmentRaw.length} caseLaw=${keywordRaw.length} rag=${ragRaw.length}`);
 
+  // Tag DB-sourced rows so hasTrustedCitation doesn't discard them.
+  // These rows came from the structured case_law table and are real records,
+  // but may lack a normalized citationYear/citationReport, failing the regex checks.
+  const taggedKeywordRaw = keywordRaw.map((r) =>
+    r.sourceType ? r : { ...r, sourceType: "db-case-law" as const },
+  );
+
   // Merge: judgments first (primary source), then case_law, then RAG
   // Use normalizeCitationKey (same helper as tool-call path) so format variants
   // like "P L D 2020 SC 456" and "PLD 2020 SC 456" collapse to the same key.
   const seen = new Set<string>();
   const merged: CaseLaw[] = [];
-  for (const row of [...judgmentRaw, ...keywordRaw, ...ragRaw]) {
+  for (const row of [...judgmentRaw, ...taggedKeywordRaw, ...ragRaw]) {
     const citKey = normalizeCitationKey(String(row.citation || ""));
     if (!citKey || seen.has(citKey)) continue;
     seen.add(citKey);
