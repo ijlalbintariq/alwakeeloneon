@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
-import { Scale, Send, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2 } from "lucide-react";
+import { Scale, Send, Square, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -124,6 +124,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   // Elapsed time counter — starts when user sends, ticks every 100ms while waiting
   const [elapsedMs, setElapsedMs] = useState(0);
   const loadStartRef = useRef<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [leftRailOpen, setLeftRailOpen] = useState(true);
   // Map<citation_text, judgment_id> — only citations verified to exist in DB
   const [verifiedJudgmentIds, setVerifiedJudgmentIds] = useState<Map<string, string>>(new Map());
@@ -402,11 +403,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     return `${answer}\n\n**Retrieved Sources**\n${sourceLines.join("\n")}`;
   };
 
+  const handleStop = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsLoading(false);
+    setToolSearchStatus({ active: false, queries: [], totalFound: 0, totalMs: 0 });
+  };
+
   const handleSend = async (overrideInput?: string) => {
     const text = overrideInput || input;
     if ((!text.trim() && attachedFiles.length === 0) || isLoading) return;
     setApiError(null);
     setAgentStatus(null);
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     const fileNames = attachedFiles.map(f => f.name);
     const displayText = fileNames.length > 0
@@ -519,6 +529,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           method: "POST",
           credentials: "include",
           body: formData,
+          signal: controller.signal,
         });
       } else {
         response = await fetch("/api/ai/chat", {
@@ -534,6 +545,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             apexModel: selectedApexModel || undefined,
             stream: true,
           }),
+          signal: controller.signal,
         });
       }
 
@@ -1284,78 +1296,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           })}
           </div>
 
-          {isLoading && (
-            <div className="flex items-start gap-3">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 ${isApexAgentWebMode ? "bg-cyan-600 text-white" : "bg-white text-[#0F172A]"}`}>
-                {isApexAgentWebMode ? <Globe size={16} /> : <Scale size={16} />}
-              </div>
-              <div className="flex-1">
-                <div className={`p-4 rounded-2xl border ${isApexAgentWebMode ? "border-cyan-700/30 bg-cyan-900/20" : "border-slate-700/30 bg-slate-800/20"}`}>
-                  {/* Phase indicator + elapsed timer */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Loader2 size={11} className="animate-spin text-amber-400" />
-                      <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
-                        {toolSearchStatus.queries.length > 0
-                          ? toolSearchStatus.active
-                            ? "Searching case law"
-                            : "Writing response"
-                          : elapsedMs < 2000
-                            ? "Preparing"
-                            : "Retrieving context"}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-mono text-amber-400/80 tabular-nums">
-                      {(elapsedMs / 1000).toFixed(1)}s
-                    </span>
-                  </div>
-
-                  {/* Tool search queries — shown once events arrive */}
-                  {toolSearchStatus.queries.length > 0 && (
-                    <div className="mb-3 space-y-1">
-                      {toolSearchStatus.queries.map((q, i) => (
-                        <div key={i} className="flex items-center gap-2 text-[9px]">
-                          <Search size={8} className="text-cyan-600 flex-shrink-0" />
-                          <span className="text-slate-400 font-mono truncate">{q.query}</span>
-                          <span className="ml-auto text-slate-600 flex-shrink-0">
-                            {q.found > 0 ? (
-                              <span className="text-cyan-600">{q.found} found</span>
-                            ) : (
-                              <span>0 found</span>
-                            )}
-                          </span>
-                        </div>
-                      ))}
-                      {!toolSearchStatus.active && toolSearchStatus.totalFound > 0 && (
-                        <div className="flex items-center gap-1.5 pt-0.5 text-[9px] text-cyan-500/80">
-                          <Gavel size={8} />
-                          <span>{toolSearchStatus.totalFound} judgment{toolSearchStatus.totalFound !== 1 ? "s" : ""} retrieved</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Shimmer bars */}
-                  <style>{`
-                    @keyframes shimmer {
-                      0% { background-position: -1000px 0; }
-                      100% { background-position: 1000px 0; }
-                    }
-                    .animate-shimmer {
-                      background: linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.10) 50%,rgba(255,255,255,0.04) 100%);
-                      background-size: 1000px 100%;
-                      animation: shimmer 2s infinite;
-                    }
-                  `}</style>
-                  <div className="space-y-2">
-                    <div className="h-3 bg-slate-700/50 rounded animate-shimmer"></div>
-                    <div className="h-3 bg-slate-700/50 rounded animate-shimmer" style={{ animationDelay: "0.3s", width: "90%" }}></div>
-                    <div className="h-3 bg-slate-700/50 rounded animate-shimmer" style={{ animationDelay: "0.6s", width: "75%" }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {apiError && (
@@ -2043,9 +1983,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 />
 
 
-                <button onClick={() => handleSend()} disabled={isLoading || isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 disabled:from-amber-400/50 disabled:to-amber-600/50 text-slate-950 h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 flex-shrink-0">
-                  <Send size={20} />
-                </button>
+                {isLoading ? (
+                  <button onClick={handleStop} data-testid="button-stop" className="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300/60 flex-shrink-0">
+                    <Square size={18} fill="currentColor" />
+                  </button>
+                ) : (
+                  <button onClick={() => handleSend()} disabled={isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 disabled:from-amber-400/50 disabled:to-amber-600/50 text-slate-950 h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 flex-shrink-0">
+                    <Send size={20} />
+                  </button>
+                )}
               </div>
 
               {attachedFiles.length > 0 && (
