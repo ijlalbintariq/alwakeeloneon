@@ -5076,14 +5076,15 @@ async function resolveCaseCitationFromInternalDb(
     }
   }
 
-  // Fallback: if no case_law results, also check judgments table (used as tool search fallback)
-  if (rows.length === 0) {
-    const judgmentHits = await storage.searchJudgmentsByKeywords(candidate, 10).catch(() => []);
-    for (const row of judgmentHits) {
-      if (!seen.has(row.id)) {
-        seen.add(row.id);
-        rows.push(row);
-      }
+  // Always check the judgments table (204k verified records).
+  // Previously this was a fallback only when case_law returned 0 rows, causing
+  // tool-search citations (which come FROM the judgments table) to fail verification
+  // because case_law returned unrelated partial-token matches that blocked the fallback.
+  const judgmentHits = await storage.searchJudgmentsByKeywords(candidate, 10).catch(() => []);
+  for (const row of judgmentHits) {
+    if (!seen.has(row.id)) {
+      seen.add(row.id);
+      rows.push(row);
     }
   }
 
