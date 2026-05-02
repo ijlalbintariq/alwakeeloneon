@@ -528,22 +528,9 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
   const statuteLimit = limits.statutes ?? 4;
   const adminDocLimit = limits.adminDocs ?? 3;
 
-  // Statute-first routing: when an explicit statute ref is detected (e.g. "PPC 302"),
-  // keep statute priority but still fetch a small case-law set so answers don't end up
-  // statute-only when the user expects supporting judgments.
-  const statuteFirst = !!intent.statuteRef;
-  const effectiveCaseLawLimit = statuteFirst
-    ? Math.max(4, Math.min(caseLawLimit, 6))
-    : caseLawLimit;
-  if (statuteFirst) {
-    console.log(
-      `[Retrieval:StatuteFirst] Explicit statute ref detected (${intent.statuteRef!.abbr} ${intent.statuteRef!.sectionOrArticle}) — fetching capped case law (limit=${effectiveCaseLawLimit})`,
-    );
-  }
-
   const [caseLawResults, statuteResults, adminDocResults] = await Promise.all([
     intent.needsCaseLaw
-      ? fetchCaseLaw(intent, userId, effectiveCaseLawLimit)
+      ? fetchCaseLaw(intent, userId, caseLawLimit)
       : Promise.resolve([] as RetrievedCaseLaw[]),
     intent.needsStatutes
       ? fetchStatutes(intent, statuteLimit)
