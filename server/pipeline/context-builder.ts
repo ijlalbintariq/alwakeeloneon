@@ -197,21 +197,26 @@ export function buildContext(
 ): ContextOutput {
   const sections: ContextSection[] = [];
 
-  // 1. Verified citations block (highest priority — comes first in prompt)
+  const statuteFirst = !!intent.statuteRef;
+
   const judgeSection = buildVerifiedJudgmentsSection(retrieval.caseLaw);
-  if (judgeSection) sections.push(judgeSection);
-
-  // 2. Verified statutes block
-  const statSection = buildVerifiedStatutesSection(retrieval.statutes);
-  if (statSection) sections.push(statSection);
-
-  // 3. Case law detail block (excerpts)
-  const detailSection = buildCaseLawDetailSection(retrieval.caseLaw);
-  if (detailSection) sections.push(detailSection);
-
-  // 4. Statutes detail
+  const statSection  = buildVerifiedStatutesSection(retrieval.statutes);
+  const detailSection    = buildCaseLawDetailSection(retrieval.caseLaw);
   const statDetailSection = buildStatutesDetailSection(retrieval.statutes);
-  if (statDetailSection) sections.push(statDetailSection);
+
+  if (statuteFirst) {
+    // Statute queries: statutes first so the AI leads with the law, then supporting case law
+    if (statSection)       sections.push(statSection);
+    if (statDetailSection) sections.push(statDetailSection);
+    if (judgeSection)      sections.push(judgeSection);
+    if (detailSection)     sections.push(detailSection);
+  } else {
+    // Default: case law first
+    if (judgeSection)      sections.push(judgeSection);
+    if (statSection)       sections.push(statSection);
+    if (detailSection)     sections.push(detailSection);
+    if (statDetailSection) sections.push(statDetailSection);
+  }
 
   // 5. Admin / Github / Org docs
   const adminSection = buildAdminDocsSection(retrieval.adminDocs);
