@@ -1950,7 +1950,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     <ChevronDown size={9} />
                   </button>
                   {showModelMenu && (
-                    <div className="absolute bottom-full right-0 mb-2 bg-[#1e293b] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden min-w-[280px] z-50">
+                    <div className="model-menu-dropdown absolute bottom-full right-0 mb-2 bg-[#1e293b] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden min-w-[280px] z-50">
                       <div className="px-4 py-2 text-[9px] text-slate-400 uppercase tracking-widest font-black border-b border-amber-500/15">Select AI Model</div>
                       <button onClick={() => { setAiMode("standard"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${normalizedAiMode === "standard" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
                         <div className="font-bold">Standard</div><div className="text-[10px] text-slate-500 mt-0.5">Fast, reliable responses</div>
