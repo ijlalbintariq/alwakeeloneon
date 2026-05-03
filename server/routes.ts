@@ -11231,7 +11231,12 @@ The user has attached the following documents for your reference. Analyze them c
               : baseTokenLimit)
         : baseTokenLimit;
       const timeoutProfile: TimeoutProfile = directMode ? "search" : "default";
-      const temperature = directMode ? 0 : 0.7;
+      // Lowered chat temperature 0.7 -> 0.3 for stronger pool adherence on
+      // common topics (Section 302 PPC, cheque dishonour, defamation). Higher
+      // temp let the model wander into training-memory citations even with
+      // the pool present in context. 0.3 keeps responses natural while
+      // making pool-citation tokens dominate the next-token distribution.
+      const temperature = directMode ? 0 : 0.3;
       const knowledgeTokensBudget = styleContext
         ? Math.max(300, KNOWLEDGE_PROMPT_TOKEN_BUDGET - estimateTokens(styleContext))
         : KNOWLEDGE_PROMPT_TOKEN_BUDGET;
@@ -11262,21 +11267,38 @@ The user has attached the following documents for your reference. Analyze them c
             `- Do NOT cite from memory or training data, even on familiar topics like Section 302 PPC or cheque dishonour.\n` +
             `- Each cited judgment must appear in your prose AND in the final references block.`
           : "";
-      const toolContextBlock = toolSearchResult.contextString
-        ? `\n\n${toolSearchResult.contextString}${toolMandateBlock}`
-        : "";
-      // Order: base prompt -> general knowledge -> style memory -> tool-search.
-      // Tool-search appears LAST so it has the highest attention weight when
-      // the model decodes its first tokens. Empirically, when tool-search was
-      // sandwiched between the base prompt and other context, the model would
-      // ignore the pool on common-topic questions (e.g. Section 302 PPC) and
-      // cite from training-data memory instead. Placing it last + the citation
-      // mandate forces the pool into recent context.
+      // Tool-search context is now injected as a fake user/assistant turn
+      // (see toolSearchTurns below) — NOT in the system prompt. LLMs weight
+      // user/assistant content much higher than system content, so framing
+      // the pool as "data the user just provided" dramatically improves
+      // pool adherence on common topics. systemPromptFull no longer contains
+      // the pool itself, only the base prompt + knowledge + style.
       const systemPromptFull =
         systemPrompt
         + boundedKnowledgeContext
-        + (styleContext ? `\n\nPERSONAL STYLE MEMORY (generation-only):\n${styleContext}` : "")
-        + toolContextBlock;
+        + (styleContext ? `\n\nPERSONAL STYLE MEMORY (generation-only):\n${styleContext}` : "");
+
+      // Build the pool-injection conversation turns. Each turn-pair becomes
+      // one user message ("here is the data...") and one assistant message
+      // ("acknowledged, will only cite from this list"). Empty when no pool.
+      const toolSearchTurns: Array<{ role: "user" | "assistant"; content: string }> =
+        toolSearchResult.contextString
+          ? [
+              {
+                role: "user",
+                content:
+                  `Before answering my next question, please use these Pakistani case-law records I just retrieved from our internal database for this query:\n\n` +
+                  `${toolSearchResult.contextString}${toolMandateBlock}`,
+              },
+              {
+                role: "assistant",
+                content:
+                  `Understood. I will cite at least 3 judgments from this list by their exact formal citation, ` +
+                  `not their case names, and I will not cite any judgment that is not in the list above. ` +
+                  `What is your legal question?`,
+              },
+            ]
+          : [];
       const useStream = requestedStream && moduleProfile.modelStrategy.stream && selectedRoute !== "apex";
       const routeLabel = selectedRoute === "apex" ? `apex:${selectedApexModel || "auto"}` : selectedRoute;
       const routingPath: string[] = [`profile:${moduleType}`, `route:${routeLabel}`];
@@ -11349,7 +11371,15 @@ The user has attached the following documents for your reference. Analyze them c
           res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
         };
         try {
-          const streamMessages = buildMessages(systemPromptFull, geminiContents);
+          const baseMessages = buildMessages(systemPromptFull, geminiContents);
+          // Inject tool-search pool as user/assistant turns RIGHT before the
+          // final user message. Splices toolSearchTurns at the index of the
+          // last user message so the model sees: [system, ...prior turns,
+          // user(pool), assistant(ack), user(actual question)].
+          const lastUserIdx = baseMessages.map(m => m.role).lastIndexOf("user");
+          const streamMessages = lastUserIdx >= 0 && toolSearchTurns.length > 0
+            ? [...baseMessages.slice(0, lastUserIdx), ...toolSearchTurns, ...baseMessages.slice(lastUserIdx)]
+            : baseMessages;
           // Al Wakeelo: tool-searched judgments + pipeline statutes injected via systemPromptFull.
           if (isAiRouterV2Enabled()) {
             // V2 router: used for all non-al-wakeelo modules (draft, contract, etc.)
@@ -11491,7 +11521,11 @@ The user has attached the following documents for your reference. Analyze them c
         result = { text: apexResult.text, model: apexResult.model };
       } else if (isAiRouterV2Enabled()) {
         const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
-        const nonStreamMessages = buildMessages(systemPromptFull, geminiContents);
+        const baseNonStreamMessages = buildMessages(systemPromptFull, geminiContents);
+        const lastUserIdxNS = baseNonStreamMessages.map(m => m.role).lastIndexOf("user");
+        const nonStreamMessages = lastUserIdxNS >= 0 && toolSearchTurns.length > 0
+          ? [...baseNonStreamMessages.slice(0, lastUserIdxNS), ...toolSearchTurns, ...baseNonStreamMessages.slice(lastUserIdxNS)]
+          : baseNonStreamMessages;
         const routerResult = await callWithFallback(chain, {
           messages: nonStreamMessages,
           maxTokens: tokenLimit,
