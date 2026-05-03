@@ -2059,6 +2059,7 @@ export class DatabaseStorage implements IStorage {
           petitioner:    judgments.petitioner,
           respondent:    judgments.respondent,
           headnotes:     judgments.headnotes,
+          fullText:      judgments.fullText,
           courtName:     courtsRef.name,
           courtSnapshot: judgments.courtNameSnapshot,
           journalCode:   lawJournals.code,
@@ -2093,10 +2094,50 @@ export class DatabaseStorage implements IStorage {
 
       // Derive a stable numeric id from UUID for dedup compatibility
       const numericId = Math.abs(parseInt(String(row.id || "").replace(/-/g, "").slice(0, 8), 16)) || 0;
-      const courtStr = String(row.courtName || row.courtSnapshot || "");
+
+      // Many legacy judgment rows have placeholder titles like
+      // "Case reported at 2005 PCRLJ 1008" and empty court_name_snapshot,
+      // because the original ingest only populated the citation. The full
+      // judgment text starts with a header block:
+      //   Court Name: Lahore High Court
+      //   Judge(s): ...
+      //   Title: MUHAMMAD AZIM vs DISTRICT MAGISTRATE
+      // Extract the real values from there as a runtime fallback so the AI
+      // and the Case Law Card both see proper titles/courts immediately.
+      const fullTextStr = String(row.fullText || "");
+      const fullTextHeader = fullTextStr.slice(0, 1500);
+      const headerMatch = (label: string): string => {
+        const m = fullTextHeader.match(new RegExp(`(?:^|\\n)\\s*${label}\\s*:\\s*([^\\n]+)`, "i"));
+        return m ? m[1].trim() : "";
+      };
+      const fullTextTitle = headerMatch("Title");
+      const fullTextCourt = headerMatch("Court Name") || headerMatch("Court");
+
+      const courtRaw = String(row.courtName || row.courtSnapshot || "").trim();
+      const courtStr = courtRaw || fullTextCourt;
+
       const parties = [row.petitioner, row.respondent].filter(Boolean).join(" vs ");
-      const titleStr = String(row.title || parties || `Case ${citation}`).trim();
-      const summaryStr = String(row.headnotes || "").slice(0, 600).trim();
+      const dbTitleRaw = String(row.title || "").trim();
+      const isPlaceholderTitle =
+        !dbTitleRaw ||
+        /^case\s+(?:reported\s+at|cited\s+as|no\.?)\b/i.test(dbTitleRaw) ||
+        dbTitleRaw === `Case ${citation}`;
+      const titleStr =
+        (!isPlaceholderTitle && dbTitleRaw) ||
+        parties ||
+        fullTextTitle ||
+        `Case ${citation}`;
+
+      // Headnotes are often a placeholder ("Case cited as 2005 PCRLJ 1008")
+      // for these legacy rows. Use the first chunk of full_text past the
+      // header block as a substantive summary fallback.
+      const headnotesRaw = String(row.headnotes || "").trim();
+      const isPlaceholderHeadnotes =
+        !headnotesRaw || /^case\s+(?:cited\s+as|reported\s+at)\b/i.test(headnotesRaw);
+      const fullTextBody = fullTextStr.replace(/^[\s\S]*?\nTitle:\s*[^\n]*\n/i, "").trim();
+      const summaryStr = isPlaceholderHeadnotes && fullTextBody
+        ? fullTextBody.slice(0, 600).trim()
+        : headnotesRaw.slice(0, 600).trim();
 
       results.push({
         id: numericId,
