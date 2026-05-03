@@ -2659,6 +2659,7 @@ async function verifyReferencesBlock(
   content: string,
   policy?: CitationPolicy,
   trustedCitations?: Iterable<string>,
+  trustedTitles?: Array<{ title: string; citation: string }>,
 ): Promise<string> {
   const effectivePolicy = policy || DEFAULT_CITATION_POLICY;
   const match = content.match(REFERENCES_BLOCK_REGEX);
@@ -2700,6 +2701,27 @@ async function verifyReferencesBlock(
       seen.add(key);
       proseJudgmentRefs.push({ citation: c, court: "Pakistani Courts", description: "" });
       if (proseJudgmentRefs.length >= 12) break;
+    }
+
+    // Title -> citation recovery: model often writes case names like
+    // "Sohail Iqbal vs State" instead of formal citations. The trusted-pool
+    // titles let us map those back to the verified DB citation, so the user
+    // gets a clickable card for every pool case the model referenced by name.
+    if (trustedTitles && trustedTitles.length > 0) {
+      const normalizeTitle = (s: string) =>
+        String(s || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+      const proseLower = normalizeTitle(proseBody);
+      for (const { title, citation } of trustedTitles) {
+        if (proseJudgmentRefs.length >= 12) break;
+        const titleKey = normalizeTitle(title);
+        // Skip very short titles (would false-positive on common words)
+        if (!titleKey || titleKey.length < 12) continue;
+        if (!proseLower.includes(titleKey)) continue;
+        const citeKey = String(citation).toLowerCase().replace(/\s+/g, " ").trim();
+        if (!citeKey || seen.has(citeKey)) continue;
+        seen.add(citeKey);
+        proseJudgmentRefs.push({ citation, court: "Pakistani Courts", description: "" });
+      }
     }
   }
 
@@ -2888,9 +2910,10 @@ async function applyAlWakeeloSafetyGuardrails(
   content: string,
   policy?: CitationPolicy,
   trustedCitations?: Iterable<string>,
+  trustedTitles?: Array<{ title: string; citation: string }>,
 ): Promise<string> {
   const withRefs = ensureAlWakeeloReferencesBlock(content);
-  const verifiedRefs = await verifyReferencesBlock(withRefs, policy, trustedCitations);
+  const verifiedRefs = await verifyReferencesBlock(withRefs, policy, trustedCitations, trustedTitles);
   return verifiedRefs;
 }
 
@@ -10990,7 +11013,13 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         moduleType === "al-wakeelo" &&
         !directMode &&
         (useOpenRouterTools || isDeepSeekAvailable());
-      interface ToolSearchResult { contextString: string; foundCount: number; queriesUsed: string[] }
+      interface ToolSearchResult {
+        contextString: string;
+        foundCount: number;
+        queriesUsed: string[];
+        verifiedCitations: string[];
+        verifiedTitles: Array<{ title: string; citation: string }>;
+      }
 
       // Live-stream tool search status events when the request will stream AND tool search is enabled.
       // Compute willStream early (before selectedRoute is assigned) so we can open SSE BEFORE awaiting enrichment.
@@ -11031,9 +11060,9 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
             : runToolJudgmentSearch(lastUserMessage!.content, toolStatusCallback)
           ).catch((err) => {
             console.warn("[ToolSearch] Failed:", err?.message || err);
-            return { contextString: "", foundCount: 0, queriesUsed: [] };
+            return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [] };
           })
-        : Promise.resolve({ contextString: "", foundCount: 0, queriesUsed: [] });
+        : Promise.resolve({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [] });
 
       type StyleFetch = Awaited<ReturnType<typeof retrieveStyleContextForGeneration>> | null;
       const stylePromise: Promise<StyleFetch> = (styleEligible && styleModule)
@@ -11061,7 +11090,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       const [knowledgeRace, styleRace, toolSearchRace] = await Promise.all([
         raceToDeadline<string>(knowledgePromise, ENRICHMENT_BUDGET_MS, "", "knowledge-context"),
         raceToDeadline<StyleFetch>(stylePromise, ENRICHMENT_BUDGET_MS, null, "style-memory"),
-        raceToDeadline<ToolSearchResult>(toolSearchPromise, ENRICHMENT_BUDGET_MS, { contextString: "", foundCount: 0, queriesUsed: [] }, "tool-search"),
+        raceToDeadline<ToolSearchResult>(toolSearchPromise, ENRICHMENT_BUDGET_MS, { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [] }, "tool-search"),
       ]);
       const knowledgeContext = knowledgeRace.value;
       const styleRetrieved = styleRace.value;
@@ -11223,11 +11252,14 @@ The user has attached the following documents for your reference. Analyze them c
       // the user sees nothing in the references panel.
       const toolMandateBlock =
         toolSearchResult.foundCount > 0
-          ? `\n\nCITATION MANDATE (REQUIRED):\n` +
+          ? `\n\nCITATION MANDATE (REQUIRED — read carefully):\n` +
             `- You MUST cite at least 3 judgments from the AI-SEARCHED JUDGMENTS list above.\n` +
-            `- Copy each citation string EXACTLY as it appears (e.g. "2024 SCMR 1419", "PLD 2020 SC 456").\n` +
-            `- Do NOT cite any case that is not in that list — citations outside the list will be removed.\n` +
-            `- Do NOT use case-name-only references ("Malik vs State"); always use the formal citation.\n` +
+            `- Always use the FORMAL CITATION string, never the case name alone.\n` +
+            `  WRONG: "Sohail Iqbal vs State held that..."\n` +
+            `  RIGHT: "**[2024 SCMR 1419]** held that..."\n` +
+            `  Copy each citation EXACTLY as listed (e.g. "2024 SCMR 1419", "PLD 2020 SC 456", "2019 PCRLJ 1683").\n` +
+            `- Do NOT cite any case that is not in the list above — those citations will be removed.\n` +
+            `- Do NOT cite from memory or training data, even on familiar topics like Section 302 PPC or cheque dishonour.\n` +
             `- Each cited judgment must appear in your prose AND in the final references block.`
           : "";
       const toolContextBlock = toolSearchResult.contextString
@@ -11268,7 +11300,7 @@ The user has attached the following documents for your reference. Analyze them c
             allowProseModification: moduleProfile.features.strictCitations,
           };
           const cachedContent = moduleType === "al-wakeelo" && !directMode
-            ? await applyAlWakeeloSafetyGuardrails(cached.response, citationPolicy, toolSearchResult?.verifiedCitations).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
+            ? await applyAlWakeeloSafetyGuardrails(cached.response, citationPolicy, toolSearchResult?.verifiedCitations, toolSearchResult?.verifiedTitles).catch(() => ensureAlWakeeloReferencesBlock(cached.response))
             : cached.response;
           const scopedCachedContent = suppressWrongIndianJurisdictionForPakCitation(
             enforcePakistanLawOnlyOutput(cachedContent),
@@ -11378,7 +11410,7 @@ The user has attached the following documents for your reference. Analyze them c
             strict: moduleProfile.features.strictCitations,
             allowProseModification: moduleProfile.features.strictCitations,
           };
-          const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent, citationPolicy, toolSearchResult?.verifiedCitations).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
+          const adjusted = await applyAlWakeeloSafetyGuardrails(fullContent, citationPolicy, toolSearchResult?.verifiedCitations, toolSearchResult?.verifiedTitles).catch(() => ensureAlWakeeloReferencesBlock(fullContent));
           if (adjusted !== fullContent) {
             fullContent = adjusted;
             res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
@@ -11479,7 +11511,7 @@ The user has attached the following documents for your reference. Analyze them c
 
       if (moduleType === "al-wakeelo" && !directMode) {
         // Use module profile strictCitations — hardcoded true was stripping valid judgments-table citations
-        completion = await applyAlWakeeloSafetyGuardrails(completion, { strict: enforcePrimaryLinkedSourceCitations, allowProseModification: false }, toolSearchResult?.verifiedCitations).catch(() => ensureAlWakeeloReferencesBlock(completion));
+        completion = await applyAlWakeeloSafetyGuardrails(completion, { strict: enforcePrimaryLinkedSourceCitations, allowProseModification: false }, toolSearchResult?.verifiedCitations, toolSearchResult?.verifiedTitles).catch(() => ensureAlWakeeloReferencesBlock(completion));
       }
       if (moduleType === "draft" && moduleIntent?.startsWith("draft.")) {
         completion = normalizeCourtReadyDraftingText(completion);

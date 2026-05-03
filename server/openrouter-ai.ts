@@ -58,6 +58,12 @@ export interface ToolJudgmentSearchResult {
    * would false-negative on tiny formatting variants).
    */
   verifiedCitations: string[];
+  /**
+   * Title -> citation map for the same pool. Lets prose-rebuild recover the
+   * formal citation when the model writes a case name like "Malik vs State"
+   * instead of the formal "PLD 2024 SC 100".
+   */
+  verifiedTitles: Array<{ title: string; citation: string }>;
 }
 
 /**
@@ -111,14 +117,14 @@ export async function runToolJudgmentSearchOR(
     clearTimeout(budgetTimer);
     signal?.removeEventListener("abort", onParentAbort);
     console.warn("[OpenRouterToolSearch] Call failed:", err instanceof Error ? err.message : String(err));
-    return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [] };
+    return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [] };
   }
   clearTimeout(budgetTimer);
   signal?.removeEventListener("abort", onParentAbort);
 
   const toolCalls = response.choices[0]?.message?.tool_calls ?? [];
   if (!toolCalls.length) {
-    return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [] };
+    return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [] };
   }
 
   // Run all DB searches concurrently with a per-query timeout.
@@ -173,7 +179,7 @@ export async function runToolJudgmentSearchOR(
   });
 
   if (unique.length === 0) {
-    return { contextString: "", foundCount: 0, queriesUsed, verifiedCitations: [] };
+    return { contextString: "", foundCount: 0, queriesUsed, verifiedCitations: [], verifiedTitles: [] };
   }
 
   const lines = unique.map(
@@ -192,5 +198,5 @@ export async function runToolJudgmentSearchOR(
     ...lines,
   ].join("\n");
 
-  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation) };
+  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation), verifiedTitles: unique.map(u => ({ title: u.title, citation: u.citation })) };
 }

@@ -96,8 +96,11 @@ export function normalizeCitationKey(citation: string | undefined | null): strin
 }
 
 export async function executeCitationSearch(args: CitationSearchArgs): Promise<string> {
-  const { query, court, limit = 8 } = args;
-  const safeLimit = Math.min(10, Math.max(1, limit));
+  const { query, court, limit = 20 } = args;
+  // Raised cap 10 -> 25 to widen the trusted pool for the answer model.
+  // V4-flash 1M context can absorb the extra rows; bigger pool means the
+  // model finds more on-point cases without falling back to training memory.
+  const safeLimit = Math.min(25, Math.max(1, limit));
 
   try {
     // Search both tables in parallel — same as Judgments search page behaviour.

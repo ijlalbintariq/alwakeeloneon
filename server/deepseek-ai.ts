@@ -332,6 +332,7 @@ export interface ToolJudgmentSearchResult {
   foundCount: number;
   queriesUsed: string[];
   verifiedCitations: string[];
+  verifiedTitles: Array<{ title: string; citation: string }>;
 }
 
 export async function runToolJudgmentSearch(
@@ -435,7 +436,7 @@ export async function runToolJudgmentSearch(
   });
 
   if (unique.length === 0) {
-    return { contextString: "", foundCount: 0, queriesUsed, verifiedCitations: [] };
+    return { contextString: "", foundCount: 0, queriesUsed, verifiedCitations: [], verifiedTitles: [] };
   }
 
   const lines = unique.map(
@@ -453,5 +454,5 @@ export async function runToolJudgmentSearch(
     ...lines,
   ].join("\n");
 
-  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation) };
+  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation), verifiedTitles: unique.map(u => ({ title: u.title, citation: u.citation })) };
 }
