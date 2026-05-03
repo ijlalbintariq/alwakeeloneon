@@ -64,6 +64,12 @@ export interface ToolJudgmentSearchResult {
    * instead of the formal "PLD 2024 SC 100".
    */
   verifiedTitles: Array<{ title: string; citation: string }>;
+  /**
+   * Full per-hit metadata for the Case Law Card UI surface. Same rows the
+   * AI sees, but exposed verbatim to the frontend so it can render a raw,
+   * authoritative case-law list independent of the AI's prose.
+   */
+  verifiedHits: Array<{ citation: string; title: string; court: string; summary: string }>;
 }
 
 /**
@@ -117,14 +123,14 @@ export async function runToolJudgmentSearchOR(
     clearTimeout(budgetTimer);
     signal?.removeEventListener("abort", onParentAbort);
     console.warn("[OpenRouterToolSearch] Call failed:", err instanceof Error ? err.message : String(err));
-    return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [] };
+    return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
   }
   clearTimeout(budgetTimer);
   signal?.removeEventListener("abort", onParentAbort);
 
   const toolCalls = response.choices[0]?.message?.tool_calls ?? [];
   if (!toolCalls.length) {
-    return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [] };
+    return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
   }
 
   // Run all DB searches concurrently with a per-query timeout.
@@ -179,7 +185,7 @@ export async function runToolJudgmentSearchOR(
   });
 
   if (unique.length === 0) {
-    return { contextString: "", foundCount: 0, queriesUsed, verifiedCitations: [], verifiedTitles: [] };
+    return { contextString: "", foundCount: 0, queriesUsed, verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
   }
 
   const lines = unique.map(
@@ -198,5 +204,5 @@ export async function runToolJudgmentSearchOR(
     ...lines,
   ].join("\n");
 
-  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation), verifiedTitles: unique.map(u => ({ title: u.title, citation: u.citation })) };
+  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation), verifiedTitles: unique.map(u => ({ title: u.title, citation: u.citation })), verifiedHits: unique.map(u => ({ citation: u.citation, title: u.title, court: u.court, summary: u.summary })) };
 }

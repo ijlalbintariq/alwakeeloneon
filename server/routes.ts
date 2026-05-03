@@ -11019,6 +11019,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         queriesUsed: string[];
         verifiedCitations: string[];
         verifiedTitles: Array<{ title: string; citation: string }>;
+        verifiedHits: Array<{ citation: string; title: string; court: string; summary: string }>;
       }
 
       // Live-stream tool search status events when the request will stream AND tool search is enabled.
@@ -11060,9 +11061,9 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
             : runToolJudgmentSearch(lastUserMessage!.content, toolStatusCallback)
           ).catch((err) => {
             console.warn("[ToolSearch] Failed:", err?.message || err);
-            return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [] };
+            return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
           })
-        : Promise.resolve({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [] });
+        : Promise.resolve({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] });
 
       type StyleFetch = Awaited<ReturnType<typeof retrieveStyleContextForGeneration>> | null;
       const stylePromise: Promise<StyleFetch> = (styleEligible && styleModule)
@@ -11090,7 +11091,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       const [knowledgeRace, styleRace, toolSearchRace] = await Promise.all([
         raceToDeadline<string>(knowledgePromise, ENRICHMENT_BUDGET_MS, "", "knowledge-context"),
         raceToDeadline<StyleFetch>(stylePromise, ENRICHMENT_BUDGET_MS, null, "style-memory"),
-        raceToDeadline<ToolSearchResult>(toolSearchPromise, ENRICHMENT_BUDGET_MS, { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [] }, "tool-search"),
+        raceToDeadline<ToolSearchResult>(toolSearchPromise, ENRICHMENT_BUDGET_MS, { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] }, "tool-search"),
       ]);
       const knowledgeContext = knowledgeRace.value;
       const styleRetrieved = styleRace.value;
@@ -11103,6 +11104,31 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       if (sseHeadersFlushed && toolSearchEnabled) {
         try {
           res.write(`data: ${JSON.stringify({ searching: false, found: toolSearchResult.foundCount, totalMs: Date.now() - toolSearchStartMs })}\n\n`);
+        } catch {
+          /* client disconnected */
+        }
+      }
+
+      // Emit Case Law Card payload — raw DB hits, no AI processing. Lets the
+      // frontend render an authoritative case-law list independent of the AI's
+      // prose. Arrives before the AI starts streaming so the user sees the
+      // research results almost immediately.
+      if (sseHeadersFlushed && toolSearchEnabled && toolSearchResult.verifiedHits.length > 0) {
+        try {
+          // Trim summaries for transport (frontend can fetch full doc on click).
+          const cardHits = toolSearchResult.verifiedHits.slice(0, 25).map((h) => ({
+            citation: h.citation,
+            title: h.title,
+            court: h.court,
+            snippet: (h.summary || "").slice(0, 320),
+          }));
+          res.write(`data: ${JSON.stringify({
+            caseLawCard: {
+              hits: cardHits,
+              totalFound: toolSearchResult.foundCount,
+              queriesUsed: toolSearchResult.queriesUsed,
+            },
+          })}\n\n`);
         } catch {
           /* client disconnected */
         }
