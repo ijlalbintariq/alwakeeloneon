@@ -5,6 +5,7 @@ import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { parseReferences, ReferenceCards } from "@/components/reference-cards";
+import { CaseLawCard, type CaseLawCardData } from "@/components/case-law-card";
 
 interface ApexModelInfo {
   id: string;
@@ -38,6 +39,8 @@ interface ChatMessage {
   routingPath?: string[];
   ragCitations?: RAGCitation[];
   ragConfidence?: "high" | "medium" | "low";
+  /** Raw DB case-law results (no AI processing) — rendered above AI prose. */
+  caseLawCard?: CaseLawCardData;
   // Agent-specific fields
   agentSteps?: AgentStep[];
   agentSearchQueries?: string[];
@@ -619,6 +622,23 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       totalFound: parsed.found ?? prev.totalFound,
                       totalMs: parsed.totalMs ?? prev.totalMs,
                     }));
+                    continue;
+                  }
+                  // Case Law Card payload — raw DB judgment hits, no AI processing.
+                  // Arrives right after tool-search completes, before AI streaming.
+                  if (parsed.caseLawCard && Array.isArray(parsed.caseLawCard.hits)) {
+                    const cardData: CaseLawCardData = {
+                      hits: parsed.caseLawCard.hits,
+                      totalFound: parsed.caseLawCard.totalFound ?? parsed.caseLawCard.hits.length,
+                      queriesUsed: Array.isArray(parsed.caseLawCard.queriesUsed) ? parsed.caseLawCard.queriesUsed : [],
+                    };
+                    setMessages(prev => {
+                      const last = prev[prev.length - 1];
+                      if (last && last.id === assistantId) {
+                        return [...prev.slice(0, -1), { ...last, caseLawCard: cardData }];
+                      }
+                      return prev;
+                    });
                     continue;
                   }
                   if (parsed.reset) {
@@ -1716,6 +1736,17 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                                 </div>
                               )}
                             </div>
+                          )}
+                          {m.caseLawCard && m.caseLawCard.hits.length > 0 && (
+                            <CaseLawCard
+                              data={m.caseLawCard}
+                              aiCitedCitations={
+                                parsed?.references
+                                  ? new Set(parsed.references.judgments.map((j) => j.citation))
+                                  : undefined
+                              }
+                              onCitationClick={openJudgment}
+                            />
                           )}
                           <LegalMarkdown content={displayContent} />
                           {parsed?.references && <ReferenceCards references={parsed.references} />}
