@@ -2059,7 +2059,10 @@ export class DatabaseStorage implements IStorage {
           petitioner:    judgments.petitioner,
           respondent:    judgments.respondent,
           headnotes:     judgments.headnotes,
-          fullText:      judgments.fullText,
+          // CRITICAL: only pull the first 1500 chars of full_text. The header
+          // (Title:, Court Name:) sits in the first ~500 chars; pulling the
+          // entire text column for 100 rows = ~5MB transfer = 14s timeout.
+          fullTextHead:  sql<string>`LEFT(${judgments.fullText}, 1500)`,
           courtName:     courtsRef.name,
           courtSnapshot: judgments.courtNameSnapshot,
           journalCode:   lawJournals.code,
@@ -2104,8 +2107,9 @@ export class DatabaseStorage implements IStorage {
       //   Title: MUHAMMAD AZIM vs DISTRICT MAGISTRATE
       // Extract the real values from there as a runtime fallback so the AI
       // and the Case Law Card both see proper titles/courts immediately.
-      const fullTextStr = String(row.fullText || "");
-      const fullTextHeader = fullTextStr.slice(0, 1500);
+      // fullTextHead is already capped at 1500 chars by the SELECT — header parsing only.
+      const fullTextStr = String(row.fullTextHead || "");
+      const fullTextHeader = fullTextStr;
       const headerMatch = (label: string): string => {
         const m = fullTextHeader.match(new RegExp(`(?:^|\\n)\\s*${label}\\s*:\\s*([^\\n]+)`, "i"));
         return m ? m[1].trim() : "";
