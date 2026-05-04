@@ -3,15 +3,24 @@
  * Use gpt-4o-mini to extract proper Title and Court Name from judgments.full_text
  * for the rows the regex backfill couldn't recover (no clean "Title:" header).
  *
- * Cost estimate (~6800 rows): ~$1.70 in OpenAI costs.
+ * Cost estimate (~6800 rows): ~$1.70 via OpenAI direct or OpenRouter.
  *
  * Idempotent — only updates rows where current title still fails the
  * looksLikeRealCaseTitle heuristic. Safe to re-run.
  *
- * Usage:
- *   OPENAI_API_KEY=... DATABASE_URL=... node scripts/ai-extract-titles.cjs
- *   ... --dry-run --limit=20  # try 20 rows without writing
- *   ... --batch=20 --limit=500
+ * Provider: auto-detected from env. Use OpenRouter if OPENROUTER_API_KEY is set,
+ * otherwise OpenAI direct via OPENAI_API_KEY.
+ *
+ * Usage (OpenRouter — recommended if you already use it):
+ *   OPENROUTER_API_KEY=sk-or-... DATABASE_URL=... node scripts/ai-extract-titles.cjs
+ *
+ * Usage (OpenAI direct):
+ *   OPENAI_API_KEY=sk-... DATABASE_URL=... node scripts/ai-extract-titles.cjs
+ *
+ * Flags:
+ *   --dry-run             try without writing (recommended for first run)
+ *   --batch=30            rows per batch (default 30; raise for faster)
+ *   --limit=500           cap total rows (omit for entire backfill)
  */
 const { Client } = require('pg');
 const OpenAI = require('openai').default || require('openai');
@@ -33,12 +42,12 @@ function looksLikeRealCaseTitle(s) {
   return false;
 }
 
-async function extractWithAI(openai, fullText) {
+async function extractWithAI(openai, fullText, modelId) {
   const head = String(fullText || "").slice(0, 4000);
   if (head.length < 100) return null;
   try {
     const resp = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: modelId,
       messages: [
         {
           role: 'system',
@@ -76,13 +85,34 @@ async function extractWithAI(openai, fullText) {
 
 (async () => {
   if (!process.env.DATABASE_URL) { console.error('DATABASE_URL not set'); process.exit(1); }
-  if (!process.env.OPENAI_API_KEY) { console.error('OPENAI_API_KEY not set'); process.exit(1); }
+
+  // Auto-detect provider. OpenRouter takes precedence when both keys are set
+  // (cheaper and lets the user route through their existing account).
+  const useOpenRouter = !!(process.env.OPENROUTER_API_KEY || process.env.OpenRouter_API_KEY);
+  const useOpenAI = !useOpenRouter && !!process.env.OPENAI_API_KEY;
+  if (!useOpenRouter && !useOpenAI) {
+    console.error('Neither OPENROUTER_API_KEY nor OPENAI_API_KEY is set.');
+    process.exit(1);
+  }
+
+  const apiKey = useOpenRouter
+    ? (process.env.OPENROUTER_API_KEY || process.env.OpenRouter_API_KEY)
+    : process.env.OPENAI_API_KEY;
+  const baseURL = useOpenRouter ? 'https://openrouter.ai/api/v1' : undefined;
+  // OpenRouter routes "openai/gpt-4o-mini"; OpenAI direct uses "gpt-4o-mini".
+  const modelId = useOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini';
 
   const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
   await c.connect();
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = new OpenAI({
+    apiKey,
+    baseURL,
+    defaultHeaders: useOpenRouter
+      ? { 'HTTP-Referer': 'https://alwakeelo.com', 'X-Title': 'Al Wakeelo title backfill' }
+      : undefined,
+  });
 
-  console.log(`[ai-extract] mode=${DRY_RUN ? 'DRY-RUN' : 'WRITE'} batch=${BATCH} limit=${TOTAL_LIMIT === Infinity ? 'all' : TOTAL_LIMIT}`);
+  console.log(`[ai-extract] provider=${useOpenRouter ? 'OpenRouter' : 'OpenAI'} model=${modelId} mode=${DRY_RUN ? 'DRY-RUN' : 'WRITE'} batch=${BATCH} limit=${TOTAL_LIMIT === Infinity ? 'all' : TOTAL_LIMIT}`);
 
   let processed = 0;
   let updatedTitle = 0;
@@ -113,7 +143,7 @@ async function extractWithAI(openai, fullText) {
     const results = await Promise.all(
       rows.map(async (r) => {
         lastId = r.id;
-        const ext = await extractWithAI(openai, r.full_text);
+        const ext = await extractWithAI(openai, r.full_text, modelId);
         return { row: r, ext };
       })
     );
