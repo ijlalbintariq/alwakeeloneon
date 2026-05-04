@@ -95,12 +95,58 @@ export function normalizeCitationKey(citation: string | undefined | null): strin
     .trim();
 }
 
+// In-memory LRU cache keyed by normalized query + court.
+// Many tool-search calls repeat (e.g. "bail cancellation" asked by hundreds
+// of users daily). Each call hits the DB for ~10s; caching cuts that to ~1ms
+// for hits. TTL 30 min — long enough to hit common queries, short enough
+// that newly-ingested judgments appear within reasonable time.
+interface CachedResult {
+  payload: string;
+  expiresAt: number;
+}
+const TOOL_SEARCH_CACHE = new Map<string, CachedResult>();
+const TOOL_SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
+const TOOL_SEARCH_CACHE_MAX = 500;
+
+function cacheKey(query: string, court: string | undefined, limit: number): string {
+  return `${String(query || "").trim().toLowerCase()}::${String(court || "").trim().toLowerCase()}::${limit}`;
+}
+
+function cacheGet(key: string): string | null {
+  const entry = TOOL_SEARCH_CACHE.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    TOOL_SEARCH_CACHE.delete(key);
+    return null;
+  }
+  // Touch LRU: re-insert to move to end of insertion order
+  TOOL_SEARCH_CACHE.delete(key);
+  TOOL_SEARCH_CACHE.set(key, entry);
+  return entry.payload;
+}
+
+function cacheSet(key: string, payload: string): void {
+  if (TOOL_SEARCH_CACHE.size >= TOOL_SEARCH_CACHE_MAX) {
+    // Evict oldest (first insertion-order entry)
+    const oldest = TOOL_SEARCH_CACHE.keys().next().value;
+    if (oldest !== undefined) TOOL_SEARCH_CACHE.delete(oldest);
+  }
+  TOOL_SEARCH_CACHE.set(key, { payload, expiresAt: Date.now() + TOOL_SEARCH_CACHE_TTL_MS });
+}
+
 export async function executeCitationSearch(args: CitationSearchArgs): Promise<string> {
   const { query, court, limit = 20 } = args;
   // Raised cap 10 -> 25 to widen the trusted pool for the answer model.
   // V4-flash 1M context can absorb the extra rows; bigger pool means the
   // model finds more on-point cases without falling back to training memory.
   const safeLimit = Math.min(25, Math.max(1, limit));
+
+  // Cache hit fast-path — common queries served instantly.
+  const ck = cacheKey(query, court, safeLimit);
+  const cached = cacheGet(ck);
+  if (cached) {
+    return cached;
+  }
 
   try {
     // Search both tables in parallel — same as Judgments search page behaviour.
@@ -174,14 +220,16 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
     const merged = scored.slice(0, safeLimit).map((s) => s.r);
 
     if (merged.length === 0) {
-      return JSON.stringify({
+      const empty = JSON.stringify({
         found: 0,
         message: "No judgments found in the database for this query.",
         results: [],
       });
+      cacheSet(ck, empty);
+      return empty;
     }
 
-    return JSON.stringify({
+    const payload = JSON.stringify({
       found: merged.length,
       message: `Found ${merged.length} judgment(s). Use ONLY these citations in your response.`,
       results: merged.map((r) => ({
@@ -191,6 +239,8 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
         summary: (r.summary || "").slice(0, 300),
       })),
     });
+    cacheSet(ck, payload);
+    return payload;
   } catch (err) {
     console.error("[citation-search-tool] Error:", err);
     return JSON.stringify({
