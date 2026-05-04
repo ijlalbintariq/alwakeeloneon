@@ -112,12 +112,25 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
       storage.searchJudgmentsByKeywords(query, safeLimit),
     ]);
 
+    // Filter out non-judgment rows from case_law table. The auto-extract
+    // pipeline creates fallback entries with court="Statute Reference" and
+    // titles like "Statute Reference: nab" when it can't classify a doc as a
+    // real case. These pollute the Case Law Card and offer no value to the
+    // legal user (they're statute references, not judgments).
+    const caseLawClean = caseLawResults.filter((r) => {
+      const courtStr = String(r.court || "").trim().toLowerCase();
+      const titleStr = String(r.title || "").trim().toLowerCase();
+      if (courtStr === "statute reference") return false;
+      if (titleStr.startsWith("statute reference")) return false;
+      return true;
+    });
+
     // Merge, deduplicate by normalised citation string, judgments table preferred
     // (it has richer headnotes/fullText; case_law has extracted summaries).
     const seen = new Set<string>();
     const merged: typeof caseLawResults = [];
 
-    for (const r of [...judgmentResults, ...caseLawResults]) {
+    for (const r of [...judgmentResults, ...caseLawClean]) {
       const key = normalizeCitationKey(r.citation);
       if (!key || seen.has(key)) continue;
       seen.add(key);
