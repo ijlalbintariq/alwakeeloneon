@@ -30,10 +30,17 @@ const BATCH = Number(args.get('batch') || 2000);
 const TOTAL_LIMIT = Number(args.get('limit') || Infinity);
 
 function extractFromFullText(fullText) {
-  const head = String(fullText || "").slice(0, 1500);
+  const head = String(fullText || "").slice(0, 2000);
+  // Multi-line title: capture until the next labeled header.
   const grab = (label) => {
-    const m = head.match(new RegExp(`(?:^|\\n)\\s*${label}\\s*:\\s*([^\\n]+)`, 'i'));
-    return m ? m[1].trim() : "";
+    const m = head.match(
+      new RegExp(
+        `(?:^|\\n)\\s*${label}\\s*:\\s*([\\s\\S]*?)(?=\\n\\s*(?:Case No\\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\\(s\\)|Court Name|Title)\\s*:|$)`,
+        'i',
+      ),
+    );
+    if (!m) return "";
+    return m[1].replace(/\s+/g, " ").trim();
   };
   return {
     title: grab('Title'),

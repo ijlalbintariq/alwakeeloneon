@@ -2110,9 +2110,18 @@ export class DatabaseStorage implements IStorage {
       // fullTextHead is already capped at 1500 chars by the SELECT — header parsing only.
       const fullTextStr = String(row.fullTextHead || "");
       const fullTextHeader = fullTextStr;
+      // Multi-line title support: real judgment titles often look like
+      //   Title:Government Of The Punjab through Secretary Special Education
+      //
+      //   Department, Lahore and others vs Abdul Jabbar
+      // i.e. the title spans 2-3 lines until the next labeled header
+      // ("Case No.:", "Reported As:", "Date of Judgment:", "JUDGMENT", etc.).
       const headerMatch = (label: string): string => {
-        const m = fullTextHeader.match(new RegExp(`(?:^|\\n)\\s*${label}\\s*:\\s*([^\\n]+)`, "i"));
-        return m ? m[1].trim() : "";
+        const m = fullTextHeader.match(
+          new RegExp(`(?:^|\\n)\\s*${label}\\s*:\\s*([\\s\\S]*?)(?=\\n\\s*(?:Case No\\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\\(s\\)|Court Name|Title)\\s*:|$)`, "i"),
+        );
+        if (!m) return "";
+        return m[1].replace(/\s+/g, " ").trim();
       };
       const fullTextTitle = headerMatch("Title");
       const fullTextCourt = headerMatch("Court Name") || headerMatch("Court");
