@@ -125,18 +125,53 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
       return true;
     });
 
-    // Merge, deduplicate by normalised citation string, judgments table preferred
-    // (it has richer headnotes/fullText; case_law has extracted summaries).
+    // Merge + dedupe by normalised citation string. Judgments table preferred.
     const seen = new Set<string>();
-    const merged: typeof caseLawResults = [];
-
+    const dedup: typeof caseLawResults = [];
     for (const r of [...judgmentResults, ...caseLawClean]) {
       const key = normalizeCitationKey(r.citation);
       if (!key || seen.has(key)) continue;
       seen.add(key);
-      merged.push(r);
-      if (merged.length >= safeLimit) break;
+      dedup.push(r);
     }
+
+    // Relevance ranking — court hierarchy × recency × text match.
+    // Lawyers want the strongest authority first: a 2024 Supreme Court case
+    // should outrank a 1971 single-bench High Court case for the same query.
+    const courtWeight = (court: string): number => {
+      const c = String(court || "").toLowerCase();
+      if (c.includes("supreme court of pakistan") || c === "sc" || c.includes("supreme court")) return 10;
+      if (c.includes("federal shariat")) return 6;
+      if (c.includes("high court")) return 5;
+      if (c.includes("district") || c.includes("session")) return 2;
+      if (!c || c === "pakistani courts") return 3;
+      return 3;
+    };
+    const recencyWeight = (citationStr: string): number => {
+      const m = String(citationStr || "").match(/(?:^|[^0-9])((?:19|20)\d{2})/);
+      const year = m ? Number(m[1]) : 0;
+      if (!year) return 1.0;
+      // 2025 → ~3.5, 2000 → ~1.0, 1971 → ~0.0
+      return Math.max(0.1, (year - 1990) / 10);
+    };
+    const queryTokens = String(query || "")
+      .toLowerCase()
+      .split(/\s+/)
+      .map((t) => t.replace(/[^a-z0-9]/g, ""))
+      .filter((t) => t.length >= 4);
+    const textMatch = (r: typeof dedup[number]): number => {
+      if (queryTokens.length === 0) return 1;
+      const hay = `${r.title || ""} ${r.summary || ""}`.toLowerCase();
+      let hits = 0;
+      for (const t of queryTokens) if (hay.includes(t)) hits++;
+      return 1 + hits / queryTokens.length;
+    };
+    const scored = dedup.map((r) => ({
+      r,
+      score: courtWeight(String(r.court || "")) * recencyWeight(String(r.citation || "")) * textMatch(r),
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    const merged = scored.slice(0, safeLimit).map((s) => s.r);
 
     if (merged.length === 0) {
       return JSON.stringify({
