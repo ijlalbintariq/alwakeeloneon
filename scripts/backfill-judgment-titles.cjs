@@ -36,11 +36,23 @@ function extractFromFullText(fullText) {
   };
 }
 
+function looksLikeRealCaseTitle(s) {
+  if (!s) return false;
+  if (/\b(vs?\.?|versus)\b/i.test(s)) return true;
+  if (/^[A-Z][A-Z .'-]{3,}/.test(s)) return true;
+  return false;
+}
+
 function isPlaceholderTitle(t) {
   if (!t) return true;
   const s = String(t).trim();
   if (!s) return true;
-  return /^case\s+(?:reported\s+at|cited\s+as|no\.?)\b/i.test(s);
+  // Class A: literal placeholder phrases.
+  if (/^case\s+(?:reported\s+at|cited\s+as|no\.?)\b/i.test(s)) return true;
+  // Class B: prose-snippet titles (sentence-like, no vs/versus, no caps name).
+  // Treat as placeholder so the backfill replaces them with the full_text Title.
+  if (!looksLikeRealCaseTitle(s)) return true;
+  return false;
 }
 
 (async () => {
@@ -70,13 +82,23 @@ function isPlaceholderTitle(t) {
 
   while (processed < TOTAL_LIMIT) {
     const fetchSize = Math.min(BATCH, TOTAL_LIMIT - processed);
+    // WHERE catches both Class A (literal placeholders) and Class B
+    // (prose-snippet titles missing vs/versus and not ALL-CAPS-style).
+    // The JS-side isPlaceholderTitle() does the final accept/reject.
     const { rows } = await c.query(
       `SELECT id, title, court_name_snapshot, full_text
          FROM judgments
         WHERE id > $1
           AND (
-            title IS NULL OR title = '' OR title ~* '^case\\s+(reported\\s+at|cited\\s+as|no\\.?)'
-            OR court_name_snapshot IS NULL OR court_name_snapshot = ''
+            title IS NULL
+            OR title = ''
+            OR title ~* '^case\\s+(reported\\s+at|cited\\s+as|no\\.?)'
+            OR (
+              title !~* '\\m(vs?|versus)\\M'
+              AND title !~ '^[A-Z][A-Z]{2,}'
+            )
+            OR court_name_snapshot IS NULL
+            OR court_name_snapshot = ''
           )
         ORDER BY id
         LIMIT $2`,

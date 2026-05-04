@@ -2122,12 +2122,30 @@ export class DatabaseStorage implements IStorage {
 
       const parties = [row.petitioner, row.respondent].filter(Boolean).join(" vs ");
       const dbTitleRaw = String(row.title || "").trim();
+      // Class A placeholders: literal "Case reported at...", "Case cited as...".
+      // Class B prose-snippet titles: an older ingest pulled middle-of-judgment
+      //   prose into the title column ("settled that considerations for the
+      //   cancellation of bail...", "the right of divorce was given to the
+      //   woman..."). These don't match a placeholder pattern but are
+      //   clearly not a case title — real case titles always contain
+      //   `vs`, `v.`, `versus`, or are an ALL-CAPS petitioner name.
+      const looksLikeRealCaseTitle = (s: string): boolean => {
+        if (!s) return false;
+        if (/\b(vs?\.?|versus)\b/i.test(s)) return true;
+        // ALL-CAPS prefix (>= 4 chars) is the standard SCMR/PLD style: "MRS. HAZARBAI..."
+        if (/^[A-Z][A-Z .'-]{3,}/.test(s)) return true;
+        return false;
+      };
       const isPlaceholderTitle =
         !dbTitleRaw ||
         /^case\s+(?:reported\s+at|cited\s+as|no\.?)\b/i.test(dbTitleRaw) ||
-        dbTitleRaw === `Case ${citation}`;
+        dbTitleRaw === `Case ${citation}` ||
+        !looksLikeRealCaseTitle(dbTitleRaw);
+      // Prefer fullText Title (real header) over the parties join, which is
+      // often empty on legacy rows.
       const titleStr =
         (!isPlaceholderTitle && dbTitleRaw) ||
+        (looksLikeRealCaseTitle(fullTextTitle) ? fullTextTitle : "") ||
         parties ||
         fullTextTitle ||
         `Case ${citation}`;
