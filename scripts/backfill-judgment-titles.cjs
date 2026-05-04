@@ -1,16 +1,21 @@
 #!/usr/bin/env node
 /**
  * One-off backfill: extract real Title and Court Name from judgments.full_text
- * and write them to the dedicated columns. Permanently fixes ~legacy rows
- * that have placeholder titles like "Case reported at 2005 PCRLJ 1008".
+ * and write them to the dedicated columns. Permanently fixes legacy rows
+ * that have placeholder titles like "Case reported at 2005 PCRLJ 1008" or
+ * prose-snippet titles ("settled that considerations for the cancellation...").
  *
- * Idempotent: only updates rows where the current value is a placeholder or
- * empty. Safe to re-run.
+ * Idempotent: only updates rows whose current value is missing/placeholder,
+ * and only when full_text exposes a clean replacement. Safe to re-run.
+ *
+ * Performance: bulk UPDATE FROM VALUES — one SQL per batch instead of one
+ * per row. ~50-100x faster than the per-row version (Neon roundtrip latency
+ * was the bottleneck).
  *
  * Usage:
  *   DATABASE_URL=postgres://... node scripts/backfill-judgment-titles.cjs
  *   DATABASE_URL=... node scripts/backfill-judgment-titles.cjs --dry-run
- *   DATABASE_URL=... node scripts/backfill-judgment-titles.cjs --batch=1000 --limit=10000
+ *   DATABASE_URL=... node scripts/backfill-judgment-titles.cjs --batch=2000 --limit=10000
  */
 const { Client } = require('pg');
 
@@ -21,7 +26,7 @@ const args = new Map(
   })
 );
 const DRY_RUN = args.get('dry-run') === 'true';
-const BATCH = Number(args.get('batch') || 500);
+const BATCH = Number(args.get('batch') || 2000);
 const TOTAL_LIMIT = Number(args.get('limit') || Infinity);
 
 function extractFromFullText(fullText) {
@@ -47,10 +52,7 @@ function isPlaceholderTitle(t) {
   if (!t) return true;
   const s = String(t).trim();
   if (!s) return true;
-  // Class A: literal placeholder phrases.
   if (/^case\s+(?:reported\s+at|cited\s+as|no\.?)\b/i.test(s)) return true;
-  // Class B: prose-snippet titles (sentence-like, no vs/versus, no caps name).
-  // Treat as placeholder so the backfill replaces them with the full_text Title.
   if (!looksLikeRealCaseTitle(s)) return true;
   return false;
 }
@@ -68,7 +70,11 @@ function isPlaceholderTitle(t) {
 
   const pre = await c.query(`
     SELECT
-      COUNT(*) FILTER (WHERE title IS NULL OR title = '' OR title ~* '^case\\s+(reported\\s+at|cited\\s+as|no\\.?)') AS bad_titles,
+      COUNT(*) FILTER (WHERE
+        title IS NULL OR title = ''
+        OR title ~* '^case\\s+(reported\\s+at|cited\\s+as|no\\.?)'
+        OR (title !~* '\\m(vs?|versus)\\M' AND title !~ '^[A-Z][A-Z]{2,}')
+      ) AS bad_titles,
       COUNT(*) FILTER (WHERE court_name_snapshot IS NULL OR court_name_snapshot = '') AS empty_courts,
       COUNT(*) AS total
     FROM judgments
@@ -79,26 +85,20 @@ function isPlaceholderTitle(t) {
   let updatedTitle = 0;
   let updatedCourt = 0;
   let lastId = '00000000-0000-0000-0000-000000000000';
+  const startedAt = Date.now();
 
   while (processed < TOTAL_LIMIT) {
     const fetchSize = Math.min(BATCH, TOTAL_LIMIT - processed);
-    // WHERE catches both Class A (literal placeholders) and Class B
-    // (prose-snippet titles missing vs/versus and not ALL-CAPS-style).
-    // The JS-side isPlaceholderTitle() does the final accept/reject.
+    const t0 = Date.now();
     const { rows } = await c.query(
       `SELECT id, title, court_name_snapshot, full_text
          FROM judgments
         WHERE id > $1
           AND (
-            title IS NULL
-            OR title = ''
+            title IS NULL OR title = ''
             OR title ~* '^case\\s+(reported\\s+at|cited\\s+as|no\\.?)'
-            OR (
-              title !~* '\\m(vs?|versus)\\M'
-              AND title !~ '^[A-Z][A-Z]{2,}'
-            )
-            OR court_name_snapshot IS NULL
-            OR court_name_snapshot = ''
+            OR (title !~* '\\m(vs?|versus)\\M' AND title !~ '^[A-Z][A-Z]{2,}')
+            OR court_name_snapshot IS NULL OR court_name_snapshot = ''
           )
         ORDER BY id
         LIMIT $2`,
@@ -106,28 +106,51 @@ function isPlaceholderTitle(t) {
     );
     if (rows.length === 0) break;
 
+    // Build the batch update payload.
+    const updates = []; // { id, newTitle?, newCourt? }
     for (const r of rows) {
       lastId = r.id;
       processed++;
       const ext = extractFromFullText(r.full_text);
-      const newTitle = isPlaceholderTitle(r.title) && ext.title ? ext.title : null;
+      const newTitle = isPlaceholderTitle(r.title) && ext.title && looksLikeRealCaseTitle(ext.title) ? ext.title : null;
       const newCourt = (!r.court_name_snapshot || !r.court_name_snapshot.trim()) && ext.court ? ext.court : null;
       if (!newTitle && !newCourt) continue;
-
-      const updates = [];
-      const params = [];
-      if (newTitle) { params.push(newTitle); updates.push(`title = $${params.length}`); updatedTitle++; }
-      if (newCourt) { params.push(newCourt); updates.push(`court_name_snapshot = $${params.length}`); updatedCourt++; }
-      params.push(r.id);
-
-      if (!DRY_RUN) {
-        await c.query(`UPDATE judgments SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${params.length}`, params);
-      }
+      updates.push({ id: r.id, newTitle, newCourt });
+      if (newTitle) updatedTitle++;
+      if (newCourt) updatedCourt++;
     }
-    console.log(`[backfill] processed=${processed} updated_title=${updatedTitle} updated_court=${updatedCourt}`);
+
+    if (!DRY_RUN && updates.length > 0) {
+      // Single bulk UPDATE per batch via VALUES list. Each row contributes
+      //   ($n::uuid, $n+1::text, $n+2::text)
+      // and the SET uses COALESCE to leave columns unchanged when the new
+      // value is NULL (i.e. that field didn't need update).
+      const params = [];
+      const tuples = [];
+      for (const u of updates) {
+        const ti = params.length + 1;
+        const tt = params.length + 2;
+        const tc = params.length + 3;
+        params.push(u.id, u.newTitle, u.newCourt);
+        tuples.push(`($${ti}::uuid, $${tt}::text, $${tc}::text)`);
+      }
+      const sql = `
+        UPDATE judgments AS j
+           SET title = COALESCE(u.new_title, j.title),
+               court_name_snapshot = COALESCE(u.new_court, j.court_name_snapshot),
+               updated_at = NOW()
+          FROM (VALUES ${tuples.join(',')}) AS u(id, new_title, new_court)
+         WHERE j.id = u.id
+      `;
+      await c.query(sql, params);
+    }
+
+    const ms = Date.now() - t0;
+    const rate = processed / ((Date.now() - startedAt) / 1000);
+    console.log(`[backfill] processed=${processed} updated_title=${updatedTitle} updated_court=${updatedCourt} batch_ms=${ms} rate=${rate.toFixed(0)}/s`);
   }
 
-  console.log(`\n[backfill] DONE  processed=${processed}  titles_updated=${updatedTitle}  courts_updated=${updatedCourt}  ${DRY_RUN ? '(DRY RUN — no writes)' : '(writes committed)'}`);
+  console.log(`\n[backfill] DONE  processed=${processed}  titles_updated=${updatedTitle}  courts_updated=${updatedCourt}  ${DRY_RUN ? '(DRY RUN — no writes)' : '(writes committed)'}  elapsed=${((Date.now()-startedAt)/1000).toFixed(1)}s`);
   await c.end();
 })().catch((e) => {
   console.error('[backfill] FAILED:', e);
