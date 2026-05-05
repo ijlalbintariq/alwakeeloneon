@@ -6,3 +6,7 @@ vite.config.ts.*
 *.tar.gz
 .aidesigner/*
 !.aidesigner/.gitkeep
+
+# Local secrets — never commit
+.env
+.env.local
