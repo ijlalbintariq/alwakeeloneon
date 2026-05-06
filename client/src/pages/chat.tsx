@@ -1109,7 +1109,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       <div className="flex flex-col h-[calc(100vh-120px)] bg-white border border-[#CBD5E1] rounded-2xl overflow-hidden shadow-lg relative fade-in">
         <div className="p-4 md:p-6 bg-white border-b border-[#CBD5E1] flex items-center justify-between z-20">
           <div className="flex items-center gap-3 md:gap-4">
-            <div className="w-10 h-10 rounded-lg bg-[#1E3A8A]/10 flex items-center justify-center text-[#1E3A8A]">
+            <div className="w-10 h-10 rounded-lg bg-card/10 flex items-center justify-center text-[#1E3A8A]">
               <Scale size={20} />
             </div>
             <div>
@@ -1158,7 +1158,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 scrollbar-hide bg-[#F8FAFC] px-3 sm:px-4 md:px-8 py-3 sm:py-4 md:py-6 flex flex-col">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 scrollbar-hide bg-muted px-3 sm:px-4 md:px-8 py-3 sm:py-4 md:py-6 flex flex-col">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
               <Scale size={48} className="text-[#94A3B8]" />
@@ -1180,7 +1180,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 style={OFFSCREEN_MESSAGE_STYLE}
               >
                 {m.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-md bg-[#1E3A8A] flex items-center justify-center flex-shrink-0 mt-1">
+                  <div className="w-8 h-8 rounded-md bg-card flex items-center justify-center flex-shrink-0 mt-1">
                     <Scale size={16} className="text-foreground" />
                   </div>
                 )}
@@ -1242,7 +1242,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           {(m.ragCitations?.length || 0) > 0 && (
                             <div className="space-y-2">
                               {m.ragCitations!.slice(0, 2).map((c, idx) => (
-                                <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="flex gap-3 p-3 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] hover:border-[#B45309]/30 transition-colors duration-150">
+                                <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="flex gap-3 p-3 rounded-lg bg-muted border border-[#CBD5E1] hover:border-[#B45309]/30 transition-colors duration-150">
                                   <Gavel size={16} className="text-[#B45309] flex-shrink-0 mt-0.5" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[10px] font-semibold text-[#0F172A] truncate">{c.title}</p>
@@ -1259,7 +1259,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                               {[...parsed.references.judgments.slice(0, 2).map((ref) => ({ title: ref.citation, name: ref.citation, description: ref.description })),
                                 ...parsed.references.laws.slice(0, 2).map((ref) => ({ title: ref.name, name: ref.name, description: ref.description })),
                               ].slice(0, 2).map((ref, idx) => (
-                                <div key={idx} className="flex gap-3 p-3 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] hover:border-[#1E3A8A]/30 transition-colors duration-150">
+                                <div key={idx} className="flex gap-3 p-3 rounded-lg bg-muted border border-[#CBD5E1] hover:border-[#1E3A8A]/30 transition-colors duration-150">
                                   <Link2 size={16} className="text-[#1E3A8A] flex-shrink-0 mt-0.5" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[10px] font-semibold text-[#0F172A] truncate">{ref.title || ref.name}</p>
@@ -1668,7 +1668,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   className={`flex items-start gap-2 sm:gap-3 w-full ${m.role === "user" ? "ml-auto flex-row-reverse" : ""}`}
                   style={OFFSCREEN_MESSAGE_STYLE}
                 >
-                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-primary text-foreground" : "bg-[#14233d] border border-primary/30 text-foreground"}`}>
+                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-primary text-foreground" : "bg-card border border-primary/30 text-foreground"}`}>
                     {m.role === "assistant" ? <Scale size={18} /> : <UserIcon size={16} />}
                   </div>
                   <div className={`min-w-0 flex-1 flex flex-col gap-2 ${m.role === "user" ? "items-end" : ""}`}>

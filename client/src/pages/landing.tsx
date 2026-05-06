@@ -232,7 +232,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-16 md:py-20 px-6 bg-[#111b2d] border-y border-border/60">
+      <section className="py-16 md:py-20 px-6 bg-card border-y border-border/60">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-[11px] text-primary font-black uppercase tracking-[0.3em] mb-3">How It Works</p>
@@ -258,7 +258,7 @@ export default function LandingPage() {
                 desc: "Finalize your output, export documents, or escalate to chamber consultation.",
               },
             ].map((item) => (
-              <div key={item.step} className="rounded-2xl border border-border bg-[#1a2437] p-6">
+              <div key={item.step} className="rounded-2xl border border-border bg-card p-6">
                 <p className="text-[10px] text-primary font-black tracking-[0.3em] mb-2">{item.step}</p>
                 <h3 className="text-foreground text-lg font-bold mb-2">{item.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
@@ -365,7 +365,7 @@ export default function LandingPage() {
               { title: "Law Chambers", desc: "Shared legal operations with structured outputs and chamber-grade consistency." },
               { title: "In-house Legal Teams", desc: "Quick legal analysis and document review for day-to-day legal operations." },
             ].map((item) => (
-              <div key={item.title} className="rounded-2xl border border-border bg-[#1a2437] p-5">
+              <div key={item.title} className="rounded-2xl border border-border bg-card p-5">
                 <h3 className="text-foreground text-lg font-bold mb-2">{item.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
               </div>
@@ -374,7 +374,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="pricing" className="py-20 md:py-28 px-6 bg-[#131c2e]">
+      <section id="pricing" className="py-20 md:py-28 px-6 bg-card">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-[11px] text-primary font-black uppercase tracking-[0.3em] mb-3">Plans</p>
@@ -484,7 +484,7 @@ export default function LandingPage() {
           </div>
 
           {selectedPlan === "chamber" && (
-            <div className="mt-8 rounded-2xl border border-border bg-[#1b2537] p-5">
+            <div className="mt-8 rounded-2xl border border-border bg-card p-5">
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-3">Chamber Expansion</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-foreground">
                 <p>Extra seat: <span className="text-primary font-bold">+PKR 1,000/month per user</span></p>
@@ -527,7 +527,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="contact" className="py-20 px-6 bg-[#131c2e]">
+      <section id="contact" className="py-20 px-6 bg-card">
         <div className="max-w-3xl mx-auto text-center">
           <div id="consult" className="h-0 w-0" />
           <h2 className="text-3xl md:text-4xl font-bold italic mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -569,7 +569,7 @@ export default function LandingPage() {
           </div>
           <div className="space-y-3">
             {FAQ_ITEMS.map((item) => (
-              <div key={item.q} className="rounded-2xl border border-border bg-[#1a2437] p-5">
+              <div key={item.q} className="rounded-2xl border border-border bg-card p-5">
                 <h3 className="text-base font-bold text-foreground mb-2">{item.q}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{item.a}</p>
               </div>

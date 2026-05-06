@@ -195,7 +195,7 @@ function AppSidebar() {
                         data-testid={`nav-${item.id}`}
                         className={cn(
                           "nav-glow-button h-auto rounded-xl border border-transparent px-2 py-1.5 transition-all",
-                          "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
+                          "hover:border-[hsl(var(--preview-border))] hover:bg-card/70",
                           isActive &&
                             "border-primary/35 bg-gradient-to-r from-primary/15 to-primary/10 text-foreground shadow-[0_16px_30px_-24px_rgba(251,191,36,0.65)] data-[active=true]:border-primary/35 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary/15 data-[active=true]:to-primary/10 data-[active=true]:text-foreground"
                         )}
@@ -206,7 +206,7 @@ function AppSidebar() {
                               "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all",
                               isActive
                                 ? "border-primary/45 bg-gradient-to-br from-primary to-primary text-foreground shadow-[0_10px_18px_-12px_rgba(251,191,36,0.9)]"
-                                : "border-border bg-[#121f35]/70 text-muted-foreground"
+                                : "border-border bg-card/70 text-muted-foreground"
                             )}
                           >
                             <Icon size={14} />
@@ -241,7 +241,7 @@ function AppSidebar() {
                 data-testid="nav-admin"
                 className={cn(
                   "nav-glow-button rounded-xl py-2 border border-transparent transition-all",
-                  "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
+                  "hover:border-[hsl(var(--preview-border))] hover:bg-card/70",
                   location === "/admin" && "bg-gradient-to-r from-primary to-primary text-foreground font-black border-primary/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary data-[active=true]:to-primary data-[active=true]:text-foreground"
                 )}
               >
@@ -259,7 +259,7 @@ function AppSidebar() {
               data-testid="nav-settings"
               className={cn(
                 "nav-glow-button rounded-xl py-2 border border-transparent transition-all",
-                "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
+                "hover:border-[hsl(var(--preview-border))] hover:bg-card/70",
                 location === "/settings" && "bg-gradient-to-r from-primary to-primary text-foreground font-black border-primary/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary data-[active=true]:to-primary data-[active=true]:text-foreground"
               )}
             >

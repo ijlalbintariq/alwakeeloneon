@@ -236,7 +236,7 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-background text-foreground px-4 py-6 md:px-6 md:py-10">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-[#141e31] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
           <button
             type="button"
             onClick={() => navigate("/#pricing")}
@@ -253,7 +253,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_1.35fr] gap-6">
-          <section className="rounded-3xl border border-border bg-[#141e2f] p-5 md:p-6">
+          <section className="rounded-3xl border border-border bg-card p-5 md:p-6">
             <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary mb-2">Select Plan</p>
             <h1 className="text-2xl md:text-3xl font-bold italic mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
               Checkout
@@ -342,7 +342,7 @@ export default function CheckoutPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-border bg-[#141e2f] p-5 md:p-7">
+          <section className="rounded-3xl border border-border bg-card p-5 md:p-7">
             {submitted ? (
               <div className="space-y-5">
                 <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300">

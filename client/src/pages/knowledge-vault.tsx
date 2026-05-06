@@ -1013,7 +1013,7 @@ export default function KnowledgeVaultPage() {
               <div className="flex-1 min-h-0 overflow-auto w-full">
                 <table className="w-full min-w-[980px]">
                   <thead className="sticky top-0 z-10">
-                    <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-[#111a2c]">
+                    <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-card">
                       <th className="px-8 py-4">Document Name</th>
                       <th className="px-8 py-4">Upload Date</th>
                       <th className="px-8 py-4">File Size</th>
@@ -1327,7 +1327,7 @@ export default function KnowledgeVaultPage() {
       )}
 
       {deleteMutation.isPending && (
-        <div className="fixed bottom-6 right-6 z-[130] flex items-center gap-2 rounded-xl border border-primary/30 bg-[#2b2113] px-4 py-3 text-primary text-sm shadow-xl">
+        <div className="fixed bottom-6 right-6 z-[130] flex items-center gap-2 rounded-xl border border-primary/30 bg-muted px-4 py-3 text-primary text-sm shadow-xl">
           <Loader2 size={15} className="animate-spin" />
           Deleting document...
         </div>

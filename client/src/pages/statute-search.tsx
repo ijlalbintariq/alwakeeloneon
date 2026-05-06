@@ -131,7 +131,7 @@ export default function StatuteSearchPage() {
               </h2>
               <p className="text-xs sm:text-sm text-foreground/85">Search, open, and navigate Acts, Codes, Ordinances, and Rules.</p>
             </div>
-            <div className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary/25 bg-[#111b2e]/70 text-primary shadow-[0_16px_30px_-22px_rgba(251,191,36,0.9)]">
+            <div className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary/25 bg-card/70 text-primary shadow-[0_16px_30px_-22px_rgba(251,191,36,0.9)]">
               <Book size={18} />
             </div>
           </div>
@@ -174,7 +174,7 @@ export default function StatuteSearchPage() {
             </div>
 
             {showDropdown && suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl border border-[hsl(var(--preview-border))] bg-[#111b2e] shadow-2xl z-50 overflow-hidden max-h-[420px] overflow-y-auto" data-testid="search-dropdown">
+              <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl border border-[hsl(var(--preview-border))] bg-card shadow-2xl z-50 overflow-hidden max-h-[420px] overflow-y-auto" data-testid="search-dropdown">
                 {suggestions.map((doc) => (
                   <button
                     key={doc.id}
@@ -204,7 +204,7 @@ export default function StatuteSearchPage() {
         </div>
         <div className="relative z-10 h-full flex flex-col gap-2.5">
           <div className="flex items-center gap-2.5">
-            <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e] text-primary">
+            <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-card text-primary">
               <Book size={12} />
             </div>
             <div>
@@ -229,7 +229,7 @@ export default function StatuteSearchPage() {
                     <button
                       key={i}
                       onClick={() => handleQuickSearch(stat.query)}
-                      className="w-full text-left rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e]/95 backdrop-blur-sm px-3 py-2 transition-all hover:border-primary/45 hover:bg-[#15233a] group"
+                      className="w-full text-left rounded-lg border border-[hsl(var(--preview-border))] bg-card/95 backdrop-blur-sm px-3 py-2 transition-all hover:border-primary/45 hover:bg-card group"
                       data-testid={`statute-quick-${idx}-${i}`}
                     >
                       <div className="flex items-start justify-between gap-1.5 mb-0.5">

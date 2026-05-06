@@ -15,9 +15,9 @@ const buttonVariants = cva(
         destructive:
           "bg-gradient-to-r from-red-500 to-rose-500 text-foreground border border-red-300/35 shadow-[0_12px_24px_-14px_rgba(239,68,68,0.8)] hover:from-red-400 hover:to-rose-400",
         outline:
-          "border border-[hsl(var(--preview-border))] bg-[#13233c]/60 text-foreground shadow-[0_10px_22px_-18px_rgba(2,6,23,0.8)] hover:border-primary/45 hover:bg-[#1a2d49]/70",
+          "border border-[hsl(var(--preview-border))] bg-card/60 text-foreground shadow-[0_10px_22px_-18px_rgba(2,6,23,0.8)] hover:border-primary/45 hover:bg-card/70",
         secondary:
-          "border border-[hsl(var(--preview-border))] bg-background/70 text-foreground shadow-[0_10px_22px_-18px_rgba(2,6,23,0.8)] hover:bg-[#172842]/75 hover:border-primary/30",
+          "border border-[hsl(var(--preview-border))] bg-background/70 text-foreground shadow-[0_10px_22px_-18px_rgba(2,6,23,0.8)] hover:bg-card/75 hover:border-primary/30",
         // Add a transparent border so that when someone toggles a border on later, it doesn't shift layout/size.
         ghost: "border border-transparent text-foreground hover:bg-white/8 hover:text-foreground",
       },

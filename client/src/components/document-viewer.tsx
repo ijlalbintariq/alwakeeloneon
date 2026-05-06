@@ -34,10 +34,10 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-[#1a1f2e] border border-border rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden"
+        className="bg-card border border-border rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-3 sm:px-4 py-3 bg-[#151a28] border-b border-border/80 flex-shrink-0">
+        <div className="flex items-center justify-between px-3 sm:px-4 py-3 bg-card border-b border-border/80 flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
               <FileText size={16} className="text-primary" />
@@ -87,7 +87,7 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
         </div>
 
         {showSearch && (
-          <div className="px-4 py-2 bg-[#151a28] border-b border-border/50 flex-shrink-0">
+          <div className="px-4 py-2 bg-card border-b border-border/50 flex-shrink-0">
             <input
               type="text"
               value={searchTerm}
@@ -99,7 +99,7 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto bg-[#2a2f3e] p-4 sm:p-8">
+        <div className="flex-1 overflow-y-auto bg-muted p-4 sm:p-8">
           <div className="max-w-3xl mx-auto space-y-6">
             {pages.map((pageContent, pageIndex) => (
               <div
@@ -140,7 +140,7 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
           </div>
         </div>
 
-        <div className="px-3 sm:px-4 py-2 bg-[#151a28] border-t border-border/80 flex items-center justify-between text-[10px] text-muted-foreground flex-shrink-0">
+        <div className="px-3 sm:px-4 py-2 bg-card border-t border-border/80 flex items-center justify-between text-[10px] text-muted-foreground flex-shrink-0">
           <span>{pages.length} page{pages.length !== 1 ? "s" : ""}</span>
           <span className="font-bold uppercase tracking-widest hidden sm:inline">Al Wakeelo Digital Chambers</span>
           <span className="hidden sm:inline">Font: {fontSize}px</span>

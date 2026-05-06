@@ -97,7 +97,7 @@ export default function DashboardPage() {
                     key={`hero-${stat.label}`}
                     className="rounded-xl border border-[hsl(var(--preview-border))] bg-background/55 p-2.5 md:p-3"
                   >
-                    <div className="mb-1.5 inline-flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e]">
+                    <div className="mb-1.5 inline-flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-card">
                       <Icon size={12} className={stat.color} />
                     </div>
                     <p className="text-lg md:text-xl font-black text-foreground leading-none">{stat.value}</p>
@@ -167,10 +167,10 @@ export default function DashboardPage() {
                   href={action.href}
                   className="block no-underline hover:no-underline focus:no-underline"
                 >
-                  <div className="h-full min-h-[138px] md:min-h-[176px] rounded-xl border border-[hsl(var(--preview-border))] bg-background/55 p-3 md:p-4 cursor-pointer transition-all hover:border-primary/35 hover:bg-[#15233a]">
+                  <div className="h-full min-h-[138px] md:min-h-[176px] rounded-xl border border-[hsl(var(--preview-border))] bg-background/55 p-3 md:p-4 cursor-pointer transition-all hover:border-primary/35 hover:bg-card">
                     <div className="flex h-full flex-col gap-2.5 md:gap-3" data-testid={`action-${action.label.toLowerCase().replace(/\s+/g, '-')}`}>
                       <div>
-                        <div className="mb-2 inline-flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e] text-foreground">
+                        <div className="mb-2 inline-flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-card text-foreground">
                           <Icon size={14} />
                         </div>
                         <h4 className="text-base md:text-lg font-bold leading-tight mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>{action.label}</h4>
