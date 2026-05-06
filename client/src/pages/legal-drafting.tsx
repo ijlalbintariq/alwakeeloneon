@@ -33,8 +33,10 @@ import {
   Minimize2,
   ChevronLeft,
   ChevronRight,
+  Calculator,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { CourtFeeCalculator } from "@/components/court-fee-calculator";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -1547,6 +1549,7 @@ export default function LegalDraftingPage() {
   const [chatSnippetPopover, setChatSnippetPopover] = useState<ChatSnippetPopover | null>(null);
   const [hasDraftInSession, setHasDraftInSession] = useState(false);
   const [workspaceStateHydrated, setWorkspaceStateHydrated] = useState(false);
+  const [feeCalcOpen, setFeeCalcOpen] = useState(false);
   const showDraftReviewPanel = hasDraftInSession || recommendLoading || recommendations.length > 0;
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
@@ -2862,6 +2865,16 @@ export default function LegalDraftingPage() {
               <Save size={14} className="mr-1.5" />
               {saveDraftMutation.isPending ? "Saving..." : "Save Draft"}
             </Button>
+            <button
+              type="button"
+              onClick={() => setFeeCalcOpen(true)}
+              className="h-9 px-3 rounded-lg border border-border bg-card/40 text-foreground hover:border-primary/40 hover:bg-card/70 text-xs font-semibold flex items-center gap-1.5"
+              title="Calculate court fee per Court Fees Act 1870"
+              data-testid="button-court-fee-calc"
+            >
+              <Calculator size={14} />
+              Court Fee
+            </button>
             <span className="text-xs text-muted-foreground hidden md:inline">
               {selectedDraftId ? `Loaded draft #${selectedDraftId}` : "New unsaved draft"}
             </span>
@@ -3271,6 +3284,17 @@ export default function LegalDraftingPage() {
           onClose={() => setCaseSourceDoc(null)}
         />
       )}
+
+      <CourtFeeCalculator
+        open={feeCalcOpen}
+        onClose={() => setFeeCalcOpen(false)}
+        onInsert={(text) => {
+          // Append the fee paragraph to the end of the doc on a new line.
+          // Trim trailing whitespace so the inserted text starts on a fresh line.
+          setDocText((prev) => `${(prev || "").replace(/\s+$/, "")}\n\n${text}\n`);
+          toast({ title: "Court fee inserted", description: "Paragraph appended to the draft." });
+        }}
+      />
     </div>
   );
 }
