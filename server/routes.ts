@@ -8624,7 +8624,35 @@ RAG POLICY (STRICT):
         return res.status(400).json({ message: "Query required" });
       }
 
-      // Search in judgments table by citation string or title
+      // STEP 1: Parsed-parts match (year + report code + page).
+      // Handles formatting variants — "PLD 2023 Supreme Court 362" parses to
+      // year=2023 report=PLD page=362 and matches a DB row stored as
+      // "PLD 2023 SC 362". The Card displays the court-expanded citation
+      // (e.g. "Supreme Court" full word) so a literal LIKE fails.
+      const parsed = parseCaseLawCitationQuery(q);
+      if (parsed && Number.isInteger(parsed.year) && Number.isInteger(parsed.page) && parsed.report) {
+        const byParts = await storage.searchJudgmentsByCitation({
+          year: parsed.year,
+          journalCode: parsed.report,
+          page: parsed.page,
+        }).catch(() => []);
+        if (byParts.length > 0) {
+          const r = byParts[0];
+          return res.json({
+            found: true,
+            id: r.id,
+            judgment: {
+              citation: r.citation,
+              title: r.title,
+              court: r.court,
+              decisionDate: r.decisionDate,
+            },
+          });
+        }
+      }
+
+      // STEP 2: Fallback — substring LIKE on citation string or title.
+      // Handles non-standard citation formats and title-only searches.
       const [result] = await db
         .select({
           id: judgments.id,
