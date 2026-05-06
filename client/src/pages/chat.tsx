@@ -225,8 +225,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   }, [apexData]);
 
   const currentModeName = useCallback((): { name: string; color: string; icon: "zap" | "sparkles" | "standard" | "globe" } => {
-    if (normalizedAiMode === "standard") return { name: "Standard", color: "text-slate-400", icon: "standard" };
-    if (normalizedAiMode === "turbo") return { name: "Turbo", color: "text-amber-400", icon: "zap" };
+    if (normalizedAiMode === "standard") return { name: "Standard", color: "text-muted-foreground", icon: "standard" };
+    if (normalizedAiMode === "turbo") return { name: "Turbo", color: "text-primary", icon: "zap" };
     if (isApexAgentWebMode) return { name: "Apex Agent Web", color: "text-cyan-400", icon: "globe" };
     const apexModelId = selectedApexModel || normalizedAiMode;
     const apexModel = apexData?.models.find((m) => m.id.toLowerCase() === apexModelId);
@@ -855,7 +855,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     const ext = name.split(".").pop()?.toLowerCase();
     if (ext === "pdf") return <FileText size={12} className="text-red-400" />;
     if (ext === "txt") return <FileText size={12} className="text-blue-400" />;
-    return <File size={12} className="text-slate-400" />;
+    return <File size={12} className="text-muted-foreground" />;
   };
 
   const parsedAssistantMessages = useMemo(() => {
@@ -1007,7 +1007,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const renderInsightsCards = (compact = false) => (
     <div className={compact ? "space-y-5" : "space-y-8 max-w-[15rem] mx-auto"}>
       <div>
-        <h3 className="flex items-center gap-2 text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-4">
+        <h3 className="flex items-center gap-2 text-[11px] font-bold text-primary uppercase tracking-widest mb-4">
           <FileText size={13} /> Legal Citations
         </h3>
         <div className="space-y-3">
@@ -1018,8 +1018,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   Doc {c.sourceDocumentId} · Chunk {c.chunkIndex}
                 </span>
               </div>
-              <p className="text-xs font-bold text-slate-200 mb-1">{c.title}</p>
-              <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{c.quote}</p>
+              <p className="text-xs font-bold text-foreground mb-1">{c.title}</p>
+              <p className="text-[10px] text-muted-foreground leading-relaxed italic line-clamp-3">{c.quote}</p>
             </div>
           ))}
           {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments
@@ -1027,12 +1027,12 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             .slice(0, compact ? 3 : 4).map((j, idx) => {
               const jid = verifiedJudgmentIds.get(j.citation)!;
               return (
-                <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgment/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgment/${jid}`, '_blank')}>
+                <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgment/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgment/${jid}`, '_blank')}>
                   <div className="flex justify-between items-start mb-2 gap-2">
-                    <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
+                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
                   </div>
-                  <p className="text-xs font-bold text-slate-200 mb-1">{j.court || "Pakistani Courts"}</p>
-                  {j.description && <p className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-3">{j.description}</p>}
+                  <p className="text-xs font-bold text-foreground mb-1">{j.court || "Pakistani Courts"}</p>
+                  {j.description && <p className="text-[10px] text-muted-foreground leading-relaxed italic line-clamp-3">{j.description}</p>}
                 </button>
               );
             })}
@@ -1041,35 +1041,35 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             .slice(0, compact ? 2 : 3).map((c, idx) => {
               const jid = verifiedJudgmentIds.get(c.citation)!;
               return (
-                <button key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/50 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgment/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgment/${jid}`, '_blank')}>
+                <button key={`inline-citation-${idx}`} className="p-3 rounded-xl bg-primary/5 border border-primary/20 hover:border-primary/50 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgment/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgment/${jid}`, '_blank')}>
                   <div className="flex justify-between items-start mb-2 gap-2">
-                    <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded truncate">{c.citation}</span>
+                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded truncate">{c.citation}</span>
                   </div>
-                  <p className="text-[10px] text-slate-500">Click to view judgment</p>
+                  <p className="text-[10px] text-muted-foreground">Click to view judgment</p>
                 </button>
               );
             })}
           {!latestRefs && (latestRagCitations?.length || 0) === 0 && (
-            <p className="text-xs text-slate-500">Citations from Al Wakeelo responses will appear here.</p>
+            <p className="text-xs text-muted-foreground">Citations from Al Wakeelo responses will appear here.</p>
           )}
         </div>
       </div>
 
       <div>
-        <h3 className="flex items-center gap-2 text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-4">
+        <h3 className="flex items-center gap-2 text-[11px] font-bold text-primary uppercase tracking-widest mb-4">
           <Scale size={13} /> Relevant Statutes
         </h3>
         <div className="space-y-2">
           {latestStatutes.length > 0 || (latestInlineReferences?.statutes?.length || 0) > 0 ? (
             <>
               {latestStatutes.slice(0, compact ? 5 : 8).map((law, idx) => (
-                <button key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors w-full text-left" onClick={() => openStatute(law.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(law.name)}>
-                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
+                <button key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-primary/5 rounded transition-colors w-full text-left" onClick={() => openStatute(law.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(law.name)}>
+                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shadow-sm shadow-primary/60" />
                   <div>
-                    <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
+                    <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
                       {law.name || "Pakistani Statute"}
                     </p>
-                    <p className="text-[10px] text-slate-500">{law.section || "Section reference"}</p>
+                    <p className="text-[10px] text-muted-foreground">{law.section || "Section reference"}</p>
                     {law.description && (
                       <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{law.description}</p>
                     )}
@@ -1077,29 +1077,29 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 </button>
               ))}
               {(latestInlineReferences?.statutes?.length || 0) > 0 && latestInlineReferences?.statutes.slice(0, compact ? 3 : 5).map((statute, idx) => (
-                <button key={`inline-statute-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-amber-500/5 rounded transition-colors w-full text-left" onClick={() => openStatute(statute.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(statute.name)}>
-                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-500/60" />
+                <button key={`inline-statute-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-primary/5 rounded transition-colors w-full text-left" onClick={() => openStatute(statute.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(statute.name)}>
+                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shadow-sm shadow-primary/60" />
                   <div>
-                    <p className="text-xs font-medium text-slate-300 group-hover:text-amber-300 transition-colors">
+                    <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
                       {statute.name}
                     </p>
-                    <p className="text-[10px] text-slate-500">Click to view statute</p>
+                    <p className="text-[10px] text-muted-foreground">Click to view statute</p>
                   </div>
                 </button>
               ))}
             </>
           ) : (
-            <p className="text-xs text-slate-500">Relevant statutes will appear here when Al Wakeelo cites them in responses.</p>
+            <p className="text-xs text-muted-foreground">Relevant statutes will appear here when Al Wakeelo cites them in responses.</p>
           )}
         </div>
       </div>
 
-      <div className="mt-auto p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
-        <p className="text-[10px] font-bold text-amber-400 uppercase mb-2">AI Confidence</p>
-        <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-          <div className="bg-amber-400 h-full transition-all duration-300" style={{ width: `${aiConfidence.pct}%` }} />
+      <div className="mt-auto p-4 rounded-xl bg-primary/5 border border-primary/20">
+        <p className="text-[10px] font-bold text-primary uppercase mb-2">AI Confidence</p>
+        <div className="w-full bg-card h-1 rounded-full overflow-hidden">
+          <div className="bg-primary h-full transition-all duration-300" style={{ width: `${aiConfidence.pct}%` }} />
         </div>
-        <p className="text-[10px] text-slate-500 mt-2">{aiConfidence.level} ({aiConfidence.pct}%) · {aiConfidence.basis}</p>
+        <p className="text-[10px] text-muted-foreground mt-2">{aiConfidence.level} ({aiConfidence.pct}%) · {aiConfidence.basis}</p>
       </div>
     </div>
   );
@@ -1181,13 +1181,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               >
                 {m.role === "assistant" && (
                   <div className="w-8 h-8 rounded-md bg-[#1E3A8A] flex items-center justify-center flex-shrink-0 mt-1">
-                    <Scale size={16} className="text-white" />
+                    <Scale size={16} className="text-foreground" />
                   </div>
                 )}
                 <div
                   className={`flex-1 p-3 sm:p-4 md:p-5 rounded-2xl relative group ${
                     m.role === "user"
-                      ? "bg-gradient-to-br from-[#1E3A8A] to-[#1e40af] text-white rounded-br-none max-w-2xl shadow-md hover:shadow-lg transition-shadow"
+                      ? "bg-gradient-to-br from-[#1E3A8A] to-[#1e40af] text-foreground rounded-br-none max-w-2xl shadow-md hover:shadow-lg transition-shadow"
                       : "bg-white border border-[#E2E8F0] text-[#0F172A] rounded-bl-none shadow-sm hover:shadow-md transition-shadow"
                   }`}
                 >
@@ -1295,8 +1295,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         disabled={bookmarkMutation.isPending}
                         className={`p-2 rounded-xl border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                           bookmarkedIds.has(m.id)
-                            ? "border-amber-500/50 text-amber-500 bg-amber-500/10"
-                            : "border-slate-700 text-slate-400 hover:text-amber-500"
+                            ? "border-primary/50 text-primary bg-primary/10"
+                            : "border-border text-muted-foreground hover:text-primary"
                         }`}
                         data-testid="button-bookmark"
                         title={bookmarkedIds.has(m.id) ? "Bookmarked" : "Save to Bookmarks"}
@@ -1321,14 +1321,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         )}
 
         {usage && usage.percentage >= 80 && usage.percentage < 100 && (
-          <div className="px-6 py-2.5 bg-amber-500/10 border-t border-amber-500/20 flex items-center justify-between gap-3" data-testid="banner-usage-warning">
+          <div className="px-6 py-2.5 bg-primary/10 border-t border-primary/20 flex items-center justify-between gap-3" data-testid="banner-usage-warning">
             <div className="flex items-center gap-2">
-              <Crown size={14} className="text-amber-500" />
-              <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
+              <Crown size={14} className="text-primary" />
+              <span className="text-[10px] font-black text-primary uppercase tracking-widest">
                 {usage.remaining} actions remaining this month
               </span>
             </div>
-            <a href={upgradeCheckoutHref} className="flex items-center gap-1 text-[10px] font-black text-amber-500 uppercase tracking-widest hover:text-amber-400 transition-colors" data-testid="link-upgrade-warning">
+            <a href={upgradeCheckoutHref} className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest hover:text-primary transition-colors" data-testid="link-upgrade-warning">
               Upgrade <ArrowUpRight size={10} />
             </a>
           </div>
@@ -1342,7 +1342,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 Monthly limit reached ({usage.used}/{usage.monthlyLimit} actions)
               </span>
             </div>
-            <a href={upgradeCheckoutHref} className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-slate-950 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-colors" data-testid="link-upgrade-limit">
+            <a href={upgradeCheckoutHref} className="flex items-center gap-1 px-3 py-1.5 bg-primary text-slate-950 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors" data-testid="link-upgrade-limit">
               Upgrade Now <ArrowUpRight size={10} />
             </a>
           </div>
@@ -1365,7 +1365,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 data-testid="button-model-selector"
               >
                 {normalizedAiMode === "turbo" ? (
-                  <Zap size={12} className="text-amber-400" />
+                  <Zap size={12} className="text-primary" />
                 ) : isApexAgentWebMode ? (
                   <Globe size={12} className="text-cyan-400" />
                 ) : isApexMode ? (
@@ -1377,82 +1377,82 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 <ChevronDown size={10} />
               </button>
               {showModelMenu && (
-                <div className="model-menu-dropdown absolute bottom-full left-0 mb-2 bg-[#1e293b] border border-slate-700 rounded-xl shadow-2xl overflow-hidden min-w-[260px] z-50">
-                  <div className="px-4 py-2 text-[9px] text-slate-500 uppercase tracking-widest font-bold border-b border-slate-700/50 bg-slate-800/50">
+                <div className="model-menu-dropdown absolute bottom-full left-0 mb-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden min-w-[260px] z-50">
+                  <div className="px-4 py-2 text-[9px] text-muted-foreground uppercase tracking-widest font-bold border-b border-border/50 bg-card/50">
                     Select AI Model
                   </div>
                   <button
                     onClick={() => { setAiMode("standard"); setShowModelMenu(false); }}
-                    className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 ${normalizedAiMode === "standard" ? "bg-slate-800 text-white" : "text-slate-400"}`}
+                    className={`w-full text-left px-4 py-3 text-xs hover:bg-card transition-colors border-b border-border/50 ${normalizedAiMode === "standard" ? "bg-card text-foreground" : "text-muted-foreground"}`}
                   >
                     <div className="font-bold flex items-center gap-1.5">
-                      <Scale size={11} className="text-slate-400" />
+                      <Scale size={11} className="text-muted-foreground" />
                       Standard
                     </div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">Fast, reliable responses</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Fast, reliable responses</div>
                   </button>
                   {canUseTurbo && (
                     <button
                       onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }}
-                      className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 ${normalizedAiMode === "turbo" ? "bg-amber-500/10 text-amber-400" : "text-slate-400"}`}
+                      className={`w-full text-left px-4 py-3 text-xs hover:bg-card transition-colors border-b border-border/50 ${normalizedAiMode === "turbo" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
-                        <Zap size={11} className="text-amber-500" />
+                        <Zap size={11} className="text-primary" />
                         Turbo
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">Deep reasoning & analysis</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">Deep reasoning & analysis</div>
                     </button>
                   )}
                   {!canUseTurbo && (
-                    <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-slate-700/50">
+                    <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-border/50">
                       <div className="font-bold flex items-center gap-1.5">
                         <Lock size={10} className="text-slate-600" />
                         Turbo
-                        <span className="text-[8px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded-full font-black">PRO</span>
+                        <span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black">PRO</span>
                       </div>
                       <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Pro to unlock</div>
                     </div>
                   )}
                   {canUseTurbo && apexData?.available && apexData.models.length > 0 && (
                     <>
-                      <div className="px-4 py-1.5 text-[9px] text-emerald-500/70 uppercase tracking-widest font-bold border-b border-slate-700/50 bg-emerald-500/5">
+                      <div className="px-4 py-1.5 text-[9px] text-emerald-500/70 uppercase tracking-widest font-bold border-b border-border/50 bg-emerald-500/5">
                         Apex Models
                       </div>
                       {apexData.models.map(model => (
                         <button
                           key={model.id}
                           onClick={() => { setAiMode(model.id); setShowModelMenu(false); }}
-                          className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 last:border-0 ${normalizedAiMode === model.id.toLowerCase() ? "bg-emerald-500/10 text-emerald-400" : "text-slate-400"}`}
+                          className={`w-full text-left px-4 py-3 text-xs hover:bg-card transition-colors border-b border-border/50 last:border-0 ${normalizedAiMode === model.id.toLowerCase() ? "bg-emerald-500/10 text-emerald-400" : "text-muted-foreground"}`}
                         >
                           <div className="font-bold flex items-center gap-1.5">
                             <Sparkles size={11} className="text-emerald-500" />
                             {model.name}
                           </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">{model.description}</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">{model.description}</div>
                         </button>
                       ))}
                     </>
                   )}
                   {canUseApex && (
                     <>
-                      <div className="px-4 py-1.5 text-[9px] text-cyan-400/70 uppercase tracking-widest font-bold border-b border-slate-700/50 bg-cyan-500/5">
+                      <div className="px-4 py-1.5 text-[9px] text-cyan-400/70 uppercase tracking-widest font-bold border-b border-border/50 bg-cyan-500/5">
                         Agent Mode
                       </div>
                       <button
                         onClick={() => { setAiMode("apex-agent-web"); setShowModelMenu(false); }}
-                        className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-800 transition-colors border-b border-slate-700/50 last:border-0 ${normalizedAiMode === "apex-agent-web" ? "bg-cyan-500/10 text-cyan-400" : "text-slate-400"}`}
+                        className={`w-full text-left px-4 py-3 text-xs hover:bg-card transition-colors border-b border-border/50 last:border-0 ${normalizedAiMode === "apex-agent-web" ? "bg-cyan-500/10 text-cyan-400" : "text-muted-foreground"}`}
                       >
                         <div className="font-bold flex items-center gap-1.5">
                           <Globe size={11} className="text-cyan-400" />
                           Apex Agent Web
                           <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-full font-black">WEB</span>
                         </div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">Live web research across Pakistani legal databases</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">Live web research across Pakistani legal databases</div>
                       </button>
                     </>
                   )}
                   {(!apexData?.available || !apexData.models.length) && !canUseTurbo && (
-                    <div className="px-4 py-2 text-[9px] text-slate-600 border-t border-slate-700/30">
+                    <div className="px-4 py-2 text-[9px] text-slate-600 border-t border-border/30">
                       Upgrade to Pro for more models
                     </div>
                   )}
@@ -1470,11 +1470,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           {attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2 px-3">
               {attachedFiles.map((file, i) => (
-                <div key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-[11px] text-slate-300 font-medium">
+                <div key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-xl text-[11px] text-foreground font-medium">
                   {getFileIcon(file.name)}
                   <span className="max-w-[120px] truncate">{file.name}</span>
-                  <span className="text-[9px] text-slate-500">({(file.size / 1024).toFixed(0)}KB)</span>
-                  <button onClick={() => removeFile(i)} className="ml-1 text-slate-500 hover:text-red-400 transition-colors">
+                  <span className="text-[9px] text-muted-foreground">({(file.size / 1024).toFixed(0)}KB)</span>
+                  <button onClick={() => removeFile(i)} className="ml-1 text-muted-foreground hover:text-red-400 transition-colors">
                     <X size={12} />
                   </button>
                 </div>
@@ -1484,8 +1484,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
           {isTranscribing && (
             <div className="flex items-center gap-2 mb-2 px-3">
-              <Loader2 size={14} className="animate-spin text-amber-500" />
-              <span className="text-[10px] text-amber-400 font-black uppercase tracking-widest">Transcribing audio...</span>
+              <Loader2 size={14} className="animate-spin text-primary" />
+              <span className="text-[10px] text-primary font-black uppercase tracking-widest">Transcribing audio...</span>
             </div>
           )}
 
@@ -1551,7 +1551,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               onClick={() => handleSend()}
               disabled={isLoading || isTranscribing}
               data-testid="button-send"
-              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2.5 bg-[#B45309] text-white rounded-lg hover:bg-[#A23E0A] shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold flex-shrink-0"
+              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2.5 bg-[#B45309] text-foreground rounded-lg hover:bg-[#A23E0A] shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold flex-shrink-0"
             >
               <Send size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
@@ -1565,7 +1565,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const rightRailVisible = rightRailOpen;
 
   return (
-    <div className="h-full w-full min-h-0 rounded-2xl overflow-hidden border border-slate-700/70 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.14),transparent_36%),linear-gradient(180deg,#070d1b_0%,#0a1426_45%,#0b1629_100%)] shadow-[0_20px_80px_rgba(2,6,23,0.55)] fade-in">
+    <div className="h-full w-full min-h-0 rounded-2xl overflow-hidden border border-border/70 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.14),transparent_36%),linear-gradient(180deg,#070d1b_0%,#0a1426_45%,#0b1629_100%)] shadow-[0_20px_80px_rgba(2,6,23,0.55)] fade-in">
       <div className="relative h-full w-full">
         <aside
           className={`hidden lg:flex absolute left-3 top-28 xl:top-20 bottom-24 z-30 transition-[width,opacity,transform] duration-300 ease-out overflow-hidden ${
@@ -1574,10 +1574,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               : "w-0 opacity-0 -translate-x-3 pointer-events-none"
           }`}
         >
-          <div className="p-5 flex flex-col h-full w-64 rounded-2xl border border-amber-400/20 bg-[#081328]/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
+          <div className="p-5 flex flex-col h-full w-64 rounded-2xl border border-primary/20 bg-[#081328]/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
             <button
               onClick={handleClear}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 text-slate-950 w-full py-3 rounded-xl font-bold transition-all shadow-lg shadow-amber-500/25 mb-6"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 text-slate-950 w-full py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/25 mb-6"
               data-testid="button-new-consultation"
             >
               <PlusCircle size={18} />
@@ -1585,43 +1585,43 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </button>
 
             <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-hide">
-              <h3 className="text-[11px] font-bold text-amber-300/70 uppercase tracking-widest mb-3 px-2">Recent Consultations</h3>
+              <h3 className="text-[11px] font-bold text-primary/70 uppercase tracking-widest mb-3 px-2">Recent Consultations</h3>
               {threads.slice(0, 12).map((thread) => {
                 const isActive = sharedThreadId === thread.id;
                 return (
                   <button
                     key={thread.id}
                     onClick={() => handleLoadThread(thread.id)}
-                    className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
+                    className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
                       isActive
-                        ? "bg-amber-500/10 border-amber-500/25"
+                        ? "bg-primary/10 border-primary/25"
                         : "hover:bg-white/5 border-transparent"
                     }`}
                     data-testid={`thread-item-${thread.id}`}
                   >
-                    {isActive ? <FolderOpen size={16} className="text-amber-400 shrink-0" /> : <Folder size={16} className="text-slate-500 shrink-0" />}
+                    {isActive ? <FolderOpen size={16} className="text-primary shrink-0" /> : <Folder size={16} className="text-muted-foreground shrink-0" />}
                     <div className="min-w-0">
-                      <p className={`text-sm font-semibold truncate ${isActive ? "text-amber-300" : "text-slate-300"}`}>
+                      <p className={`text-sm font-semibold truncate ${isActive ? "text-primary" : "text-foreground"}`}>
                         {thread.title || "Untitled Consultation"}
                       </p>
-                      <p className="text-[10px] text-slate-500">{thread.createdAt ? new Date(thread.createdAt).toLocaleString() : "Recent"}</p>
+                      <p className="text-[10px] text-muted-foreground">{thread.createdAt ? new Date(thread.createdAt).toLocaleString() : "Recent"}</p>
                     </div>
                   </button>
                 );
               })}
               {threads.length === 0 && (
-                <p className="text-xs text-slate-500 px-2">No consultations yet.</p>
+                <p className="text-xs text-muted-foreground px-2">No consultations yet.</p>
               )}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-amber-500/10" />
+            <div className="mt-4 pt-4 border-t border-primary/10" />
           </div>
         </aside>
 
         <div className="hidden lg:flex absolute left-3 top-1/2 -translate-y-1/2 z-40">
           <button
             onClick={() => setLeftRailOpen((prev) => !prev)}
-            className="h-16 w-6 border border-amber-400/35 rounded-r-lg bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.24)]"
+            className="h-16 w-6 border border-primary/35 rounded-r-lg bg-gradient-to-b from-primary/25 via-[#15233b] to-[#0c1525] text-foreground hover:from-primary/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.24)]"
             data-testid="divider-toggle-left-chat-rail"
             title={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
             aria-label={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
@@ -1632,9 +1632,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
         <main className="h-full flex flex-col bg-[#0a0e27]">
 
-          <section className="xl:hidden border-b border-amber-500/10 bg-[#0f172a]/55 px-3 sm:px-6 py-2">
+          <section className="xl:hidden border-b border-primary/10 bg-background/55 px-3 sm:px-6 py-2">
             <details className="group">
-              <summary className="list-none cursor-pointer flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-amber-300">
+              <summary className="list-none cursor-pointer flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-primary">
                 <span className="inline-flex items-center gap-2">
                   <FileText size={13} />
                   Live Legal Insights
@@ -1651,11 +1651,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <div className="w-full max-w-2xl">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
-                <Scale size={44} className="text-amber-400/60" />
-                <p className="text-slate-300 italic text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <Scale size={44} className="text-primary/60" />
+                <p className="text-foreground italic text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
                   "Main hoon Al Wakeelo -- not just your lawyer, your strategy partner in justice."
                 </p>
-                <p className="text-[10px] text-amber-200/70 uppercase tracking-widest font-black">Ask anything about Pakistan law</p>
+                <p className="text-[10px] text-foreground/70 uppercase tracking-widest font-black">Ask anything about Pakistan law</p>
               </div>
             )}
 
@@ -1668,34 +1668,34 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   className={`flex items-start gap-2 sm:gap-3 w-full ${m.role === "user" ? "ml-auto flex-row-reverse" : ""}`}
                   style={OFFSCREEN_MESSAGE_STYLE}
                 >
-                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-amber-300 text-slate-950" : "bg-[#14233d] border border-amber-300/30 text-amber-200"}`}>
+                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-primary text-slate-950" : "bg-[#14233d] border border-primary/30 text-foreground"}`}>
                     {m.role === "assistant" ? <Scale size={18} /> : <UserIcon size={16} />}
                   </div>
                   <div className={`min-w-0 flex-1 flex flex-col gap-2 ${m.role === "user" ? "items-end" : ""}`}>
-                    <p className={`text-[11px] font-bold uppercase tracking-widest ${m.role === "assistant" ? "text-amber-200" : "text-white"}`}>
+                    <p className={`text-[11px] font-bold uppercase tracking-widest ${m.role === "assistant" ? "text-foreground" : "text-foreground"}`}>
                       {m.role === "assistant" ? "Al Wakeelo Assistant" : "You"}
                     </p>
                     <div
                       className={`relative group p-3 sm:p-5 rounded-2xl backdrop-blur-md ${
                         m.role === "assistant"
-                          ? "w-full min-w-0 bg-[#0f1c33]/90 border border-amber-300/20 shadow-lg rounded-tl-md"
-                          : "w-auto max-w-[85%] bg-transparent text-white border-2 border-amber-400/50 shadow-lg rounded-tr-md"
+                          ? "w-full min-w-0 bg-[#0f1c33]/90 border border-primary/20 shadow-lg rounded-tl-md"
+                          : "w-auto max-w-[85%] bg-transparent text-foreground border-2 border-primary/50 shadow-lg rounded-tr-md"
                       }`}
                     >
                       {m.role === "assistant" ? (
                         <>
                           {(m.modeName || m.modelName) && (
-                            <div className="mb-3 pb-2 border-b border-amber-500/15">
-                              <div className="text-[10px] text-white">
+                            <div className="mb-3 pb-2 border-b border-primary/15">
+                              <div className="text-[10px] text-foreground">
                                 {m.modeName && (
-                                  <span className={`mr-2 uppercase tracking-wider ${m.isAgentMode ? "text-cyan-400" : "text-amber-400"}`}>
+                                  <span className={`mr-2 uppercase tracking-wider ${m.isAgentMode ? "text-cyan-400" : "text-primary"}`}>
                                     {m.isAgentMode && <Globe size={9} className="inline mr-1" />}
                                     {m.modeName}
                                   </span>
                                 )}
                                 {m.modelName && <span className="uppercase tracking-wider text-emerald-300">{m.modelName}</span>}
                                 {m.moduleProfile && <span className="uppercase tracking-wider text-cyan-300 ml-2">{m.moduleProfile}</span>}
-                                {m.modelDescription && <span className="block mt-1 text-slate-500">{m.modelDescription}</span>}
+                                {m.modelDescription && <span className="block mt-1 text-muted-foreground">{m.modelDescription}</span>}
                               </div>
                             </div>
                           )}
@@ -1767,11 +1767,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         </>
                       ) : (
                         <>
-                          <p className="text-slate-100 leading-relaxed whitespace-pre-wrap">{m.content.replace(/\[Attached:.*?\]/, "").trim()}</p>
+                          <p className="text-foreground leading-relaxed whitespace-pre-wrap">{m.content.replace(/\[Attached:.*?\]/, "").trim()}</p>
                           {m.attachments && m.attachments.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
                               {m.attachments.map((name, i) => (
-                                <span key={i} className="text-[10px] bg-black/20 border border-white/10 px-2 py-1 rounded text-slate-300 inline-flex items-center gap-1">
+                                <span key={i} className="text-[10px] bg-black/20 border border-white/10 px-2 py-1 rounded text-foreground inline-flex items-center gap-1">
                                   {getFileIcon(name)} {name}
                                 </span>
                               ))}
@@ -1783,7 +1783,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         <button
                           onClick={() => !bookmarkedIds.has(m.id) && !bookmarkMutation.isPending && bookmarkMutation.mutate(m)}
                           disabled={bookmarkMutation.isPending}
-                          className={`absolute top-3 right-3 p-1.5 rounded-lg border transition-opacity disabled:opacity-50 disabled:cursor-not-allowed ${bookmarkedIds.has(m.id) ? "opacity-100 border-amber-500/50 text-amber-400 bg-amber-500/10" : "opacity-0 group-hover:opacity-100 border-amber-500/20 text-slate-400 hover:text-amber-400"}`}
+                          className={`absolute top-3 right-3 p-1.5 rounded-lg border transition-opacity disabled:opacity-50 disabled:cursor-not-allowed ${bookmarkedIds.has(m.id) ? "opacity-100 border-primary/50 text-primary bg-primary/10" : "opacity-0 group-hover:opacity-100 border-primary/20 text-muted-foreground hover:text-primary"}`}
                           data-testid="button-bookmark"
                           title={bookmarkedIds.has(m.id) ? "Bookmarked" : "Save to bookmarks"}
                         >
@@ -1798,19 +1798,19 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
             {isLoading && !(messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && (messages[messages.length - 1]?.content?.length ?? 0) > 0) && (
               <div className="flex items-start gap-3 w-full">
-                <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full text-slate-950 flex items-center justify-center ${isApexAgentWebMode ? "bg-cyan-400" : "bg-amber-300"}`}>
+                <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full text-slate-950 flex items-center justify-center ${isApexAgentWebMode ? "bg-cyan-400" : "bg-primary"}`}>
                   {isApexAgentWebMode ? <Globe size={18} /> : <Scale size={18} />}
                 </div>
                 <div className="flex-1 flex flex-col gap-2">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-amber-200">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-foreground">
                     Al Wakeelo Assistant
                   </p>
-                  <div className="p-3 sm:p-4 rounded-2xl bg-[#0f1c33]/90 border border-amber-300/20 shadow-lg rounded-tl-md">
+                  <div className="p-3 sm:p-4 rounded-2xl bg-[#0f1c33]/90 border border-primary/20 shadow-lg rounded-tl-md">
                     {/* Phase + timer row */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <Loader2 size={12} className="animate-spin text-amber-400 flex-shrink-0" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-200/80">
+                        <Loader2 size={12} className="animate-spin text-primary flex-shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/80">
                           {toolSearchStatus.queries.length > 0
                             ? toolSearchStatus.active
                               ? "Searching case law"
@@ -1820,7 +1820,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                               : "Retrieving context"}
                         </span>
                       </div>
-                      <span className="text-[11px] font-mono text-amber-400 tabular-nums">
+                      <span className="text-[11px] font-mono text-primary tabular-nums">
                         {(elapsedMs / 1000).toFixed(1)}s
                       </span>
                     </div>
@@ -1830,18 +1830,18 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         {toolSearchStatus.queries.map((q, i) => (
                           <div key={i} className="flex items-center gap-2 text-[10px]">
                             <Search size={9} className="text-cyan-400 flex-shrink-0" />
-                            <span className="text-slate-300 font-mono truncate">{q.query}</span>
+                            <span className="text-foreground font-mono truncate">{q.query}</span>
                             <span className="ml-auto flex-shrink-0">
                               {q.found > 0 ? (
                                 <span className="text-cyan-400 font-bold">{q.found} found</span>
                               ) : (
-                                <span className="text-slate-500">0 found</span>
+                                <span className="text-muted-foreground">0 found</span>
                               )}
                             </span>
                           </div>
                         ))}
                         {!toolSearchStatus.active && toolSearchStatus.totalFound > 0 && (
-                          <div className="flex items-center gap-1.5 pt-1 text-[10px] text-amber-400/80">
+                          <div className="flex items-center gap-1.5 pt-1 text-[10px] text-primary/80">
                             <Gavel size={9} />
                             <span>{toolSearchStatus.totalFound} judgment{toolSearchStatus.totalFound !== 1 ? "s" : ""} retrieved</span>
                           </div>
@@ -1861,9 +1861,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       }
                     `}</style>
                     <div className="space-y-2">
-                      <div className="h-3 bg-slate-700/50 rounded animate-shimmer-aw"></div>
-                      <div className="h-3 bg-slate-700/50 rounded animate-shimmer-aw" style={{ animationDelay: "0.25s", width: "92%" }}></div>
-                      <div className="h-3 bg-slate-700/50 rounded animate-shimmer-aw" style={{ animationDelay: "0.5s", width: "78%" }}></div>
+                      <div className="h-3 bg-muted/50 rounded animate-shimmer-aw"></div>
+                      <div className="h-3 bg-muted/50 rounded animate-shimmer-aw" style={{ animationDelay: "0.25s", width: "92%" }}></div>
+                      <div className="h-3 bg-muted/50 rounded animate-shimmer-aw" style={{ animationDelay: "0.5s", width: "78%" }}></div>
                     </div>
                   </div>
                 </div>
@@ -1872,7 +1872,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           </div>
 
-          <div className="p-2 sm:p-6 pt-2 border-t border-amber-400/15 bg-[#071327]/75">
+          <div className="p-2 sm:p-6 pt-2 border-t border-primary/15 bg-[#071327]/75">
             {apiError && (
               <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
                 <AlertCircle size={14} className="text-red-400" />
@@ -1880,15 +1880,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               </div>
             )}
 
-            <div className="w-full bg-[#081428]/92 border border-amber-300/20 rounded-2xl shadow-[0_14px_38px_rgba(120,53,15,0.34)] relative">
+            <div className="w-full bg-[#081428]/92 border border-primary/20 rounded-2xl shadow-[0_14px_38px_rgba(120,53,15,0.34)] relative">
               {/* Status Bar */}
-              <div className="flex justify-between items-center px-4 py-3 border-b border-amber-400/15 bg-[#081428]/50">
+              <div className="flex justify-between items-center px-4 py-3 border-b border-primary/15 bg-[#081428]/50">
                 <div className="flex items-center gap-3">
                   {isAlWakeelo && (
                     <button
                       onClick={() => setRagEnabled((prev) => !prev)}
                       className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60 cursor-pointer ${
-                        ragEnabled ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" : "text-slate-400 border-amber-500/20"
+                        ragEnabled ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" : "text-muted-foreground border-primary/20"
                       }`}
                       title="Toggle Retrieval-Augmented Generation"
                     >
@@ -1906,8 +1906,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         : isApexMode
                           ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 focus-visible:ring-emerald-300/60"
                           : normalizedAiMode === "turbo"
-                            ? "text-amber-300 border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 focus-visible:ring-amber-300/60"
-                            : "text-slate-300 border-slate-600/60 bg-slate-700/30 hover:bg-slate-700/60 focus-visible:ring-slate-300/60"
+                            ? "text-primary border-primary/40 bg-primary/10 hover:bg-primary/20 focus-visible:ring-primary/60"
+                            : "text-foreground border-border/60 bg-muted/30 hover:bg-muted/60 focus-visible:ring-slate-300/60"
                     }`}
                     data-testid="button-model-selector"
                   >
@@ -1916,60 +1916,60 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     <ChevronDown size={9} />
                   </button>
                   {showModelMenu && (
-                    <div className="model-menu-dropdown absolute bottom-full right-0 mb-2 bg-[#1e293b] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden min-w-[280px] z-50">
-                      <div className="px-4 py-2 text-[9px] text-slate-400 uppercase tracking-widest font-black border-b border-amber-500/15">Select AI Model</div>
-                      <button onClick={() => { setAiMode("standard"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${normalizedAiMode === "standard" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
-                        <div className="font-bold">Standard</div><div className="text-[10px] text-slate-500 mt-0.5">Fast, reliable responses</div>
+                    <div className="model-menu-dropdown absolute bottom-full right-0 mb-2 bg-card border border-primary/20 rounded-xl shadow-2xl overflow-hidden min-w-[280px] z-50">
+                      <div className="px-4 py-2 text-[9px] text-muted-foreground uppercase tracking-widest font-black border-b border-primary/15">Select AI Model</div>
+                      <button onClick={() => { setAiMode("standard"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-primary/10 ${normalizedAiMode === "standard" ? "bg-primary/10 text-primary" : "text-foreground"}`}>
+                        <div className="font-bold">Standard</div><div className="text-[10px] text-muted-foreground mt-0.5">Fast, reliable responses</div>
                       </button>
                       {canUseTurbo ? (
-                        <button onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 ${normalizedAiMode === "turbo" ? "bg-amber-500/10 text-amber-300" : "text-slate-300"}`}>
-                          <div className="font-bold flex items-center gap-1.5"><Zap size={11} className="text-amber-400" />Turbo</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">Deep reasoning & analysis</div>
+                        <button onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-primary/10 ${normalizedAiMode === "turbo" ? "bg-primary/10 text-primary" : "text-foreground"}`}>
+                          <div className="font-bold flex items-center gap-1.5"><Zap size={11} className="text-primary" />Turbo</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">Deep reasoning & analysis</div>
                         </button>
                       ) : (
-                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-amber-500/10">
-                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-slate-600" />Turbo<span className="text-[8px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
+                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-primary/10">
+                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-slate-600" />Turbo<span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
                           <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Pro to unlock</div>
                         </div>
                       )}
                       {canUseTurbo && apexData?.available && apexData.models.length > 0 && (
                         <>
-                          <div className="px-4 py-1.5 text-[9px] text-emerald-300 uppercase tracking-widest font-black border-b border-amber-500/10 bg-emerald-500/10">Apex Models</div>
+                          <div className="px-4 py-1.5 text-[9px] text-emerald-300 uppercase tracking-widest font-black border-b border-primary/10 bg-emerald-500/10">Apex Models</div>
                           {apexData.models.map(model => (
                             <button
                               key={model.id}
                               onClick={() => { setAiMode(model.id); setShowModelMenu(false); }}
-                              className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${normalizedAiMode === model.id.toLowerCase() ? "bg-emerald-500/10 text-emerald-300" : "text-slate-300"}`}
+                              className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-primary/10 last:border-0 ${normalizedAiMode === model.id.toLowerCase() ? "bg-emerald-500/10 text-emerald-300" : "text-foreground"}`}
                             >
                               <div className="font-bold flex items-center gap-1.5"><Sparkles size={11} className="text-emerald-400" />{model.name}</div>
-                              <div className="text-[10px] text-slate-500 mt-0.5">{model.description}</div>
+                              <div className="text-[10px] text-muted-foreground mt-0.5">{model.description}</div>
                             </button>
                           ))}
                         </>
                       )}
                       {!canUseTurbo && (
-                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-amber-500/10">
+                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-primary/10">
                           <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-slate-600" />Apex Models<span className="text-[8px] bg-emerald-500/20 text-emerald-500 px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
                           <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Pro to unlock</div>
                         </div>
                       )}
                       {canUseApex ? (
                         <>
-                          <div className="px-4 py-1.5 text-[9px] text-cyan-300 uppercase tracking-widest font-black border-b border-amber-500/10 bg-cyan-500/10">Agent Mode</div>
+                          <div className="px-4 py-1.5 text-[9px] text-cyan-300 uppercase tracking-widest font-black border-b border-primary/10 bg-cyan-500/10">Agent Mode</div>
                           <button
                             onClick={() => { setAiMode("apex-agent-web"); setShowModelMenu(false); }}
-                            className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-amber-500/10 last:border-0 ${normalizedAiMode === "apex-agent-web" ? "bg-cyan-500/12 text-cyan-300" : "text-slate-300"}`}
+                            className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-primary/10 last:border-0 ${normalizedAiMode === "apex-agent-web" ? "bg-cyan-500/12 text-cyan-300" : "text-foreground"}`}
                           >
                             <div className="font-bold flex items-center gap-1.5">
                               <Globe size={11} className="text-cyan-400" />
                               Apex Agent Web
                               <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-full font-black">WEB</span>
                             </div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">Live web research across Pakistani legal databases</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">Live web research across Pakistani legal databases</div>
                           </button>
                         </>
                       ) : (
-                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-amber-500/10 last:border-0">
+                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-primary/10 last:border-0">
                           <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-slate-600" />Apex Agent Web<span className="text-[8px] bg-cyan-500/20 text-cyan-500 px-1.5 py-0.5 rounded-full font-black">CHAMBER</span></div>
                           <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Chamber to unlock</div>
                         </div>
@@ -1984,17 +1984,17 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple className="hidden" />
                 <input type="file" ref={audioInputRef} onChange={handleAudioSelect} accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" className="hidden" />
 
-                <button onClick={() => fileInputRef.current?.click()} disabled={isLoading || attachedFiles.length >= 5} className="p-2 text-slate-500 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 rounded-lg">
+                <button onClick={() => fileInputRef.current?.click()} disabled={isLoading || attachedFiles.length >= 5} className="p-2 text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg">
                   <Paperclip size={18} />
                 </button>
-                <button onClick={() => audioInputRef.current?.click()} disabled={isLoading || isTranscribing} className="p-2.5 text-slate-400 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 rounded-lg transition-colors">
-                  {isTranscribing ? <Loader2 size={18} className="animate-spin text-amber-400" /> : <Mic size={18} />}
+                <button onClick={() => audioInputRef.current?.click()} disabled={isLoading || isTranscribing} className="p-2.5 text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg transition-colors">
+                  {isTranscribing ? <Loader2 size={18} className="animate-spin text-primary" /> : <Mic size={18} />}
                 </button>
 
                 <textarea
                   ref={promptInputRef}
                   rows={1}
-                  className="flex-1 min-w-[200px] min-h-[50px] max-h-40 resize-none overflow-y-auto bg-transparent border-none focus:ring-0 text-base text-slate-100 placeholder:text-slate-500 px-3 py-3 leading-6 focus:outline-none"
+                  className="flex-1 min-w-[200px] min-h-[50px] max-h-40 resize-none overflow-y-auto bg-transparent border-none focus:ring-0 text-base text-foreground placeholder:text-muted-foreground px-3 py-3 leading-6 focus:outline-none"
                   placeholder="Type your legal inquiry or command here..."
                   value={input}
                   onInput={resizePromptInput}
@@ -2010,11 +2010,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
 
                 {isLoading ? (
-                  <button onClick={handleStop} data-testid="button-stop" className="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300/60 flex-shrink-0">
+                  <button onClick={handleStop} data-testid="button-stop" className="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-foreground h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300/60 flex-shrink-0">
                     <Square size={18} fill="currentColor" />
                   </button>
                 ) : (
-                  <button onClick={() => handleSend()} disabled={isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 disabled:from-amber-400/50 disabled:to-amber-600/50 text-slate-950 h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60 flex-shrink-0">
+                  <button onClick={() => handleSend()} disabled={isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-primary to-primary hover:from-primary hover:to-primary disabled:from-primary/50 disabled:to-primary/50 text-slate-950 h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 flex-shrink-0">
                     <Send size={20} />
                   </button>
                 )}
@@ -2023,30 +2023,30 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               {attachedFiles.length > 0 && (
                 <div className="px-2 pb-2 flex flex-wrap gap-2">
                   {attachedFiles.map((file, i) => (
-                    <div key={i} className="inline-flex items-center gap-1.5 px-2 py-1 bg-black/25 border border-white/10 rounded text-[10px] text-slate-300">
+                    <div key={i} className="inline-flex items-center gap-1.5 px-2 py-1 bg-black/25 border border-white/10 rounded text-[10px] text-foreground">
                       {getFileIcon(file.name)}
                       <span className="max-w-[120px] truncate">{file.name}</span>
-                      <button onClick={() => removeFile(i)} className="text-slate-500 hover:text-red-400"><X size={11} /></button>
+                      <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-red-400"><X size={11} /></button>
                     </div>
                   ))}
                 </div>
               )}
               {attachedFiles.length >= 5 && (
-                <div className="px-2 pb-2 text-[10px] text-amber-400">
+                <div className="px-2 pb-2 text-[10px] text-primary">
                   Maximum 5 files reached. Remove a file to add more.
                 </div>
               )}
             </div>
 
             {usage && usage.percentage >= 80 && (
-              <div className={`w-full mt-3 px-3 py-2 rounded-lg border flex items-center justify-between gap-3 ${usage.percentage >= 100 ? "bg-red-500/10 border-red-500/20" : "bg-amber-500/10 border-amber-500/20"}`}>
+              <div className={`w-full mt-3 px-3 py-2 rounded-lg border flex items-center justify-between gap-3 ${usage.percentage >= 100 ? "bg-red-500/10 border-red-500/20" : "bg-primary/10 border-primary/20"}`}>
                 <div className="flex items-center gap-2">
-                  {usage.percentage >= 100 ? <Lock size={13} className="text-red-400" /> : <Crown size={13} className="text-amber-400" />}
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${usage.percentage >= 100 ? "text-red-300" : "text-amber-300"}`}>
+                  {usage.percentage >= 100 ? <Lock size={13} className="text-red-400" /> : <Crown size={13} className="text-primary" />}
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${usage.percentage >= 100 ? "text-red-300" : "text-primary"}`}>
                     {usage.percentage >= 100 ? `Limit reached (${usage.used}/${usage.monthlyLimit} actions)` : `${usage.remaining} actions remaining`}
                   </span>
                 </div>
-                <a href={upgradeCheckoutHref} className="text-[10px] font-black uppercase tracking-wider text-amber-400 hover:text-amber-300 inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 rounded-md" data-testid="link-upgrade-warning">
+                <a href={upgradeCheckoutHref} className="text-[10px] font-black uppercase tracking-wider text-primary hover:text-primary inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-md" data-testid="link-upgrade-warning">
                   Upgrade <ArrowUpRight size={10} />
                 </a>
               </div>
@@ -2057,7 +2057,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         <div className="hidden xl:flex absolute right-3 top-1/2 -translate-y-1/2 z-40">
           <button
             onClick={() => setRightRailOpen((prev) => !prev)}
-            className="h-16 w-6 border border-amber-400/35 rounded-l-lg bg-gradient-to-b from-amber-500/25 via-[#15233b] to-[#0c1525] text-amber-100 hover:from-amber-400/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.24)]"
+            className="h-16 w-6 border border-primary/35 rounded-l-lg bg-gradient-to-b from-primary/25 via-[#15233b] to-[#0c1525] text-foreground hover:from-primary/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.24)]"
             data-testid="divider-toggle-right-chat-rail"
             title={rightRailVisible ? "Collapse insights panel" : "Expand insights panel"}
             aria-label={rightRailVisible ? "Collapse insights panel" : "Expand insights panel"}
@@ -2073,7 +2073,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               : "w-0 opacity-0 translate-x-3 pointer-events-none"
           }`}
         >
-          <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide w-64 rounded-2xl border border-amber-400/20 bg-[#081328]/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
+          <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide w-64 rounded-2xl border border-primary/20 bg-[#081328]/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
             {renderInsightsCards(false)}
           </div>
         </aside>

@@ -45,8 +45,8 @@ export default function SharedConversationPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
-        <div className="flex items-center gap-3 text-slate-400">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center gap-3 text-muted-foreground">
           <Loader2 className="animate-spin" size={24} />
           <span className="text-sm font-medium">Loading shared conversation...</span>
         </div>
@@ -56,14 +56,14 @@ export default function SharedConversationPage() {
 
   if (error || !conversation) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4 max-w-md mx-auto p-8">
           <Scale size={48} className="text-slate-700 mx-auto" />
-          <h1 className="text-xl font-bold text-white">Conversation Not Found</h1>
-          <p className="text-slate-400 text-sm">{error || "This shared link is no longer valid."}</p>
+          <h1 className="text-xl font-bold text-foreground">Conversation Not Found</h1>
+          <p className="text-muted-foreground text-sm">{error || "This shared link is no longer valid."}</p>
           <a
             href="/"
-            className="inline-flex items-center gap-2 text-amber-400 hover:text-amber-300 text-sm font-medium transition-colors"
+            className="inline-flex items-center gap-2 text-primary hover:text-primary text-sm font-medium transition-colors"
             data-testid="link-back-home"
           >
             <ArrowLeft size={16} /> Go to Al Wakeelo
@@ -80,28 +80,28 @@ export default function SharedConversationPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0f172a]">
+    <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto">
-        <div className="sticky top-0 z-10 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-6 py-4">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-border px-3 sm:px-6 py-4">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
               <Scale size={20} />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-sm font-bold text-white truncate" data-testid="text-shared-title">
+              <h1 className="text-sm font-bold text-foreground truncate" data-testid="text-shared-title">
                 {conversation.title}
               </h1>
               <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest">
+                <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">
                   Shared Conversation
                 </span>
                 <span className="text-[9px] text-slate-600">|</span>
-                <span className="flex items-center gap-1 text-[9px] text-slate-500">
+                <span className="flex items-center gap-1 text-[9px] text-muted-foreground">
                   <Calendar size={9} />
                   {formattedDate}
                 </span>
                 <span className="text-[9px] text-slate-600">|</span>
-                <span className="text-[9px] text-slate-500" data-testid="text-shared-by">
+                <span className="text-[9px] text-muted-foreground" data-testid="text-shared-by">
                   by {conversation.sharedBy}
                 </span>
               </div>
@@ -118,8 +118,8 @@ export default function SharedConversationPage() {
                 <div
                   className={`max-w-[92%] sm:max-w-[85%] p-3 sm:p-6 md:p-8 rounded-[1.2rem] sm:rounded-[2rem] shadow-xl ${
                     m.role === "user"
-                      ? "bg-amber-500 text-slate-950 font-bold rounded-tr-lg"
-                      : "bg-[#1e293b] border border-slate-700 text-slate-200 rounded-tl-lg"
+                      ? "bg-primary text-slate-950 font-bold rounded-tr-lg"
+                      : "bg-card border border-border text-foreground rounded-tl-lg"
                   }`}
                 >
                   {m.role === "assistant" ? (
@@ -136,13 +136,13 @@ export default function SharedConversationPage() {
           })}
         </div>
 
-        <div className="border-t border-slate-800 p-4 sm:p-6 text-center space-y-4">
-          <p className="text-slate-500 text-xs uppercase tracking-widest font-bold">
+        <div className="border-t border-border p-4 sm:p-6 text-center space-y-4">
+          <p className="text-muted-foreground text-xs uppercase tracking-widest font-bold">
             Want to consult Al Wakeelo yourself?
           </p>
           <a
             href="/auth"
-            className="inline-block px-8 py-3 bg-amber-500 text-slate-950 font-bold rounded-xl hover:bg-amber-400 transition-colors shadow-xl shadow-amber-500/20"
+            className="inline-block px-8 py-3 bg-primary text-slate-950 font-bold rounded-xl hover:bg-primary transition-colors shadow-xl shadow-primary/20"
             data-testid="link-try-al-wakeelo"
           >
             Start Chatting with Al Wakeelo

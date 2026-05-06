@@ -75,7 +75,7 @@ const STEPS: OnboardingStep[] = [
 ];
 
 const COLOR_MAP: Record<string, { bg: string; border: string; text: string; badge: string; button: string; dot: string }> = {
-  amber:   { bg: "bg-amber-500/10",   border: "border-amber-500/30",   text: "text-amber-400",   badge: "bg-amber-500/20 text-amber-300",   button: "from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700", dot: "bg-amber-400" },
+  amber:   { bg: "bg-primary/10",   border: "border-primary/30",   text: "text-primary",   badge: "bg-primary/20 text-primary",   button: "from-primary to-primary hover:from-primary hover:to-amber-700", dot: "bg-primary" },
   blue:    { bg: "bg-blue-500/10",    border: "border-blue-500/30",    text: "text-blue-400",    badge: "bg-blue-500/20 text-blue-300",    button: "from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",   dot: "bg-blue-400"  },
   emerald: { bg: "bg-emerald-500/10", border: "border-emerald-500/30", text: "text-emerald-400", badge: "bg-emerald-500/20 text-emerald-300", button: "from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700", dot: "bg-emerald-400" },
   indigo:  { bg: "bg-indigo-500/10",  border: "border-indigo-500/30",  text: "text-indigo-400",  badge: "bg-indigo-500/20 text-indigo-300",  button: "from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700", dot: "bg-indigo-400" },
@@ -138,16 +138,16 @@ export function OnboardingTour() {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
         <div className="w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-[#0d1624] shadow-2xl overflow-hidden">
           {/* Top accent bar */}
-          <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-blue-400 to-emerald-400" />
+          <div className="h-1 w-full bg-gradient-to-r from-primary via-blue-400 to-emerald-400" />
 
           <div className="p-8">
             {/* Header */}
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden mb-4 shadow-lg shadow-amber-500/20">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden mb-4 shadow-lg shadow-primary/20">
                 <img src="/icon-192.png" alt="Al Wakeelo" className="w-full h-full object-cover" />
               </div>
-              <h1 className="text-3xl font-bold text-white mb-2">Welcome to Al Wakeelo</h1>
-              <p className="text-slate-400 text-sm">Pakistan's AI-powered legal intelligence platform</p>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to Al Wakeelo</h1>
+              <p className="text-muted-foreground text-sm">Pakistan's AI-powered legal intelligence platform</p>
             </div>
 
             {/* Module previews */}
@@ -163,19 +163,19 @@ export function OnboardingTour() {
               })}
             </div>
 
-            <p className="text-center text-slate-300 text-sm mb-8">
+            <p className="text-center text-foreground text-sm mb-8">
               We'll take you through a quick tour of all 5 key modules.<br />
-              <span className="text-slate-400">Takes about 2 minutes.</span>
+              <span className="text-muted-foreground">Takes about 2 minutes.</span>
             </p>
 
             {/* Actions */}
             <div className="flex gap-3">
-              <button onClick={handleSkip} className="flex-1 py-3 text-sm text-slate-400 hover:text-white transition-colors">
+              <button onClick={handleSkip} className="flex-1 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Skip tour
               </button>
               <button
                 onClick={() => setStepIndex(0)}
-                className="flex-[2] flex items-center justify-center gap-2 py-3 px-6 text-sm font-semibold text-white rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 transition-all"
+                className="flex-[2] flex items-center justify-center gap-2 py-3 px-6 text-sm font-semibold text-foreground rounded-xl bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-amber-700 transition-all"
               >
                 Start Tour <ArrowRight className="w-4 h-4" />
               </button>
@@ -194,7 +194,7 @@ export function OnboardingTour() {
   return (
     <>
       {/* Thin top bar to show tour is active */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-slate-800">
+      <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-card">
         <div
           className={`h-full ${c.dot} transition-all duration-500`}
           style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
@@ -217,23 +217,23 @@ export function OnboardingTour() {
                 </div>
                 <div>
                   <p className={`text-xs font-semibold ${c.text}`}>{step.subtitle}</p>
-                  <h3 className="text-white font-bold text-sm">{step.title}</h3>
+                  <h3 className="text-foreground font-bold text-sm">{step.title}</h3>
                 </div>
               </div>
-              <button onClick={handleSkip} className="text-slate-500 hover:text-white transition-colors p-1">
+              <button onClick={handleSkip} className="text-muted-foreground hover:text-foreground transition-colors p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Description */}
-            <p className="text-slate-300 text-xs leading-relaxed mb-4">{step.description}</p>
+            <p className="text-foreground text-xs leading-relaxed mb-4">{step.description}</p>
 
             {/* Features list */}
             <div className="grid grid-cols-2 gap-1.5 mb-5">
               {step.features.map((f, i) => (
                 <div key={i} className="flex items-center gap-1.5">
                   <div className={`w-1.5 h-1.5 rounded-full ${c.dot} flex-shrink-0`} />
-                  <span className="text-xs text-slate-400">{f}</span>
+                  <span className="text-xs text-muted-foreground">{f}</span>
                 </div>
               ))}
             </div>
@@ -253,14 +253,14 @@ export function OnboardingTour() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleBack}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-white/5"
                 >
                   <ChevronLeft className="w-3 h-3" /> Back
                 </button>
                 <button
                   onClick={handleNext}
                   disabled={completeOnboardingMutation.isPending}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white rounded-lg bg-gradient-to-r ${c.button} transition-all disabled:opacity-50`}
+                  className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-foreground rounded-lg bg-gradient-to-r ${c.button} transition-all disabled:opacity-50`}
                 >
                   {isLast ? "Finish" : step.cta}
                   {!isLast && <ChevronRight className="w-3 h-3" />}

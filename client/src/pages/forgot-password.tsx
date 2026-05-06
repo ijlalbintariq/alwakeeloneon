@@ -44,19 +44,19 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/5 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-amber-500/3 rounded-full blur-[100px]" />
+    <div className="min-h-screen bg-background flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-primary/3 rounded-full blur-[100px]" />
 
-      <div className="w-full max-w-md bg-[#1e293b] border border-slate-800 p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[3rem] shadow-2xl relative z-10 fade-in">
+      <div className="w-full max-w-md bg-card border border-border p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[3rem] shadow-2xl relative z-10 fade-in">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-amber-400/40 mb-5 shadow-lg shadow-amber-500/20">
+          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-primary/40 mb-5 shadow-lg shadow-primary/20">
             <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-3xl font-bold text-white uppercase tracking-tighter italic" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h1 className="text-3xl font-bold text-foreground uppercase tracking-tighter italic" style={{ fontFamily: "'Playfair Display', serif" }}>
             Al Wakeelo
           </h1>
-          <p className="text-[10px] uppercase tracking-[0.4em] text-slate-500 font-black mt-2">
+          <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground font-black mt-2">
             Password Recovery
           </p>
         </div>
@@ -66,10 +66,10 @@ export default function ForgotPasswordPage() {
             <div className="w-14 h-14 bg-emerald-500/10 rounded-full mx-auto flex items-center justify-center">
               <CheckCircle size={28} className="text-emerald-400" />
             </div>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               {resetUrl ? "Reset Link Ready" : isGoogleAccountNotice ? "Use Google Sign-In" : "Check Your Email"}
             </h2>
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               {resetUrl
                 ? "Your password reset link has been generated. Click the button below to set a new password."
                 : (serverMessage || "If an account with that email exists, we've sent a password reset link to your inbox. Please check your email.")}
@@ -80,18 +80,18 @@ export default function ForgotPasswordPage() {
                 <a
                   href={resetUrl}
                   data-testid="link-reset-password"
-                  className="inline-block w-full bg-amber-500 text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-amber-400 transition-all text-center shadow-xl shadow-amber-500/10"
+                  className="inline-block w-full bg-primary text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all text-center shadow-xl shadow-primary/10"
                 >
                   Reset Password Now
                 </a>
-                <p className="text-[10px] text-slate-500 mt-3">This link expires in 1 hour</p>
+                <p className="text-[10px] text-muted-foreground mt-3">This link expires in 1 hour</p>
               </div>
             )}
 
             <Link
               href="/auth"
               data-testid="link-back-to-login"
-              className="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-amber-400 transition-colors mt-4"
+              className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors mt-4"
             >
               <ArrowLeft size={14} />
               Back to Sign In
@@ -99,13 +99,13 @@ export default function ForgotPasswordPage() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-slate-400 text-center mb-6 leading-relaxed">
+            <p className="text-sm text-muted-foreground text-center mb-6 leading-relaxed">
               Enter the email address associated with your account and we'll generate a password reset link.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="relative">
-                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="email"
                   placeholder="Email Address"
@@ -113,7 +113,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   data-testid="input-forgot-email"
-                  className="w-full bg-[#0f172a] border border-slate-700 text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-2xl text-sm focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-all"
+                  className="w-full bg-background border border-border text-foreground placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-2xl text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
                 />
               </div>
 
@@ -121,7 +121,7 @@ export default function ForgotPasswordPage() {
                 type="submit"
                 disabled={forgotMutation.isPending}
                 data-testid="button-submit-forgot"
-                className="w-full bg-amber-500 text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+                className="w-full bg-primary text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
               >
                 {forgotMutation.isPending ? (
                   <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
@@ -135,7 +135,7 @@ export default function ForgotPasswordPage() {
               <Link
                 href="/auth"
                 data-testid="link-back-to-login-form"
-                className="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-amber-400 transition-colors"
+                className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
               >
                 <ArrowLeft size={14} />
                 Back to Sign In

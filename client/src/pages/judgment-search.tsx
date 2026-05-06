@@ -441,28 +441,28 @@ export default function JudgmentSearchPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 fade-in" data-testid="judgment-search-page">
-      <section className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-[#0f172a] p-3">
-        <div className="pointer-events-none absolute -top-12 right-5 h-24 w-24 rounded-full bg-amber-500/10 blur-3xl" />
+      <section className="relative overflow-hidden rounded-2xl border border-primary/20 bg-background p-3">
+        <div className="pointer-events-none absolute -top-12 right-5 h-24 w-24 rounded-full bg-primary/10 blur-3xl" />
         <div className="max-w-2xl space-y-2">
-          <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Judgment <span className="text-amber-400">Vault</span>
+          <h2 className="text-xl md:text-2xl font-bold text-foreground tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+            Judgment <span className="text-primary">Vault</span>
           </h2>
-          <p className="text-xs md:text-sm text-slate-400 leading-relaxed max-w-xl">
+          <p className="text-xs md:text-sm text-muted-foreground leading-relaxed max-w-xl">
             Access Pakistan case law with unified keyword and citation search, verified sources, and AI-assisted analysis for faster legal research.
           </p>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-700/80 bg-[#070b12]/90 p-3 shadow-2xl">
+      <section className="rounded-2xl border border-border/80 bg-[#070b12]/90 p-3 shadow-2xl">
         <div className="mb-3 flex justify-center">
-          <div className="inline-flex rounded-xl border border-slate-700/90 bg-black/40 p-1">
+          <div className="inline-flex rounded-xl border border-border/90 bg-black/40 p-1">
             <button
               type="button"
               onClick={() => setSearchMode("keyword")}
               className={`rounded-lg px-5 py-2 text-sm font-bold transition-all ${
                 searchMode === "keyword"
-                  ? "bg-amber-500 text-slate-950"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-primary text-slate-950"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Keyword Search
@@ -472,8 +472,8 @@ export default function JudgmentSearchPage() {
               onClick={() => setSearchMode("citation")}
               className={`rounded-lg px-5 py-2 text-sm font-bold transition-all ${
                 searchMode === "citation"
-                  ? "bg-amber-500 text-slate-950"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-primary text-slate-950"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Citation Search
@@ -485,9 +485,9 @@ export default function JudgmentSearchPage() {
           <div className="space-y-3">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2.5">
               <div className="relative">
-                <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  className="w-full rounded-xl border border-border bg-black/50 pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   placeholder="Search with Keywords, Booleans or Sentences"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -508,9 +508,9 @@ export default function JudgmentSearchPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
               <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Jurisdiction</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Jurisdiction</span>
                 <select
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   value="Pakistan"
                   disabled
                 >
@@ -519,21 +519,21 @@ export default function JudgmentSearchPage() {
               </label>
 
               <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Court</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Court</span>
                 <input
                   value={keywordCourt}
                   onChange={(e) => setKeywordCourt(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   placeholder="All Courts"
                 />
               </label>
 
               <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Filter By</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Filter By</span>
                 <select
                   value={keywordSort}
                   onChange={(e) => setKeywordSort(e.target.value as "relevance" | "latest")}
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                 >
                   <option value="relevance">Relevance</option>
                   <option value="latest">Latest</option>
@@ -551,9 +551,9 @@ export default function JudgmentSearchPage() {
           <form onSubmit={(e) => void handleCitationSearch(e)} className="space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto] gap-2.5">
               <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Jurisdiction</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Jurisdiction</span>
                 <select
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   value="Pakistan"
                   disabled
                 >
@@ -562,11 +562,11 @@ export default function JudgmentSearchPage() {
               </label>
 
               <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Year</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Year</span>
                 <select
                   value={year}
                   onChange={(e) => setYear(Number(e.target.value))}
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   data-testid="select-citation-year"
                 >
                   {years.map((y) => (
@@ -578,11 +578,11 @@ export default function JudgmentSearchPage() {
               </label>
 
               <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Journal</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Journal</span>
                 <select
                   value={citationJournal}
                   onChange={(e) => setCitationJournal(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   disabled={loadingJournals}
                   data-testid="select-citation-journal"
                 >
@@ -597,24 +597,24 @@ export default function JudgmentSearchPage() {
               </label>
 
               <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Page</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Page</span>
                 <input
                   type="number"
                   min={1}
                   value={page}
                   onChange={(e) => setPage(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   placeholder="e.g. 123"
                   data-testid="input-citation-page"
                 />
               </label>
 
               <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Court (Optional)</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Court (Optional)</span>
                 <input
                   value={citationCourt}
                   onChange={(e) => setCitationCourt(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   placeholder="All Courts"
                   data-testid="input-citation-court"
                 />
@@ -649,30 +649,30 @@ export default function JudgmentSearchPage() {
 
       <section className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="xl:col-span-2 min-h-0 space-y-4 overflow-y-auto pr-1">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <div className="flex items-center justify-between border-b border-border pb-3">
+            <h3 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
               Recent Judgments
             </h3>
-            <span className="text-amber-300 text-xs font-black uppercase tracking-widest">
+            <span className="text-primary text-xs font-black uppercase tracking-widest">
               {allResults.length} Result{allResults.length === 1 ? "" : "s"}
             </span>
           </div>
 
           {isLoading || isExternalLoading ? (
-            <div className="rounded-2xl border border-slate-800 bg-[#1e293b]/40 px-5 py-8 text-slate-400 flex items-center gap-3">
-              <Loader2 size={16} className="animate-spin text-amber-400" />
+            <div className="rounded-2xl border border-border bg-card/40 px-5 py-8 text-muted-foreground flex items-center gap-3">
+              <Loader2 size={16} className="animate-spin text-primary" />
               Searching judgments...
             </div>
           ) : null}
 
           {!isLoading && !isExternalLoading && allResults.length === 0 && !query ? (
-            <div className="rounded-2xl border border-dashed border-slate-700 bg-[#1e293b]/35 px-6 py-10 text-center text-slate-400">
+            <div className="rounded-2xl border border-dashed border-border bg-card/35 px-6 py-10 text-center text-muted-foreground">
               Enter keywords above to search verified Pakistani judgments.
             </div>
           ) : null}
 
           {!isLoading && !isExternalLoading && allResults.length === 0 && query ? (
-            <div className="rounded-2xl border border-dashed border-slate-700 bg-[#1e293b]/35 px-6 py-10 text-center text-slate-400">
+            <div className="rounded-2xl border border-dashed border-border bg-card/35 px-6 py-10 text-center text-muted-foreground">
               No judgments found matching your keyword query.
             </div>
           ) : null}
@@ -682,8 +682,8 @@ export default function JudgmentSearchPage() {
               key={`${item.source || "internal"}-${item.citation}-${idx}`}
               className={`rounded-xl border shadow-xl overflow-hidden ${
                 item.source === "external"
-                  ? "border-blue-500/25 bg-[#1e293b]/70"
-                  : "border-slate-700 bg-[#1e293b]/55"
+                  ? "border-blue-500/25 bg-card/70"
+                  : "border-border bg-card/55"
               }`}
               data-testid={`judgment-result-${idx}`}
             >
@@ -694,21 +694,21 @@ export default function JudgmentSearchPage() {
                       className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest ${
                         item.source === "external"
                           ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
-                          : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                          : "border-primary/30 bg-primary/10 text-primary"
                       }`}
                     >
                       {item.court || "Court"}
                     </span>
-                    <h4 className="text-xl font-bold text-white leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <h4 className="text-xl font-bold text-foreground leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
                       {item.title}
                     </h4>
                   </div>
-                  <span className="inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-mono font-bold text-amber-300">
+                  <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-mono font-bold text-primary">
                     {item.citation}
                   </span>
                 </div>
 
-                <p className="text-sm text-slate-400 leading-relaxed mb-4 line-clamp-3">{item.summary}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4 line-clamp-3">{item.summary}</p>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -716,7 +716,7 @@ export default function JudgmentSearchPage() {
                       setJudgmentForView(item);
                       setLocation("/judgment-view");
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-[11px] font-bold text-amber-300 hover:bg-amber-500/20"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-[11px] font-bold text-primary hover:bg-primary/20"
                     data-testid={`button-open-judgment-${idx}`}
                   >
                     <Eye size={13} /> Open & Chat
@@ -737,7 +737,7 @@ export default function JudgmentSearchPage() {
                   <button
                     onClick={() => void handleGetSummary(item, idx)}
                     disabled={summaryLoading[idx]}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-900/50 px-3 py-2 text-[11px] font-bold text-slate-200 hover:border-amber-400/40 hover:text-amber-200"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/50 px-3 py-2 text-[11px] font-bold text-foreground hover:border-primary/40 hover:text-foreground"
                     data-testid={`button-ai-summary-${idx}`}
                   >
                     {summaryLoading[idx] ? (
@@ -762,17 +762,17 @@ export default function JudgmentSearchPage() {
               </div>
 
               {expandedSummary === idx && (summaryLoading[idx] || summaries[idx]) ? (
-                <div className="border-t border-slate-700 p-5 md:p-6" data-testid={`judgment-summary-panel-${idx}`}>
+                <div className="border-t border-border p-5 md:p-6" data-testid={`judgment-summary-panel-${idx}`}>
                   {summaryLoading[idx] ? (
-                    <div className="flex items-center gap-2 text-sm text-slate-300">
-                      <Loader2 size={14} className="animate-spin text-amber-400" />
+                    <div className="flex items-center gap-2 text-sm text-foreground">
+                      <Loader2 size={14} className="animate-spin text-primary" />
                       Al Wakeelo is analyzing this judgment...
                     </div>
                   ) : summaries[idx] ? (
                     <div className="space-y-5">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-amber-300">
+                          <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
                             <Sparkles size={11} /> AI Judgment Analysis
                           </span>
                           {summaries[idx].verified ? (
@@ -780,14 +780,14 @@ export default function JudgmentSearchPage() {
                               <ShieldCheck size={11} /> Verified Source
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-amber-300" data-testid={`badge-ai-only-${idx}`}>
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-primary" data-testid={`badge-ai-only-${idx}`}>
                               <ShieldAlert size={11} /> AI General Knowledge
                             </span>
                           )}
                         </div>
                         <button
                           onClick={() => setExpandedSummary(null)}
-                          className="p-1.5 rounded-md text-slate-400 hover:text-white"
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground"
                           data-testid={`button-close-summary-${idx}`}
                         >
                           <X size={14} />
@@ -803,7 +803,7 @@ export default function JudgmentSearchPage() {
                           <button
                             onClick={() => setShowFullText((prev) => ({ ...prev, [idx]: !prev[idx] }))}
                             data-testid={`button-full-text-${idx}`}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-[11px] font-bold text-amber-300 hover:bg-amber-500/20"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-[11px] font-bold text-primary hover:bg-primary/20"
                           >
                             <BookOpen size={13} />
                             {showFullText[idx] ? "Hide Full Judgment" : "View Full Judgment"}
@@ -818,10 +818,10 @@ export default function JudgmentSearchPage() {
 
                           {showFullText[idx] ? (
                             <div
-                              className="mt-4 max-h-[520px] overflow-y-auto rounded-xl border border-slate-700 bg-slate-900/50 p-4"
+                              className="mt-4 max-h-[520px] overflow-y-auto rounded-xl border border-border bg-background/50 p-4"
                               data-testid={`text-full-judgment-${idx}`}
                             >
-                              <pre className="whitespace-pre-wrap text-xs leading-relaxed text-slate-300 font-mono">
+                              <pre className="whitespace-pre-wrap text-xs leading-relaxed text-foreground font-mono">
                                 {summaries[idx].fullText}
                               </pre>
                             </div>
@@ -835,22 +835,22 @@ export default function JudgmentSearchPage() {
             </article>
           ))}
 
-          <div className="pt-3 border-t border-slate-800">
-            <h4 className="text-lg font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <div className="pt-3 border-t border-border">
+            <h4 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
               Citation Matches
             </h4>
-            <p className="text-xs text-slate-500 mt-1">Exact journal/year/page lookup results.</p>
+            <p className="text-xs text-muted-foreground mt-1">Exact journal/year/page lookup results.</p>
           </div>
 
           {citationSearching ? (
-            <div className="rounded-2xl border border-slate-800 bg-[#1e293b]/40 px-5 py-6 text-slate-400 flex items-center gap-3">
-              <Loader2 size={16} className="animate-spin text-amber-400" />
+            <div className="rounded-2xl border border-border bg-card/40 px-5 py-6 text-muted-foreground flex items-center gap-3">
+              <Loader2 size={16} className="animate-spin text-primary" />
               Looking up citation...
             </div>
           ) : null}
 
           {!citationSearching && !citationError && hasCitationSearched && citationResults.length === 0 ? (
-            <div className="rounded-2xl border border-slate-800 bg-[#1e293b]/40 px-5 py-6 text-slate-400" data-testid="citation-search-empty">
+            <div className="rounded-2xl border border-border bg-card/40 px-5 py-6 text-muted-foreground" data-testid="citation-search-empty">
               No matching judgments found for this citation.
             </div>
           ) : null}
@@ -858,14 +858,14 @@ export default function JudgmentSearchPage() {
           {citationResults.length > 0 ? (
             <div className="space-y-3" data-testid="citation-search-results">
               {citationResults.map((item) => (
-                <article key={item.id} className="rounded-xl border border-slate-700 bg-[#1e293b]/55 p-4 md:p-5 shadow-lg">
+                <article key={item.id} className="rounded-xl border border-border bg-card/55 p-4 md:p-5 shadow-lg">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="space-y-2 min-w-0">
                       <span className="inline-flex rounded-lg bg-blue-500/15 border border-blue-500/30 px-2.5 py-1 text-[11px] text-blue-200 font-mono">
                         {item.citation}
                       </span>
-                      <h5 className="text-base font-semibold text-white leading-snug">{item.title}</h5>
-                      <p className="text-xs text-slate-400 inline-flex items-center gap-1.5">
+                      <h5 className="text-base font-semibold text-foreground leading-snug">{item.title}</h5>
+                      <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
                         <CalendarDays size={12} />
                         {item.court || "Court not available"} • {formatDecisionDate(item.decisionDate)}
                       </p>
@@ -874,7 +874,7 @@ export default function JudgmentSearchPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
                         onClick={() => setLocation(`/judgment/${item.id}`)}
-                        className="rounded-lg bg-amber-500/15 border border-amber-500/30 px-3 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500/20"
+                        className="rounded-lg bg-primary/15 border border-primary/30 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20"
                         data-testid={`button-view-judgment-${item.id}`}
                       >
                         View Full Judgment →
@@ -898,26 +898,26 @@ export default function JudgmentSearchPage() {
         </div>
 
         <aside className="min-h-0 space-y-4 overflow-y-auto pr-1">
-          <section className="overflow-hidden rounded-xl border border-amber-500/25 bg-[#1e293b]/70">
-            <div className="bg-amber-500 px-4 py-3">
+          <section className="overflow-hidden rounded-xl border border-primary/25 bg-card/70">
+            <div className="bg-primary px-4 py-3">
               <h4 className="inline-flex items-center gap-2 text-sm font-black text-slate-950 uppercase tracking-wider">
                 <BookmarkPlus size={14} /> Saved Judgments
               </h4>
             </div>
             <div className="p-4 space-y-3">
               {savedJudgments.length === 0 ? (
-                <p className="text-xs text-slate-400">No saved judgments yet.</p>
+                <p className="text-xs text-muted-foreground">No saved judgments yet.</p>
               ) : (
                 savedJudgments.slice(0, 6).map((saved) => (
-                  <div key={saved.id} className="rounded-lg border border-slate-700 bg-slate-900/40 p-3">
+                  <div key={saved.id} className="rounded-lg border border-border bg-background/40 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-white truncate">{saved.title}</p>
-                        <p className="text-[10px] font-mono text-amber-300 mt-1">{saved.citation}</p>
+                        <p className="text-xs font-bold text-foreground truncate">{saved.title}</p>
+                        <p className="text-[10px] font-mono text-primary mt-1">{saved.citation}</p>
                       </div>
                       <button
                         onClick={() => void handleDeleteSaved(saved.id)}
-                        className="text-slate-400 hover:text-red-300"
+                        className="text-muted-foreground hover:text-red-300"
                         title="Remove saved judgment"
                       >
                         <Trash2 size={13} />
@@ -936,7 +936,7 @@ export default function JudgmentSearchPage() {
                         });
                         setLocation("/judgment-view");
                       }}
-                      className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 hover:text-amber-200"
+                      className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:text-foreground"
                     >
                       <Eye size={11} /> Open
                     </button>
@@ -946,30 +946,30 @@ export default function JudgmentSearchPage() {
 
               <button
                 onClick={() => setLocation("/bookmarks")}
-                className="w-full rounded-lg border border-slate-700 bg-slate-900/35 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-amber-200 hover:border-amber-500/30"
+                className="w-full rounded-lg border border-border bg-background/35 px-3 py-2 text-xs font-semibold text-foreground hover:text-foreground hover:border-primary/30"
               >
                 View Library
               </button>
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-700 bg-[#1e293b]/55 p-4">
-            <h4 className="text-sm font-black uppercase tracking-wider text-slate-100 mb-3 inline-flex items-center gap-2">
-              <Gavel size={14} className="text-amber-300" /> Database Insights
+          <section className="rounded-xl border border-border bg-card/55 p-4">
+            <h4 className="text-sm font-black uppercase tracking-wider text-foreground mb-3 inline-flex items-center gap-2">
+              <Gavel size={14} className="text-primary" /> Database Insights
             </h4>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-slate-700 bg-slate-900/35 p-3">
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Total Judgments</p>
-                <p className="text-2xl font-bold text-white mt-1">{allResults.length}</p>
+              <div className="rounded-lg border border-border bg-background/35 p-3">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">Total Judgments</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{allResults.length}</p>
               </div>
-              <div className="rounded-lg border border-slate-700 bg-slate-900/35 p-3">
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Citation Hits</p>
-                <p className="text-2xl font-bold text-white mt-1">{citationResults.length}</p>
+              <div className="rounded-lg border border-border bg-background/35 p-3">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">Citation Hits</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{citationResults.length}</p>
               </div>
             </div>
-            <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">Verified Content</p>
-              <p className="text-xs text-slate-400 mt-1">
+            <div className="mt-4 rounded-lg border border-primary/30 bg-primary/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary">Verified Content</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 Results are grounded in your internal case-law registry and connected citation database.
               </p>
             </div>

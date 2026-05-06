@@ -271,7 +271,7 @@ export function PublicLegalChatWidget() {
             setIsOpen(next);
             if (next) void trackPublicEvent("widget_open", { path: location });
           }}
-          className="rounded-full h-12 px-5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs tracking-wide shadow-xl shadow-amber-500/30"
+          className="rounded-full h-12 px-5 bg-primary hover:bg-primary text-slate-950 font-black text-xs tracking-wide shadow-xl shadow-primary/30"
           data-testid="public-chat-toggle"
         >
           <MessageCircle size={16} className="mr-2" />
@@ -280,17 +280,17 @@ export function PublicLegalChatWidget() {
       </div>
 
       {isOpen && (
-        <Card className="fixed bottom-20 right-6 z-[80] w-[min(94vw,420px)] border border-amber-500/30 bg-[#0f172a] shadow-2xl shadow-black/50">
-          <CardHeader className="pb-2 px-4 py-3 border-b border-slate-800 flex flex-row items-center justify-between">
+        <Card className="fixed bottom-20 right-6 z-[80] w-[min(94vw,420px)] border border-primary/30 bg-background shadow-2xl shadow-black/50">
+          <CardHeader className="pb-2 px-4 py-3 border-b border-border flex flex-row items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-amber-400">Legal Consultation Desk</p>
-              <p className="text-[10px] text-slate-400">Consultation &amp; Hiring Support</p>
-              <p className="text-[10px] text-slate-400">Free messages left: {remaining ?? "-"}</p>
+              <p className="text-sm font-bold text-primary">Legal Consultation Desk</p>
+              <p className="text-[10px] text-muted-foreground">Consultation &amp; Hiring Support</p>
+              <p className="text-[10px] text-muted-foreground">Free messages left: {remaining ?? "-"}</p>
             </div>
             <Button
               size="icon"
               variant="ghost"
-              className="text-slate-400 hover:text-white"
+              className="text-muted-foreground hover:text-foreground"
               onClick={() => setIsOpen(false)}
             >
               <X size={16} />
@@ -310,27 +310,27 @@ export function PublicLegalChatWidget() {
                     <div
                       className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center ${
                         msg.role === "assistant"
-                          ? "bg-amber-500 text-slate-950"
-                          : "bg-[#1e293b] border border-amber-500/30 text-amber-400"
+                          ? "bg-primary text-slate-950"
+                          : "bg-card border border-primary/30 text-primary"
                       }`}
                     >
                       {msg.role === "assistant" ? <Scale size={15} /> : <UserIcon size={14} />}
                     </div>
                     <div className={`flex flex-col gap-1.5 ${msg.role === "user" ? "items-end" : "items-start"} max-w-[85%]`}>
-                      <p className={`text-[10px] font-black uppercase tracking-wider ${msg.role === "assistant" ? "text-amber-400" : "text-slate-500"}`}>
+                      <p className={`text-[10px] font-black uppercase tracking-wider ${msg.role === "assistant" ? "text-primary" : "text-muted-foreground"}`}>
                         {msg.role === "assistant" ? "Al Wakeelo Assistant" : "You"}
                       </p>
                       <div
                         className={`rounded-2xl p-3 ${
                           msg.role === "assistant"
-                            ? "bg-amber-500/5 border border-amber-500/25 rounded-tl-none"
-                            : "bg-[#1e293b]/95 border border-amber-500 rounded-tr-none"
+                            ? "bg-primary/5 border border-primary/25 rounded-tl-none"
+                            : "bg-card/95 border border-primary rounded-tr-none"
                         }`}
                       >
                         {msg.role === "assistant" ? (
                           <LegalMarkdown content={displayContent} className="text-sm" />
                         ) : (
-                          <p className="text-slate-100 leading-relaxed whitespace-pre-wrap text-sm">{displayContent}</p>
+                          <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm">{displayContent}</p>
                         )}
                       </div>
                     </div>
@@ -340,7 +340,7 @@ export function PublicLegalChatWidget() {
             </div>
 
             {!showCaseForm && (
-              <div className="px-4 pt-3 pb-3 space-y-2 border-t border-slate-800">
+              <div className="px-4 pt-3 pb-3 space-y-2 border-t border-border">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Button
                     type="button"
@@ -349,7 +349,7 @@ export function PublicLegalChatWidget() {
                       setShowContactInfo((prev) => !prev);
                       void trackPublicEvent("contact_click", { from: "widget-actions" });
                     }}
-                    className="h-9 border-slate-700 text-slate-200 hover:bg-slate-800 text-[11px]"
+                    className="h-9 border-border text-foreground hover:bg-card text-[11px]"
                   >
                     <PhoneCall size={14} className="mr-1" /> Contact Chamber
                   </Button>
@@ -360,18 +360,18 @@ export function PublicLegalChatWidget() {
                       setShowCaseForm(true);
                       void trackPublicEvent("lead_form_open", { from: "widget-actions" });
                     }}
-                    className="h-9 border-slate-700 text-slate-200 hover:bg-slate-800 text-[11px]"
+                    className="h-9 border-border text-foreground hover:bg-card text-[11px]"
                   >
                     <FilePlus size={14} className="mr-1" /> Submit Case
                   </Button>
                 </div>
                 {showContactInfo && (
-                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                    <p className="font-semibold text-amber-300">Consultation Contact</p>
+                  <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
+                    <p className="font-semibold text-primary">Consultation Contact</p>
                     <p>
                       Email:{" "}
                       <a
-                        className="underline hover:text-amber-200"
+                        className="underline hover:text-foreground"
                         href="mailto:support@alwakeelo.com"
                         onClick={() => void trackPublicEvent("contact_click", { channel: "email" })}
                       >
@@ -381,7 +381,7 @@ export function PublicLegalChatWidget() {
                     <p>
                       Phone:{" "}
                       <a
-                        className="underline hover:text-amber-200"
+                        className="underline hover:text-foreground"
                         href="tel:00923096875797"
                         onClick={() => void trackPublicEvent("contact_click", { channel: "phone" })}
                       >
@@ -394,20 +394,20 @@ export function PublicLegalChatWidget() {
             )}
 
             {showCaseForm && (
-              <form onSubmit={submitCaseLead} className="px-4 pb-3 pt-1 space-y-2 border-t border-slate-800">
-                <p className="text-[11px] text-slate-300 font-semibold">Submit Case Details</p>
+              <form onSubmit={submitCaseLead} className="px-4 pb-3 pt-1 space-y-2 border-t border-border">
+                <p className="text-[11px] text-foreground font-semibold">Submit Case Details</p>
                 <Input
                   placeholder="Name"
                   value={leadForm.name}
                   onChange={(e) => setLeadForm((prev) => ({ ...prev, name: e.target.value }))}
-                  className="h-9 bg-[#111827] border-slate-700 text-slate-100"
+                  className="h-9 bg-background border-border text-foreground"
                   required
                 />
                 <Input
                   placeholder="Phone Number"
                   value={leadForm.phone}
                   onChange={(e) => setLeadForm((prev) => ({ ...prev, phone: e.target.value }))}
-                  className="h-9 bg-[#111827] border-slate-700 text-slate-100"
+                  className="h-9 bg-background border-border text-foreground"
                   required
                 />
                 <Input
@@ -415,21 +415,21 @@ export function PublicLegalChatWidget() {
                   type="email"
                   value={leadForm.email}
                   onChange={(e) => setLeadForm((prev) => ({ ...prev, email: e.target.value }))}
-                  className="h-9 bg-[#111827] border-slate-700 text-slate-100"
+                  className="h-9 bg-background border-border text-foreground"
                   required
                 />
                 <Input
                   placeholder="City"
                   value={leadForm.city}
                   onChange={(e) => setLeadForm((prev) => ({ ...prev, city: e.target.value }))}
-                  className="h-9 bg-[#111827] border-slate-700 text-slate-100"
+                  className="h-9 bg-background border-border text-foreground"
                   required
                 />
                 <Select
                   value={leadForm.caseType}
                   onValueChange={(value) => setLeadForm((prev) => ({ ...prev, caseType: value }))}
                 >
-                  <SelectTrigger className="h-9 bg-[#111827] border-slate-700 text-slate-100">
+                  <SelectTrigger className="h-9 bg-background border-border text-foreground">
                     <SelectValue placeholder="Case Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -444,7 +444,7 @@ export function PublicLegalChatWidget() {
                   value={leadForm.urgency}
                   onValueChange={(value) => setLeadForm((prev) => ({ ...prev, urgency: value }))}
                 >
-                  <SelectTrigger className="h-9 bg-[#111827] border-slate-700 text-slate-100">
+                  <SelectTrigger className="h-9 bg-background border-border text-foreground">
                     <SelectValue placeholder="Urgency" />
                   </SelectTrigger>
                   <SelectContent>
@@ -459,17 +459,17 @@ export function PublicLegalChatWidget() {
                   placeholder="Preferred Callback Time (Optional)"
                   value={leadForm.preferredCallbackTime}
                   onChange={(e) => setLeadForm((prev) => ({ ...prev, preferredCallbackTime: e.target.value }))}
-                  className="h-9 bg-[#111827] border-slate-700 text-slate-100"
+                  className="h-9 bg-background border-border text-foreground"
                 />
                 <Textarea
                   placeholder="Case Description"
                   rows={4}
                   value={leadForm.caseDescription}
                   onChange={(e) => setLeadForm((prev) => ({ ...prev, caseDescription: e.target.value }))}
-                  className="bg-[#111827] border-slate-700 text-slate-100"
+                  className="bg-background border-border text-foreground"
                   required
                 />
-                <label className="flex items-start gap-2 rounded-lg border border-slate-800 bg-[#101a2b] px-3 py-2 text-xs text-slate-300">
+                <label className="flex items-start gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground">
                   <input
                     type="checkbox"
                     checked={leadForm.consentToContact}
@@ -483,7 +483,7 @@ export function PublicLegalChatWidget() {
                   <Button
                     type="submit"
                     disabled={isSubmittingLead || !leadForm.consentToContact}
-                    className="flex-1 h-9 bg-amber-500 text-slate-950 hover:bg-amber-400 text-xs font-black"
+                    className="flex-1 h-9 bg-primary text-slate-950 hover:bg-primary text-xs font-black"
                   >
                     {isSubmittingLead ? <Loader2 size={14} className="animate-spin mr-1" /> : null}
                     Submit Case
@@ -491,7 +491,7 @@ export function PublicLegalChatWidget() {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-9 text-slate-400 hover:text-slate-200"
+                    className="h-9 text-muted-foreground hover:text-foreground"
                     onClick={() => setShowCaseForm(false)}
                   >
                     Cancel
@@ -509,13 +509,13 @@ export function PublicLegalChatWidget() {
                   placeholder={limitReached ? "Daily free limit reached" : "Describe your legal issue..."}
                   rows={2}
                   disabled={isSending || limitReached}
-                  className="min-h-[52px] max-h-[120px] bg-[#111827] border-slate-700 text-slate-100 resize-y"
+                  className="min-h-[52px] max-h-[120px] bg-background border-border text-foreground resize-y"
                 />
                 <Button
                   type="submit"
                   size="icon"
                   disabled={isSending || limitReached || !input.trim()}
-                  className="h-11 w-11 bg-amber-500 text-slate-950 hover:bg-amber-400"
+                  className="h-11 w-11 bg-primary text-slate-950 hover:bg-primary"
                 >
                   {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 </Button>

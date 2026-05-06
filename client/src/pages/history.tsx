@@ -91,14 +91,14 @@ function typeMeta(kind: ActivityItem["kind"]) {
         label: "Case Law Search",
         action: "Re-run",
         icon: Gavel,
-        iconClass: "bg-amber-500/20 text-amber-400",
+        iconClass: "bg-primary/20 text-primary",
       };
     case "statute":
       return {
         label: "Statute Search",
         action: "Re-run",
         icon: Scale,
-        iconClass: "bg-amber-500/20 text-amber-400",
+        iconClass: "bg-primary/20 text-primary",
       };
     case "draft":
       return {
@@ -256,7 +256,7 @@ export default function HistoryPage() {
       <div className="flex h-full min-h-0 flex-col">
         <header className="shrink-0 border-b border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.92] px-5 py-3 md:px-8">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
               <History size={18} />
             </div>
             <h2 className="text-xl font-bold preview-title" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -274,7 +274,7 @@ export default function HistoryPage() {
 
               <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                 <label className="h-12 w-full md:w-1/2 min-w-[280px]">
-                  <div className="flex h-full w-full items-center rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface-elevated))/0.65] backdrop-blur-md focus-within:ring-2 focus-within:ring-amber-500/40 transition-all">
+                  <div className="flex h-full w-full items-center rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface-elevated))/0.65] backdrop-blur-md focus-within:ring-2 focus-within:ring-primary/40 transition-all">
                     <div className="pl-4 pr-2 preview-muted">
                       <Search size={20} />
                     </div>
@@ -293,8 +293,8 @@ export default function HistoryPage() {
                     onClick={() => setFilter("all")}
                     className={`h-10 shrink-0 rounded-xl px-5 text-sm font-bold transition-all ${
                       filter === "all"
-                        ? "bg-amber-500 text-[hsl(var(--preview-bg))] shadow-lg shadow-amber-500/20"
-                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-amber-300"
+                        ? "bg-primary text-[hsl(var(--preview-bg))] shadow-lg shadow-primary/20"
+                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                     }`}
                     data-testid="button-history-filter-all"
                   >
@@ -304,8 +304,8 @@ export default function HistoryPage() {
                     onClick={() => setFilter("statutes")}
                     className={`h-10 shrink-0 rounded-xl px-5 text-sm font-medium transition-colors ${
                       filter === "statutes"
-                        ? "bg-amber-500 text-[hsl(var(--preview-bg))]"
-                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-amber-300"
+                        ? "bg-primary text-[hsl(var(--preview-bg))]"
+                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                     }`}
                     data-testid="button-history-filter-statutes"
                   >
@@ -315,8 +315,8 @@ export default function HistoryPage() {
                     onClick={() => setFilter("drafts")}
                     className={`h-10 shrink-0 rounded-xl px-5 text-sm font-medium transition-colors ${
                       filter === "drafts"
-                        ? "bg-amber-500 text-[hsl(var(--preview-bg))]"
-                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-amber-300"
+                        ? "bg-primary text-[hsl(var(--preview-bg))]"
+                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                     }`}
                     data-testid="button-history-filter-drafts"
                   >
@@ -326,8 +326,8 @@ export default function HistoryPage() {
                     onClick={() => setFilter("chats")}
                     className={`h-10 shrink-0 rounded-xl px-5 text-sm font-medium transition-colors ${
                       filter === "chats"
-                        ? "bg-amber-500 text-[hsl(var(--preview-bg))]"
-                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-amber-300"
+                        ? "bg-primary text-[hsl(var(--preview-bg))]"
+                        : "border border-[hsl(var(--preview-border))] text-[hsl(var(--preview-text-secondary))] hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                     }`}
                     data-testid="button-history-filter-chats"
                   >
@@ -339,7 +339,7 @@ export default function HistoryPage() {
 
             {historyLoading || threadsLoading ? (
               <div className="flex items-center justify-center py-16 preview-subtitle">
-                <Loader2 size={20} className="mr-2 animate-spin text-amber-400" /> Loading activity...
+                <Loader2 size={20} className="mr-2 animate-spin text-primary" /> Loading activity...
               </div>
             ) : historyError ? (
               <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
@@ -364,7 +364,7 @@ export default function HistoryPage() {
                       return (
                         <div
                           key={item.id}
-                          className="group w-full rounded-2xl border border-[hsl(var(--preview-border))/0.75] bg-[hsl(var(--preview-surface))/0.7] p-4 transition-all duration-200 hover:-translate-y-[1px] hover:border-amber-500/35 hover:bg-[hsl(var(--preview-surface-elevated))/0.75]"
+                          className="group w-full rounded-2xl border border-[hsl(var(--preview-border))/0.75] bg-[hsl(var(--preview-surface))/0.7] p-4 transition-all duration-200 hover:-translate-y-[1px] hover:border-primary/35 hover:bg-[hsl(var(--preview-surface-elevated))/0.75]"
                           data-testid={`history-activity-${item.id}`}
                         >
                           <div className="flex items-center justify-between gap-3">
@@ -374,7 +374,7 @@ export default function HistoryPage() {
                               </div>
 
                               <div className="min-w-0">
-                                <h4 className="truncate text-lg font-bold preview-title transition-colors group-hover:text-amber-300" style={{ fontFamily: "'Playfair Display', serif" }}>
+                                <h4 className="truncate text-lg font-bold preview-title transition-colors group-hover:text-primary" style={{ fontFamily: "'Playfair Display', serif" }}>
                                   {item.title}
                                 </h4>
                                 <p className="mt-1 flex items-center gap-2 text-sm preview-subtitle">
@@ -389,7 +389,7 @@ export default function HistoryPage() {
 
                             <button
                               onClick={() => handleAction(item)}
-                              className="shrink-0 rounded-lg bg-amber-500/10 px-4 py-2 text-sm font-bold text-amber-300 transition-colors hover:bg-amber-500 hover:text-[hsl(var(--preview-bg))]"
+                              className="shrink-0 rounded-lg bg-primary/10 px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary hover:text-[hsl(var(--preview-bg))]"
                               data-testid={`button-history-action-${item.id}`}
                             >
                               <span className="inline-flex items-center gap-2">
@@ -433,7 +433,7 @@ export default function HistoryPage() {
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {loadingThread ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 size={22} className="animate-spin text-amber-500" />
+                  <Loader2 size={22} className="animate-spin text-primary" />
                 </div>
               ) : threadMessages && threadMessages.length > 0 ? (
                 threadMessages.map((m) => {
@@ -444,7 +444,7 @@ export default function HistoryPage() {
                       <div
                         className={`max-w-[85%] rounded-2xl p-4 ${
                           m.role === "user"
-                            ? "bg-amber-500 text-[hsl(var(--preview-bg))] rounded-tr-sm"
+                            ? "bg-primary text-[hsl(var(--preview-bg))] rounded-tr-sm"
                             : "border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))] text-[hsl(var(--preview-text-primary))] rounded-tl-sm"
                         }`}
                       >

@@ -119,30 +119,30 @@ export default function StatuteSearchPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-2.5 fade-in" data-testid="statute-search-page">
-      <section className="relative rounded-2xl border border-amber-300/20 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.20),rgba(15,23,42,0.85)_45%,rgba(2,6,23,0.95)_100%)] px-4 py-4 sm:px-5 sm:py-5 shadow-[0_24px_40px_-28px_rgba(2,6,23,0.95)]">
-        <div className="pointer-events-none absolute -left-8 -top-10 h-36 w-36 rounded-full bg-amber-400/15 blur-2xl" />
+      <section className="relative rounded-2xl border border-primary/20 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.20),rgba(15,23,42,0.85)_45%,rgba(2,6,23,0.95)_100%)] px-4 py-4 sm:px-5 sm:py-5 shadow-[0_24px_40px_-28px_rgba(2,6,23,0.95)]">
+        <div className="pointer-events-none absolute -left-8 -top-10 h-36 w-36 rounded-full bg-primary/15 blur-2xl" />
         <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-blue-400/10 blur-2xl" />
         <div className="relative z-10 flex flex-col gap-3">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-[0.22em] font-black text-amber-200/80">Pakistani Statute Library</p>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-none tracking-tight text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <p className="text-[10px] uppercase tracking-[0.22em] font-black text-foreground/80">Pakistani Statute Library</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-none tracking-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Statute Search
               </h2>
-              <p className="text-xs sm:text-sm text-slate-200/85">Search, open, and navigate Acts, Codes, Ordinances, and Rules.</p>
+              <p className="text-xs sm:text-sm text-foreground/85">Search, open, and navigate Acts, Codes, Ordinances, and Rules.</p>
             </div>
-            <div className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl border border-amber-300/25 bg-[#111b2e]/70 text-amber-300 shadow-[0_16px_30px_-22px_rgba(251,191,36,0.9)]">
+            <div className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary/25 bg-[#111b2e]/70 text-primary shadow-[0_16px_30px_-22px_rgba(251,191,36,0.9)]">
               <Book size={18} />
             </div>
           </div>
 
           <div className="relative" ref={searchRef}>
-            <div className="flex items-center gap-2 rounded-2xl border border-amber-300/20 bg-[#0b1222]/75 p-2 shadow-[0_24px_42px_-28px_rgba(2,6,23,1)] backdrop-blur-md">
+            <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-[#0b1222]/75 p-2 shadow-[0_24px_42px_-28px_rgba(2,6,23,1)] backdrop-blur-md">
               <div className="flex items-center px-2">
-                <Search size={17} className="text-amber-300/80" />
+                <Search size={17} className="text-primary/80" />
               </div>
               <input
-                className="flex-1 bg-transparent border-none py-2 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-400"
+                className="flex-1 bg-transparent border-none py-2 text-sm text-foreground focus:ring-0 focus:outline-none placeholder:text-muted-foreground"
                 placeholder="Search statutes, acts, ordinances..."
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
@@ -156,16 +156,16 @@ export default function StatuteSearchPage() {
                     setSuggestions([]);
                     setShowDropdown(false);
                   }}
-                  className="p-2 text-slate-500 hover:text-white transition-colors"
+                  className="p-2 text-muted-foreground hover:text-foreground transition-colors"
                   data-testid="button-clear-search"
                 >
                   <X size={16} />
                 </button>
               )}
-              {isSearching && <Loader2 size={18} className="text-amber-500 animate-spin self-center mr-1" />}
+              {isSearching && <Loader2 size={18} className="text-primary animate-spin self-center mr-1" />}
               <button
                 onClick={() => handleQuickSearch(query)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200/70 bg-gradient-to-r from-amber-300 to-amber-400 px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-950 hover:from-amber-200 hover:to-amber-300 transition-all active:scale-95"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-primary/70 bg-gradient-to-r from-primary to-primary px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-950 hover:from-primary hover:to-primary transition-all active:scale-95"
                 data-testid="button-statute-search"
               >
                 <Search size={13} />
@@ -178,16 +178,16 @@ export default function StatuteSearchPage() {
                 {suggestions.map((doc) => (
                   <button
                     key={doc.id}
-                    className="w-full text-left px-4 py-3 hover:bg-slate-700/40 transition-colors border-b border-slate-800/80 last:border-b-0 flex items-center gap-3"
+                    className="w-full text-left px-4 py-3 hover:bg-muted/40 transition-colors border-b border-border/80 last:border-b-0 flex items-center gap-3"
                     onClick={() => handleSelectStatute(doc)}
                     data-testid={`dropdown-item-${doc.id}`}
                   >
-                    <div className="h-8 w-8 flex-shrink-0 rounded-lg border border-[hsl(var(--preview-border))] bg-[#0f172a] flex items-center justify-center">
-                      <FileText size={14} className="text-slate-400" />
+                    <div className="h-8 w-8 flex-shrink-0 rounded-lg border border-[hsl(var(--preview-border))] bg-background flex items-center justify-center">
+                      <FileText size={14} className="text-muted-foreground" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{doc.title}</p>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-[0.18em]">{doc.category}</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{doc.title}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-[0.18em]">{doc.category}</p>
                     </div>
                     <ChevronRight size={14} className="text-slate-600 flex-shrink-0 ml-auto" />
                   </button>
@@ -204,14 +204,14 @@ export default function StatuteSearchPage() {
         </div>
         <div className="relative z-10 h-full flex flex-col gap-2.5">
           <div className="flex items-center gap-2.5">
-            <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e] text-amber-400">
+            <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e] text-primary">
               <Book size={12} />
             </div>
             <div>
               <h4 className="text-sm sm:text-base font-bold leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Quick Statute Access
               </h4>
-              <p className="text-[9px] text-slate-500 uppercase tracking-[0.12em] font-bold">
+              <p className="text-[9px] text-muted-foreground uppercase tracking-[0.12em] font-bold">
                 Tap any reference to search instantly
               </p>
             </div>
@@ -219,24 +219,24 @@ export default function StatuteSearchPage() {
 
           <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
             {COMMON_STATUTES.map((cat, idx) => (
-              <article key={idx} className="h-full rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f172a]/90 backdrop-blur-md p-4 space-y-2.5">
+              <article key={idx} className="h-full rounded-xl border border-[hsl(var(--preview-border))] bg-background/90 backdrop-blur-md p-4 space-y-2.5">
                 <div className="pb-1 border-b border-[hsl(var(--preview-border))]">
-                  <h5 className="text-[10px] font-black uppercase tracking-[0.12em] text-amber-400 mb-1">{cat.category}</h5>
-                  <p className="text-[11px] text-slate-500 leading-snug text-justify">{cat.description}</p>
+                  <h5 className="text-[10px] font-black uppercase tracking-[0.12em] text-primary mb-1">{cat.category}</h5>
+                  <p className="text-[11px] text-muted-foreground leading-snug text-justify">{cat.description}</p>
                 </div>
                 <div className="space-y-1.5">
                   {cat.items.map((stat, i) => (
                     <button
                       key={i}
                       onClick={() => handleQuickSearch(stat.query)}
-                      className="w-full text-left rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e]/95 backdrop-blur-sm px-3 py-2 transition-all hover:border-amber-400/45 hover:bg-[#15233a] group"
+                      className="w-full text-left rounded-lg border border-[hsl(var(--preview-border))] bg-[#111b2e]/95 backdrop-blur-sm px-3 py-2 transition-all hover:border-primary/45 hover:bg-[#15233a] group"
                       data-testid={`statute-quick-${idx}-${i}`}
                     >
                       <div className="flex items-start justify-between gap-1.5 mb-0.5">
-                        <span className="text-[11px] font-semibold text-slate-200 group-hover:text-white transition-colors">{stat.label}</span>
-                        <ChevronRight size={11} className="text-slate-600 group-hover:text-amber-400 transition-colors flex-shrink-0" />
+                        <span className="text-[11px] font-semibold text-foreground group-hover:text-foreground transition-colors">{stat.label}</span>
+                        <ChevronRight size={11} className="text-slate-600 group-hover:text-primary transition-colors flex-shrink-0" />
                       </div>
-                      <p className="text-[10px] text-slate-500 group-hover:text-slate-400 transition-colors leading-snug text-justify">{stat.detail}</p>
+                      <p className="text-[10px] text-muted-foreground group-hover:text-muted-foreground transition-colors leading-snug text-justify">{stat.detail}</p>
                     </button>
                   ))}
                 </div>

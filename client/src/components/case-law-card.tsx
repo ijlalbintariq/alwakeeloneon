@@ -79,7 +79,7 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
               key={`${hit.citation}-${idx}`}
               type="button"
               onClick={() => onCitationClick(hit.citation)}
-              className="w-full text-left rounded-lg bg-slate-900/40 border border-cyan-500/15 hover:border-cyan-400/50 hover:bg-slate-900/60 transition-all p-2.5 group"
+              className="w-full text-left rounded-lg bg-background/40 border border-cyan-500/15 hover:border-cyan-400/50 hover:bg-background/60 transition-all p-2.5 group"
               data-testid={`case-law-card-hit-${idx}`}
             >
               <div className="flex items-start justify-between gap-2">
@@ -92,18 +92,18 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
                       </span>
                       {cited && (
                         <span
-                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30"
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/15 border border-primary/30"
                           title="AI also cited this case in its analysis"
                         >
-                          <Star size={9} className="text-amber-400 fill-amber-400" />
-                          <span className="text-[8px] font-bold uppercase tracking-wider text-amber-300">
+                          <Star size={9} className="text-primary fill-amber-400" />
+                          <span className="text-[8px] font-bold uppercase tracking-wider text-primary">
                             AI cited
                           </span>
                         </span>
                       )}
                     </div>
                     {hit.title && (
-                      <div className="text-[11px] text-slate-200 mt-0.5 line-clamp-1">
+                      <div className="text-[11px] text-foreground mt-0.5 line-clamp-1">
                         {hit.title}
                       </div>
                     )}
@@ -113,7 +113,7 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
                       </div>
                     )}
                     {hit.snippet && (
-                      <div className="text-[10.5px] text-slate-300/80 mt-1.5 line-clamp-2 leading-relaxed">
+                      <div className="text-[10.5px] text-foreground/80 mt-1.5 line-clamp-2 leading-relaxed">
                         {hit.snippet}
                       </div>
                     )}
@@ -151,7 +151,7 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
       )}
 
       {data.queriesUsed && data.queriesUsed.length > 0 && (
-        <div className="px-3 py-1.5 border-t border-cyan-500/15 bg-slate-900/30">
+        <div className="px-3 py-1.5 border-t border-cyan-500/15 bg-background/30">
           <span className="text-[9px] text-cyan-400/50 font-mono">
             Searched: {data.queriesUsed.join(" · ")}
           </span>

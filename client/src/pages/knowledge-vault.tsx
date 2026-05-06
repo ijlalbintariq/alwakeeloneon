@@ -144,7 +144,7 @@ function highlightText(text: string, query: string) {
   const parts = text.split(regex);
   return parts.map((part, idx) =>
     terms.some((term) => term === part.toLowerCase()) ? (
-      <mark key={`${part}-${idx}`} className="bg-amber-500/25 text-amber-300 rounded px-0.5">
+      <mark key={`${part}-${idx}`} className="bg-primary/25 text-primary rounded px-0.5">
         {part}
       </mark>
     ) : (
@@ -614,7 +614,7 @@ export default function KnowledgeVaultPage() {
   };
 
   return (
-    <div className="h-full overflow-hidden rounded-[1.25rem] border border-[hsl(var(--preview-border))] preview-bg text-slate-100 shadow-2xl" data-testid="knowledge-vault-page">
+    <div className="h-full overflow-hidden rounded-[1.25rem] border border-[hsl(var(--preview-border))] preview-bg text-foreground shadow-2xl" data-testid="knowledge-vault-page">
       <input
         ref={uploadInputRef}
         type="file"
@@ -630,7 +630,7 @@ export default function KnowledgeVaultPage() {
             <button
               onClick={() => setView("home")}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                (view as string) === "home" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+                (view as string) === "home" ? "bg-primary text-[#1e1406] border-primary" : "border-primary/30 text-foreground hover:text-foreground"
               }`}
             >
               Home
@@ -638,7 +638,7 @@ export default function KnowledgeVaultPage() {
             <button
               onClick={() => setView("uploads")}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                (view as string) === "uploads" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+                (view as string) === "uploads" ? "bg-primary text-[#1e1406] border-primary" : "border-primary/30 text-foreground hover:text-foreground"
               }`}
             >
               My Uploads
@@ -668,40 +668,40 @@ export default function KnowledgeVaultPage() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <div className="text-5xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <div className="text-5xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
                     {processingPercent}
-                    <span className="text-2xl text-amber-400">%</span>
+                    <span className="text-2xl text-primary">%</span>
                   </div>
-                  <p className="text-[11px] text-amber-400 uppercase tracking-widest font-black mt-1">Processing</p>
-                  <p className="text-sm text-slate-400 mt-2">Analyzing {uploadState.total} document{uploadState.total !== 1 ? "s" : ""}...</p>
+                  <p className="text-[11px] text-primary uppercase tracking-widest font-black mt-1">Processing</p>
+                  <p className="text-sm text-muted-foreground mt-2">Analyzing {uploadState.total} document{uploadState.total !== 1 ? "s" : ""}...</p>
                   {uploadState.currentFile && (
-                    <p className="text-xs text-slate-500 mt-1 max-w-[210px] truncate">{uploadState.currentFile}</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-[210px] truncate">{uploadState.currentFile}</p>
                   )}
                 </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-5 w-full">
-                <div className="rounded-2xl border border-amber-500/20 bg-black/20 backdrop-blur-xl p-5">
-                  <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    <Sparkles size={16} className="text-amber-400" /> Extracted Key Terms
+                <div className="rounded-2xl border border-primary/20 bg-black/20 backdrop-blur-xl p-5">
+                  <h3 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <Sparkles size={16} className="text-primary" /> Extracted Key Terms
                   </h3>
                   <div className="space-y-2 text-sm">
                     {terms.length > 0 ? (
                       terms.map((term, i) => (
-                        <div key={`${term}-${i}`} className="flex items-center justify-between text-slate-300">
+                        <div key={`${term}-${i}`} className="flex items-center justify-between text-foreground">
                           <span>{term}</span>
                           <span className="text-emerald-400 text-xs font-mono">{i < Math.max(1, uploadState.completed) ? "Found" : "Indexing..."}</span>
                         </div>
                       ))
                     ) : (
-                      <div className="text-slate-500 text-sm">Waiting for extracted text...</div>
+                      <div className="text-muted-foreground text-sm">Waiting for extracted text...</div>
                     )}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-amber-500/20 bg-black/20 backdrop-blur-xl p-5">
-                  <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    <BookOpen size={16} className="text-amber-400" /> Concepts Identified
+                <div className="rounded-2xl border border-primary/20 bg-black/20 backdrop-blur-xl p-5">
+                  <h3 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <BookOpen size={16} className="text-primary" /> Concepts Identified
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {(concepts.length > 0 ? concepts : ["Pending extraction"]).map((concept, i) => (
@@ -709,8 +709,8 @@ export default function KnowledgeVaultPage() {
                         key={`${concept}-${i}`}
                         className={`px-3 py-1 rounded-full text-xs border ${
                           concepts.length > 0
-                            ? "bg-amber-500/10 border-amber-500/25 text-amber-300"
-                            : "bg-white/5 border-white/10 text-slate-500"
+                            ? "bg-primary/10 border-primary/25 text-primary"
+                            : "bg-white/5 border-white/10 text-muted-foreground"
                         }`}
                       >
                         {concept}
@@ -720,7 +720,7 @@ export default function KnowledgeVaultPage() {
                 </div>
               </div>
 
-              <div className="px-6 py-3 rounded-xl border border-amber-500/20 bg-black/20 text-slate-400 text-sm">
+              <div className="px-6 py-3 rounded-xl border border-primary/20 bg-black/20 text-muted-foreground text-sm">
                 {processingPercent < 100 ? "Please wait while we calibrate your vault..." : "Finalizing vault index..."}
               </div>
             </div>
@@ -729,20 +729,20 @@ export default function KnowledgeVaultPage() {
 
         {view === "home" && (
           <div className="px-4 md:px-6 lg:px-8 py-5 md:py-6 space-y-5">
-            <div className="w-full rounded-3xl border border-amber-500/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.16),rgba(15,23,42,0.82)_45%,rgba(2,6,23,0.95)_100%)] p-4 md:p-6 shadow-[0_28px_48px_-34px_rgba(2,6,23,1)]">
+            <div className="w-full rounded-3xl border border-primary/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.16),rgba(15,23,42,0.82)_45%,rgba(2,6,23,0.95)_100%)] p-4 md:p-6 shadow-[0_28px_48px_-34px_rgba(2,6,23,1)]">
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] font-black text-amber-200/75 mb-2">Knowledge Vault</p>
-                  <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight text-left" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    Your Personalized <span className="text-amber-300">AI Legal Vault</span>
+                  <p className="text-[10px] uppercase tracking-[0.22em] font-black text-foreground/75 mb-2">Knowledge Vault</p>
+                  <h1 className="text-3xl md:text-5xl font-bold text-foreground leading-tight text-left" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    Your Personalized <span className="text-primary">AI Legal Vault</span>
                   </h1>
-                  <p className="text-sm text-slate-300 mt-2">Private legal memory, trained on your own uploaded case material.</p>
+                  <p className="text-sm text-foreground mt-2">Private legal memory, trained on your own uploaded case material.</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setView("home")}
                     className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                      (view as string) === "home" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+                      (view as string) === "home" ? "bg-primary text-[#1e1406] border-primary" : "border-primary/30 text-foreground hover:text-foreground"
                     }`}
                   >
                     Home
@@ -750,16 +750,16 @@ export default function KnowledgeVaultPage() {
                   <button
                     onClick={() => setView("uploads")}
                     className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                      (view as string) === "uploads" ? "bg-amber-500 text-[#1e1406] border-amber-400" : "border-amber-500/30 text-slate-300 hover:text-white"
+                      (view as string) === "uploads" ? "bg-primary text-[#1e1406] border-primary" : "border-primary/30 text-foreground hover:text-foreground"
                     }`}
                   >
                     My Uploads
                   </button>
                 </div>
               </div>
-              <div className="mt-5 w-full rounded-2xl border border-amber-300/25 bg-[#0b1222]/70 p-2.5 backdrop-blur-md">
+              <div className="mt-5 w-full rounded-2xl border border-primary/25 bg-[#0b1222]/70 p-2.5 backdrop-blur-md">
                 <div className="flex items-center gap-2 rounded-xl bg-black/25 border border-white/5">
-                  <Search size={18} className="text-amber-300 ml-4" />
+                  <Search size={18} className="text-primary ml-4" />
                   <input
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
@@ -767,11 +767,11 @@ export default function KnowledgeVaultPage() {
                       if (e.key === "Enter") handleSearch();
                     }}
                     placeholder="Search your private files..."
-                    className="w-full bg-transparent py-3 text-white placeholder:text-slate-500 outline-none"
+                    className="w-full bg-transparent py-3 text-foreground placeholder:text-muted-foreground outline-none"
                   />
                   <button
                     onClick={() => handleSearch()}
-                    className="mr-2 px-5 py-2 rounded-lg bg-gradient-to-r from-amber-300 to-amber-400 hover:from-amber-200 hover:to-amber-300 text-[#211507] font-black text-sm"
+                    className="mr-2 px-5 py-2 rounded-lg bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-primary text-[#211507] font-black text-sm"
                   >
                     Search Vault
                   </button>
@@ -782,81 +782,81 @@ export default function KnowledgeVaultPage() {
 
             <div className="mt-6 grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-8 space-y-4">
-                <div className="rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-500/12 to-transparent p-5 md:p-6 flex flex-col md:flex-row gap-5 justify-between shadow-[0_20px_40px_-30px_rgba(251,191,36,0.5)]">
+                <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/12 to-transparent p-5 md:p-6 flex flex-col md:flex-row gap-5 justify-between shadow-[0_20px_40px_-30px_rgba(251,191,36,0.5)]">
                   <div className="flex-1">
-                    <h3 className="text-xl text-white font-bold flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-                      <Sparkles size={18} className="text-amber-400" />
+                    <h3 className="text-xl text-foreground font-bold flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                      <Sparkles size={18} className="text-primary" />
                       Personal AI Training
                     </h3>
-                    <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                    <p className="text-sm text-foreground mt-2 leading-relaxed">
                       Upload your case files and legal drafts. These documents stay private to your account and are used as context for your AI workflows.
                     </p>
-                    <p className="text-xs text-slate-500 mt-2">End-to-end encrypted • Private to your account</p>
+                    <p className="text-xs text-muted-foreground mt-2">End-to-end encrypted • Private to your account</p>
                   </div>
                   <button
                     onClick={openUploader}
-                    className="shrink-0 rounded-xl border-2 border-dashed border-amber-500/40 hover:border-amber-400 bg-black/20 hover:bg-amber-500/10 px-8 py-5 text-center"
+                    className="shrink-0 rounded-xl border-2 border-dashed border-primary/40 hover:border-primary bg-black/20 hover:bg-primary/10 px-8 py-5 text-center"
                   >
-                    <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/15 text-amber-400 flex items-center justify-center">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-primary/15 text-primary flex items-center justify-center">
                       <Upload size={18} />
                     </div>
-                    <p className="text-sm text-slate-200 mt-2 font-medium">Upload for AI Training</p>
-                    <p className="text-xs text-slate-500 mt-1">PDF, DOCX, TXT, CSV, JSON</p>
+                    <p className="text-sm text-foreground mt-2 font-medium">Upload for AI Training</p>
+                    <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, TXT, CSV, JSON</p>
                   </button>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>Legal Domains</h3>
-                    <button onClick={() => setView("uploads")} className="text-sm text-amber-300 hover:text-white font-semibold">
+                    <h3 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>Legal Domains</h3>
+                    <button onClick={() => setView("uploads")} className="text-sm text-primary hover:text-foreground font-semibold">
                       Manage Sources
                     </button>
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 hover:border-amber-400/60 transition-colors">
+                    <div className="rounded-2xl border border-primary/30 bg-primary/10 p-5 hover:border-primary/60 transition-colors">
                       <div className="flex items-center justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500 text-[#2a1904] flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-primary text-[#2a1904] flex items-center justify-center">
                           <FolderOpen size={17} />
                         </div>
-                        <span className="text-xs text-amber-300 font-bold uppercase">Active</span>
+                        <span className="text-xs text-primary font-bold uppercase">Active</span>
                       </div>
-                      <p className="text-white text-lg mt-3 font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>My Uploaded Files</p>
-                      <p className="text-sm text-slate-400 mt-1">Private files in your account vault.</p>
-                      <p className="text-2xl text-white mt-3 font-bold">{stats.total} <span className="text-sm text-slate-400 font-medium">Documents</span></p>
+                      <p className="text-foreground text-lg mt-3 font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>My Uploaded Files</p>
+                      <p className="text-sm text-muted-foreground mt-1">Private files in your account vault.</p>
+                      <p className="text-2xl text-foreground mt-3 font-bold">{stats.total} <span className="text-sm text-muted-foreground font-medium">Documents</span></p>
                     </div>
                     {topDomainCards.map((item) => (
-                      <div key={item.key} className="rounded-2xl border border-amber-500/20 bg-black/20 p-5 hover:border-amber-400/40 transition-colors">
+                      <div key={item.key} className="rounded-2xl border border-primary/20 bg-black/20 p-5 hover:border-primary/40 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                             <Gavel size={16} />
                           </div>
-                          <span className="text-xs text-slate-500 font-mono">Live</span>
+                          <span className="text-xs text-muted-foreground font-mono">Live</span>
                         </div>
-                        <p className="text-white text-lg mt-3 font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>{item.label}</p>
-                        <p className="text-sm text-slate-400 mt-1">Detected from your uploaded document content.</p>
-                        <p className="text-xl text-white mt-3 font-bold">{item.count}</p>
+                        <p className="text-foreground text-lg mt-3 font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>{item.label}</p>
+                        <p className="text-sm text-muted-foreground mt-1">Detected from your uploaded document content.</p>
+                        <p className="text-xl text-foreground mt-3 font-bold">{item.count}</p>
                       </div>
                     ))}
                     {stats.total === 0 && (
-                      <div className="rounded-2xl border border-amber-500/20 bg-black/20 p-5 sm:col-span-2">
-                        <p className="text-slate-300 text-sm">Upload documents to generate domains and sources.</p>
+                      <div className="rounded-2xl border border-primary/20 bg-black/20 p-5 sm:col-span-2">
+                        <p className="text-foreground text-sm">Upload documents to generate domains and sources.</p>
                       </div>
                     )}
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-amber-500/20 bg-black/20 p-5">
+                  <div className="mt-4 rounded-2xl border border-primary/20 bg-black/20 p-5">
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-lg text-white font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Sources</h4>
-                      {isBackfilling && <span className="text-xs text-amber-300">Updating domain insights...</span>}
+                      <h4 className="text-lg text-foreground font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Sources</h4>
+                      {isBackfilling && <span className="text-xs text-primary">Updating domain insights...</span>}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {sourceCounts.length > 0 ? sourceCounts.map((source) => (
-                        <span key={source.key} className="px-3 py-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 text-xs text-amber-200">
-                          {source.label}: <span className="font-bold text-white">{source.count}</span>
+                        <span key={source.key} className="px-3 py-1.5 rounded-full border border-primary/25 bg-primary/10 text-xs text-foreground">
+                          {source.label}: <span className="font-bold text-foreground">{source.count}</span>
                         </span>
                       )) : (
-                        <span className="text-sm text-slate-500">No upload sources detected yet.</span>
+                        <span className="text-sm text-muted-foreground">No upload sources detected yet.</span>
                       )}
                     </div>
                   </div>
@@ -864,20 +864,20 @@ export default function KnowledgeVaultPage() {
               </div>
 
               <aside className="xl:col-span-4">
-                <div className="rounded-2xl border border-amber-500/20 bg-black/20 h-full p-4 shadow-[0_20px_36px_-30px_rgba(2,6,23,1)]">
-                  <div className="flex items-center justify-between pb-3 border-b border-amber-500/20">
-                    <h3 className="text-lg text-white font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>AI Insights & Updates</h3>
-                    <Sparkles size={16} className="text-amber-400" />
+                <div className="rounded-2xl border border-primary/20 bg-black/20 h-full p-4 shadow-[0_20px_36px_-30px_rgba(2,6,23,1)]">
+                  <div className="flex items-center justify-between pb-3 border-b border-primary/20">
+                    <h3 className="text-lg text-foreground font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>AI Insights & Updates</h3>
+                    <Sparkles size={16} className="text-primary" />
                   </div>
                   <div className="mt-3 space-y-2">
                     {insights.map((item, idx) => (
-                      <div key={`${item.title}-${idx}`} className="p-3 rounded-xl border border-amber-500/15 bg-amber-500/5 hover:border-amber-400/35 transition-colors">
+                      <div key={`${item.title}-${idx}`} className="p-3 rounded-xl border border-primary/15 bg-primary/5 hover:border-primary/35 transition-colors">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500 text-[#291904] font-black uppercase">{item.tag}</span>
-                          <span className="text-xs text-slate-500">{idx === 0 ? "Just now" : "Recent"}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-primary text-[#291904] font-black uppercase">{item.tag}</span>
+                          <span className="text-xs text-muted-foreground">{idx === 0 ? "Just now" : "Recent"}</span>
                         </div>
-                        <p className="text-sm text-white font-medium">{item.title}</p>
-                        <p className="text-xs text-slate-400 mt-1">{item.description}</p>
+                        <p className="text-sm text-foreground font-medium">{item.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
                       </div>
                     ))}
                   </div>
@@ -889,12 +889,12 @@ export default function KnowledgeVaultPage() {
 
         {view === "uploads" && (
           <div className="h-full px-4 md:px-6 lg:px-8 py-4 md:py-5 flex flex-col gap-4">
-            <div className="rounded-3xl border border-amber-500/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.14),rgba(15,23,42,0.82)_46%,rgba(2,6,23,0.95)_100%)] p-4 md:p-5 shadow-[0_24px_42px_-32px_rgba(2,6,23,1)]">
+            <div className="rounded-3xl border border-primary/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.14),rgba(15,23,42,0.82)_46%,rgba(2,6,23,0.95)_100%)] p-4 md:p-5 shadow-[0_24px_42px_-32px_rgba(2,6,23,1)]">
               <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] font-black text-amber-200/75 mb-2">Knowledge Vault</p>
-                  <h1 className="text-2xl md:text-4xl font-bold text-white mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>My Uploaded Files</h1>
-                  <p className="text-slate-300 mt-2 text-sm">Manage private legal documents, indexing status, and source health.</p>
+                  <p className="text-[10px] uppercase tracking-[0.22em] font-black text-foreground/75 mb-2">Knowledge Vault</p>
+                  <h1 className="text-2xl md:text-4xl font-bold text-foreground mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>My Uploaded Files</h1>
+                  <p className="text-foreground mt-2 text-sm">Manage private legal documents, indexing status, and source health.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {(documents.length > 0 && !showDeleteAllConfirm) && (
@@ -913,13 +913,13 @@ export default function KnowledgeVaultPage() {
                       <button
                         onClick={() => deleteAllMutation.mutate()}
                         disabled={deleteAllMutation.isPending}
-                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest"
+                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-foreground text-[10px] font-black uppercase tracking-widest"
                       >
                         {deleteAllMutation.isPending ? "Deleting..." : "Confirm"}
                       </button>
                       <button
                         onClick={() => setShowDeleteAllConfirm(false)}
-                        className="px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 text-[10px] font-black uppercase tracking-widest"
+                        className="px-3 py-1.5 rounded-lg border border-white/15 text-foreground text-[10px] font-black uppercase tracking-widest"
                       >
                         Cancel
                       </button>
@@ -928,7 +928,7 @@ export default function KnowledgeVaultPage() {
 
                   <button
                     onClick={openUploader}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-300 to-amber-400 hover:from-amber-200 hover:to-amber-300 text-[#251607] font-black flex items-center gap-2"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-primary text-[#251607] font-black flex items-center gap-2"
                   >
                     <Upload size={16} /> Upload New
                   </button>
@@ -946,29 +946,29 @@ export default function KnowledgeVaultPage() {
               </div>
 
               <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="rounded-xl border border-amber-500/25 bg-black/25 p-3.5">
-                  <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Total Files</p>
-                  <p className="text-2xl text-white font-bold mt-1">{stats.total}</p>
+                <div className="rounded-xl border border-primary/25 bg-black/25 p-3.5">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold">Total Files</p>
+                  <p className="text-2xl text-foreground font-bold mt-1">{stats.total}</p>
                 </div>
                 <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3.5">
                   <p className="text-[11px] uppercase tracking-wider text-emerald-300 font-bold">Fully Trained</p>
-                  <p className="text-2xl text-white font-bold mt-1">{stats.trained}</p>
+                  <p className="text-2xl text-foreground font-bold mt-1">{stats.trained}</p>
                 </div>
-                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3.5">
-                  <p className="text-[11px] uppercase tracking-wider text-amber-300 font-bold">Processing</p>
-                  <p className="text-2xl text-white font-bold mt-1">{stats.processing}</p>
+                <div className="rounded-xl border border-primary/25 bg-primary/10 p-3.5">
+                  <p className="text-[11px] uppercase tracking-wider text-primary font-bold">Processing</p>
+                  <p className="text-2xl text-foreground font-bold mt-1">{stats.processing}</p>
                 </div>
                 <div className="rounded-xl border border-red-500/25 bg-red-500/10 p-3.5">
                   <p className="text-[11px] uppercase tracking-wider text-red-300 font-bold">Issues</p>
-                  <p className="text-2xl text-white font-bold mt-1">{stats.failed}</p>
+                  <p className="text-2xl text-foreground font-bold mt-1">{stats.failed}</p>
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 rounded-2xl border border-amber-500/20 bg-black/20 overflow-hidden flex flex-col">
-              <div className="p-3 md:p-4 border-b border-amber-500/15 flex flex-col lg:flex-row gap-3 justify-between">
+            <div className="flex-1 min-h-0 rounded-2xl border border-primary/20 bg-black/20 overflow-hidden flex flex-col">
+              <div className="p-3 md:p-4 border-b border-primary/15 flex flex-col lg:flex-row gap-3 justify-between">
                 <div className="relative w-full lg:max-w-sm">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input
                     value={uploadSearch}
                     onChange={(e) => {
@@ -976,7 +976,7 @@ export default function KnowledgeVaultPage() {
                       setUploadPage(1);
                     }}
                     placeholder="Search documents..."
-                    className="w-full rounded-lg border border-white/15 bg-white/5 pl-9 pr-3 py-2 text-sm text-white placeholder:text-slate-500 outline-none focus:border-amber-500/40"
+                    className="w-full rounded-lg border border-white/15 bg-white/5 pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/40"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -986,7 +986,7 @@ export default function KnowledgeVaultPage() {
                       setTypeFilter(e.target.value as TypeFilter);
                       setUploadPage(1);
                     }}
-                    className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none"
+                    className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-foreground outline-none"
                   >
                     <option value="all">All Types</option>
                     <option value="pdf">PDF</option>
@@ -1001,7 +1001,7 @@ export default function KnowledgeVaultPage() {
                       setStatusFilter(e.target.value as StatusFilter);
                       setUploadPage(1);
                     }}
-                    className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none"
+                    className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-foreground outline-none"
                   >
                     <option value="all">All Status</option>
                     <option value="trained">Trained</option>
@@ -1013,7 +1013,7 @@ export default function KnowledgeVaultPage() {
               <div className="flex-1 min-h-0 overflow-auto w-full">
                 <table className="w-full min-w-[980px]">
                   <thead className="sticky top-0 z-10">
-                    <tr className="text-left text-xs uppercase tracking-wider text-slate-400 bg-[#111a2c]">
+                    <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-[#111a2c]">
                       <th className="px-8 py-4">Document Name</th>
                       <th className="px-8 py-4">Upload Date</th>
                       <th className="px-8 py-4">File Size</th>
@@ -1023,20 +1023,20 @@ export default function KnowledgeVaultPage() {
                   </thead>
                   <tbody>
                     {uploadRows.map((doc) => (
-                      <tr key={doc.id} className="border-t border-white/10 hover:bg-amber-500/5">
+                      <tr key={doc.id} className="border-t border-white/10 hover:bg-primary/5">
                         <td className="px-8 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg border border-white/10 bg-black/30 flex items-center justify-center text-[10px] font-bold text-amber-300 uppercase">
+                            <div className="w-10 h-10 rounded-lg border border-white/10 bg-black/30 flex items-center justify-center text-[10px] font-bold text-primary uppercase">
                               {doc.extension === "other" ? "FILE" : doc.extension}
                             </div>
                             <div>
-                              <p className="text-sm text-white font-medium">{doc.title}</p>
-                              <p className="text-xs text-slate-500">{doc.domainLabel}</p>
+                              <p className="text-sm text-foreground font-medium">{doc.title}</p>
+                              <p className="text-xs text-muted-foreground">{doc.domainLabel}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-8 py-4 text-sm text-slate-300">{formatDate(doc.createdAt)}</td>
-                        <td className="px-8 py-4 text-sm text-slate-400">{formatBytes(doc.approxBytes)}</td>
+                        <td className="px-8 py-4 text-sm text-foreground">{formatDate(doc.createdAt)}</td>
+                        <td className="px-8 py-4 text-sm text-muted-foreground">{formatBytes(doc.approxBytes)}</td>
                         <td className="px-8 py-4">
                           {doc.status === "trained" ? (
                             <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
@@ -1052,14 +1052,14 @@ export default function KnowledgeVaultPage() {
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => void openSourceDoc(doc)}
-                              className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10"
+                              className="p-2 rounded-lg text-foreground hover:text-foreground hover:bg-white/10"
                               title="View"
                             >
                               <Eye size={16} />
                             </button>
                             <button
                               onClick={() => downloadDoc(doc)}
-                              className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10"
+                              className="p-2 rounded-lg text-foreground hover:text-foreground hover:bg-white/10"
                               title="Download"
                             >
                               <Download size={16} />
@@ -1067,7 +1067,7 @@ export default function KnowledgeVaultPage() {
                             <button
                               onClick={() => indexDocumentForRag(doc)}
                               disabled={Boolean(ragIndexingIds[doc.id])}
-                              className="p-2 rounded-lg text-slate-300 hover:text-emerald-300 hover:bg-emerald-500/15 disabled:opacity-50"
+                              className="p-2 rounded-lg text-foreground hover:text-emerald-300 hover:bg-emerald-500/15 disabled:opacity-50"
                               title="Index for RAG"
                             >
                               {ragIndexingIds[doc.id] ? <Loader2 size={16} className="animate-spin" /> : <Cpu size={16} />}
@@ -1075,7 +1075,7 @@ export default function KnowledgeVaultPage() {
                             <button
                               onClick={() => deleteMutation.mutate(doc.id)}
                               disabled={deleteMutation.isPending}
-                              className="p-2 rounded-lg text-slate-300 hover:text-red-300 hover:bg-red-500/15 disabled:opacity-60"
+                              className="p-2 rounded-lg text-foreground hover:text-red-300 hover:bg-red-500/15 disabled:opacity-60"
                               title="Delete"
                             >
                               <Trash2 size={16} />
@@ -1086,7 +1086,7 @@ export default function KnowledgeVaultPage() {
                     ))}
                     {!isLoading && uploadRows.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-8 py-10 text-center text-slate-500">
+                        <td colSpan={5} className="px-8 py-10 text-center text-muted-foreground">
                           No documents match your current filters.
                         </td>
                       </tr>
@@ -1095,7 +1095,7 @@ export default function KnowledgeVaultPage() {
                 </table>
               </div>
 
-              <div className="px-5 py-3 border-t border-amber-500/15 flex items-center justify-between text-sm text-slate-500">
+              <div className="px-5 py-3 border-t border-primary/15 flex items-center justify-between text-sm text-muted-foreground">
                 <span>
                   Showing {uploadRows.length === 0 ? 0 : (uploadPage - 1) * uploadPageSize + 1}-
                   {Math.min(uploadPage * uploadPageSize, filteredUploads.length)} of {filteredUploads.length}
@@ -1108,7 +1108,7 @@ export default function KnowledgeVaultPage() {
                   >
                     <ChevronLeft size={15} />
                   </button>
-                  <span className="px-3 py-1 rounded-lg bg-amber-500 text-[#2b1b06] font-bold">{uploadPage}</span>
+                  <span className="px-3 py-1 rounded-lg bg-primary text-[#2b1b06] font-bold">{uploadPage}</span>
                   <button
                     onClick={() => setUploadPage((p) => Math.min(uploadPageCount, p + 1))}
                     disabled={uploadPage >= uploadPageCount}
@@ -1124,30 +1124,30 @@ export default function KnowledgeVaultPage() {
 
         {view === "results" && (
           <div className="h-full px-4 md:px-6 lg:px-8 py-4 md:py-5 flex flex-col gap-4">
-            <div className="rounded-3xl border border-amber-500/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.14),rgba(15,23,42,0.82)_46%,rgba(2,6,23,0.95)_100%)] p-4 md:p-5 shadow-[0_24px_42px_-32px_rgba(2,6,23,1)]">
+            <div className="rounded-3xl border border-primary/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.14),rgba(15,23,42,0.82)_46%,rgba(2,6,23,0.95)_100%)] p-4 md:p-5 shadow-[0_24px_42px_-32px_rgba(2,6,23,1)]">
               <div className="flex flex-col xl:flex-row xl:items-center gap-4 justify-between">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] font-black text-amber-200/75 mb-2">Knowledge Vault Search</p>
-                  <h2 className="text-2xl md:text-4xl text-white font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Results from Your Private Files</h2>
-                  <p className="text-sm text-slate-300 mt-2">Fast semantic retrieval with citation-ready snippets.</p>
+                  <p className="text-[10px] uppercase tracking-[0.22em] font-black text-foreground/75 mb-2">Knowledge Vault Search</p>
+                  <h2 className="text-2xl md:text-4xl text-foreground font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Results from Your Private Files</h2>
+                  <p className="text-sm text-foreground mt-2">Fast semantic retrieval with citation-ready snippets.</p>
                 </div>
-                <div className="text-sm text-slate-300">
-                  Found <strong className="text-white">{results.length}</strong> result{results.length !== 1 ? "s" : ""}
+                <div className="text-sm text-foreground">
+                  Found <strong className="text-foreground">{results.length}</strong> result{results.length !== 1 ? "s" : ""}
                 </div>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-amber-300/25 bg-[#0b1222]/70 p-2.5 backdrop-blur-md">
+              <div className="mt-4 rounded-2xl border border-primary/25 bg-[#0b1222]/70 p-2.5 backdrop-blur-md">
                 <div className="flex items-center gap-2 rounded-xl bg-black/25 border border-white/5">
-                  <Search size={17} className="text-amber-400 ml-4" />
+                  <Search size={17} className="text-primary ml-4" />
                   <input
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleSearch();
                     }}
-                    className="w-full bg-transparent py-2.5 text-white placeholder:text-slate-500 outline-none"
+                    className="w-full bg-transparent py-2.5 text-foreground placeholder:text-muted-foreground outline-none"
                   />
-                  <button onClick={() => handleSearch()} className="mr-2 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-300 to-amber-400 text-[#2b1b06] font-black text-sm">
+                  <button onClick={() => handleSearch()} className="mr-2 px-4 py-2 rounded-lg bg-gradient-to-r from-primary to-primary text-[#2b1b06] font-black text-sm">
                     Search
                   </button>
                 </div>
@@ -1155,17 +1155,17 @@ export default function KnowledgeVaultPage() {
             </div>
 
             <div className="flex-1 min-h-0 grid lg:grid-cols-12 gap-4">
-              <aside className="lg:col-span-3 rounded-2xl border border-amber-500/20 bg-black/20 p-4 overflow-y-auto">
-                <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
-                  <h3 className="text-lg font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>Filters</h3>
-                  <button onClick={clearFilters} className="text-xs text-slate-400 hover:text-amber-300">Clear All</button>
+              <aside className="lg:col-span-3 rounded-2xl border border-primary/20 bg-black/20 p-4 overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-primary/20 pb-2">
+                  <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>Filters</h3>
+                  <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-primary">Clear All</button>
                 </div>
 
                 <div className="mt-4">
-                  <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">Legal Domain</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-2">Legal Domain</p>
                   <div className="space-y-2 text-sm">
                     {domainCounts.map((item) => (
-                      <label key={item.key} className="flex items-center gap-2 cursor-pointer text-slate-300">
+                      <label key={item.key} className="flex items-center gap-2 cursor-pointer text-foreground">
                         <input
                           type="checkbox"
                           checked={domainFilters[item.key] ?? true}
@@ -1173,18 +1173,18 @@ export default function KnowledgeVaultPage() {
                             setDomainFilters((prev) => ({ ...prev, [item.key]: e.target.checked }));
                             setResultPage(1);
                           }}
-                          className="rounded border-slate-600 bg-transparent text-amber-500 focus:ring-amber-500/40"
+                          className="rounded border-border bg-transparent text-primary focus:ring-primary/40"
                         />
                         {item.label} ({item.count})
                       </label>
                     ))}
-                    {domainCounts.length === 0 && <p className="text-xs text-slate-500">Upload documents to enable domain filters.</p>}
+                    {domainCounts.length === 0 && <p className="text-xs text-muted-foreground">Upload documents to enable domain filters.</p>}
                   </div>
                 </div>
 
                 <div className="mt-4">
-                  <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">Date Range</p>
-                  <div className="space-y-2 text-sm text-slate-300">
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-2">Date Range</p>
+                  <div className="space-y-2 text-sm text-foreground">
                     {([
                       { key: "any", label: "Any time" },
                       { key: "year", label: "Past Year" },
@@ -1199,7 +1199,7 @@ export default function KnowledgeVaultPage() {
                             setDateFilter(item.key);
                             setResultPage(1);
                           }}
-                          className="border-slate-600 bg-transparent text-amber-500 focus:ring-amber-500/40"
+                          className="border-border bg-transparent text-primary focus:ring-primary/40"
                         />
                         {item.label}
                       </label>
@@ -1208,14 +1208,14 @@ export default function KnowledgeVaultPage() {
                 </div>
 
                 <div className="mt-4">
-                  <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">Jurisdiction</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-2">Jurisdiction</p>
                   <select
                     value={jurisdictionFilter}
                     onChange={(e) => {
                       setJurisdictionFilter(e.target.value as JurisdictionFilter);
                       setResultPage(1);
                     }}
-                    className="w-full rounded-lg border border-white/15 bg-black/25 px-3 py-2 text-sm text-slate-200"
+                    className="w-full rounded-lg border border-white/15 bg-black/25 px-3 py-2 text-sm text-foreground"
                   >
                     <option value="all">All Jurisdictions</option>
                     <option value="supreme-court">Supreme Court</option>
@@ -1224,37 +1224,37 @@ export default function KnowledgeVaultPage() {
                   </select>
                 </div>
 
-                <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-slate-300">
-                  <p className="text-amber-300 font-bold mb-1">Search Tip</p>
+                <div className="mt-4 rounded-xl border border-primary/25 bg-primary/10 p-3 text-xs text-foreground">
+                  <p className="text-primary font-bold mb-1">Search Tip</p>
                   Use focused legal phrases for better ranking across your private documents.
                 </div>
               </aside>
 
-              <section className="lg:col-span-9 rounded-2xl border border-amber-500/20 bg-black/20 p-3 md:p-4 min-h-0 overflow-y-auto space-y-3">
+              <section className="lg:col-span-9 rounded-2xl border border-primary/20 bg-black/20 p-3 md:p-4 min-h-0 overflow-y-auto space-y-3">
                 {resultRows.map(({ doc, score, snippet }) => (
-                  <article key={doc.id} className="rounded-2xl border border-amber-500/20 bg-black/20 p-4 hover:border-amber-400/30 transition">
+                  <article key={doc.id} className="rounded-2xl border border-primary/20 bg-black/20 p-4 hover:border-primary/30 transition">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="px-2 py-0.5 rounded border border-white/15 bg-black/30 uppercase">{doc.extension}</span>
                         <span>Uploaded on {formatDate(doc.createdAt)}</span>
                       </div>
                       <button
                         onClick={() => citeResult(doc, snippet)}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500 text-[#291904] text-xs font-bold hover:bg-amber-400"
+                        className="px-3 py-1.5 rounded-lg bg-primary text-[#291904] text-xs font-bold hover:bg-primary"
                       >
                         Cite in Chat
                       </button>
                     </div>
 
-                    <h3 className="mt-2 text-xl text-white font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <h3 className="mt-2 text-xl text-foreground font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
                       {doc.title}
                     </h3>
 
-                    <p className="mt-2 text-sm text-slate-300 leading-relaxed border-l-2 border-amber-500/60 pl-3">
+                    <p className="mt-2 text-sm text-foreground leading-relaxed border-l-2 border-primary/60 pl-3">
                       {highlightText(snippet, activeQuery)}
                     </p>
 
-                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                    <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                       <span>/{doc.domainLabel.replace(/\s+/g, "-")}/{new Date(doc.createdAt).getFullYear()}</span>
                       <span className="text-emerald-400">{Math.min(99, 60 + score * 4)}% Match</span>
                     </div>
@@ -1262,7 +1262,7 @@ export default function KnowledgeVaultPage() {
                     <div className="mt-3 flex items-center gap-2">
                       <button
                         onClick={() => void openSourceDoc(doc)}
-                        className="px-3 py-1.5 rounded-lg border border-white/15 text-sm text-slate-200 hover:bg-white/10"
+                        className="px-3 py-1.5 rounded-lg border border-white/15 text-sm text-foreground hover:bg-white/10"
                       >
                         Open Source
                       </button>
@@ -1275,19 +1275,19 @@ export default function KnowledgeVaultPage() {
                       </button>
                       <button
                         onClick={() => downloadDoc(doc)}
-                        className="px-3 py-1.5 rounded-lg border border-white/15 text-sm text-slate-200 hover:bg-white/10"
+                        className="px-3 py-1.5 rounded-lg border border-white/15 text-sm text-foreground hover:bg-white/10"
                       >
                         Download
                       </button>
-                      <span className="ml-auto text-xs text-slate-500">{labelForJurisdiction(doc.jurisdiction)}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{labelForJurisdiction(doc.jurisdiction)}</span>
                     </div>
                   </article>
                 ))}
 
                 {!isLoading && resultRows.length === 0 && (
-                  <div className="rounded-2xl border border-amber-500/20 bg-black/20 p-8 text-center">
-                    <p className="text-lg text-white font-semibold">No matching documents found.</p>
-                    <p className="text-sm text-slate-500 mt-2">Try a broader query or clear filters.</p>
+                  <div className="rounded-2xl border border-primary/20 bg-black/20 p-8 text-center">
+                    <p className="text-lg text-foreground font-semibold">No matching documents found.</p>
+                    <p className="text-sm text-muted-foreground mt-2">Try a broader query or clear filters.</p>
                   </div>
                 )}
 
@@ -1300,7 +1300,7 @@ export default function KnowledgeVaultPage() {
                     >
                       <ChevronLeft size={15} />
                     </button>
-                    <span className="px-3 py-1.5 rounded-lg bg-amber-500 text-[#281806] font-bold">{resultPage}</span>
+                    <span className="px-3 py-1.5 rounded-lg bg-primary text-[#281806] font-bold">{resultPage}</span>
                     <button
                       onClick={() => setResultPage((p) => Math.min(resultPageCount, p + 1))}
                       disabled={resultPage >= resultPageCount}
@@ -1327,7 +1327,7 @@ export default function KnowledgeVaultPage() {
       )}
 
       {deleteMutation.isPending && (
-        <div className="fixed bottom-6 right-6 z-[130] flex items-center gap-2 rounded-xl border border-amber-500/30 bg-[#2b2113] px-4 py-3 text-amber-300 text-sm shadow-xl">
+        <div className="fixed bottom-6 right-6 z-[130] flex items-center gap-2 rounded-xl border border-primary/30 bg-[#2b2113] px-4 py-3 text-primary text-sm shadow-xl">
           <Loader2 size={15} className="animate-spin" />
           Deleting document...
         </div>

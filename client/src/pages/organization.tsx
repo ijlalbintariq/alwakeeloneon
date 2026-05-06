@@ -94,7 +94,7 @@ function getRoleMeta(role: string): { label: string; badge: string; icon: "crown
   if (role === "owner") {
     return {
       label: "Owner",
-      badge: "bg-amber-500/20 text-amber-300 border border-amber-500/30",
+      badge: "bg-primary/20 text-primary border border-primary/30",
       icon: "crown",
     };
   }
@@ -107,7 +107,7 @@ function getRoleMeta(role: string): { label: string; badge: string; icon: "crown
   }
   return {
     label: "Member",
-    badge: "bg-slate-500/20 text-slate-300 border border-slate-500/30",
+    badge: "bg-slate-500/20 text-foreground border border-slate-500/30",
     icon: "user",
   };
 }
@@ -127,11 +127,11 @@ function excerpt(content: string, max = 130): string {
 
 function categoryChip(category: string): string {
   const c = category.toLowerCase();
-  if (c.includes("case")) return "bg-amber-500/20 text-amber-300 border border-amber-500/30";
+  if (c.includes("case")) return "bg-primary/20 text-primary border border-primary/30";
   if (c.includes("statute")) return "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
   if (c.includes("contract")) return "bg-blue-500/20 text-blue-300 border border-blue-500/30";
   if (c.includes("precedent")) return "bg-purple-500/20 text-purple-300 border border-purple-500/30";
-  return "bg-slate-500/20 text-slate-300 border border-slate-500/30";
+  return "bg-slate-500/20 text-foreground border border-slate-500/30";
 }
 
 export default function OrganizationPage() {
@@ -400,7 +400,7 @@ export default function OrganizationPage() {
   if (orgLoading) {
     return (
       <section className="h-full rounded-xl md:rounded-[1.8rem] border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))] flex items-center justify-center">
-        <Loader2 size={28} className="animate-spin text-amber-500" />
+        <Loader2 size={28} className="animate-spin text-primary" />
       </section>
     );
   }
@@ -410,14 +410,14 @@ export default function OrganizationPage() {
       return (
         <section className="h-full rounded-xl md:rounded-[1.8rem] overflow-y-auto border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))] p-6 md:p-10 text-[hsl(var(--preview-text-primary))]">
           <div className="mx-auto max-w-3xl space-y-6">
-            <div className="rounded-2xl border border-amber-500/20 bg-[hsl(var(--preview-surface))/0.7] p-6">
+            <div className="rounded-2xl border border-primary/20 bg-[hsl(var(--preview-surface))/0.7] p-6">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="text-amber-400 mt-0.5" size={20} />
+                <AlertTriangle className="text-primary mt-0.5" size={20} />
                 <div>
-                  <h2 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <h2 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
                     Organization Features Locked
                   </h2>
-                  <p className="mt-2 text-sm text-slate-300">
+                  <p className="mt-2 text-sm text-foreground">
                     Upgrade to Chamber or Enterprise to create and manage an organization workspace.
                   </p>
                 </div>
@@ -425,25 +425,25 @@ export default function OrganizationPage() {
             </div>
 
             {pendingInvites.length > 0 && (
-              <div className="rounded-2xl border border-amber-500/20 bg-[hsl(var(--preview-surface))/0.65] p-6 space-y-4">
-                <h3 className="text-lg font-bold text-white">Pending Invitations</h3>
+              <div className="rounded-2xl border border-primary/20 bg-[hsl(var(--preview-surface))/0.65] p-6 space-y-4">
+                <h3 className="text-lg font-bold text-foreground">Pending Invitations</h3>
                 {pendingInvites.map((invite) => (
                   <div key={invite.id} className="rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.8] p-4 flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-slate-100">{invite.orgName}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Received {formatDate(invite.createdAt)}</p>
+                      <p className="font-semibold text-foreground">{invite.orgName}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Received {formatDate(invite.createdAt)}</p>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => acceptInvite.mutate(invite.id)}
-                        className="h-9 px-4 rounded-lg bg-amber-500 text-[hsl(var(--preview-bg))] text-sm font-bold hover:bg-amber-400 transition-colors"
+                        className="h-9 px-4 rounded-lg bg-primary text-[hsl(var(--preview-bg))] text-sm font-bold hover:bg-primary transition-colors"
                         data-testid={`button-accept-invite-${invite.id}`}
                       >
                         Accept
                       </button>
                       <button
                         onClick={() => declineInvite.mutate(invite.id)}
-                        className="h-9 px-4 rounded-lg border border-slate-600 text-slate-300 text-sm font-semibold hover:bg-slate-800 transition-colors"
+                        className="h-9 px-4 rounded-lg border border-border text-foreground text-sm font-semibold hover:bg-card transition-colors"
                         data-testid={`button-decline-invite-${invite.id}`}
                       >
                         Decline
@@ -463,37 +463,37 @@ export default function OrganizationPage() {
         <div className="flex h-full min-h-0 flex-col">
           <header className="shrink-0 border-b border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.9] backdrop-blur-md px-6 md:px-10 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Building2 className="text-amber-400" size={24} />
-              <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</h2>
+              <Building2 className="text-primary" size={24} />
+              <h2 className="text-xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</h2>
             </div>
-            <div className="text-xs text-slate-400">Organization Setup</div>
+            <div className="text-xs text-muted-foreground">Organization Setup</div>
           </header>
 
           <main className="min-h-0 flex-1 overflow-y-auto relative p-4 md:p-8">
-            <div className="absolute top-1/4 left-1/4 h-80 w-80 rounded-full bg-amber-500/10 blur-[90px] pointer-events-none" />
-            <div className="absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-amber-500/5 blur-[80px] pointer-events-none" />
+            <div className="absolute top-1/4 left-1/4 h-80 w-80 rounded-full bg-primary/10 blur-[90px] pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-primary/5 blur-[80px] pointer-events-none" />
 
             <div className="relative mx-auto max-w-3xl space-y-5">
               {pendingInvites.length > 0 && (
-                <div className="rounded-2xl border border-amber-500/20 bg-[hsl(var(--preview-surface))/0.65] p-5 space-y-3">
-                  <h3 className="text-base font-bold text-white">Pending Invitations</h3>
+                <div className="rounded-2xl border border-primary/20 bg-[hsl(var(--preview-surface))/0.65] p-5 space-y-3">
+                  <h3 className="text-base font-bold text-foreground">Pending Invitations</h3>
                   {pendingInvites.map((invite) => (
                     <div key={invite.id} className="rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.75] p-3 flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-slate-100">{invite.orgName}</p>
-                        <p className="text-xs text-slate-500">{invite.email}</p>
+                        <p className="text-sm font-semibold text-foreground">{invite.orgName}</p>
+                        <p className="text-xs text-muted-foreground">{invite.email}</p>
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => acceptInvite.mutate(invite.id)}
-                          className="h-8 px-3 rounded-lg bg-amber-500 text-[hsl(var(--preview-bg))] text-xs font-bold"
+                          className="h-8 px-3 rounded-lg bg-primary text-[hsl(var(--preview-bg))] text-xs font-bold"
                           data-testid={`button-accept-invite-${invite.id}`}
                         >
                           Accept
                         </button>
                         <button
                           onClick={() => declineInvite.mutate(invite.id)}
-                          className="h-8 px-3 rounded-lg border border-slate-600 text-slate-300 text-xs font-semibold"
+                          className="h-8 px-3 rounded-lg border border-border text-foreground text-xs font-semibold"
                           data-testid={`button-decline-invite-${invite.id}`}
                         >
                           Decline
@@ -508,43 +508,43 @@ export default function OrganizationPage() {
                 <div className="h-36 md:h-40 relative bg-[hsl(var(--preview-surface-elevated))] border-b border-[hsl(var(--preview-border))]">
                   <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--preview-surface))/0.9] to-transparent" />
                   <div className="absolute bottom-0 left-0 p-6 md:p-8 flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-[hsl(var(--preview-bg))] flex items-center justify-center shadow-lg">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary text-[hsl(var(--preview-bg))] flex items-center justify-center shadow-lg">
                       <Building2 size={24} />
                     </div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <h1 className="text-2xl md:text-3xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
                       Create Private Organization
                     </h1>
                   </div>
                 </div>
 
                 <div className="p-6 md:p-8 space-y-6">
-                  <p className="text-slate-300 text-lg leading-relaxed">
+                  <p className="text-foreground text-lg leading-relaxed">
                     Set up your digital headquarters to collaborate with your legal team and share a secure, private knowledge base.
                   </p>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-200">Organization Name</label>
+                    <label className="text-sm font-semibold text-foreground">Organization Name</label>
                     <div className="relative">
-                      <Building2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <Building2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                       <input
                         value={orgName}
                         onChange={(e) => setOrgName(e.target.value)}
                         placeholder="e.g., Malik & Associates"
-                        className="w-full h-12 rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.8] pl-11 pr-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                        className="w-full h-12 rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.8] pl-11 pr-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                         data-testid="input-org-name"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-200">Description <span className="text-slate-500 font-normal">(Optional)</span></label>
+                    <label className="text-sm font-semibold text-foreground">Description <span className="text-muted-foreground font-normal">(Optional)</span></label>
                     <div className="relative">
-                      <FileText size={16} className="absolute left-4 top-4 text-slate-500" />
+                      <FileText size={16} className="absolute left-4 top-4 text-muted-foreground" />
                       <textarea
                         value={orgDesc}
                         onChange={(e) => setOrgDesc(e.target.value)}
                         placeholder="Enter brief details about your firm's practice areas..."
-                        className="w-full min-h-[140px] rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.8] pl-11 pr-4 py-3 text-slate-100 placeholder:text-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                        className="w-full min-h-[140px] rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.8] pl-11 pr-4 py-3 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
                         data-testid="input-org-description"
                       />
                     </div>
@@ -556,7 +556,7 @@ export default function OrganizationPage() {
                         setOrgName("");
                         setOrgDesc("");
                       }}
-                      className="text-sm font-medium text-slate-400 hover:text-amber-400 transition-colors"
+                      className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
                       data-testid="button-org-cancel"
                     >
                       Cancel
@@ -565,7 +565,7 @@ export default function OrganizationPage() {
                     <button
                       onClick={() => createOrg.mutate({ name: orgName.trim(), description: orgDesc.trim() })}
                       disabled={!orgName.trim() || createOrg.isPending}
-                      className="h-12 px-7 rounded-xl bg-amber-500 text-[hsl(var(--preview-bg))] text-base font-bold hover:bg-amber-400 disabled:opacity-50 flex items-center gap-2"
+                      className="h-12 px-7 rounded-xl bg-primary text-[hsl(var(--preview-bg))] text-base font-bold hover:bg-primary disabled:opacity-50 flex items-center gap-2"
                       data-testid="button-create-org"
                     >
                       {createOrg.isPending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
@@ -576,10 +576,10 @@ export default function OrganizationPage() {
                 </div>
 
                 <div className="px-6 md:px-8 pb-6 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 rounded-full bg-amber-500" />
-                  <div className="h-1.5 flex-1 rounded-full bg-slate-700" />
-                  <div className="h-1.5 flex-1 rounded-full bg-slate-700" />
-                  <span className="ml-3 text-xs text-slate-500">Step 1 of 3</span>
+                  <div className="h-1.5 flex-1 rounded-full bg-primary" />
+                  <div className="h-1.5 flex-1 rounded-full bg-muted" />
+                  <div className="h-1.5 flex-1 rounded-full bg-muted" />
+                  <span className="ml-3 text-xs text-muted-foreground">Step 1 of 3</span>
                 </div>
               </div>
             </div>
@@ -596,12 +596,12 @@ export default function OrganizationPage() {
           <div className="h-full flex flex-col p-4">
             <div className="mb-8 px-1">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-amber-500/15 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                <div className="h-10 w-10 rounded-full bg-primary/15 text-primary flex items-center justify-center border border-primary/20">
                   <Building2 size={18} />
                 </div>
                 <div className="hidden lg:block min-w-0">
-                  <h1 className="text-slate-100 text-base font-bold truncate">{org.name}</h1>
-                  <p className="text-slate-400 text-xs truncate">Organization</p>
+                  <h1 className="text-foreground text-base font-bold truncate">{org.name}</h1>
+                  <p className="text-muted-foreground text-xs truncate">Organization</p>
                 </div>
               </div>
             </div>
@@ -611,8 +611,8 @@ export default function OrganizationPage() {
                 onClick={() => setView("team")}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${
                   view === "team"
-                    ? "bg-amber-500/10 border border-amber-500/20 text-amber-300"
-                    : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                    ? "bg-primary/10 border border-primary/20 text-primary"
+                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                 }`}
                 data-testid="button-org-view-team"
               >
@@ -624,8 +624,8 @@ export default function OrganizationPage() {
                 onClick={() => setView("vault")}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${
                   view === "vault"
-                    ? "bg-amber-500/10 border border-amber-500/20 text-amber-300"
-                    : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                    ? "bg-primary/10 border border-primary/20 text-primary"
+                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                 }`}
                 data-testid="button-org-view-vault"
               >
@@ -638,7 +638,7 @@ export default function OrganizationPage() {
               {isOwner && (
                 <button
                   onClick={() => setShowInviteModal(true)}
-                  className="w-full h-10 rounded-xl bg-amber-500 text-[hsl(var(--preview-bg))] text-sm font-bold flex items-center justify-center gap-2 hover:bg-amber-400 transition-colors"
+                  className="w-full h-10 rounded-xl bg-primary text-[hsl(var(--preview-bg))] text-sm font-bold flex items-center justify-center gap-2 hover:bg-primary transition-colors"
                   data-testid="button-open-invite-modal"
                 >
                   <UserPlus size={14} />
@@ -664,28 +664,28 @@ export default function OrganizationPage() {
         </aside>
 
         <main className="flex-1 min-h-0 overflow-y-auto relative p-4 lg:p-8">
-          <div className="absolute top-0 right-0 w-[460px] h-[460px] bg-amber-500/5 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute top-0 right-0 w-[460px] h-[460px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[380px] h-[380px] bg-blue-900/10 rounded-full blur-[90px] pointer-events-none" />
 
           <div className="relative z-10 max-w-6xl mx-auto flex flex-col gap-7">
             {view === "team" ? (
               <>
-                <div className="flex flex-wrap justify-between items-end gap-4 pb-4 border-b border-amber-500/10">
+                <div className="flex flex-wrap justify-between items-end gap-4 pb-4 border-b border-primary/10">
                   <div>
-                    <h2 className="text-slate-100 text-3xl lg:text-4xl font-black leading-tight">Organization Management</h2>
-                    <p className="text-slate-400 text-base font-medium mt-1">Manage your firm's private space and team access.</p>
+                    <h2 className="text-foreground text-3xl lg:text-4xl font-black leading-tight">Organization Management</h2>
+                    <p className="text-muted-foreground text-base font-medium mt-1">Manage your firm's private space and team access.</p>
                   </div>
                   <div className="flex gap-3">
                     <a
                       href="/settings"
-                      className="h-10 px-6 rounded-xl bg-[hsl(var(--preview-surface-elevated))] border border-[hsl(var(--preview-border))] text-slate-300 text-sm font-bold flex items-center gap-2 hover:bg-[hsl(var(--preview-surface-elevated))/0.9] transition-colors"
+                      className="h-10 px-6 rounded-xl bg-[hsl(var(--preview-surface-elevated))] border border-[hsl(var(--preview-border))] text-foreground text-sm font-bold flex items-center gap-2 hover:bg-[hsl(var(--preview-surface-elevated))/0.9] transition-colors"
                     >
                       Settings
                     </a>
                     {isOwner && (
                       <button
                         onClick={() => setShowInviteModal(true)}
-                        className="h-10 px-6 rounded-xl bg-amber-500 text-[hsl(var(--preview-bg))] text-sm font-bold shadow-[0_0_15px_rgba(249,164,6,0.28)] hover:bg-amber-400 transition-colors flex items-center gap-2"
+                        className="h-10 px-6 rounded-xl bg-primary text-[hsl(var(--preview-bg))] text-sm font-bold shadow-[0_0_15px_rgba(249,164,6,0.28)] hover:bg-primary transition-colors flex items-center gap-2"
                         data-testid="button-invite-top"
                       >
                         <Plus size={15} />
@@ -697,24 +697,24 @@ export default function OrganizationPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl p-6">
-                    <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Shared Documents</p>
-                    <p className="text-4xl font-bold text-slate-100 mt-1">{knowledge.length}</p>
+                    <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider">Shared Documents</p>
+                    <p className="text-4xl font-bold text-foreground mt-1">{knowledge.length}</p>
                   </div>
                   <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl p-6">
-                    <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Team Members</p>
-                    <p className="text-4xl font-bold text-slate-100 mt-1">{members.length}</p>
+                    <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider">Team Members</p>
+                    <p className="text-4xl font-bold text-foreground mt-1">{members.length}</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-slate-100 text-2xl font-bold">Team Members</h3>
+                    <h3 className="text-foreground text-2xl font-bold">Team Members</h3>
                     <div className="w-64 max-w-full flex items-center gap-2 rounded-lg px-3 py-1.5 bg-[hsl(var(--preview-surface-elevated))/0.9] border border-[hsl(var(--preview-border))]">
-                      <Search size={16} className="text-slate-400" />
+                      <Search size={16} className="text-muted-foreground" />
                       <input
                         value={memberSearch}
                         onChange={(e) => setMemberSearch(e.target.value)}
-                        className="w-full bg-transparent border-none p-0 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+                        className="w-full bg-transparent border-none p-0 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                         placeholder="Search members..."
                         data-testid="input-member-search"
                       />
@@ -725,12 +725,12 @@ export default function OrganizationPage() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse min-w-[760px]">
                         <thead>
-                          <tr className="bg-[hsl(var(--preview-surface-elevated))/0.5] border-b border-slate-700/50">
-                            <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Name</th>
-                            <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Role</th>
-                            <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Email</th>
-                            <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Status</th>
-                            <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right">Action</th>
+                          <tr className="bg-[hsl(var(--preview-surface-elevated))/0.5] border-b border-border/50">
+                            <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
+                            <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role</th>
+                            <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</th>
+                            <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                            <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700/30">
@@ -742,12 +742,12 @@ export default function OrganizationPage() {
                               <tr key={member.userId} className="hover:bg-white/5 transition-colors" data-testid={`member-row-${member.userId}`}>
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-sm">
+                                    <div className="h-10 w-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm">
                                       {initialsFromName(name)}
                                     </div>
                                     <div>
-                                      <p className="text-sm font-semibold text-slate-100">{name}</p>
-                                      <p className="text-xs text-slate-500">Joined {formatDate(member.joinedAt || null)}</p>
+                                      <p className="text-sm font-semibold text-foreground">{name}</p>
+                                      <p className="text-xs text-muted-foreground">Joined {formatDate(member.joinedAt || null)}</p>
                                     </div>
                                   </div>
                                 </td>
@@ -759,9 +759,9 @@ export default function OrganizationPage() {
                                     {role.label}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-slate-400">{member.email || "N/A"}</td>
+                                <td className="px-6 py-4 text-sm text-muted-foreground">{member.email || "N/A"}</td>
                                 <td className="px-6 py-4">
-                                  <div className="flex items-center gap-2 text-sm text-slate-300">
+                                  <div className="flex items-center gap-2 text-sm text-foreground">
                                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
                                     Active
                                   </div>
@@ -770,13 +770,13 @@ export default function OrganizationPage() {
                                   {isOwner && member.userId !== user?.id ? (
                                     <button
                                       onClick={() => removeMember.mutate(member.userId)}
-                                      className="text-slate-400 hover:text-red-300 transition-colors"
+                                      className="text-muted-foreground hover:text-red-300 transition-colors"
                                       data-testid={`button-remove-member-${member.userId}`}
                                     >
                                       <Trash2 size={16} />
                                     </button>
                                   ) : (
-                                    <span className="text-slate-500 inline-flex"><MoreVertical size={16} /></span>
+                                    <span className="text-muted-foreground inline-flex"><MoreVertical size={16} /></span>
                                   )}
                                 </td>
                               </tr>
@@ -791,8 +791,8 @@ export default function OrganizationPage() {
                                     {initialsFromName(inv.email)}
                                   </div>
                                   <div>
-                                    <p className="text-sm font-semibold text-slate-100">{inv.email.split("@")[0]}</p>
-                                    <p className="text-xs text-slate-500">Invited {formatDate(inv.createdAt)}</p>
+                                    <p className="text-sm font-semibold text-foreground">{inv.email.split("@")[0]}</p>
+                                    <p className="text-xs text-muted-foreground">Invited {formatDate(inv.createdAt)}</p>
                                   </div>
                                 </div>
                               </td>
@@ -801,9 +801,9 @@ export default function OrganizationPage() {
                                   Invited
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-sm text-slate-400">{inv.email}</td>
+                              <td className="px-6 py-4 text-sm text-muted-foreground">{inv.email}</td>
                               <td className="px-6 py-4">
-                                <div className="flex items-center gap-2 text-sm text-slate-300">
+                                <div className="flex items-center gap-2 text-sm text-foreground">
                                   <span className="h-2 w-2 rounded-full bg-slate-500" />
                                   Pending
                                 </div>
@@ -811,7 +811,7 @@ export default function OrganizationPage() {
                               <td className="px-6 py-4 text-right">
                                 <button
                                   onClick={() => inviteMember.mutate(inv.email)}
-                                  className="text-amber-400 hover:text-amber-300 text-sm font-semibold"
+                                  className="text-primary hover:text-primary text-sm font-semibold"
                                   data-testid={`button-resend-invite-${inv.id}`}
                                 >
                                   Resend
@@ -822,37 +822,37 @@ export default function OrganizationPage() {
 
                           {filteredMembers.length === 0 && filteredPendingOrgInvites.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">No members or invites found.</td>
+                              <td colSpan={5} className="px-6 py-10 text-center text-sm text-muted-foreground">No members or invites found.</td>
                             </tr>
                           )}
                         </tbody>
                       </table>
                     </div>
 
-                    <div className="px-6 py-4 border-t border-slate-700/50 flex items-center justify-between">
-                      <p className="text-xs text-slate-500">
+                    <div className="px-6 py-4 border-t border-border/50 flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
                         Showing {filteredMembers.length + filteredPendingOrgInvites.length} entries
                       </p>
-                      <div className="text-xs text-slate-500">Total team: {members.length}</div>
+                      <div className="text-xs text-muted-foreground">Total team: {members.length}</div>
                     </div>
                   </div>
                 </div>
               </>
             ) : (
               <>
-                <div className="flex flex-wrap justify-between items-end gap-4 pb-4 border-b border-amber-500/10">
+                <div className="flex flex-wrap justify-between items-end gap-4 pb-4 border-b border-primary/10">
                   <div>
-                    <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 mb-2">
+                    <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20 mb-2">
                       {org.name}
                     </div>
-                    <h2 className="text-slate-100 text-3xl lg:text-4xl font-black leading-tight">Shared Knowledge Vault</h2>
-                    <p className="text-slate-400 text-base font-medium mt-1">Access and manage your firm's collaborative legal library.</p>
+                    <h2 className="text-foreground text-3xl lg:text-4xl font-black leading-tight">Shared Knowledge Vault</h2>
+                    <p className="text-muted-foreground text-base font-medium mt-1">Access and manage your firm's collaborative legal library.</p>
                   </div>
                   <div className="flex gap-3">
                     <select
                       value={docCategoryFilter}
                       onChange={(e) => setDocCategoryFilter(e.target.value)}
-                      className="h-10 px-4 rounded-xl bg-[hsl(var(--preview-surface-elevated))/0.9] border border-[hsl(var(--preview-border))] text-slate-300 text-sm font-bold"
+                      className="h-10 px-4 rounded-xl bg-[hsl(var(--preview-surface-elevated))/0.9] border border-[hsl(var(--preview-border))] text-foreground text-sm font-bold"
                       data-testid="select-vault-filter"
                     >
                       <option value="all">All Categories</option>
@@ -862,7 +862,7 @@ export default function OrganizationPage() {
                     </select>
                     <button
                       onClick={() => setShowUploadModal(true)}
-                      className="h-10 px-6 rounded-xl bg-amber-500 text-[hsl(var(--preview-bg))] text-sm font-bold shadow-[0_0_15px_rgba(249,164,6,0.3)] hover:bg-amber-400 transition-colors flex items-center gap-2"
+                      className="h-10 px-6 rounded-xl bg-primary text-[hsl(var(--preview-bg))] text-sm font-bold shadow-[0_0_15px_rgba(249,164,6,0.3)] hover:bg-primary transition-colors flex items-center gap-2"
                       data-testid="button-open-upload-modal"
                     >
                       <Upload size={15} />
@@ -873,24 +873,24 @@ export default function OrganizationPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl p-6">
-                    <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Shared Documents</p>
-                    <p className="text-4xl font-bold text-slate-100 mt-1">{knowledge.length}</p>
+                    <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider">Shared Documents</p>
+                    <p className="text-4xl font-bold text-foreground mt-1">{knowledge.length}</p>
                   </div>
                   <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl p-6">
-                    <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Team Members</p>
-                    <p className="text-4xl font-bold text-slate-100 mt-1">{members.length}</p>
+                    <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider">Team Members</p>
+                    <p className="text-4xl font-bold text-foreground mt-1">{members.length}</p>
                   </div>
                 </div>
 
                 <div className="space-y-5">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-slate-100 text-2xl font-bold">Vault Library</h3>
+                    <h3 className="text-foreground text-2xl font-bold">Vault Library</h3>
                     <div className="w-64 max-w-full flex items-center gap-2 rounded-lg px-3 py-1.5 bg-[hsl(var(--preview-surface-elevated))/0.9] border border-[hsl(var(--preview-border))]">
-                      <Search size={16} className="text-slate-400" />
+                      <Search size={16} className="text-muted-foreground" />
                       <input
                         value={docSearch}
                         onChange={(e) => setDocSearch(e.target.value)}
-                        className="w-full bg-transparent border-none p-0 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+                        className="w-full bg-transparent border-none p-0 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                         placeholder="Search documents..."
                         data-testid="input-vault-search"
                       />
@@ -900,20 +900,20 @@ export default function OrganizationPage() {
                   {filteredKnowledge.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.45] p-10 text-center">
                       <FileText size={40} className="mx-auto mb-4 text-slate-600" />
-                      <p className="text-lg font-semibold text-slate-300">No documents found</p>
-                      <p className="text-sm text-slate-500 mt-1">Upload files or adjust your search/filter.</p>
+                      <p className="text-lg font-semibold text-foreground">No documents found</p>
+                      <p className="text-sm text-muted-foreground mt-1">Upload files or adjust your search/filter.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                       {filteredKnowledge.map((doc) => (
                         <article
                           key={doc.id}
-                          className="rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] p-5 flex flex-col gap-4 transition-all duration-300 hover:border-amber-500/30 hover:bg-[hsl(var(--preview-surface-elevated))/0.8] hover:-translate-y-[2px] cursor-pointer"
+                          className="rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] p-5 flex flex-col gap-4 transition-all duration-300 hover:border-primary/30 hover:bg-[hsl(var(--preview-surface-elevated))/0.8] hover:-translate-y-[2px] cursor-pointer"
                           onClick={() => setPreviewDoc(doc)}
                           data-testid={`vault-doc-${doc.id}`}
                         >
                           <div className="flex justify-between items-start gap-2">
-                            <div className="bg-[hsl(var(--preview-surface-elevated))/0.8] p-2.5 rounded-lg text-amber-300 border border-amber-500/10">
+                            <div className="bg-[hsl(var(--preview-surface-elevated))/0.8] p-2.5 rounded-lg text-primary border border-primary/10">
                               <BookOpen size={18} />
                             </div>
                             <div className="flex items-center gap-2">
@@ -926,7 +926,7 @@ export default function OrganizationPage() {
                                     e.stopPropagation();
                                     deleteKnowledge.mutate(doc.id);
                                   }}
-                                  className="text-slate-500 hover:text-red-300 transition-colors"
+                                  className="text-muted-foreground hover:text-red-300 transition-colors"
                                   data-testid={`button-delete-vault-doc-${doc.id}`}
                                 >
                                   <Trash2 size={15} />
@@ -936,20 +936,20 @@ export default function OrganizationPage() {
                           </div>
 
                           <div>
-                            <h4 className="text-slate-100 font-bold text-xl mb-1 line-clamp-2">{doc.title}</h4>
-                            <p className="text-slate-400 text-sm line-clamp-3">{excerpt(doc.content || "")}</p>
+                            <h4 className="text-foreground font-bold text-xl mb-1 line-clamp-2">{doc.title}</h4>
+                            <p className="text-muted-foreground text-sm line-clamp-3">{excerpt(doc.content || "")}</p>
                           </div>
 
-                          <div className="mt-auto pt-4 border-t border-slate-700/50 flex items-center justify-between text-xs text-slate-400">
+                          <div className="mt-auto pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
                             <div>
-                              <span className="uppercase tracking-wide text-[10px] text-slate-500">Shared By</span>
-                              <p className="font-medium text-slate-300 mt-0.5">
+                              <span className="uppercase tracking-wide text-[10px] text-muted-foreground">Shared By</span>
+                              <p className="font-medium text-foreground mt-0.5">
                                 {doc.uploadedBy ? memberNameById.get(doc.uploadedBy) || "Team Member" : "Team Member"}
                               </p>
                             </div>
                             <div className="text-right">
-                              <span className="uppercase tracking-wide text-[10px] text-slate-500">Date</span>
-                              <p className="font-medium text-slate-300 mt-0.5">{formatDate(doc.createdAt)}</p>
+                              <span className="uppercase tracking-wide text-[10px] text-muted-foreground">Date</span>
+                              <p className="font-medium text-foreground mt-0.5">{formatDate(doc.createdAt)}</p>
                             </div>
                           </div>
                         </article>
@@ -969,39 +969,39 @@ export default function OrganizationPage() {
           <div className="relative w-full max-w-[520px] rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.9] backdrop-blur-xl shadow-2xl p-8" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setShowInviteModal(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-white"
+              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
               data-testid="button-close-invite-modal"
             >
               <X size={18} />
             </button>
 
             <div className="text-center mb-5">
-              <div className="h-12 w-12 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-4">
+              <div className="h-12 w-12 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mx-auto mb-4">
                 <UserPlus size={22} />
               </div>
-              <h3 className="text-white text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Invite Team Member</h3>
-              <p className="text-slate-400 text-sm mt-2">Invite a colleague to collaborate on Al Wakeelo.</p>
+              <h3 className="text-foreground text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Invite Team Member</h3>
+              <p className="text-muted-foreground text-sm mt-2">Invite a colleague to collaborate on Al Wakeelo.</p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Email Address</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Email Address</label>
                 <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     type="email"
                     placeholder="colleague@lawfirm.com"
-                    className="w-full h-11 rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] pl-10 pr-4 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    className="w-full h-11 rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                     data-testid="input-invite-email"
                   />
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.5] p-3 text-xs text-slate-400 flex items-start gap-2">
-                <AlertTriangle size={14} className="mt-0.5 text-amber-400" />
-                Invitees join as <span className="text-slate-200 font-semibold">Member</span> role by default in this version.
+              <div className="rounded-lg border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-bg))/0.5] p-3 text-xs text-muted-foreground flex items-start gap-2">
+                <AlertTriangle size={14} className="mt-0.5 text-primary" />
+                Invitees join as <span className="text-foreground font-semibold">Member</span> role by default in this version.
               </div>
             </div>
 
@@ -1009,7 +1009,7 @@ export default function OrganizationPage() {
               <button
                 onClick={() => inviteMember.mutate(inviteEmail.trim())}
                 disabled={!inviteEmail.trim() || inviteMember.isPending}
-                className="w-full h-11 rounded-xl bg-gradient-to-b from-amber-500 to-amber-600 text-[hsl(var(--preview-bg))] font-bold hover:to-amber-500 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full h-11 rounded-xl bg-gradient-to-b from-primary to-primary text-[hsl(var(--preview-bg))] font-bold hover:to-primary disabled:opacity-50 flex items-center justify-center gap-2"
                 data-testid="button-send-invite"
               >
                 {inviteMember.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
@@ -1017,7 +1017,7 @@ export default function OrganizationPage() {
               </button>
               <button
                 onClick={() => setShowInviteModal(false)}
-                className="w-full h-11 rounded-xl border border-[hsl(var(--preview-border))] text-slate-400 font-medium hover:bg-[hsl(var(--preview-surface-elevated))/0.8]"
+                className="w-full h-11 rounded-xl border border-[hsl(var(--preview-border))] text-muted-foreground font-medium hover:bg-[hsl(var(--preview-surface-elevated))/0.8]"
                 data-testid="button-cancel-invite"
               >
                 Cancel
@@ -1033,35 +1033,35 @@ export default function OrganizationPage() {
           <div className="relative w-full max-w-[560px] rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.92] backdrop-blur-xl shadow-2xl p-7" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setShowUploadModal(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-white"
+              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
               data-testid="button-close-upload-modal"
             >
               <X size={18} />
             </button>
 
-            <h3 className="text-white text-2xl font-bold mb-1">Upload Shared Document</h3>
-            <p className="text-sm text-slate-400 mb-5">Upload TXT, PDF, or DOCX to your organization's private vault.</p>
+            <h3 className="text-foreground text-2xl font-bold mb-1">Upload Shared Document</h3>
+            <p className="text-sm text-muted-foreground mb-5">Upload TXT, PDF, or DOCX to your organization's private vault.</p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">Document Title</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Document Title</label>
                 <input
                   value={docTitle}
                   onChange={(e) => setDocTitle(e.target.value)}
                   placeholder="e.g., Firm Precedents"
-                  className="w-full h-11 rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] px-4 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full h-11 rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   data-testid="input-upload-title"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">Category</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Category</label>
                 <div className="relative">
-                  <Filter size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <Filter size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <select
                     value={docCategory}
                     onChange={(e) => setDocCategory(e.target.value)}
-                    className="w-full h-11 rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] pl-9 pr-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    className="w-full h-11 rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] pl-9 pr-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                     data-testid="select-upload-category"
                   >
                     <option value="general">General</option>
@@ -1075,16 +1075,16 @@ export default function OrganizationPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">File</label>
+                <label className="block text-sm font-medium text-foreground mb-2">File</label>
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept=".txt,.pdf,.docx"
                   onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  className="w-full rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] px-3 py-2 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-500 file:px-3 file:py-1.5 file:text-[hsl(var(--preview-bg))] file:font-semibold"
+                  className="w-full rounded-xl bg-[hsl(var(--preview-bg))/0.8] border border-[hsl(var(--preview-border))] px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[hsl(var(--preview-bg))] file:font-semibold"
                   data-testid="input-upload-file"
                 />
-                {selectedFile && <p className="text-xs text-slate-500 mt-1">Selected: {selectedFile.name}</p>}
+                {selectedFile && <p className="text-xs text-muted-foreground mt-1">Selected: {selectedFile.name}</p>}
               </div>
             </div>
 
@@ -1092,7 +1092,7 @@ export default function OrganizationPage() {
               <button
                 onClick={() => uploadKnowledge.mutate()}
                 disabled={!selectedFile || uploadKnowledge.isPending}
-                className="w-full h-11 rounded-xl bg-amber-500 text-[hsl(var(--preview-bg))] font-bold hover:bg-amber-400 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full h-11 rounded-xl bg-primary text-[hsl(var(--preview-bg))] font-bold hover:bg-primary disabled:opacity-50 flex items-center justify-center gap-2"
                 data-testid="button-upload-doc"
               >
                 {uploadKnowledge.isPending ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
@@ -1100,7 +1100,7 @@ export default function OrganizationPage() {
               </button>
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="w-full h-11 rounded-xl border border-[hsl(var(--preview-border))] text-slate-400 font-medium hover:bg-[hsl(var(--preview-surface-elevated))/0.8]"
+                className="w-full h-11 rounded-xl border border-[hsl(var(--preview-border))] text-muted-foreground font-medium hover:bg-[hsl(var(--preview-surface-elevated))/0.8]"
                 data-testid="button-cancel-upload"
               >
                 Cancel
@@ -1116,15 +1116,15 @@ export default function OrganizationPage() {
           <div className="relative w-full max-w-3xl max-h-[85vh] rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))] shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 border-b border-[hsl(var(--preview-border))] flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-bold text-white">{previewDoc.title}</h3>
-                <p className="text-xs text-slate-500">{previewDoc.filename} • {previewDoc.category}</p>
+                <h3 className="text-lg font-bold text-foreground">{previewDoc.title}</h3>
+                <p className="text-xs text-muted-foreground">{previewDoc.filename} • {previewDoc.category}</p>
               </div>
-              <button onClick={() => setPreviewDoc(null)} className="text-slate-400 hover:text-white" data-testid="button-close-doc-preview">
+              <button onClick={() => setPreviewDoc(null)} className="text-muted-foreground hover:text-foreground" data-testid="button-close-doc-preview">
                 <X size={18} />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5">
-              <pre className="whitespace-pre-wrap text-sm text-slate-200 leading-relaxed">{previewDoc.content || "No content extracted."}</pre>
+              <pre className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">{previewDoc.content || "No content extracted."}</pre>
             </div>
           </div>
         </div>

@@ -38,7 +38,7 @@ function formatDate(value: string | null): string {
 
 function typeBadgeClasses(type: string): string {
   if (type === "relied_upon") return "bg-emerald-500/10 border-emerald-500/30 text-emerald-300";
-  if (type === "distinguished") return "bg-amber-500/10 border-amber-500/30 text-amber-300";
+  if (type === "distinguished") return "bg-primary/10 border-primary/30 text-primary";
   if (type === "overruled") return "bg-red-500/10 border-red-500/30 text-red-300";
   return "bg-blue-500/10 border-blue-500/30 text-blue-300";
 }
@@ -49,7 +49,7 @@ function typeLabel(type: string): string {
 
 function CitationCard({ item }: { item: CitationLinkItem }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#1e293b]/60 p-4 space-y-2">
+    <div className="rounded-xl border border-border bg-card/60 p-4 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         {item.linkedJudgmentId ? (
           <Link href={`/judgment/${item.linkedJudgmentId}`} className="font-mono text-sm text-blue-300 hover:text-blue-200 underline">
@@ -62,8 +62,8 @@ function CitationCard({ item }: { item: CitationLinkItem }) {
           {typeLabel(item.citationType)}
         </span>
       </div>
-      {item.linkedTitle ? <p className="text-sm text-slate-200">{item.linkedTitle}</p> : null}
-      {item.contextExcerpt ? <p className="text-sm italic text-slate-400">"{item.contextExcerpt}"</p> : null}
+      {item.linkedTitle ? <p className="text-sm text-foreground">{item.linkedTitle}</p> : null}
+      {item.contextExcerpt ? <p className="text-sm italic text-muted-foreground">"{item.contextExcerpt}"</p> : null}
     </div>
   );
 }
@@ -113,7 +113,7 @@ export default function JudgmentDetailPage() {
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center py-20">
-        <div className="inline-flex items-center gap-3 text-slate-400">
+        <div className="inline-flex items-center gap-3 text-muted-foreground">
           <Loader2 size={20} className="animate-spin" />
           Loading judgment details...
         </div>
@@ -126,7 +126,7 @@ export default function JudgmentDetailPage() {
       <div className="space-y-4">
         <button
           onClick={() => setLocation("/judgments")}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/50"
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-card/50"
         >
           <ArrowLeft size={14} /> Back to Judgments
         </button>
@@ -143,12 +143,12 @@ export default function JudgmentDetailPage() {
     <div className="space-y-7 fade-in" data-testid="judgment-detail-page">
       <button
         onClick={() => setLocation("/judgments")}
-        className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/50"
+        className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-card/50"
       >
         <ArrowLeft size={14} /> Back to Judgments
       </button>
 
-      <section className="rounded-3xl border border-slate-800 bg-[#1e293b]/75 p-5 md:p-7 space-y-4">
+      <section className="rounded-3xl border border-border bg-card/75 p-5 md:p-7 space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-lg bg-blue-500/15 border border-blue-500/30 px-3 py-1.5 font-mono text-blue-200">
             {detail.citation}
@@ -165,17 +165,17 @@ export default function JudgmentDetailPage() {
           ) : null}
         </div>
 
-        <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
           {detail.title}
         </h1>
 
         {(detail.petitioner || detail.respondent) ? (
-          <p className="text-slate-300 text-sm">
+          <p className="text-foreground text-sm">
             <span className="font-semibold">{detail.petitioner || "Petitioner"}</span> VS <span className="font-semibold">{detail.respondent || "Respondent"}</span>
           </p>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-5 text-sm text-slate-400">
+        <div className="flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-2"><Gavel size={14} /> {detail.court || "Court not available"}</span>
           <span className="inline-flex items-center gap-2"><Calendar size={14} /> {formatDate(detail.decisionDate)}</span>
         </div>
@@ -183,7 +183,7 @@ export default function JudgmentDetailPage() {
 
       {detail.citations.made.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-white inline-flex items-center gap-2"><Link2 size={16} /> Cases Cited ({detail.citations.made.length})</h2>
+          <h2 className="text-lg font-semibold text-foreground inline-flex items-center gap-2"><Link2 size={16} /> Cases Cited ({detail.citations.made.length})</h2>
           <div className="space-y-3">
             {detail.citations.made.map((item) => (
               <CitationCard key={`made-${item.id}`} item={item} />
@@ -194,7 +194,7 @@ export default function JudgmentDetailPage() {
 
       {detail.citations.received.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-white inline-flex items-center gap-2"><ArrowRight size={16} /> Cited In ({detail.citations.received.length}) cases</h2>
+          <h2 className="text-lg font-semibold text-foreground inline-flex items-center gap-2"><ArrowRight size={16} /> Cited In ({detail.citations.received.length}) cases</h2>
 
           {hasOverruled ? (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 inline-flex items-center gap-2">
@@ -212,21 +212,21 @@ export default function JudgmentDetailPage() {
 
       {detail.headnotes ? (
         <section className="space-y-2">
-          <h2 className="text-lg font-semibold text-white">Headnotes</h2>
-          <div className="rounded-xl border border-slate-800 bg-[#1e293b]/60 p-4 text-slate-300 whitespace-pre-wrap text-sm leading-relaxed">
+          <h2 className="text-lg font-semibold text-foreground">Headnotes</h2>
+          <div className="rounded-xl border border-border bg-card/60 p-4 text-foreground whitespace-pre-wrap text-sm leading-relaxed">
             {detail.headnotes}
           </div>
         </section>
       ) : null}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-white">Full Judgment</h2>
-        <div className="rounded-xl border border-slate-800 bg-[#1e293b]/60 p-4 md:p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+        <h2 className="text-lg font-semibold text-foreground">Full Judgment</h2>
+        <div className="rounded-xl border border-border bg-card/60 p-4 md:p-5 space-y-4 max-h-[60vh] overflow-y-auto">
           {fullTextParagraphs.length === 0 ? (
-            <p className="text-slate-400">Full text is not available.</p>
+            <p className="text-muted-foreground">Full text is not available.</p>
           ) : (
             fullTextParagraphs.map((paragraph, index) => (
-              <p key={index} className="text-slate-200 leading-relaxed text-sm">
+              <p key={index} className="text-foreground leading-relaxed text-sm">
                 {paragraph}
               </p>
             ))

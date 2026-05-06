@@ -21,23 +21,23 @@ function FeatureCard({
   className?: string;
 }) {
   return (
-    <div className={`group h-full p-7 bg-[#1e293b] border border-slate-800 rounded-2xl hover:border-slate-700 transition-all hover:shadow-xl flex flex-col ${className}`}>
+    <div className={`group h-full p-7 bg-card border border-border rounded-2xl hover:border-border transition-all hover:shadow-xl flex flex-col ${className}`}>
       <div className={`w-12 h-12 rounded-xl ${bgClass} flex items-center justify-center mb-4`}>
         <Icon size={22} className={iconClass} />
       </div>
-      <h3 className="text-lg font-bold text-white mb-2 min-h-[3.25rem]">{title}</h3>
-      <p className="text-sm text-slate-400 leading-relaxed flex-1">{desc}</p>
+      <h3 className="text-lg font-bold text-foreground mb-2 min-h-[3.25rem]">{title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed flex-1">{desc}</p>
     </div>
   );
 }
 
 const CORE_FEATURES = [
-  { icon: MessageSquare, title: "AI Legal Chat", desc: "Consult with an AI legal advisor trained on Pakistani law. Get strategy and next-step guidance fast.", bgClass: "bg-amber-500/10", iconClass: "text-amber-500" },
-  { icon: Crown, title: "Al Wakeelo Engine", desc: "Use the main legal AI workspace with grounded responses, references, and practical next-step guidance.", bgClass: "bg-amber-500/10", iconClass: "text-amber-400" },
+  { icon: MessageSquare, title: "AI Legal Chat", desc: "Consult with an AI legal advisor trained on Pakistani law. Get strategy and next-step guidance fast.", bgClass: "bg-primary/10", iconClass: "text-primary" },
+  { icon: Crown, title: "Al Wakeelo Engine", desc: "Use the main legal AI workspace with grounded responses, references, and practical next-step guidance.", bgClass: "bg-primary/10", iconClass: "text-primary" },
   { icon: Search, title: "Judgment Search", desc: "Find relevant Pakistani case law with quick citation-focused search and contextual summaries.", bgClass: "bg-blue-500/10", iconClass: "text-blue-500" },
   { icon: BookOpen, title: "Citation Search", desc: "Search directly by year, journal, and page to locate precise judgments and linked details quickly.", bgClass: "bg-indigo-500/10", iconClass: "text-indigo-400" },
   { icon: BookOpen, title: "Statute Lookup", desc: "Navigate Pakistani statutes and sections with plain-language legal explanations.", bgClass: "bg-emerald-500/10", iconClass: "text-emerald-500" },
-  { icon: FileText, title: "Legal Drafting", desc: "Prepare petitions, notices, applications, and legal replies with structured templates, clause-ready sections, and style-consistent drafting support.", bgClass: "bg-amber-500/10", iconClass: "text-amber-500" },
+  { icon: FileText, title: "Legal Drafting", desc: "Prepare petitions, notices, applications, and legal replies with structured templates, clause-ready sections, and style-consistent drafting support.", bgClass: "bg-primary/10", iconClass: "text-primary" },
   { icon: Users, title: "Style-Memory RAG", desc: "Train AI on your uploads, drafts, and accepted edits so output follows your legal style and preferred language.", bgClass: "bg-sky-500/10", iconClass: "text-sky-500" },
   { icon: Shield, title: "Contract Drafting", desc: "Generate client-ready contracts with structured clause sets, risk score breakdown, redline suggestions, and cleaner final drafts for negotiation or execution.", bgClass: "bg-red-500/10", iconClass: "text-red-500" },
   { icon: Paperclip, title: "Case Documents", desc: "Upload, review, and organize matter-specific documents with faster legal analysis support.", bgClass: "bg-cyan-500/10", iconClass: "text-cyan-500" },
@@ -116,52 +116,52 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white overflow-x-hidden">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0f172a]/90 backdrop-blur-xl border-b border-slate-800/50">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-amber-500/30 shadow-lg shadow-amber-500/20">
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-primary/30 shadow-lg shadow-primary/20">
               <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
             </div>
             <span className="text-xl font-bold italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
-            <a href="/" className="text-sm text-slate-300 hover:text-white transition-colors">Home</a>
-            <a href="#features" className="text-sm text-slate-400 hover:text-white transition-colors">Features</a>
-            <a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
-            <a href="#about" className="text-sm text-slate-400 hover:text-white transition-colors">About</a>
-            <a href="#contact" className="text-sm text-slate-400 hover:text-white transition-colors">Contact</a>
+            <a href="/" className="text-sm text-foreground hover:text-foreground transition-colors">Home</a>
+            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
+            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</a>
+            <a href="#contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</a>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setMobileNavOpen((v) => !v)}
-              className="md:hidden h-10 w-10 rounded-xl border border-slate-700 bg-transparent text-slate-200 hover:bg-slate-800 p-0 inline-flex items-center justify-center"
+              className="md:hidden h-10 w-10 rounded-xl border border-border bg-transparent text-foreground hover:bg-card p-0 inline-flex items-center justify-center"
               aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
             >
               {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
             <a
               href={ctaTarget}
-              className="px-6 py-2.5 bg-amber-500 text-slate-950 rounded-xl text-sm font-bold hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
+              className="px-6 py-2.5 bg-primary text-slate-950 rounded-xl text-sm font-bold hover:bg-primary transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
             >
               {user ? <><LayoutDashboard size={16} /> Dashboard</> : "Start Now"}
             </a>
           </div>
         </div>
         {mobileNavOpen && (
-          <div className="md:hidden border-t border-slate-800/70">
+          <div className="md:hidden border-t border-border/70">
             <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-3">
-              <a href="/" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-200 hover:text-white transition-colors">Home</a>
-              <a href="#features" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Features</a>
-              <a href="#pricing" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Pricing</a>
-              <a href="#about" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">About</a>
-              <a href="#contact" onClick={() => setMobileNavOpen(false)} className="text-sm text-slate-300 hover:text-white transition-colors">Contact</a>
-              <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-2">
-                <a href="mailto:support@alwakeelo.com" className="inline-flex items-center gap-2 text-sm text-amber-300 hover:text-amber-200 transition-colors">
+              <a href="/" onClick={() => setMobileNavOpen(false)} className="text-sm text-foreground hover:text-foreground transition-colors">Home</a>
+              <a href="#features" onClick={() => setMobileNavOpen(false)} className="text-sm text-foreground hover:text-foreground transition-colors">Features</a>
+              <a href="#pricing" onClick={() => setMobileNavOpen(false)} className="text-sm text-foreground hover:text-foreground transition-colors">Pricing</a>
+              <a href="#about" onClick={() => setMobileNavOpen(false)} className="text-sm text-foreground hover:text-foreground transition-colors">About</a>
+              <a href="#contact" onClick={() => setMobileNavOpen(false)} className="text-sm text-foreground hover:text-foreground transition-colors">Contact</a>
+              <div className="pt-2 border-t border-border/80 flex flex-col gap-2">
+                <a href="mailto:support@alwakeelo.com" className="inline-flex items-center gap-2 text-sm text-primary hover:text-foreground transition-colors">
                   <Mail size={14} /> support@alwakeelo.com
                 </a>
-                <a href="tel:00923096875797" className="inline-flex items-center gap-2 text-sm text-amber-300 hover:text-amber-200 transition-colors">
+                <a href="tel:00923096875797" className="inline-flex items-center gap-2 text-sm text-primary hover:text-foreground transition-colors">
                   <PhoneCall size={14} /> 00923096875797
                 </a>
               </div>
@@ -171,22 +171,22 @@ export default function LandingPage() {
       </nav>
 
       <section className="relative pt-32 pb-20 md:pt-44 md:pb-32 px-6">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-amber-500/5 rounded-full blur-[150px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-amber-500/3 rounded-full blur-[120px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[150px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/3 rounded-full blur-[120px]" />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full mb-8">
-            <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-            <span className="text-[11px] text-amber-400 font-bold uppercase tracking-widest">Pakistan's First Open-Source Legal AI Platform</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full mb-8">
+            <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+            <span className="text-[11px] text-primary font-bold uppercase tracking-widest">Pakistan's First Open-Source Legal AI Platform</span>
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
             <span className="italic">Pakistan Legal AI Workspace</span>
             <br />
-            <span className="text-amber-500 italic">for Advocates & Chambers</span>
+            <span className="text-primary italic">for Advocates & Chambers</span>
           </h1>
 
-          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
             Research case law, draft petitions and contracts, and generate client-ready legal documents in minutes
             with AI fine-tuned for Pakistani legal practice.
           </p>
@@ -194,13 +194,13 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
               href={ctaTarget}
-              className="w-full sm:w-auto px-8 py-4 bg-amber-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20"
+              className="w-full sm:w-auto px-8 py-4 bg-primary text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/20"
             >
               {user ? "Open Dashboard" : "Start Free"} <ArrowRight size={16} />
             </a>
             <a
               href="/?consult=1#consult"
-              className="w-full sm:w-auto px-8 py-4 border border-slate-700 text-slate-200 rounded-2xl text-sm font-bold hover:border-amber-500 hover:text-amber-300 transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-8 py-4 border border-border text-foreground rounded-2xl text-sm font-bold hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2"
             >
               Book Chamber Consultation <ArrowRight size={16} />
             </a>
@@ -208,34 +208,34 @@ export default function LandingPage() {
           <div className="mt-4">
             <a
               href="#features"
-              className="inline-flex items-center gap-2 text-sm font-bold text-slate-300 hover:text-white transition-all"
+              className="inline-flex items-center gap-2 text-sm font-bold text-foreground hover:text-foreground transition-all"
             >
               Explore Features
               <ArrowRight size={14} />
             </a>
           </div>
 
-          <div className="flex items-center justify-center gap-8 mt-12 text-slate-500">
+          <div className="flex items-center justify-center gap-8 mt-12 text-muted-foreground">
             <div className="flex items-center gap-2">
-              <Shield size={16} className="text-amber-500/60" />
+              <Shield size={16} className="text-primary/60" />
               <span className="text-xs font-bold uppercase tracking-wider">Secure & Private</span>
             </div>
             <div className="flex items-center gap-2">
-              <Globe size={16} className="text-amber-500/60" />
+              <Globe size={16} className="text-primary/60" />
               <span className="text-xs font-bold uppercase tracking-wider">Pakistani Law Focus</span>
             </div>
             <div className="hidden sm:flex items-center gap-2">
-              <Zap size={16} className="text-amber-500/60" />
+              <Zap size={16} className="text-primary/60" />
               <span className="text-xs font-bold uppercase tracking-wider">AI Powered</span>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-16 md:py-20 px-6 bg-[#111b2d] border-y border-slate-800/60">
+      <section className="py-16 md:py-20 px-6 bg-[#111b2d] border-y border-border/60">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">How It Works</p>
+            <p className="text-[11px] text-primary font-black uppercase tracking-[0.3em] mb-3">How It Works</p>
             <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
               From Query to Consultation in 3 Steps
             </h2>
@@ -258,59 +258,59 @@ export default function LandingPage() {
                 desc: "Finalize your output, export documents, or escalate to chamber consultation.",
               },
             ].map((item) => (
-              <div key={item.step} className="rounded-2xl border border-slate-800 bg-[#1a2437] p-6">
-                <p className="text-[10px] text-amber-400 font-black tracking-[0.3em] mb-2">{item.step}</p>
-                <h3 className="text-white text-lg font-bold mb-2">{item.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
+              <div key={item.step} className="rounded-2xl border border-border bg-[#1a2437] p-6">
+                <p className="text-[10px] text-primary font-black tracking-[0.3em] mb-2">{item.step}</p>
+                <h3 className="text-foreground text-lg font-bold mb-2">{item.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="py-16 md:py-20 px-6 bg-[#0f172a]">
+      <section className="py-16 md:py-20 px-6 bg-background">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">Platform Preview</p>
+            <p className="text-[11px] text-primary font-black uppercase tracking-[0.3em] mb-3">Platform Preview</p>
             <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
               Built Like a Modern Legal Workspace
             </h2>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="rounded-3xl border border-slate-800 bg-gradient-to-b from-[#1f2a40] to-[#131c2e] p-5 shadow-xl">
+            <div className="rounded-3xl border border-border bg-gradient-to-b from-[#1f2a40] to-[#131c2e] p-5 shadow-xl">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-400">Research Panel</p>
-                <span className="text-[10px] text-slate-500">Live Workspace</span>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Research Panel</p>
+                <span className="text-[10px] text-muted-foreground">Live Workspace</span>
               </div>
               <div className="space-y-3">
-                <div className="rounded-xl border border-slate-700 bg-[#0f172a] p-3 text-xs text-slate-300">Judgment Search: <span className="text-amber-300">2023 SCMR 1450</span></div>
-                <div className="rounded-xl border border-slate-700 bg-[#0f172a] p-3 text-xs text-slate-300">Statute Lookup: <span className="text-amber-300">CPC S.9</span></div>
-                <div className="rounded-xl border border-slate-700 bg-[#0f172a] p-3 text-xs text-slate-300">AI Summary: <span className="text-slate-200">Actionable litigation notes generated.</span></div>
+                <div className="rounded-xl border border-border bg-background p-3 text-xs text-foreground">Judgment Search: <span className="text-primary">2023 SCMR 1450</span></div>
+                <div className="rounded-xl border border-border bg-background p-3 text-xs text-foreground">Statute Lookup: <span className="text-primary">CPC S.9</span></div>
+                <div className="rounded-xl border border-border bg-background p-3 text-xs text-foreground">AI Summary: <span className="text-foreground">Actionable litigation notes generated.</span></div>
               </div>
             </div>
-            <div className="rounded-3xl border border-slate-800 bg-gradient-to-b from-[#241f17] to-[#17120f] p-5 shadow-xl">
+            <div className="rounded-3xl border border-border bg-gradient-to-b from-[#241f17] to-[#17120f] p-5 shadow-xl">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-400">Drafting Panel</p>
-                <span className="text-[10px] text-slate-500">Conversion Ready</span>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Drafting Panel</p>
+                <span className="text-[10px] text-muted-foreground">Conversion Ready</span>
               </div>
               <div className="space-y-3">
-                <div className="rounded-xl border border-amber-500/20 bg-[#0f172a] p-3 text-xs text-slate-300">Legal Draft: <span className="text-amber-300">Petition structure ready</span></div>
-                <div className="rounded-xl border border-amber-500/20 bg-[#0f172a] p-3 text-xs text-slate-300">Contract Risk: <span className="text-amber-300">Critical clauses flagged</span></div>
-                <div className="rounded-xl border border-amber-500/20 bg-[#0f172a] p-3 text-xs text-slate-300">Client Intake: <span className="text-slate-200">Submit case + chamber callback.</span></div>
+                <div className="rounded-xl border border-primary/20 bg-background p-3 text-xs text-foreground">Legal Draft: <span className="text-primary">Petition structure ready</span></div>
+                <div className="rounded-xl border border-primary/20 bg-background p-3 text-xs text-foreground">Contract Risk: <span className="text-primary">Critical clauses flagged</span></div>
+                <div className="rounded-xl border border-primary/20 bg-background p-3 text-xs text-foreground">Client Intake: <span className="text-foreground">Submit case + chamber callback.</span></div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="features" className="py-20 md:py-28 px-6 bg-[#0f172a]">
+      <section id="features" className="py-20 md:py-28 px-6 bg-background">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">Capabilities</p>
+            <p className="text-[11px] text-primary font-black uppercase tracking-[0.3em] mb-3">Capabilities</p>
             <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
               Everything You Need in One Platform
             </h2>
-            <p className="text-slate-400 mt-4 max-w-xl mx-auto">
+            <p className="text-muted-foreground mt-4 max-w-xl mx-auto">
               From case research to contract drafting, Al Wakeelo handles the full spectrum of legal work.
             </p>
           </div>
@@ -343,7 +343,7 @@ export default function LandingPage() {
           <div className="mt-8 text-center">
             <a
               href={ctaTarget}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-700 text-slate-300 text-sm font-bold hover:border-amber-500 hover:text-amber-300 transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border text-foreground text-sm font-bold hover:border-primary hover:text-primary transition-all"
             >
               Explore Full Platform <ArrowRight size={14} />
             </a>
@@ -351,10 +351,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-14 px-6 bg-[#0f172a] border-y border-slate-800/60">
+      <section className="py-14 px-6 bg-background border-y border-border/60">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-8">
-            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">Who It's For</p>
+            <p className="text-[11px] text-primary font-black uppercase tracking-[0.3em] mb-3">Who It's For</p>
             <h2 className="text-2xl md:text-3xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
               Built for Real Legal Workflows
             </h2>
@@ -365,9 +365,9 @@ export default function LandingPage() {
               { title: "Law Chambers", desc: "Shared legal operations with structured outputs and chamber-grade consistency." },
               { title: "In-house Legal Teams", desc: "Quick legal analysis and document review for day-to-day legal operations." },
             ].map((item) => (
-              <div key={item.title} className="rounded-2xl border border-slate-800 bg-[#1a2437] p-5">
-                <h3 className="text-white text-lg font-bold mb-2">{item.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
+              <div key={item.title} className="rounded-2xl border border-border bg-[#1a2437] p-5">
+                <h3 className="text-foreground text-lg font-bold mb-2">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -377,14 +377,14 @@ export default function LandingPage() {
       <section id="pricing" className="py-20 md:py-28 px-6 bg-[#131c2e]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">Plans</p>
+            <p className="text-[11px] text-primary font-black uppercase tracking-[0.3em] mb-3">Plans</p>
             <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
               Choose Your Plan
             </h2>
-            <p className="text-slate-400 mt-4 max-w-xl mx-auto">
+            <p className="text-muted-foreground mt-4 max-w-xl mx-auto">
               Transparent pricing by AI actions, model access, output caps, and upload/OCR limits.
             </p>
-            <div className="mt-6 inline-flex items-center rounded-xl border border-slate-700 bg-[#101a2b] p-1.5 gap-1">
+            <div className="mt-6 inline-flex items-center rounded-xl border border-border bg-background p-1.5 gap-1">
               {[
                 { key: "monthly" as const, label: "Monthly" },
                 { key: "quarterly" as const, label: "3 Months (10% Off)" },
@@ -396,8 +396,8 @@ export default function LandingPage() {
                   onClick={() => setBillingCycle(cycle.key)}
                   className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${
                     billingCycle === cycle.key
-                      ? "bg-amber-500 text-slate-950"
-                      : "text-slate-300 hover:text-amber-200"
+                      ? "bg-primary text-slate-950"
+                      : "text-foreground hover:text-foreground"
                   }`}
                   data-testid={`pricing-cycle-${cycle.key}`}
                 >
@@ -422,15 +422,15 @@ export default function LandingPage() {
                 }}
                 className={`p-7 rounded-3xl transition-all cursor-pointer ${
                   plan.highlighted
-                    ? "bg-gradient-to-b from-amber-500/10 to-[#1e293b] border-2 border-amber-500/30 shadow-xl shadow-amber-500/10"
-                    : "bg-[#1e293b] border border-slate-800 hover:border-slate-700"
-                } ${selectedPlan === plan.key ? "ring-2 ring-amber-400/70" : ""}`}
+                    ? "bg-gradient-to-b from-primary/10 to-[#1e293b] border-2 border-primary/30 shadow-xl shadow-primary/10"
+                    : "bg-card border border-border hover:border-border"
+                } ${selectedPlan === plan.key ? "ring-2 ring-primary/70" : ""}`}
               >
-                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${plan.highlighted ? "text-amber-500" : "text-slate-500"}`}>
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${plan.highlighted ? "text-primary" : "text-muted-foreground"}`}>
                   {plan.badge}
                 </p>
-                <h3 className="text-2xl font-bold text-white mb-1">{plan.title}</h3>
-                <p className="text-amber-400 text-sm font-black mb-1">
+                <h3 className="text-2xl font-bold text-foreground mb-1">{plan.title}</h3>
+                <p className="text-primary text-sm font-black mb-1">
                   {plan.key === "free"
                     ? plan.price
                     : plan.key === "enterprise"
@@ -438,32 +438,32 @@ export default function LandingPage() {
                       : getPlanCyclePricing(plan, billingCycle).totalLabel}
                 </p>
                 {plan.key !== "free" && plan.key !== "enterprise" && (
-                  <p className="text-[10px] text-slate-500 mb-1">
+                  <p className="text-[10px] text-muted-foreground mb-1">
                     {getPlanCyclePricing(plan, billingCycle).effectiveMonthlyLabel} · {getPlanCyclePricing(plan, billingCycle).savingsLabel}
                   </p>
                 )}
                 {plan.key === "enterprise" && billingCycle !== "monthly" && (
-                  <p className="text-[10px] text-slate-500 mb-1">Enterprise billing remains custom and contact-led.</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">Enterprise billing remains custom and contact-led.</p>
                 )}
-                <p className="text-xs text-slate-500 mb-5">{plan.subtitle}</p>
+                <p className="text-xs text-muted-foreground mb-5">{plan.subtitle}</p>
                 <ul className="space-y-2.5 mb-7">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-xs text-slate-300 leading-relaxed">
-                      <ChevronRight size={13} className="text-amber-500 flex-shrink-0 mt-0.5" /> {feature}
+                    <li key={feature} className="flex items-start gap-2 text-xs text-foreground leading-relaxed">
+                      <ChevronRight size={13} className="text-primary flex-shrink-0 mt-0.5" /> {feature}
                     </li>
                   ))}
                 </ul>
                 {plan.key === "enterprise" ? (
                   <a
                     href="mailto:support@alwakeelo.com?subject=Enterprise%20Consultation"
-                    className="w-full py-3 border border-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest hover:border-amber-500 hover:text-amber-400 transition-all flex items-center justify-center"
+                    className="w-full py-3 border border-border text-foreground rounded-xl text-xs font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all flex items-center justify-center"
                   >
                     {plan.cta}
                   </a>
                 ) : plan.key === "free" ? (
                   <a
                     href={user ? "/dashboard" : "/auth"}
-                    className="w-full py-3 border border-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest hover:border-amber-500 hover:text-amber-400 transition-all flex items-center justify-center"
+                    className="w-full py-3 border border-border text-foreground rounded-xl text-xs font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all flex items-center justify-center"
                   >
                     {plan.cta}
                   </a>
@@ -472,8 +472,8 @@ export default function LandingPage() {
                     href={`/checkout?plan=${plan.key}&cycle=${billingCycle}`}
                     className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center ${
                       plan.highlighted
-                        ? "bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20"
-                        : "border border-slate-700 text-slate-300 hover:border-amber-500 hover:text-amber-400"
+                        ? "bg-primary text-slate-950 hover:bg-primary shadow-lg shadow-primary/20"
+                        : "border border-border text-foreground hover:border-primary hover:text-primary"
                     }`}
                   >
                     {plan.cta}
@@ -484,15 +484,15 @@ export default function LandingPage() {
           </div>
 
           {selectedPlan === "chamber" && (
-            <div className="mt-8 rounded-2xl border border-slate-800 bg-[#1b2537] p-5">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-500 mb-3">Chamber Expansion</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-300">
-                <p>Extra seat: <span className="text-amber-300 font-bold">+PKR 1,000/month per user</span></p>
-                <p>Extra AI limit: <span className="text-amber-300 font-bold">+350 AI actions/month per user</span></p>
-                <p>Suggested upload add-on: <span className="text-amber-300 font-bold">+300 files/month per user</span></p>
-                <p>Suggested Apex add-on: <span className="text-amber-300 font-bold">+50 Apex requests/month per user</span></p>
+            <div className="mt-8 rounded-2xl border border-border bg-[#1b2537] p-5">
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-3">Chamber Expansion</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-foreground">
+                <p>Extra seat: <span className="text-primary font-bold">+PKR 1,000/month per user</span></p>
+                <p>Extra AI limit: <span className="text-primary font-bold">+350 AI actions/month per user</span></p>
+                <p>Suggested upload add-on: <span className="text-primary font-bold">+300 files/month per user</span></p>
+                <p>Suggested Apex add-on: <span className="text-primary font-bold">+50 Apex requests/month per user</span></p>
               </div>
-              <p className="mt-3 text-[11px] text-slate-400">
+              <p className="mt-3 text-[11px] text-muted-foreground">
                 AI action counting: 1 chat/draft/summarize request = 1 action. Audio transcription: every 2 minutes = 1 action.
               </p>
             </div>
@@ -500,13 +500,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="about" className="py-20 md:py-28 px-6 bg-[#0f172a]">
+      <section id="about" className="py-20 md:py-28 px-6 bg-background">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">About</p>
+          <p className="text-[11px] text-primary font-black uppercase tracking-[0.3em] mb-3">About</p>
           <h2 className="text-3xl md:text-4xl font-bold italic mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
             Built for Pakistani Legal Professionals
           </h2>
-          <p className="text-lg text-slate-400 leading-relaxed mb-8 max-w-2xl mx-auto">
+          <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-2xl mx-auto">
             Al Wakeelo combines cutting-edge AI technology with deep knowledge of Pakistani law to provide 
             lawyers, advocates, and legal professionals with a powerful research and drafting assistant. 
             Our platform is backed by a comprehensive database of Pakistani judgments, statutes, and legal texts.
@@ -518,9 +518,9 @@ export default function LandingPage() {
               { num: "<10s", label: "Avg Response Time" },
               { num: "Advocates+", label: "Used by Advocates & Chambers" },
             ].map((stat, i) => (
-              <div key={i} className="p-6 bg-[#1e293b] border border-slate-800 rounded-2xl">
-                <p className="text-2xl font-bold text-amber-500 mb-1">{stat.num}</p>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{stat.label}</p>
+              <div key={i} className="p-6 bg-card border border-border rounded-2xl">
+                <p className="text-2xl font-bold text-primary mb-1">{stat.num}</p>
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -533,25 +533,25 @@ export default function LandingPage() {
           <h2 className="text-3xl md:text-4xl font-bold italic mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
             Ready for Professional Consultation?
           </h2>
-          <p className="text-slate-400 mb-8">
+          <p className="text-muted-foreground mb-8">
             Start with AI guidance, then connect with our chamber for professional legal consultation.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <a
               href={ctaTarget}
-              className="px-8 py-3.5 bg-amber-500 text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center gap-2 shadow-xl shadow-amber-500/20"
+              className="px-8 py-3.5 bg-primary text-slate-950 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center gap-2 shadow-xl shadow-primary/20"
             >
               {user ? "Go to Dashboard" : "Start Now"} <ArrowRight size={16} />
             </a>
             <a
               href="mailto:support@alwakeelo.com?subject=Legal%20Consultation"
-              className="px-8 py-3.5 border border-slate-700 text-slate-200 rounded-2xl text-sm font-bold hover:border-amber-500 hover:text-amber-300 transition-all inline-flex items-center gap-2"
+              className="px-8 py-3.5 border border-border text-foreground rounded-2xl text-sm font-bold hover:border-primary hover:text-primary transition-all inline-flex items-center gap-2"
             >
               <Mail size={15} /> Email Chamber
             </a>
             <a
               href="tel:00923096875797"
-              className="px-8 py-3.5 border border-slate-700 text-slate-200 rounded-2xl text-sm font-bold hover:border-amber-500 hover:text-amber-300 transition-all inline-flex items-center gap-2"
+              className="px-8 py-3.5 border border-border text-foreground rounded-2xl text-sm font-bold hover:border-primary hover:text-primary transition-all inline-flex items-center gap-2"
             >
               <PhoneCall size={15} /> Call Chamber
             </a>
@@ -559,19 +559,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-16 px-6 bg-[#0f172a]">
+      <section className="py-16 px-6 bg-background">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
-            <p className="text-[11px] text-amber-500 font-black uppercase tracking-[0.3em] mb-3">FAQ</p>
+            <p className="text-[11px] text-primary font-black uppercase tracking-[0.3em] mb-3">FAQ</p>
             <h2 className="text-3xl md:text-4xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
               Frequently Asked Questions
             </h2>
           </div>
           <div className="space-y-3">
             {FAQ_ITEMS.map((item) => (
-              <div key={item.q} className="rounded-2xl border border-slate-800 bg-[#1a2437] p-5">
-                <h3 className="text-base font-bold text-white mb-2">{item.q}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{item.a}</p>
+              <div key={item.q} className="rounded-2xl border border-border bg-[#1a2437] p-5">
+                <h3 className="text-base font-bold text-foreground mb-2">{item.q}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.a}</p>
               </div>
             ))}
           </div>
@@ -583,20 +583,20 @@ export default function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
 
-      <footer className="py-10 px-6 bg-[#0f172a] border-t border-slate-800/50">
+      <footer className="py-10 px-6 bg-background border-t border-border/50">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg overflow-hidden border border-amber-500/30">
+              <div className="w-8 h-8 rounded-lg overflow-hidden border border-primary/30">
                 <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
               </div>
               <span className="text-sm font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>
             </div>
             <div className="flex items-center gap-6">
-              <a href="/privacy" onClick={(e) => { e.preventDefault(); navigate("/privacy"); }} className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Privacy Policy</a>
-              <a href="/terms" onClick={(e) => { e.preventDefault(); navigate("/terms"); }} className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Terms and Conditions</a>
-              <a href="/cancellation-return-refund-policy" onClick={(e) => { e.preventDefault(); navigate("/cancellation-return-refund-policy"); }} className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Cancellation/Return/Refund Policy</a>
-              <a href="/ownership-statement" onClick={(e) => { e.preventDefault(); navigate("/ownership-statement"); }} className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Ownership Statement</a>
+              <a href="/privacy" onClick={(e) => { e.preventDefault(); navigate("/privacy"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
+              <a href="/terms" onClick={(e) => { e.preventDefault(); navigate("/terms"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms and Conditions</a>
+              <a href="/cancellation-return-refund-policy" onClick={(e) => { e.preventDefault(); navigate("/cancellation-return-refund-policy"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Cancellation/Return/Refund Policy</a>
+              <a href="/ownership-statement" onClick={(e) => { e.preventDefault(); navigate("/ownership-statement"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Ownership Statement</a>
             </div>
             <p className="text-xs text-slate-600">
               &copy; {new Date().getFullYear()} Al Wakeelo. All rights reserved.
@@ -604,7 +604,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-6 text-center">
             <p className="text-xs text-slate-600">
-              Al Wakeelo by <span className="text-slate-400 font-semibold">Majnun Studio</span>
+              Al Wakeelo by <span className="text-muted-foreground font-semibold">Majnun Studio</span>
             </p>
           </div>
         </div>

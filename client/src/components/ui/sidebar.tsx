@@ -302,7 +302,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       )}
       {...props}
     >
-      <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-amber-400/55 bg-gradient-to-br from-amber-400/30 to-amber-500/15 text-amber-100 shadow-[0_0_14px_rgba(251,191,36,0.4)] opacity-100 transition-all group-hover/sidebar:scale-110 group-hover/sidebar:text-amber-50 group-hover/sidebar:shadow-[0_0_22px_rgba(251,191,36,0.65)]">
+      <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary/55 bg-gradient-to-br from-primary/30 to-primary/15 text-foreground shadow-[0_0_14px_rgba(251,191,36,0.4)] opacity-100 transition-all group-hover/sidebar:scale-110 group-hover/sidebar:text-foreground group-hover/sidebar:shadow-[0_0_22px_rgba(251,191,36,0.65)]">
         <PanelLeftIcon className="size-3.5" />
       </span>
     </button>

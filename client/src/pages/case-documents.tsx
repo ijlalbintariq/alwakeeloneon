@@ -57,10 +57,10 @@ function inferCategory(doc: Doc): Category {
 }
 
 function getCategoryBadge(category: Category): { label: string; iconColor: string; bg: string } {
-  if (category === "contracts") return { label: "Contract", iconColor: "text-amber-300", bg: "bg-amber-500/10" };
-  if (category === "notices") return { label: "Notice", iconColor: "text-amber-300", bg: "bg-amber-500/10" };
+  if (category === "contracts") return { label: "Contract", iconColor: "text-primary", bg: "bg-primary/10" };
+  if (category === "notices") return { label: "Notice", iconColor: "text-primary", bg: "bg-primary/10" };
   if (category === "evidence") return { label: "Evidence", iconColor: "text-emerald-300", bg: "bg-emerald-500/10" };
-  return { label: "Document", iconColor: "text-amber-300", bg: "bg-amber-500/10" };
+  return { label: "Document", iconColor: "text-primary", bg: "bg-primary/10" };
 }
 
 function buildAnalysisPrompt(doc: Doc): string {
@@ -289,19 +289,19 @@ export default function CaseDocumentsPage() {
   };
 
   return (
-    <div className="h-full overflow-hidden rounded-[1.4rem] border border-[hsl(var(--preview-border))] preview-bg text-slate-100" data-testid="case-documents-page">
+    <div className="h-full overflow-hidden rounded-[1.4rem] border border-[hsl(var(--preview-border))] preview-bg text-foreground" data-testid="case-documents-page">
       <div className="flex h-full min-h-[620px]">
         <main className="flex-1 min-w-0 flex flex-col preview-bg relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-[440px] h-[440px] bg-amber-500/5 rounded-full blur-[90px] pointer-events-none" />
+          <div className="absolute top-0 right-0 w-[440px] h-[440px] bg-primary/5 rounded-full blur-[90px] pointer-events-none" />
 
           <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-[hsl(var(--preview-border))] glass-shell px-4 md:px-8 py-4">
             <div className="hidden md:flex items-center gap-3 shrink-0">
-              <div className="size-9 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <div className="size-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                 <ScaleIcon />
               </div>
               <div>
-                <h1 className="text-sm font-black tracking-wide text-white">Al Wakeelo</h1>
-                <p className="text-[10px] uppercase text-amber-400 font-bold tracking-widest">AI Legal Assistant</p>
+                <h1 className="text-sm font-black tracking-wide text-foreground">Al Wakeelo</h1>
+                <p className="text-[10px] uppercase text-primary font-bold tracking-widest">AI Legal Assistant</p>
               </div>
             </div>
 
@@ -313,12 +313,12 @@ export default function CaseDocumentsPage() {
 
             <div className="flex-1 max-w-2xl ml-auto">
               <div className="relative">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search case files, evidence, or specific clauses..."
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder:text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none"
                 />
               </div>
             </div>
@@ -337,8 +337,8 @@ export default function CaseDocumentsPage() {
                   onClick={() => setCategory(tab.id)}
                   className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
                     category === tab.id
-                      ? "bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20"
-                      : "border border-white/10 bg-white/5 text-slate-300 hover:border-amber-500/40"
+                      ? "bg-primary text-slate-950 shadow-lg shadow-primary/20"
+                      : "border border-white/10 bg-white/5 text-foreground hover:border-primary/40"
                   }`}
                 >
                   {tab.label}
@@ -357,7 +357,7 @@ export default function CaseDocumentsPage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/40 hover:bg-amber-500/10 text-sm font-bold"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-primary/40 hover:bg-primary/10 text-sm font-bold"
                 >
                   <Upload size={15} />
                   {uploading ? "Uploading..." : "Upload"}
@@ -381,39 +381,39 @@ export default function CaseDocumentsPage() {
                         <FileText className={`${badge.iconColor}`} size={20} />
                       </div>
                       {active && (
-                        <div className="px-2 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-[10px] uppercase tracking-widest font-bold text-amber-400">
+                        <div className="px-2 py-1 rounded-md border border-primary/30 bg-primary/10 text-[10px] uppercase tracking-widest font-bold text-primary">
                           Context Active
                         </div>
                       )}
                     </div>
 
                     <div className="mt-4">
-                      <h3 className="text-lg font-bold text-white line-clamp-1">{doc.title}</h3>
-                      <p className="text-xs text-slate-400 mt-1">Modified: {new Date(doc.createdAt).toLocaleDateString()}</p>
-                      <p className="text-[11px] text-slate-500 mt-1 uppercase tracking-widest">{badge.label}</p>
+                      <h3 className="text-lg font-bold text-foreground line-clamp-1">{doc.title}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">Modified: {new Date(doc.createdAt).toLocaleDateString()}</p>
+                      <p className="text-[11px] text-muted-foreground mt-1 uppercase tracking-widest">{badge.label}</p>
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2">
                       <button
                         onClick={() => openPreview(doc)}
-                        className="flex-1 py-2 rounded-lg bg-[hsl(var(--preview-surface)/0.65)] hover:bg-amber-500 hover:text-slate-950 text-sm font-bold transition-all"
+                        className="flex-1 py-2 rounded-lg bg-[hsl(var(--preview-surface)/0.65)] hover:bg-primary hover:text-slate-950 text-sm font-bold transition-all"
                         data-testid={`button-view-doc-${doc.id}`}
                       >
                         View
                       </button>
-                      <button onClick={() => handleDownload(doc)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300" title="Download">
+                      <button onClick={() => handleDownload(doc)} className="p-2 rounded-lg hover:bg-white/10 text-foreground" title="Download">
                         <Download size={16} />
                       </button>
                       <button
                         onClick={() => toggleContext(doc.id)}
-                        className={`p-2 rounded-lg ${active ? "bg-amber-500/20 text-amber-400" : "text-slate-300 hover:bg-white/10"}`}
+                        className={`p-2 rounded-lg ${active ? "bg-primary/20 text-primary" : "text-foreground hover:bg-white/10"}`}
                         title="Toggle AI context"
                       >
                         <Brain size={16} />
                       </button>
                       <button
                         onClick={() => deleteMutation.mutate(doc.id)}
-                        className="p-2 rounded-lg text-slate-300 hover:bg-red-500/10 hover:text-red-300"
+                        className="p-2 rounded-lg text-foreground hover:bg-red-500/10 hover:text-red-300"
                         title="Delete"
                       >
                         <Trash2 size={16} />
@@ -426,7 +426,7 @@ export default function CaseDocumentsPage() {
               {!isLoading && filteredDocuments.length === 0 && (
                 <div className="col-span-full py-16 text-center border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
                   <FileSearch size={40} className="mx-auto text-slate-600 mb-4" />
-                  <p className="text-slate-400">No documents match this filter.</p>
+                  <p className="text-muted-foreground">No documents match this filter.</p>
                 </div>
               )}
             </div>
@@ -436,37 +436,37 @@ export default function CaseDocumentsPage() {
         <aside className="hidden lg:flex w-80 border-l border-[hsl(var(--preview-border))] glass-shell p-5 flex-col gap-5">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="text-amber-400" size={18} />
+              <Sparkles className="text-primary" size={18} />
               <h3 className="text-lg font-bold">Active AI Knowledge</h3>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              The AI is currently referencing <span className="text-amber-400 font-bold">{activeDocs.length} document{activeDocs.length === 1 ? "" : "s"}</span> for this case context.
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              The AI is currently referencing <span className="text-primary font-bold">{activeDocs.length} document{activeDocs.length === 1 ? "" : "s"}</span> for this case context.
             </p>
           </div>
 
           <div className="space-y-2 overflow-y-auto scrollbar-hide">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Processing Now</p>
-            {activeDocs.length === 0 && <p className="text-xs text-slate-500">No active context documents selected.</p>}
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Processing Now</p>
+            {activeDocs.length === 0 && <p className="text-xs text-muted-foreground">No active context documents selected.</p>}
             {activeDocs.map((doc) => (
-              <div key={doc.id} className="p-3 rounded-xl border border-amber-500/25 bg-amber-500/5">
+              <div key={doc.id} className="p-3 rounded-xl border border-primary/25 bg-primary/5">
                 <div className="flex items-center gap-2">
-                  <FileText size={14} className="text-amber-400" />
+                  <FileText size={14} className="text-primary" />
                   <p className="text-sm font-semibold line-clamp-1">{doc.title}</p>
                 </div>
-                <p className="text-[11px] text-amber-400/80 mt-1">Live Syncing</p>
+                <p className="text-[11px] text-primary/80 mt-1">Live Syncing</p>
               </div>
             ))}
           </div>
 
           <div className="mt-auto p-3 rounded-xl border border-white/10 bg-white/5">
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-slate-400">Context Window</span>
-              <span className="text-amber-400 font-bold">{contextUsagePercent}% Used</span>
+              <span className="text-muted-foreground">Context Window</span>
+              <span className="text-primary font-bold">{contextUsagePercent}% Used</span>
             </div>
             <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full bg-amber-500" style={{ width: `${contextUsagePercent}%` }} />
+              <div className="h-full bg-primary" style={{ width: `${contextUsagePercent}%` }} />
             </div>
-            <p className="text-[11px] text-slate-500 mt-2">Large files are summarized automatically to fit within AI context.</p>
+            <p className="text-[11px] text-muted-foreground mt-2">Large files are summarized automatically to fit within AI context.</p>
           </div>
         </aside>
       </div>
@@ -476,20 +476,20 @@ export default function CaseDocumentsPage() {
           <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border-active))/0.45] preview-surface overflow-hidden flex flex-col">
             <div className="px-4 md:px-6 py-3 border-b border-[hsl(var(--preview-border))] glass-shell flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 rounded-lg bg-amber-500/15 text-amber-400"><FileText size={18} /></div>
+                <div className="p-2 rounded-lg bg-primary/15 text-primary"><FileText size={18} /></div>
                 <div className="min-w-0">
-                  <h3 className="text-lg font-bold text-white truncate">{previewDoc.title}</h3>
-                  <p className="text-[11px] uppercase tracking-widest text-amber-400/80">Legal Draft • Indexed</p>
+                  <h3 className="text-lg font-bold text-foreground truncate">{previewDoc.title}</h3>
+                  <p className="text-[11px] uppercase tracking-widest text-primary/80">Legal Draft • Indexed</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => handleDownload(previewDoc)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300" title="Download">
+                <button onClick={() => handleDownload(previewDoc)} className="p-2 rounded-lg hover:bg-white/10 text-foreground" title="Download">
                   <Download size={18} />
                 </button>
-                <button onClick={() => handleShare(previewDoc)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300" title="Share">
+                <button onClick={() => handleShare(previewDoc)} className="p-2 rounded-lg hover:bg-white/10 text-foreground" title="Share">
                   <Share2 size={18} />
                 </button>
-                <button onClick={() => setPreviewDoc(null)} className="p-2 rounded-full bg-amber-500 text-slate-950 hover:brightness-110" title="Close">
+                <button onClick={() => setPreviewDoc(null)} className="p-2 rounded-full bg-primary text-slate-950 hover:brightness-110" title="Close">
                   <X size={18} />
                 </button>
               </div>
@@ -504,35 +504,35 @@ export default function CaseDocumentsPage() {
 
               <aside className="border-l border-[hsl(var(--preview-border))] glass-shell p-4 md:p-5 overflow-y-auto">
                 <div className="flex items-center gap-2 mb-3">
-                  <Sparkles size={16} className="text-amber-400" />
+                  <Sparkles size={16} className="text-primary" />
                   <h4 className="text-lg font-bold">AI Analysis</h4>
                 </div>
 
-                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 mb-4">
+                <div className="rounded-xl border border-primary/25 bg-primary/10 p-3 mb-4">
                   <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="text-slate-300">Confidence Score</span>
-                    <span className="font-bold text-amber-400">{analysis?.confidence ?? 0}%</span>
+                    <span className="text-foreground">Confidence Score</span>
+                    <span className="font-bold text-primary">{analysis?.confidence ?? 0}%</span>
                   </div>
                   <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                    <div className="h-full bg-amber-500" style={{ width: `${analysis?.confidence ?? 0}%` }} />
+                    <div className="h-full bg-primary" style={{ width: `${analysis?.confidence ?? 0}%` }} />
                   </div>
                 </div>
 
                 {analysisLoading ? (
-                  <p className="text-sm text-slate-400">Analyzing document...</p>
+                  <p className="text-sm text-muted-foreground">Analyzing document...</p>
                 ) : (
                   <>
                     <div className="mb-5">
                       <h5 className="font-bold text-2xl mb-2">Document Summary</h5>
                       <div className="space-y-2">
                         {(analysis?.summary || []).map((line, i) => (
-                          <div key={`${line}-${i}`} className="flex items-start gap-2 text-sm text-slate-200">
-                            <span className="text-amber-400 mt-0.5">•</span>
+                          <div key={`${line}-${i}`} className="flex items-start gap-2 text-sm text-foreground">
+                            <span className="text-primary mt-0.5">•</span>
                             <p>{line}</p>
                           </div>
                         ))}
                         {(!analysis || analysis.summary.length === 0) && (
-                          <p className="text-sm text-slate-400">No summary generated yet.</p>
+                          <p className="text-sm text-muted-foreground">No summary generated yet.</p>
                         )}
                       </div>
                     </div>
@@ -543,17 +543,17 @@ export default function CaseDocumentsPage() {
                         {(analysis?.risks || []).map((risk) => (
                           <div
                             key={risk.id}
-                            className={`rounded-xl border p-3 ${risk.severity === "danger" ? "border-red-400/30 bg-red-500/10" : "border-amber-400/30 bg-amber-500/10"}`}
+                            className={`rounded-xl border p-3 ${risk.severity === "danger" ? "border-red-400/30 bg-red-500/10" : "border-primary/30 bg-primary/10"}`}
                           >
                             <div className="flex items-center gap-2 text-sm font-bold">
-                              {risk.severity === "danger" ? <AlertTriangle size={14} className="text-red-300" /> : <CheckCircle2 size={14} className="text-amber-300" />}
+                              {risk.severity === "danger" ? <AlertTriangle size={14} className="text-red-300" /> : <CheckCircle2 size={14} className="text-primary" />}
                               <span>{risk.title}</span>
                             </div>
-                            <p className="text-xs text-slate-300 mt-1">{risk.detail}</p>
+                            <p className="text-xs text-foreground mt-1">{risk.detail}</p>
                           </div>
                         ))}
                         {analysis && analysis.risks.length === 0 && (
-                          <p className="text-sm text-slate-400">No high-priority legal risks detected.</p>
+                          <p className="text-sm text-muted-foreground">No high-priority legal risks detected.</p>
                         )}
                       </div>
                     </div>
@@ -562,7 +562,7 @@ export default function CaseDocumentsPage() {
 
                 <button
                   onClick={() => openInEditor(previewDoc)}
-                  className="mt-5 w-full py-3 rounded-full bg-amber-500 text-slate-950 font-bold hover:brightness-105 inline-flex items-center justify-center gap-2"
+                  className="mt-5 w-full py-3 rounded-full bg-primary text-slate-950 font-bold hover:brightness-105 inline-flex items-center justify-center gap-2"
                 >
                   <FolderOpen size={16} /> Open in Editor
                 </button>

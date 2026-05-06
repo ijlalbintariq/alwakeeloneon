@@ -226,8 +226,8 @@ function LawDetailPopup({ law, onClose }: { law: LawReference; onClose: () => vo
         const el = node.parentElement;
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "start" });
-          el.classList.add("bg-amber-500/20");
-          setTimeout(() => el.classList.remove("bg-amber-500/20"), 2000);
+          el.classList.add("bg-primary/20");
+          setTimeout(() => el.classList.remove("bg-primary/20"), 2000);
         }
         break;
       }
@@ -240,16 +240,16 @@ function LawDetailPopup({ law, onClose }: { law: LawReference; onClose: () => vo
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative bg-[#1e293b] border border-slate-700 rounded-2xl shadow-2xl w-full max-h-[85vh] flex"
+        className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-h-[85vh] flex"
         style={{ maxWidth: hasToc && showToc ? "56rem" : "42rem" }}
         onClick={(e) => e.stopPropagation()}
       >
         {hasToc && showToc && (
-          <div className="w-64 flex-shrink-0 border-r border-slate-700 overflow-y-auto bg-[#0f172a] rounded-l-2xl">
-            <div className="sticky top-0 bg-[#0f172a] border-b border-slate-700 p-3 z-10">
+          <div className="w-64 flex-shrink-0 border-r border-border overflow-y-auto bg-background rounded-l-2xl">
+            <div className="sticky top-0 bg-background border-b border-border p-3 z-10">
               <div className="flex items-center gap-2">
-                <List size={14} className="text-amber-500" />
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Table of Contents</span>
+                <List size={14} className="text-primary" />
+                <span className="text-xs font-bold text-primary uppercase tracking-wider">Table of Contents</span>
               </div>
             </div>
             <div className="p-2 space-y-0.5">
@@ -257,10 +257,10 @@ function LawDetailPopup({ law, onClose }: { law: LawReference; onClose: () => vo
                 <button
                   key={i}
                   onClick={() => scrollToSection(entry.text)}
-                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-slate-800 transition-colors truncate"
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-card transition-colors truncate"
                   style={{ paddingLeft: `${(entry.level - 1) * 12 + 8}px` }}
                 >
-                  <span className={entry.level === 1 ? "text-amber-400 font-semibold" : entry.level === 2 ? "text-slate-300" : "text-slate-500"}>
+                  <span className={entry.level === 1 ? "text-primary font-semibold" : entry.level === 2 ? "text-foreground" : "text-muted-foreground"}>
                     {entry.text}
                   </span>
                 </button>
@@ -270,85 +270,85 @@ function LawDetailPopup({ law, onClose }: { law: LawReference; onClose: () => vo
         )}
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <div className="sticky top-0 bg-[#1e293b] border-b border-slate-700 p-4 flex items-center justify-between rounded-t-2xl z-10">
+          <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between rounded-t-2xl z-10">
             <div className="flex items-center gap-2">
-              <Scale size={16} className="text-amber-500" />
-              <h3 className="text-sm font-bold text-white">Law Reference</h3>
+              <Scale size={16} className="text-primary" />
+              <h3 className="text-sm font-bold text-foreground">Law Reference</h3>
             </div>
             <div className="flex items-center gap-2">
               {hasToc && (
                 <button
                   onClick={() => setShowToc(!showToc)}
-                  className={`p-1.5 rounded-lg transition-colors ${showToc ? "bg-amber-500/20 text-amber-400" : "hover:bg-slate-700 text-slate-400 hover:text-white"}`}
+                  className={`p-1.5 rounded-lg transition-colors ${showToc ? "bg-primary/20 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}
                   title="Toggle Table of Contents"
                 >
                   <List size={16} />
                 </button>
               )}
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
                 <X size={16} />
               </button>
             </div>
           </div>
           <div id="law-detail-content" className="p-5 space-y-4 overflow-y-auto flex-1">
             <div>
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Statute / Act</p>
-              <p className="text-lg font-bold text-white">{law.name}</p>
+              <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Statute / Act</p>
+              <p className="text-lg font-bold text-foreground">{law.name}</p>
             </div>
             {law.section && (
               <div>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Section</p>
-                <p className="text-sm text-amber-500 font-semibold">{law.section}</p>
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Section</p>
+                <p className="text-sm text-primary font-semibold">{law.section}</p>
               </div>
             )}
             <div>
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">AI Summary</p>
-              <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{law.description}</p>
+              <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">AI Summary</p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{law.description}</p>
             </div>
 
             {isLoading && (
               <div className="flex items-center justify-center py-6 gap-3">
-                <Loader2 size={18} className="animate-spin text-amber-500" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Loading from Knowledge Vault...</p>
+                <Loader2 size={18} className="animate-spin text-primary" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Loading from Knowledge Vault...</p>
               </div>
             )}
 
             {!isLoading && lookupData?.found && (
-              <div className="border-t border-slate-700 pt-4 space-y-4">
+              <div className="border-t border-border pt-4 space-y-4">
                 <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Knowledge Vault Match</p>
 
                 {lookupData.statutes && lookupData.statutes.map((s, i) => (
-                  <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
+                  <div key={i} className="bg-card/50 border border-border rounded-xl p-4 space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[9px] font-black uppercase text-amber-500">
+                      <span className="px-2 py-0.5 bg-primary/10 border border-primary/20 rounded text-[9px] font-black uppercase text-primary">
                         {s.shortTitle}
                       </span>
-                      <span className="text-[10px] text-slate-400">Section {s.section}</span>
+                      <span className="text-[10px] text-muted-foreground">Section {s.section}</span>
                     </div>
-                    <p className="text-sm text-slate-300 leading-relaxed">{s.description}</p>
+                    <p className="text-sm text-foreground leading-relaxed">{s.description}</p>
                     {s.punishment && (
-                      <p className="text-xs text-slate-400">
-                        <span className="text-amber-500/70 font-semibold">Punishment/Remedy: </span>{s.punishment}
+                      <p className="text-xs text-muted-foreground">
+                        <span className="text-primary/70 font-semibold">Punishment/Remedy: </span>{s.punishment}
                       </p>
                     )}
                   </div>
                 ))}
 
                 {lookupData.documents && lookupData.documents.map((d, i) => (
-                  <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                    <p className="text-sm font-bold text-white">{d.title}</p>
-                    <span className="inline-block px-2 py-0.5 bg-slate-700 rounded text-[9px] text-slate-400 uppercase">{d.category}</span>
+                  <div key={i} className="bg-card/50 border border-border rounded-xl p-4 space-y-2">
+                    <p className="text-sm font-bold text-foreground">{d.title}</p>
+                    <span className="inline-block px-2 py-0.5 bg-muted rounded text-[9px] text-muted-foreground uppercase">{d.category}</span>
                     <div className="max-h-[300px] overflow-y-auto mt-2">
-                      <pre className="whitespace-pre-wrap text-xs leading-relaxed text-slate-400 font-mono">{d.content}</pre>
+                      <pre className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground font-mono">{d.content}</pre>
                     </div>
                   </div>
                 ))}
 
                 {lookupData.knowledgeVault && lookupData.knowledgeVault.map((g, i) => (
-                  <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                    <p className="text-sm font-bold text-white">{g.title}</p>
+                  <div key={i} className="bg-card/50 border border-border rounded-xl p-4 space-y-2">
+                    <p className="text-sm font-bold text-foreground">{g.title}</p>
                     <div className="max-h-[300px] overflow-y-auto mt-2">
-                      <pre className="whitespace-pre-wrap text-xs leading-relaxed text-slate-400 font-mono">{g.content}</pre>
+                      <pre className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground font-mono">{g.content}</pre>
                     </div>
                   </div>
                 ))}
@@ -356,13 +356,13 @@ function LawDetailPopup({ law, onClose }: { law: LawReference; onClose: () => vo
             )}
 
             {!isLoading && !loadError && lookupData && !lookupData.found && (
-              <div className="border-t border-slate-700 pt-4">
-                <p className="text-xs text-slate-500 italic">No additional details found in the Knowledge Vault for this provision. The AI summary above is based on the response context.</p>
+              <div className="border-t border-border pt-4">
+                <p className="text-xs text-muted-foreground italic">No additional details found in the Knowledge Vault for this provision. The AI summary above is based on the response context.</p>
               </div>
             )}
 
             {loadError && (
-              <div className="border-t border-slate-700 pt-4">
+              <div className="border-t border-border pt-4">
                 <p className="text-xs text-red-400/70 italic">Could not load additional details. The AI summary above is still available.</p>
               </div>
             )}
@@ -379,12 +379,12 @@ function ReferencePopup({ onClose, children, title }: { onClose: () => void; chi
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative bg-[#1e293b] border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto"
+        className="relative bg-card border border-border rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-[#1e293b] border-b border-slate-700 p-4 flex items-center justify-between rounded-t-2xl z-10">
-          <h3 className="text-sm font-bold text-white">{title}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+        <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between rounded-t-2xl z-10">
+          <h3 className="text-sm font-bold text-foreground">{title}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -477,38 +477,38 @@ function JudgmentDetailPopup({ judgment, onClose }: { judgment: JudgmentReferenc
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <div
-            className="bg-[#1e293b] border border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto"
+            className="bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-[#1e293b] border-b border-slate-700 p-4 flex items-center justify-between rounded-t-2xl z-10">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Gavel size={14} className="text-amber-500" />
+            <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between rounded-t-2xl z-10">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Gavel size={14} className="text-primary" />
                 Judgment Reference
               </h3>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
                 <X size={16} />
               </button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Citation</p>
-                <p className="text-lg font-bold text-white">{judgment.citation}</p>
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Citation</p>
+                <p className="text-lg font-bold text-foreground">{judgment.citation}</p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Court</p>
-                <p className="text-sm text-amber-500 font-semibold">{judgment.court}</p>
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Court</p>
+                <p className="text-sm text-primary font-semibold">{judgment.court}</p>
               </div>
 
               {lookupData?.found && lookupData.title && (
                 <div>
-                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Case Title</p>
-                  <p className="text-sm text-white font-semibold">{lookupData.title}</p>
+                  <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Case Title</p>
+                  <p className="text-sm text-foreground font-semibold">{lookupData.title}</p>
                 </div>
               )}
 
               <div>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Summary</p>
-                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Summary</p>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                   {lookupData?.found && lookupData.summary && lookupData.summary.length > judgment.description.length
                     ? lookupData.summary
                     : judgment.description}
@@ -516,7 +516,7 @@ function JudgmentDetailPopup({ judgment, onClose }: { judgment: JudgmentReferenc
               </div>
 
               {isLoadingLookup && (
-                <div className="flex items-center gap-2 text-slate-500 text-xs">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs">
                   <Loader2 size={12} className="animate-spin" />
                   Checking knowledge base...
                 </div>
@@ -526,7 +526,7 @@ function JudgmentDetailPopup({ judgment, onClose }: { judgment: JudgmentReferenc
                 <button
                   onClick={handleViewSource}
                   disabled={isLoadingSource}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 text-sm font-semibold hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 border border-primary/30 rounded-xl text-primary text-sm font-semibold hover:bg-primary/20 transition-colors disabled:opacity-50"
                 >
                   {isLoadingSource ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -534,12 +534,12 @@ function JudgmentDetailPopup({ judgment, onClose }: { judgment: JudgmentReferenc
                     <FileText size={16} />
                   )}
                   {isLoadingSource ? "Loading Document..." : "Open Case Law Document"}
-                  <span className="text-[10px] text-amber-500/60 ml-1">({sourceLabel})</span>
+                  <span className="text-[10px] text-primary/60 ml-1">({sourceLabel})</span>
                 </button>
               )}
 
               {lookupData?.found && !lookupData.hasSource && !isLoadingLookup && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-lg text-[11px] text-slate-500">
+                <div className="flex items-center gap-2 px-3 py-2 bg-card/50 rounded-lg text-[11px] text-muted-foreground">
                   <FileText size={12} />
                   Found in database (no linked source document)
                 </div>
@@ -569,12 +569,12 @@ export function ReferenceCards({ references }: { references: ParsedReferences })
 
   return (
     <>
-      <div className="mt-4 pt-4 border-t border-slate-700/50 space-y-3" data-testid="reference-cards-container">
+      <div className="mt-4 pt-4 border-t border-border/50 space-y-3" data-testid="reference-cards-container">
         {references.laws.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <BookOpen size={13} className="text-amber-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/80" data-testid="text-relevant-laws-label">Relevant Laws</span>
+              <BookOpen size={13} className="text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary/80" data-testid="text-relevant-laws-label">Relevant Laws</span>
               <ChevronRight size={12} className="text-slate-600" />
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -590,17 +590,17 @@ export function ReferenceCards({ references }: { references: ParsedReferences })
                   onTouchEnd={(e) => {
                     e.stopPropagation();
                   }}
-                  className="flex-shrink-0 bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 text-left max-w-[260px] transition-all hover:bg-slate-700/50 hover:border-amber-500/30 active:scale-[0.98] cursor-pointer select-none"
+                  className="flex-shrink-0 bg-card/80 border border-border/50 rounded-xl p-3 text-left max-w-[260px] transition-all hover:bg-muted/50 hover:border-primary/30 active:scale-[0.98] cursor-pointer select-none"
                   style={{ touchAction: "manipulation" }}
                   data-testid={`card-law-${i}`}
                 >
-                  <p className="text-xs font-bold text-white truncate" data-testid={`text-law-name-${i}`}>
+                  <p className="text-xs font-bold text-foreground truncate" data-testid={`text-law-name-${i}`}>
                     {law.name}
                   </p>
                   {law.section && (
-                    <p className="text-[10px] text-amber-500/70 font-semibold mt-0.5" data-testid={`text-law-section-${i}`}>{law.section}</p>
+                    <p className="text-[10px] text-primary/70 font-semibold mt-0.5" data-testid={`text-law-section-${i}`}>{law.section}</p>
                   )}
-                  <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed" data-testid={`text-law-description-${i}`}>
+                  <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed" data-testid={`text-law-description-${i}`}>
                     {law.description}
                   </p>
                 </button>
@@ -612,8 +612,8 @@ export function ReferenceCards({ references }: { references: ParsedReferences })
         {references.judgments.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Gavel size={13} className="text-amber-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/80" data-testid="text-relevant-judgments-label">Relevant Judgments</span>
+              <Gavel size={13} className="text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary/80" data-testid="text-relevant-judgments-label">Relevant Judgments</span>
               <ChevronRight size={12} className="text-slate-600" />
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -629,15 +629,15 @@ export function ReferenceCards({ references }: { references: ParsedReferences })
                   onTouchEnd={(e) => {
                     e.stopPropagation();
                   }}
-                  className="flex-shrink-0 bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 text-left max-w-[260px] transition-all hover:bg-slate-700/50 hover:border-amber-500/30 active:scale-[0.98] cursor-pointer select-none"
+                  className="flex-shrink-0 bg-card/80 border border-border/50 rounded-xl p-3 text-left max-w-[260px] transition-all hover:bg-muted/50 hover:border-primary/30 active:scale-[0.98] cursor-pointer select-none"
                   style={{ touchAction: "manipulation" }}
                   data-testid={`card-judgment-${i}`}
                 >
-                  <p className="text-xs font-bold text-white truncate" data-testid={`text-judgment-citation-${i}`}>
+                  <p className="text-xs font-bold text-foreground truncate" data-testid={`text-judgment-citation-${i}`}>
                     {judgment.citation}
                   </p>
-                  <p className="text-[10px] text-amber-500/70 font-semibold mt-0.5" data-testid={`text-judgment-court-${i}`}>{judgment.court}</p>
-                  <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed" data-testid={`text-judgment-description-${i}`}>
+                  <p className="text-[10px] text-primary/70 font-semibold mt-0.5" data-testid={`text-judgment-court-${i}`}>{judgment.court}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed" data-testid={`text-judgment-description-${i}`}>
                     {judgment.description}
                   </p>
                 </button>

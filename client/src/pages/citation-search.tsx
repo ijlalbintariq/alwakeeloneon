@@ -106,22 +106,22 @@ export default function CitationSearchPage() {
   return (
     <div className="space-y-8 fade-in" data-testid="citation-search-page">
       <div>
-        <h2 className="text-3xl sm:text-4xl font-bold text-white italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <h2 className="text-3xl sm:text-4xl font-bold text-foreground italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
           Citation Search
         </h2>
-        <p className="text-slate-500 mt-2">Search exact Pakistan legal citations by year, journal, and page.</p>
+        <p className="text-muted-foreground mt-2">Search exact Pakistan legal citations by year, journal, and page.</p>
       </div>
 
-      <form onSubmit={handleSearch} className="rounded-3xl border border-slate-800 bg-[#1e293b]/75 p-5 md:p-7 shadow-2xl space-y-5">
+      <form onSubmit={handleSearch} className="rounded-3xl border border-border bg-card/75 p-5 md:p-7 shadow-2xl space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <label className="space-y-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 inline-flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground inline-flex items-center gap-2">
               <Calendar size={13} /> Year
             </span>
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+              className="w-full rounded-xl border border-border bg-background/80 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               data-testid="select-citation-year"
             >
               {years.map((y) => (
@@ -133,13 +133,13 @@ export default function CitationSearchPage() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 inline-flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground inline-flex items-center gap-2">
               <BookOpen size={13} /> Journal
             </span>
             <select
               value={journal}
               onChange={(e) => setJournal(e.target.value)}
-              className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+              className="w-full rounded-xl border border-border bg-background/80 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               disabled={loadingJournals}
               data-testid="select-citation-journal"
             >
@@ -154,7 +154,7 @@ export default function CitationSearchPage() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 inline-flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground inline-flex items-center gap-2">
               <Hash size={13} /> Page
             </span>
             <input
@@ -163,21 +163,21 @@ export default function CitationSearchPage() {
               value={page}
               onChange={(e) => setPage(e.target.value)}
               placeholder="e.g. 100"
-              className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+              className="w-full rounded-xl border border-border bg-background/80 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               data-testid="input-citation-page"
             />
           </label>
         </div>
 
         <label className="space-y-2 block">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 inline-flex items-center gap-2">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground inline-flex items-center gap-2">
             <Building2 size={13} /> Court (Optional)
           </span>
           <input
             value={court}
             onChange={(e) => setCourt(e.target.value)}
             placeholder="Supreme Court, Lahore High Court, etc."
-            className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+            className="w-full rounded-xl border border-border bg-background/80 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             data-testid="input-citation-court"
           />
         </label>
@@ -191,7 +191,7 @@ export default function CitationSearchPage() {
           <button
             type="submit"
             disabled={searching || loadingJournals}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="button-citation-search"
           >
             {searching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
@@ -207,23 +207,23 @@ export default function CitationSearchPage() {
       ) : null}
 
       {!error && hasSearched && !searching && results.length === 0 ? (
-        <div className="rounded-2xl border border-slate-800 bg-[#1e293b]/40 px-5 py-6 text-slate-400" data-testid="citation-search-empty">
+        <div className="rounded-2xl border border-border bg-card/40 px-5 py-6 text-muted-foreground" data-testid="citation-search-empty">
           No matching judgments found for this citation.
         </div>
       ) : null}
 
       {results.length > 0 ? (
         <div className="space-y-3" data-testid="citation-search-results">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500 font-black">{results.length} result(s)</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-black">{results.length} result(s)</p>
           {results.map((item) => (
-            <article key={item.id} className="rounded-2xl border border-slate-800 bg-[#1e293b]/65 p-4 md:p-5 shadow-xl">
+            <article key={item.id} className="rounded-2xl border border-border bg-card/65 p-4 md:p-5 shadow-xl">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div className="space-y-2 min-w-0">
                   <span className="inline-flex rounded-lg bg-blue-500/15 border border-blue-500/30 px-2.5 py-1 text-[11px] text-blue-200 font-mono">
                     {item.citation}
                   </span>
-                  <h3 className="text-lg font-semibold text-white leading-snug">{item.title}</h3>
-                  <p className="text-sm text-slate-400">
+                  <h3 className="text-lg font-semibold text-foreground leading-snug">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground">
                     {item.court || "Court not available"} • {formatDecisionDate(item.decisionDate)}
                   </p>
                 </div>
@@ -231,7 +231,7 @@ export default function CitationSearchPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     onClick={() => setLocation(`/judgment/${item.id}`)}
-                    className="rounded-lg bg-amber-500/15 border border-amber-500/30 px-3 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500/20"
+                    className="rounded-lg bg-primary/15 border border-primary/30 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20"
                     data-testid={`button-view-judgment-${item.id}`}
                   >
                     View Full Judgment →

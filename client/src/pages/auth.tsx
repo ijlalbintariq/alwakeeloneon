@@ -241,12 +241,12 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen preview-bg flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
-      <div className="absolute top-[-12%] left-[-12%] w-[44%] h-[44%] bg-amber-500/10 rounded-full blur-[130px]" />
+      <div className="absolute top-[-12%] left-[-12%] w-[44%] h-[44%] bg-primary/10 rounded-full blur-[130px]" />
       <div className="absolute bottom-[-14%] right-[-12%] w-[36%] h-[36%] bg-emerald-500/10 rounded-full blur-[120px]" />
 
       <div className="w-full max-w-md preview-elevated p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[2.2rem] relative z-10 fade-in">
         <div className="text-center mb-8 pb-6 border-b border-[hsl(var(--preview-border))]">
-          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-amber-400/40 mb-5 shadow-lg shadow-amber-500/30">
+          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-primary/40 mb-5 shadow-lg shadow-primary/30">
             <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-3xl font-bold preview-title uppercase tracking-tighter italic" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -264,7 +264,7 @@ export default function AuthPage() {
           {mode === "register" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="relative">
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="First Name"
@@ -272,11 +272,11 @@ export default function AuthPage() {
                   onChange={(e) => setFirstName(e.target.value)}
                   required
                   data-testid="input-first-name"
-                  className="w-full bg-[#0f172a]/75 border border-[hsl(var(--preview-border))] text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
+                  className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
                 />
               </div>
               <div className="relative">
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Last Name"
@@ -284,14 +284,14 @@ export default function AuthPage() {
                   onChange={(e) => setLastName(e.target.value)}
                   required
                   data-testid="input-last-name"
-                  className="w-full bg-[#0f172a]/75 border border-[hsl(var(--preview-border))] text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
+                  className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
                 />
               </div>
             </div>
           )}
 
           <div className="relative">
-            <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="email"
               placeholder="Email Address"
@@ -299,12 +299,12 @@ export default function AuthPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               data-testid="input-email"
-              className="w-full bg-[#0f172a]/75 border border-[hsl(var(--preview-border))] text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
+              className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
             />
           </div>
 
           <div className="relative">
-            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type={showPassword ? "text" : "password"}
               placeholder={mode === "register" ? "Password (min 8 characters)" : "Password"}
@@ -313,20 +313,20 @@ export default function AuthPage() {
               required
               minLength={mode === "register" ? 8 : undefined}
               data-testid="input-password"
-              className="w-full bg-[#0f172a]/75 border border-[hsl(var(--preview-border))] text-white placeholder-slate-500 pl-11 pr-12 py-3.5 rounded-xl text-sm transition-all preview-focus"
+              className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground placeholder-slate-500 pl-11 pr-12 py-3.5 rounded-xl text-sm transition-all preview-focus"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               data-testid="button-toggle-password"
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
 
           {mode === "register" && (
-            <label className="flex items-start gap-2.5 rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f172a]/55 px-3 py-2.5">
+            <label className="flex items-start gap-2.5 rounded-xl border border-[hsl(var(--preview-border))] bg-background/55 px-3 py-2.5">
               <input
                 type="checkbox"
                 checked={acceptedTerms}
@@ -334,13 +334,13 @@ export default function AuthPage() {
                 className="mt-0.5 h-4 w-4 accent-amber-500"
                 data-testid="input-accept-terms"
               />
-              <span className="text-[11px] text-slate-300 leading-relaxed">
+              <span className="text-[11px] text-foreground leading-relaxed">
                 I agree to the{" "}
-                <Link href="/terms" className="text-amber-400 hover:text-amber-300 underline underline-offset-2" data-testid="link-terms-signup">
+                <Link href="/terms" className="text-primary hover:text-primary underline underline-offset-2" data-testid="link-terms-signup">
                   Terms and Conditions
                 </Link>{" "}
                 and{" "}
-                <Link href="/privacy" className="text-amber-400 hover:text-amber-300 underline underline-offset-2" data-testid="link-privacy-signup">
+                <Link href="/privacy" className="text-primary hover:text-primary underline underline-offset-2" data-testid="link-privacy-signup">
                   Privacy Policy
                 </Link>
                 .
@@ -353,7 +353,7 @@ export default function AuthPage() {
               <Link
                 href="/forgot-password"
                 data-testid="link-forgot-password"
-                className="text-xs preview-muted hover:text-amber-400 transition-colors"
+                className="text-xs preview-muted hover:text-primary transition-colors"
               >
                 Forgot Password?
               </Link>
@@ -364,7 +364,7 @@ export default function AuthPage() {
             type="submit"
             disabled={isPending || !isRegisterReady}
             data-testid="button-submit-auth"
-            className="w-full bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black uppercase tracking-[0.22em] text-[11px] py-4 rounded-xl hover:from-amber-300 hover:to-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+            className="w-full bg-gradient-to-r from-primary to-primary text-slate-950 font-black uppercase tracking-[0.22em] text-[11px] py-4 rounded-xl hover:from-primary hover:to-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
           >
             {isPending ? (
               <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
@@ -378,16 +378,16 @@ export default function AuthPage() {
         </form>
 
         {mode === "login" && verificationHintEmail && (
-          <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wider font-black text-amber-300 mb-1">Email Verification</p>
-            <p className="text-[11px] text-slate-300 leading-relaxed mb-2">
+          <div className="mt-3 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wider font-black text-primary mb-1">Email Verification</p>
+            <p className="text-[11px] text-foreground leading-relaxed mb-2">
               If you have not received your verification link, request a new one.
             </p>
             <button
               type="button"
               onClick={() => resendVerificationMutation.mutate()}
               disabled={resendVerificationMutation.isPending}
-              className="text-[10px] font-black uppercase tracking-wider text-amber-300 hover:text-amber-200 disabled:opacity-60"
+              className="text-[10px] font-black uppercase tracking-wider text-primary hover:text-foreground disabled:opacity-60"
               data-testid="button-resend-verification"
             >
               {resendVerificationMutation.isPending ? "Sending..." : "Resend Verification Email"}
@@ -404,7 +404,7 @@ export default function AuthPage() {
 
           {googleStatus?.available ? (
             googleLoading ? (
-              <div className="w-full bg-[#0f172a]/75 border border-[hsl(var(--preview-border))] text-slate-300 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-3">
+              <div className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-3">
                 <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
                 Signing in with Google...
               </div>
@@ -413,7 +413,7 @@ export default function AuthPage() {
                 type="button"
                 disabled
                 data-testid="button-google-terms-required"
-                className="w-full bg-[#0f172a]/70 border border-[hsl(var(--preview-border))] text-slate-400 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+                className="w-full bg-background/70 border border-[hsl(var(--preview-border))] text-muted-foreground font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
               >
                 <SiGoogle size={14} />
                 Agree to Terms to continue with Google
@@ -434,7 +434,7 @@ export default function AuthPage() {
               type="button"
               disabled
               data-testid="button-google-unavailable"
-              className="mx-auto w-full max-w-[380px] bg-[#0f172a]/70 border border-[hsl(var(--preview-border))] text-slate-400 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+              className="mx-auto w-full max-w-[380px] bg-background/70 border border-[hsl(var(--preview-border))] text-muted-foreground font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
             >
               <SiGoogle size={14} />
               Continue with Google
@@ -442,7 +442,7 @@ export default function AuthPage() {
           )}
 
           {!googleStatus?.available && (
-            <p className="mt-2 text-[10px] text-slate-500 text-center">
+            <p className="mt-2 text-[10px] text-muted-foreground text-center">
               Google sign-in is currently unavailable.
             </p>
           )}
@@ -464,7 +464,7 @@ export default function AuthPage() {
               }
             }}
             data-testid="button-toggle-auth-mode"
-            className="text-xs preview-muted hover:text-amber-400 transition-colors"
+            className="text-xs preview-muted hover:text-primary transition-colors"
           >
             {mode === "login"
               ? "Don't have an account? Create one"

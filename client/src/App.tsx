@@ -180,7 +180,7 @@ function AppContent({ onReady }: { onReady?: () => void }) {
     <div data-ui-preview="macos" data-theme={resolvedTheme} className="min-h-screen">
       <Suspense
         fallback={
-          <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">
+          <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
             Loading workspace...
           </div>
         }

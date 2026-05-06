@@ -157,16 +157,16 @@ function AppSidebar() {
       "app-sidebar mac-glass-panel"
     )}>
       <SidebarHeader className="p-3 border-b border-[hsl(var(--preview-border))]">
-        <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/65 backdrop-blur-lg px-2.5 py-2.5 shadow-[0_18px_34px_-26px_rgba(0,0,0,0.9)]">
+        <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-background/65 backdrop-blur-lg px-2.5 py-2.5 shadow-[0_18px_34px_-26px_rgba(0,0,0,0.9)]">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-400/40 shadow-xl shadow-amber-500/30 flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-primary/40 shadow-xl shadow-primary/30 flex-shrink-0">
               <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base font-bold text-white tracking-tighter uppercase italic leading-tight truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h1 className="text-base font-bold text-foreground tracking-tighter uppercase italic leading-tight truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Al Wakeelo
               </h1>
-              <p className="text-[8px] uppercase tracking-[0.24em] text-slate-500 font-black">Legal Intelligence</p>
+              <p className="text-[8px] uppercase tracking-[0.24em] text-muted-foreground font-black">Legal Intelligence</p>
             </div>
           </div>
         </div>
@@ -175,7 +175,7 @@ function AppSidebar() {
       <SidebarContent className="scrollbar-hide px-2 py-1.5">
         {visibleNavigationGroups.map((group) => (
           <SidebarGroup key={group.id} className="p-1.5 mb-1 last:mb-0">
-            <SidebarGroupLabel className="h-6 px-2.5 pb-0.5 text-[8px] font-black uppercase tracking-[0.26em] text-slate-500/85">
+            <SidebarGroupLabel className="h-6 px-2.5 pb-0.5 text-[8px] font-black uppercase tracking-[0.26em] text-muted-foreground/85">
               {group.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -197,7 +197,7 @@ function AppSidebar() {
                           "nav-glow-button h-auto rounded-xl border border-transparent px-2 py-1.5 transition-all",
                           "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
                           isActive &&
-                            "border-amber-300/35 bg-gradient-to-r from-amber-300/15 to-amber-500/10 text-slate-100 shadow-[0_16px_30px_-24px_rgba(251,191,36,0.65)] data-[active=true]:border-amber-300/35 data-[active=true]:bg-gradient-to-r data-[active=true]:from-amber-300/15 data-[active=true]:to-amber-500/10 data-[active=true]:text-slate-100"
+                            "border-primary/35 bg-gradient-to-r from-primary/15 to-primary/10 text-foreground shadow-[0_16px_30px_-24px_rgba(251,191,36,0.65)] data-[active=true]:border-primary/35 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary/15 data-[active=true]:to-primary/10 data-[active=true]:text-foreground"
                         )}
                       >
                         <Link href={item.href} className="flex w-full items-center gap-2" title={item.description}>
@@ -205,14 +205,14 @@ function AppSidebar() {
                             className={cn(
                               "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all",
                               isActive
-                                ? "border-amber-300/45 bg-gradient-to-br from-amber-300 to-amber-500 text-slate-950 shadow-[0_10px_18px_-12px_rgba(251,191,36,0.9)]"
-                                : "border-slate-700 bg-[#121f35]/70 text-slate-400"
+                                ? "border-primary/45 bg-gradient-to-br from-primary to-primary text-slate-950 shadow-[0_10px_18px_-12px_rgba(251,191,36,0.9)]"
+                                : "border-border bg-[#121f35]/70 text-muted-foreground"
                             )}
                           >
                             <Icon size={14} />
                           </span>
                           <span className="nav-label min-w-0 flex-1">
-                            <span className={cn("block truncate text-[12px] font-semibold leading-tight", isActive ? "text-slate-100" : "text-slate-200")}>
+                            <span className={cn("block truncate text-[12px] font-semibold leading-tight", isActive ? "text-foreground" : "text-foreground")}>
                               {item.label}
                             </span>
                           </span>
@@ -228,9 +228,9 @@ function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-[hsl(var(--preview-border))] p-3">
-        <div className="mb-2 rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2d]/55 backdrop-blur-md px-2.5 py-1.5">
-          <p className="text-[8px] uppercase tracking-[0.2em] text-slate-500 font-black">Signed in as</p>
-          <p className="text-xs font-bold text-slate-200 truncate">{user?.email || "Advocate"}</p>
+        <div className="mb-2 rounded-xl border border-[hsl(var(--preview-border))] bg-background/55 backdrop-blur-md px-2.5 py-1.5">
+          <p className="text-[8px] uppercase tracking-[0.2em] text-muted-foreground font-black">Signed in as</p>
+          <p className="text-xs font-bold text-foreground truncate">{user?.email || "Advocate"}</p>
         </div>
         <SidebarMenu className="gap-0.5">
           {user?.isAdmin && (
@@ -242,11 +242,11 @@ function AppSidebar() {
                 className={cn(
                   "nav-glow-button rounded-xl py-2 border border-transparent transition-all",
                   "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
-                  location === "/admin" && "bg-gradient-to-r from-amber-300 to-amber-500 text-slate-950 font-black border-amber-300/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-amber-300 data-[active=true]:to-amber-500 data-[active=true]:text-slate-950"
+                  location === "/admin" && "bg-gradient-to-r from-primary to-primary text-slate-950 font-black border-primary/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary data-[active=true]:to-primary data-[active=true]:text-slate-950"
                 )}
               >
                 <Link href="/admin">
-                  <Shield size={16} className={location === "/admin" ? "text-slate-900" : "text-slate-400"} />
+                  <Shield size={16} className={location === "/admin" ? "text-slate-900" : "text-muted-foreground"} />
                   <span className="nav-label text-[11px] font-bold">Admin Panel</span>
                 </Link>
               </SidebarMenuButton>
@@ -260,11 +260,11 @@ function AppSidebar() {
               className={cn(
                 "nav-glow-button rounded-xl py-2 border border-transparent transition-all",
                 "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
-                location === "/settings" && "bg-gradient-to-r from-amber-300 to-amber-500 text-slate-950 font-black border-amber-300/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-amber-300 data-[active=true]:to-amber-500 data-[active=true]:text-slate-950"
+                location === "/settings" && "bg-gradient-to-r from-primary to-primary text-slate-950 font-black border-primary/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary data-[active=true]:to-primary data-[active=true]:text-slate-950"
               )}
             >
               <Link href="/settings">
-                <Settings size={16} className={location === "/settings" ? "text-slate-900" : "text-slate-400"} />
+                <Settings size={16} className={location === "/settings" ? "text-slate-900" : "text-muted-foreground"} />
                 <span className="nav-label text-[11px] font-bold">Settings</span>
               </Link>
             </SidebarMenuButton>
@@ -273,7 +273,7 @@ function AppSidebar() {
             <SidebarMenuButton
               onClick={() => logout()}
               data-testid="button-logout"
-              className="nav-glow-button rounded-xl border border-transparent py-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all"
+              className="nav-glow-button rounded-xl border border-transparent py-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all"
             >
               <LogOut size={16} />
               <span className="nav-label text-[11px] font-bold">Exit Vault</span>
@@ -284,7 +284,7 @@ function AppSidebar() {
 
       <SidebarRail
         data-testid="button-sidebar-minimize-line"
-        className="hidden sm:flex after:bg-amber-400/45 hover:after:bg-amber-300"
+        className="hidden sm:flex after:bg-primary/45 hover:after:bg-primary"
       />
     </Sidebar>
   );
@@ -343,16 +343,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             "h-12 border-b border-[hsl(var(--preview-border))] bg-background/70 backdrop-blur-xl flex items-center justify-between px-2.5 md:px-3.5 gap-3 z-50 sticky top-0",
             "mac-glass-panel"
           )}>
-            <SidebarTrigger data-testid="button-sidebar-toggle" className="text-slate-400 hover:text-white" />
+            <SidebarTrigger data-testid="button-sidebar-toggle" className="text-muted-foreground hover:text-foreground" />
             <div className="flex items-center gap-4">
               <ThemeToggleButton />
               <div className="text-right hidden sm:block">
-                <p className="text-[11px] font-black uppercase text-white tracking-wider" data-testid="text-username">
+                <p className="text-[11px] font-black uppercase text-foreground tracking-wider" data-testid="text-username">
                   {user?.firstName || user?.email || "Advocate"}
                 </p>
-                <p className="text-[8px] font-black uppercase text-amber-500/70 tracking-[0.2em]">Counsel</p>
+                <p className="text-[8px] font-black uppercase text-primary/70 tracking-[0.2em]">Counsel</p>
               </div>
-              <div className="w-8 h-8 rounded-xl bg-[#131f33] border border-[hsl(var(--preview-border))] flex items-center justify-center text-slate-400 shadow-xl overflow-hidden" data-testid="img-avatar">
+              <div className="w-8 h-8 rounded-xl bg-card border border-[hsl(var(--preview-border))] flex items-center justify-center text-muted-foreground shadow-xl overflow-hidden" data-testid="img-avatar">
                 {user?.profileImageUrl ? (
                   <img src={user.profileImageUrl} alt="" className="w-full h-full object-cover" />
                 ) : (

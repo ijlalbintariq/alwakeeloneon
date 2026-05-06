@@ -46,7 +46,7 @@ const TYPE_META: Record<string, TypeMeta> = {
   },
   contract: {
     label: "CONTRACT DRAFT",
-    chip: "bg-amber-500/15 text-amber-300 border border-amber-400/25",
+    chip: "bg-primary/15 text-primary border border-primary/25",
   },
 };
 
@@ -54,7 +54,7 @@ function getTypeMeta(type: string): TypeMeta {
   return (
     TYPE_META[type] || {
       label: (type || "bookmark").toUpperCase(),
-      chip: "bg-slate-500/20 text-slate-300 border border-slate-400/25",
+      chip: "bg-slate-500/20 text-foreground border border-slate-400/25",
     }
   );
 }
@@ -192,22 +192,22 @@ export default function BookmarksPage() {
 
   return (
     <section
-      className="h-[calc(100dvh-96px)] md:h-[calc(100vh-120px)] rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-[#0f172a] fade-in"
+      className="h-[calc(100dvh-96px)] md:h-[calc(100vh-120px)] rounded-xl md:rounded-[1.8rem] overflow-hidden border border-[hsl(var(--preview-border))] bg-background fade-in"
       data-testid="bookmarks-page"
     >
       <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
-        <header className="shrink-0 border-b border-slate-800 bg-[#0f172a]/95 px-4 py-3 md:px-8 md:py-4">
+        <header className="shrink-0 border-b border-border bg-background/95 px-4 py-3 md:px-8 md:py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 flex-1 items-center gap-4 md:gap-7">
-              <div className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
+              <div className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Bookmark size={18} />
               </div>
-              <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h2 className="text-xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Al Wakeelo
               </h2>
 
               <div className="relative hidden max-w-lg flex-1 md:block">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   value={search}
                   onChange={(e) => {
@@ -215,7 +215,7 @@ export default function BookmarksPage() {
                     setPage(1);
                   }}
                   placeholder="Search your bookmarks..."
-                  className="h-12 w-full rounded-xl border border-slate-700 bg-[#1e293b] pl-10 pr-3 text-base text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                  className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   data-testid="input-bookmark-search"
                 />
               </div>
@@ -223,7 +223,7 @@ export default function BookmarksPage() {
           </div>
 
           <div className="relative mt-3 md:hidden">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               value={search}
               onChange={(e) => {
@@ -231,7 +231,7 @@ export default function BookmarksPage() {
                 setPage(1);
               }}
               placeholder="Search your bookmarks..."
-              className="h-11 w-full rounded-xl border border-slate-700 bg-[#1e293b] pl-9 pr-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              className="h-11 w-full rounded-xl border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               data-testid="input-bookmark-search-mobile"
             />
           </div>
@@ -241,10 +241,10 @@ export default function BookmarksPage() {
           <div className="mx-auto max-w-7xl">
             <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-5xl" style={{ fontFamily: "'Playfair Display', serif" }}>
                   My Bookmarked Responses
                 </h1>
-                <p className="mt-2 text-base text-slate-400 md:text-lg">
+                <p className="mt-2 text-base text-muted-foreground md:text-lg">
                   Access your saved legal drafts, case law research, and AI consultations securely.
                 </p>
               </div>
@@ -263,8 +263,8 @@ export default function BookmarksPage() {
                       onClick={() => setFilterAndResetPage(value)}
                       className={`rounded-lg px-4 py-2 text-sm transition-colors ${
                         active
-                          ? "bg-amber-500 text-slate-900 font-bold"
-                          : "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
+                          ? "bg-primary text-slate-900 font-bold"
+                          : "bg-card text-foreground border border-border hover:bg-muted"
                       }`}
                       data-testid={`button-bookmark-filter-${value}`}
                     >
@@ -277,7 +277,7 @@ export default function BookmarksPage() {
 
             {isLoading ? (
               <div className="flex h-40 items-center justify-center">
-                <div className="flex items-center gap-2 text-slate-300">
+                <div className="flex items-center gap-2 text-foreground">
                   <span className="animate-spin"><ChevronRight size={18} /></span>
                   Loading bookmarks...
                 </div>
@@ -287,10 +287,10 @@ export default function BookmarksPage() {
                 Failed to load bookmarks: {(error as Error)?.message || "Unknown error"}
               </div>
             ) : paged.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/40 px-6 py-14 text-center">
+              <div className="rounded-xl border border-dashed border-border bg-background/40 px-6 py-14 text-center">
                 <Bookmark size={44} className="mx-auto mb-4 text-slate-600" />
-                <p className="text-lg font-semibold text-slate-300">No bookmarks found</p>
-                <p className="mt-1 text-sm text-slate-500">Save responses from chat and drafting modules to populate this vault.</p>
+                <p className="text-lg font-semibold text-foreground">No bookmarks found</p>
+                <p className="mt-1 text-sm text-muted-foreground">Save responses from chat and drafting modules to populate this vault.</p>
               </div>
             ) : (
               <>
@@ -302,7 +302,7 @@ export default function BookmarksPage() {
                     return (
                       <article
                         key={bookmark.id}
-                        className="group relative flex min-h-[288px] flex-col justify-between rounded-xl border border-slate-700/60 bg-[#1e293b] p-6 shadow-sm transition-all duration-300 hover:border-amber-500/30 hover:shadow-xl hover:shadow-amber-500/5"
+                        className="group relative flex min-h-[288px] flex-col justify-between rounded-xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5"
                         data-testid={`bookmark-${bookmark.id}`}
                       >
                         <div>
@@ -313,7 +313,7 @@ export default function BookmarksPage() {
                             <button
                               onClick={() => deleteMutation.mutate(bookmark.id)}
                               disabled={deleteMutation.isPending}
-                              className="text-slate-400 opacity-0 transition-colors group-hover:opacity-100 hover:text-red-400 disabled:opacity-40"
+                              className="text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:text-red-400 disabled:opacity-40"
                               title="Delete Bookmark"
                               data-testid={`button-delete-bookmark-${bookmark.id}`}
                             >
@@ -321,22 +321,22 @@ export default function BookmarksPage() {
                             </button>
                           </div>
 
-                          <h3 className="line-clamp-2 text-xl font-bold leading-snug text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+                          <h3 className="line-clamp-2 text-xl font-bold leading-snug text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
                             {bookmark.title || "Untitled Bookmark"}
                           </h3>
 
-                          <p className="mt-2 flex items-center gap-1 text-sm text-slate-400">
+                          <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
                             <CalendarDays size={14} />
                             {formatCardDate(bookmark.createdAt)}
                           </p>
 
-                          <p className="mt-3 line-clamp-3 text-sm text-slate-400">{bookmark.content}</p>
+                          <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">{bookmark.content}</p>
                         </div>
 
-                        <div className="mt-4 flex items-center gap-3 border-t border-slate-700/50 pt-4">
+                        <div className="mt-4 flex items-center gap-3 border-t border-border/50 pt-4">
                           <button
                             onClick={() => openPreview(bookmark)}
-                            className="flex-1 rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-slate-900 transition-colors hover:bg-amber-400"
+                            className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-slate-900 transition-colors hover:bg-primary"
                             data-testid={`button-view-bookmark-${bookmark.id}`}
                           >
                             <span className="inline-flex items-center justify-center gap-2">
@@ -346,7 +346,7 @@ export default function BookmarksPage() {
                           </button>
                           <button
                             onClick={() => downloadTxt(bookmark.content, filename)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-600 text-slate-300 transition-colors hover:bg-slate-700"
+                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-foreground transition-colors hover:bg-muted"
                             title="Download .txt"
                             data-testid={`button-download-bookmark-${bookmark.id}`}
                           >
@@ -363,7 +363,7 @@ export default function BookmarksPage() {
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page <= 1}
-                      className="rounded-lg border border-slate-700 px-4 py-2 text-slate-400 transition-colors hover:bg-slate-800 disabled:opacity-40"
+                      className="rounded-lg border border-border px-4 py-2 text-muted-foreground transition-colors hover:bg-card disabled:opacity-40"
                       data-testid="button-bookmarks-prev"
                     >
                       <span className="inline-flex items-center gap-1"><ChevronLeft size={14} /> Previous</span>
@@ -375,8 +375,8 @@ export default function BookmarksPage() {
                         onClick={() => setPage(n)}
                         className={`rounded-lg px-4 py-2 text-sm ${
                           page === n
-                            ? "bg-amber-500 font-bold text-slate-900"
-                            : "border border-slate-700 text-slate-300 hover:bg-slate-800"
+                            ? "bg-primary font-bold text-slate-900"
+                            : "border border-border text-foreground hover:bg-card"
                         }`}
                         data-testid={`button-bookmarks-page-${n}`}
                       >
@@ -387,7 +387,7 @@ export default function BookmarksPage() {
                     <button
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       disabled={page >= totalPages}
-                      className="rounded-lg border border-slate-700 px-4 py-2 text-slate-400 transition-colors hover:bg-slate-800 disabled:opacity-40"
+                      className="rounded-lg border border-border px-4 py-2 text-muted-foreground transition-colors hover:bg-card disabled:opacity-40"
                       data-testid="button-bookmarks-next"
                     >
                       <span className="inline-flex items-center gap-1">Next <ChevronRight size={14} /></span>
@@ -399,26 +399,26 @@ export default function BookmarksPage() {
           </div>
         </main>
 
-        <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500/5 via-transparent to-transparent opacity-60" />
+        <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent opacity-60" />
       </div>
 
       {preview && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-6">
-          <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setPreview(null)} />
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setPreview(null)} />
 
-          <div className="relative flex h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0f172a] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-700 px-4 py-4 sm:px-6">
+          <div className="relative flex h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-6">
               <div className="min-w-0">
-                <h3 className="truncate text-xl font-bold text-white sm:text-2xl" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h3 className="truncate text-xl font-bold text-foreground sm:text-2xl" style={{ fontFamily: "'Playfair Display', serif" }}>
                   {preview.title || "Bookmark"}
                 </h3>
-                <p className="mt-1 text-sm text-slate-400">Generated on {formatCardDate(preview.createdAt)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">Generated on {formatCardDate(preview.createdAt)}</p>
               </div>
 
               <div className="ml-3 flex items-center gap-1">
                 <button
                   onClick={copyText}
-                  className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                  className="rounded-lg p-2 text-foreground transition-colors hover:bg-card hover:text-foreground"
                   title="Copy text"
                   data-testid="button-bookmark-copy"
                 >
@@ -426,7 +426,7 @@ export default function BookmarksPage() {
                 </button>
                 <button
                   onClick={() => downloadTxt(preview.content, safeFileName(preview.title, `bookmark-${preview.id}`))}
-                  className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                  className="rounded-lg p-2 text-foreground transition-colors hover:bg-card hover:text-foreground"
                   title="Download TXT"
                   data-testid="button-bookmark-modal-download-txt"
                 >
@@ -440,7 +440,7 @@ export default function BookmarksPage() {
                       safeFileName(preview.title, `bookmark-${preview.id}`),
                     )
                   }
-                  className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                  className="rounded-lg p-2 text-foreground transition-colors hover:bg-card hover:text-foreground"
                   title="Download PDF"
                   data-testid="button-bookmark-modal-download-pdf"
                 >
@@ -448,7 +448,7 @@ export default function BookmarksPage() {
                 </button>
                 <button
                   onClick={() => setPreview(null)}
-                  className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                  className="rounded-lg p-2 text-foreground transition-colors hover:bg-card hover:text-foreground"
                   title="Close"
                   data-testid="button-bookmark-close"
                 >
@@ -458,7 +458,7 @@ export default function BookmarksPage() {
             </div>
 
             {copied && (
-              <div className="border-b border-slate-700 bg-emerald-500/10 px-6 py-2 text-xs text-emerald-300">Copied to clipboard.</div>
+              <div className="border-b border-border bg-emerald-500/10 px-6 py-2 text-xs text-emerald-300">Copied to clipboard.</div>
             )}
 
             <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-5 font-serif text-slate-800 sm:p-8">

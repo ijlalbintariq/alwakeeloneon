@@ -295,17 +295,17 @@ export default function JudgmentViewPage() {
 
   return (
     <div className="h-full flex flex-col fade-in">
-      <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-3 border-b border-slate-800 bg-[#0f172a]">
-        <Button size="icon" variant="ghost" onClick={() => setLocation("/judgments")} className="text-slate-400 flex-shrink-0">
+      <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-3 border-b border-border bg-background">
+        <Button size="icon" variant="ghost" onClick={() => setLocation("/judgments")} className="text-muted-foreground flex-shrink-0">
           <ArrowLeft size={18} />
         </Button>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-bold text-white truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h2 className="text-sm font-bold text-foreground truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
             {judgment.title}
           </h2>
           <div className="flex items-start gap-4">
             <div className="flex flex-col items-start gap-1.5">
-              <p className="text-[9px] text-amber-500/80 uppercase tracking-wider font-bold">{judgment.citation}</p>
+              <p className="text-[9px] text-primary/80 uppercase tracking-wider font-bold">{judgment.citation}</p>
               {sourceDocData?.found && sourceDocData.hasSource && (
                 <button
                   onClick={loadSourceContent}
@@ -322,7 +322,7 @@ export default function JudgmentViewPage() {
                 </button>
               )}
             </div>
-            <p className="text-[9px] text-slate-500 uppercase tracking-wider mt-0.5">{judgment.court}</p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">{judgment.court}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0 flex-wrap justify-end">
@@ -338,8 +338,8 @@ export default function JudgmentViewPage() {
             disabled={isSaving || isSaved}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${
               isSaved
-                ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                : "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                ? "bg-primary/20 text-primary border border-primary/30"
+                : "bg-primary/10 text-primary hover:bg-primary/20"
             }`}
             title={isSaved ? "Judgment saved" : "Save to account"}
           >
@@ -369,24 +369,24 @@ export default function JudgmentViewPage() {
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto px-3 sm:px-6 md:px-12 py-6 md:py-10">
             <div className="flex items-center gap-4 mb-8">
-              <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl">
+              <div className="p-3 bg-primary/10 text-primary rounded-2xl">
                 <Gavel size={24} />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-white leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
                   {judgment.title}
                 </h1>
                 <div className="flex flex-wrap items-center gap-3 mt-2">
-                  <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-amber-500">
+                  <span className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-primary">
                     {judgment.citation}
                   </span>
-                  <span className="px-3 py-1 bg-slate-900 border border-slate-800 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  <span className="px-3 py-1 bg-background border border-border rounded-xl text-[9px] font-black uppercase tracking-widest text-muted-foreground">
                     {judgment.court}
                   </span>
                   {judgment.source && (
                     <span className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
                       judgment.source === "internal"
-                        ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
+                        ? "bg-primary/10 border-primary/20 text-primary"
                         : "bg-blue-500/10 border-blue-500/20 text-blue-400"
                     }`}>
                       {judgment.source === "internal" ? "Internal Registry" : "Research Feed"}
@@ -399,22 +399,22 @@ export default function JudgmentViewPage() {
             {judgment.keywords && judgment.keywords.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-8">
                 {judgment.keywords.map((kw, i) => (
-                  <span key={i} className="px-3 py-1 bg-slate-800/50 border border-slate-700 rounded-lg text-[10px] text-slate-400">
+                  <span key={i} className="px-3 py-1 bg-card/50 border border-border rounded-lg text-[10px] text-muted-foreground">
                     {kw}
                   </span>
                 ))}
               </div>
             )}
 
-            <div className="mb-8 p-6 bg-[#1e293b]/50 border border-slate-800 rounded-2xl">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Original Summary</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">{judgment.summary}</p>
+            <div className="mb-8 p-6 bg-card/50 border border-border rounded-2xl">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Original Summary</h3>
+              <p className="text-sm text-foreground leading-relaxed">{judgment.summary}</p>
             </div>
 
             {isLoadingSummary && (
               <div className="flex flex-col items-center justify-center py-16 gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                  <Sparkles size={24} className="text-amber-400 animate-pulse" />
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Sparkles size={24} className="text-primary animate-pulse" />
                 </div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                   Al Wakeelo is analyzing this judgment...
@@ -427,12 +427,12 @@ export default function JudgmentViewPage() {
                 <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
                   <ShieldAlert size={24} className="text-red-400" />
                 </div>
-                <p className="text-sm text-slate-400 text-center max-w-md">
+                <p className="text-sm text-muted-foreground text-center max-w-md">
                   AI analysis could not be loaded. This may be due to rate limits or a temporary issue.
                 </p>
                 <button
                   onClick={loadSummary}
-                  className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl hover:bg-amber-500/20 transition-all"
+                  className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl hover:bg-primary/20 transition-all"
                 >
                   <RefreshCw size={14} /> Retry Analysis
                 </button>
@@ -442,10 +442,10 @@ export default function JudgmentViewPage() {
             {summaryData && !isLoadingSummary && (
               <div className="space-y-8">
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                    <Sparkles size={14} className="text-amber-400" />
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                    <Sparkles size={14} className="text-primary" />
                   </div>
-                  <h3 className="text-[11px] font-black uppercase tracking-widest text-amber-400">
+                  <h3 className="text-[11px] font-black uppercase tracking-widest text-primary">
                     AI Judgment Analysis
                   </h3>
                   {summaryData.verified ? (
@@ -453,7 +453,7 @@ export default function JudgmentViewPage() {
                       <ShieldCheck size={12} /> Verified Source
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest bg-primary/10 border border-primary/20 text-primary">
                       <ShieldAlert size={12} /> AI General Knowledge
                     </span>
                   )}
@@ -467,7 +467,7 @@ export default function JudgmentViewPage() {
                   <div className="mt-8">
                     <button
                       onClick={() => setShowFullText(!showFullText)}
-                      className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl hover:bg-amber-500/20 transition-all"
+                      className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl hover:bg-primary/20 transition-all"
                     >
                       <BookOpen size={14} />
                       {showFullText ? "Hide Full Judgment" : "View Full Judgment"}
@@ -482,8 +482,8 @@ export default function JudgmentViewPage() {
                     )}
 
                     {showFullText && (
-                      <div className="mt-6 p-6 md:p-8 bg-slate-900/50 border border-slate-800 rounded-2xl max-h-[600px] overflow-y-auto">
-                        <pre className="whitespace-pre-wrap text-xs leading-relaxed text-slate-400 font-mono">
+                      <div className="mt-6 p-6 md:p-8 bg-background/50 border border-border rounded-2xl max-h-[600px] overflow-y-auto">
+                        <pre className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground font-mono">
                           {summaryData.fullText}
                         </pre>
                       </div>
@@ -507,7 +507,7 @@ export default function JudgmentViewPage() {
               />
             )}
 
-            <div className="mt-12 pt-6 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
+            <div className="mt-12 pt-6 border-t border-border flex items-center justify-between flex-wrap gap-2">
               <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600">
                 Al Wakeelo Digital Chambers
               </p>
@@ -515,11 +515,11 @@ export default function JudgmentViewPage() {
           </div>
         </div>
 
-        <div className="w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-slate-800 bg-[#0f172a] flex flex-col max-h-[52vh] xl:max-h-none">
-          <div className="p-3 md:p-4 border-b border-slate-800">
+        <div className="w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-border bg-background flex flex-col max-h-[52vh] xl:max-h-none">
+          <div className="p-3 md:p-4 border-b border-border">
             <div className="flex items-center gap-2">
-              <MessageSquare size={14} className="text-amber-500" />
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">
+              <MessageSquare size={14} className="text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground">
                 Ask about this judgment
               </span>
             </div>
@@ -529,7 +529,7 @@ export default function JudgmentViewPage() {
             {chatMessages.length === 0 && (
               <div className="text-center py-12">
                 <Gavel size={32} className="text-slate-700 mx-auto mb-3" />
-                <p className="text-sm text-slate-500 font-medium">Ask any question about this judgment</p>
+                <p className="text-sm text-muted-foreground font-medium">Ask any question about this judgment</p>
                 <p className="text-xs text-slate-600 mt-1">AI will analyze based on the judgment content</p>
                 <div className="mt-6 space-y-2">
                   {[
@@ -541,7 +541,7 @@ export default function JudgmentViewPage() {
                       key={i}
                       onClick={() => handleChatSend(suggestion)}
                       disabled={isChatLoading}
-                      className="w-full text-left px-4 py-3 bg-[#1e293b] border border-slate-800 rounded-xl text-xs text-slate-400 hover:text-white hover:border-amber-500/30 transition-all disabled:opacity-50"
+                      className="w-full text-left px-4 py-3 bg-card border border-border rounded-xl text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all disabled:opacity-50"
                     >
                       {suggestion}
                     </button>
@@ -555,8 +555,8 @@ export default function JudgmentViewPage() {
                 <div
                   className={`max-w-[90%] px-4 py-3 rounded-xl text-sm ${
                     msg.role === "user"
-                      ? "bg-amber-500 text-slate-950"
-                      : "bg-[#1e293b] text-slate-300 border border-slate-800"
+                      ? "bg-primary text-slate-950"
+                      : "bg-card text-foreground border border-border"
                   }`}
                 >
                   {msg.role === "assistant" ? (
@@ -572,18 +572,18 @@ export default function JudgmentViewPage() {
 
             {isChatLoading && (
               <div className="flex justify-start">
-                <div className="bg-[#1e293b] border border-slate-800 rounded-xl px-4 py-3">
-                  <Loader2 size={16} className="animate-spin text-amber-500" />
+                <div className="bg-card border border-border rounded-xl px-4 py-3">
+                  <Loader2 size={16} className="animate-spin text-primary" />
                 </div>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
-          <div className="p-3 border-t border-slate-800">
+          <div className="p-3 border-t border-border">
             <div className="flex gap-2">
               <input
-                className="flex-1 bg-[#1e293b] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                className="flex-1 bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-primary/50"
                 placeholder="Ask about this judgment..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -593,7 +593,7 @@ export default function JudgmentViewPage() {
                 size="icon"
                 onClick={() => handleChatSend()}
                 disabled={!chatInput.trim() || isChatLoading}
-                className="bg-amber-500 text-slate-950 rounded-xl h-10 w-10"
+                className="bg-primary text-slate-950 rounded-xl h-10 w-10"
               >
                 <Send size={16} />
               </Button>

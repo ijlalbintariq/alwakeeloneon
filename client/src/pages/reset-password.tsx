@@ -60,23 +60,23 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-amber-500/3 rounded-full blur-[100px]" />
+      <div className="min-h-screen bg-background flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-primary/3 rounded-full blur-[100px]" />
 
-        <div className="w-full max-w-md bg-[#1e293b] border border-slate-800 p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[3rem] shadow-2xl relative z-10 fade-in">
+        <div className="w-full max-w-md bg-card border border-border p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[3rem] shadow-2xl relative z-10 fade-in">
           <div className="text-center space-y-4">
             <div className="w-14 h-14 bg-red-500/10 rounded-full mx-auto flex items-center justify-center">
               <AlertTriangle size={28} className="text-red-400" />
             </div>
-            <h2 className="text-lg font-semibold text-white">Invalid Reset Link</h2>
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <h2 className="text-lg font-semibold text-foreground">Invalid Reset Link</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
               This password reset link is missing or invalid. Please request a new one.
             </p>
             <Link
               href="/forgot-password"
               data-testid="link-request-new-reset"
-              className="inline-block w-full bg-amber-500 text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-amber-400 transition-all text-center shadow-xl shadow-amber-500/10 mt-4"
+              className="inline-block w-full bg-primary text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all text-center shadow-xl shadow-primary/10 mt-4"
             >
               Request New Link
             </Link>
@@ -87,19 +87,19 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/5 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-amber-500/3 rounded-full blur-[100px]" />
+    <div className="min-h-screen bg-background flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-primary/3 rounded-full blur-[100px]" />
 
-      <div className="w-full max-w-md bg-[#1e293b] border border-slate-800 p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[3rem] shadow-2xl relative z-10 fade-in">
+      <div className="w-full max-w-md bg-card border border-border p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[3rem] shadow-2xl relative z-10 fade-in">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-amber-400/40 mb-5 shadow-lg shadow-amber-500/20">
+          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-primary/40 mb-5 shadow-lg shadow-primary/20">
             <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-3xl font-bold text-white uppercase tracking-tighter italic" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h1 className="text-3xl font-bold text-foreground uppercase tracking-tighter italic" style={{ fontFamily: "'Playfair Display', serif" }}>
             Al Wakeelo
           </h1>
-          <p className="text-[10px] uppercase tracking-[0.4em] text-slate-500 font-black mt-2">
+          <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground font-black mt-2">
             Set New Password
           </p>
         </div>
@@ -109,27 +109,27 @@ export default function ResetPasswordPage() {
             <div className="w-14 h-14 bg-emerald-500/10 rounded-full mx-auto flex items-center justify-center">
               <CheckCircle size={28} className="text-emerald-400" />
             </div>
-            <h2 className="text-lg font-semibold text-white">Password Reset Complete</h2>
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <h2 className="text-lg font-semibold text-foreground">Password Reset Complete</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Your password has been updated successfully. You can now sign in with your new password.
             </p>
             <Link
               href="/auth"
               data-testid="link-go-to-login"
-              className="inline-block w-full bg-amber-500 text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-amber-400 transition-all text-center shadow-xl shadow-amber-500/10 mt-4"
+              className="inline-block w-full bg-primary text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all text-center shadow-xl shadow-primary/10 mt-4"
             >
               Sign In Now
             </Link>
           </div>
         ) : (
           <>
-            <p className="text-sm text-slate-400 text-center mb-6 leading-relaxed">
+            <p className="text-sm text-muted-foreground text-center mb-6 leading-relaxed">
               Enter your new password below. Make sure it's at least 8 characters long.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="relative">
-                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="New Password (min 8 characters)"
@@ -138,20 +138,20 @@ export default function ResetPasswordPage() {
                   required
                   minLength={8}
                   data-testid="input-new-password"
-                  className="w-full bg-[#0f172a] border border-slate-700 text-white placeholder-slate-500 pl-11 pr-12 py-3.5 rounded-2xl text-sm focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-all"
+                  className="w-full bg-background border border-border text-foreground placeholder-slate-500 pl-11 pr-12 py-3.5 rounded-2xl text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   data-testid="button-toggle-new-password"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
 
               <div className="relative">
-                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm New Password"
@@ -160,13 +160,13 @@ export default function ResetPasswordPage() {
                   required
                   minLength={8}
                   data-testid="input-confirm-password"
-                  className="w-full bg-[#0f172a] border border-slate-700 text-white placeholder-slate-500 pl-11 pr-12 py-3.5 rounded-2xl text-sm focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-all"
+                  className="w-full bg-background border border-border text-foreground placeholder-slate-500 pl-11 pr-12 py-3.5 rounded-2xl text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   data-testid="button-toggle-confirm-password"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -176,7 +176,7 @@ export default function ResetPasswordPage() {
                 type="submit"
                 disabled={resetMutation.isPending}
                 data-testid="button-submit-reset"
-                className="w-full bg-amber-500 text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+                className="w-full bg-primary text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
               >
                 {resetMutation.isPending ? (
                   <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />

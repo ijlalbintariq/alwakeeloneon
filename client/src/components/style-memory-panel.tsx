@@ -187,22 +187,22 @@ export function StyleMemoryPanel({
   };
 
   return (
-    <section className={`rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-slate-900/30 to-slate-800/30 p-3 ${className}`}>
+    <section className={`rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-slate-900/30 to-slate-800/30 p-3 ${className}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="size-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-            <Brain size={14} className="text-amber-300" />
+          <div className="size-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
+            <Brain size={14} className="text-primary" />
           </div>
           <div>
-            <div className="text-[10px] font-bold text-amber-200 uppercase tracking-[0.16em]">Style Memory</div>
-            <div className="text-[11px] text-slate-300">
+            <div className="text-[10px] font-bold text-foreground uppercase tracking-[0.16em]">Style Memory</div>
+            <div className="text-[11px] text-foreground">
               {settings?.enabled ? "Enabled" : "Disabled"} · {settings?.sampleCounts.total || 0} sample(s)
             </div>
           </div>
         </div>
         <button
           onClick={() => setScope((prev) => (prev === "user" ? "org" : "user"))}
-          className="text-[10px] px-2 py-1 rounded border border-amber-500/30 text-amber-200 hover:bg-amber-500/10"
+          className="text-[10px] px-2 py-1 rounded border border-primary/30 text-foreground hover:bg-primary/10"
           disabled={loading || updating}
           data-testid="button-style-scope-toggle"
         >
@@ -210,8 +210,8 @@ export function StyleMemoryPanel({
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-slate-300">
-        <label className="flex items-center justify-between rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1">
+      <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-foreground">
+        <label className="flex items-center justify-between rounded-md border border-border/70 bg-background/40 px-2 py-1">
           Enabled
           <input
             type="checkbox"
@@ -220,7 +220,7 @@ export function StyleMemoryPanel({
             onChange={(e) => void updateSettings({ enabled: e.target.checked })}
           />
         </label>
-        <label className="flex items-center justify-between rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1">
+        <label className="flex items-center justify-between rounded-md border border-border/70 bg-background/40 px-2 py-1">
           Strictness
           <select
             value={settings?.strictness || "balanced"}
@@ -233,7 +233,7 @@ export function StyleMemoryPanel({
             <option value="flexible">flexible</option>
           </select>
         </label>
-        <label className="col-span-2 flex items-center justify-between rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1">
+        <label className="col-span-2 flex items-center justify-between rounded-md border border-border/70 bg-background/40 px-2 py-1">
           Ownership Mode
           <select
             value={settings?.ownershipMode || "user-org"}
@@ -252,7 +252,7 @@ export function StyleMemoryPanel({
         <Button
           size="sm"
           variant="outline"
-          className="h-7 border-amber-300/30 text-amber-100 bg-amber-500/10 hover:bg-amber-500/20"
+          className="h-7 border-primary/30 text-foreground bg-primary/10 hover:bg-primary/20"
           onClick={onUploadClick}
           disabled={uploading}
           data-testid="button-style-upload"
@@ -263,7 +263,7 @@ export function StyleMemoryPanel({
         <Button
           size="sm"
           variant="outline"
-          className="h-7 border-amber-300/30 text-amber-100 bg-amber-500/10 hover:bg-amber-500/20"
+          className="h-7 border-primary/30 text-foreground bg-primary/10 hover:bg-primary/20"
           onClick={onBackfill}
           disabled={backfilling || loading}
           data-testid="button-style-backfill"
@@ -282,26 +282,26 @@ export function StyleMemoryPanel({
       />
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-[10px]">
-        <div className="rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1">
-          <div className="text-slate-400">Upload</div>
-          <div className="font-semibold text-amber-200">{settings?.sampleCounts.upload || 0}</div>
+        <div className="rounded-md border border-border/70 bg-background/40 px-2 py-1">
+          <div className="text-muted-foreground">Upload</div>
+          <div className="font-semibold text-foreground">{settings?.sampleCounts.upload || 0}</div>
         </div>
-        <div className="rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1">
-          <div className="text-slate-400">Saved</div>
-          <div className="font-semibold text-amber-200">{settings?.sampleCounts.savedDraft || 0}</div>
+        <div className="rounded-md border border-border/70 bg-background/40 px-2 py-1">
+          <div className="text-muted-foreground">Saved</div>
+          <div className="font-semibold text-foreground">{settings?.sampleCounts.savedDraft || 0}</div>
         </div>
-        <div className="rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1">
-          <div className="text-slate-400">Redline</div>
-          <div className="font-semibold text-amber-200">{settings?.sampleCounts.acceptedRedline || 0}</div>
+        <div className="rounded-md border border-border/70 bg-background/40 px-2 py-1">
+          <div className="text-muted-foreground">Redline</div>
+          <div className="font-semibold text-foreground">{settings?.sampleCounts.acceptedRedline || 0}</div>
         </div>
       </div>
 
       <div className="mt-3 space-y-1.5 max-h-28 overflow-y-auto pr-1">
         {samples.slice(0, 8).map((item) => (
-          <div key={item.id} className="flex items-center justify-between rounded-md border border-slate-700/60 bg-slate-900/30 px-2 py-1">
+          <div key={item.id} className="flex items-center justify-between rounded-md border border-border/60 bg-background/30 px-2 py-1">
             <div className="min-w-0">
-              <p className="text-[10px] text-slate-200 truncate">{item.title}</p>
-              <p className="text-[9px] text-slate-500">{item.sourceType}</p>
+              <p className="text-[10px] text-foreground truncate">{item.title}</p>
+              <p className="text-[9px] text-muted-foreground">{item.sourceType}</p>
             </div>
             <button
               onClick={() => void deleteSample(item.id)}
@@ -314,7 +314,7 @@ export function StyleMemoryPanel({
           </div>
         ))}
         {!samples.length && !loading && (
-          <p className="text-[10px] text-slate-400">Upload style samples or continue drafting to train style memory.</p>
+          <p className="text-[10px] text-muted-foreground">Upload style samples or continue drafting to train style memory.</p>
         )}
       </div>
     </section>

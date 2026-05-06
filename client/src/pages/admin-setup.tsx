@@ -34,8 +34,8 @@ export default function AdminSetupPage() {
 
   if (authLoading || checkLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0f172a]">
-        <Loader2 className="animate-spin text-amber-500" size={32} />
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="animate-spin text-primary" size={32} />
       </div>
     );
   }
@@ -49,42 +49,42 @@ export default function AdminSetupPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#0f172a] p-4" data-testid="admin-setup-page">
-      <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem] max-w-md w-full">
+    <div className="flex items-center justify-center min-h-screen bg-background p-4" data-testid="admin-setup-page">
+      <Card className="bg-card border-border rounded-[2rem] max-w-md w-full">
         <CardContent className="p-8 text-center space-y-6">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto">
-            <Shield size={28} className="text-amber-500" />
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto">
+            <Shield size={28} className="text-primary" />
           </div>
 
           <div>
             <h1
-              className="text-xl font-bold text-white mb-2"
+              className="text-xl font-bold text-foreground mb-2"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               Admin Setup
             </h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted-foreground">
               No admin has been set up yet. As the first person here, you can claim admin access to manage the platform.
             </p>
           </div>
 
-          <div className="bg-slate-800/50 rounded-xl p-4 text-left space-y-2">
+          <div className="bg-card/50 rounded-xl p-4 text-left space-y-2">
             <div className="flex items-center gap-2">
-              <Lock size={14} className="text-slate-500" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+              <Lock size={14} className="text-muted-foreground" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                 Logged in as
               </span>
             </div>
-            <p className="text-sm font-bold text-white" data-testid="text-setup-user">
+            <p className="text-sm font-bold text-foreground" data-testid="text-setup-user">
               {user.firstName} {user.lastName}
             </p>
-            <p className="text-xs text-slate-500">{user.email}</p>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
 
           <Button
             onClick={() => claimMutation.mutate()}
             disabled={claimMutation.isPending}
-            className="w-full bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+            className="w-full bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
             data-testid="button-claim-admin"
           >
             {claimMutation.isPending ? (

@@ -38,7 +38,7 @@ function TocSidebarItem({ item, depth = 0, onScrollTo }: { item: TocItem; depth?
   return (
     <div>
       <button
-        className={`w-full flex items-center gap-2 text-left py-2 pr-3 transition-colors hover:text-white group ${depth === 0 ? "text-slate-300 text-sm font-medium" : "text-slate-400 text-xs"}`}
+        className={`w-full flex items-center gap-2 text-left py-2 pr-3 transition-colors hover:text-foreground group ${depth === 0 ? "text-foreground text-sm font-medium" : "text-muted-foreground text-xs"}`}
         style={{ paddingLeft: `${depth * 16 + 12}px` }}
         onClick={() => {
           if (hasChildren) setExpanded(!expanded);
@@ -46,7 +46,7 @@ function TocSidebarItem({ item, depth = 0, onScrollTo }: { item: TocItem; depth?
         }}
       >
         {hasChildren ? (
-          expanded ? <ChevronDown size={14} className="text-slate-500 flex-shrink-0" /> : <ChevronRight size={14} className="text-slate-500 flex-shrink-0" />
+          expanded ? <ChevronDown size={14} className="text-muted-foreground flex-shrink-0" /> : <ChevronRight size={14} className="text-muted-foreground flex-shrink-0" />
         ) : (
           <ChevronRight size={10} className="text-slate-600 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         )}
@@ -146,8 +146,8 @@ export default function StatuteViewPage() {
   }, []);
 
   function highlightElement(el: HTMLElement) {
-    el.classList.add("bg-amber-500/20", "ring-1", "ring-amber-500/40", "rounded");
-    setTimeout(() => el.classList.remove("bg-amber-500/20", "ring-1", "ring-amber-500/40", "rounded"), 3000);
+    el.classList.add("bg-primary/20", "ring-1", "ring-primary/40", "rounded");
+    setTimeout(() => el.classList.remove("bg-primary/20", "ring-1", "ring-primary/40", "rounded"), 3000);
   }
 
   function scrollToSection(title: string) {
@@ -232,7 +232,7 @@ export default function StatuteViewPage() {
             key={idx}
             id={sectionId}
             data-section-heading={trimmed}
-            className="text-xl font-bold text-white mt-10 mb-4 pt-4 transition-colors duration-500"
+            className="text-xl font-bold text-foreground mt-10 mb-4 pt-4 transition-colors duration-500"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             {trimmed}
@@ -247,7 +247,7 @@ export default function StatuteViewPage() {
             key={idx}
             id={sectionId}
             data-section-heading={trimmed}
-            className="text-base font-semibold text-slate-200 mt-6 mb-2 transition-colors duration-500"
+            className="text-base font-semibold text-foreground mt-6 mb-2 transition-colors duration-500"
           >
             {trimmed}
           </h3>
@@ -255,7 +255,7 @@ export default function StatuteViewPage() {
       }
 
       return (
-        <p key={idx} className="text-slate-300 mb-1" data-line-idx={idx}>
+        <p key={idx} className="text-foreground mb-1" data-line-idx={idx}>
           {trimmed}
         </p>
       );
@@ -290,8 +290,8 @@ export default function StatuteViewPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full py-20">
-        <Loader2 size={40} className="animate-spin text-amber-500 mb-4" />
-        <p className="text-sm text-slate-500 font-medium">Loading statute document...</p>
+        <Loader2 size={40} className="animate-spin text-primary mb-4" />
+        <p className="text-sm text-muted-foreground font-medium">Loading statute document...</p>
       </div>
     );
   }
@@ -300,21 +300,21 @@ export default function StatuteViewPage() {
 
   return (
     <div className="h-full flex flex-col fade-in">
-      <div className="flex items-center justify-between gap-3 px-3 md:px-4 py-3 border-b border-slate-800 bg-[#0f172a]">
+      <div className="flex items-center justify-between gap-3 px-3 md:px-4 py-3 border-b border-border bg-background">
         <div className="flex items-center gap-3 min-w-0">
           {viewMode === "text" && !showToc && (
-            <Button size="icon" variant="ghost" onClick={() => setShowToc(true)} className="text-slate-400 flex-shrink-0 hidden md:inline-flex">
+            <Button size="icon" variant="ghost" onClick={() => setShowToc(true)} className="text-muted-foreground flex-shrink-0 hidden md:inline-flex">
               <List size={18} />
             </Button>
           )}
-          <Button size="icon" variant="ghost" onClick={() => setLocation("/statute-search")} className="text-slate-400 flex-shrink-0">
+          <Button size="icon" variant="ghost" onClick={() => setLocation("/statute-search")} className="text-muted-foreground flex-shrink-0">
             <ArrowLeft size={18} />
           </Button>
           <div className="min-w-0">
-            <h2 className="text-sm font-bold text-white truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h2 className="text-sm font-bold text-foreground truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
               {doc.title}
             </h2>
-            <p className="text-[9px] text-slate-500 uppercase tracking-wider">{doc.category}</p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{doc.category}</p>
           </div>
         </div>
         {doc.file?.isPdf && doc.file?.viewUrl && (
@@ -322,7 +322,7 @@ export default function StatuteViewPage() {
             <Button
               size="sm"
               variant={viewMode === "pdf" ? "default" : "outline"}
-              className={viewMode === "pdf" ? "bg-amber-500 text-slate-950 hover:bg-amber-400" : "border-slate-700 text-slate-300"}
+              className={viewMode === "pdf" ? "bg-primary text-slate-950 hover:bg-primary" : "border-border text-foreground"}
               onClick={() => setViewMode("pdf")}
             >
               <FileText size={14} className="mr-1" />
@@ -331,7 +331,7 @@ export default function StatuteViewPage() {
             <Button
               size="sm"
               variant={viewMode === "text" ? "default" : "outline"}
-              className={viewMode === "text" ? "bg-amber-500 text-slate-950 hover:bg-amber-400" : "border-slate-700 text-slate-300"}
+              className={viewMode === "text" ? "bg-primary text-slate-950 hover:bg-primary" : "border-border text-foreground"}
               onClick={() => setViewMode("text")}
             >
               <List size={14} className="mr-1" />
@@ -342,21 +342,21 @@ export default function StatuteViewPage() {
       </div>
 
       <div className="flex-1 flex flex-col xl:flex-row overflow-y-auto xl:overflow-hidden">
-        <div className={`${viewMode === "text" && showToc ? "md:w-[280px] md:min-w-[280px]" : "w-0 min-w-0"} border-r border-slate-800 bg-[#0f172a] hidden md:flex flex-col overflow-hidden transition-all duration-300`}>
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-2">
+        <div className={`${viewMode === "text" && showToc ? "md:w-[280px] md:min-w-[280px]" : "w-0 min-w-0"} border-r border-border bg-background hidden md:flex flex-col overflow-hidden transition-all duration-300`}>
+          <div className="p-4 border-b border-border flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <List size={14} className="text-slate-500 flex-shrink-0" />
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 truncate">Table of Contents</span>
+              <List size={14} className="text-muted-foreground flex-shrink-0" />
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground truncate">Table of Contents</span>
             </div>
-            <Button size="icon" variant="ghost" onClick={() => setShowToc(false)} className="text-slate-500 flex-shrink-0">
+            <Button size="icon" variant="ghost" onClick={() => setShowToc(false)} className="text-muted-foreground flex-shrink-0">
               <X size={14} />
             </Button>
           </div>
           <div className="flex-1 overflow-y-auto py-2">
             {isTocLoading && (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
-                <Loader2 size={20} className="animate-spin text-amber-500" />
-                <p className="text-xs text-slate-500">Analyzing document structure...</p>
+                <Loader2 size={20} className="animate-spin text-primary" />
+                <p className="text-xs text-muted-foreground">Analyzing document structure...</p>
               </div>
             )}
             {!isTocLoading && tocItems.length === 0 && (
@@ -382,22 +382,22 @@ export default function StatuteViewPage() {
             </div>
           ) : (
             <div className="max-w-4xl mx-auto px-3 sm:px-6 md:px-12 py-6 md:py-10">
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
                 {doc.title.toUpperCase()}
               </h1>
-              <p className="text-sm text-slate-500 mb-8">
+              <p className="text-sm text-muted-foreground mb-8">
                 {new Date(doc.createdAt).toLocaleDateString("en-CA")}
               </p>
 
               <div
                 ref={contentRef}
-                className="max-w-none text-slate-300 leading-relaxed"
+                className="max-w-none text-foreground leading-relaxed"
                 style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", lineHeight: "1.9" }}
               >
                 {renderDocContent(doc.content)}
               </div>
 
-              <div className="mt-12 pt-6 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
+              <div className="mt-12 pt-6 border-t border-border flex items-center justify-between flex-wrap gap-2">
                 <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600">
                   Al Wakeelo Digital Chambers
                 </p>
@@ -409,11 +409,11 @@ export default function StatuteViewPage() {
           )}
         </div>
 
-        <div className="w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-slate-800 bg-[#0f172a] flex flex-col max-h-[52vh] xl:max-h-none">
-          <div className="p-3 md:p-4 border-b border-slate-800">
+        <div className="w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-border bg-background flex flex-col max-h-[52vh] xl:max-h-none">
+          <div className="p-3 md:p-4 border-b border-border">
             <div className="flex items-center gap-2">
-              <MessageSquare size={14} className="text-amber-500" />
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">
+              <MessageSquare size={14} className="text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground">
                 Ask about this statute
               </span>
             </div>
@@ -423,7 +423,7 @@ export default function StatuteViewPage() {
             {chatMessages.length === 0 && (
               <div className="text-center py-12">
                 <Book size={32} className="text-slate-700 mx-auto mb-3" />
-                <p className="text-sm text-slate-500 font-medium">Ask any question about this statute</p>
+                <p className="text-sm text-muted-foreground font-medium">Ask any question about this statute</p>
                 <p className="text-xs text-slate-600 mt-1">AI will answer based on the document</p>
                 <div className="mt-6 space-y-2">
                   {[
@@ -434,7 +434,7 @@ export default function StatuteViewPage() {
                     <button
                       key={i}
                       onClick={() => { setChatInput(suggestion); }}
-                      className="w-full text-left px-4 py-3 bg-[#1e293b] border border-slate-800 rounded-xl text-xs text-slate-400 hover:text-white hover:border-amber-500/30 transition-all"
+                      className="w-full text-left px-4 py-3 bg-card border border-border rounded-xl text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
                     >
                       {suggestion}
                     </button>
@@ -448,8 +448,8 @@ export default function StatuteViewPage() {
                 <div
                   className={`max-w-[90%] px-4 py-3 rounded-xl text-sm ${
                     msg.role === "user"
-                      ? "bg-amber-500 text-slate-950"
-                      : "bg-[#1e293b] text-slate-300 border border-slate-800"
+                      ? "bg-primary text-slate-950"
+                      : "bg-card text-foreground border border-border"
                   }`}
                 >
                   {msg.role === "assistant" ? (
@@ -465,18 +465,18 @@ export default function StatuteViewPage() {
 
             {isChatLoading && (
               <div className="flex justify-start">
-                <div className="bg-[#1e293b] border border-slate-800 rounded-xl px-4 py-3">
-                  <Loader2 size={16} className="animate-spin text-amber-500" />
+                <div className="bg-card border border-border rounded-xl px-4 py-3">
+                  <Loader2 size={16} className="animate-spin text-primary" />
                 </div>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
-          <div className="p-3 border-t border-slate-800">
+          <div className="p-3 border-t border-border">
             <div className="flex gap-2">
               <input
-                className="flex-1 bg-[#1e293b] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                className="flex-1 bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-primary/50"
                 placeholder="Ask about this statute..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -486,7 +486,7 @@ export default function StatuteViewPage() {
                 size="icon"
                 onClick={handleChatSend}
                 disabled={!chatInput.trim() || isChatLoading}
-                className="bg-amber-500 text-slate-950 rounded-xl h-10 w-10"
+                className="bg-primary text-slate-950 rounded-xl h-10 w-10"
               >
                 <Send size={16} />
               </Button>

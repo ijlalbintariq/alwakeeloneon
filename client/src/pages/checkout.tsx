@@ -234,13 +234,13 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white px-4 py-6 md:px-6 md:py-10">
+    <div className="min-h-screen bg-background text-foreground px-4 py-6 md:px-6 md:py-10">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-[#141e31] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-[#141e31] px-4 py-3">
           <button
             type="button"
             onClick={() => navigate("/#pricing")}
-            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-300 hover:text-amber-300 transition-colors"
+            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-foreground hover:text-primary transition-colors"
             data-testid="checkout-back-pricing"
           >
             <ArrowLeft size={14} />
@@ -253,16 +253,16 @@ export default function CheckoutPage() {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_1.35fr] gap-6">
-          <section className="rounded-3xl border border-slate-800 bg-[#141e2f] p-5 md:p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-500 mb-2">Select Plan</p>
+          <section className="rounded-3xl border border-border bg-[#141e2f] p-5 md:p-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary mb-2">Select Plan</p>
             <h1 className="text-2xl md:text-3xl font-bold italic mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
               Checkout
             </h1>
-            <p className="text-sm text-slate-400 mb-5">
+            <p className="text-sm text-muted-foreground mb-5">
               Choose your subscription, submit activation request, and our chamber will confirm onboarding.
             </p>
 
-            <div className="mb-4 inline-flex items-center rounded-xl border border-slate-700 bg-[#101a2b] p-1.5 gap-1">
+            <div className="mb-4 inline-flex items-center rounded-xl border border-border bg-background p-1.5 gap-1">
               {[
                 { key: "monthly" as const, label: "Monthly" },
                 { key: "quarterly" as const, label: "3 Months" },
@@ -277,8 +277,8 @@ export default function CheckoutPage() {
                   }}
                   className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${
                     billingCycle === cycle.key
-                      ? "bg-amber-500 text-slate-950"
-                      : "text-slate-300 hover:text-amber-200"
+                      ? "bg-primary text-slate-950"
+                      : "text-foreground hover:text-foreground"
                   }`}
                   data-testid={`checkout-cycle-${cycle.key}`}
                 >
@@ -298,23 +298,23 @@ export default function CheckoutPage() {
                     onClick={() => handlePlanPick(plan.key)}
                     className={`w-full text-left rounded-xl border px-3 py-3 transition-all ${
                       selectedPlan === plan.key
-                        ? "border-amber-400 bg-amber-500/10"
-                        : "border-slate-700 bg-[#0f172a] hover:border-slate-500"
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-background hover:border-slate-500"
                     }`}
                     data-testid={`checkout-plan-${plan.key}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <p className="text-sm font-bold text-white">{plan.title}</p>
-                        <p className="text-[11px] text-slate-400">{priceLabel}</p>
+                        <p className="text-sm font-bold text-foreground">{plan.title}</p>
+                        <p className="text-[11px] text-muted-foreground">{priceLabel}</p>
                         {plan.key !== "enterprise" && (
-                          <p className="text-[10px] text-slate-500">{pricing.effectiveMonthlyLabel}</p>
+                          <p className="text-[10px] text-muted-foreground">{pricing.effectiveMonthlyLabel}</p>
                         )}
                       </div>
                       {selectedPlan === plan.key ? (
-                        <CheckCircle2 size={16} className="text-amber-400" />
+                        <CheckCircle2 size={16} className="text-primary" />
                       ) : (
-                        <ChevronRight size={15} className="text-slate-500" />
+                        <ChevronRight size={15} className="text-muted-foreground" />
                       )}
                     </div>
                   </button>
@@ -322,19 +322,19 @@ export default function CheckoutPage() {
               })}
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-[#0f172a] p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 mb-2">
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-2">
                 {selectedPlanData.title} Plan Includes
               </p>
-              <p className="text-[11px] text-slate-400 mb-3">
-                Billing cycle: <span className="text-amber-300 font-semibold">{selectedPlanPricing.cycleLabel}</span>
+              <p className="text-[11px] text-muted-foreground mb-3">
+                Billing cycle: <span className="text-primary font-semibold">{selectedPlanPricing.cycleLabel}</span>
                 {" · "}
-                <span className="text-slate-300">{selectedPlanPricing.totalLabel}</span>
+                <span className="text-foreground">{selectedPlanPricing.totalLabel}</span>
               </p>
               <ul className="space-y-2">
                 {selectedPlanData.features.slice(0, 6).map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-xs text-slate-300">
-                    <ChevronRight size={12} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                  <li key={feature} className="flex items-start gap-2 text-xs text-foreground">
+                    <ChevronRight size={12} className="text-primary mt-0.5 flex-shrink-0" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -342,7 +342,7 @@ export default function CheckoutPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-slate-800 bg-[#141e2f] p-5 md:p-7">
+          <section className="rounded-3xl border border-border bg-[#141e2f] p-5 md:p-7">
             {submitted ? (
               <div className="space-y-5">
                 <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300">
@@ -352,21 +352,21 @@ export default function CheckoutPage() {
                 <h2 className="text-2xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Subscription request submitted
                 </h2>
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  Our chamber team will contact you shortly to complete activation for the <span className="text-amber-300 font-semibold">{selectedPlanData.title}</span> plan on the{" "}
-                  <span className="text-amber-200 font-semibold">{selectedPlanPricing.cycleLabel}</span> cycle.
+                <p className="text-sm text-foreground leading-relaxed">
+                  Our chamber team will contact you shortly to complete activation for the <span className="text-primary font-semibold">{selectedPlanData.title}</span> plan on the{" "}
+                  <span className="text-foreground font-semibold">{selectedPlanPricing.cycleLabel}</span> cycle.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <a
                     href="mailto:support@alwakeelo.com?subject=Subscription%20Activation%20Support"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-[#0f172a] px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-200 hover:border-amber-500 hover:text-amber-300 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-xs font-black uppercase tracking-widest text-foreground hover:border-primary hover:text-primary transition-colors"
                     data-testid="checkout-email-support"
                   >
                     <Mail size={14} /> Email Chamber
                   </a>
                   <a
                     href="tel:00923096875797"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-[#0f172a] px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-200 hover:border-amber-500 hover:text-amber-300 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-xs font-black uppercase tracking-widest text-foreground hover:border-primary hover:text-primary transition-colors"
                     data-testid="checkout-call-support"
                   >
                     <PhoneCall size={14} /> Call Chamber
@@ -375,7 +375,7 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => navigate(user ? "/settings" : "/auth")}
-                  className="w-full rounded-xl bg-amber-500 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-amber-400 transition-colors"
+                  className="w-full rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-primary transition-colors"
                   data-testid="checkout-primary-next"
                 >
                   {user ? "Open Account Settings" : "Continue to Sign In"}
@@ -384,13 +384,13 @@ export default function CheckoutPage() {
             ) : (
               <>
                 <div className="mb-5">
-                  <p className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">
+                  <p className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-primary">
                     <Sparkles size={12} /> Activation Form
                   </p>
                   <h2 className="mt-3 text-2xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>
                     Complete your checkout request
                   </h2>
-                  <p className="text-sm text-slate-400 mt-2">
+                  <p className="text-sm text-muted-foreground mt-2">
                     Select your payment method and submit checkout details for chamber activation.
                   </p>
                 </div>
@@ -398,22 +398,22 @@ export default function CheckoutPage() {
                 <form onSubmit={onSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Full Name</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Full Name</label>
                       <input
                         value={form.name}
                         onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-700 bg-[#0f172a] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                         required
                         data-testid="checkout-input-name"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Email</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Email</label>
                       <input
                         type="email"
                         value={form.email}
                         onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-700 bg-[#0f172a] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                         required
                         data-testid="checkout-input-email"
                       />
@@ -422,21 +422,21 @@ export default function CheckoutPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Phone Number</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Phone Number</label>
                       <input
                         value={form.phone}
                         onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-700 bg-[#0f172a] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                         required
                         data-testid="checkout-input-phone"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">City</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">City</label>
                       <input
                         value={form.city}
                         onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-700 bg-[#0f172a] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                         required
                         data-testid="checkout-input-city"
                       />
@@ -444,37 +444,37 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Organization (Optional)</label>
+                    <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Organization (Optional)</label>
                     <input
                       value={form.organization}
                       onChange={(e) => setForm((prev) => ({ ...prev, organization: e.target.value }))}
-                      className="w-full rounded-xl border border-slate-700 bg-[#0f172a] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                       data-testid="checkout-input-organization"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Notes (Optional)</label>
+                    <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Notes (Optional)</label>
                     <textarea
                       rows={4}
                       value={form.notes}
                       onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                      className="w-full rounded-xl border border-slate-700 bg-[#0f172a] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-y"
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-y"
                       placeholder="Any onboarding notes or preferred activation schedule..."
                       data-testid="checkout-input-notes"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Payment Method</label>
+                    <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Payment Method</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <button
                         type="button"
                         onClick={() => setForm((prev) => ({ ...prev, paymentMethod: "card" }))}
                         className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${
                           form.paymentMethod === "card"
-                            ? "border-amber-400 bg-amber-500/15 text-amber-200"
-                            : "border-slate-700 bg-[#0f172a] text-slate-300 hover:border-slate-500"
+                            ? "border-primary bg-primary/15 text-foreground"
+                            : "border-border bg-background text-foreground hover:border-slate-500"
                         }`}
                         data-testid="checkout-payment-card"
                       >
@@ -485,8 +485,8 @@ export default function CheckoutPage() {
                         onClick={() => setForm((prev) => ({ ...prev, paymentMethod: "jazzcash" }))}
                         className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${
                           form.paymentMethod === "jazzcash"
-                            ? "border-amber-400 bg-amber-500/15 text-amber-200"
-                            : "border-slate-700 bg-[#0f172a] text-slate-300 hover:border-slate-500"
+                            ? "border-primary bg-primary/15 text-foreground"
+                            : "border-border bg-background text-foreground hover:border-slate-500"
                         }`}
                         data-testid="checkout-payment-jazzcash"
                       >
@@ -497,8 +497,8 @@ export default function CheckoutPage() {
                         onClick={() => setForm((prev) => ({ ...prev, paymentMethod: "easypaisa" }))}
                         className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${
                           form.paymentMethod === "easypaisa"
-                            ? "border-amber-400 bg-amber-500/15 text-amber-200"
-                            : "border-slate-700 bg-[#0f172a] text-slate-300 hover:border-slate-500"
+                            ? "border-primary bg-primary/15 text-foreground"
+                            : "border-border bg-background text-foreground hover:border-slate-500"
                         }`}
                         data-testid="checkout-payment-easypaisa"
                       >
@@ -508,23 +508,23 @@ export default function CheckoutPage() {
                   </div>
 
                   {form.paymentMethod === "card" ? (
-                    <div className="space-y-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3">
+                    <div className="space-y-3 rounded-xl border border-border bg-background p-3">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Card Holder Name</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Card Holder Name</label>
                         <input
                           value={form.cardHolderName}
                           onChange={(e) => setForm((prev) => ({ ...prev, cardHolderName: e.target.value }))}
-                          className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                           required={form.paymentMethod === "card"}
                           data-testid="checkout-input-card-holder"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Billing Address</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Billing Address</label>
                         <input
                           value={form.cardAddressLine1}
                           onChange={(e) => setForm((prev) => ({ ...prev, cardAddressLine1: e.target.value }))}
-                          className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                           placeholder="Street address"
                           required={form.paymentMethod === "card"}
                           data-testid="checkout-input-card-address"
@@ -532,32 +532,32 @@ export default function CheckoutPage() {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Apt (Optional)</label>
+                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Apt (Optional)</label>
                           <input
                             value={form.cardApt}
                             onChange={(e) => setForm((prev) => ({ ...prev, cardApt: e.target.value }))}
-                            className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                             placeholder="Suite / Apt"
                             data-testid="checkout-input-card-apt"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">State</label>
+                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">State</label>
                           <input
                             value={form.cardState}
                             onChange={(e) => setForm((prev) => ({ ...prev, cardState: e.target.value }))}
-                            className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                             placeholder="Punjab"
                             required={form.paymentMethod === "card"}
                             data-testid="checkout-input-card-state"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Post Code</label>
+                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Post Code</label>
                           <input
                             value={form.cardPostCode}
                             onChange={(e) => setForm((prev) => ({ ...prev, cardPostCode: e.target.value.slice(0, 20) }))}
-                            className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                             placeholder="54000"
                             required={form.paymentMethod === "card"}
                             data-testid="checkout-input-card-postcode"
@@ -565,11 +565,11 @@ export default function CheckoutPage() {
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Card Number</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Card Number</label>
                         <input
                           value={form.cardNumber}
                           onChange={(e) => setForm((prev) => ({ ...prev, cardNumber: formatCardNumber(e.target.value) }))}
-                          className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                           placeholder="1234 5678 9012 3456"
                           required={form.paymentMethod === "card"}
                           data-testid="checkout-input-card-number"
@@ -577,51 +577,51 @@ export default function CheckoutPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Expiry (MM/YY)</label>
+                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Expiry (MM/YY)</label>
                           <input
                             value={form.cardExpiry}
                             onChange={(e) => setForm((prev) => ({ ...prev, cardExpiry: normalizeCardExpiry(e.target.value) }))}
-                            className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                             placeholder="MM/YY"
                             required={form.paymentMethod === "card"}
                             data-testid="checkout-input-card-expiry"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">CVV</label>
+                          <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">CVV</label>
                           <input
                             value={form.cardCvv}
                             onChange={(e) => setForm((prev) => ({ ...prev, cardCvv: digitsOnly(e.target.value).slice(0, 4) }))}
-                            className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                             placeholder="123"
                             required={form.paymentMethod === "card"}
                             data-testid="checkout-input-card-cvv"
                           />
                         </div>
                       </div>
-                      <p className="text-[10px] text-slate-500">For security, CVV is used for local validation only and is not stored.</p>
+                      <p className="text-[10px] text-muted-foreground">For security, CVV is used for local validation only and is not stored.</p>
                     </div>
                   ) : (
-                    <div className="space-y-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3">
+                    <div className="space-y-3 rounded-xl border border-border bg-background p-3">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
                           {form.paymentMethod === "jazzcash" ? "JazzCash Number" : "EasyPaisa Number"}
                         </label>
                         <input
                           value={form.walletNumber}
                           onChange={(e) => setForm((prev) => ({ ...prev, walletNumber: digitsOnly(e.target.value).slice(0, 14) }))}
-                          className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                           placeholder="03XXXXXXXXX"
                           required={true}
                           data-testid="checkout-input-wallet-number"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Transaction Reference (Optional)</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Transaction Reference (Optional)</label>
                         <input
                           value={form.walletTxnId}
                           onChange={(e) => setForm((prev) => ({ ...prev, walletTxnId: e.target.value.slice(0, 80) }))}
-                          className="w-full rounded-xl border border-slate-700 bg-[#0c1526] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                           placeholder="If already paid, add reference ID"
                           data-testid="checkout-input-wallet-txn"
                         />
@@ -629,7 +629,7 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  <label className="flex items-start gap-2 rounded-xl border border-slate-800 bg-[#0f172a] px-3 py-2.5 cursor-pointer">
+                  <label className="flex items-start gap-2 rounded-xl border border-border bg-background px-3 py-2.5 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={form.consentToContact}
@@ -637,7 +637,7 @@ export default function CheckoutPage() {
                       className="mt-0.5 h-4 w-4 accent-amber-500"
                       data-testid="checkout-input-consent"
                     />
-                    <span className="text-xs text-slate-300">
+                    <span className="text-xs text-foreground">
                       I consent to being contacted by Al Wakeelo chamber for subscription activation and onboarding.
                     </span>
                   </label>
@@ -645,7 +645,7 @@ export default function CheckoutPage() {
                   <button
                     type="submit"
                     disabled={submitMutation.isPending}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-amber-400 transition-colors disabled:opacity-70"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-primary transition-colors disabled:opacity-70"
                     data-testid="checkout-submit"
                   >
                     {submitMutation.isPending ? (

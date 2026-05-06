@@ -173,13 +173,13 @@ export default function AdminPanelPage() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <div className="admin-panel-shield-wrap">
-              <Shield size={18} className="text-amber-400" />
+              <Shield size={18} className="text-primary" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
               Admin Control Panel
             </h1>
           </div>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-black">
+          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-black">
             Platform Management Command Center
           </p>
         </div>
@@ -198,7 +198,7 @@ export default function AdminPanelPage() {
           <Button
             key={tab.id}
             variant={activeTab === tab.id ? "default" : "ghost"}
-            className={`rounded-xl text-[10px] uppercase tracking-widest font-black admin-tab-button ${activeTab === tab.id ? "bg-amber-400 text-slate-950" : "text-slate-300"}`}
+            className={`rounded-xl text-[10px] uppercase tracking-widest font-black admin-tab-button ${activeTab === tab.id ? "bg-primary text-slate-950" : "text-foreground"}`}
             onClick={() => setActiveTab(tab.id)}
             data-testid={`tab-${tab.id}`}
           >
@@ -250,26 +250,26 @@ function PaginationStrip({
 
   return (
     <div className="flex items-center justify-between gap-3 pt-2">
-      <span className="text-[10px] text-slate-500 font-bold">
+      <span className="text-[10px] text-muted-foreground font-bold">
         Showing {start}-{end} of {total}
       </span>
       <div className="flex items-center gap-2">
         <Button
           size="sm"
           variant="ghost"
-          className="text-[10px] text-slate-300 rounded-lg"
+          className="text-[10px] text-foreground rounded-lg"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
         >
           Prev
         </Button>
-        <span className="text-[10px] text-slate-400 font-bold">
+        <span className="text-[10px] text-muted-foreground font-bold">
           Page {page} / {totalPages}
         </span>
         <Button
           size="sm"
           variant="ghost"
-          className="text-[10px] text-slate-300 rounded-lg"
+          className="text-[10px] text-foreground rounded-lg"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
         >
@@ -352,15 +352,15 @@ function GlobalRagIndexCard() {
   const status = reindexStatusResponse?.status;
 
   return (
-    <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]" data-testid="global-rag-index-card">
+    <Card className="bg-card border-border rounded-[2rem]" data-testid="global-rag-index-card">
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] font-black text-amber-500">
+            <p className="text-[10px] uppercase tracking-[0.3em] font-black text-primary">
               Global RAG Indexing
             </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Use <span className="text-emerald-300 font-semibold">Index Missing Only</span> for faster backfills, or <span className="text-amber-200 font-semibold">Index All</span> for full rebuild.
+            <p className="text-xs text-muted-foreground mt-1">
+              Use <span className="text-emerald-300 font-semibold">Index Missing Only</span> for faster backfills, or <span className="text-foreground font-semibold">Index All</span> for full rebuild.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -388,7 +388,7 @@ function GlobalRagIndexCard() {
                   <span>Index Missing Only</span>
                 </Button>
                 <Button
-                  className="bg-amber-500 text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  className="bg-primary text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
                   onClick={() => startMutation.mutate()}
                   disabled={startMutation.isPending || startIncrementalMutation.isPending || isLoading}
                   data-testid="button-start-global-rag-index"
@@ -402,33 +402,33 @@ function GlobalRagIndexCard() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center gap-2 text-slate-400 text-xs">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs">
             <Loader2 className="animate-spin" size={14} />
             <span>Loading status...</span>
           </div>
         ) : status ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div className="rounded-xl border border-slate-700 bg-[#101a2b] px-3 py-2">
-                <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Total Docs</p>
-                <p className="text-sm font-bold text-white">{(status.aggregate.totalDocuments || 0).toLocaleString()}</p>
+              <div className="rounded-xl border border-border bg-background px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground">Total Docs</p>
+                <p className="text-sm font-bold text-foreground">{(status.aggregate.totalDocuments || 0).toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-slate-700 bg-[#101a2b] px-3 py-2">
-                <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Processed</p>
+              <div className="rounded-xl border border-border bg-background px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground">Processed</p>
                 <p className="text-sm font-bold text-blue-300">{(status.aggregate.processed || 0).toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-slate-700 bg-[#101a2b] px-3 py-2">
-                <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Indexed</p>
+              <div className="rounded-xl border border-border bg-background px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground">Indexed</p>
                 <p className="text-sm font-bold text-emerald-300">{(status.aggregate.indexed || 0).toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-slate-700 bg-[#101a2b] px-3 py-2">
-                <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Failed</p>
+              <div className="rounded-xl border border-border bg-background px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground">Failed</p>
                 <p className="text-sm font-bold text-red-300">{(status.aggregate.failed || 0).toLocaleString()}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] text-slate-400">
-              <span className={status.running ? "text-amber-300 font-bold" : "text-slate-300 font-bold"}>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className={status.running ? "text-primary font-bold" : "text-foreground font-bold"}>
                 {status.running ? "Running" : "Idle"}
               </span>
               <span>•</span>
@@ -439,14 +439,14 @@ function GlobalRagIndexCard() {
 
             <div className="space-y-2">
               {(status.sources || []).map((source) => (
-                <div key={source.key} className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                <div key={source.key} className="rounded-xl border border-border bg-background px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] font-bold text-slate-200">{source.label}</p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[11px] font-bold text-foreground">{source.label}</p>
+                    <p className="text-[10px] text-muted-foreground">
                       {source.processed.toLocaleString()} / {source.totalDocuments.toLocaleString()}
                     </p>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     Indexed {source.indexed.toLocaleString()} • Failed {source.failed.toLocaleString()} • {status.mode === "incremental"
                       ? `Cursor ${(source.nextCursorId || 0).toLocaleString()}`
                       : `Next offset ${source.nextOffset.toLocaleString()}`}
@@ -473,7 +473,7 @@ function StatsSection() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-amber-500" size={24} />
+        <Loader2 className="animate-spin text-primary" size={24} />
       </div>
     );
   }
@@ -481,8 +481,8 @@ function StatsSection() {
   const statItems = [
     { label: "Total Users", value: stats?.totalUsers || 0, icon: Users, color: "text-blue-400" },
     { label: "Chat Threads", value: stats?.totalThreads || 0, icon: FileText, color: "text-emerald-400" },
-    { label: "Messages", value: stats?.totalMessages || 0, icon: BarChart3, color: "text-amber-400" },
-    { label: "Documents", value: stats?.totalDocuments || 0, icon: Database, color: "text-amber-400" },
+    { label: "Messages", value: stats?.totalMessages || 0, icon: BarChart3, color: "text-primary" },
+    { label: "Documents", value: stats?.totalDocuments || 0, icon: Database, color: "text-primary" },
     { label: "Knowledge Entries", value: stats?.totalKnowledge || 0, icon: Database, color: "text-cyan-400" },
     { label: "Cache Entries", value: stats?.totalCacheEntries || 0, icon: BarChart3, color: "text-pink-400" },
     { label: "Usage This Month", value: stats?.totalUsageThisMonth || 0, icon: BarChart3, color: "text-orange-400" },
@@ -495,15 +495,15 @@ function StatsSection() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4" data-testid="stats-grid">
         {statItems.map((item) => (
-          <Card key={item.label} className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+          <Card key={item.label} className="bg-card border-border rounded-[2rem]">
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-3">
                 <item.icon size={16} className={item.color} />
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                   {item.label}
                 </span>
               </div>
-              <p className="text-3xl font-bold text-white tracking-tight" data-testid={`stat-${item.label.toLowerCase().replace(/\s+/g, "-")}`}>
+              <p className="text-3xl font-bold text-foreground tracking-tight" data-testid={`stat-${item.label.toLowerCase().replace(/\s+/g, "-")}`}>
                 {item.value.toLocaleString()}
               </p>
             </CardContent>
@@ -513,31 +513,31 @@ function StatsSection() {
 
       <div data-testid="seo-status-section">
         <div className="flex items-center gap-3 mb-4">
-          <Globe size={16} className="text-amber-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+          <Globe size={16} className="text-primary" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
             SEO Readiness
           </span>
         </div>
         {seoLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="animate-spin text-amber-500" size={20} />
+            <Loader2 className="animate-spin text-primary" size={20} />
           </div>
         ) : (
-          <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+          <Card className="bg-card border-border rounded-[2rem]">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-sm font-bold text-foreground">
                     {(seoStatus?.healthyChecks || 0).toLocaleString()} / {(seoStatus?.totalChecks || 0).toLocaleString()} checks passed
                   </p>
-                  <p className="text-[11px] text-slate-500 mt-1">{seoStatus?.siteBase || "N/A"}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{seoStatus?.siteBase || "N/A"}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <a
                     href={seoStatus?.urls.robots || "#"}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:border-amber-500 hover:text-amber-300"
+                    className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground hover:border-primary hover:text-primary"
                   >
                     robots.txt <ExternalLink size={11} />
                   </a>
@@ -545,7 +545,7 @@ function StatsSection() {
                     href={seoStatus?.urls.sitemap || "#"}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:border-amber-500 hover:text-amber-300"
+                    className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground hover:border-primary hover:text-primary"
                   >
                     sitemap.xml <ExternalLink size={11} />
                   </a>
@@ -554,14 +554,14 @@ function StatsSection() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {(seoStatus?.checks || []).map((check) => (
-                  <div key={check.key} className="rounded-xl border border-slate-800 bg-[#101a2b] px-3 py-2.5">
+                  <div key={check.key} className="rounded-xl border border-border bg-background px-3 py-2.5">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-[11px] font-bold text-slate-200">{check.label}</span>
+                      <span className="text-[11px] font-bold text-foreground">{check.label}</span>
                       <Badge className={check.ok ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : "bg-red-500/20 text-red-300 border-red-500/30"}>
                         {check.ok ? "Pass" : "Fix"}
                       </Badge>
                     </div>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">{check.detail}</p>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">{check.detail}</p>
                   </div>
                 ))}
               </div>
@@ -583,22 +583,22 @@ function StatsSection() {
 
       <div data-testid="cost-analytics-section">
         <div className="flex items-center gap-3 mb-4">
-          <BarChart3 size={16} className="text-amber-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+          <BarChart3 size={16} className="text-primary" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
             Cost Analytics (This Month)
           </span>
         </div>
 
         {costLoading ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 className="animate-spin text-amber-500" size={20} />
+            <Loader2 className="animate-spin text-primary" size={20} />
           </div>
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+              <Card className="bg-card border-border rounded-[2rem]">
                 <CardContent className="p-6">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">
                     Est. Total Cost
                   </span>
                   <p className="text-2xl font-bold text-emerald-400" data-testid="text-total-cost">
@@ -606,9 +606,9 @@ function StatsSection() {
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+              <Card className="bg-card border-border rounded-[2rem]">
                 <CardContent className="p-6">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">
                     Total Tokens
                   </span>
                   <p className="text-2xl font-bold text-blue-400" data-testid="text-total-tokens">
@@ -616,12 +616,12 @@ function StatsSection() {
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+              <Card className="bg-card border-border rounded-[2rem]">
                 <CardContent className="p-6">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">
                     Active Features
                   </span>
-                  <p className="text-2xl font-bold text-amber-400">
+                  <p className="text-2xl font-bold text-primary">
                     {costData?.byFeature?.length || 0}
                   </p>
                 </CardContent>
@@ -629,9 +629,9 @@ function StatsSection() {
             </div>
 
             {costData?.byFeature && costData.byFeature.length > 0 && (
-              <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+              <Card className="bg-card border-border rounded-[2rem]">
                 <CardContent className="p-6">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-4">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-4">
                     Cost Breakdown by Feature
                   </span>
                   <div className="space-y-3">
@@ -642,14 +642,14 @@ function StatsSection() {
                       return (
                         <div key={f.feature} className="space-y-1" data-testid={`cost-feature-${f.feature}`}>
                           <div className="flex items-center justify-between gap-4 flex-wrap">
-                            <span className="text-xs font-bold text-slate-300">
+                            <span className="text-xs font-bold text-foreground">
                               {FEATURE_LABELS[f.feature] || f.feature}
                             </span>
                             <div className="flex items-center gap-4 flex-wrap">
-                              <span className="text-[10px] text-slate-500">
+                              <span className="text-[10px] text-muted-foreground">
                                 {f.totalQueries} queries
                               </span>
-                              <span className="text-[10px] text-slate-500">
+                              <span className="text-[10px] text-muted-foreground">
                                 {(f.totalInputTokens + f.totalOutputTokens).toLocaleString()} tokens
                               </span>
                               <span className="text-xs font-bold text-emerald-400">
@@ -657,9 +657,9 @@ function StatsSection() {
                               </span>
                             </div>
                           </div>
-                          <div className="w-full bg-slate-800 rounded-full h-1.5">
+                          <div className="w-full bg-card rounded-full h-1.5">
                             <div
-                              className="bg-amber-500 h-1.5 rounded-full transition-all"
+                              className="bg-primary h-1.5 rounded-full transition-all"
                               style={{ width: `${Math.max(costPercent, 2)}%` }}
                             />
                           </div>
@@ -884,7 +884,7 @@ function UsersSection() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-amber-500" size={24} />
+        <Loader2 className="animate-spin text-primary" size={24} />
       </div>
     );
   }
@@ -893,8 +893,8 @@ function UsersSection() {
     <div className="space-y-4" data-testid="users-section">
       <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
         <div className="flex items-center gap-3">
-          <Users size={16} className="text-amber-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+          <Users size={16} className="text-primary" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
             {allUsers?.length || 0} Registered Users
           </span>
         </div>
@@ -902,7 +902,7 @@ function UsersSection() {
           <Button
             onClick={exportUsersCsv}
             disabled={isExportingUsersCsv}
-            className="bg-amber-500 text-slate-950 hover:bg-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="bg-primary text-slate-950 hover:bg-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
             data-testid="button-export-users-csv"
           >
             {isExportingUsersCsv ? <Loader2 size={12} className="animate-spin mr-1" /> : <Download size={12} className="mr-1" />}
@@ -910,7 +910,7 @@ function UsersSection() {
           </Button>
           <Button
             variant={showAddForm ? "ghost" : "default"}
-            className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-slate-400" : "bg-amber-500 text-slate-950"}`}
+            className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-muted-foreground" : "bg-primary text-slate-950"}`}
             onClick={() => setShowAddForm(!showAddForm)}
             data-testid="button-toggle-add-user"
           >
@@ -921,9 +921,9 @@ function UsersSection() {
       </div>
 
       {showAddForm && (
-        <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]" data-testid="add-user-form">
+        <Card className="bg-card border-border rounded-[2rem]" data-testid="add-user-form">
           <CardContent className="p-6 space-y-4">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 block">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground block">
               Create New User
             </span>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -931,14 +931,14 @@ function UsersSection() {
                 placeholder="First name"
                 value={newFirstName}
                 onChange={(e) => setNewFirstName(e.target.value)}
-                className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
+                className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
                 data-testid="input-new-firstname"
               />
               <Input
                 placeholder="Last name"
                 value={newLastName}
                 onChange={(e) => setNewLastName(e.target.value)}
-                className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
+                className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
                 data-testid="input-new-lastname"
               />
             </div>
@@ -947,7 +947,7 @@ function UsersSection() {
               type="email"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
               data-testid="input-new-email"
             />
             <Input
@@ -955,12 +955,12 @@ function UsersSection() {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
               data-testid="input-new-password"
             />
             <div className="flex items-center gap-4 flex-wrap">
               <Select value={newTier} onValueChange={setNewTier}>
-                <SelectTrigger className="w-40 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid="select-new-tier">
+                <SelectTrigger className="w-40 bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs" data-testid="select-new-tier">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -972,7 +972,7 @@ function UsersSection() {
                 </SelectContent>
               </Select>
               <Select value={newCycle} onValueChange={(val: "monthly" | "quarterly" | "yearly") => setNewCycle(val)}>
-                <SelectTrigger className="w-44 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid="select-new-cycle">
+                <SelectTrigger className="w-44 bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs" data-testid="select-new-cycle">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -983,7 +983,7 @@ function UsersSection() {
               </Select>
               <Button
                 variant="ghost"
-                className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${newIsAdmin ? "text-amber-400" : "text-slate-500"}`}
+                className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${newIsAdmin ? "text-primary" : "text-muted-foreground"}`}
                 onClick={() => setNewIsAdmin(!newIsAdmin)}
                 data-testid="button-new-admin-toggle"
               >
@@ -994,7 +994,7 @@ function UsersSection() {
             <Button
               onClick={() => addUserMutation.mutate()}
               disabled={addUserMutation.isPending || !newEmail || !newPassword || !newFirstName || !newLastName}
-              className="bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+              className="bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
               data-testid="button-create-user"
             >
               {addUserMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
@@ -1006,27 +1006,27 @@ function UsersSection() {
 
       <div className="space-y-3">
         {allUsers?.map((u) => (
-          <Card key={u.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`user-row-${u.id}`}>
+          <Card key={u.id} className="bg-card border-border rounded-[1.5rem]" data-testid={`user-row-${u.id}`}>
             <CardContent className="p-5 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <div className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {u.profileImageUrl ? (
                     <img src={u.profileImageUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <Users size={16} className="text-slate-500" />
+                    <Users size={16} className="text-muted-foreground" />
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white truncate" data-testid={`text-user-name-${u.id}`}>
+                  <p className="text-sm font-bold text-foreground truncate" data-testid={`text-user-name-${u.id}`}>
                     {u.firstName || u.email || "Unknown"}
                   </p>
-                  <p className="text-[10px] text-slate-500 truncate">{u.email}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 flex-wrap">
                 {u.isAdmin && (
-                  <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 rounded-lg text-[9px]">
+                  <Badge className="bg-primary/20 text-primary border-primary/30 rounded-lg text-[9px]">
                     ADMIN
                   </Badge>
                 )}
@@ -1035,7 +1035,7 @@ function UsersSection() {
                     SUSPENDED
                   </Badge>
                 )}
-                <span className="text-[10px] text-slate-500">
+                <span className="text-[10px] text-muted-foreground">
                   Cycle: {String(u.subscriptionCycle || "monthly").toLowerCase() === "yearly"
                     ? "Yearly"
                     : String(u.subscriptionCycle || "monthly").toLowerCase() === "quarterly"
@@ -1050,7 +1050,7 @@ function UsersSection() {
                   value={u.subscriptionTier}
                   onValueChange={(val) => updateUserMutation.mutate({ userId: u.id, data: { subscriptionTier: val, resetMonthlyQuota: true } })}
                 >
-                  <SelectTrigger className="w-32 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid={`select-tier-${u.id}`}>
+                  <SelectTrigger className="w-32 bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs" data-testid={`select-tier-${u.id}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1065,7 +1065,7 @@ function UsersSection() {
                   value={(u.subscriptionCycle as "monthly" | "quarterly" | "yearly" | undefined) || "monthly"}
                   onValueChange={(val) => updateUserMutation.mutate({ userId: u.id, data: { subscriptionCycle: val } })}
                 >
-                  <SelectTrigger className="w-32 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid={`select-cycle-${u.id}`}>
+                  <SelectTrigger className="w-32 bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs" data-testid={`select-cycle-${u.id}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1094,7 +1094,7 @@ function UsersSection() {
                   disabled={u.isAdmin && u.id === currentUser?.id}
                   title={u.isAdmin && u.id === currentUser?.id ? "You cannot remove your own admin access" : u.isAdmin ? "Remove admin access" : "Grant admin access"}
                   data-testid={`button-toggle-admin-${u.id}`}
-                  className={u.isAdmin ? "text-amber-400" : "text-slate-500"}
+                  className={u.isAdmin ? "text-primary" : "text-muted-foreground"}
                 >
                   {u.isAdmin ? <UserCheck size={16} /> : <UserX size={16} />}
                 </Button>
@@ -1147,7 +1147,7 @@ function UsersSection() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-slate-500 text-[10px] uppercase tracking-widest font-black"
+                        className="text-muted-foreground text-[10px] uppercase tracking-widest font-black"
                         onClick={() => setConfirmDeleteId(null)}
                         data-testid={`button-cancel-delete-${u.id}`}
                       >
@@ -1158,7 +1158,7 @@ function UsersSection() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="text-slate-500"
+                      className="text-muted-foreground"
                       onClick={() => setConfirmDeleteId(u.id)}
                       title="Remove user"
                       data-testid={`button-delete-user-${u.id}`}
@@ -1174,7 +1174,7 @@ function UsersSection() {
                     placeholder="Suspension reason (optional)"
                     value={banReasons[u.id] || ""}
                     onChange={(e) => setBanReasons((prev) => ({ ...prev, [u.id]: e.target.value }))}
-                    className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+                    className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs"
                     data-testid={`input-ban-reason-${u.id}`}
                   />
                 </div>
@@ -1213,7 +1213,7 @@ function AuditLogsSection() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-amber-500" size={24} />
+        <Loader2 className="animate-spin text-primary" size={24} />
       </div>
     );
   }
@@ -1221,38 +1221,38 @@ function AuditLogsSection() {
   return (
     <div className="space-y-4" data-testid="audit-logs-section">
       <div className="flex items-center gap-3">
-        <Shield size={16} className="text-amber-500" />
-        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+        <Shield size={16} className="text-primary" />
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
           Audit Events ({logs?.length || 0})
         </span>
       </div>
 
       {!logs || logs.length === 0 ? (
-        <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+        <Card className="bg-card border-border rounded-[2rem]">
           <CardContent className="p-12 text-center">
             <Shield size={32} className="text-slate-700 mx-auto mb-3" />
-            <p className="text-sm text-slate-500">No audit events yet</p>
+            <p className="text-sm text-muted-foreground">No audit events yet</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
           {logs.map((log) => (
-            <Card key={log.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`audit-log-${log.id}`}>
+            <Card key={log.id} className="bg-card border-border rounded-[1.5rem]" data-testid={`audit-log-${log.id}`}>
               <CardContent className="p-5 space-y-2">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <Badge className="bg-slate-800 text-slate-300 border-slate-700 rounded-lg text-[9px]">
+                  <Badge className="bg-card text-foreground border-border rounded-lg text-[9px]">
                     {log.action}
                   </Badge>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-muted-foreground">
                     {new Date(log.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-300 flex flex-wrap gap-3">
+                <div className="text-[11px] text-foreground flex flex-wrap gap-3">
                   <span>Actor: {log.actorUserId || "system"}</span>
                   <span>Target: {log.targetUserId || "-"}</span>
                 </div>
                 {log.metadata && (
-                  <pre className="text-[10px] text-slate-400 bg-[#101a2b] border border-slate-800 rounded-xl p-3 overflow-x-auto whitespace-pre-wrap break-words">
+                  <pre className="text-[10px] text-muted-foreground bg-background border border-border rounded-xl p-3 overflow-x-auto whitespace-pre-wrap break-words">
                     {JSON.stringify(log.metadata, null, 2)}
                   </pre>
                 )}
@@ -1262,37 +1262,37 @@ function AuditLogsSection() {
         </div>
       )}
 
-      <div className="pt-4 border-t border-slate-800">
+      <div className="pt-4 border-t border-border">
         <div className="flex items-center gap-3 mb-3">
-          <AlertTriangle size={16} className="text-amber-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+          <AlertTriangle size={16} className="text-primary" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
             Security Event Stream ({securityEvents?.length || 0})
           </span>
         </div>
 
         {securityLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="animate-spin text-amber-500" size={20} />
+            <Loader2 className="animate-spin text-primary" size={20} />
           </div>
         ) : !securityEvents || securityEvents.length === 0 ? (
-          <Card className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]">
-            <CardContent className="p-6 text-center text-slate-500 text-sm">
+          <Card className="bg-card border-border rounded-[1.5rem]">
+            <CardContent className="p-6 text-center text-muted-foreground text-sm">
               No recent security alerts.
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-2">
             {securityEvents.map((event) => (
-              <Card key={`security-event-${event.id}-${event.lastSeenAt}`} className="bg-[#1e293b] border-slate-800 rounded-[1.2rem]">
+              <Card key={`security-event-${event.id}-${event.lastSeenAt}`} className="bg-card border-border rounded-[1.2rem]">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <Badge className="bg-red-500/20 text-red-300 border-red-500/30 rounded-lg text-[9px]">
                       {event.type}
                     </Badge>
-                    <span className="text-[10px] text-slate-500">Count: {event.count}</span>
+                    <span className="text-[10px] text-muted-foreground">Count: {event.count}</span>
                   </div>
-                  <p className="text-[11px] text-slate-200 break-all">Key: {event.key}</p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[11px] text-foreground break-all">Key: {event.key}</p>
+                  <p className="text-[10px] text-muted-foreground">
                     First: {new Date(event.firstSeenAt).toLocaleString()} | Last: {new Date(event.lastSeenAt).toLocaleString()}
                   </p>
                 </CardContent>
@@ -1445,16 +1445,16 @@ function KnowledgeSection() {
 
   return (
     <div className="space-y-8" data-testid="knowledge-section">
-      <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+      <Card className="bg-card border-border rounded-[2rem]">
         <CardHeader className="flex flex-row items-center gap-3 pb-2">
-          <Upload size={16} className="text-amber-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+          <Upload size={16} className="text-primary" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
             Mass Upload to Knowledge Vault
           </span>
         </CardHeader>
         <CardContent className="space-y-4 pt-2">
           <Select value={uploadCategory} onValueChange={setUploadCategory}>
-            <SelectTrigger className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid="select-knowledge-category">
+            <SelectTrigger className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs" data-testid="select-knowledge-category">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1467,7 +1467,7 @@ function KnowledgeSection() {
           </Select>
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block">
+            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block">
               Select Files (.txt, .json, .csv, .pdf, .docx — select multiple)
             </label>
             <Input
@@ -1475,11 +1475,11 @@ function KnowledgeSection() {
               accept=".txt,.json,.csv,.pdf,.doc,.docx"
               multiple
               onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
-              className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs file:text-slate-400 file:mr-4"
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs file:text-muted-foreground file:mr-4"
               data-testid="input-knowledge-files"
             />
             {selectedFiles.length > 0 && (
-              <p className="text-[10px] text-amber-400 font-bold">
+              <p className="text-[10px] text-primary font-bold">
                 {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""} selected
               </p>
             )}
@@ -1488,11 +1488,11 @@ function KnowledgeSection() {
           {isUploading && uploadProgress.total > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="text-slate-400">Uploading {uploadProgress.current} of {uploadProgress.total} files...</span>
-                <span className="text-amber-400 font-bold">{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
+                <span className="text-muted-foreground">Uploading {uploadProgress.current} of {uploadProgress.total} files...</span>
+                <span className="text-primary font-bold">{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
               </div>
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-amber-500 rounded-full transition-all duration-300" style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} />
+              <div className="w-full h-2 bg-card rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} />
               </div>
               {uploadProgress.uploaded > 0 && (
                 <p className="text-[9px] text-emerald-400">{uploadProgress.uploaded} uploaded{uploadProgress.errors > 0 ? `, ${uploadProgress.errors} failed` : ""}</p>
@@ -1503,7 +1503,7 @@ function KnowledgeSection() {
           <Button
             onClick={handleUpload}
             disabled={isUploading}
-            className="bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+            className="bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
             data-testid="button-upload-knowledge"
           >
             {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
@@ -1515,8 +1515,8 @@ function KnowledgeSection() {
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Database size={16} className="text-amber-500" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            <Database size={16} className="text-primary" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
               Vault Documents ({totalDocs})
             </span>
           </div>
@@ -1536,7 +1536,7 @@ function KnowledgeSection() {
               <span className="text-[10px] text-red-300 font-bold">Delete all {totalDocs} documents?</span>
               <Button
                 size="sm"
-                className="bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold h-7 px-3 rounded-lg"
+                className="bg-red-600 hover:bg-red-700 text-foreground text-[9px] font-bold h-7 px-3 rounded-lg"
                 onClick={() => deleteAllMutation.mutate()}
                 disabled={deleteAllMutation.isPending}
               >
@@ -1545,7 +1545,7 @@ function KnowledgeSection() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-slate-400 text-[9px] h-7 px-2 rounded-lg"
+                className="text-muted-foreground text-[9px] h-7 px-2 rounded-lg"
                 onClick={() => setShowDeleteAllConfirm(false)}
               >
                 Cancel
@@ -1556,25 +1556,25 @@ function KnowledgeSection() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="animate-spin text-amber-500" size={24} />
+            <Loader2 className="animate-spin text-primary" size={24} />
           </div>
         ) : docs.length === 0 ? (
-          <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+          <Card className="bg-card border-border rounded-[2rem]">
             <CardContent className="p-12 text-center">
               <Database size={32} className="text-slate-700 mx-auto mb-3" />
-              <p className="text-sm text-slate-500">No documents in vault yet</p>
+              <p className="text-sm text-muted-foreground">No documents in vault yet</p>
             </CardContent>
           </Card>
         ) : (
           docs.map((doc) => (
-            <Card key={doc.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`knowledge-doc-${doc.id}`}>
+            <Card key={doc.id} className="bg-card border-border rounded-[1.5rem]" data-testid={`knowledge-doc-${doc.id}`}>
               <CardContent className="p-5 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
-                  <FileText size={18} className="text-slate-500 flex-shrink-0" />
+                  <FileText size={18} className="text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{doc.title}</p>
+                    <p className="text-sm font-bold text-foreground truncate">{doc.title}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className="bg-slate-800 text-slate-400 border-slate-700 rounded-lg text-[8px]">
+                      <Badge className="bg-card text-muted-foreground border-border rounded-lg text-[8px]">
                         {doc.category}
                       </Badge>
                       <span className="text-[9px] text-slate-600">{doc.filename}</span>
@@ -1588,7 +1588,7 @@ function KnowledgeSection() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="text-slate-500"
+                  className="text-muted-foreground"
                   onClick={() => deleteMutation.mutate(doc.id)}
                   data-testid={`button-delete-knowledge-${doc.id}`}
                 >
@@ -1820,12 +1820,12 @@ function CaseLawBadIndexAuditCard() {
   const badIndexJobStatus = badIndexStatusData?.status || badIndexAuditData?.jobStatus || null;
 
   return (
-    <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]" data-testid="case-law-bad-index-audit-card">
+    <Card className="bg-card border-border rounded-[2rem]" data-testid="case-law-bad-index-audit-card">
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">Bad Index Audit</p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Bad Index Audit</p>
+            <p className="text-xs text-muted-foreground mt-1">
               Detect duplicate/noisy source docs and run targeted re-extract without full reindex.
             </p>
           </div>
@@ -1833,7 +1833,7 @@ function CaseLawBadIndexAuditCard() {
             <Button
               size="sm"
               variant="ghost"
-              className="text-amber-300 rounded-xl text-[10px] uppercase tracking-widest font-black"
+              className="text-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
               onClick={() => refetchBadIndexAudit()}
               disabled={badIndexAuditLoading}
               data-testid="button-refresh-bad-index-audit"
@@ -1856,7 +1856,7 @@ function CaseLawBadIndexAuditCard() {
             ) : (
               <Button
                 size="sm"
-                className="bg-amber-500 text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                className="bg-primary text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
                 onClick={() => startBadIndexReextractMutation.mutate()}
                 disabled={startBadIndexReextractMutation.isPending}
                 data-testid="button-start-bad-index-reextract"
@@ -1870,9 +1870,9 @@ function CaseLawBadIndexAuditCard() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
-            <p className="text-[9px] uppercase tracking-widest font-black text-slate-500 mb-1">Source</p>
+            <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground mb-1">Source</p>
             <Select value={badIndexSource} onValueChange={(value: CaseLawBadIndexSourceKind) => setBadIndexSource(value)}>
-              <SelectTrigger className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs" data-testid="select-bad-index-source">
+              <SelectTrigger className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs" data-testid="select-bad-index-source">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1885,62 +1885,62 @@ function CaseLawBadIndexAuditCard() {
             </Select>
           </div>
           <div>
-            <p className="text-[9px] uppercase tracking-widest font-black text-slate-500 mb-1">Min Rows</p>
+            <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground mb-1">Min Rows</p>
             <Input
               value={badIndexMinRows}
               onChange={(e) => setBadIndexMinRows(e.target.value)}
-              className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs"
               data-testid="input-bad-index-min-rows"
             />
           </div>
           <div>
-            <p className="text-[9px] uppercase tracking-widest font-black text-slate-500 mb-1">Target Limit</p>
+            <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground mb-1">Target Limit</p>
             <Input
               value={badIndexLimit}
               onChange={(e) => setBadIndexLimit(e.target.value)}
-              className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs"
               data-testid="input-bad-index-limit"
             />
           </div>
           <div>
-            <p className="text-[9px] uppercase tracking-widest font-black text-slate-500 mb-1">Max Citations/Doc</p>
+            <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground mb-1">Max Citations/Doc</p>
             <Input
               value={badIndexMaxCitations}
               onChange={(e) => setBadIndexMaxCitations(e.target.value)}
-              className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs"
               data-testid="input-bad-index-max-citations"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-            <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Total Rows</p>
-            <p className="text-sm font-bold text-slate-100">{(badIndexAuditData?.duplicateStats?.totalRows || 0).toLocaleString()}</p>
+          <div className="rounded-xl border border-border bg-background px-3 py-2">
+            <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground">Total Rows</p>
+            <p className="text-sm font-bold text-foreground">{(badIndexAuditData?.duplicateStats?.totalRows || 0).toLocaleString()}</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-            <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Duplicate Groups</p>
-            <p className="text-sm font-bold text-amber-300">{(badIndexAuditData?.duplicateStats?.duplicateGroups || 0).toLocaleString()}</p>
+          <div className="rounded-xl border border-border bg-background px-3 py-2">
+            <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground">Duplicate Groups</p>
+            <p className="text-sm font-bold text-primary">{(badIndexAuditData?.duplicateStats?.duplicateGroups || 0).toLocaleString()}</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-            <p className="text-[9px] uppercase tracking-widest font-black text-slate-500">Duplicate Rows</p>
+          <div className="rounded-xl border border-border bg-background px-3 py-2">
+            <p className="text-[9px] uppercase tracking-widest font-black text-muted-foreground">Duplicate Rows</p>
             <p className="text-sm font-bold text-red-300">{(badIndexAuditData?.duplicateStats?.duplicateRows || 0).toLocaleString()}</p>
           </div>
         </div>
 
         {badIndexJobStatus && (
-          <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2 text-[11px] text-slate-300">
-            <p className="font-bold text-slate-100">
+          <div className="rounded-xl border border-border bg-background px-3 py-2 text-[11px] text-foreground">
+            <p className="font-bold text-foreground">
               Job: {badIndexJobStatus.running ? "Running" : "Idle"} · {badIndexJobStatus.processedTargets}/{badIndexJobStatus.totalTargets} processed
             </p>
-            <p className="text-slate-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Reindexed {badIndexJobStatus.reindexedTargets} · Skipped(no source) {badIndexJobStatus.skippedNoSource} · Skipped(no extract) {badIndexJobStatus.skippedNoExtract}
             </p>
-            <p className="text-slate-400">
+            <p className="text-muted-foreground">
               Replaced rows {badIndexJobStatus.replacedRows.toLocaleString()} · Inserted rows {badIndexJobStatus.insertedRows.toLocaleString()}
             </p>
             {badIndexJobStatus.activeTarget && (
-              <p className="text-amber-300 mt-1">
+              <p className="text-primary mt-1">
                 Active: {badIndexJobStatus.activeTarget.sourceType}:{badIndexJobStatus.activeTarget.sourceDocId} · {badIndexJobStatus.activeTarget.sourceFilename || "Untitled"}
               </p>
             )}
@@ -1951,27 +1951,27 @@ function CaseLawBadIndexAuditCard() {
         )}
 
         {badIndexAuditLoading ? (
-          <div className="flex items-center gap-2 text-slate-400 text-xs">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs">
             <Loader2 className="animate-spin" size={14} />
             <span>Loading bad-index targets...</span>
           </div>
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {(badIndexAuditData?.targets || []).length === 0 ? (
-              <p className="text-xs text-slate-500">No problematic source documents found for current filters.</p>
+              <p className="text-xs text-muted-foreground">No problematic source documents found for current filters.</p>
             ) : (
               (badIndexAuditData?.targets || []).map((target, idx) => (
-                <div key={`${target.sourceType}-${target.sourceDocId}-${idx}`} className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
+                <div key={`${target.sourceType}-${target.sourceDocId}-${idx}`} className="rounded-xl border border-border bg-background px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] font-bold text-slate-100">
+                    <p className="text-[11px] font-bold text-foreground">
                       {target.sourceType}:{target.sourceDocId}
                     </p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       dup {target.duplicateRows} · rows {target.totalRows}
                     </p>
                   </div>
-                  <p className="text-[10px] text-slate-500 truncate mt-1">{target.sourceFilename || "Unnamed source"}</p>
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-[10px] text-muted-foreground truncate mt-1">{target.sourceFilename || "Unnamed source"}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     primary {target.primaryRows} · cited {target.citedRows} · unique {target.uniqueKeys}
                   </p>
                 </div>
@@ -2514,13 +2514,13 @@ function CaseLawSection() {
   };
 
   const CaseLawForm = ({ isEdit }: { isEdit: boolean }) => (
-    <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+    <Card className="bg-card border-border rounded-[2rem]">
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">
             {isEdit ? "Edit Case Law" : "Add Case Law Entry"}
           </span>
-          <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => isEdit ? cancelEdit() : setShowAddForm(false)} data-testid="button-cancel-form">
+          <Button size="icon" variant="ghost" className="text-muted-foreground" onClick={() => isEdit ? cancelEdit() : setShowAddForm(false)} data-testid="button-cancel-form">
             <X size={14} />
           </Button>
         </div>
@@ -2529,14 +2529,14 @@ function CaseLawSection() {
             placeholder="Citation (e.g. PLD 2024 SC 123)"
             value={formData.citation}
             onChange={(e) => setFormData(prev => ({ ...prev, citation: e.target.value }))}
-            className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
+            className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
             data-testid="input-caselaw-citation"
           />
           <Input
             placeholder="Court (e.g. Supreme Court of Pakistan)"
             value={formData.court}
             onChange={(e) => setFormData(prev => ({ ...prev, court: e.target.value }))}
-            className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
+            className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
             data-testid="input-caselaw-court"
           />
         </div>
@@ -2544,14 +2544,14 @@ function CaseLawSection() {
           placeholder="Title (e.g. State vs Ahmed - Property Dispute)"
           value={formData.title}
           onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-          className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
+          className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
           data-testid="input-caselaw-title"
         />
         <Textarea
           placeholder="Summary of the case and legal principle established"
           value={formData.summary}
           onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
-          className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm resize-none"
+          className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm resize-none"
           rows={3}
           data-testid="input-caselaw-summary"
         />
@@ -2559,13 +2559,13 @@ function CaseLawSection() {
           placeholder="Keywords (comma-separated, e.g. bail, cheque, fraud)"
           value={formData.keywords}
           onChange={(e) => setFormData(prev => ({ ...prev, keywords: e.target.value }))}
-          className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
+          className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
           data-testid="input-caselaw-keywords"
         />
         <Button
           onClick={() => isEdit && editingId ? updateMutation.mutate({ id: editingId, data: formData }) : createMutation.mutate(formData)}
           disabled={!formData.citation || !formData.court || !formData.title || !formData.summary || createMutation.isPending || updateMutation.isPending}
-          className="bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+          className="bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
           data-testid="button-save-caselaw"
         >
           {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
@@ -2579,15 +2579,15 @@ function CaseLawSection() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <Scale size={16} className="text-amber-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+          <Scale size={16} className="text-primary" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
             Case Law Database ({totalCaseLawEntries})
           </span>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button
             variant="ghost"
-            className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="text-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => syncCitationDbMutation.mutate()}
             disabled={syncCitationDbMutation.isPending || isAutoScanning || processPendingFilesMutation.isPending || Boolean(syncCitationStatus?.running)}
             data-testid="button-sync-citation-db"
@@ -2597,7 +2597,7 @@ function CaseLawSection() {
           </Button>
           <Button
             variant="ghost"
-            className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="text-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => processPendingFilesMutation.mutate()}
             disabled={processPendingFilesMutation.isPending || isAutoScanning || syncCitationDbMutation.isPending || Boolean(processPendingStatus?.running)}
             data-testid="button-process-pending-caselaw-files"
@@ -2617,7 +2617,7 @@ function CaseLawSection() {
           </Button>
           <Button
             variant="ghost"
-            className="text-amber-300 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="text-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => retryTerminalProcessPendingMutation.mutate()}
             disabled={retryTerminalProcessPendingMutation.isPending}
             data-testid="button-retry-terminal-caselaw-files"
@@ -2627,7 +2627,7 @@ function CaseLawSection() {
           </Button>
           <Button
             variant="ghost"
-            className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="text-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={async () => {
               setIsAutoScanning(true);
               try {
@@ -2650,7 +2650,7 @@ function CaseLawSection() {
           </Button>
           <Button
             variant="ghost"
-            className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="text-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => { setShowBulkUpload(!showBulkUpload); setShowAddForm(false); cancelEdit(); setExtractedCases([]); setRetryExtractFiles([]); setAutoSaveFailed(false); }}
             data-testid="button-toggle-bulk-upload"
           >
@@ -2658,7 +2658,7 @@ function CaseLawSection() {
             <span>Upload Document</span>
           </Button>
           <Button
-            className="bg-amber-500 text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="bg-primary text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => { setShowAddForm(!showAddForm); setShowBulkUpload(false); cancelEdit(); }}
             data-testid="button-add-caselaw"
           >
@@ -2668,67 +2668,67 @@ function CaseLawSection() {
         </div>
       </div>
 
-      <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]" data-testid="case-law-pending-diagnostics-card">
+      <Card className="bg-card border-border rounded-[2rem]" data-testid="case-law-pending-diagnostics-card">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">Pending Pipeline Diagnostics</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Pending Pipeline Diagnostics</span>
             {processPendingDiagnostics?.generatedAt ? (
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[10px] text-muted-foreground">
                 Updated {new Date(processPendingDiagnostics.generatedAt).toLocaleTimeString()}
               </span>
             ) : (
-              <span className="text-[10px] text-slate-500">Waiting for diagnostics...</span>
+              <span className="text-[10px] text-muted-foreground">Waiting for diagnostics...</span>
             )}
           </div>
 
           {processPendingDiagnosticsLoading && !processPendingDiagnostics ? (
-            <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="animate-spin" size={14} />
               <span>Loading pending diagnostics...</span>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px]">
-                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-                  <p className="text-slate-500 uppercase tracking-wider">Actionable Pending</p>
-                  <p className="text-amber-300 font-bold text-sm">{(processPendingDiagnostics?.summary.actionablePending || 0).toLocaleString()}</p>
+                <div className="rounded-xl border border-border bg-background px-3 py-2">
+                  <p className="text-muted-foreground uppercase tracking-wider">Actionable Pending</p>
+                  <p className="text-primary font-bold text-sm">{(processPendingDiagnostics?.summary.actionablePending || 0).toLocaleString()}</p>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-                  <p className="text-slate-500 uppercase tracking-wider">Legacy No Extract</p>
-                  <p className="text-slate-200 font-bold text-sm">{(processPendingDiagnostics?.summary.pendingLegacy || 0).toLocaleString()}</p>
+                <div className="rounded-xl border border-border bg-background px-3 py-2">
+                  <p className="text-muted-foreground uppercase tracking-wider">Legacy No Extract</p>
+                  <p className="text-foreground font-bold text-sm">{(processPendingDiagnostics?.summary.pendingLegacy || 0).toLocaleString()}</p>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-                  <p className="text-slate-500 uppercase tracking-wider">Terminal No Extract</p>
+                <div className="rounded-xl border border-border bg-background px-3 py-2">
+                  <p className="text-muted-foreground uppercase tracking-wider">Terminal No Extract</p>
                   <p className="text-rose-300 font-bold text-sm">{(processPendingDiagnostics?.summary.terminalNoExtract || 0).toLocaleString()}</p>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-                  <p className="text-slate-500 uppercase tracking-wider">Processing (Fresh)</p>
+                <div className="rounded-xl border border-border bg-background px-3 py-2">
+                  <p className="text-muted-foreground uppercase tracking-wider">Processing (Fresh)</p>
                   <p className="text-sky-300 font-bold text-sm">{(processPendingDiagnostics?.summary.processingFresh || 0).toLocaleString()}</p>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-                  <p className="text-slate-500 uppercase tracking-wider">Max Attempts</p>
+                <div className="rounded-xl border border-border bg-background px-3 py-2">
+                  <p className="text-muted-foreground uppercase tracking-wider">Max Attempts</p>
                   <p className="text-orange-300 font-bold text-sm">{(processPendingDiagnostics?.summary.maxAttemptsReached || 0).toLocaleString()}</p>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-                  <p className="text-slate-500 uppercase tracking-wider">Extracted Docs</p>
+                <div className="rounded-xl border border-border bg-background px-3 py-2">
+                  <p className="text-muted-foreground uppercase tracking-wider">Extracted Docs</p>
                   <p className="text-emerald-300 font-bold text-sm">
                     {(processPendingDiagnostics?.summary.extractedDocs || 0).toLocaleString()}
-                    <span className="text-slate-500 font-normal"> / {(processPendingDiagnostics?.summary.totalDocs || 0).toLocaleString()}</span>
+                    <span className="text-muted-foreground font-normal"> / {(processPendingDiagnostics?.summary.totalDocs || 0).toLocaleString()}</span>
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Status Breakdown</p>
+                <div className="rounded-xl border border-border bg-background px-3 py-2">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Status Breakdown</p>
                   {(processPendingDiagnostics?.statusCounts || []).length === 0 ? (
-                    <p className="text-[10px] text-slate-500">No status rows yet.</p>
+                    <p className="text-[10px] text-muted-foreground">No status rows yet.</p>
                   ) : (
                     <div className="space-y-1.5">
                       {(processPendingDiagnostics?.statusCounts || []).slice(0, 8).map((row) => (
                         <div key={row.status} className="flex items-center justify-between gap-2 text-[10px]">
-                          <span className="text-slate-300 font-semibold">{row.status}</span>
-                          <span className="text-slate-500">
+                          <span className="text-foreground font-semibold">{row.status}</span>
+                          <span className="text-muted-foreground">
                             total {row.documents.toLocaleString()} · no-extract {row.noExtractDocuments.toLocaleString()}
                           </span>
                         </div>
@@ -2736,15 +2736,15 @@ function CaseLawSection() {
                     </div>
                   )}
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-[#0d1728] px-3 py-2">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Top Failure Reasons</p>
+                <div className="rounded-xl border border-border bg-background px-3 py-2">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Top Failure Reasons</p>
                   {(processPendingDiagnostics?.topErrors || []).length === 0 ? (
-                    <p className="text-[10px] text-slate-500">No failure reasons available.</p>
+                    <p className="text-[10px] text-muted-foreground">No failure reasons available.</p>
                   ) : (
                     <div className="space-y-1.5">
                       {(processPendingDiagnostics?.topErrors || []).slice(0, 8).map((row, idx) => (
                         <div key={`${idx}-${row.error.slice(0, 40)}`} className="flex items-start justify-between gap-2 text-[10px]">
-                          <span className="text-slate-300 line-clamp-2">{row.error}</span>
+                          <span className="text-foreground line-clamp-2">{row.error}</span>
                           <span className="text-rose-300 font-semibold shrink-0">{row.documents.toLocaleString()}</span>
                         </div>
                       ))}
@@ -2754,7 +2754,7 @@ function CaseLawSection() {
               </div>
 
               {processPendingDiagnostics && (
-                <p className="text-[10px] text-slate-500">
+                <p className="text-[10px] text-muted-foreground">
                   Rules: actionable uses max attempts {processPendingDiagnostics.maxAttempts} and stale processing threshold {processPendingDiagnostics.staleProcessingMinutes} min.
                 </p>
               )}
@@ -2769,18 +2769,18 @@ function CaseLawSection() {
       {editingId && <CaseLawForm isEdit={true} />}
 
       {showBulkUpload && (
-        <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+        <Card className="bg-card border-border rounded-[2rem]">
           <CardContent className="p-6 space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">
                 AI-Powered Case Law Extraction
               </span>
-              <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => { setShowBulkUpload(false); setExtractedCases([]); setRetryExtractFiles([]); setAutoSaveFailed(false); }} data-testid="button-cancel-bulk">
+              <Button size="icon" variant="ghost" className="text-muted-foreground" onClick={() => { setShowBulkUpload(false); setExtractedCases([]); setRetryExtractFiles([]); setAutoSaveFailed(false); }} data-testid="button-cancel-bulk">
                 <X size={14} />
               </Button>
             </div>
-            <p className="text-xs text-slate-400">
-              Upload one or multiple <span className="text-amber-400 font-bold">PDF</span>, <span className="text-amber-400 font-bold">DOC/DOCX</span>, <span className="text-amber-400 font-bold">TXT/MD</span>, <span className="text-amber-400 font-bold">JSON</span>, or <span className="text-amber-400 font-bold">CSV</span> files containing case law.
+            <p className="text-xs text-muted-foreground">
+              Upload one or multiple <span className="text-primary font-bold">PDF</span>, <span className="text-primary font-bold">DOC/DOCX</span>, <span className="text-primary font-bold">TXT/MD</span>, <span className="text-primary font-bold">JSON</span>, or <span className="text-primary font-bold">CSV</span> files containing case law.
               Select multiple files at once for batch processing. The AI will extract individual cases with citations, court names, summaries, and keywords.
               JSON and CSV files with proper columns are imported instantly without AI processing.
             </p>
@@ -2790,18 +2790,18 @@ function CaseLawSection() {
               multiple
               onChange={handleDocumentUpload}
               disabled={isExtracting}
-              className="bg-[#0d1728] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-sm"
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
               data-testid="input-bulk-document-file"
             />
             {!isExtracting && retryExtractFiles.length > 0 && (
-              <div className="flex items-center justify-between gap-3 bg-[#0d1728] border border-slate-700 rounded-xl px-3 py-2">
-                <p className="text-[10px] text-amber-300 font-bold">
+              <div className="flex items-center justify-between gap-3 bg-background border border-border rounded-xl px-3 py-2">
+                <p className="text-[10px] text-primary font-bold">
                   {retryExtractFiles.length} file{retryExtractFiles.length !== 1 ? "s" : ""} failed in the last run.
                 </p>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  className="text-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
                   onClick={() => processCaseLawFiles(retryExtractFiles, true)}
                   data-testid="button-retry-failed-caselaw-files"
                 >
@@ -2812,22 +2812,22 @@ function CaseLawSection() {
             )}
             {isExtracting && (
               <div className="flex items-center gap-3 py-8 justify-center">
-                <Loader2 className="animate-spin text-amber-500" size={24} />
+                <Loader2 className="animate-spin text-primary" size={24} />
                 <div>
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-sm font-bold text-foreground">
                     {extractProgress.total > 1
                       ? `Processing file ${extractProgress.current} of ${extractProgress.total}...`
                       : "AI is reading your document..."}
                   </p>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-muted-foreground">
                     {extractProgress.currentFile && extractProgress.total > 1
                       ? extractProgress.currentFile
                       : "Extracting citations, summaries, and keywords. This may take a minute for large documents."}
                   </p>
                   {extractProgress.total > 1 && (
-                    <div className="mt-2 w-full bg-slate-800 rounded-full h-1.5">
+                    <div className="mt-2 w-full bg-card rounded-full h-1.5">
                       <div
-                        className="bg-amber-500 h-1.5 rounded-full transition-all duration-300"
+                        className="bg-primary h-1.5 rounded-full transition-all duration-300"
                         style={{ width: `${(extractProgress.current / extractProgress.total) * 100}%` }}
                       />
                     </div>
@@ -2839,7 +2839,7 @@ function CaseLawSection() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div>
-                    <span className="text-xs text-slate-300 font-bold">
+                    <span className="text-xs text-foreground font-bold">
                       {extractedCases.length} cases extracted{autoSaveFailed ? " — auto-save failed, review and save manually" : ""}
                     </span>
                     {extractedCases.some(e => e._sourceDocId) && (
@@ -2849,7 +2849,7 @@ function CaseLawSection() {
                   <Button
                     onClick={() => saveBulkMutation.mutate(extractedCases)}
                     disabled={saveBulkMutation.isPending}
-                    className="bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                    className="bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
                     data-testid="button-confirm-bulk-upload"
                   >
                     {saveBulkMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
@@ -2858,18 +2858,18 @@ function CaseLawSection() {
                 </div>
                 <div className="max-h-96 overflow-y-auto space-y-2">
                   {extractedCases.map((entry, idx) => (
-                    <Card key={idx} className="bg-slate-900 border-slate-700 rounded-xl" data-testid={`extracted-case-${idx}`}>
+                    <Card key={idx} className="bg-background border-border rounded-xl" data-testid={`extracted-case-${idx}`}>
                       <CardContent className="p-3">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-white">{entry.citation}</p>
-                            <p className="text-[10px] text-amber-400">{entry.court}</p>
-                            <p className="text-[10px] text-slate-300 mt-1">{entry.title}</p>
-                            <p className="text-[10px] text-slate-500 mt-1">{entry.summary}</p>
+                            <p className="text-xs font-bold text-foreground">{entry.citation}</p>
+                            <p className="text-[10px] text-primary">{entry.court}</p>
+                            <p className="text-[10px] text-foreground mt-1">{entry.title}</p>
+                            <p className="text-[10px] text-muted-foreground mt-1">{entry.summary}</p>
                             {entry.keywords.length > 0 && (
                               <div className="flex gap-1 mt-1 flex-wrap">
                                 {entry.keywords.map((kw, i) => (
-                                  <Badge key={i} className="bg-slate-800 text-slate-400 border-slate-700 rounded-lg text-[7px]">{kw}</Badge>
+                                  <Badge key={i} className="bg-card text-muted-foreground border-border rounded-lg text-[7px]">{kw}</Badge>
                                 ))}
                               </div>
                             )}
@@ -2890,8 +2890,8 @@ function CaseLawSection() {
 
       <div className="flex items-center justify-between gap-3 mt-4">
         <div className="flex items-center gap-3">
-          <Scale size={16} className="text-amber-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+          <Scale size={16} className="text-primary" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
             Case Law Entries ({totalCaseLawEntries})
           </span>
         </div>
@@ -2911,7 +2911,7 @@ function CaseLawSection() {
             <span className="text-[10px] text-red-300 font-bold">Delete all {totalCaseLawEntries} entries?</span>
             <Button
               size="sm"
-              className="bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold h-7 px-3 rounded-lg"
+              className="bg-red-600 hover:bg-red-700 text-foreground text-[9px] font-bold h-7 px-3 rounded-lg"
               onClick={() => deleteAllCaseLawMutation.mutate()}
               disabled={deleteAllCaseLawMutation.isPending}
             >
@@ -2920,7 +2920,7 @@ function CaseLawSection() {
             <Button
               size="sm"
               variant="ghost"
-              className="text-slate-400 text-[9px] h-7 px-2 rounded-lg"
+              className="text-muted-foreground text-[9px] h-7 px-2 rounded-lg"
               onClick={() => setShowDeleteAllConfirm(false)}
             >
               Cancel
@@ -2931,30 +2931,30 @@ function CaseLawSection() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="animate-spin text-amber-500" size={24} />
+          <Loader2 className="animate-spin text-primary" size={24} />
         </div>
       ) : caseLawEntries.length === 0 ? (
-        <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+        <Card className="bg-card border-border rounded-[2rem]">
           <CardContent className="p-12 text-center">
             <Scale size={32} className="text-slate-700 mx-auto mb-3" />
-            <p className="text-sm text-slate-500">No case law entries yet. Add individual entries or upload a CSV file.</p>
+            <p className="text-sm text-muted-foreground">No case law entries yet. Add individual entries or upload a CSV file.</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
           {caseLawEntries.map((entry) => (
-            <Card key={entry.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`caselaw-entry-${entry.id}`}>
+            <Card key={entry.id} className="bg-card border-border rounded-[1.5rem]" data-testid={`caselaw-entry-${entry.id}`}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-white">{entry.citation}</p>
-                    <p className="text-xs text-amber-400 mt-1">{entry.court}</p>
-                    <p className="text-xs text-slate-300 mt-1">{entry.title}</p>
-                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{entry.summary}</p>
+                    <p className="text-sm font-bold text-foreground">{entry.citation}</p>
+                    <p className="text-xs text-primary mt-1">{entry.court}</p>
+                    <p className="text-xs text-foreground mt-1">{entry.title}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{entry.summary}</p>
                     {entry.keywords.length > 0 && (
                       <div className="flex gap-1 mt-2 flex-wrap">
                         {entry.keywords.map((kw, i) => (
-                          <Badge key={i} className="bg-slate-800 text-slate-400 border-slate-700 rounded-lg text-[8px]">
+                          <Badge key={i} className="bg-card text-muted-foreground border-border rounded-lg text-[8px]">
                             {kw}
                           </Badge>
                         ))}
@@ -2962,10 +2962,10 @@ function CaseLawSection() {
                     )}
                   </div>
                   <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => startEdit(entry)} data-testid={`button-edit-caselaw-${entry.id}`}>
+                    <Button size="icon" variant="ghost" className="text-muted-foreground" onClick={() => startEdit(entry)} data-testid={`button-edit-caselaw-${entry.id}`}>
                       <Pencil size={14} />
                     </Button>
-                    <Button size="icon" variant="ghost" className="text-slate-500" onClick={() => deleteMutation.mutate(entry.id)} data-testid={`button-delete-caselaw-${entry.id}`}>
+                    <Button size="icon" variant="ghost" className="text-muted-foreground" onClick={() => deleteMutation.mutate(entry.id)} data-testid={`button-delete-caselaw-${entry.id}`}>
                       <Trash2 size={14} />
                     </Button>
                   </div>
@@ -3135,12 +3135,12 @@ function ClientLeadsSection() {
 
   return (
     <div className="space-y-4" data-testid="client-leads-section">
-      <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+      <Card className="bg-card border-border rounded-[2rem]">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
-              <FileText size={16} className="text-amber-500" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+              <FileText size={16} className="text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
                 Client Leads ({totalLeads})
               </span>
             </div>
@@ -3149,13 +3149,13 @@ function ClientLeadsSection() {
                 placeholder="Search leads..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full sm:w-72 bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs"
+                className="w-full sm:w-72 bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs"
                 data-testid="input-search-client-leads"
               />
               <Button
                 onClick={exportAllClientLeadsCsv}
                 disabled={isExportingCsv}
-                className="bg-amber-500 text-slate-950 hover:bg-amber-400 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                className="bg-primary text-slate-950 hover:bg-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
                 data-testid="button-export-client-leads-csv"
               >
                 {isExportingCsv ? <Loader2 size={12} className="animate-spin mr-1" /> : <Download size={12} className="mr-1" />}
@@ -3167,17 +3167,17 @@ function ClientLeadsSection() {
         <CardContent className="pt-2">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="animate-spin text-amber-500" size={24} />
+              <Loader2 className="animate-spin text-primary" size={24} />
             </div>
           ) : leads.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-sm text-slate-500">No leads found</p>
+              <p className="text-sm text-muted-foreground">No leads found</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left min-w-[1200px]">
                 <thead>
-                  <tr className="text-slate-500 border-b border-slate-800">
+                  <tr className="text-muted-foreground border-b border-border">
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Lead ID</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Name</th>
                     <th className="py-2 pr-3 font-black uppercase tracking-wide">Phone</th>
@@ -3195,30 +3195,30 @@ function ClientLeadsSection() {
                 <tbody>
                   {leads.map((lead) => (
                     <tr key={lead.id} className="border-b border-slate-900">
-                      <td className="py-2 pr-3 text-slate-400">{lead.id.slice(0, 8)}...</td>
-                      <td className="py-2 pr-3 text-slate-100 font-semibold">{lead.name}</td>
-                      <td className="py-2 pr-3 text-slate-300">{lead.phone}</td>
-                      <td className="py-2 pr-3 text-slate-300">{lead.email}</td>
-                      <td className="py-2 pr-3 text-amber-400">{lead.caseType}</td>
-                      <td className="py-2 pr-3 text-slate-300">{lead.city || "-"}</td>
-                      <td className="py-2 pr-3 text-slate-300 uppercase">{lead.urgency}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{lead.id.slice(0, 8)}...</td>
+                      <td className="py-2 pr-3 text-foreground font-semibold">{lead.name}</td>
+                      <td className="py-2 pr-3 text-foreground">{lead.phone}</td>
+                      <td className="py-2 pr-3 text-foreground">{lead.email}</td>
+                      <td className="py-2 pr-3 text-primary">{lead.caseType}</td>
+                      <td className="py-2 pr-3 text-foreground">{lead.city || "-"}</td>
+                      <td className="py-2 pr-3 text-foreground uppercase">{lead.urgency}</td>
                       <td className="py-2 pr-3">
                         <Badge className={lead.status === "completed"
                           ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 rounded-md"
-                          : "bg-amber-500/15 text-amber-300 border-amber-500/40 rounded-md"}
+                          : "bg-primary/15 text-primary border-primary/40 rounded-md"}
                         >
                           {lead.status === "completed" ? "Completed" : "Open"}
                         </Badge>
                       </td>
-                      <td className="py-2 pr-3 text-slate-400 max-w-[260px] truncate">{lead.caseDescription}</td>
-                      <td className="py-2 pr-3 text-slate-400">{lead.ipAddress}</td>
-                      <td className="py-2 pr-3 text-slate-400">{new Date(lead.createdAt).toLocaleString()}</td>
+                      <td className="py-2 pr-3 text-muted-foreground max-w-[260px] truncate">{lead.caseDescription}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{lead.ipAddress}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{new Date(lead.createdAt).toLocaleString()}</td>
                       <td className="py-2">
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-amber-300 text-[10px] h-7 px-2"
+                            className="text-primary text-[10px] h-7 px-2"
                             onClick={() => setSelectedLeadId(lead.id)}
                             data-testid={`button-view-lead-${lead.id}`}
                           >
@@ -3259,15 +3259,15 @@ function ClientLeadsSection() {
       </Card>
 
       {selectedLeadId && (
-        <Card className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]">
+        <Card className="bg-card border-border rounded-[1.5rem]">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
               Lead Details
             </span>
             <Button
               size="sm"
               variant="ghost"
-              className="text-slate-500"
+              className="text-muted-foreground"
               onClick={() => setSelectedLeadId(null)}
             >
               <X size={14} />
@@ -3275,28 +3275,28 @@ function ClientLeadsSection() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {leadLoading || !selectedLead ? (
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 size={14} className="animate-spin" /> Loading...
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <p className="text-slate-300"><span className="text-slate-500">Name:</span> {selectedLead.name}</p>
-                  <p className="text-slate-300"><span className="text-slate-500">Phone:</span> {selectedLead.phone}</p>
-                  <p className="text-slate-300"><span className="text-slate-500">Email:</span> {selectedLead.email}</p>
-                  <p className="text-slate-300"><span className="text-slate-500">Case Type:</span> {selectedLead.caseType}</p>
-                  <p className="text-slate-300"><span className="text-slate-500">City:</span> {selectedLead.city || "-"}</p>
-                  <p className="text-slate-300"><span className="text-slate-500">Urgency:</span> <span className="uppercase">{selectedLead.urgency}</span></p>
-                  <p className="text-slate-300"><span className="text-slate-500">Preferred Callback:</span> {selectedLead.preferredCallbackTime || "Not provided"}</p>
-                  <p className="text-slate-300"><span className="text-slate-500">Consent:</span> {selectedLead.consentToContact ? "Yes" : "No"}</p>
-                  <p className="text-slate-300">
-                    <span className="text-slate-500">Status:</span>{" "}
-                    <span className={selectedLead.status === "completed" ? "text-emerald-300 font-semibold" : "text-amber-300 font-semibold"}>
+                  <p className="text-foreground"><span className="text-muted-foreground">Name:</span> {selectedLead.name}</p>
+                  <p className="text-foreground"><span className="text-muted-foreground">Phone:</span> {selectedLead.phone}</p>
+                  <p className="text-foreground"><span className="text-muted-foreground">Email:</span> {selectedLead.email}</p>
+                  <p className="text-foreground"><span className="text-muted-foreground">Case Type:</span> {selectedLead.caseType}</p>
+                  <p className="text-foreground"><span className="text-muted-foreground">City:</span> {selectedLead.city || "-"}</p>
+                  <p className="text-foreground"><span className="text-muted-foreground">Urgency:</span> <span className="uppercase">{selectedLead.urgency}</span></p>
+                  <p className="text-foreground"><span className="text-muted-foreground">Preferred Callback:</span> {selectedLead.preferredCallbackTime || "Not provided"}</p>
+                  <p className="text-foreground"><span className="text-muted-foreground">Consent:</span> {selectedLead.consentToContact ? "Yes" : "No"}</p>
+                  <p className="text-foreground">
+                    <span className="text-muted-foreground">Status:</span>{" "}
+                    <span className={selectedLead.status === "completed" ? "text-emerald-300 font-semibold" : "text-primary font-semibold"}>
                       {selectedLead.status === "completed" ? "Completed" : "Open"}
                     </span>
                   </p>
-                  <p className="text-slate-300"><span className="text-slate-500">IP Address:</span> {selectedLead.ipAddress}</p>
-                  <p className="text-slate-300"><span className="text-slate-500">Submitted:</span> {new Date(selectedLead.createdAt).toLocaleString()}</p>
+                  <p className="text-foreground"><span className="text-muted-foreground">IP Address:</span> {selectedLead.ipAddress}</p>
+                  <p className="text-foreground"><span className="text-muted-foreground">Submitted:</span> {new Date(selectedLead.createdAt).toLocaleString()}</p>
                 </div>
                 {selectedLead.status === "open" && (
                   <div className="flex justify-end">
@@ -3310,9 +3310,9 @@ function ClientLeadsSection() {
                     </Button>
                   </div>
                 )}
-                <div className="rounded-xl border border-slate-800 bg-[#101a2b] p-3">
-                  <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wider font-bold">Case Description</p>
-                  <p className="text-slate-200 whitespace-pre-wrap text-sm">{selectedLead.caseDescription}</p>
+                <div className="rounded-xl border border-border bg-background p-3">
+                  <p className="text-[11px] text-muted-foreground mb-1 uppercase tracking-wider font-bold">Case Description</p>
+                  <p className="text-foreground whitespace-pre-wrap text-sm">{selectedLead.caseDescription}</p>
                 </div>
               </>
             )}
@@ -3457,20 +3457,20 @@ function StatuteDocumentsSection() {
 
   return (
     <div className="space-y-8" data-testid="statute-docs-section">
-      <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+      <Card className="bg-card border-border rounded-[2rem]">
         <CardHeader className="flex flex-row items-center gap-3 pb-2">
-          <Upload size={16} className="text-amber-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+          <Upload size={16} className="text-primary" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
             Upload Statute Documents
           </span>
         </CardHeader>
         <CardContent className="space-y-4 pt-2">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Upload full statute documents that users can search and read in the PDF viewer. Supports .txt, .pdf, .json, .csv files (up to 500 files, 50 MB each).
           </p>
 
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 block">
+            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block">
               Select Files (.txt, .json, .csv, .pdf)
             </label>
             <Input
@@ -3478,11 +3478,11 @@ function StatuteDocumentsSection() {
               accept=".txt,.json,.csv,.pdf"
               multiple
               onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
-              className="bg-[#101a2b] border-[hsl(var(--preview-border))] text-slate-100 rounded-xl text-xs file:text-slate-400 file:mr-4"
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs file:text-muted-foreground file:mr-4"
               data-testid="input-statute-doc-files"
             />
             {selectedFiles.length > 0 && (
-              <p className="text-[10px] text-amber-400 font-bold">
+              <p className="text-[10px] text-primary font-bold">
                 {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""} selected
               </p>
             )}
@@ -3491,19 +3491,19 @@ function StatuteDocumentsSection() {
           {isUploading && uploadProgress.total > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="text-slate-400">Uploading {uploadProgress.current} of {uploadProgress.total} files...</span>
-                <span className="text-amber-400 font-bold">{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
+                <span className="text-muted-foreground">Uploading {uploadProgress.current} of {uploadProgress.total} files...</span>
+                <span className="text-primary font-bold">{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
               </div>
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-card rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-amber-500 rounded-full transition-all duration-300"
+                  className="h-full bg-primary rounded-full transition-all duration-300"
                   style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
                 />
               </div>
               <div className="text-[9px] flex flex-wrap gap-3">
                 <span className="text-emerald-400 font-bold">Uploaded: {uploadProgress.uploaded}</span>
                 <span className="text-red-400 font-bold">Failed: {uploadProgress.errors}</span>
-                <span className="text-slate-400 font-bold">Remaining: {Math.max(uploadProgress.total - uploadProgress.current, 0)}</span>
+                <span className="text-muted-foreground font-bold">Remaining: {Math.max(uploadProgress.total - uploadProgress.current, 0)}</span>
               </div>
             </div>
           )}
@@ -3511,7 +3511,7 @@ function StatuteDocumentsSection() {
           <Button
             onClick={handleUpload}
             disabled={isUploading}
-            className="bg-amber-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+            className="bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
             data-testid="button-upload-statute-docs"
           >
             {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
@@ -3523,8 +3523,8 @@ function StatuteDocumentsSection() {
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <FileText size={16} className="text-amber-500" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+            <FileText size={16} className="text-primary" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
               Statute Library ({totalDocs})
             </span>
           </div>
@@ -3544,7 +3544,7 @@ function StatuteDocumentsSection() {
               <span className="text-[10px] text-red-300 font-bold">Delete all {totalDocs} documents?</span>
               <Button
                 size="sm"
-                className="bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold h-7 px-3 rounded-lg"
+                className="bg-red-600 hover:bg-red-700 text-foreground text-[9px] font-bold h-7 px-3 rounded-lg"
                 onClick={() => deleteAllMutation.mutate()}
                 disabled={deleteAllMutation.isPending}
               >
@@ -3553,7 +3553,7 @@ function StatuteDocumentsSection() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-slate-400 text-[9px] h-7 px-2 rounded-lg"
+                className="text-muted-foreground text-[9px] h-7 px-2 rounded-lg"
                 onClick={() => setShowDeleteAllConfirm(false)}
               >
                 Cancel
@@ -3564,25 +3564,25 @@ function StatuteDocumentsSection() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="animate-spin text-amber-500" size={24} />
+            <Loader2 className="animate-spin text-primary" size={24} />
           </div>
         ) : docs.length === 0 ? (
-          <Card className="bg-[#1e293b] border-slate-800 rounded-[2rem]">
+          <Card className="bg-card border-border rounded-[2rem]">
             <CardContent className="p-12 text-center">
               <FileText size={32} className="text-slate-700 mx-auto mb-3" />
-              <p className="text-sm text-slate-500">No statute documents uploaded yet</p>
+              <p className="text-sm text-muted-foreground">No statute documents uploaded yet</p>
             </CardContent>
           </Card>
         ) : (
           docs.map((doc) => (
-            <Card key={doc.id} className="bg-[#1e293b] border-slate-800 rounded-[1.5rem]" data-testid={`statute-doc-${doc.id}`}>
+            <Card key={doc.id} className="bg-card border-border rounded-[1.5rem]" data-testid={`statute-doc-${doc.id}`}>
               <CardContent className="p-5 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
-                  <FileText size={18} className="text-slate-500 flex-shrink-0" />
+                  <FileText size={18} className="text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{doc.title}</p>
+                    <p className="text-sm font-bold text-foreground truncate">{doc.title}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className="bg-slate-800 text-slate-400 border-slate-700 rounded-lg text-[8px]">
+                      <Badge className="bg-card text-muted-foreground border-border rounded-lg text-[8px]">
                         {doc.category}
                       </Badge>
                       <span className="text-[9px] text-slate-600">{doc.filename}</span>
@@ -3596,7 +3596,7 @@ function StatuteDocumentsSection() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="text-slate-500"
+                  className="text-muted-foreground"
                   onClick={() => deleteMutation.mutate(doc.id)}
                   data-testid={`button-delete-statute-doc-${doc.id}`}
                 >
