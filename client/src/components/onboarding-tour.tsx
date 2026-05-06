@@ -136,7 +136,7 @@ export function OnboardingTour() {
   if (stepIndex === -1) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-        <div className="w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-[#0d1624] shadow-2xl overflow-hidden">
+        <div className="w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-background shadow-2xl overflow-hidden">
           {/* Top accent bar */}
           <div className="h-1 w-full bg-gradient-to-r from-primary via-blue-400 to-emerald-400" />
 
@@ -203,7 +203,7 @@ export function OnboardingTour() {
 
       {/* Floating card – bottom center, leaves app visible */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm mx-4">
-        <div className={`rounded-2xl border ${c.border} bg-[#0d1624]/95 backdrop-blur-md shadow-2xl overflow-hidden`}>
+        <div className={`rounded-2xl border ${c.border} bg-background/95 backdrop-blur-md shadow-2xl overflow-hidden`}>
 
           {/* Color accent top */}
           <div className={`h-0.5 w-full bg-gradient-to-r ${c.button.split(" ")[0].replace("from-", "bg-")}`} />

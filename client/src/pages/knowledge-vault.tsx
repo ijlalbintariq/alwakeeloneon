@@ -757,7 +757,7 @@ export default function KnowledgeVaultPage() {
                   </button>
                 </div>
               </div>
-              <div className="mt-5 w-full rounded-2xl border border-primary/25 bg-[#0b1222]/70 p-2.5 backdrop-blur-md">
+              <div className="mt-5 w-full rounded-2xl border border-primary/25 bg-background/70 p-2.5 backdrop-blur-md">
                 <div className="flex items-center gap-2 rounded-xl bg-black/25 border border-white/5">
                   <Search size={18} className="text-primary ml-4" />
                   <input
@@ -1136,7 +1136,7 @@ export default function KnowledgeVaultPage() {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-primary/25 bg-[#0b1222]/70 p-2.5 backdrop-blur-md">
+              <div className="mt-4 rounded-2xl border border-primary/25 bg-background/70 p-2.5 backdrop-blur-md">
                 <div className="flex items-center gap-2 rounded-xl bg-black/25 border border-white/5">
                   <Search size={17} className="text-primary ml-4" />
                   <input

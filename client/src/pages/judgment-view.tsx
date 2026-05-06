@@ -416,7 +416,7 @@ export default function JudgmentViewPage() {
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
                   <Sparkles size={24} className="text-primary animate-pulse" />
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                   Al Wakeelo is analyzing this judgment...
                 </p>
               </div>
@@ -508,7 +508,7 @@ export default function JudgmentViewPage() {
             )}
 
             <div className="mt-12 pt-6 border-t border-border flex items-center justify-between flex-wrap gap-2">
-              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600">
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-muted-foreground">
                 Al Wakeelo Digital Chambers
               </p>
             </div>
@@ -528,9 +528,9 @@ export default function JudgmentViewPage() {
           <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
             {chatMessages.length === 0 && (
               <div className="text-center py-12">
-                <Gavel size={32} className="text-slate-700 mx-auto mb-3" />
+                <Gavel size={32} className="text-foreground mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground font-medium">Ask any question about this judgment</p>
-                <p className="text-xs text-slate-600 mt-1">AI will analyze based on the judgment content</p>
+                <p className="text-xs text-muted-foreground mt-1">AI will analyze based on the judgment content</p>
                 <div className="mt-6 space-y-2">
                   {[
                     "What are the key legal principles?",
@@ -555,7 +555,7 @@ export default function JudgmentViewPage() {
                 <div
                   className={`max-w-[90%] px-4 py-3 rounded-xl text-sm ${
                     msg.role === "user"
-                      ? "bg-primary text-slate-950"
+                      ? "bg-primary text-foreground"
                       : "bg-card text-foreground border border-border"
                   }`}
                 >
@@ -583,7 +583,7 @@ export default function JudgmentViewPage() {
           <div className="p-3 border-t border-border">
             <div className="flex gap-2">
               <input
-                className="flex-1 bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                className="flex-1 bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
                 placeholder="Ask about this judgment..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -593,7 +593,7 @@ export default function JudgmentViewPage() {
                 size="icon"
                 onClick={() => handleChatSend()}
                 disabled={!chatInput.trim() || isChatLoading}
-                className="bg-primary text-slate-950 rounded-xl h-10 w-10"
+                className="bg-primary text-foreground rounded-xl h-10 w-10"
               >
                 <Send size={16} />
               </Button>

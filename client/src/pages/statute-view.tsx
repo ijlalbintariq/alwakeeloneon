@@ -48,7 +48,7 @@ function TocSidebarItem({ item, depth = 0, onScrollTo }: { item: TocItem; depth?
         {hasChildren ? (
           expanded ? <ChevronDown size={14} className="text-muted-foreground flex-shrink-0" /> : <ChevronRight size={14} className="text-muted-foreground flex-shrink-0" />
         ) : (
-          <ChevronRight size={10} className="text-slate-600 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <ChevronRight size={10} className="text-muted-foreground flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         )}
         <span className="truncate">{item.title}</span>
       </button>
@@ -322,7 +322,7 @@ export default function StatuteViewPage() {
             <Button
               size="sm"
               variant={viewMode === "pdf" ? "default" : "outline"}
-              className={viewMode === "pdf" ? "bg-primary text-slate-950 hover:bg-primary" : "border-border text-foreground"}
+              className={viewMode === "pdf" ? "bg-primary text-foreground hover:bg-primary" : "border-border text-foreground"}
               onClick={() => setViewMode("pdf")}
             >
               <FileText size={14} className="mr-1" />
@@ -331,7 +331,7 @@ export default function StatuteViewPage() {
             <Button
               size="sm"
               variant={viewMode === "text" ? "default" : "outline"}
-              className={viewMode === "text" ? "bg-primary text-slate-950 hover:bg-primary" : "border-border text-foreground"}
+              className={viewMode === "text" ? "bg-primary text-foreground hover:bg-primary" : "border-border text-foreground"}
               onClick={() => setViewMode("text")}
             >
               <List size={14} className="mr-1" />
@@ -361,8 +361,8 @@ export default function StatuteViewPage() {
             )}
             {!isTocLoading && tocItems.length === 0 && (
               <div className="px-4 py-8 text-center">
-                <List size={24} className="text-slate-700 mx-auto mb-2" />
-                <p className="text-xs text-slate-600">No chapters detected</p>
+                <List size={24} className="text-foreground mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">No chapters detected</p>
               </div>
             )}
             {!isTocLoading && tocItems.length > 0 && tocItems.map((item, idx) => (
@@ -373,7 +373,7 @@ export default function StatuteViewPage() {
 
         <div className={`flex-1 min-w-0 ${viewMode === "pdf" ? "overflow-hidden" : "overflow-y-auto"}`}>
           {viewMode === "pdf" && doc.file?.viewUrl ? (
-            <div className="h-full w-full bg-[#0b1220]">
+            <div className="h-full w-full bg-background">
               <iframe
                 src={`${doc.file.viewUrl}#view=FitH&toolbar=1&navpanes=1`}
                 title={`PDF Viewer - ${doc.title}`}
@@ -398,10 +398,10 @@ export default function StatuteViewPage() {
               </div>
 
               <div className="mt-12 pt-6 border-t border-border flex items-center justify-between flex-wrap gap-2">
-                <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600">
+                <p className="text-[8px] font-black uppercase tracking-[0.3em] text-muted-foreground">
                   Al Wakeelo Digital Chambers
                 </p>
-                <p className="text-[8px] text-slate-600">
+                <p className="text-[8px] text-muted-foreground">
                   {new Date(doc.createdAt).toLocaleDateString()}
                 </p>
               </div>
@@ -422,9 +422,9 @@ export default function StatuteViewPage() {
           <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
             {chatMessages.length === 0 && (
               <div className="text-center py-12">
-                <Book size={32} className="text-slate-700 mx-auto mb-3" />
+                <Book size={32} className="text-foreground mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground font-medium">Ask any question about this statute</p>
-                <p className="text-xs text-slate-600 mt-1">AI will answer based on the document</p>
+                <p className="text-xs text-muted-foreground mt-1">AI will answer based on the document</p>
                 <div className="mt-6 space-y-2">
                   {[
                     "Summarize this statute",
@@ -448,7 +448,7 @@ export default function StatuteViewPage() {
                 <div
                   className={`max-w-[90%] px-4 py-3 rounded-xl text-sm ${
                     msg.role === "user"
-                      ? "bg-primary text-slate-950"
+                      ? "bg-primary text-foreground"
                       : "bg-card text-foreground border border-border"
                   }`}
                 >
@@ -476,7 +476,7 @@ export default function StatuteViewPage() {
           <div className="p-3 border-t border-border">
             <div className="flex gap-2">
               <input
-                className="flex-1 bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                className="flex-1 bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
                 placeholder="Ask about this statute..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -486,7 +486,7 @@ export default function StatuteViewPage() {
                 size="icon"
                 onClick={handleChatSend}
                 disabled={!chatInput.trim() || isChatLoading}
-                className="bg-primary text-slate-950 rounded-xl h-10 w-10"
+                className="bg-primary text-foreground rounded-xl h-10 w-10"
               >
                 <Send size={16} />
               </Button>

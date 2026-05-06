@@ -899,7 +899,7 @@ export default function OrganizationPage() {
 
                   {filteredKnowledge.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.45] p-10 text-center">
-                      <FileText size={40} className="mx-auto mb-4 text-slate-600" />
+                      <FileText size={40} className="mx-auto mb-4 text-muted-foreground" />
                       <p className="text-lg font-semibold text-foreground">No documents found</p>
                       <p className="text-sm text-muted-foreground mt-1">Upload files or adjust your search/filter.</p>
                     </div>

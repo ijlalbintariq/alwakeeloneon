@@ -205,7 +205,7 @@ function AppSidebar() {
                             className={cn(
                               "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all",
                               isActive
-                                ? "border-primary/45 bg-gradient-to-br from-primary to-primary text-slate-950 shadow-[0_10px_18px_-12px_rgba(251,191,36,0.9)]"
+                                ? "border-primary/45 bg-gradient-to-br from-primary to-primary text-foreground shadow-[0_10px_18px_-12px_rgba(251,191,36,0.9)]"
                                 : "border-border bg-[#121f35]/70 text-muted-foreground"
                             )}
                           >
@@ -242,11 +242,11 @@ function AppSidebar() {
                 className={cn(
                   "nav-glow-button rounded-xl py-2 border border-transparent transition-all",
                   "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
-                  location === "/admin" && "bg-gradient-to-r from-primary to-primary text-slate-950 font-black border-primary/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary data-[active=true]:to-primary data-[active=true]:text-slate-950"
+                  location === "/admin" && "bg-gradient-to-r from-primary to-primary text-foreground font-black border-primary/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary data-[active=true]:to-primary data-[active=true]:text-foreground"
                 )}
               >
                 <Link href="/admin">
-                  <Shield size={16} className={location === "/admin" ? "text-slate-900" : "text-muted-foreground"} />
+                  <Shield size={16} className={location === "/admin" ? "text-foreground" : "text-muted-foreground"} />
                   <span className="nav-label text-[11px] font-bold">Admin Panel</span>
                 </Link>
               </SidebarMenuButton>
@@ -260,11 +260,11 @@ function AppSidebar() {
               className={cn(
                 "nav-glow-button rounded-xl py-2 border border-transparent transition-all",
                 "hover:border-[hsl(var(--preview-border))] hover:bg-[#1a2740]/70",
-                location === "/settings" && "bg-gradient-to-r from-primary to-primary text-slate-950 font-black border-primary/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary data-[active=true]:to-primary data-[active=true]:text-slate-950"
+                location === "/settings" && "bg-gradient-to-r from-primary to-primary text-foreground font-black border-primary/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary data-[active=true]:to-primary data-[active=true]:text-foreground"
               )}
             >
               <Link href="/settings">
-                <Settings size={16} className={location === "/settings" ? "text-slate-900" : "text-muted-foreground"} />
+                <Settings size={16} className={location === "/settings" ? "text-foreground" : "text-muted-foreground"} />
                 <span className="nav-label text-[11px] font-bold">Settings</span>
               </Link>
             </SidebarMenuButton>

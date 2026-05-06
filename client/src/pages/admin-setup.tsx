@@ -84,7 +84,7 @@ export default function AdminSetupPage() {
           <Button
             onClick={() => claimMutation.mutate()}
             disabled={claimMutation.isPending}
-            className="w-full bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+            className="w-full bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
             data-testid="button-claim-admin"
           >
             {claimMutation.isPending ? (
@@ -95,7 +95,7 @@ export default function AdminSetupPage() {
             <span>{claimMutation.isPending ? "Setting up..." : "Claim Admin Access"}</span>
           </Button>
 
-          <p className="text-[10px] text-slate-600">
+          <p className="text-[10px] text-muted-foreground">
             This option is only available once. After claiming, you can manage other admins from the admin panel.
           </p>
         </CardContent>

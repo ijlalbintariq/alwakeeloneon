@@ -198,7 +198,7 @@ export default function AdminPanelPage() {
           <Button
             key={tab.id}
             variant={activeTab === tab.id ? "default" : "ghost"}
-            className={`rounded-xl text-[10px] uppercase tracking-widest font-black admin-tab-button ${activeTab === tab.id ? "bg-primary text-slate-950" : "text-foreground"}`}
+            className={`rounded-xl text-[10px] uppercase tracking-widest font-black admin-tab-button ${activeTab === tab.id ? "bg-primary text-foreground" : "text-foreground"}`}
             onClick={() => setActiveTab(tab.id)}
             data-testid={`tab-${tab.id}`}
           >
@@ -388,7 +388,7 @@ function GlobalRagIndexCard() {
                   <span>Index Missing Only</span>
                 </Button>
                 <Button
-                  className="bg-primary text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  className="bg-primary text-foreground rounded-xl text-[10px] uppercase tracking-widest font-black"
                   onClick={() => startMutation.mutate()}
                   disabled={startMutation.isPending || startIncrementalMutation.isPending || isLoading}
                   data-testid="button-start-global-rag-index"
@@ -902,7 +902,7 @@ function UsersSection() {
           <Button
             onClick={exportUsersCsv}
             disabled={isExportingUsersCsv}
-            className="bg-primary text-slate-950 hover:bg-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="bg-primary text-foreground hover:bg-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
             data-testid="button-export-users-csv"
           >
             {isExportingUsersCsv ? <Loader2 size={12} className="animate-spin mr-1" /> : <Download size={12} className="mr-1" />}
@@ -910,7 +910,7 @@ function UsersSection() {
           </Button>
           <Button
             variant={showAddForm ? "ghost" : "default"}
-            className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-muted-foreground" : "bg-primary text-slate-950"}`}
+            className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-muted-foreground" : "bg-primary text-foreground"}`}
             onClick={() => setShowAddForm(!showAddForm)}
             data-testid="button-toggle-add-user"
           >
@@ -994,7 +994,7 @@ function UsersSection() {
             <Button
               onClick={() => addUserMutation.mutate()}
               disabled={addUserMutation.isPending || !newEmail || !newPassword || !newFirstName || !newLastName}
-              className="bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+              className="bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
               data-testid="button-create-user"
             >
               {addUserMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
@@ -1230,7 +1230,7 @@ function AuditLogsSection() {
       {!logs || logs.length === 0 ? (
         <Card className="bg-card border-border rounded-[2rem]">
           <CardContent className="p-12 text-center">
-            <Shield size={32} className="text-slate-700 mx-auto mb-3" />
+            <Shield size={32} className="text-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No audit events yet</p>
           </CardContent>
         </Card>
@@ -1503,7 +1503,7 @@ function KnowledgeSection() {
           <Button
             onClick={handleUpload}
             disabled={isUploading}
-            className="bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+            className="bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
             data-testid="button-upload-knowledge"
           >
             {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
@@ -1561,7 +1561,7 @@ function KnowledgeSection() {
         ) : docs.length === 0 ? (
           <Card className="bg-card border-border rounded-[2rem]">
             <CardContent className="p-12 text-center">
-              <Database size={32} className="text-slate-700 mx-auto mb-3" />
+              <Database size={32} className="text-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">No documents in vault yet</p>
             </CardContent>
           </Card>
@@ -1577,8 +1577,8 @@ function KnowledgeSection() {
                       <Badge className="bg-card text-muted-foreground border-border rounded-lg text-[8px]">
                         {doc.category}
                       </Badge>
-                      <span className="text-[9px] text-slate-600">{doc.filename}</span>
-                      <span className="text-[9px] text-slate-600">
+                      <span className="text-[9px] text-muted-foreground">{doc.filename}</span>
+                      <span className="text-[9px] text-muted-foreground">
                         {new Date(doc.createdAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -1856,7 +1856,7 @@ function CaseLawBadIndexAuditCard() {
             ) : (
               <Button
                 size="sm"
-                className="bg-primary text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                className="bg-primary text-foreground rounded-xl text-[10px] uppercase tracking-widest font-black"
                 onClick={() => startBadIndexReextractMutation.mutate()}
                 disabled={startBadIndexReextractMutation.isPending}
                 data-testid="button-start-bad-index-reextract"
@@ -2565,7 +2565,7 @@ function CaseLawSection() {
         <Button
           onClick={() => isEdit && editingId ? updateMutation.mutate({ id: editingId, data: formData }) : createMutation.mutate(formData)}
           disabled={!formData.citation || !formData.court || !formData.title || !formData.summary || createMutation.isPending || updateMutation.isPending}
-          className="bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+          className="bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
           data-testid="button-save-caselaw"
         >
           {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
@@ -2658,7 +2658,7 @@ function CaseLawSection() {
             <span>Upload Document</span>
           </Button>
           <Button
-            className="bg-primary text-slate-950 rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="bg-primary text-foreground rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => { setShowAddForm(!showAddForm); setShowBulkUpload(false); cancelEdit(); }}
             data-testid="button-add-caselaw"
           >
@@ -2849,7 +2849,7 @@ function CaseLawSection() {
                   <Button
                     onClick={() => saveBulkMutation.mutate(extractedCases)}
                     disabled={saveBulkMutation.isPending}
-                    className="bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                    className="bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
                     data-testid="button-confirm-bulk-upload"
                   >
                     {saveBulkMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
@@ -2874,7 +2874,7 @@ function CaseLawSection() {
                               </div>
                             )}
                           </div>
-                          <Button size="icon" variant="ghost" className="text-slate-600 flex-shrink-0" onClick={() => removeExtractedCase(idx)} data-testid={`button-remove-extracted-${idx}`}>
+                          <Button size="icon" variant="ghost" className="text-muted-foreground flex-shrink-0" onClick={() => removeExtractedCase(idx)} data-testid={`button-remove-extracted-${idx}`}>
                             <X size={12} />
                           </Button>
                         </div>
@@ -2936,7 +2936,7 @@ function CaseLawSection() {
       ) : caseLawEntries.length === 0 ? (
         <Card className="bg-card border-border rounded-[2rem]">
           <CardContent className="p-12 text-center">
-            <Scale size={32} className="text-slate-700 mx-auto mb-3" />
+            <Scale size={32} className="text-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No case law entries yet. Add individual entries or upload a CSV file.</p>
           </CardContent>
         </Card>
@@ -3155,7 +3155,7 @@ function ClientLeadsSection() {
               <Button
                 onClick={exportAllClientLeadsCsv}
                 disabled={isExportingCsv}
-                className="bg-primary text-slate-950 hover:bg-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
+                className="bg-primary text-foreground hover:bg-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
                 data-testid="button-export-client-leads-csv"
               >
                 {isExportingCsv ? <Loader2 size={12} className="animate-spin mr-1" /> : <Download size={12} className="mr-1" />}
@@ -3194,7 +3194,7 @@ function ClientLeadsSection() {
                 </thead>
                 <tbody>
                   {leads.map((lead) => (
-                    <tr key={lead.id} className="border-b border-slate-900">
+                    <tr key={lead.id} className="border-b border-border">
                       <td className="py-2 pr-3 text-muted-foreground">{lead.id.slice(0, 8)}...</td>
                       <td className="py-2 pr-3 text-foreground font-semibold">{lead.name}</td>
                       <td className="py-2 pr-3 text-foreground">{lead.phone}</td>
@@ -3302,7 +3302,7 @@ function ClientLeadsSection() {
                   <div className="flex justify-end">
                     <Button
                       size="sm"
-                      className="bg-emerald-500 text-slate-950 hover:bg-emerald-400 h-8 text-[11px] font-bold"
+                      className="bg-emerald-500 text-foreground hover:bg-emerald-400 h-8 text-[11px] font-bold"
                       onClick={() => completeMutation.mutate(selectedLead.id)}
                       disabled={completeMutation.isPending}
                     >
@@ -3511,7 +3511,7 @@ function StatuteDocumentsSection() {
           <Button
             onClick={handleUpload}
             disabled={isUploading}
-            className="bg-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest"
+            className="bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
             data-testid="button-upload-statute-docs"
           >
             {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
@@ -3569,7 +3569,7 @@ function StatuteDocumentsSection() {
         ) : docs.length === 0 ? (
           <Card className="bg-card border-border rounded-[2rem]">
             <CardContent className="p-12 text-center">
-              <FileText size={32} className="text-slate-700 mx-auto mb-3" />
+              <FileText size={32} className="text-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">No statute documents uploaded yet</p>
             </CardContent>
           </Card>
@@ -3585,8 +3585,8 @@ function StatuteDocumentsSection() {
                       <Badge className="bg-card text-muted-foreground border-border rounded-lg text-[8px]">
                         {doc.category}
                       </Badge>
-                      <span className="text-[9px] text-slate-600">{doc.filename}</span>
-                      <span className="text-[9px] text-slate-600">
+                      <span className="text-[9px] text-muted-foreground">{doc.filename}</span>
+                      <span className="text-[9px] text-muted-foreground">
                         {new Date(doc.createdAt).toLocaleDateString()}
                       </span>
                     </div>

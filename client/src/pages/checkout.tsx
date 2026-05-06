@@ -277,7 +277,7 @@ export default function CheckoutPage() {
                   }}
                   className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${
                     billingCycle === cycle.key
-                      ? "bg-primary text-slate-950"
+                      ? "bg-primary text-foreground"
                       : "text-foreground hover:text-foreground"
                   }`}
                   data-testid={`checkout-cycle-${cycle.key}`}
@@ -375,7 +375,7 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => navigate(user ? "/settings" : "/auth")}
-                  className="w-full rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-primary transition-colors"
+                  className="w-full rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-foreground hover:bg-primary transition-colors"
                   data-testid="checkout-primary-next"
                 >
                   {user ? "Open Account Settings" : "Continue to Sign In"}
@@ -645,7 +645,7 @@ export default function CheckoutPage() {
                   <button
                     type="submit"
                     disabled={submitMutation.isPending}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-primary transition-colors disabled:opacity-70"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-foreground hover:bg-primary transition-colors disabled:opacity-70"
                     data-testid="checkout-submit"
                   >
                     {submitMutation.isPending ? (

@@ -263,7 +263,7 @@ export default function BookmarksPage() {
                       onClick={() => setFilterAndResetPage(value)}
                       className={`rounded-lg px-4 py-2 text-sm transition-colors ${
                         active
-                          ? "bg-primary text-slate-900 font-bold"
+                          ? "bg-primary text-foreground font-bold"
                           : "bg-card text-foreground border border-border hover:bg-muted"
                       }`}
                       data-testid={`button-bookmark-filter-${value}`}
@@ -288,7 +288,7 @@ export default function BookmarksPage() {
               </div>
             ) : paged.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border bg-background/40 px-6 py-14 text-center">
-                <Bookmark size={44} className="mx-auto mb-4 text-slate-600" />
+                <Bookmark size={44} className="mx-auto mb-4 text-muted-foreground" />
                 <p className="text-lg font-semibold text-foreground">No bookmarks found</p>
                 <p className="mt-1 text-sm text-muted-foreground">Save responses from chat and drafting modules to populate this vault.</p>
               </div>
@@ -336,7 +336,7 @@ export default function BookmarksPage() {
                         <div className="mt-4 flex items-center gap-3 border-t border-border/50 pt-4">
                           <button
                             onClick={() => openPreview(bookmark)}
-                            className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-slate-900 transition-colors hover:bg-primary"
+                            className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-foreground transition-colors hover:bg-primary"
                             data-testid={`button-view-bookmark-${bookmark.id}`}
                           >
                             <span className="inline-flex items-center justify-center gap-2">
@@ -375,7 +375,7 @@ export default function BookmarksPage() {
                         onClick={() => setPage(n)}
                         className={`rounded-lg px-4 py-2 text-sm ${
                           page === n
-                            ? "bg-primary font-bold text-slate-900"
+                            ? "bg-primary font-bold text-foreground"
                             : "border border-border text-foreground hover:bg-card"
                         }`}
                         data-testid={`button-bookmarks-page-${n}`}
@@ -461,16 +461,16 @@ export default function BookmarksPage() {
               <div className="border-b border-border bg-emerald-500/10 px-6 py-2 text-xs text-emerald-300">Copied to clipboard.</div>
             )}
 
-            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-5 font-serif text-slate-800 sm:p-8">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-muted p-5 font-serif text-foreground sm:p-8">
               {(() => {
                 const parsed = parseReferences(preview.content);
                 return (
                   <div className="mx-auto max-w-3xl space-y-6">
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
                       <LegalMarkdown content={parsed.cleanContent} />
                     </div>
                     {parsed.references && (
-                      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
                         <ReferenceCards references={parsed.references} />
                       </div>
                     )}

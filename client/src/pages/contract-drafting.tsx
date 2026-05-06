@@ -1107,7 +1107,7 @@ export default function ContractDraftingPage() {
         <div className="flex items-center gap-3 md:gap-6 min-w-0">
           <div className="flex items-center gap-3">
             <div className="size-9 bg-primary rounded-lg flex items-center justify-center">
-              <Gavel size={18} className="text-slate-950" />
+              <Gavel size={18} className="text-foreground" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-foreground uppercase italic">Al Wakeelo</h1>
           </div>
@@ -1221,7 +1221,7 @@ export default function ContractDraftingPage() {
                 <Input
                   value={form.title}
                   onChange={(e) => onFieldChange("title", e.target.value)}
-                  className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-slate-600"
+                  className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
                   placeholder="e.g. Service Agreement 2026"
                 />
               </div>
@@ -1251,7 +1251,7 @@ export default function ContractDraftingPage() {
                   <Input
                     value={form.firstParty}
                     onChange={(e) => onFieldChange("firstParty", e.target.value)}
-                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-slate-600"
+                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
                     placeholder="e.g. Malik & Sons Enterprises"
                   />
                 </div>
@@ -1260,7 +1260,7 @@ export default function ContractDraftingPage() {
                   <Input
                     value={form.secondParty}
                     onChange={(e) => onFieldChange("secondParty", e.target.value)}
-                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-slate-600"
+                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
                     placeholder="Full Legal Name"
                   />
                 </div>
@@ -1327,7 +1327,7 @@ export default function ContractDraftingPage() {
               <Textarea
                 value={form.obligations}
                 onChange={(e) => onFieldChange("obligations", e.target.value)}
-                className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-slate-600 resize-none"
+                className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground resize-none"
                 placeholder="Describe the service scope or payment terms..."
                 rows={4}
               />
@@ -1405,7 +1405,7 @@ export default function ContractDraftingPage() {
             <div className="p-4 md:p-6 glass-surface border-t border-[hsl(var(--preview-border))] space-y-3">
               <button
                 onClick={generateDraft}
-                className="w-full py-3 bg-primary hover:bg-primary rounded-lg text-slate-950 font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 bg-primary hover:bg-primary rounded-lg text-foreground font-bold text-sm transition-colors flex items-center justify-center gap-2"
                 data-testid="button-generate-contract-draft"
                 disabled={isGenerating}
               >
@@ -1588,7 +1588,7 @@ export default function ContractDraftingPage() {
               )}
 
               <div
-                className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl p-3 md:p-5 lg:p-7 min-h-[560px] md:min-h-[760px] print:bg-white print:text-black"
+                className="rounded-2xl border border-[hsl(var(--preview-border))] bg-background/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl p-3 md:p-5 lg:p-7 min-h-[560px] md:min-h-[760px] print:bg-white print:text-black"
                 style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
                 ref={printRef}
               >

@@ -271,7 +271,7 @@ export function PublicLegalChatWidget() {
             setIsOpen(next);
             if (next) void trackPublicEvent("widget_open", { path: location });
           }}
-          className="rounded-full h-12 px-5 bg-primary hover:bg-primary text-slate-950 font-black text-xs tracking-wide shadow-xl shadow-primary/30"
+          className="rounded-full h-12 px-5 bg-primary hover:bg-primary text-foreground font-black text-xs tracking-wide shadow-xl shadow-primary/30"
           data-testid="public-chat-toggle"
         >
           <MessageCircle size={16} className="mr-2" />
@@ -310,7 +310,7 @@ export function PublicLegalChatWidget() {
                     <div
                       className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center ${
                         msg.role === "assistant"
-                          ? "bg-primary text-slate-950"
+                          ? "bg-primary text-foreground"
                           : "bg-card border border-primary/30 text-primary"
                       }`}
                     >
@@ -483,7 +483,7 @@ export function PublicLegalChatWidget() {
                   <Button
                     type="submit"
                     disabled={isSubmittingLead || !leadForm.consentToContact}
-                    className="flex-1 h-9 bg-primary text-slate-950 hover:bg-primary text-xs font-black"
+                    className="flex-1 h-9 bg-primary text-foreground hover:bg-primary text-xs font-black"
                   >
                     {isSubmittingLead ? <Loader2 size={14} className="animate-spin mr-1" /> : null}
                     Submit Case
@@ -515,7 +515,7 @@ export function PublicLegalChatWidget() {
                   type="submit"
                   size="icon"
                   disabled={isSending || limitReached || !input.trim()}
-                  className="h-11 w-11 bg-primary text-slate-950 hover:bg-primary"
+                  className="h-11 w-11 bg-primary text-foreground hover:bg-primary"
                 >
                   {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 </Button>

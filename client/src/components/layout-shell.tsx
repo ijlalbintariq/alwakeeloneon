@@ -103,7 +103,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-accent z-10" />
-        <div className="flex-1 overflow-auto bg-slate-50/50 dark:bg-background/50 scrollbar-hide">
+        <div className="flex-1 overflow-auto bg-muted/50 dark:bg-background/50 scrollbar-hide">
           {children}
         </div>
       </main>

@@ -280,7 +280,7 @@ export default function UserPanelPage() {
               <Input
                 value={profile?.email || ""}
                 readOnly
-                className="bg-[#0a1323] border-[hsl(var(--preview-border))] rounded-xl text-sm text-muted-foreground cursor-not-allowed"
+                className="bg-background border-[hsl(var(--preview-border))] rounded-xl text-sm text-muted-foreground cursor-not-allowed"
                 data-testid="input-email-readonly"
               />
               <p className="text-[10px] text-muted-foreground">Email is managed by your account authentication provider.</p>
@@ -289,7 +289,7 @@ export default function UserPanelPage() {
             <Button
               onClick={() => updateProfileMutation.mutate()}
               disabled={updateProfileMutation.isPending}
-              className="bg-gradient-to-r from-primary to-primary text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest hover:from-primary hover:to-primary"
+              className="bg-gradient-to-r from-primary to-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest hover:from-primary hover:to-primary"
               data-testid="button-save-profile"
             >
               {updateProfileMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
@@ -310,13 +310,13 @@ export default function UserPanelPage() {
               <p className="text-xs text-muted-foreground">
                 {TIER_LIMITS[profile?.subscriptionTier || "free"]?.description || "10 AI chats + 1 legal draft + 1 contract draft/month"}
               </p>
-              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2c] px-3 py-2.5">
+              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5">
                 <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground">Billing Cycle</p>
                 <p className="text-xs text-foreground mt-1">
                   {normalizedCycleLabel} commitment · Renewal window ends on <span className="text-primary font-semibold">{renewalLabel}</span>.
                 </p>
               </div>
-              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2c] px-3 py-2.5">
+              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5">
                 <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground">Model Access</p>
                 <p className="text-xs text-foreground mt-1">
                   {profile?.subscriptionTier === "chamber" || profile?.subscriptionTier === "enterprise"
@@ -329,7 +329,7 @@ export default function UserPanelPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button
                   asChild
-                  className="h-9 rounded-xl bg-primary text-slate-950 text-[10px] font-black uppercase tracking-widest hover:bg-primary"
+                  className="h-9 rounded-xl bg-primary text-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary"
                   data-testid="button-upgrade-plan-profile"
                 >
                   <a href={upgradeHref}>{upgradeLabel}</a>
@@ -354,7 +354,7 @@ export default function UserPanelPage() {
               </span>
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
-              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-[#0f1a2c] px-3 py-2.5">
+              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5">
                 <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground">Account Status</p>
                 <p className="text-xs text-emerald-300 mt-1 flex items-center gap-2">
                   <Sparkles size={12} /> Protected session is active
@@ -422,7 +422,7 @@ export default function UserPanelPage() {
                 </p>
                 <a
                   href={upgradeHref}
-                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 bg-primary text-slate-950 text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors"
+                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 bg-primary text-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors"
                   data-testid="link-upgrade-limit-profile"
                 >
                   {upgradeLabel}

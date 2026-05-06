@@ -1071,7 +1071,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     </p>
                     <p className="text-[10px] text-muted-foreground">{law.section || "Section reference"}</p>
                     {law.description && (
-                      <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{law.description}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{law.description}</p>
                     )}
                   </div>
                 </button>
@@ -1278,7 +1278,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     <>
                       <p className="text-sm whitespace-pre-wrap leading-normal">{m.content.replace(/\[Attached:.*?\]/, "").trim()}</p>
                       {m.attachments && m.attachments.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-slate-950/20">
+                        <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border/20">
                           {m.attachments.map((name, i) => (
                             <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-950/20 rounded-lg text-[10px] font-bold">
                               {getFileIcon(name)} {name}
@@ -1342,7 +1342,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 Monthly limit reached ({usage.used}/{usage.monthlyLimit} actions)
               </span>
             </div>
-            <a href={upgradeCheckoutHref} className="flex items-center gap-1 px-3 py-1.5 bg-primary text-slate-950 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors" data-testid="link-upgrade-limit">
+            <a href={upgradeCheckoutHref} className="flex items-center gap-1 px-3 py-1.5 bg-primary text-foreground rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors" data-testid="link-upgrade-limit">
               Upgrade Now <ArrowUpRight size={10} />
             </a>
           </div>
@@ -1404,13 +1404,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     </button>
                   )}
                   {!canUseTurbo && (
-                    <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-border/50">
+                    <div className="w-full text-left px-4 py-3 text-xs text-muted-foreground border-b border-border/50">
                       <div className="font-bold flex items-center gap-1.5">
-                        <Lock size={10} className="text-slate-600" />
+                        <Lock size={10} className="text-muted-foreground" />
                         Turbo
                         <span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black">PRO</span>
                       </div>
-                      <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Pro to unlock</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">Upgrade to Pro to unlock</div>
                     </div>
                   )}
                   {canUseTurbo && apexData?.available && apexData.models.length > 0 && (
@@ -1452,7 +1452,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     </>
                   )}
                   {(!apexData?.available || !apexData.models.length) && !canUseTurbo && (
-                    <div className="px-4 py-2 text-[9px] text-slate-600 border-t border-border/30">
+                    <div className="px-4 py-2 text-[9px] text-muted-foreground border-t border-border/30">
                       Upgrade to Pro for more models
                     </div>
                   )}
@@ -1574,10 +1574,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               : "w-0 opacity-0 -translate-x-3 pointer-events-none"
           }`}
         >
-          <div className="p-5 flex flex-col h-full w-64 rounded-2xl border border-primary/20 bg-[#081328]/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
+          <div className="p-5 flex flex-col h-full w-64 rounded-2xl border border-primary/20 bg-background/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
             <button
               onClick={handleClear}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 text-slate-950 w-full py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/25 mb-6"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 text-foreground w-full py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/25 mb-6"
               data-testid="button-new-consultation"
             >
               <PlusCircle size={18} />
@@ -1630,7 +1630,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </button>
         </div>
 
-        <main className="h-full flex flex-col bg-[#0a0e27]">
+        <main className="h-full flex flex-col bg-background">
 
           <section className="xl:hidden border-b border-primary/10 bg-background/55 px-3 sm:px-6 py-2">
             <details className="group">
@@ -1668,7 +1668,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   className={`flex items-start gap-2 sm:gap-3 w-full ${m.role === "user" ? "ml-auto flex-row-reverse" : ""}`}
                   style={OFFSCREEN_MESSAGE_STYLE}
                 >
-                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-primary text-slate-950" : "bg-[#14233d] border border-primary/30 text-foreground"}`}>
+                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-primary text-foreground" : "bg-[#14233d] border border-primary/30 text-foreground"}`}>
                     {m.role === "assistant" ? <Scale size={18} /> : <UserIcon size={16} />}
                   </div>
                   <div className={`min-w-0 flex-1 flex flex-col gap-2 ${m.role === "user" ? "items-end" : ""}`}>
@@ -1678,7 +1678,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     <div
                       className={`relative group p-3 sm:p-5 rounded-2xl backdrop-blur-md ${
                         m.role === "assistant"
-                          ? "w-full min-w-0 bg-[#0f1c33]/90 border border-primary/20 shadow-lg rounded-tl-md"
+                          ? "w-full min-w-0 bg-background/90 border border-primary/20 shadow-lg rounded-tl-md"
                           : "w-auto max-w-[85%] bg-transparent text-foreground border-2 border-primary/50 shadow-lg rounded-tr-md"
                       }`}
                     >
@@ -1798,14 +1798,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
             {isLoading && !(messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && (messages[messages.length - 1]?.content?.length ?? 0) > 0) && (
               <div className="flex items-start gap-3 w-full">
-                <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full text-slate-950 flex items-center justify-center ${isApexAgentWebMode ? "bg-cyan-400" : "bg-primary"}`}>
+                <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full text-foreground flex items-center justify-center ${isApexAgentWebMode ? "bg-cyan-400" : "bg-primary"}`}>
                   {isApexAgentWebMode ? <Globe size={18} /> : <Scale size={18} />}
                 </div>
                 <div className="flex-1 flex flex-col gap-2">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-foreground">
                     Al Wakeelo Assistant
                   </p>
-                  <div className="p-3 sm:p-4 rounded-2xl bg-[#0f1c33]/90 border border-primary/20 shadow-lg rounded-tl-md">
+                  <div className="p-3 sm:p-4 rounded-2xl bg-background/90 border border-primary/20 shadow-lg rounded-tl-md">
                     {/* Phase + timer row */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
@@ -1872,7 +1872,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           </div>
 
-          <div className="p-2 sm:p-6 pt-2 border-t border-primary/15 bg-[#071327]/75">
+          <div className="p-2 sm:p-6 pt-2 border-t border-primary/15 bg-background/75">
             {apiError && (
               <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
                 <AlertCircle size={14} className="text-red-400" />
@@ -1880,9 +1880,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               </div>
             )}
 
-            <div className="w-full bg-[#081428]/92 border border-primary/20 rounded-2xl shadow-[0_14px_38px_rgba(120,53,15,0.34)] relative">
+            <div className="w-full bg-background/92 border border-primary/20 rounded-2xl shadow-[0_14px_38px_rgba(120,53,15,0.34)] relative">
               {/* Status Bar */}
-              <div className="flex justify-between items-center px-4 py-3 border-b border-primary/15 bg-[#081428]/50">
+              <div className="flex justify-between items-center px-4 py-3 border-b border-primary/15 bg-background/50">
                 <div className="flex items-center gap-3">
                   {isAlWakeelo && (
                     <button
@@ -1927,9 +1927,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           <div className="text-[10px] text-muted-foreground mt-0.5">Deep reasoning & analysis</div>
                         </button>
                       ) : (
-                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-primary/10">
-                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-slate-600" />Turbo<span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
-                          <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Pro to unlock</div>
+                        <div className="w-full text-left px-4 py-3 text-xs text-muted-foreground border-b border-primary/10">
+                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-muted-foreground" />Turbo<span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">Upgrade to Pro to unlock</div>
                         </div>
                       )}
                       {canUseTurbo && apexData?.available && apexData.models.length > 0 && (
@@ -1948,9 +1948,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         </>
                       )}
                       {!canUseTurbo && (
-                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-primary/10">
-                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-slate-600" />Apex Models<span className="text-[8px] bg-emerald-500/20 text-emerald-500 px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
-                          <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Pro to unlock</div>
+                        <div className="w-full text-left px-4 py-3 text-xs text-muted-foreground border-b border-primary/10">
+                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-muted-foreground" />Apex Models<span className="text-[8px] bg-emerald-500/20 text-emerald-500 px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">Upgrade to Pro to unlock</div>
                         </div>
                       )}
                       {canUseApex ? (
@@ -1969,9 +1969,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           </button>
                         </>
                       ) : (
-                        <div className="w-full text-left px-4 py-3 text-xs text-slate-600 border-b border-primary/10 last:border-0">
-                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-slate-600" />Apex Agent Web<span className="text-[8px] bg-cyan-500/20 text-cyan-500 px-1.5 py-0.5 rounded-full font-black">CHAMBER</span></div>
-                          <div className="text-[10px] text-slate-600 mt-0.5">Upgrade to Chamber to unlock</div>
+                        <div className="w-full text-left px-4 py-3 text-xs text-muted-foreground border-b border-primary/10 last:border-0">
+                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-muted-foreground" />Apex Agent Web<span className="text-[8px] bg-cyan-500/20 text-cyan-500 px-1.5 py-0.5 rounded-full font-black">CHAMBER</span></div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">Upgrade to Chamber to unlock</div>
                         </div>
                       )}
                     </div>
@@ -2014,7 +2014,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     <Square size={18} fill="currentColor" />
                   </button>
                 ) : (
-                  <button onClick={() => handleSend()} disabled={isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-primary to-primary hover:from-primary hover:to-primary disabled:from-primary/50 disabled:to-primary/50 text-slate-950 h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 flex-shrink-0">
+                  <button onClick={() => handleSend()} disabled={isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-primary to-primary hover:from-primary hover:to-primary disabled:from-primary/50 disabled:to-primary/50 text-foreground h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 flex-shrink-0">
                     <Send size={20} />
                   </button>
                 )}
@@ -2073,7 +2073,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               : "w-0 opacity-0 translate-x-3 pointer-events-none"
           }`}
         >
-          <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide w-64 rounded-2xl border border-primary/20 bg-[#081328]/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
+          <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide w-64 rounded-2xl border border-primary/20 bg-background/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
             {renderInsightsCards(false)}
           </div>
         </aside>

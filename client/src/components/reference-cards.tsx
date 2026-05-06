@@ -575,7 +575,7 @@ export function ReferenceCards({ references }: { references: ParsedReferences })
             <div className="flex items-center gap-2 mb-2">
               <BookOpen size={13} className="text-primary" />
               <span className="text-[10px] font-black uppercase tracking-widest text-primary/80" data-testid="text-relevant-laws-label">Relevant Laws</span>
-              <ChevronRight size={12} className="text-slate-600" />
+              <ChevronRight size={12} className="text-muted-foreground" />
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {references.laws.map((law, i) => (
@@ -614,7 +614,7 @@ export function ReferenceCards({ references }: { references: ParsedReferences })
             <div className="flex items-center gap-2 mb-2">
               <Gavel size={13} className="text-primary" />
               <span className="text-[10px] font-black uppercase tracking-widest text-primary/80" data-testid="text-relevant-judgments-label">Relevant Judgments</span>
-              <ChevronRight size={12} className="text-slate-600" />
+              <ChevronRight size={12} className="text-muted-foreground" />
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {references.judgments.map((judgment, i) => (

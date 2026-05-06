@@ -364,10 +364,10 @@ export default function AuthPage() {
             type="submit"
             disabled={isPending || !isRegisterReady}
             data-testid="button-submit-auth"
-            className="w-full bg-gradient-to-r from-primary to-primary text-slate-950 font-black uppercase tracking-[0.22em] text-[11px] py-4 rounded-xl hover:from-primary hover:to-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+            className="w-full bg-gradient-to-r from-primary to-primary text-foreground font-black uppercase tracking-[0.22em] text-[11px] py-4 rounded-xl hover:from-primary hover:to-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
           >
             {isPending ? (
-              <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
                 {mode === "login" ? "Sign In" : "Create Account"}
@@ -423,7 +423,7 @@ export default function AuthPage() {
                 type="button"
                 onClick={handleGoogleStart}
                 data-testid="google-signin-button"
-                className="mx-auto w-full max-w-[380px] bg-white text-slate-900 font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"
+                className="mx-auto w-full max-w-[380px] bg-white text-foreground font-semibold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-muted transition-colors"
               >
                 <SiGoogle size={14} />
                 {mode === "register" ? "Continue with Google" : "Sign in with Google"}
@@ -472,7 +472,7 @@ export default function AuthPage() {
           </button>
         </div>
 
-        <p className="text-[9px] text-center text-slate-600 uppercase tracking-widest font-black mt-5">
+        <p className="text-[9px] text-center text-muted-foreground uppercase tracking-widest font-black mt-5">
           Secured Authentication Protocol
         </p>
       </div>

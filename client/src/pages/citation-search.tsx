@@ -191,7 +191,7 @@ export default function CitationSearchPage() {
           <button
             type="submit"
             disabled={searching || loadingJournals}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-foreground hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="button-citation-search"
           >
             {searching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}

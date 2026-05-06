@@ -58,7 +58,7 @@ export default function SharedConversationPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4 max-w-md mx-auto p-8">
-          <Scale size={48} className="text-slate-700 mx-auto" />
+          <Scale size={48} className="text-foreground mx-auto" />
           <h1 className="text-xl font-bold text-foreground">Conversation Not Found</h1>
           <p className="text-muted-foreground text-sm">{error || "This shared link is no longer valid."}</p>
           <a
@@ -95,12 +95,12 @@ export default function SharedConversationPage() {
                 <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">
                   Shared Conversation
                 </span>
-                <span className="text-[9px] text-slate-600">|</span>
+                <span className="text-[9px] text-muted-foreground">|</span>
                 <span className="flex items-center gap-1 text-[9px] text-muted-foreground">
                   <Calendar size={9} />
                   {formattedDate}
                 </span>
-                <span className="text-[9px] text-slate-600">|</span>
+                <span className="text-[9px] text-muted-foreground">|</span>
                 <span className="text-[9px] text-muted-foreground" data-testid="text-shared-by">
                   by {conversation.sharedBy}
                 </span>
@@ -118,7 +118,7 @@ export default function SharedConversationPage() {
                 <div
                   className={`max-w-[92%] sm:max-w-[85%] p-3 sm:p-6 md:p-8 rounded-[1.2rem] sm:rounded-[2rem] shadow-xl ${
                     m.role === "user"
-                      ? "bg-primary text-slate-950 font-bold rounded-tr-lg"
+                      ? "bg-primary text-foreground font-bold rounded-tr-lg"
                       : "bg-card border border-border text-foreground rounded-tl-lg"
                   }`}
                 >
@@ -142,7 +142,7 @@ export default function SharedConversationPage() {
           </p>
           <a
             href="/auth"
-            className="inline-block px-8 py-3 bg-primary text-slate-950 font-bold rounded-xl hover:bg-primary transition-colors shadow-xl shadow-primary/20"
+            className="inline-block px-8 py-3 bg-primary text-foreground font-bold rounded-xl hover:bg-primary transition-colors shadow-xl shadow-primary/20"
             data-testid="link-try-al-wakeelo"
           >
             Start Chatting with Al Wakeelo

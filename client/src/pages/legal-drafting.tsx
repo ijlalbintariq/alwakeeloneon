@@ -1854,10 +1854,10 @@ export default function LegalDraftingPage() {
           backgroundSize: "28px 28px",
         }}
       />
-      <header className="h-[74px] border-b border-white/10 flex items-center justify-between px-3 md:px-6 bg-[#09162e]/80 backdrop-blur-xl z-20">
+      <header className="h-[74px] border-b border-white/10 flex items-center justify-between px-3 md:px-6 bg-background/80 backdrop-blur-xl z-20">
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-3">
-            <div className="size-9 shrink-0 rounded-lg bg-gradient-to-br from-primary to-primary text-slate-950 flex items-center justify-center shadow-lg shadow-primary/25 ring-1 ring-primary/30">
+            <div className="size-9 shrink-0 rounded-lg bg-gradient-to-br from-primary to-primary text-foreground flex items-center justify-center shadow-lg shadow-primary/25 ring-1 ring-primary/30">
               <Gavel size={18} className="translate-y-[0.5px]" />
             </div>
             <div className="leading-tight">
@@ -1944,7 +1944,7 @@ export default function LegalDraftingPage() {
             <span className="hidden md:inline">TXT</span>
           </Button>
           <Button
-            className="h-9 md:h-10 px-2.5 md:px-3 bg-primary text-slate-950 hover:bg-primary font-bold shadow-lg shadow-primary/20"
+            className="h-9 md:h-10 px-2.5 md:px-3 bg-primary text-foreground hover:bg-primary font-bold shadow-lg shadow-primary/20"
             onClick={exportAsDoc}
             data-testid="button-export-doc"
           >
@@ -1967,7 +1967,7 @@ export default function LegalDraftingPage() {
             <p className="text-xs uppercase tracking-widest text-primary font-bold">Workspace</p>
             <Button
               size="sm"
-              className="inline-flex h-7 items-center justify-center gap-1 px-2 bg-primary text-slate-950 hover:bg-primary shadow-md shadow-primary/20"
+              className="inline-flex h-7 items-center justify-center gap-1 px-2 bg-primary text-foreground hover:bg-primary shadow-md shadow-primary/20"
               onClick={startNewDraftingChat}
             >
               <Plus size={12} className="shrink-0" />
@@ -2151,7 +2151,7 @@ export default function LegalDraftingPage() {
               placeholder="Draft title"
             />
             <Button
-              className="h-9 bg-primary text-slate-950 hover:bg-primary font-semibold"
+              className="h-9 bg-primary text-foreground hover:bg-primary font-semibold"
               onClick={saveDraft}
               disabled={saveDraftMutation.isPending}
             >
@@ -2164,7 +2164,7 @@ export default function LegalDraftingPage() {
           </div>
 
           <div className="flex-1 overflow-hidden p-2 md:p-4 lg:p-5">
-            <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-[#0b1220]/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl flex flex-col overflow-hidden">
+            <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-background/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl flex flex-col overflow-hidden">
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="px-4 py-2 border-b border-[hsl(var(--preview-border))] bg-background/25 flex items-center justify-between">
                   <p className="text-[11px] uppercase tracking-widest text-primary font-bold">Legal Drafting Chat</p>
@@ -2297,13 +2297,13 @@ export default function LegalDraftingPage() {
                         if (isGenerating || !aiPrompt.trim()) return;
                         void generateClause();
                       }}
-                      className="w-full bg-card/50 border border-border rounded-xl p-3 pr-12 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary outline-none resize-none placeholder:text-slate-600"
+                      className="w-full bg-card/50 border border-border rounded-xl p-3 pr-12 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary outline-none resize-none placeholder:text-muted-foreground"
                       placeholder="Describe what to draft, amend, or improve in Pakistani court format..."
                       rows={2}
                       data-testid="textarea-ai-draft-prompt"
                     />
                     <button
-                      className="absolute bottom-3 right-3 size-8 rounded-lg bg-primary text-slate-950 flex items-center justify-center shadow-lg disabled:opacity-50"
+                      className="absolute bottom-3 right-3 size-8 rounded-lg bg-primary text-foreground flex items-center justify-center shadow-lg disabled:opacity-50"
                       onClick={() => generateClause()}
                       disabled={isGenerating || !aiPrompt.trim()}
                       data-testid="button-send-ai-draft-prompt"
@@ -2428,7 +2428,7 @@ export default function LegalDraftingPage() {
                                 <div className="mt-2 flex items-center gap-2">
                                   <button
                                     onClick={() => applyRecommendedChange(edit)}
-                                    className="px-2 py-1 rounded bg-primary text-slate-950 text-[10px] font-bold hover:bg-primary"
+                                    className="px-2 py-1 rounded bg-primary text-foreground text-[10px] font-bold hover:bg-primary"
                                     data-testid={`button-apply-recommendation-${edit.id}`}
                                   >
                                     OK, Apply Change

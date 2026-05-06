@@ -162,7 +162,7 @@ export default function PrivacyPolicyPage() {
 
       <footer className="py-8 px-3 sm:px-6 border-t border-border/50">
         <div className="max-w-4xl mx-auto flex items-center justify-between flex-wrap gap-3">
-          <p className="text-xs text-slate-600">&copy; {new Date().getFullYear()} Al Wakeelo. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Al Wakeelo. All rights reserved.</p>
           <div className="flex gap-4">
             <a href="/terms" onClick={(e) => { e.preventDefault(); navigate("/terms"); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Terms of Service</a>
           </div>

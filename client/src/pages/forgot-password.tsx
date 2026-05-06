@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
                 <a
                   href={resetUrl}
                   data-testid="link-reset-password"
-                  className="inline-block w-full bg-primary text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all text-center shadow-xl shadow-primary/10"
+                  className="inline-block w-full bg-primary text-foreground font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all text-center shadow-xl shadow-primary/10"
                 >
                   Reset Password Now
                 </a>
@@ -121,10 +121,10 @@ export default function ForgotPasswordPage() {
                 type="submit"
                 disabled={forgotMutation.isPending}
                 data-testid="button-submit-forgot"
-                className="w-full bg-primary text-slate-950 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+                className="w-full bg-primary text-foreground font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
               >
                 {forgotMutation.isPending ? (
-                  <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin" />
                 ) : (
                   "Send Reset Link"
                 )}
@@ -144,7 +144,7 @@ export default function ForgotPasswordPage() {
           </>
         )}
 
-        <p className="text-[9px] text-center text-slate-600 uppercase tracking-widest font-black mt-5">
+        <p className="text-[9px] text-center text-muted-foreground uppercase tracking-widest font-black mt-5">
           Secured Authentication Protocol
         </p>
       </div>

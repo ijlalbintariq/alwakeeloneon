@@ -453,7 +453,7 @@ export default function JudgmentSearchPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border/80 bg-[#070b12]/90 p-3 shadow-2xl">
+      <section className="rounded-2xl border border-border/80 bg-background/90 p-3 shadow-2xl">
         <div className="mb-3 flex justify-center">
           <div className="inline-flex rounded-xl border border-border/90 bg-black/40 p-1">
             <button
@@ -461,7 +461,7 @@ export default function JudgmentSearchPage() {
               onClick={() => setSearchMode("keyword")}
               className={`rounded-lg px-5 py-2 text-sm font-bold transition-all ${
                 searchMode === "keyword"
-                  ? "bg-primary text-slate-950"
+                  ? "bg-primary text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -472,7 +472,7 @@ export default function JudgmentSearchPage() {
               onClick={() => setSearchMode("citation")}
               className={`rounded-lg px-5 py-2 text-sm font-bold transition-all ${
                 searchMode === "citation"
-                  ? "bg-primary text-slate-950"
+                  ? "bg-primary text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -498,7 +498,7 @@ export default function JudgmentSearchPage() {
               <button
                 onClick={() => void handleSearch()}
                 disabled={isLoading || isExternalLoading}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-100 px-6 text-base font-bold text-slate-950 hover:bg-white disabled:opacity-60"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-muted px-6 text-base font-bold text-foreground hover:bg-white disabled:opacity-60"
                 data-testid="button-judgment-search"
               >
                 {isLoading || isExternalLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={17} />}
@@ -623,7 +623,7 @@ export default function JudgmentSearchPage() {
               <button
                 type="submit"
                 disabled={citationSearching || loadingJournals}
-                className="h-11 self-end inline-flex items-center justify-center gap-2 rounded-xl bg-slate-100 px-6 text-base font-bold text-slate-950 hover:bg-white disabled:opacity-60"
+                className="h-11 self-end inline-flex items-center justify-center gap-2 rounded-xl bg-muted px-6 text-base font-bold text-foreground hover:bg-white disabled:opacity-60"
                 data-testid="button-citation-search"
               >
                 {citationSearching ? <Loader2 size={16} className="animate-spin" /> : <Search size={17} />}
@@ -900,7 +900,7 @@ export default function JudgmentSearchPage() {
         <aside className="min-h-0 space-y-4 overflow-y-auto pr-1">
           <section className="overflow-hidden rounded-xl border border-primary/25 bg-card/70">
             <div className="bg-primary px-4 py-3">
-              <h4 className="inline-flex items-center gap-2 text-sm font-black text-slate-950 uppercase tracking-wider">
+              <h4 className="inline-flex items-center gap-2 text-sm font-black text-foreground uppercase tracking-wider">
                 <BookmarkPlus size={14} /> Saved Judgments
               </h4>
             </div>

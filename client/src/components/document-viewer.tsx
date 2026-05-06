@@ -113,8 +113,8 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
 
                 <div className="p-8 sm:p-12 pt-10">
                   {pageIndex === 0 && (
-                    <div className="mb-6 pb-4 border-b-2 border-slate-200">
-                      <h1 className="text-lg font-bold text-slate-900 leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <div className="mb-6 pb-4 border-b-2 border-border">
+                      <h1 className="text-lg font-bold text-foreground leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
                         {title}
                       </h1>
                       {sourceLabel && (
@@ -124,7 +124,7 @@ export function DocumentViewer({ title, filename, content, sourceLabel, onClose 
                   )}
 
                   <div
-                    className="text-slate-800 leading-[1.8] whitespace-pre-wrap break-words"
+                    className="text-foreground leading-[1.8] whitespace-pre-wrap break-words"
                     style={{ fontSize: `${fontSize}px`, fontFamily: "'Georgia', 'Times New Roman', serif" }}
                     dangerouslySetInnerHTML={{
                       __html: highlightText(pageContent)

@@ -337,7 +337,7 @@ export default function CaseDocumentsPage() {
                   onClick={() => setCategory(tab.id)}
                   className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
                     category === tab.id
-                      ? "bg-primary text-slate-950 shadow-lg shadow-primary/20"
+                      ? "bg-primary text-foreground shadow-lg shadow-primary/20"
                       : "border border-white/10 bg-white/5 text-foreground hover:border-primary/40"
                   }`}
                 >
@@ -396,7 +396,7 @@ export default function CaseDocumentsPage() {
                     <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2">
                       <button
                         onClick={() => openPreview(doc)}
-                        className="flex-1 py-2 rounded-lg bg-[hsl(var(--preview-surface)/0.65)] hover:bg-primary hover:text-slate-950 text-sm font-bold transition-all"
+                        className="flex-1 py-2 rounded-lg bg-[hsl(var(--preview-surface)/0.65)] hover:bg-primary hover:text-foreground text-sm font-bold transition-all"
                         data-testid={`button-view-doc-${doc.id}`}
                       >
                         View
@@ -425,7 +425,7 @@ export default function CaseDocumentsPage() {
 
               {!isLoading && filteredDocuments.length === 0 && (
                 <div className="col-span-full py-16 text-center border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
-                  <FileSearch size={40} className="mx-auto text-slate-600 mb-4" />
+                  <FileSearch size={40} className="mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">No documents match this filter.</p>
                 </div>
               )}
@@ -489,7 +489,7 @@ export default function CaseDocumentsPage() {
                 <button onClick={() => handleShare(previewDoc)} className="p-2 rounded-lg hover:bg-white/10 text-foreground" title="Share">
                   <Share2 size={18} />
                 </button>
-                <button onClick={() => setPreviewDoc(null)} className="p-2 rounded-full bg-primary text-slate-950 hover:brightness-110" title="Close">
+                <button onClick={() => setPreviewDoc(null)} className="p-2 rounded-full bg-primary text-foreground hover:brightness-110" title="Close">
                   <X size={18} />
                 </button>
               </div>
@@ -562,7 +562,7 @@ export default function CaseDocumentsPage() {
 
                 <button
                   onClick={() => openInEditor(previewDoc)}
-                  className="mt-5 w-full py-3 rounded-full bg-primary text-slate-950 font-bold hover:brightness-105 inline-flex items-center justify-center gap-2"
+                  className="mt-5 w-full py-3 rounded-full bg-primary text-foreground font-bold hover:brightness-105 inline-flex items-center justify-center gap-2"
                 >
                   <FolderOpen size={16} /> Open in Editor
                 </button>

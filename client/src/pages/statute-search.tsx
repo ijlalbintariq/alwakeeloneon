@@ -137,7 +137,7 @@ export default function StatuteSearchPage() {
           </div>
 
           <div className="relative" ref={searchRef}>
-            <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-[#0b1222]/75 p-2 shadow-[0_24px_42px_-28px_rgba(2,6,23,1)] backdrop-blur-md">
+            <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/75 p-2 shadow-[0_24px_42px_-28px_rgba(2,6,23,1)] backdrop-blur-md">
               <div className="flex items-center px-2">
                 <Search size={17} className="text-primary/80" />
               </div>
@@ -165,7 +165,7 @@ export default function StatuteSearchPage() {
               {isSearching && <Loader2 size={18} className="text-primary animate-spin self-center mr-1" />}
               <button
                 onClick={() => handleQuickSearch(query)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-primary/70 bg-gradient-to-r from-primary to-primary px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-950 hover:from-primary hover:to-primary transition-all active:scale-95"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-primary/70 bg-gradient-to-r from-primary to-primary px-3 py-2 text-xs font-black uppercase tracking-wider text-foreground hover:from-primary hover:to-primary transition-all active:scale-95"
                 data-testid="button-statute-search"
               >
                 <Search size={13} />
@@ -189,7 +189,7 @@ export default function StatuteSearchPage() {
                       <p className="text-sm font-semibold text-foreground truncate">{doc.title}</p>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-[0.18em]">{doc.category}</p>
                     </div>
-                    <ChevronRight size={14} className="text-slate-600 flex-shrink-0 ml-auto" />
+                    <ChevronRight size={14} className="text-muted-foreground flex-shrink-0 ml-auto" />
                   </button>
                 ))}
               </div>
@@ -234,7 +234,7 @@ export default function StatuteSearchPage() {
                     >
                       <div className="flex items-start justify-between gap-1.5 mb-0.5">
                         <span className="text-[11px] font-semibold text-foreground group-hover:text-foreground transition-colors">{stat.label}</span>
-                        <ChevronRight size={11} className="text-slate-600 group-hover:text-primary transition-colors flex-shrink-0" />
+                        <ChevronRight size={11} className="text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                       </div>
                       <p className="text-[10px] text-muted-foreground group-hover:text-muted-foreground transition-colors leading-snug text-justify">{stat.detail}</p>
                     </button>
