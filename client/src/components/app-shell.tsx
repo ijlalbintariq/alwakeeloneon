@@ -3,8 +3,9 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
   History, FileBadge, Sparkles, Database, LogOut,
-  User as UserIcon, Shield, Settings, Building2
+  User as UserIcon, Shield, Settings, Building2, Sun, Moon
 } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 import {
   SidebarProvider,
   Sidebar,
@@ -289,6 +290,23 @@ function AppSidebar() {
   );
 }
 
+function ThemeToggleButton() {
+  const { resolvedTheme, toggle } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      title={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      className="w-8 h-8 rounded-xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface-elevated))] hover:border-[hsl(var(--preview-border-active))] flex items-center justify-center text-[hsl(var(--preview-text-secondary))] hover:text-[hsl(var(--preview-text-primary))] transition-colors"
+      data-testid="button-theme-toggle"
+    >
+      {isDark ? <Sun size={14} /> : <Moon size={14} />}
+    </button>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [location] = useLocation();
@@ -314,7 +332,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className={cn(
-        "flex h-[100dvh] md:h-screen w-full bg-[#0f172a] text-slate-200 font-sans selection:bg-amber-500/40",
+        "flex h-[100dvh] md:h-screen w-full font-sans bg-background text-foreground selection:bg-primary/40",
         "app-ui-compact",
         "mac-app-shell"
       )}>
@@ -322,11 +340,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="flex flex-col flex-1 min-w-0">
           <header className={cn(
-            "h-12 border-b border-[hsl(var(--preview-border))] bg-[#0f172a]/55 backdrop-blur-xl flex items-center justify-between px-2.5 md:px-3.5 gap-3 z-50 sticky top-0",
+            "h-12 border-b border-[hsl(var(--preview-border))] bg-background/70 backdrop-blur-xl flex items-center justify-between px-2.5 md:px-3.5 gap-3 z-50 sticky top-0",
             "mac-glass-panel"
           )}>
             <SidebarTrigger data-testid="button-sidebar-toggle" className="text-slate-400 hover:text-white" />
             <div className="flex items-center gap-4">
+              <ThemeToggleButton />
               <div className="text-right hidden sm:block">
                 <p className="text-[11px] font-black uppercase text-white tracking-wider" data-testid="text-username">
                   {user?.firstName || user?.email || "Advocate"}
@@ -344,7 +363,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className={cn(
-            `flex-1 overflow-y-auto bg-[#0f172a]/65 backdrop-blur-lg scrollbar-hide ${
+            `flex-1 overflow-y-auto bg-background/80 backdrop-blur-lg scrollbar-hide ${
               isEdgeAttachedLayout
                 ? "p-0"
                 : isWideChatLayout

@@ -4,7 +4,75 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── LIGHT theme (default — applies when html does NOT have .dark) ─── */
 :root {
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+
+  --primary: 222 47% 18%;
+  --primary-foreground: 0 0% 100%;
+
+  --accent: 222 47% 18%;
+  --accent-foreground: 0 0% 100%;
+
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 18%;
+
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 222 47% 18%;
+
+  --radius: 1.5rem;
+
+  --chart-1: 222 47% 18%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 217 91% 60%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
+
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-border: 214 32% 91%;
+  --sidebar-ring: 222 47% 18%;
+  --sidebar-primary: 222 47% 18%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 210 40% 96%;
+  --sidebar-accent-foreground: 222 47% 18%;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-heading: 'Playfair Display', serif;
+  --font-serif: 'Playfair Display', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Preview skin tokens — light variant */
+  --preview-bg: 0 0% 100%;
+  --preview-surface: 210 40% 98%;
+  --preview-surface-elevated: 0 0% 100%;
+  --preview-border: 214 32% 88%;
+  --preview-border-active: 222 47% 18%;
+  --preview-text-primary: 222 47% 11%;
+  --preview-text-secondary: 215 16% 35%;
+  --preview-text-muted: 215 16% 55%;
+  --preview-accent-amber: 222 47% 18%;
+  --preview-accent-emerald: 151 62% 43%;
+  --preview-shadow-soft: 0 24px 52px -26px hsl(222 30% 60% / 0.18);
+  --preview-shadow-glow: 0 18px 48px -26px hsl(222 47% 18% / 0.12);
+}
+
+/* ─── DARK theme (existing — applies when html HAS .dark class) ─── */
+.dark {
   --background: 222 47% 6%;
   --foreground: 210 40% 92%;
 
@@ -33,8 +101,6 @@
   --input: 217 33% 20%;
   --ring: 38 92% 50%;
 
-  --radius: 1.5rem;
-
   --chart-1: 38 92% 50%;
   --chart-2: 160 60% 45%;
   --chart-3: 217 91% 60%;
@@ -50,12 +116,7 @@
   --sidebar-accent: 217 33% 22%;
   --sidebar-accent-foreground: 210 40% 92%;
 
-  --font-sans: 'Inter', sans-serif;
-  --font-heading: 'Playfair Display', serif;
-  --font-serif: 'Playfair Display', serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  /* Preview skin tokens */
+  /* Preview skin tokens — dark variant */
   --preview-bg: 222 47% 6%;
   --preview-surface: 218 38% 12%;
   --preview-surface-elevated: 218 36% 16%;
