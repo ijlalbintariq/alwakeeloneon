@@ -8625,12 +8625,27 @@ RAG POLICY (STRICT):
       }
 
       // STEP 1: Parsed-parts match (year + report code + page).
-      // Handles formatting variants — "PLD 2023 Supreme Court 362" parses to
-      // year=2023 report=PLD page=362 and matches a DB row stored as
-      // "PLD 2023 SC 362". The Card displays the court-expanded citation
-      // (e.g. "Supreme Court" full word) so a literal LIKE fails.
-      const parsed = parseCaseLawCitationQuery(q);
-      if (parsed && Number.isInteger(parsed.year) && Number.isInteger(parsed.page) && parsed.report) {
+      // Card-displayed citations include the expanded court name
+      // (e.g. "PLD 2023 Supreme Court 362"). The default parser tries a
+      // year-first regex that matches "Supreme Court" as the report token,
+      // producing an invalid journal code. Strip court-name words first so
+      // the parser sees "PLD 2023 362" and extracts {report:PLD, year, page}.
+      const courtStripped = q
+        // Period-style first (regex word boundaries don't fire correctly on "S.C." trailing dot)
+        .replace(/\bS\.\s*C\.?/gi, " ")
+        .replace(/\bF\.\s*S\.\s*C\.?/gi, " ")
+        // Full-word court names
+        .replace(
+          /\b(Supreme\s+Court|Lahore|Peshawar|Karachi|Sindh|Islamabad|Balochistan|Federal\s+Shariat(?:\s+Court)?|FSC|AJK|SC)\b/gi,
+          " ",
+        )
+        // Collapse stray punctuation between digits (e.g. "1998 . 1512")
+        .replace(/(\d)\s*\.\s*(\d)/g, "$1 $2")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const parsed = parseCaseLawCitationQuery(courtStripped) || parseCaseLawCitationQuery(q);
+      if (parsed && isTrustedCaseLawCitationParts(parsed)) {
         const byParts = await storage.searchJudgmentsByCitation({
           year: parsed.year,
           journalCode: parsed.report,
