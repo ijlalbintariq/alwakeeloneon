@@ -11616,7 +11616,12 @@ The user has attached the following documents for your reference. Analyze them c
         // Use module profile strictCitations — hardcoded true was stripping valid judgments-table citations
         completion = await applyAlWakeeloSafetyGuardrails(completion, { strict: enforcePrimaryLinkedSourceCitations, allowProseModification: false }, toolSearchResult?.verifiedCitations, toolSearchResult?.verifiedTitles).catch(() => ensureAlWakeeloReferencesBlock(completion));
       }
-      if (moduleType === "draft" && moduleIntent?.startsWith("draft.")) {
+      // Always run drafting normalizer for draft module — strips markdown
+      // (#, **bold**, ---, etc.) and aligns party captions. The previous
+      // intent-prefix gate meant requests without an explicit moduleIntent
+      // (e.g. direct chat-style draft requests) bypassed the normalizer
+      // and emitted raw markdown that no Pakistani court accepts.
+      if (moduleType === "draft") {
         completion = normalizeCourtReadyDraftingText(completion);
       }
       if (moduleType === "contract-drafting" && moduleIntent === "contract.generateDraft") {
