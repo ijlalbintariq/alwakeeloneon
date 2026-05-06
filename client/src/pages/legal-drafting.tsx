@@ -64,10 +64,22 @@ type OrgMember = {
   lastName: string | null;
 };
 
+type DraftTemplateCategory =
+  | "Court Filings"
+  | "Sessions Court"
+  | "High Court"
+  | "Supreme Court"
+  | "Family"
+  | "Notices"
+  | "Affidavits & Powers"
+  | "Contracts";
+
 type DraftTemplate = {
   id: string;
   title: string;
   body: string;
+  category: DraftTemplateCategory;
+  description?: string;
 };
 
 type LegalDraftCaseReference = {
@@ -692,93 +704,796 @@ PRAYER:
 Leave to appeal may kindly be granted and impugned judgment/order be set aside.
 `;
 
+// ─── New transactional / notice / affidavit templates ──────────────────────
+const VAKALATNAMA_TEMPLATE = `IN THE COURT OF [Court Name], [City]
+
+[Cause Title — e.g. Civil Suit No. _____ / 20__]
+
+[Plaintiff/Petitioner Name]                              ... PLAINTIFF / PETITIONER
+
+VERSUS
+
+[Defendant/Respondent Name]                              ... DEFENDANT / RESPONDENT
+
+VAKALATNAMA
+
+I/We, the above-named [Plaintiff/Petitioner/Defendant/Respondent], do hereby
+appoint and authorise [Advocate Name], Advocate of the [Court of Enrollment],
+holding Bar Council Enrollment No. _______, to appear, plead, act, sign,
+verify, file, and conduct the above proceedings on my/our behalf, and to do
+all acts and things necessary or incidental thereto including filing of
+affidavits, applications, replies, withdrawal, compromise, and engaging
+junior counsel if required.
+
+I/We further authorise the said Advocate to receive on my/our behalf any
+amount decreed, ordered, or awarded by the Court.
+
+Dated this ____ day of _________, 20__ at [City].
+
+___________________________
+Signature of Client / Thumb Impression
+Name: ___________________________
+CNIC: ___________________________
+
+ACCEPTED:
+___________________________
+[Advocate Name]
+Bar Council Enrollment No. _______
+Office: ___________________________
+`;
+
+const AFFIDAVIT_TEMPLATE = `IN THE COURT OF [Court Name], [City]
+
+[Cause Title]
+
+AFFIDAVIT OF [Deponent Name]
+
+I, [Deponent Full Name] S/o (or D/o or W/o) ____________, aged about ____
+years, R/o ____________, holding CNIC No. _____________, Pakistani national,
+do hereby solemnly affirm and state on oath as under:
+
+1. That I am the [role — e.g. Plaintiff / Petitioner / Defendant / Witness]
+   in the captioned matter and am fully conversant with the facts deposed
+   herein from my own knowledge.
+
+2. That [State the fact(s) being attested. Use one numbered paragraph per
+   fact. Do not include argumentative or conclusory statements].
+
+3. That [Continue with additional factual paragraphs as required].
+
+4. That the contents of this affidavit are true and correct to the best of
+   my knowledge and belief, and nothing material has been concealed or
+   misstated.
+
+DEPONENT
+___________________________
+[Deponent Name]
+CNIC: _____________
+
+VERIFICATION
+
+Verified on oath at [City] on this ____ day of _________, 20__ that the
+contents of paragraphs 1 to ____ above are true and correct to the best of
+my knowledge and belief.
+
+DEPONENT
+___________________________
+
+Solemnly affirmed before me by the Deponent who is identified to me by
+[Identifier Name, CNIC No.] who is personally known to me.
+
+___________________________
+Oath Commissioner / Notary Public
+Seal & Stamp
+`;
+
+const LEGAL_NOTICE_GENERIC_TEMPLATE = `LEGAL NOTICE
+
+Without Prejudice
+
+To,
+[Recipient Name]
+[Recipient Address]
+[CNIC if individual / Registration No. if company]
+
+Through: [Counsel Name], Advocate
+Office: ____________________________
+Bar Council Enrollment No. _______
+
+Date: ____ ____________, 20__
+
+SUBJECT: LEGAL NOTICE FOR [State subject — e.g. Recovery of Outstanding
+Amount / Breach of Contract / Defamation / Cease and Desist]
+
+Sir/Madam,
+
+Under instructions from and on behalf of my client, [Client Full Name],
+S/o ____________, R/o ____________, holding CNIC No. _____________
+(hereinafter referred to as "my Client"), I do hereby serve upon you the
+following notice:
+
+1. That my Client and you entered into [describe relationship/transaction
+   — e.g. agreement dated ____, business dealing, employment, etc.].
+
+2. That [state the wrongful act/breach/grievance with specific dates,
+   amounts, and supporting facts].
+
+3. That despite repeated requests/demands, you have failed and neglected to
+   [comply / pay / perform / desist]. Your conduct constitutes a clear
+   breach of [statute / agreement / common law obligation].
+
+4. That my Client has suffered loss/injury amounting to Rs. _____________
+   (Rupees ____________ Only) on account of your acts/omissions.
+
+DEMAND:
+
+You are hereby called upon, within FIFTEEN (15) DAYS of receipt of this
+notice (or sixty (60) days where Section 80 CPC applies for suits against
+Government), to:
+
+(a) [Specific demand — e.g. Pay Rs. _______ to my Client];
+(b) [Cease and desist from further breach];
+(c) Render written apology / formal undertaking;
+
+failing which my Client shall be constrained to initiate appropriate civil
+and/or criminal proceedings against you, including but not limited to:
+[list of remedies — e.g. recovery suit, contempt, FIR under Section 489-F
+PPC, defamation suit under Defamation Ordinance 2002], at your sole risk
+and cost, of which kindly take notice.
+
+A copy of this notice has been retained in my office for record and future
+reference.
+
+Yours truly,
+
+___________________________
+[Counsel Name]
+Advocate
+Bar Council Enrollment No. _______
+[Office Address]
+[Contact]
+
+CC: My Client.
+`;
+
+const NOTICE_138_NIA_TEMPLATE = `LEGAL NOTICE UNDER SECTION 138 OF THE NEGOTIABLE INSTRUMENTS ACT, 1881
+READ WITH SECTION 489-F OF THE PAKISTAN PENAL CODE, 1860
+
+Without Prejudice
+
+To,
+[Drawer Name]
+[Address]
+CNIC: _____________
+
+Through: [Counsel Name], Advocate
+Bar Council Enrollment No. _______
+
+Date: ____ ____________, 20__
+
+Sir,
+
+Under instructions from my client, [Payee Name], R/o ____________, CNIC
+_____________ (the "Holder in Due Course"), I serve upon you the following
+notice:
+
+1. That you, in discharge of [state liability/transaction], issued cheque
+   No. _________ dated ____ ____________, drawn on [Bank & Branch],
+   for Rs. ____________ (Rupees ____________ Only) in favour of my client.
+
+2. That my client presented the said cheque for encashment on ____
+   ____________ at [Bank & Branch], whereupon the cheque was DISHONOURED
+   and returned with the bank memo bearing the remarks
+   "[Insufficient Funds / Account Closed / Stop Payment / Signature
+   Mismatch]" dated ____ ____________.
+
+3. That under Section 138 of the Negotiable Instruments Act, 1881, the
+   issuance of a cheque that is dishonoured constitutes a statutory
+   offence punishable with imprisonment and/or fine. Further, under
+   Section 489-F of the Pakistan Penal Code, 1860, dishonest issuance of
+   a cheque without sufficient funds is punishable with imprisonment up
+   to three (3) years and fine.
+
+DEMAND:
+
+You are hereby called upon, within FIFTEEN (15) DAYS of receipt of this
+notice, to:
+
+(a) Pay the cheque amount of Rs. ____________ in full by demand draft or
+    pay order in favour of my client; and
+(b) Reimburse Rs. ________ as costs of this notice and bank charges.
+
+Failing the above within fifteen (15) days, my client shall, without
+further notice, file:
+
+(i) A private criminal complaint under Section 489-F PPC read with
+    Section 200 Cr.P.C. before the competent Magistrate;
+(ii) A civil suit for recovery under Order XXXVII of the Code of Civil
+     Procedure, 1908; and
+(iii) Any other remedy available in law,
+
+at your sole risk, cost, and consequence.
+
+This notice serves as the statutory demand notice as required by law.
+
+Yours truly,
+
+___________________________
+[Counsel Name]
+Advocate
+Bar Council Enrollment No. _______
+[Office Address]
+
+Encl: Photocopy of cheque, bank memo, and proof of presentation.
+`;
+
+const POWER_OF_ATTORNEY_GENERAL_TEMPLATE = `GENERAL POWER OF ATTORNEY
+
+KNOW ALL MEN BY THESE PRESENTS:
+
+THIS GENERAL POWER OF ATTORNEY is made and executed on this ____ day of
+____________, 20__ at [City], Pakistan,
+
+BY:
+
+[Principal Full Name], S/o ____________, aged ____ years, R/o
+____________, holding CNIC No. _____________, Pakistani national,
+hereinafter called the "PRINCIPAL"
+
+IN FAVOUR OF:
+
+[Attorney Full Name], S/o ____________, aged ____ years, R/o
+____________, holding CNIC No. _____________, Pakistani national,
+hereinafter called the "ATTORNEY"
+
+WHEREAS the Principal is desirous of authorising the Attorney to act on
+the Principal's behalf in respect of the following matters:
+
+NOW THIS DEED WITNESSES that the Principal does hereby nominate, constitute,
+and appoint the Attorney as his/her true and lawful Attorney to do, execute,
+and perform all or any of the following acts, deeds, and things:
+
+1. To manage, supervise, and operate all immovable properties of the
+   Principal, including but not limited to [describe properties or
+   "all properties owned by the Principal"].
+
+2. To collect, receive, and grant valid receipts for all rents, profits,
+   compensation, sale proceeds, and other moneys due or accruing to the
+   Principal.
+
+3. To file, defend, compromise, withdraw, and conduct any suits, appeals,
+   revisions, applications, references, complaints, or other proceedings
+   of any kind in any court, tribunal, or authority within Pakistan, and
+   to engage advocates and execute Vakalatnamas on the Principal's behalf.
+
+4. To operate the Principal's bank accounts, sign cheques, deposit and
+   withdraw funds, and execute any banking instruments.
+
+5. To execute, sign, verify, present for registration, and admit
+   execution of agreements, sale deeds, gift deeds, mortgage deeds, lease
+   deeds, partition deeds, and any other deeds or documents.
+
+6. To represent the Principal before any government department, revenue
+   authority, registration office, NADRA, FBR, customs, or any other
+   public office.
+
+7. Generally, to do all such acts as may be necessary or incidental to
+   the management of the Principal's affairs.
+
+The Principal hereby ratifies and confirms whatever the Attorney shall
+lawfully do or cause to be done by virtue of this Power of Attorney.
+
+This Power of Attorney shall remain in force until expressly revoked in
+writing by the Principal and shall be irrevocable for [period] from the
+date hereof.
+
+IN WITNESS WHEREOF, the Principal has signed this General Power of
+Attorney on the date and at the place first above written.
+
+___________________________
+SIGNATURE OF PRINCIPAL
+[Name], CNIC: _____________
+
+WITNESSES:
+
+1. ___________________________
+   Name: ____________________
+   CNIC: ____________________
+   Address: _________________
+
+2. ___________________________
+   Name: ____________________
+   CNIC: ____________________
+   Address: _________________
+
+[To be attested by Sub-Registrar / Notary Public / Pakistani Consular
+Officer (if executed abroad) under the Powers of Attorney Act 1882 and
+the Registration Act 1908]
+`;
+
+const NDA_TEMPLATE = `NON-DISCLOSURE AGREEMENT
+
+THIS NON-DISCLOSURE AGREEMENT (the "Agreement") is entered into on this
+____ day of ____________, 20__ at [City], Pakistan,
+
+BETWEEN:
+
+[Disclosing Party Name], a [individual / company incorporated under the
+Companies Act 2017] having CNIC/Registration No. _____________ and
+registered office at ____________ ("Disclosing Party"),
+
+AND:
+
+[Receiving Party Name], a [individual / company] having CNIC/Registration
+No. _____________ and address at ____________ ("Receiving Party"),
+
+(each a "Party" and collectively the "Parties").
+
+RECITALS:
+
+A. The Disclosing Party possesses certain confidential and proprietary
+   information in connection with [describe purpose, e.g. employment,
+   business negotiation, joint venture].
+B. The Parties wish to enter into discussions/transactions which may
+   involve disclosure of such confidential information by the Disclosing
+   Party to the Receiving Party.
+
+NOW IT IS HEREBY AGREED AS FOLLOWS:
+
+1. CONFIDENTIAL INFORMATION
+   "Confidential Information" means any non-public information disclosed
+   by the Disclosing Party to the Receiving Party, whether orally, in
+   writing, or by any other means, including but not limited to: business
+   plans, financial data, customer lists, trade secrets, technical
+   specifications, source code, intellectual property, marketing
+   strategies, and any information marked or identified as confidential.
+
+2. OBLIGATIONS OF THE RECEIVING PARTY
+   The Receiving Party shall:
+   (a) Hold all Confidential Information in strict confidence;
+   (b) Not disclose Confidential Information to any third party without
+       the Disclosing Party's prior written consent;
+   (c) Use Confidential Information solely for the agreed Purpose;
+   (d) Take reasonable measures to protect the Confidential Information
+       at the same standard of care it applies to its own confidential
+       information, but in no event less than reasonable care.
+
+3. EXCLUSIONS
+   This Agreement shall not apply to information that:
+   (a) Was already in the public domain at the time of disclosure;
+   (b) Is independently developed by the Receiving Party without use of
+       Confidential Information;
+   (c) Is rightfully received from a third party without breach of
+       confidentiality; or
+   (d) Is required to be disclosed by law, court order, or government
+       authority, provided the Receiving Party gives prior notice to the
+       Disclosing Party.
+
+4. TERM
+   This Agreement shall remain in force for a period of [number] years
+   from the date of execution, except that obligations relating to trade
+   secrets shall continue until such information is no longer a trade
+   secret.
+
+5. RETURN OF MATERIALS
+   Upon termination or upon request, the Receiving Party shall return or
+   destroy all Confidential Information and certify in writing that it
+   has done so.
+
+6. REMEDIES
+   The Parties acknowledge that breach of this Agreement may cause
+   irreparable injury for which monetary damages would be inadequate. The
+   Disclosing Party shall be entitled to seek injunctive relief in
+   addition to any other remedies available in law and equity.
+
+7. GOVERNING LAW & JURISDICTION
+   This Agreement shall be governed by and construed in accordance with
+   the laws of the Islamic Republic of Pakistan. Any dispute shall be
+   subject to the exclusive jurisdiction of the courts at [City].
+
+8. ARBITRATION (Optional)
+   Any dispute arising out of or in connection with this Agreement shall
+   first be referred to arbitration under the Arbitration Act, 1940. The
+   seat of arbitration shall be [City], the language English, and the
+   number of arbitrators shall be [one/three].
+
+9. ENTIRE AGREEMENT
+   This Agreement constitutes the entire agreement between the Parties
+   regarding its subject matter and supersedes all prior agreements,
+   negotiations, and understandings.
+
+IN WITNESS WHEREOF, the Parties have executed this Agreement on the date
+and at the place first above written.
+
+DISCLOSING PARTY                          RECEIVING PARTY
+
+___________________________               ___________________________
+[Name]                                    [Name]
+[Designation]                             [Designation]
+CNIC: _____________                       CNIC: _____________
+
+WITNESSES:
+
+1. ___________________________            2. ___________________________
+   Name: ____________________               Name: ____________________
+   CNIC: ____________________               CNIC: ____________________
+`;
+
+const SALE_DEED_TEMPLATE = `SALE DEED
+
+(Under the Transfer of Property Act, 1882 and the Registration Act, 1908)
+
+THIS SALE DEED is executed on this ____ day of ____________, 20__ at
+[City], Pakistan,
+
+BY:
+
+[Vendor Name], S/o ____________, aged ____ years, R/o ____________, CNIC
+_____________, Pakistani national,
+hereinafter called the "VENDOR"
+
+IN FAVOUR OF:
+
+[Vendee Name], S/o ____________, aged ____ years, R/o ____________, CNIC
+_____________, Pakistani national,
+hereinafter called the "VENDEE"
+
+WHEREAS the Vendor is the absolute and exclusive owner in possession of
+the property fully described in Schedule-A hereto (the "Property"), having
+acquired the same vide [previous title document, registration no., date]
+free from all encumbrances, charges, and liens.
+
+AND WHEREAS the Vendor has agreed to sell the Property to the Vendee for
+a total sale consideration of Rs. ____________ (Rupees ____________
+Only), and the Vendee has agreed to purchase the same on the terms and
+conditions herein contained.
+
+NOW THIS DEED WITNESSES AS FOLLOWS:
+
+1. SALE AND TRANSFER
+   In consideration of Rs. ____________ (the "Sale Consideration"),
+   receipt whereof is hereby acknowledged by the Vendor (a separate
+   receipt being executed even date herewith), the Vendor hereby grants,
+   transfers, conveys, and assures unto the Vendee the entire right,
+   title, and interest in the Property described in Schedule-A, together
+   with all easements, appurtenances, and benefits attached thereto.
+
+2. POSSESSION
+   The Vendor has this day delivered actual physical and vacant possession
+   of the Property to the Vendee.
+
+3. INDEMNITY AND COVENANT FOR TITLE
+   The Vendor warrants that:
+   (a) The Property is the absolute property of the Vendor;
+   (b) The Property is free from all encumbrances, mortgages, charges,
+       attachments, claims, demands, and adverse interests;
+   (c) The Vendor has full right and authority to sell the Property;
+   (d) The Vendor shall indemnify the Vendee against any loss, damage,
+       claim, or expense arising from any defect in title or breach of
+       above warranties.
+
+4. STAMP DUTY AND REGISTRATION
+   The stamp duty, registration fee, and other incidental expenses shall
+   be borne by the Vendee. The parties shall present this Deed for
+   registration before the Sub-Registrar at [City] within the period
+   prescribed under the Registration Act, 1908.
+
+5. MUTATION
+   The Vendor undertakes to assist the Vendee in obtaining mutation of
+   the Property in the relevant revenue records.
+
+6. LAW APPLICABLE
+   This Deed shall be governed by the laws of the Islamic Republic of
+   Pakistan, including the Transfer of Property Act 1882, Registration
+   Act 1908, and applicable provincial revenue laws.
+
+SCHEDULE-A
+(Description of Property)
+
+[Provide complete description: full address, plot/khasra/khatuni numbers,
+boundaries, total area, type — residential/commercial/agricultural,
+constructed area if any, registration details of source title document]
+
+IN WITNESS WHEREOF, the Vendor and Vendee have executed this Sale Deed on
+the date and at the place first above written.
+
+VENDOR                                    VENDEE
+
+___________________________               ___________________________
+[Vendor Name]                             [Vendee Name]
+CNIC: _____________                       CNIC: _____________
+
+WITNESSES:
+
+1. ___________________________            2. ___________________________
+   Name: ____________________               Name: ____________________
+   CNIC: ____________________               CNIC: ____________________
+   Father's Name: ___________               Father's Name: ___________
+   Address: _________________               Address: _________________
+
+[FOR REGISTRATION USE ONLY]
+Stamp Paper Value: Rs. ____________
+Registration Fee: Rs. ____________
+Sub-Registrar Office: ____________
+Book No., Volume No., Page Nos.: ____________
+`;
+
 const TEMPLATES: DraftTemplate[] = [
+  // ─── Court Filings ───
   {
     id: "civil-suit",
     title: "Civil Suit (Plaint)",
     body: CIVIL_SUIT_TEMPLATE,
+    category: "Court Filings",
+    description: "Standard plaint format under Order VII Rule 1 CPC.",
   },
   {
     id: "civil-misc-application",
     title: "Civil Misc. Application",
     body: CIVIL_MISC_APPLICATION_TEMPLATE,
+    category: "Court Filings",
+    description: "Generic miscellaneous application before Civil Judge.",
   },
   {
     id: "criminal-misc-application",
     title: "Criminal Misc. Application",
     body: CRIMINAL_MISC_APPLICATION_TEMPLATE,
+    category: "Court Filings",
+    description: "Application before Justice of Peace / Ex-Officio JoP.",
   },
   {
     id: "temporary-injunction-application",
     title: "Temporary Injunction Application",
     body: TEMPORARY_INJUNCTION_TEMPLATE,
+    category: "Court Filings",
+    description: "Application under Order XXXIX Rules 1 & 2 CPC.",
   },
   {
     id: "execution-application",
     title: "Execution Application",
     body: EXECUTION_APPLICATION_TEMPLATE,
+    category: "Court Filings",
+    description: "Application under Order XXI CPC for execution of decree.",
   },
+  // ─── Sessions Court ───
   {
     id: "sessions-bail",
     title: "Sessions Court Bail Application",
     body: SESSIONS_BAIL_TEMPLATE,
+    category: "Sessions Court",
+    description: "Post-arrest bail application under Section 497 CrPC.",
   },
   {
     id: "sessions-pre-arrest-bail",
     title: "Sessions Pre-Arrest Bail",
     body: SESSIONS_PRE_ARREST_BAIL_TEMPLATE,
+    category: "Sessions Court",
+    description: "Pre-arrest bail under Section 498 CrPC.",
   },
   {
     id: "sessions-criminal-appeal",
     title: "Sessions Criminal Appeal",
     body: SESSIONS_CRIMINAL_APPEAL_TEMPLATE,
+    category: "Sessions Court",
+    description: "Criminal appeal before Sessions Judge.",
   },
   {
     id: "sessions-criminal-revision",
     title: "Sessions Criminal Revision",
     body: SESSIONS_CRIMINAL_REVISION_TEMPLATE,
+    category: "Sessions Court",
+    description: "Revision under Section 435/439 CrPC.",
   },
+  // ─── Family ───
   {
     id: "family-suit-petition",
     title: "Family Suit / Petition",
     body: FAMILY_SUIT_TEMPLATE,
+    category: "Family",
+    description: "Suit under Family Courts Act 1964 — khula, maintenance, custody.",
   },
+  // ─── High Court ───
   {
     id: "high-court-writ",
     title: "High Court Writ Petition",
     body: HIGH_COURT_WRIT_TEMPLATE,
+    category: "High Court",
+    description: "Constitutional petition under Article 199 of the Constitution.",
   },
   {
     id: "high-court-appeal",
     title: "High Court Civil Appeal",
     body: HIGH_COURT_APPEAL_TEMPLATE,
+    category: "High Court",
+    description: "Civil first/second appeal before the High Court.",
   },
   {
     id: "high-court-criminal-appeal",
     title: "High Court Criminal Appeal",
     body: HIGH_COURT_CRIMINAL_APPEAL_TEMPLATE,
+    category: "High Court",
+    description: "Criminal appeal before the High Court.",
   },
   {
     id: "high-court-criminal-revision",
     title: "High Court Criminal Revision",
     body: HIGH_COURT_CRIMINAL_REVISION_TEMPLATE,
+    category: "High Court",
+    description: "Criminal revision before the High Court.",
   },
   {
     id: "high-court-bba",
     title: "High Court Bail Before Arrest",
     body: HIGH_COURT_BBA_TEMPLATE,
+    category: "High Court",
+    description: "Bail-before-arrest before the High Court (Section 498 CrPC).",
   },
+  // ─── Supreme Court ───
   {
     id: "supreme-cpla",
     title: "Supreme Court CPLA",
     body: SUPREME_CPLA_TEMPLATE,
+    category: "Supreme Court",
+    description: "Civil Petition for Leave to Appeal before the Supreme Court.",
   },
   {
     id: "supreme-criminal-petition",
     title: "Supreme Court Criminal Petition for Leave to Appeal",
     body: SUPREME_CRIMINAL_PETITION_TEMPLATE,
+    category: "Supreme Court",
+    description: "Cr.P.L.A. before the Supreme Court of Pakistan.",
+  },
+  // ─── Affidavits & Powers ───
+  {
+    id: "vakalatnama",
+    title: "Vakalatnama",
+    body: VAKALATNAMA_TEMPLATE,
+    category: "Affidavits & Powers",
+    description: "Standard advocate authorisation form filed in every case.",
+  },
+  {
+    id: "affidavit",
+    title: "Affidavit",
+    body: AFFIDAVIT_TEMPLATE,
+    category: "Affidavits & Powers",
+    description: "Sworn affidavit attested by Oath Commissioner / Notary.",
+  },
+  {
+    id: "power-of-attorney-general",
+    title: "General Power of Attorney",
+    body: POWER_OF_ATTORNEY_GENERAL_TEMPLATE,
+    category: "Affidavits & Powers",
+    description: "Comprehensive power of attorney covering property + legal acts.",
+  },
+  // ─── Notices ───
+  {
+    id: "legal-notice-generic",
+    title: "Legal Notice (Generic)",
+    body: LEGAL_NOTICE_GENERIC_TEMPLATE,
+    category: "Notices",
+    description: "Pre-litigation legal notice — recovery / breach / cease & desist.",
+  },
+  {
+    id: "notice-138-nia",
+    title: "Cheque Dishonour Notice (Section 138 NI Act)",
+    body: NOTICE_138_NIA_TEMPLATE,
+    category: "Notices",
+    description: "Statutory 15-day demand notice before 489-F PPC complaint.",
+  },
+  // ─── Contracts ───
+  {
+    id: "nda",
+    title: "Non-Disclosure Agreement (NDA)",
+    body: NDA_TEMPLATE,
+    category: "Contracts",
+    description: "Bilateral NDA with Pakistani jurisdiction + arbitration clauses.",
+  },
+  {
+    id: "sale-deed",
+    title: "Sale Deed (Property)",
+    body: SALE_DEED_TEMPLATE,
+    category: "Contracts",
+    description: "Property sale deed under Transfer of Property Act 1882.",
   },
 ];
+
+/**
+ * TemplatesPanel — categorised + searchable list of drafting templates.
+ * Replaces the prior flat list. Templates are grouped by their `category`
+ * field; expanding a category reveals its templates with description.
+ */
+function TemplatesPanel({ onApply }: { onApply: (template: DraftTemplate) => void }) {
+  const [search, setSearch] = useState("");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const grouped = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? TEMPLATES.filter(
+          (t) =>
+            t.title.toLowerCase().includes(q) ||
+            (t.description ?? "").toLowerCase().includes(q) ||
+            t.category.toLowerCase().includes(q),
+        )
+      : TEMPLATES;
+    const map = new Map<DraftTemplateCategory, DraftTemplate[]>();
+    for (const t of filtered) {
+      const arr = map.get(t.category) || [];
+      arr.push(t);
+      map.set(t.category, arr);
+    }
+    // preserve a stable category ordering
+    const ORDER: DraftTemplateCategory[] = [
+      "Court Filings",
+      "Sessions Court",
+      "High Court",
+      "Supreme Court",
+      "Family",
+      "Notices",
+      "Affidavits & Powers",
+      "Contracts",
+    ];
+    return ORDER.filter((c) => map.has(c)).map((c) => ({ category: c, items: map.get(c)! }));
+  }, [search]);
+
+  return (
+    <div className="w-full overflow-auto flex flex-col gap-2 pb-3">
+      <div className="relative">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search templates..."
+          className="w-full text-xs rounded-lg border border-border bg-card/40 px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+          data-testid="input-template-search"
+        />
+      </div>
+
+      {grouped.length === 0 ? (
+        <p className="text-xs text-muted-foreground p-3">No templates match your search.</p>
+      ) : (
+        grouped.map(({ category, items }) => {
+          const isCollapsed = collapsed[category];
+          return (
+            <div key={category} className="rounded-lg border border-border/60 bg-card/30">
+              <button
+                type="button"
+                onClick={() => setCollapsed((c) => ({ ...c, [category]: !c[category] }))}
+                className="w-full flex items-center justify-between px-3 py-2 text-left"
+                data-testid={`button-template-cat-${category}`}
+              >
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+                  {category}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {items.length} {isCollapsed ? "▸" : "▾"}
+                </span>
+              </button>
+              {!isCollapsed && (
+                <div className="px-2 pb-2 space-y-1.5">
+                  {items.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => onApply(t)}
+                      className="w-full text-left rounded-lg border border-border/70 bg-card/40 backdrop-blur-md p-2.5 hover:border-primary/40 hover:bg-card/70 transition-all"
+                      data-testid={`button-template-${t.id}`}
+                    >
+                      <p className="text-[12px] font-semibold text-foreground">{t.title}</p>
+                      {t.description && (
+                        <p className="text-[10.5px] text-muted-foreground mt-0.5 leading-snug">
+                          {t.description}
+                        </p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
 
 function findSnippetRange(source: string, targetSnippet: string): { start: number; end: number } | null {
   const target = targetSnippet.trim();
@@ -2025,18 +2740,7 @@ export default function LegalDraftingPage() {
 
           <div className="hidden md:flex flex-1 min-h-0 px-3 pt-3">
             {activeLeftTool === "templates" ? (
-              <div className="w-full overflow-auto space-y-2">
-                {TEMPLATES.map((template) => (
-                  <button
-                    key={template.id}
-                    onClick={() => applyTemplate(template)}
-                    className="w-full text-left rounded-xl border border-border/70 bg-card/45 backdrop-blur-md p-3 hover:border-primary/30 transition-all"
-                  >
-                    <p className="text-sm font-semibold text-foreground">{template.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Click to load this template.</p>
-                  </button>
-                ))}
-              </div>
+              <TemplatesPanel onApply={applyTemplate} />
             ) : (
               <div className="w-full overflow-auto space-y-2">
                 {loadingDocs ? (
