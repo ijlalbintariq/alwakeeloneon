@@ -1202,38 +1202,38 @@ export default function ContractDraftingPage() {
       <main className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         <section
           className={`w-full lg:shrink-0 glass-surface border-b lg:border-b-0 border-[hsl(var(--preview-border))] transition-[width] duration-300 ease-out overflow-hidden ${
-            leftRailVisible ? "lg:w-[360px] lg:border-r" : "lg:w-0 lg:border-r-0"
+            leftRailVisible ? "lg:w-[300px] lg:border-r" : "lg:w-0 lg:border-r-0"
           } ${focusWritingMode ? "hidden" : ""}`}
         >
-          <div className="w-full lg:w-[360px] h-full flex flex-col">
-            <div className="p-3 md:p-4 overflow-y-auto scrollbar-hide flex-1 space-y-4 md:space-y-5">
-            <div className="space-y-1">
-              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <FileText size={18} className="text-primary" />
+          <div className="w-full lg:w-[300px] h-full flex flex-col">
+            <div className="p-2.5 overflow-y-auto scrollbar-hide flex-1 space-y-2.5">
+            <div className="space-y-0.5">
+              <h2 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <FileText size={14} className="text-primary" />
                 Input Parameters
               </h2>
-              <p className="text-xs text-muted-foreground">Provide details to generate the legal draft</p>
+              <p className="text-[10px] text-muted-foreground">Provide details to generate the legal draft</p>
             </div>
 
-            <div className="space-y-4">
-              <div className="group">
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Contract Title</label>
+            <div className="space-y-2">
+              <div>
+                <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Contract Title</label>
                 <Input
                   value={form.title}
                   onChange={(e) => onFieldChange("title", e.target.value)}
-                  className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
+                  className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
                   placeholder="e.g. Service Agreement 2026"
                 />
               </div>
-              <div className="group">
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Contract Type</label>
+              <div>
+                <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Contract Type</label>
                 <select
                   value={form.contractType}
                   onChange={(e) => onFieldChange("contractType", e.target.value)}
-                  className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary outline-none"
+                  className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none"
                 >
                   {CONTRACT_TYPES.map((type) => (
-                    <option key={type} value={type} className="preview-bg">
+                    <option key={type} value={type} className="bg-background">
                       {type}
                     </option>
                   ))}
@@ -1241,55 +1241,51 @@ export default function ContractDraftingPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary/90 uppercase text-[10px] font-bold tracking-widest">
-                <span>Parties Information</span>
-              </div>
-              <div className="space-y-4">
-                <div className="group">
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">First Party (Employer)</label>
+            <div className="space-y-2">
+              <div className="text-primary/90 uppercase text-[9px] font-bold tracking-widest">Parties</div>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">First Party (Employer)</label>
                   <Input
                     value={form.firstParty}
                     onChange={(e) => onFieldChange("firstParty", e.target.value)}
-                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
+                    className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
                     placeholder="e.g. Malik & Sons Enterprises"
                   />
                 </div>
-                <div className="group">
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Second Party (Contractor)</label>
+                <div>
+                  <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Second Party (Contractor)</label>
                   <Input
                     value={form.secondParty}
                     onChange={(e) => onFieldChange("secondParty", e.target.value)}
-                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
+                    className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
                     placeholder="Full Legal Name"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary/90 uppercase text-[10px] font-bold tracking-widest">
-                <span>Contract Duration</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="group">
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Effective Date</label>
+            <div className="space-y-2">
+              <div className="text-primary/90 uppercase text-[9px] font-bold tracking-widest">Duration</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Effective Date</label>
                   <Input
                     type="date"
                     value={form.effectiveDate}
                     onChange={(e) => onFieldChange("effectiveDate", e.target.value)}
-                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary outline-none"
+                    className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none"
                   />
                 </div>
-                <div className="group">
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Termination Notice</label>
+                <div>
+                  <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Notice Period</label>
                   <select
                     value={form.terminationNotice}
                     onChange={(e) => onFieldChange("terminationNotice", e.target.value)}
-                    className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary outline-none"
+                    className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none"
                   >
                     {NOTICE_PERIODS.map((p) => (
-                      <option key={p} value={p} className="preview-bg">
+                      <option key={p} value={p} className="bg-background">
                         {p}
                       </option>
                     ))}
@@ -1298,103 +1294,96 @@ export default function ContractDraftingPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary/90 uppercase text-[10px] font-bold tracking-widest">
-                <span>Jurisdiction & Governing Law</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
+            <div className="space-y-1.5">
+              <div className="text-primary/90 uppercase text-[9px] font-bold tracking-widest">Jurisdiction</div>
+              <div className="flex flex-wrap gap-1.5">
                 {JURISDICTIONS.map((city) => (
                   <button
                     key={city}
                     onClick={() => onFieldChange("jurisdiction", city)}
-                    className={`px-4 py-2 rounded-full border text-xs font-bold transition-all ${
+                    className={`px-2.5 py-1 rounded-full border text-[10px] font-bold transition-all ${
                       form.jurisdiction === city
                         ? "border-primary bg-primary/10 text-primary"
-                        : "border-primary/20 bg-white/5 text-muted-foreground hover:border-primary/50"
+                        : "border-border bg-card/50 text-muted-foreground hover:border-primary/50"
                     }`}
                   >
                     {city}
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground italic">Governed by the Contract Act, 1872 (IX of 1872)</p>
+              <p className="text-[9px] text-muted-foreground italic">Contract Act, 1872 (IX of 1872)</p>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary/90 uppercase text-[10px] font-bold tracking-widest">
-                <span>Specific Obligations</span>
-              </div>
+            <div className="space-y-1.5">
+              <div className="text-primary/90 uppercase text-[9px] font-bold tracking-widest">Obligations</div>
               <Textarea
                 value={form.obligations}
                 onChange={(e) => onFieldChange("obligations", e.target.value)}
-                className="w-full bg-white/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground resize-none"
+                className="w-full bg-card/50 border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground resize-none"
                 placeholder="Describe the service scope or payment terms..."
-                rows={4}
+                rows={2}
               />
             </div>
 
-            <div className="space-y-3 rounded-xl border border-primary/20 glass-soft p-3">
-              <div className="flex items-center gap-2">
-                <Library size={14} className="text-primary" />
-                <p className="text-[11px] font-semibold text-primary uppercase tracking-widest">Clause Library Panel</p>
+            <div className="space-y-2 rounded-lg border border-border p-2">
+              <div className="flex items-center gap-1.5">
+                <Library size={12} className="text-primary" />
+                <p className="text-[10px] font-semibold text-primary uppercase tracking-widest">Clause Library</p>
               </div>
               <Input
                 value={clauseSearch}
                 onChange={(e) => setClauseSearch(e.target.value)}
-                className="h-8 bg-white/5 border border-primary/20 text-xs text-foreground placeholder:text-muted-foreground"
+                className="h-7 bg-card/50 border border-border text-[10px] text-foreground placeholder:text-muted-foreground"
                 placeholder="Search clause library..."
               />
               <select
                 value={clauseCategory}
                 onChange={(e) => setClauseCategory(e.target.value)}
-                className="h-8 w-full bg-white/5 border border-primary/20 rounded-md px-2 text-xs text-foreground outline-none focus:border-primary"
+                className="h-7 w-full bg-card/50 border border-border rounded-md px-2 text-[10px] text-foreground outline-none focus:border-primary"
               >
                 {clauseCategories.map((category) => (
-                  <option key={category} value={category} className="preview-bg">
+                  <option key={category} value={category} className="bg-background">
                     {category}
                   </option>
                 ))}
               </select>
-              <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
+              <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
                 {filteredClauseLibrary.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => applySuggestedClause(item.prompt)}
-                    className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-primary/10 border border-white/10"
+                    className="w-full text-left px-2 py-1 rounded-md bg-card/30 hover:bg-primary/10 border border-border text-[10px]"
                     disabled={isGenerating}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-foreground">{item.title}</span>
-                      <span className="text-[9px] uppercase text-primary">{item.category}</span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">{item.subtitle}</p>
+                    <span className="font-semibold text-foreground">{item.title}</span>
+                    <span className="text-muted-foreground ml-1">— {item.subtitle}</span>
                   </button>
                 ))}
                 {!filteredClauseLibrary.length && (
-                  <p className="text-[11px] text-muted-foreground text-center py-3">No clauses match this search.</p>
+                  <p className="text-[10px] text-muted-foreground text-center py-2">No clauses match.</p>
                 )}
               </div>
             </div>
 
-            <div className="space-y-3 rounded-xl border border-primary/20 glass-soft p-3">
-              <div className="flex items-center gap-2">
-                <ListChecks size={14} className="text-primary" />
-                <p className="text-[11px] font-semibold text-primary uppercase tracking-widest">
-                  Mandatory Clause Checker
+            <div className="space-y-1.5 rounded-lg border border-border p-2">
+              <div className="flex items-center gap-1.5">
+                <ListChecks size={12} className="text-primary" />
+                <p className="text-[10px] font-semibold text-primary uppercase tracking-widest">
+                  Mandatory Clauses
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-1.5 flex-1 rounded-full bg-white/10 overflow-hidden">
-                  <div className="h-full bg-emerald-400" style={{ width: `${mandatoryCoverage}%` }} />
+                <div className="h-1 flex-1 rounded-full bg-accent overflow-hidden">
+                  <div className="h-full bg-emerald-500" style={{ width: `${mandatoryCoverage}%` }} />
                 </div>
-                <span className="text-[10px] text-emerald-300 font-semibold">{mandatoryCoverage}%</span>
+                <span className="text-[9px] text-emerald-600 dark:text-emerald-300 font-semibold">{mandatoryCoverage}%</span>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-0.5">
                 {mandatoryChecks.map((check) => (
-                  <div key={check.id} className="flex items-center justify-between text-[11px]">
+                  <div key={check.id} className="flex items-center justify-between text-[10px]">
                     <span className="text-foreground">{check.label}</span>
-                    <span className={check.present ? "text-emerald-300" : "text-red-300"}>
-                      {check.present ? "Present" : "Missing"}
+                    <span className={check.present ? "text-emerald-600 dark:text-emerald-300" : "text-red-500 dark:text-red-300"}>
+                      {check.present ? "✓" : "✗"}
                     </span>
                   </div>
                 ))}
@@ -1402,33 +1391,33 @@ export default function ContractDraftingPage() {
             </div>
             </div>
 
-            <div className="p-3 md:p-4 glass-surface border-t border-[hsl(var(--preview-border))] space-y-2">
+            <div className="p-2.5 border-t border-border space-y-1.5">
               <button
                 onClick={generateDraft}
-                className="w-full py-3 bg-primary hover:bg-primary rounded-lg text-primary-foreground font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2 bg-primary hover:bg-primary rounded-md text-primary-foreground font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
                 data-testid="button-generate-contract-draft"
                 disabled={isGenerating}
               >
-                {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 {isGenerating ? "Generating..." : "Generate Contract Draft"}
               </button>
               <button
                 onClick={() => runComplianceCheck({ silent: false })}
-                className="w-full py-3 bg-white/5 border border-primary/30 rounded-lg text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2 bg-card/50 border border-border rounded-md text-foreground font-semibold text-xs hover:bg-accent transition-colors flex items-center justify-center gap-1.5"
                 data-testid="button-run-contract-compliance"
                 disabled={isRunningCompliance}
               >
-                {isRunningCompliance ? <Loader2 size={16} className="animate-spin" /> : <ScanText size={16} />}
-                {isRunningCompliance ? "Scanning..." : "Run Live AI Risk Scan"}
+                {isRunningCompliance ? <Loader2 size={14} className="animate-spin" /> : <ScanText size={14} />}
+                {isRunningCompliance ? "Scanning..." : "AI Risk Scan"}
               </button>
               <button
                 onClick={runCounterpartyRedline}
-                className="w-full py-3 bg-white/5 border border-primary/30 rounded-lg text-primary font-bold text-sm hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2 bg-card/50 border border-border rounded-md text-foreground font-semibold text-xs hover:bg-accent transition-colors flex items-center justify-center gap-1.5"
                 data-testid="button-run-counterparty-redline"
                 disabled={isRunningRedline}
               >
-                {isRunningRedline ? <Loader2 size={16} className="animate-spin" /> : <GitCompareArrows size={16} />}
-                {isRunningRedline ? "Reviewing..." : "Counterparty Redline Mode"}
+                {isRunningRedline ? <Loader2 size={14} className="animate-spin" /> : <GitCompareArrows size={14} />}
+                {isRunningRedline ? "Reviewing..." : "Redline Mode"}
               </button>
             </div>
           </div>
