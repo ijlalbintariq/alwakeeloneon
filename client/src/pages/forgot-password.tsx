@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
 
       <div className="w-full max-w-md bg-card border border-border p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[3rem] shadow-2xl relative z-10 fade-in">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-primary/40 mb-5 shadow-lg shadow-primary/20">
+          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-amber-400/40 mb-5 shadow-lg shadow-amber-500/20">
             <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-3xl font-bold text-foreground uppercase tracking-tighter italic" style={{ fontFamily: "'Playfair Display', serif" }}>

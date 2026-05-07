@@ -159,7 +159,10 @@ function AppSidebar() {
       <SidebarHeader className="p-3 border-b border-[hsl(var(--preview-border))]">
         <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-background/65 backdrop-blur-lg px-2.5 py-2.5 shadow-[0_18px_34px_-26px_rgba(0,0,0,0.9)]">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl overflow-hidden border border-primary/40 shadow-xl shadow-primary/30 flex-shrink-0">
+            {/* Brand mark — hardcoded gold accents on purpose. The logo is the
+                product identity and must look the same regardless of light/dark
+                theme. Do NOT swap these to bg-primary / border-primary. */}
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-400/40 shadow-xl shadow-amber-500/30 flex-shrink-0">
               <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
             </div>
             <div className="min-w-0">

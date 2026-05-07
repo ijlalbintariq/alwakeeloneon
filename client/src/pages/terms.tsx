@@ -11,7 +11,7 @@ export default function TermsOfServicePage() {
           <button onClick={() => navigate("/")} className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft size={18} />
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg overflow-hidden border border-primary/35">
+              <div className="w-8 h-8 rounded-lg overflow-hidden border border-amber-400/35">
                 <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
               </div>
               <span className="text-sm font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>

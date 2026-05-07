@@ -120,7 +120,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-primary/30 shadow-lg shadow-primary/20">
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-amber-400/30 shadow-lg shadow-amber-500/20">
               <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
             </div>
             <span className="text-xl font-bold italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>
@@ -587,7 +587,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg overflow-hidden border border-primary/30">
+              <div className="w-8 h-8 rounded-lg overflow-hidden border border-amber-400/30">
                 <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
               </div>
               <span className="text-sm font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>

@@ -246,7 +246,7 @@ export default function AuthPage() {
 
       <div className="w-full max-w-md preview-elevated p-6 sm:p-10 rounded-[1.4rem] sm:rounded-[2.2rem] relative z-10 fade-in">
         <div className="text-center mb-8 pb-6 border-b border-[hsl(var(--preview-border))]">
-          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-primary/40 mb-5 shadow-lg shadow-primary/30">
+          <div className="w-16 h-16 rounded-2xl mx-auto overflow-hidden border border-amber-400/40 mb-5 shadow-lg shadow-amber-500/30">
             <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-3xl font-bold preview-title uppercase tracking-tighter italic" style={{ fontFamily: "'Playfair Display', serif" }}>
