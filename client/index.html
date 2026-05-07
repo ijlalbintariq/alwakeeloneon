@@ -1,8 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Apply theme BEFORE React mounts to prevent a flash of light-theme on
+      // first paint. Default is dark (the golden brand theme); switch to
+      // light only when the user previously toggled or the OS prefers light
+      // and they chose "system".
+      (function () {
+        try {
+          var v = localStorage.getItem("alwakeelo-theme-v1");
+          var isLight = v === "light" || (v === "system" && window.matchMedia &&
+            !window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (isLight) {
+            document.documentElement.classList.add("light");
+            document.documentElement.classList.remove("dark");
+          }
+          // else: leave class="dark" (golden theme) applied
+        } catch (_) {
+          /* localStorage blocked — keep default dark theme */
+        }
+      })();
+    </script>
     <title>Al Wakeelo - Your Digital Lawyer | AI Legal Assistant</title>
     <meta name="description" content="AI-powered Pakistani legal assistant. Search judgments, research statutes, draft contracts, and consult with Al Wakeelo for expert legal guidance." />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
