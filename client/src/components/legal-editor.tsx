@@ -16,12 +16,16 @@ import {
   useImperativeHandle,
   type Ref,
 } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, ReactRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
+import tippy, { type Instance as TippyInstance } from "tippy.js";
+import { CitationNode } from "./citation-node";
+import { CitationSuggestion, type CitationSuggestionItem } from "./citation-suggestion";
+import { CitationList, type CitationListHandle } from "./citation-list";
 import {
   Bold,
   Italic,
@@ -132,12 +136,74 @@ function LegalEditorInner(
         placeholder: placeholder || "Begin drafting or load a template…",
       }),
       Typography,
+      CitationNode,
+      CitationSuggestion.configure({
+        suggestion: {
+          render: () => {
+            let component: ReactRenderer<CitationListHandle> | null = null;
+            let popup: TippyInstance[] | null = null;
+
+            return {
+              onStart: (props: any) => {
+                component = new ReactRenderer(CitationList, {
+                  props,
+                  editor: props.editor,
+                });
+
+                if (!props.clientRect) return;
+
+                popup = tippy("body", {
+                  getReferenceClientRect: props.clientRect,
+                  appendTo: () => document.body,
+                  content: component.element,
+                  showOnCreate: true,
+                  interactive: true,
+                  trigger: "manual",
+                  placement: "bottom-start",
+                  maxWidth: 380,
+                });
+              },
+              onUpdate: (props: any) => {
+                component?.updateProps(props);
+                if (popup?.[0] && props.clientRect) {
+                  popup[0].setProps({
+                    getReferenceClientRect: props.clientRect,
+                  });
+                }
+              },
+              onKeyDown: (props: any) => {
+                if (props.event.key === "Escape") {
+                  popup?.[0]?.hide();
+                  return true;
+                }
+                return component?.ref?.onKeyDown(props) ?? false;
+              },
+              onExit: () => {
+                popup?.[0]?.destroy();
+                component?.destroy();
+              },
+            };
+          },
+        },
+      }),
     ],
     content: initialContent || "",
     editorProps: {
       attributes: {
         class: "legal-draft-editor outline-none",
         spellcheck: "true",
+      },
+      handleClick: (_view, _pos, event) => {
+        const target = event.target as HTMLElement;
+        const chip = target.closest?.('[data-type="citation"]') as HTMLElement | null;
+        if (chip) {
+          const jid = chip.getAttribute("data-judgment-id");
+          if (jid) {
+            window.open(`/judgment/${jid}`, "_blank");
+          }
+          return true;
+        }
+        return false;
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -323,11 +389,14 @@ function LegalEditorInner(
           <RemoveFormatting size={14} />
         </ToolbarBtn>
 
-        {/* Word count */}
-        <div className="ml-auto text-[10px] text-muted-foreground tabular-nums">
-          {editor.storage.characterCount?.words?.() ??
-            editor.getText().split(/\s+/).filter(Boolean).length}{" "}
-          words
+        {/* Word count + citation hint */}
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-[9px] text-muted-foreground/60 hidden md:inline">Type <code className="bg-card/60 px-1 py-0.5 rounded text-[8px] font-mono">/cite</code> to insert citation</span>
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {editor.storage.characterCount?.words?.() ??
+              editor.getText().split(/\s+/).filter(Boolean).length}{" "}
+            words
+          </span>
         </div>
       </div>
 

@@ -326,6 +326,68 @@
   border-top-color: hsl(var(--primary));
 }
 
+/* ── Citation inline chip ────────────────────────────────────────────── */
+
+.citation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  margin: 0 2px;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--primary) / 0.35);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  font-family: 'Times New Roman', serif;
+  font-size: 0.85em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  vertical-align: baseline;
+}
+
+.citation-chip:hover {
+  background: hsl(var(--primary) / 0.2);
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+}
+
+/* ── Citation suggestion popup ───────────────────────────────────────── */
+
+.citation-suggestion-popup {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+  min-width: 280px;
+  max-width: 380px;
+  animation: citation-popup-in 0.15s ease-out;
+}
+
+@keyframes citation-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Tippy box reset for citation popup */
+.tippy-box[data-theme="citation"] {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
