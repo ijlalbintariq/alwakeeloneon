@@ -415,6 +415,18 @@
   font-family: var(--font-sans);
 }
 
+/*
+ * macOS skin tokens — typography + glass + shadow style only.
+ * The original macOS preview block hardcoded a BLUE primary (HSL 213) which
+ * overrode the brand gold across the entire app — every CTA, every accent,
+ * every card border rendered blue regardless of light/dark theme.
+ *
+ * Fix: keep all the macOS surface tones (slightly different navy/whites for
+ * the macOS aesthetic) but DROP every override of --primary, --accent,
+ * --ring, --sidebar-primary, --sidebar-ring, --preview-border-active,
+ * --preview-shadow-glow, --mac-focus. Those now inherit from `.dark` or
+ * `:root` (which use the brand gold HSL 38 92% 50%).
+ */
 [data-ui-preview="macos"][data-theme="dark"] {
   --background: 218 40% 7%;
   --foreground: 215 26% 92%;
@@ -422,34 +434,23 @@
   --card-foreground: 215 26% 92%;
   --popover: 218 33% 14%;
   --popover-foreground: 215 26% 92%;
-  --primary: 213 92% 60%;
-  --primary-foreground: 222 47% 6%;
-  --accent: 213 92% 60%;
-  --accent-foreground: 222 47% 6%;
   --border: 217 23% 28%;
   --input: 217 23% 28%;
-  --ring: 213 92% 60%;
   --sidebar: 218 36% 10%;
   --sidebar-foreground: 215 26% 90%;
   --sidebar-border: 217 22% 24%;
-  --sidebar-ring: 213 92% 60%;
-  --sidebar-primary: 213 92% 60%;
-  --sidebar-primary-foreground: 222 47% 6%;
   --sidebar-accent: 217 20% 18%;
   --sidebar-accent-foreground: 215 26% 90%;
   --preview-bg: 218 40% 7%;
   --preview-surface: 218 32% 13%;
   --preview-surface-elevated: 218 28% 17%;
   --preview-border: 217 20% 25%;
-  --preview-border-active: 213 92% 60%;
   --preview-text-primary: 215 26% 94%;
   --preview-text-secondary: 214 16% 74%;
   --preview-text-muted: 214 12% 58%;
   --preview-shadow-soft: 0 20px 42px -24px hsl(220 53% 4% / 0.75);
-  --preview-shadow-glow: 0 14px 34px -22px hsl(213 92% 60% / 0.28);
   --mac-glass-bg: linear-gradient(180deg, hsl(218 30% 14% / 0.66), hsl(218 28% 11% / 0.56));
   --mac-glass-border: hsl(217 18% 70% / 0.16);
-  --mac-focus: 0 0 0 3px hsl(213 92% 60% / 0.25);
 }
 
 [data-ui-preview="macos"][data-theme="light"] {
@@ -459,34 +460,23 @@
   --card-foreground: 220 24% 16%;
   --popover: 0 0% 100%;
   --popover-foreground: 220 24% 16%;
-  --primary: 213 92% 52%;
-  --primary-foreground: 0 0% 100%;
-  --accent: 213 92% 52%;
-  --accent-foreground: 0 0% 100%;
   --border: 220 16% 80%;
   --input: 220 16% 80%;
-  --ring: 213 92% 52%;
   --sidebar: 0 0% 100%;
   --sidebar-foreground: 220 24% 20%;
   --sidebar-border: 220 16% 84%;
-  --sidebar-ring: 213 92% 52%;
-  --sidebar-primary: 213 92% 52%;
-  --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 220 30% 96%;
   --sidebar-accent-foreground: 220 24% 20%;
   --preview-bg: 220 30% 95%;
   --preview-surface: 220 28% 98%;
   --preview-surface-elevated: 0 0% 100%;
   --preview-border: 220 16% 84%;
-  --preview-border-active: 213 92% 52%;
   --preview-text-primary: 220 24% 16%;
   --preview-text-secondary: 220 14% 34%;
   --preview-text-muted: 220 10% 44%;
   --preview-shadow-soft: 0 20px 36px -26px hsl(220 24% 25% / 0.2);
-  --preview-shadow-glow: 0 12px 28px -20px hsl(213 92% 52% / 0.2);
   --mac-glass-bg: linear-gradient(180deg, hsl(0 0% 100% / 0.7), hsl(220 28% 96% / 0.64));
   --mac-glass-border: hsl(220 14% 42% / 0.18);
-  --mac-focus: 0 0 0 3px hsl(213 92% 52% / 0.22);
 }
 
 [data-ui-preview="macos"] .mac-anim {
