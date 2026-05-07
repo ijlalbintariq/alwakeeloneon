@@ -2596,9 +2596,9 @@ export default function LegalDraftingPage() {
   }, []);
 
   return (
-    <div className="relative isolate h-full min-h-[620px] md:min-h-[820px] rounded-2xl overflow-hidden border border-border/70 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.14),transparent_36%),linear-gradient(180deg,#070d1b_0%,#0a1426_45%,#0b1629_100%)] text-foreground fade-in flex flex-col shadow-[0_20px_80px_rgba(2,6,23,0.55)]">
-      <div className="pointer-events-none absolute -top-24 right-10 h-56 w-56 rounded-full bg-primary/12 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-20 left-8 h-60 w-60 rounded-full bg-primary/10 blur-3xl" />
+    <div className="relative isolate h-full min-h-[500px] md:min-h-[640px] rounded-xl overflow-hidden border border-border/70 bg-background text-foreground fade-in flex flex-col">
+      <div className="pointer-events-none absolute -top-24 right-10 h-56 w-56 rounded-full bg-primary/8 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 left-8 h-60 w-60 rounded-full bg-primary/6 blur-3xl" />
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.08]"
         style={{
@@ -2607,15 +2607,15 @@ export default function LegalDraftingPage() {
           backgroundSize: "28px 28px",
         }}
       />
-      <header className="h-[74px] border-b border-white/10 flex items-center justify-between px-3 md:px-6 bg-background/80 backdrop-blur-xl z-20">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="flex items-center gap-3">
-            <div className="size-9 shrink-0 rounded-lg bg-gradient-to-br from-primary to-primary text-foreground flex items-center justify-center shadow-lg shadow-primary/25 ring-1 ring-primary/30">
-              <Gavel size={18} className="translate-y-[0.5px]" />
+      <header className="h-[56px] border-b border-border/40 flex items-center justify-between px-3 md:px-5 bg-background/80 backdrop-blur-xl z-20">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="size-7 shrink-0 rounded-md bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
+              <Gavel size={14} className="translate-y-[0.5px]" />
             </div>
             <div className="leading-tight">
-              <h2 className="text-lg md:text-xl font-bold tracking-tight">Legal Drafting Studio</h2>
-              <p className="text-[9px] uppercase tracking-[0.24em] text-primary/90 font-black">AL WAKEELO / DRAFT OPS</p>
+              <h2 className="text-base font-bold tracking-tight">Legal Drafting Studio</h2>
+              <p className="text-[8px] uppercase tracking-[0.24em] text-primary/90 font-black">AL WAKEELO / DRAFT OPS</p>
             </div>
           </div>
           <div className="hidden md:block h-6 w-px bg-primary/20" />
@@ -2697,7 +2697,7 @@ export default function LegalDraftingPage() {
             <span className="hidden md:inline">TXT</span>
           </Button>
           <Button
-            className="h-9 md:h-10 px-2.5 md:px-3 bg-primary text-foreground hover:bg-primary font-bold shadow-lg shadow-primary/20"
+            className="h-9 md:h-10 px-2.5 md:px-3 bg-primary text-primary-foreground hover:bg-primary font-bold shadow-lg shadow-primary/20"
             onClick={exportAsDoc}
             data-testid="button-export-doc"
           >
@@ -2829,7 +2829,7 @@ export default function LegalDraftingPage() {
         <div className={`${focusWritingMode ? "hidden" : "hidden md:flex"} items-stretch`}>
           <button
             onClick={() => setLeftRailOpen((v) => !v)}
-            className="h-full w-6 border-r border-primary/35 bg-gradient-to-b from-primary/25 via-[#15233b] to-[#0c1525] text-foreground hover:from-primary/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            className="h-full w-6 border-r border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
             data-testid="divider-toggle-left-rail"
             title={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
             aria-label={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
@@ -3086,7 +3086,7 @@ export default function LegalDraftingPage() {
         <div className={`${focusWritingMode ? "hidden" : "hidden lg:flex"} items-stretch`}>
           <button
             onClick={() => setRightRailOpen((v) => !v)}
-            className="h-full w-6 border-l border-primary/35 bg-gradient-to-b from-primary/25 via-[#15233b] to-[#0c1525] text-foreground hover:from-primary/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            className="h-full w-6 border-l border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
             data-testid="divider-toggle-right-rail"
             title={rightRailVisible ? "Collapse AI panel" : "Expand AI panel"}
             aria-label={rightRailVisible ? "Collapse AI panel" : "Expand AI panel"}

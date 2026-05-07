@@ -1102,19 +1102,19 @@ export default function ContractDraftingPage() {
   );
 
   return (
-    <div className="h-full min-h-[620px] md:min-h-[760px] rounded-2xl md:rounded-[1.8rem] border border-[hsl(var(--preview-border))] overflow-hidden preview-bg text-foreground flex flex-col fade-in">
-      <header className="flex items-center justify-between border-b border-[hsl(var(--preview-border))] glass-shell backdrop-blur-xl px-3 md:px-8 py-3 z-20">
+    <div className="h-full min-h-[500px] md:min-h-[620px] rounded-xl md:rounded-2xl border border-[hsl(var(--preview-border))] overflow-hidden preview-bg text-foreground flex flex-col fade-in">
+      <header className="flex items-center justify-between border-b border-[hsl(var(--preview-border))] glass-shell backdrop-blur-xl px-3 md:px-5 py-2 z-20">
         <div className="flex items-center gap-3 md:gap-6 min-w-0">
           <div className="flex items-center gap-3">
-            <div className="size-9 bg-primary rounded-lg flex items-center justify-center">
-              <Gavel size={18} className="text-foreground" />
+            <div className="size-7 bg-primary rounded-md flex items-center justify-center">
+              <Gavel size={14} className="text-primary-foreground" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground uppercase italic">Al Wakeelo</h1>
+            <h1 className="text-base font-bold tracking-tight text-foreground uppercase italic">Al Wakeelo</h1>
           </div>
           <div className="hidden md:block h-8 w-px bg-white/10" />
           <div className="min-w-0 hidden md:block">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-foreground truncate">{form.title || "Untitled Contract"}</h2>
+              <h2 className="text-sm font-semibold text-foreground truncate">{form.title || "Untitled Contract"}</h2>
             </div>
             <div className="flex items-center gap-2">
               <span className={`size-1.5 rounded-full ${saveStatus === "error" ? "bg-red-500" : "bg-green-500"} ${saveStatus === "saving" ? "animate-pulse" : ""}`} />
@@ -1123,8 +1123,8 @@ export default function ContractDraftingPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-8">
-          <div className="hidden md:flex items-center gap-4 bg-white/5 px-5 py-2 rounded-xl border border-primary/10">
+        <div className="flex items-center gap-3 md:gap-5">
+          <div className="hidden md:flex items-center gap-3 bg-card/50 px-3 py-1.5 rounded-lg border border-[hsl(var(--preview-border))]">
             <div className="flex flex-col items-start gap-0.5">
               <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground font-bold">Contract Health</span>
               <div className="flex items-center gap-3">
@@ -1206,9 +1206,9 @@ export default function ContractDraftingPage() {
           } ${focusWritingMode ? "hidden" : ""}`}
         >
           <div className="w-full lg:w-[360px] h-full flex flex-col">
-            <div className="p-4 md:p-6 overflow-y-auto scrollbar-hide flex-1 space-y-6 md:space-y-8">
+            <div className="p-3 md:p-4 overflow-y-auto scrollbar-hide flex-1 space-y-4 md:space-y-5">
             <div className="space-y-1">
-              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <FileText size={18} className="text-primary" />
                 Input Parameters
               </h2>
@@ -1402,10 +1402,10 @@ export default function ContractDraftingPage() {
             </div>
             </div>
 
-            <div className="p-4 md:p-6 glass-surface border-t border-[hsl(var(--preview-border))] space-y-3">
+            <div className="p-3 md:p-4 glass-surface border-t border-[hsl(var(--preview-border))] space-y-2">
               <button
                 onClick={generateDraft}
-                className="w-full py-3 bg-primary hover:bg-primary rounded-lg text-foreground font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 bg-primary hover:bg-primary rounded-lg text-primary-foreground font-bold text-sm transition-colors flex items-center justify-center gap-2"
                 data-testid="button-generate-contract-draft"
                 disabled={isGenerating}
               >
@@ -1437,7 +1437,7 @@ export default function ContractDraftingPage() {
         <div className={`${focusWritingMode ? "hidden" : "hidden lg:flex"} items-stretch`}>
           <button
             onClick={() => setLeftRailOpen((v) => !v)}
-            className="h-full w-6 border-r border-primary/35 bg-gradient-to-b from-primary/25 via-[#15233b] to-[#0c1525] text-foreground hover:from-primary/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            className="h-full w-6 border-r border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
             data-testid="divider-toggle-left-contract-rail"
             title={leftRailVisible ? "Collapse contract inputs" : "Expand contract inputs"}
             aria-label={leftRailVisible ? "Collapse contract inputs" : "Expand contract inputs"}
@@ -1609,7 +1609,7 @@ export default function ContractDraftingPage() {
         <div className={`${focusWritingMode ? "hidden" : "hidden lg:flex"} items-stretch`}>
           <button
             onClick={() => setRightRailOpen((v) => !v)}
-            className="h-full w-6 border-l border-primary/35 bg-gradient-to-b from-primary/25 via-[#15233b] to-[#0c1525] text-foreground hover:from-primary/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.22)]"
+            className="h-full w-6 border-l border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
             data-testid="divider-toggle-right-contract-rail"
             title={rightRailVisible ? "Collapse AI panel" : "Expand AI panel"}
             aria-label={rightRailVisible ? "Collapse AI panel" : "Expand AI panel"}

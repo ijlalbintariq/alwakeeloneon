@@ -153,32 +153,32 @@ function AppSidebar() {
 
   return (
     <Sidebar className={cn(
-      "bg-gradient-to-b from-[#131f33]/85 to-[#0d1627]/80 border-r border-[hsl(var(--preview-border))] backdrop-blur-xl",
-      "app-sidebar mac-glass-panel"
+      "bg-sidebar border-r border-sidebar-border",
+      "app-sidebar"
     )}>
-      <SidebarHeader className="p-3 border-b border-[hsl(var(--preview-border))]">
-        <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-background/65 backdrop-blur-lg px-2.5 py-2.5 shadow-[0_18px_34px_-26px_rgba(0,0,0,0.9)]">
+      <SidebarHeader className="p-2.5 border-b border-sidebar-border">
+        <div className="rounded-xl border border-sidebar-border bg-sidebar px-2.5 py-2">
           <div className="flex items-center gap-3 min-w-0">
             {/* Brand mark — hardcoded gold accents on purpose. The logo is the
                 product identity and must look the same regardless of light/dark
                 theme. Do NOT swap these to bg-primary / border-primary. */}
-            <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-400/40 shadow-xl shadow-amber-500/30 flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-amber-400/40 shadow-lg shadow-amber-500/20 flex-shrink-0">
               <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base font-bold text-foreground tracking-tighter uppercase italic leading-tight truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h1 className="text-sm font-bold text-sidebar-foreground tracking-tighter uppercase italic leading-tight truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Al Wakeelo
               </h1>
-              <p className="text-[8px] uppercase tracking-[0.24em] text-muted-foreground font-black">Legal Intelligence</p>
+              <p className="text-[7px] uppercase tracking-[0.24em] text-sidebar-foreground/60 font-black">Legal Intelligence</p>
             </div>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="scrollbar-hide px-2 py-1.5">
+      <SidebarContent className="scrollbar-hide px-1.5 py-1">
         {visibleNavigationGroups.map((group) => (
           <SidebarGroup key={group.id} className="p-1.5 mb-1 last:mb-0">
-            <SidebarGroupLabel className="h-6 px-2.5 pb-0.5 text-[8px] font-black uppercase tracking-[0.26em] text-muted-foreground/85">
+            <SidebarGroupLabel className="h-5 px-2 pb-0.5 text-[7px] font-black uppercase tracking-[0.26em] text-sidebar-foreground/50">
               {group.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -197,25 +197,25 @@ function AppSidebar() {
                         isActive={isActive}
                         data-testid={`nav-${item.id}`}
                         className={cn(
-                          "nav-glow-button h-auto rounded-xl border border-transparent px-2 py-1.5 transition-all",
-                          "hover:border-[hsl(var(--preview-border))] hover:bg-card/70",
+                          "nav-glow-button h-auto rounded-lg border border-transparent px-1.5 py-1 transition-all",
+                          "hover:border-sidebar-border hover:bg-sidebar-accent",
                           isActive &&
-                            "border-primary/35 bg-gradient-to-r from-primary/15 to-primary/10 text-foreground shadow-[0_16px_30px_-24px_rgba(251,191,36,0.65)] data-[active=true]:border-primary/35 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary/15 data-[active=true]:to-primary/10 data-[active=true]:text-foreground"
+                            "border-sidebar-primary/35 bg-sidebar-accent text-sidebar-accent-foreground"
                         )}
                       >
                         <Link href={item.href} className="flex w-full items-center gap-2" title={item.description}>
                           <span
                             className={cn(
-                              "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all",
+                              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all",
                               isActive
-                                ? "border-primary/45 bg-gradient-to-br from-primary to-primary text-foreground shadow-[0_10px_18px_-12px_rgba(251,191,36,0.9)]"
-                                : "border-border bg-card/70 text-muted-foreground"
+                                ? "border-sidebar-primary/45 bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "border-sidebar-border bg-sidebar-accent text-sidebar-foreground/60"
                             )}
                           >
-                            <Icon size={14} />
+                            <Icon size={12} />
                           </span>
                           <span className="nav-label min-w-0 flex-1">
-                            <span className={cn("block truncate text-[12px] font-semibold leading-tight", isActive ? "text-foreground" : "text-foreground")}>
+                            <span className={cn("block truncate text-[11px] font-semibold leading-tight", isActive ? "text-sidebar-foreground" : "text-sidebar-foreground/80")}>
                               {item.label}
                             </span>
                           </span>
@@ -230,10 +230,10 @@ function AppSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-[hsl(var(--preview-border))] p-3">
-        <div className="mb-2 rounded-xl border border-[hsl(var(--preview-border))] bg-background/55 backdrop-blur-md px-2.5 py-1.5">
-          <p className="text-[8px] uppercase tracking-[0.2em] text-muted-foreground font-black">Signed in as</p>
-          <p className="text-xs font-bold text-foreground truncate">{user?.email || "Advocate"}</p>
+      <SidebarFooter className="border-t border-sidebar-border p-2.5">
+        <div className="mb-2 rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-1.5">
+          <p className="text-[7px] uppercase tracking-[0.2em] text-sidebar-foreground/50 font-black">Signed in as</p>
+          <p className="text-[11px] font-bold text-sidebar-foreground truncate">{user?.email || "Advocate"}</p>
         </div>
         <SidebarMenu className="gap-0.5">
           {user?.isAdmin && (
@@ -243,14 +243,14 @@ function AppSidebar() {
                 isActive={location === "/admin"}
                 data-testid="nav-admin"
                 className={cn(
-                  "nav-glow-button rounded-xl py-2 border border-transparent transition-all",
-                  "hover:border-[hsl(var(--preview-border))] hover:bg-card/70",
-                  location === "/admin" && "bg-gradient-to-r from-primary to-primary text-foreground font-black border-primary/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary data-[active=true]:to-primary data-[active=true]:text-foreground"
+                  "nav-glow-button rounded-lg py-1.5 border border-transparent transition-all",
+                  "hover:border-sidebar-border hover:bg-sidebar-accent",
+                  location === "/admin" && "bg-sidebar-primary text-sidebar-primary-foreground font-black border-sidebar-primary/40"
                 )}
               >
                 <Link href="/admin">
-                  <Shield size={16} className={location === "/admin" ? "text-foreground" : "text-muted-foreground"} />
-                  <span className="nav-label text-[11px] font-bold">Admin Panel</span>
+                  <Shield size={14} className={location === "/admin" ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/60"} />
+                  <span className="nav-label text-[10px] font-bold">Admin Panel</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -261,14 +261,14 @@ function AppSidebar() {
               isActive={location === "/settings"}
               data-testid="nav-settings"
               className={cn(
-                "nav-glow-button rounded-xl py-2 border border-transparent transition-all",
-                "hover:border-[hsl(var(--preview-border))] hover:bg-card/70",
-                location === "/settings" && "bg-gradient-to-r from-primary to-primary text-foreground font-black border-primary/40 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary data-[active=true]:to-primary data-[active=true]:text-foreground"
+                "nav-glow-button rounded-lg py-1.5 border border-transparent transition-all",
+                "hover:border-sidebar-border hover:bg-sidebar-accent",
+                location === "/settings" && "bg-sidebar-primary text-sidebar-primary-foreground font-black border-sidebar-primary/40"
               )}
             >
               <Link href="/settings">
-                <Settings size={16} className={location === "/settings" ? "text-foreground" : "text-muted-foreground"} />
-                <span className="nav-label text-[11px] font-bold">Settings</span>
+                <Settings size={14} className={location === "/settings" ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/60"} />
+                <span className="nav-label text-[10px] font-bold">Settings</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -276,10 +276,10 @@ function AppSidebar() {
             <SidebarMenuButton
               onClick={() => logout()}
               data-testid="button-logout"
-              className="nav-glow-button rounded-xl border border-transparent py-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all"
+              className="nav-glow-button rounded-lg border border-transparent py-1.5 text-sidebar-foreground/60 hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
             >
-              <LogOut size={16} />
-              <span className="nav-label text-[11px] font-bold">Exit Vault</span>
+              <LogOut size={14} />
+              <span className="nav-label text-[10px] font-bold">Exit Vault</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -328,8 +328,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isEdgeAttachedLayout = location === "/al-wakeelo";
 
   const style = {
-    "--sidebar-width": "16.5rem",
-    "--sidebar-width-icon": "3rem",
+    "--sidebar-width": "14.5rem",
+    "--sidebar-width-icon": "2.75rem",
   };
 
   return (

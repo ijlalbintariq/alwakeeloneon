@@ -1027,7 +1027,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             .slice(0, compact ? 3 : 4).map((j, idx) => {
               const jid = verifiedJudgmentIds.get(j.citation)!;
               return (
-                <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-primary/30 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgment/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgment/${jid}`, '_blank')}>
+                <button key={`${j.citation}-${idx}`} className="p-3 rounded-xl bg-card/50 border border-border hover:border-primary/30 transition-all cursor-pointer text-left w-full" onClick={() => window.open(`/judgment/${jid}`, '_blank')} onKeyDown={(e) => e.key === 'Enter' && window.open(`/judgment/${jid}`, '_blank')}>
                   <div className="flex justify-between items-start mb-2 gap-2">
                     <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded truncate">{j.citation}</span>
                   </div>
@@ -1187,7 +1187,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 <div
                   className={`flex-1 p-3 sm:p-4 md:p-5 rounded-2xl relative group ${
                     m.role === "user"
-                      ? "bg-gradient-to-br from-[#1E3A8A] to-[#1e40af] text-foreground rounded-br-none max-w-2xl shadow-md hover:shadow-lg transition-shadow"
+                      ? "bg-primary text-primary-foreground rounded-br-none max-w-2xl shadow-md hover:shadow-lg transition-shadow"
                       : "bg-white border border-[#E2E8F0] text-[#0F172A] rounded-bl-none shadow-sm hover:shadow-md transition-shadow"
                   }`}
                 >
@@ -1621,7 +1621,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         <div className="hidden lg:flex absolute left-3 top-1/2 -translate-y-1/2 z-40">
           <button
             onClick={() => setLeftRailOpen((prev) => !prev)}
-            className="h-16 w-6 border border-primary/35 rounded-r-lg bg-gradient-to-b from-primary/25 via-[#15233b] to-[#0c1525] text-foreground hover:from-primary/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.24)]"
+            className="h-16 w-6 border border-border rounded-r-lg bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
             data-testid="divider-toggle-left-chat-rail"
             title={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
             aria-label={leftRailVisible ? "Collapse workspace panel" : "Expand workspace panel"}
@@ -1771,7 +1771,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           {m.attachments && m.attachments.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
                               {m.attachments.map((name, i) => (
-                                <span key={i} className="text-[10px] bg-black/20 border border-white/10 px-2 py-1 rounded text-foreground inline-flex items-center gap-1">
+                                <span key={i} className="text-[10px] bg-accent border border-border px-2 py-1 rounded text-foreground inline-flex items-center gap-1">
                                   {getFileIcon(name)} {name}
                                 </span>
                               ))}
@@ -2023,7 +2023,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               {attachedFiles.length > 0 && (
                 <div className="px-2 pb-2 flex flex-wrap gap-2">
                   {attachedFiles.map((file, i) => (
-                    <div key={i} className="inline-flex items-center gap-1.5 px-2 py-1 bg-black/25 border border-white/10 rounded text-[10px] text-foreground">
+                    <div key={i} className="inline-flex items-center gap-1.5 px-2 py-1 bg-accent border border-border rounded text-[10px] text-foreground">
                       {getFileIcon(file.name)}
                       <span className="max-w-[120px] truncate">{file.name}</span>
                       <button onClick={() => removeFile(i)} className="text-muted-foreground hover:text-red-400"><X size={11} /></button>
@@ -2057,7 +2057,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         <div className="hidden xl:flex absolute right-3 top-1/2 -translate-y-1/2 z-40">
           <button
             onClick={() => setRightRailOpen((prev) => !prev)}
-            className="h-16 w-6 border border-primary/35 rounded-l-lg bg-gradient-to-b from-primary/25 via-[#15233b] to-[#0c1525] text-foreground hover:from-primary/40 hover:via-[#1b2e4d] hover:to-[#0c1525] flex items-center justify-center transition-all shadow-[0_0_20px_rgba(251,191,36,0.24)]"
+            className="h-16 w-6 border border-border rounded-l-lg bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
             data-testid="divider-toggle-right-chat-rail"
             title={rightRailVisible ? "Collapse insights panel" : "Expand insights panel"}
             aria-label={rightRailVisible ? "Collapse insights panel" : "Expand insights panel"}
