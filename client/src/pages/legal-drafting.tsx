@@ -2711,19 +2711,19 @@ export default function LegalDraftingPage() {
         <aside
           className={`hidden md:flex transition-[width] duration-300 ease-out overflow-hidden ${
             leftRailVisible
-              ? "w-56 border-r border-[hsl(var(--preview-border))] bg-background/45 backdrop-blur-xl"
+              ? "w-48 border-r border-[hsl(var(--preview-border))] bg-background/45 backdrop-blur-xl"
               : "w-0 border-r-0"
           }`}
         >
-          <div className="w-56 flex flex-col py-4 md:py-5">
-          <div className="hidden md:flex items-center justify-between px-4 pb-3 border-b border-[hsl(var(--preview-border))]">
-            <p className="text-xs uppercase tracking-widest text-primary font-bold">Workspace</p>
+          <div className="w-48 flex flex-col py-2">
+          <div className="hidden md:flex items-center justify-between px-2.5 pb-2 border-b border-[hsl(var(--preview-border))]">
+            <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Workspace</p>
             <Button
               size="sm"
-              className="inline-flex h-7 items-center justify-center gap-1 px-2 bg-primary text-foreground hover:bg-primary shadow-md shadow-primary/20"
+              className="inline-flex h-6 items-center justify-center gap-1 px-2 text-[10px] bg-primary text-primary-foreground hover:bg-primary shadow-sm"
               onClick={startNewDraftingChat}
             >
-              <Plus size={12} className="shrink-0" />
+              <Plus size={10} className="shrink-0" />
               New
             </Button>
           </div>
@@ -2735,48 +2735,48 @@ export default function LegalDraftingPage() {
             <button onClick={() => { setActiveLeftTool("archive"); window.location.href = "/case-documents"; }} className={`p-2.5 rounded-xl border ${activeLeftTool === "archive" ? "text-primary border-primary/40 bg-primary/10" : "text-muted-foreground border-border bg-card/40"}`}><Archive size={18} /></button>
           </div>
 
-          <div className="hidden md:flex flex-col px-3 pt-3 gap-2">
+          <div className="hidden md:flex flex-col px-2 pt-2 gap-1">
             <button
               onClick={() => setActiveLeftTool("drafts")}
-              className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
+              className={`w-full flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] uppercase tracking-wide ${
                 activeLeftTool === "drafts" ? "bg-primary/12 text-foreground border border-primary/35" : "text-foreground hover:bg-card/60 border border-transparent hover:border-border"
               }`}
             >
-              <FolderOpen size={16} /> My Drafts
+              <FolderOpen size={13} /> Drafts
             </button>
             <button
               onClick={() => setActiveLeftTool("templates")}
-              className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
+              className={`w-full flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] uppercase tracking-wide ${
                 activeLeftTool === "templates" ? "bg-primary/12 text-foreground border border-primary/35" : "text-foreground hover:bg-card/60 border border-transparent hover:border-border"
               }`}
             >
-              <FileText size={16} /> Templates
+              <FileText size={13} /> Templates
             </button>
             <button
               onClick={() => {
                 setActiveLeftTool("collab");
                 shareWorkspaceLink();
               }}
-              className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
+              className={`w-full flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] uppercase tracking-wide ${
                 activeLeftTool === "collab" ? "bg-primary/12 text-foreground border border-primary/35" : "text-foreground hover:bg-card/60 border border-transparent hover:border-border"
               }`}
             >
-              <Users size={16} /> Collaborate
+              <Users size={13} /> Collab
             </button>
             <button
               onClick={() => {
                 setActiveLeftTool("archive");
                 window.location.href = "/case-documents";
               }}
-              className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] uppercase tracking-wide ${
+              className={`w-full flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] uppercase tracking-wide ${
                 activeLeftTool === "archive" ? "bg-primary/12 text-foreground border border-primary/35" : "text-foreground hover:bg-card/60 border border-transparent hover:border-border"
               }`}
             >
-              <Archive size={16} /> Archive
+              <Archive size={13} /> Archive
             </button>
           </div>
 
-          <div className="hidden md:flex flex-1 min-h-0 px-3 pt-3">
+          <div className="hidden md:flex flex-1 min-h-0 px-2 pt-2">
             {activeLeftTool === "templates" ? (
               <TemplatesPanel onApply={applyTemplate} />
             ) : (
@@ -2791,19 +2791,19 @@ export default function LegalDraftingPage() {
                     return (
                       <div
                         key={doc.id}
-                        className={`rounded-xl border p-2 backdrop-blur-md ${
+                        className={`rounded-lg border p-1.5 ${
                           active ? "border-primary/40 bg-primary/10" : "border-border bg-card/20"
                         }`}
                       >
                         <button className="w-full text-left" onClick={() => loadDraft(doc)}>
-                          <p className="text-xs font-semibold text-foreground line-clamp-1">
+                          <p className="text-[11px] font-semibold text-foreground line-clamp-1">
                             {doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "")}
                           </p>
-                          <p className="text-[10px] text-muted-foreground mt-1">
+                          <p className="text-[9px] text-muted-foreground mt-0.5">
                             {doc.createdAt ? new Date(doc.createdAt).toLocaleString() : "Unknown date"}
                           </p>
                         </button>
-                        <div className="mt-2 flex justify-end">
+                        <div className="mt-1 flex justify-end">
                           <button
                             onClick={() => deleteDraftMutation.mutate(doc.id)}
                             className="text-muted-foreground hover:text-red-400"
@@ -2820,8 +2820,8 @@ export default function LegalDraftingPage() {
             )}
           </div>
 
-          <div className="hidden md:block mt-auto px-3 pt-3 border-t border-[hsl(var(--preview-border))]">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-black">Draft Interface v2.1</p>
+          <div className="hidden md:block mt-auto px-2 pt-2 pb-1 border-t border-[hsl(var(--preview-border))]">
+            <p className="text-[8px] uppercase tracking-[0.18em] text-muted-foreground font-black">v2.1</p>
           </div>
           </div>
         </aside>
@@ -2878,40 +2878,40 @@ export default function LegalDraftingPage() {
             )}
           </div>
 
-          <div className="h-auto border-b border-[hsl(var(--preview-border))] bg-background/45 backdrop-blur-xl flex items-center px-3 md:px-4 py-2 justify-between gap-2 flex-wrap">
-            <div className="text-[11px] text-foreground">
-              Chat-first drafting mode is active. Write prompt, attach context, and get full draft replies in chat.
+          <div className="h-auto border-b border-[hsl(var(--preview-border))] bg-background/45 backdrop-blur-xl flex items-center px-3 md:px-4 py-1.5 justify-between gap-2 flex-wrap">
+            <div className="text-[10px] text-muted-foreground">
+              Chat-first drafting — prompt below, draft appears in editor.
             </div>
-            <div className="text-[10px] uppercase tracking-widest text-primary font-bold">Single Chat View</div>
+            <div className="text-[9px] uppercase tracking-widest text-primary font-bold">Chat View</div>
           </div>
 
-          <div className="px-3 md:px-8 pt-3 flex items-center gap-2 flex-wrap">
+          <div className="px-3 md:px-4 pt-2 flex items-center gap-2 flex-wrap">
             <input
               value={draftTitle}
               onChange={(e) => setDraftTitle(e.target.value)}
-              className="h-9 w-full sm:w-[240px] bg-card/45 border border-border rounded-lg px-3 text-sm text-foreground backdrop-blur-md"
+              className="h-8 w-full sm:w-[200px] bg-card/45 border border-border rounded-md px-2.5 text-xs text-foreground backdrop-blur-md"
               placeholder="Draft title"
             />
             <Button
-              className="h-9 bg-primary text-foreground hover:bg-primary font-semibold"
+              className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary font-semibold"
               onClick={saveDraft}
               disabled={saveDraftMutation.isPending}
             >
-              <Save size={14} className="mr-1.5" />
-              {saveDraftMutation.isPending ? "Saving..." : "Save Draft"}
+              <Save size={12} className="mr-1" />
+              {saveDraftMutation.isPending ? "Saving..." : "Save"}
             </Button>
             <button
               type="button"
               onClick={() => setFeeCalcOpen(true)}
-              className="h-9 px-3 rounded-lg border border-border bg-card/40 text-foreground hover:border-primary/40 hover:bg-card/70 text-xs font-semibold flex items-center gap-1.5"
+              className="h-8 px-2.5 rounded-md border border-border bg-card/40 text-foreground hover:border-primary/40 hover:bg-card/70 text-[10px] font-semibold flex items-center gap-1"
               title="Calculate court fee per Court Fees Act 1870"
               data-testid="button-court-fee-calc"
             >
-              <Calculator size={14} />
-              Court Fee
+              <Calculator size={12} />
+              Fee Calc
             </button>
-            <span className="text-xs text-muted-foreground hidden md:inline">
-              {selectedDraftId ? `Loaded draft #${selectedDraftId}` : "New unsaved draft"}
+            <span className="text-[10px] text-muted-foreground hidden md:inline">
+              {selectedDraftId ? `Draft #${selectedDraftId}` : "Unsaved"}
             </span>
           </div>
 
@@ -3098,26 +3098,26 @@ export default function LegalDraftingPage() {
         <aside
           className={`hidden lg:flex transition-[width] duration-300 ease-out overflow-hidden ${
             rightRailVisible
-              ? "w-[300px] xl:w-[320px] border-l border-[hsl(var(--preview-border))] bg-background/45 backdrop-blur-xl"
+              ? "w-[260px] xl:w-[280px] border-l border-[hsl(var(--preview-border))] bg-background/45 backdrop-blur-xl"
               : "w-0 border-l-0"
           }`}
         >
-          <div className="w-[300px] xl:w-[320px] flex flex-col">
-          <div className="p-4 border-b border-[hsl(var(--preview-border))] bg-background/35 backdrop-blur-xl flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="size-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
-                <Bot size={14} className="text-primary" />
+          <div className="w-[260px] xl:w-[280px] flex flex-col">
+          <div className="p-2.5 border-b border-[hsl(var(--preview-border))] bg-background/35 backdrop-blur-xl flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <div className="size-6 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center">
+                <Bot size={12} className="text-primary" />
               </div>
-              <h3 className="font-bold text-sm tracking-wide uppercase">AI Drafting Assistant</h3>
+              <h3 className="font-bold text-xs tracking-wide uppercase">AI Assistant</h3>
             </div>
-            <div className="px-2 py-0.5 rounded-full bg-gradient-to-r from-primary/30 to-primary/20 text-foreground text-[10px] font-bold border border-primary/30">PRO</div>
+            <div className="px-1.5 py-0.5 rounded-full bg-primary/20 text-foreground text-[8px] font-bold border border-primary/30">PRO</div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-5">
+          <div className="flex-1 overflow-y-auto p-2.5 space-y-3">
             <section>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Drafting Controls</label>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Use the chat composer in the main area to send instructions and attach context files. The AI returns full drafting replies in chat.
+              <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Controls</label>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Use the chat below to send instructions. AI returns full drafts in chat.
               </p>
               {styleMemoryMeta && (
                 <div className="mt-2 rounded-lg border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] text-foreground">
