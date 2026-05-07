@@ -215,6 +215,117 @@
   color: hsl(210 40% 80%);
 }
 
+/* ─── Tiptap Legal Draft Editor ─── */
+.legal-draft-editor {
+  font-family: 'Times New Roman', 'TimesNewRomanPSMT', serif;
+  font-size: 13pt;
+  line-height: 1.8;
+  color: hsl(var(--foreground));
+  padding: 2rem 2.5rem;
+  min-height: 500px;
+  cursor: text;
+}
+
+.legal-draft-editor:focus {
+  outline: none;
+}
+
+.legal-draft-editor h1 {
+  font-family: 'Times New Roman', 'TimesNewRomanPSMT', serif;
+  font-size: 16pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 1.2rem;
+  margin-top: 0.5rem;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+
+.legal-draft-editor h2 {
+  font-family: 'Times New Roman', 'TimesNewRomanPSMT', serif;
+  font-size: 14pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 1.5rem;
+  margin-bottom: 0.6rem;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
+.legal-draft-editor h3 {
+  font-family: 'Times New Roman', 'TimesNewRomanPSMT', serif;
+  font-size: 13pt;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.4;
+}
+
+.legal-draft-editor p {
+  margin-bottom: 0.65rem;
+}
+
+.legal-draft-editor ol {
+  list-style-type: decimal;
+  padding-left: 2rem;
+  margin-bottom: 0.65rem;
+}
+
+.legal-draft-editor ul {
+  list-style-type: disc;
+  padding-left: 2rem;
+  margin-bottom: 0.65rem;
+}
+
+.legal-draft-editor li {
+  margin-bottom: 0.35rem;
+}
+
+.legal-draft-editor li p {
+  margin-bottom: 0;
+}
+
+.legal-draft-editor blockquote {
+  border-left: 3px solid hsl(var(--primary) / 0.5);
+  padding-left: 1.25rem;
+  margin: 1rem 0;
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+}
+
+.legal-draft-editor strong {
+  font-weight: 700;
+}
+
+.legal-draft-editor em {
+  font-style: italic;
+}
+
+.legal-draft-editor u {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Placeholder text */
+.legal-draft-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  float: left;
+  height: 0;
+  font-style: italic;
+}
+
+/* Selection highlight */
+.legal-draft-editor ::selection {
+  background: hsl(var(--primary) / 0.25);
+}
+
+/* Tiptap gapcursor */
+.legal-draft-editor .ProseMirror-gapcursor::after {
+  border-top-color: hsl(var(--primary));
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }

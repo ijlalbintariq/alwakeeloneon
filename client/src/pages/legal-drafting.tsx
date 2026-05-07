@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
@@ -45,6 +45,8 @@ import { api } from "@shared/routes";
 import type { Document as DraftDocument } from "@shared/schema";
 import { StyleMemoryPanel } from "@/components/style-memory-panel";
 import { DocumentViewer } from "@/components/document-viewer";
+import { LegalEditor, type LegalEditorHandle } from "@/components/legal-editor";
+import { plainTextToTiptapHTML, isHTMLContent } from "@/lib/plain-to-tiptap";
 
 type DraftRecommendation = {
   id: string;
@@ -175,7 +177,7 @@ type StyleMemoryMeta = {
   confidence: number;
 };
 
-const AUTOSAVE_KEY = "legal-drafting-workspace-v2";
+const AUTOSAVE_KEY = "legal-drafting-workspace-v3";
 const CONTEXT_MEMORY_KEY = "legal-drafting-context-memory-v1";
 const STYLE_MEMORY_BACKFILL_KEY = "legal-drafting-style-backfill-v1";
 const DRAFT_TITLE_PREFIX = "Legal Draft:";
@@ -1522,7 +1524,10 @@ export default function LegalDraftingPage() {
   const aiContextInputRef = useRef<HTMLInputElement | null>(null);
   const chatListRef = useRef<HTMLDivElement | null>(null);
 
+  const editorRef = useRef<LegalEditorHandle | null>(null);
+
   const [docText, setDocText] = useState(DEFAULT_DOC);
+  const [editorHtml, setEditorHtml] = useState("");
   const [draftTitle, setDraftTitle] = useState("Untitled Draft");
   const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -1597,17 +1602,41 @@ export default function LegalDraftingPage() {
     [allDocuments]
   );
 
+  /** Called by LegalEditor on every content change — keeps docText in sync */
+  const onEditorUpdate = useCallback((html: string, text: string) => {
+    setEditorHtml(html);
+    setDocText(text);
+  }, []);
+
+  /** Helper: set content in both the editor (HTML) and keep docText synced */
+  const setEditorContent = useCallback((content: string) => {
+    const html = isHTMLContent(content) ? content : plainTextToTiptapHTML(content);
+    setEditorHtml(html);
+    setDocText(isHTMLContent(content) ? "" : content); // will be overridden by onEditorUpdate
+    // Update the Tiptap editor directly
+    editorRef.current?.setContent(html);
+  }, []);
+
   useEffect(() => {
+    // Try to load v3 autosave (HTML) first
     const saved = localStorage.getItem(AUTOSAVE_KEY);
-    if (!saved) return;
-    // Migration: drop previously prefilled template content from autosave.
-    if (saved.trim().startsWith(LEGACY_DEFAULT_DOC_PREFIX)) {
-      localStorage.removeItem(AUTOSAVE_KEY);
-      setDocText("");
+    if (saved) {
+      setEditorContent(saved);
       return;
     }
-    setDocText(saved);
-  }, []);
+    // Migrate from v2 (plain text) if it exists
+    const v2 = localStorage.getItem("legal-drafting-workspace-v2");
+    if (v2) {
+      // Migration: drop legacy template-prefilled content
+      if (v2.trim().startsWith(LEGACY_DEFAULT_DOC_PREFIX)) {
+        localStorage.removeItem("legal-drafting-workspace-v2");
+        return;
+      }
+      setEditorContent(v2);
+      localStorage.removeItem("legal-drafting-workspace-v2");
+      return;
+    }
+  }, [setEditorContent]);
 
   useEffect(() => {
     const raw = localStorage.getItem(CONTEXT_MEMORY_KEY);
@@ -1664,7 +1693,7 @@ export default function LegalDraftingPage() {
               .slice(0, 60)
           : [];
 
-        setDocText(nextDocText);
+        setEditorContent(nextDocText);
         setDraftTitle(nextTitle);
         setSelectedDraftId(nextSelectedDraftId);
         setHasDraftInSession(nextHasDraft);
@@ -1683,16 +1712,16 @@ export default function LegalDraftingPage() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, setEditorContent]);
 
   useEffect(() => {
     setIsSavedLocal(false);
     const timeout = setTimeout(() => {
-      localStorage.setItem(AUTOSAVE_KEY, docText);
+      localStorage.setItem(AUTOSAVE_KEY, editorHtml || docText);
       setIsSavedLocal(true);
     }, 800);
     return () => clearTimeout(timeout);
-  }, [docText]);
+  }, [docText, editorHtml]);
 
   useEffect(() => {
     localStorage.setItem(CONTEXT_MEMORY_KEY, JSON.stringify(memoryItems.slice(0, 30)));
@@ -1703,7 +1732,7 @@ export default function LegalDraftingPage() {
     const timeout = window.setTimeout(async () => {
       const payload: LegalDraftWorkspaceState = {
         draftTitle: (draftTitle || "Untitled Draft").slice(0, 240),
-        docText: docText || "",
+        docText: editorHtml || docText || "",
         selectedDraftId,
         hasDraftInSession,
         draftChatMessages: draftChatMessages.slice(-150).map((message) => ({
@@ -1798,7 +1827,7 @@ export default function LegalDraftingPage() {
   };
 
   const startNewDraftingChat = () => {
-    setDocText(DEFAULT_DOC);
+    setEditorContent(DEFAULT_DOC);
     setDraftTitle("Untitled Draft");
     setSelectedDraftId(null);
     setHasDraftInSession(false);
@@ -2035,7 +2064,7 @@ export default function LegalDraftingPage() {
 
     const nextText = source.slice(0, range.start) + replacement + source.slice(range.end);
 
-    setDocText(nextText);
+    setEditorContent(nextText);
     setHasDraftInSession(!!nextText.trim());
     runDraftReview(nextText);
 
@@ -2195,13 +2224,13 @@ export default function LegalDraftingPage() {
 
   const saveDraft = () => {
     const cleanTitle = draftTitle.trim() || `Draft ${new Date().toLocaleString()}`;
-    saveDraftMutation.mutate({ id: selectedDraftId, title: cleanTitle, content: docText });
+    saveDraftMutation.mutate({ id: selectedDraftId, title: cleanTitle, content: editorHtml || docText });
   };
 
   const loadDraft = (doc: DraftDocument) => {
     setSelectedDraftId(doc.id);
     setDraftTitle(doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "") || "Draft");
-    setDocText(doc.content || "");
+    setEditorContent(doc.content || "");
     setHasDraftInSession(!!(doc.content || "").trim());
     clearSelectedDraftText();
     setRecommendations([]);
@@ -2214,7 +2243,7 @@ export default function LegalDraftingPage() {
 
   const applyTemplate = (template: DraftTemplate) => {
     setDraftTitle(template.title);
-    setDocText(template.body);
+    setEditorContent(template.body);
     setHasDraftInSession(!!template.body.trim());
     clearSelectedDraftText();
     setRecommendations([]);
@@ -2426,7 +2455,7 @@ export default function LegalDraftingPage() {
       await streamAssistantDraftMessage(assistantMessageId, clause);
       addMemoryItem("instruction", prompt);
       if (assistantMode === "draft") {
-        setDocText(clause);
+        setEditorContent(clause);
         setHasDraftInSession(!!clause.trim());
         addMemoryItem("clause", clause);
       }
@@ -2471,7 +2500,8 @@ export default function LegalDraftingPage() {
   };
 
   const exportAsTxt = () => {
-    const blob = new Blob([docText], { type: "text/plain;charset=utf-8" });
+    const text = editorRef.current?.getText() || docText;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -2482,10 +2512,15 @@ export default function LegalDraftingPage() {
   };
 
   const exportAsDoc = () => {
-    const html = `<!doctype html><html><head><meta charset=\"utf-8\" /></head><body><pre style=\"white-space:pre-wrap;font-family:'Times New Roman',serif;font-size:13pt;line-height:1.6;\">${docText
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")}</pre></body></html>`;
+    const content = editorRef.current?.getHTML() || editorHtml || docText;
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><style>
+      body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.6; margin: 2.5cm; color: #000; }
+      h1 { font-size: 16pt; font-weight: bold; text-transform: uppercase; text-align: center; margin-bottom: 1rem; }
+      h2 { font-size: 14pt; font-weight: bold; text-transform: uppercase; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+      h3 { font-size: 13pt; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+      ol { padding-left: 2rem; } ul { padding-left: 2rem; }
+      p { margin-bottom: 0.5rem; }
+    </style></head><body>${content}</body></html>`;
     const blob = new Blob([html], { type: "application/msword" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2880,7 +2915,20 @@ export default function LegalDraftingPage() {
             </span>
           </div>
 
-          <div className="flex-1 overflow-hidden p-2 md:p-4 lg:p-5">
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {/* ── Tiptap Legal Editor ── */}
+            <div className="flex-1 min-h-0 overflow-hidden border-b border-[hsl(var(--preview-border))]">
+              <LegalEditor
+                ref={editorRef}
+                initialContent={editorHtml}
+                onUpdate={onEditorUpdate}
+                placeholder="Begin drafting or load a template…"
+                className="h-full flex flex-col"
+              />
+            </div>
+
+            {/* ── Chat section (below editor) ── */}
+            <div className="h-[320px] lg:h-[360px] shrink-0 flex flex-col overflow-hidden">
             <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-background/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl flex flex-col overflow-hidden">
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="px-4 py-2 border-b border-[hsl(var(--preview-border))] bg-background/25 flex items-center justify-between">
@@ -3030,6 +3078,7 @@ export default function LegalDraftingPage() {
                   </div>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </main>
@@ -3289,9 +3338,9 @@ export default function LegalDraftingPage() {
         open={feeCalcOpen}
         onClose={() => setFeeCalcOpen(false)}
         onInsert={(text) => {
-          // Append the fee paragraph to the end of the doc on a new line.
-          // Trim trailing whitespace so the inserted text starts on a fresh line.
-          setDocText((prev) => `${(prev || "").replace(/\s+$/, "")}\n\n${text}\n`);
+          // Append the fee paragraph to the end of the doc.
+          const feeHtml = plainTextToTiptapHTML(text);
+          editorRef.current?.insertContent(feeHtml);
           toast({ title: "Court fee inserted", description: "Paragraph appended to the draft." });
         }}
       />
