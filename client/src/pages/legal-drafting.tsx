@@ -2607,102 +2607,93 @@ export default function LegalDraftingPage() {
           backgroundSize: "28px 28px",
         }}
       />
-      <header className="h-[56px] border-b border-border/40 flex items-center justify-between px-3 md:px-5 bg-background/80 backdrop-blur-xl z-20">
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="h-12 border-b border-border/40 flex items-center justify-between px-3 md:px-4 bg-background/80 backdrop-blur-xl z-20">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className="flex items-center gap-2">
-            <div className="size-7 shrink-0 rounded-md bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
-              <Gavel size={14} className="translate-y-[0.5px]" />
+            <div className="size-6 shrink-0 rounded-md bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
+              <Gavel size={12} className="translate-y-[0.5px]" />
             </div>
-            <div className="leading-tight">
-              <h2 className="text-base font-bold tracking-tight">Legal Drafting Studio</h2>
-              <p className="text-[8px] uppercase tracking-[0.24em] text-primary/90 font-black">AL WAKEELO / DRAFT OPS</p>
+            <div className="leading-none">
+              <h2 className="text-sm font-bold tracking-tight">Legal Drafting</h2>
+              <p className="text-[7px] uppercase tracking-[0.2em] text-primary/80 font-black mt-0.5">AL WAKEELO</p>
             </div>
           </div>
-          <div className="hidden md:block h-6 w-px bg-primary/20" />
-          <div className="hidden md:flex items-center gap-3 min-w-0">
-            <span className="text-sm text-muted-foreground truncate">{draftTitle || "Untitled Draft"}</span>
-            <span className="text-muted-foreground">/</span>
-            <span className="text-sm font-semibold truncate">
-              {selectedDraftId ? `ID ${selectedDraftId}` : "Unsaved"}
-            </span>
-            <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded bg-green-500/10 text-green-400 text-[10px] uppercase font-bold tracking-wider">
-              <Sparkles size={11} />
-              {isSavedLocal ? "Local Saved" : "Typing..."}
+          <div className="hidden md:block h-5 w-px bg-border" />
+          <div className="hidden md:flex items-center gap-2 min-w-0">
+            <span className="text-xs text-muted-foreground truncate max-w-[140px]">{draftTitle || "Untitled"}</span>
+            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 text-[8px] uppercase font-bold tracking-wider">
+              <Sparkles size={9} />
+              {isSavedLocal ? "Saved" : "Typing"}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4">
-          <div className="hidden md:flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <div className="hidden md:flex items-center gap-0.5">
             <Button
               variant="outline"
-              className="h-9 px-2 border-border text-foreground hover:bg-card"
-              onClick={() => {
-                setFocusWritingMode(false);
-                setLeftRailOpen((v) => !v);
-              }}
+              className="h-7 w-7 p-0 border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+              onClick={() => { setFocusWritingMode(false); setLeftRailOpen((v) => !v); }}
               data-testid="button-toggle-left-rail"
-              title={leftRailVisible ? "Hide workspace panel" : "Show workspace panel"}
+              title={leftRailVisible ? "Hide workspace" : "Show workspace"}
             >
-              {leftRailVisible ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+              {leftRailVisible ? <PanelLeftClose size={13} /> : <PanelLeftOpen size={13} />}
             </Button>
             <Button
               variant="outline"
-              className="h-9 px-2 border-border text-foreground hover:bg-card"
+              className="h-7 w-7 p-0 border-border text-muted-foreground hover:text-foreground hover:bg-accent"
               onClick={() => setFocusWritingMode((v) => !v)}
               data-testid="button-toggle-focus-writing"
-              title={focusWritingMode ? "Exit focus writing mode" : "Focus writing mode"}
+              title={focusWritingMode ? "Exit focus mode" : "Focus mode"}
             >
-              {focusWritingMode ? <Minimize2 size={14} /> : <Focus size={14} />}
+              {focusWritingMode ? <Minimize2 size={13} /> : <Focus size={13} />}
             </Button>
             <Button
               variant="outline"
-              className="hidden lg:inline-flex h-9 px-2 border-border text-foreground hover:bg-card"
-              onClick={() => {
-                setFocusWritingMode(false);
-                setRightRailOpen((v) => !v);
-              }}
+              className="hidden lg:inline-flex h-7 w-7 p-0 border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+              onClick={() => { setFocusWritingMode(false); setRightRailOpen((v) => !v); }}
               data-testid="button-toggle-right-rail"
-              title={rightRailVisible ? "Hide AI assistant panel" : "Show AI assistant panel"}
+              title={rightRailVisible ? "Hide AI panel" : "Show AI panel"}
             >
-              {rightRailVisible ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+              {rightRailVisible ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}
             </Button>
           </div>
-          <div className="hidden lg:flex items-center -space-x-2">
+          <div className="hidden lg:flex items-center -space-x-1.5 ml-1">
             {collaborators.map((c, idx) => (
               <div
                 key={`${c}-${idx}`}
-                className="size-8 rounded-md border border-primary/40 bg-primary/15 text-foreground flex items-center justify-center text-[10px] font-bold shadow"
+                className="size-6 rounded-md border border-primary/30 bg-primary/10 text-foreground flex items-center justify-center text-[9px] font-bold"
               >
-                {c}
+              {c}
               </div>
             ))}
           </div>
+          <div className="hidden md:block h-5 w-px bg-border ml-1" />
           <Button
             variant="outline"
-            className="h-9 md:h-10 px-2.5 md:px-3 border-border text-foreground hover:bg-card"
+            className="h-7 px-2 text-xs border-border text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={shareDraft}
             data-testid="button-share-draft"
           >
-            <Share2 size={14} className="md:mr-1.5" />
-            <span className="hidden md:inline">Share</span>
+            <Share2 size={12} className="mr-1" />
+            Share
           </Button>
           <Button
             variant="outline"
-            className="h-9 md:h-10 px-2.5 md:px-3 border-border text-foreground hover:bg-card"
+            className="h-7 px-2 text-xs border-border text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={exportAsTxt}
             data-testid="button-export-txt"
           >
-            <Download size={14} className="md:mr-1.5" />
-            <span className="hidden md:inline">TXT</span>
+            <Download size={12} className="mr-1" />
+            TXT
           </Button>
           <Button
-            className="h-9 md:h-10 px-2.5 md:px-3 bg-primary text-primary-foreground hover:bg-primary font-bold shadow-lg shadow-primary/20"
+            className="h-7 px-2.5 text-xs bg-primary text-primary-foreground hover:bg-primary font-bold shadow-sm"
             onClick={exportAsDoc}
             data-testid="button-export-doc"
           >
-            <Download size={14} className="md:mr-1.5" />
-            <span className="hidden md:inline">Word</span>
+            <Download size={12} className="mr-1" />
+            Word
           </Button>
         </div>
       </header>
@@ -2928,12 +2919,12 @@ export default function LegalDraftingPage() {
             </div>
 
             {/* ── Chat section (below editor) ── */}
-            <div className="h-[320px] lg:h-[360px] shrink-0 flex flex-col overflow-hidden">
-            <div className="h-full w-full rounded-2xl border border-[hsl(var(--preview-border))] bg-background/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl flex flex-col overflow-hidden">
+            <div className="h-[260px] lg:h-[300px] shrink-0 flex flex-col overflow-hidden">
+            <div className="h-full w-full rounded-xl border border-border bg-background/72 backdrop-blur-xl flex flex-col overflow-hidden">
               <div className="flex-1 min-h-0 flex flex-col">
-                <div className="px-4 py-2 border-b border-[hsl(var(--preview-border))] bg-background/25 flex items-center justify-between">
-                  <p className="text-[11px] uppercase tracking-widest text-primary font-bold">Legal Drafting Chat</p>
-                  <span className="text-[10px] text-muted-foreground">{draftChatMessages.length} messages</span>
+                <div className="px-3 py-1.5 border-b border-border bg-background/25 flex items-center justify-between">
+                  <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Drafting Chat</p>
+                  <span className="text-[9px] text-muted-foreground">{draftChatMessages.length} msgs</span>
                 </div>
 
                 <div
@@ -3068,12 +3059,12 @@ export default function LegalDraftingPage() {
                       data-testid="textarea-ai-draft-prompt"
                     />
                     <button
-                      className="absolute bottom-3 right-3 size-8 rounded-lg bg-primary text-foreground flex items-center justify-center shadow-lg disabled:opacity-50"
+                      className="absolute bottom-2.5 right-2.5 size-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-sm disabled:opacity-50"
                       onClick={() => generateClause()}
                       disabled={isGenerating || !aiPrompt.trim()}
                       data-testid="button-send-ai-draft-prompt"
                     >
-                      {isGenerating ? <Search size={15} className="animate-spin" /> : <ArrowRight size={16} />}
+                      {isGenerating ? <Search size={13} className="animate-spin" /> : <ArrowRight size={14} />}
                     </button>
                   </div>
                 </div>
