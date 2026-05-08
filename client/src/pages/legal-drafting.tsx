@@ -34,6 +34,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Calculator,
+  Clock,
+  Mic,
+  MicOff,
+  Square,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CourtFeeCalculator } from "@/components/court-fee-calculator";
@@ -48,6 +52,9 @@ import { DocumentViewer } from "@/components/document-viewer";
 import { LegalEditor, type LegalEditorHandle } from "@/components/legal-editor";
 import { plainTextToTiptapHTML, isHTMLContent } from "@/lib/plain-to-tiptap";
 import { generateLegalPDF } from "@/lib/generate-legal-pdf";
+import { useVoiceRecorder, formatDuration } from "@/hooks/use-voice-recorder";
+import { useDraftHistory } from "@/hooks/use-draft-history";
+import { DraftHistoryPanel } from "@/components/draft-history-panel";
 
 type DraftRecommendation = {
   id: string;
@@ -1556,6 +1563,9 @@ export default function LegalDraftingPage() {
   const [hasDraftInSession, setHasDraftInSession] = useState(false);
   const [workspaceStateHydrated, setWorkspaceStateHydrated] = useState(false);
   const [feeCalcOpen, setFeeCalcOpen] = useState(false);
+  const voice = useVoiceRecorder();
+  const draftHistory = useDraftHistory(selectedDraftId ? `draft-${selectedDraftId}` : "workspace");
+  const [rightRailTab, setRightRailTab] = useState<"ai" | "history">("ai");
   const showDraftReviewPanel = hasDraftInSession || recommendLoading || recommendations.length > 0;
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
@@ -2225,7 +2235,11 @@ export default function LegalDraftingPage() {
 
   const saveDraft = () => {
     const cleanTitle = draftTitle.trim() || `Draft ${new Date().toLocaleString()}`;
-    saveDraftMutation.mutate({ id: selectedDraftId, title: cleanTitle, content: editorHtml || docText });
+    const currentHtml = editorRef.current?.getHTML() || editorHtml || docText;
+    const currentText = editorRef.current?.getText() || docText;
+    // Auto-snapshot before saving
+    draftHistory.addSnapshot(cleanTitle, currentHtml, currentText);
+    saveDraftMutation.mutate({ id: selectedDraftId, title: cleanTitle, content: currentHtml });
   };
 
   const loadDraft = (doc: DraftDocument) => {
@@ -2717,6 +2731,40 @@ export default function LegalDraftingPage() {
         </div>
       </header>
 
+      {/* Right rail tab switcher - render between header and main content */}
+      {rightRailVisible && (
+        <div className="hidden lg:flex items-center gap-1 px-2 py-1 border-b border-[hsl(var(--preview-border))] bg-background/30">
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => setRightRailTab("ai")}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                rightRailTab === "ai"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              AI Assistant
+            </button>
+            <button
+              onClick={() => setRightRailTab("history")}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all inline-flex items-center gap-1 ${
+                rightRailTab === "history"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Clock size={10} />
+              History
+              {draftHistory.snapshots.length > 0 && (
+                <span className="ml-0.5 px-1 py-0 rounded-full bg-primary/20 text-[8px] text-primary font-bold">
+                  {draftHistory.snapshots.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-1 overflow-hidden">
         <aside
           className={`hidden md:flex transition-[width] duration-300 ease-out overflow-hidden ${
@@ -3026,8 +3074,58 @@ export default function LegalDraftingPage() {
                         <Paperclip size={12} />
                         Attach Context Files
                       </button>
+                      {voice.isSupported && (
+                        voice.isRecording ? (
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const blob = await voice.stopRecording();
+                                if (blob) {
+                                  try {
+                                    const text = await voice.transcribe(blob);
+                                    setAiPrompt((prev) => prev ? `${prev}\n${text}` : text);
+                                    toast({ title: "Voice transcribed successfully" });
+                                  } catch {
+                                    toast({ title: "Transcription failed", variant: "destructive" });
+                                  }
+                                }
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-red-500/50 bg-red-500/15 text-[11px] text-red-400 hover:bg-red-500/25 animate-pulse"
+                            >
+                              <Square size={10} fill="currentColor" />
+                              Stop · {formatDuration(voice.duration)}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => voice.cancelRecording()}
+                              className="text-[10px] text-muted-foreground hover:text-foreground"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : voice.isTranscribing ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-primary/30 bg-primary/10 text-[11px] text-primary">
+                            <Loader2 size={12} className="animate-spin" />
+                            Transcribing...
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => voice.startRecording()}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-card/40 text-[11px] text-foreground hover:border-primary/40 hover:text-primary"
+                            title="Record voice note — dictate instructions"
+                          >
+                            <Mic size={12} />
+                            Voice
+                          </button>
+                        )
+                      )}
                       <span className="text-[10px] text-muted-foreground">PDF, DOC/DOCX/DOCM/DOTX, TXT · up to 5 files</span>
                     </div>
+                    {voice.error && (
+                      <p className="text-[10px] text-red-400 mt-1">{voice.error}</p>
+                    )}
                     {aiContextFiles.length > 0 && (
                       <div className="mt-2 space-y-1.5 max-h-24 overflow-y-auto pr-1">
                         {aiContextFiles.map((file, idx) => (
@@ -3116,14 +3214,47 @@ export default function LegalDraftingPage() {
           <div className="p-2.5 border-b border-[hsl(var(--preview-border))] bg-background/35 backdrop-blur-xl flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <div className="size-6 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center">
-                <Bot size={12} className="text-primary" />
+                {rightRailTab === "history" ? <Clock size={12} className="text-primary" /> : <Bot size={12} className="text-primary" />}
               </div>
-              <h3 className="font-bold text-xs tracking-wide uppercase">AI Assistant</h3>
+              <h3 className="font-bold text-xs tracking-wide uppercase">{rightRailTab === "history" ? "Version History" : "AI Assistant"}</h3>
             </div>
-            <div className="px-1.5 py-0.5 rounded-full bg-primary/20 text-foreground text-[8px] font-bold border border-primary/30">PRO</div>
+            <div className="flex items-center gap-1">
+              {rightRailTab === "history" ? (
+                <button
+                  onClick={() => setRightRailTab("ai")}
+                  className="px-1.5 py-0.5 rounded-full bg-card/50 text-foreground text-[8px] font-bold border border-border hover:border-primary/30"
+                >
+                  ← AI
+                </button>
+              ) : (
+                <button
+                  onClick={() => setRightRailTab("history")}
+                  className="px-1.5 py-0.5 rounded-full bg-card/50 text-foreground text-[8px] font-bold border border-border hover:border-primary/30"
+                >
+                  History →
+                </button>
+              )}
+              <div className="px-1.5 py-0.5 rounded-full bg-primary/20 text-foreground text-[8px] font-bold border border-primary/30">PRO</div>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2.5 space-y-3">
+            {rightRailTab === "history" ? (
+              <DraftHistoryPanel
+                snapshots={draftHistory.snapshots}
+                currentText={editorRef.current?.getText() || docText}
+                onRestore={(snap) => {
+                  setEditorContent(snap.html);
+                  toast({ title: "Version restored", description: `Restored to "${snap.title}"` });
+                }}
+                onDelete={(id) => draftHistory.deleteSnapshot(id)}
+                onClearAll={() => {
+                  draftHistory.clearHistory();
+                  toast({ title: "History cleared" });
+                }}
+              />
+            ) : (
+            <>
             <section>
               <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Controls</label>
               <p className="text-[10px] text-muted-foreground leading-relaxed">
@@ -3329,6 +3460,8 @@ export default function LegalDraftingPage() {
               </div>
               )}
             </section>
+            </>
+            )}
           </div>
           </div>
         </aside>
