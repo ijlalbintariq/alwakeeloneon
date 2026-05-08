@@ -47,6 +47,7 @@ import { StyleMemoryPanel } from "@/components/style-memory-panel";
 import { DocumentViewer } from "@/components/document-viewer";
 import { LegalEditor, type LegalEditorHandle } from "@/components/legal-editor";
 import { plainTextToTiptapHTML, isHTMLContent } from "@/lib/plain-to-tiptap";
+import { generateLegalPDF } from "@/lib/generate-legal-pdf";
 
 type DraftRecommendation = {
   id: string;
@@ -2511,6 +2512,16 @@ export default function LegalDraftingPage() {
     toast({ title: "Exported as TXT" });
   };
 
+  const exportAsPdf = () => {
+    const html = editorRef.current?.getHTML() || editorHtml || docText;
+    generateLegalPDF({
+      html,
+      title: draftTitle || "Untitled Draft",
+      isDraft: !selectedDraftId,
+    });
+    toast({ title: "Exported as PDF" });
+  };
+
   const exportAsDoc = () => {
     const content = editorRef.current?.getHTML() || editorHtml || docText;
     const html = `<!doctype html><html><head><meta charset="utf-8" /><style>
@@ -2686,6 +2697,14 @@ export default function LegalDraftingPage() {
           >
             <Download size={12} className="mr-1" />
             TXT
+          </Button>
+          <Button
+            className="h-7 px-2.5 text-xs bg-red-700/90 text-white hover:bg-red-700 font-bold shadow-sm"
+            onClick={exportAsPdf}
+            data-testid="button-export-pdf"
+          >
+            <Download size={12} className="mr-1" />
+            PDF
           </Button>
           <Button
             className="h-7 px-2.5 text-xs bg-primary text-primary-foreground hover:bg-primary font-bold shadow-sm"

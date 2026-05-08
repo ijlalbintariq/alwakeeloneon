@@ -845,3 +845,89 @@
     transition-duration: 1ms !important;
   }
 }
+
+/* ─── Print Stylesheet (Cmd+P / Ctrl+P support) ─── */
+@media print {
+  /* Hide all application chrome */
+  nav, aside, header, footer,
+  [data-testid="sidebar"],
+  .sidebar,
+  .app-sidebar,
+  [class*="sidebar"],
+  [class*="toolbar"],
+  [class*="status-bar"],
+  [class*="chat-panel"],
+  [data-testid*="button-"],
+  button,
+  .toaster {
+    display: none !important;
+  }
+
+  /* Reset background */
+  html, body, main, #root, [data-theme] {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Editor content area — full width, court typography */
+  .legal-draft-editor {
+    font-family: 'Times New Roman', 'TimesNewRomanPSMT', serif !important;
+    font-size: 13pt !important;
+    line-height: 1.8 !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 25mm !important;
+    width: auto !important;
+    max-width: none !important;
+    min-height: auto !important;
+  }
+
+  .legal-draft-editor h1 {
+    font-size: 16pt !important;
+    text-transform: uppercase !important;
+    text-align: center !important;
+    page-break-after: avoid !important;
+  }
+
+  .legal-draft-editor h2 {
+    font-size: 14pt !important;
+    text-transform: uppercase !important;
+    page-break-after: avoid !important;
+  }
+
+  .legal-draft-editor h3 {
+    font-size: 13pt !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Prevent orphaned headings and short paragraphs */
+  .legal-draft-editor h1,
+  .legal-draft-editor h2,
+  .legal-draft-editor h3 {
+    orphans: 3;
+    widows: 3;
+  }
+
+  .legal-draft-editor p {
+    orphans: 2;
+    widows: 2;
+  }
+
+  /* Citation chips in print */
+  .citation-chip {
+    border: none !important;
+    background: none !important;
+    color: black !important;
+    font-weight: 700 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 25mm;
+  }
+}

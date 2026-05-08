@@ -35,6 +35,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 import type { Document as StoredDocument } from "@shared/schema";
 import { StyleMemoryPanel } from "@/components/style-memory-panel";
+import { generateLegalPDF } from "@/lib/generate-legal-pdf";
 
 type ComplianceRisk = {
   id: string;
@@ -983,7 +984,29 @@ export default function ContractDraftingPage() {
   };
 
   const printContract = () => {
-    window.print();
+    // Wrap plain text in basic HTML structure for the PDF generator
+    const htmlContent = contractText
+      .split("\n")
+      .map((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return "";
+        // Detect headings (all-caps lines or short bold lines)
+        if (trimmed === trimmed.toUpperCase() && trimmed.length < 80 && trimmed.length > 2) {
+          return `<h2>${trimmed}</h2>`;
+        }
+        return `<p>${trimmed}</p>`;
+      })
+      .join("");
+
+    generateLegalPDF({
+      html: htmlContent,
+      title: form.title || "Untitled Contract",
+      draftType: form.contractType || "Contract",
+      court: form.jurisdiction || undefined,
+      parties: [form.firstParty, form.secondParty].filter(Boolean).join(" and "),
+      isDraft: !selectedDocId,
+    });
+    toast({ title: "Exported as PDF" });
   };
 
   const saveStatusLabel =
