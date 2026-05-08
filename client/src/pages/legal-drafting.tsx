@@ -55,6 +55,7 @@ import { generateLegalPDF } from "@/lib/generate-legal-pdf";
 import { useVoiceRecorder, formatDuration } from "@/hooks/use-voice-recorder";
 import { useDraftHistory } from "@/hooks/use-draft-history";
 import { DraftHistoryPanel } from "@/components/draft-history-panel";
+import { DraftTabsProvider, useDraftTabs } from "@/contexts/draft-tabs-context";
 
 type DraftRecommendation = {
   id: string;
@@ -1525,8 +1526,9 @@ function findSnippetRange(source: string, targetSnippet: string): { start: numbe
   return null;
 }
 
-export default function LegalDraftingPage() {
+function LegalDraftingPageInner() {
   const { user } = useAuth();
+  const draftTabs = useDraftTabs();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const aiContextInputRef = useRef<HTMLInputElement | null>(null);
@@ -2731,6 +2733,83 @@ export default function LegalDraftingPage() {
         </div>
       </header>
 
+      {/* ── Multi-doc tab bar ── */}
+      {draftTabs.tabs.length > 0 && (
+        <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border/40 bg-background/60 backdrop-blur-sm overflow-x-auto scrollbar-hide z-10">
+          {draftTabs.tabs.map((tab) => {
+            const isActive = tab.id === draftTabs.activeTabId;
+            return (
+              <div
+                key={tab.id}
+                className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] cursor-pointer transition-all whitespace-nowrap max-w-[160px] ${
+                  isActive
+                    ? "bg-primary/15 text-primary border border-primary/30 font-bold shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50 border border-transparent"
+                }`}
+                onClick={() => {
+                  if (!isActive) {
+                    // Save current state to the current tab before switching
+                    draftTabs.updateTab(draftTabs.activeTabId, {
+                      editorHtml: editorRef.current?.getHTML() || editorHtml || docText,
+                      docText: editorRef.current?.getText() || docText,
+                      title: draftTitle,
+                      draftId: selectedDraftId,
+                    });
+                    // Switch tab
+                    draftTabs.switchTab(tab.id);
+                    // Restore the new tab's state
+                    setDraftTitle(tab.title);
+                    setSelectedDraftId(tab.draftId);
+                    setEditorContent(tab.editorHtml || "");
+                    if (tab.editorHtml) {
+                      setHasDraftInSession(true);
+                    }
+                  }
+                }}
+              >
+                {tab.isDirty && <span className="size-1.5 rounded-full bg-primary shrink-0" />}
+                <span className="truncate">{tab.title || "Untitled"}</span>
+                {draftTabs.tabs.length > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      draftTabs.closeTab(tab.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 shrink-0 transition-opacity"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          {draftTabs.tabs.length < 5 && (
+            <button
+              onClick={() => {
+                // Save current tab before creating new
+                draftTabs.updateTab(draftTabs.activeTabId, {
+                  editorHtml: editorRef.current?.getHTML() || editorHtml || docText,
+                  docText: editorRef.current?.getText() || docText,
+                  title: draftTitle,
+                  draftId: selectedDraftId,
+                });
+                const newId = draftTabs.addTab({ title: "Untitled Draft" });
+                setDraftTitle("Untitled Draft");
+                setSelectedDraftId(null);
+                setEditorContent("");
+                setHasDraftInSession(false);
+                setDraftChatMessages([createDraftingIntroMessage()]);
+              }}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-muted-foreground hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all"
+              title="New draft tab (max 5)"
+            >
+              <Plus size={11} />
+              New
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Right rail tab switcher - render between header and main content */}
       {rightRailVisible && (
         <div className="hidden lg:flex items-center gap-1 px-2 py-1 border-b border-[hsl(var(--preview-border))] bg-background/30">
@@ -3488,5 +3567,13 @@ export default function LegalDraftingPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function LegalDraftingPage() {
+  return (
+    <DraftTabsProvider>
+      <LegalDraftingPageInner />
+    </DraftTabsProvider>
   );
 }
