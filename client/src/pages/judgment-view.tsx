@@ -555,7 +555,7 @@ export default function JudgmentViewPage() {
                 <div
                   className={`max-w-[90%] px-4 py-3 rounded-xl text-sm ${
                     msg.role === "user"
-                      ? "bg-primary text-foreground"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-card text-foreground border border-border"
                   }`}
                 >
@@ -593,7 +593,7 @@ export default function JudgmentViewPage() {
                 size="icon"
                 onClick={() => handleChatSend()}
                 disabled={!chatInput.trim() || isChatLoading}
-                className="bg-primary text-foreground rounded-xl h-10 w-10"
+                className="bg-primary text-primary-foreground rounded-xl h-10 w-10"
               >
                 <Send size={16} />
               </Button>

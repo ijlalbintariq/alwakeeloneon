@@ -329,7 +329,7 @@ export default function UserPanelPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button
                   asChild
-                  className="h-9 rounded-xl bg-primary text-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary"
+                  className="h-9 rounded-xl bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary"
                   data-testid="button-upgrade-plan-profile"
                 >
                   <a href={upgradeHref}>{upgradeLabel}</a>
@@ -422,7 +422,7 @@ export default function UserPanelPage() {
                 </p>
                 <a
                   href={upgradeHref}
-                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 bg-primary text-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors"
+                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors"
                   data-testid="link-upgrade-limit-profile"
                 >
                   {upgradeLabel}

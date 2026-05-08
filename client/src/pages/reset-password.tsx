@@ -76,7 +76,7 @@ export default function ResetPasswordPage() {
             <Link
               href="/forgot-password"
               data-testid="link-request-new-reset"
-              className="inline-block w-full bg-primary text-foreground font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all text-center shadow-xl shadow-primary/10 mt-4"
+              className="inline-block w-full bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all text-center shadow-xl shadow-primary/10 mt-4"
             >
               Request New Link
             </Link>
@@ -116,7 +116,7 @@ export default function ResetPasswordPage() {
             <Link
               href="/auth"
               data-testid="link-go-to-login"
-              className="inline-block w-full bg-primary text-foreground font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all text-center shadow-xl shadow-primary/10 mt-4"
+              className="inline-block w-full bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all text-center shadow-xl shadow-primary/10 mt-4"
             >
               Sign In Now
             </Link>
@@ -176,7 +176,7 @@ export default function ResetPasswordPage() {
                 type="submit"
                 disabled={resetMutation.isPending}
                 data-testid="button-submit-reset"
-                className="w-full bg-primary text-foreground font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+                className="w-full bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
               >
                 {resetMutation.isPending ? (
                   <div className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin" />

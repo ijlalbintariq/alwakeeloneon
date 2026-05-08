@@ -84,7 +84,7 @@ export default function AdminSetupPage() {
           <Button
             onClick={() => claimMutation.mutate()}
             disabled={claimMutation.isPending}
-            className="w-full bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
+            className="w-full bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
             data-testid="button-claim-admin"
           >
             {claimMutation.isPending ? (

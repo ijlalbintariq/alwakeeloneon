@@ -165,7 +165,7 @@ export default function StatuteSearchPage() {
               {isSearching && <Loader2 size={18} className="text-primary animate-spin self-center mr-1" />}
               <button
                 onClick={() => handleQuickSearch(query)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-primary/70 bg-gradient-to-r from-primary to-primary px-3 py-2 text-xs font-black uppercase tracking-wider text-foreground hover:from-primary hover:to-primary transition-all active:scale-95"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-primary/70 bg-primary px-3 py-2 text-xs font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90 transition-all active:scale-95"
                 data-testid="button-statute-search"
               >
                 <Search size={13} />

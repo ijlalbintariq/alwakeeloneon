@@ -124,7 +124,7 @@ export default function InstallAppPage() {
               onClick={() => setPlatform(p.id)}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all ${
                 platform === p.id
-                  ? "bg-primary text-foreground shadow-lg shadow-primary/20"
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                   : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >

@@ -277,7 +277,7 @@ export default function CheckoutPage() {
                   }}
                   className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${
                     billingCycle === cycle.key
-                      ? "bg-primary text-foreground"
+                      ? "bg-primary text-primary-foreground"
                       : "text-foreground hover:text-foreground"
                   }`}
                   data-testid={`checkout-cycle-${cycle.key}`}

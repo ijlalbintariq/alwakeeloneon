@@ -118,7 +118,7 @@ export default function SharedConversationPage() {
                 <div
                   className={`max-w-[92%] sm:max-w-[85%] p-3 sm:p-6 md:p-8 rounded-[1.2rem] sm:rounded-[2rem] shadow-xl ${
                     m.role === "user"
-                      ? "bg-primary text-foreground font-bold rounded-tr-lg"
+                      ? "bg-primary text-primary-foreground font-bold rounded-tr-lg"
                       : "bg-card border border-border text-foreground rounded-tl-lg"
                   }`}
                 >
@@ -142,7 +142,7 @@ export default function SharedConversationPage() {
           </p>
           <a
             href="/auth"
-            className="inline-block px-8 py-3 bg-primary text-foreground font-bold rounded-xl hover:bg-primary transition-colors shadow-xl shadow-primary/20"
+            className="inline-block px-8 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:bg-primary transition-colors shadow-xl shadow-primary/20"
             data-testid="link-try-al-wakeelo"
           >
             Start Chatting with Al Wakeelo

@@ -3185,7 +3185,7 @@ export default function LegalDraftingPage() {
                                 <div className="mt-2 flex items-center gap-2">
                                   <button
                                     onClick={() => applyRecommendedChange(edit)}
-                                    className="px-2 py-1 rounded bg-primary text-foreground text-[10px] font-bold hover:bg-primary"
+                                    className="px-2 py-1 rounded bg-primary text-primary-foreground text-[10px] font-bold hover:bg-primary"
                                     data-testid={`button-apply-recommendation-${edit.id}`}
                                   >
                                     OK, Apply Change

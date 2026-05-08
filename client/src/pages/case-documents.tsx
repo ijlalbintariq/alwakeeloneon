@@ -337,8 +337,8 @@ export default function CaseDocumentsPage() {
                   onClick={() => setCategory(tab.id)}
                   className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
                     category === tab.id
-                      ? "bg-primary text-foreground shadow-lg shadow-primary/20"
-                      : "border border-white/10 bg-white/5 text-foreground hover:border-primary/40"
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                      : "border border-border bg-muted/50 text-foreground hover:border-primary/40"
                   }`}
                 >
                   {tab.label}
@@ -489,7 +489,7 @@ export default function CaseDocumentsPage() {
                 <button onClick={() => handleShare(previewDoc)} className="p-2 rounded-lg hover:bg-white/10 text-foreground" title="Share">
                   <Share2 size={18} />
                 </button>
-                <button onClick={() => setPreviewDoc(null)} className="p-2 rounded-full bg-primary text-foreground hover:brightness-110" title="Close">
+                <button onClick={() => setPreviewDoc(null)} className="p-2 rounded-full bg-primary text-primary-foreground hover:brightness-110" title="Close">
                   <X size={18} />
                 </button>
               </div>
@@ -562,7 +562,7 @@ export default function CaseDocumentsPage() {
 
                 <button
                   onClick={() => openInEditor(previewDoc)}
-                  className="mt-5 w-full py-3 rounded-full bg-primary text-foreground font-bold hover:brightness-105 inline-flex items-center justify-center gap-2"
+                  className="mt-5 w-full py-3 rounded-full bg-primary text-primary-foreground font-bold hover:brightness-105 inline-flex items-center justify-center gap-2"
                 >
                   <FolderOpen size={16} /> Open in Editor
                 </button>

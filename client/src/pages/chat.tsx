@@ -1342,7 +1342,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 Monthly limit reached ({usage.used}/{usage.monthlyLimit} actions)
               </span>
             </div>
-            <a href={upgradeCheckoutHref} className="flex items-center gap-1 px-3 py-1.5 bg-primary text-foreground rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors" data-testid="link-upgrade-limit">
+            <a href={upgradeCheckoutHref} className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors" data-testid="link-upgrade-limit">
               Upgrade Now <ArrowUpRight size={10} />
             </a>
           </div>
@@ -1565,7 +1565,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const rightRailVisible = rightRailOpen;
 
   return (
-    <div className="h-full w-full min-h-0 rounded-2xl overflow-hidden border border-border/70 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.14),transparent_36%),linear-gradient(180deg,#070d1b_0%,#0a1426_45%,#0b1629_100%)] shadow-[0_20px_80px_rgba(2,6,23,0.55)] fade-in">
+    <div className="h-full w-full min-h-0 rounded-2xl overflow-hidden border border-border/70 bg-background shadow-xl fade-in">
       <div className="relative h-full w-full">
         <aside
           className={`hidden lg:flex absolute left-3 top-28 xl:top-20 bottom-24 z-30 transition-[width,opacity,transform] duration-300 ease-out overflow-hidden ${
@@ -1577,7 +1577,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           <div className="p-5 flex flex-col h-full w-64 rounded-2xl border border-primary/20 bg-background/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
             <button
               onClick={handleClear}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 text-foreground w-full py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/25 mb-6"
+              className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 text-primary-foreground w-full py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/25 mb-6"
               data-testid="button-new-consultation"
             >
               <PlusCircle size={18} />
@@ -1647,7 +1647,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </details>
           </section>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-7 scrollbar-hide bg-[linear-gradient(180deg,rgba(10,14,39,0.5),rgba(15,23,50,0.8))] flex flex-col items-center">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-7 scrollbar-hide bg-background flex flex-col items-center">
             <div className="w-full max-w-2xl">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
@@ -1668,7 +1668,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   className={`flex items-start gap-2 sm:gap-3 w-full ${m.role === "user" ? "ml-auto flex-row-reverse" : ""}`}
                   style={OFFSCREEN_MESSAGE_STYLE}
                 >
-                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-primary text-foreground" : "bg-card border border-primary/30 text-foreground"}`}>
+                  <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full flex items-center justify-center ${m.role === "assistant" ? "bg-primary text-primary-foreground" : "bg-card border border-primary/30 text-foreground"}`}>
                     {m.role === "assistant" ? <Scale size={18} /> : <UserIcon size={16} />}
                   </div>
                   <div className={`min-w-0 flex-1 flex flex-col gap-2 ${m.role === "user" ? "items-end" : ""}`}>

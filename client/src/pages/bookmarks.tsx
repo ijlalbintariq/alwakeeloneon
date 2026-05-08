@@ -263,7 +263,7 @@ export default function BookmarksPage() {
                       onClick={() => setFilterAndResetPage(value)}
                       className={`rounded-lg px-4 py-2 text-sm transition-colors ${
                         active
-                          ? "bg-primary text-foreground font-bold"
+                          ? "bg-primary text-primary-foreground font-bold"
                           : "bg-card text-foreground border border-border hover:bg-muted"
                       }`}
                       data-testid={`button-bookmark-filter-${value}`}

@@ -143,7 +143,7 @@ export default function LandingPage() {
             </button>
             <a
               href={ctaTarget}
-              className="px-6 py-2.5 bg-primary text-foreground rounded-xl text-sm font-bold hover:bg-primary transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+              className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
             >
               {user ? <><LayoutDashboard size={16} /> Dashboard</> : "Start Now"}
             </a>
@@ -194,7 +194,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
               href={ctaTarget}
-              className="w-full sm:w-auto px-8 py-4 bg-primary text-foreground rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/20"
+              className="w-full sm:w-auto px-8 py-4 bg-primary text-primary-foreground rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/20"
             >
               {user ? "Open Dashboard" : "Start Free"} <ArrowRight size={16} />
             </a>
@@ -396,7 +396,7 @@ export default function LandingPage() {
                   onClick={() => setBillingCycle(cycle.key)}
                   className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${
                     billingCycle === cycle.key
-                      ? "bg-primary text-foreground"
+                      ? "bg-primary text-primary-foreground"
                       : "text-foreground hover:text-foreground"
                   }`}
                   data-testid={`pricing-cycle-${cycle.key}`}
@@ -472,7 +472,7 @@ export default function LandingPage() {
                     href={`/checkout?plan=${plan.key}&cycle=${billingCycle}`}
                     className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center ${
                       plan.highlighted
-                        ? "bg-primary text-foreground hover:bg-primary shadow-lg shadow-primary/20"
+                        ? "bg-primary text-primary-foreground hover:bg-primary shadow-lg shadow-primary/20"
                         : "border border-border text-foreground hover:border-primary hover:text-primary"
                     }`}
                   >
@@ -539,7 +539,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <a
               href={ctaTarget}
-              className="px-8 py-3.5 bg-primary text-foreground rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center gap-2 shadow-xl shadow-primary/20"
+              className="px-8 py-3.5 bg-primary text-primary-foreground rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center gap-2 shadow-xl shadow-primary/20"
             >
               {user ? "Go to Dashboard" : "Start Now"} <ArrowRight size={16} />
             </a>

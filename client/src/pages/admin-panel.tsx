@@ -198,7 +198,7 @@ export default function AdminPanelPage() {
           <Button
             key={tab.id}
             variant={activeTab === tab.id ? "default" : "ghost"}
-            className={`rounded-xl text-[10px] uppercase tracking-widest font-black admin-tab-button ${activeTab === tab.id ? "bg-primary text-foreground" : "text-foreground"}`}
+            className={`rounded-xl text-[10px] uppercase tracking-widest font-black admin-tab-button ${activeTab === tab.id ? "bg-primary text-primary-foreground" : "text-foreground"}`}
             onClick={() => setActiveTab(tab.id)}
             data-testid={`tab-${tab.id}`}
           >
@@ -388,7 +388,7 @@ function GlobalRagIndexCard() {
                   <span>Index Missing Only</span>
                 </Button>
                 <Button
-                  className="bg-primary text-foreground rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  className="bg-primary text-primary-foreground rounded-xl text-[10px] uppercase tracking-widest font-black"
                   onClick={() => startMutation.mutate()}
                   disabled={startMutation.isPending || startIncrementalMutation.isPending || isLoading}
                   data-testid="button-start-global-rag-index"
@@ -902,7 +902,7 @@ function UsersSection() {
           <Button
             onClick={exportUsersCsv}
             disabled={isExportingUsersCsv}
-            className="bg-primary text-foreground hover:bg-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="bg-primary text-primary-foreground hover:bg-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
             data-testid="button-export-users-csv"
           >
             {isExportingUsersCsv ? <Loader2 size={12} className="animate-spin mr-1" /> : <Download size={12} className="mr-1" />}
@@ -910,7 +910,7 @@ function UsersSection() {
           </Button>
           <Button
             variant={showAddForm ? "ghost" : "default"}
-            className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-muted-foreground" : "bg-primary text-foreground"}`}
+            className={`rounded-xl text-[10px] uppercase tracking-widest font-black ${showAddForm ? "text-muted-foreground" : "bg-primary text-primary-foreground"}`}
             onClick={() => setShowAddForm(!showAddForm)}
             data-testid="button-toggle-add-user"
           >
@@ -994,7 +994,7 @@ function UsersSection() {
             <Button
               onClick={() => addUserMutation.mutate()}
               disabled={addUserMutation.isPending || !newEmail || !newPassword || !newFirstName || !newLastName}
-              className="bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
+              className="bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
               data-testid="button-create-user"
             >
               {addUserMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
@@ -1503,7 +1503,7 @@ function KnowledgeSection() {
           <Button
             onClick={handleUpload}
             disabled={isUploading}
-            className="bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
+            className="bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
             data-testid="button-upload-knowledge"
           >
             {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
@@ -1856,7 +1856,7 @@ function CaseLawBadIndexAuditCard() {
             ) : (
               <Button
                 size="sm"
-                className="bg-primary text-foreground rounded-xl text-[10px] uppercase tracking-widest font-black"
+                className="bg-primary text-primary-foreground rounded-xl text-[10px] uppercase tracking-widest font-black"
                 onClick={() => startBadIndexReextractMutation.mutate()}
                 disabled={startBadIndexReextractMutation.isPending}
                 data-testid="button-start-bad-index-reextract"
@@ -2565,7 +2565,7 @@ function CaseLawSection() {
         <Button
           onClick={() => isEdit && editingId ? updateMutation.mutate({ id: editingId, data: formData }) : createMutation.mutate(formData)}
           disabled={!formData.citation || !formData.court || !formData.title || !formData.summary || createMutation.isPending || updateMutation.isPending}
-          className="bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
+          className="bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
           data-testid="button-save-caselaw"
         >
           {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
@@ -2658,7 +2658,7 @@ function CaseLawSection() {
             <span>Upload Document</span>
           </Button>
           <Button
-            className="bg-primary text-foreground rounded-xl text-[10px] uppercase tracking-widest font-black"
+            className="bg-primary text-primary-foreground rounded-xl text-[10px] uppercase tracking-widest font-black"
             onClick={() => { setShowAddForm(!showAddForm); setShowBulkUpload(false); cancelEdit(); }}
             data-testid="button-add-caselaw"
           >
@@ -2849,7 +2849,7 @@ function CaseLawSection() {
                   <Button
                     onClick={() => saveBulkMutation.mutate(extractedCases)}
                     disabled={saveBulkMutation.isPending}
-                    className="bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
+                    className="bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
                     data-testid="button-confirm-bulk-upload"
                   >
                     {saveBulkMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
@@ -3155,7 +3155,7 @@ function ClientLeadsSection() {
               <Button
                 onClick={exportAllClientLeadsCsv}
                 disabled={isExportingCsv}
-                className="bg-primary text-foreground hover:bg-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
+                className="bg-primary text-primary-foreground hover:bg-primary rounded-xl text-[10px] uppercase tracking-widest font-black"
                 data-testid="button-export-client-leads-csv"
               >
                 {isExportingCsv ? <Loader2 size={12} className="animate-spin mr-1" /> : <Download size={12} className="mr-1" />}
@@ -3511,7 +3511,7 @@ function StatuteDocumentsSection() {
           <Button
             onClick={handleUpload}
             disabled={isUploading}
-            className="bg-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
+            className="bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
             data-testid="button-upload-statute-docs"
           >
             {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}

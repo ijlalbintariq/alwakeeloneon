@@ -455,13 +455,13 @@ export default function JudgmentSearchPage() {
 
       <section className="rounded-2xl border border-border/80 bg-background/90 p-3 shadow-2xl">
         <div className="mb-3 flex justify-center">
-          <div className="inline-flex rounded-xl border border-border/90 bg-black/40 p-1">
+          <div className="inline-flex rounded-xl border border-border/90 bg-muted/40 p-1">
             <button
               type="button"
               onClick={() => setSearchMode("keyword")}
               className={`rounded-lg px-5 py-2 text-sm font-bold transition-all ${
                 searchMode === "keyword"
-                  ? "bg-primary text-foreground"
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -472,7 +472,7 @@ export default function JudgmentSearchPage() {
               onClick={() => setSearchMode("citation")}
               className={`rounded-lg px-5 py-2 text-sm font-bold transition-all ${
                 searchMode === "citation"
-                  ? "bg-primary text-foreground"
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -487,7 +487,7 @@ export default function JudgmentSearchPage() {
               <div className="relative">
                 <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
-                  className="w-full rounded-xl border border-border bg-black/50 pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl border border-border bg-muted/50 pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   placeholder="Search with Keywords, Booleans or Sentences"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -510,7 +510,7 @@ export default function JudgmentSearchPage() {
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Jurisdiction</span>
                 <select
-                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   value="Pakistan"
                   disabled
                 >
@@ -523,7 +523,7 @@ export default function JudgmentSearchPage() {
                 <input
                   value={keywordCourt}
                   onChange={(e) => setKeywordCourt(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   placeholder="All Courts"
                 />
               </label>
@@ -533,7 +533,7 @@ export default function JudgmentSearchPage() {
                 <select
                   value={keywordSort}
                   onChange={(e) => setKeywordSort(e.target.value as "relevance" | "latest")}
-                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                 >
                   <option value="relevance">Relevance</option>
                   <option value="latest">Latest</option>
@@ -553,7 +553,7 @@ export default function JudgmentSearchPage() {
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Jurisdiction</span>
                 <select
-                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   value="Pakistan"
                   disabled
                 >
@@ -566,7 +566,7 @@ export default function JudgmentSearchPage() {
                 <select
                   value={year}
                   onChange={(e) => setYear(Number(e.target.value))}
-                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   data-testid="select-citation-year"
                 >
                   {years.map((y) => (
@@ -582,7 +582,7 @@ export default function JudgmentSearchPage() {
                 <select
                   value={citationJournal}
                   onChange={(e) => setCitationJournal(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   disabled={loadingJournals}
                   data-testid="select-citation-journal"
                 >
@@ -603,7 +603,7 @@ export default function JudgmentSearchPage() {
                   min={1}
                   value={page}
                   onChange={(e) => setPage(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   placeholder="e.g. 123"
                   data-testid="input-citation-page"
                 />
@@ -614,7 +614,7 @@ export default function JudgmentSearchPage() {
                 <input
                   value={citationCourt}
                   onChange={(e) => setCitationCourt(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-black/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   placeholder="All Courts"
                   data-testid="input-citation-court"
                 />
@@ -900,7 +900,7 @@ export default function JudgmentSearchPage() {
         <aside className="min-h-0 space-y-4 overflow-y-auto pr-1">
           <section className="overflow-hidden rounded-xl border border-primary/25 bg-card/70">
             <div className="bg-primary px-4 py-3">
-              <h4 className="inline-flex items-center gap-2 text-sm font-black text-foreground uppercase tracking-wider">
+              <h4 className="inline-flex items-center gap-2 text-sm font-black text-primary-foreground uppercase tracking-wider">
                 <BookmarkPlus size={14} /> Saved Judgments
               </h4>
             </div>

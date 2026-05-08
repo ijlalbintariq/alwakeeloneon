@@ -322,7 +322,7 @@ export default function StatuteViewPage() {
             <Button
               size="sm"
               variant={viewMode === "pdf" ? "default" : "outline"}
-              className={viewMode === "pdf" ? "bg-primary text-foreground hover:bg-primary" : "border-border text-foreground"}
+              className={viewMode === "pdf" ? "bg-primary text-primary-foreground hover:bg-primary" : "border-border text-foreground"}
               onClick={() => setViewMode("pdf")}
             >
               <FileText size={14} className="mr-1" />
@@ -331,7 +331,7 @@ export default function StatuteViewPage() {
             <Button
               size="sm"
               variant={viewMode === "text" ? "default" : "outline"}
-              className={viewMode === "text" ? "bg-primary text-foreground hover:bg-primary" : "border-border text-foreground"}
+              className={viewMode === "text" ? "bg-primary text-primary-foreground hover:bg-primary" : "border-border text-foreground"}
               onClick={() => setViewMode("text")}
             >
               <List size={14} className="mr-1" />
@@ -448,7 +448,7 @@ export default function StatuteViewPage() {
                 <div
                   className={`max-w-[90%] px-4 py-3 rounded-xl text-sm ${
                     msg.role === "user"
-                      ? "bg-primary text-foreground"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-card text-foreground border border-border"
                   }`}
                 >
@@ -486,7 +486,7 @@ export default function StatuteViewPage() {
                 size="icon"
                 onClick={handleChatSend}
                 disabled={!chatInput.trim() || isChatLoading}
-                className="bg-primary text-foreground rounded-xl h-10 w-10"
+                className="bg-primary text-primary-foreground rounded-xl h-10 w-10"
               >
                 <Send size={16} />
               </Button>

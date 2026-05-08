@@ -630,7 +630,7 @@ export default function KnowledgeVaultPage() {
             <button
               onClick={() => setView("home")}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                (view as string) === "home" ? "bg-primary text-[#1e1406] border-primary" : "border-primary/30 text-foreground hover:text-foreground"
+                (view as string) === "home" ? "bg-primary text-primary-foreground border-primary" : "border-primary/30 text-foreground hover:text-foreground"
               }`}
             >
               Home
@@ -638,7 +638,7 @@ export default function KnowledgeVaultPage() {
             <button
               onClick={() => setView("uploads")}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                (view as string) === "uploads" ? "bg-primary text-[#1e1406] border-primary" : "border-primary/30 text-foreground hover:text-foreground"
+                (view as string) === "uploads" ? "bg-primary text-primary-foreground border-primary" : "border-primary/30 text-foreground hover:text-foreground"
               }`}
             >
               My Uploads
@@ -681,7 +681,7 @@ export default function KnowledgeVaultPage() {
               </div>
 
               <div className="grid md:grid-cols-2 gap-5 w-full">
-                <div className="rounded-2xl border border-primary/20 bg-black/20 backdrop-blur-xl p-5">
+                <div className="rounded-2xl border border-primary/20 bg-card/50 backdrop-blur-xl p-5">
                   <h3 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
                     <Sparkles size={16} className="text-primary" /> Extracted Key Terms
                   </h3>
@@ -699,7 +699,7 @@ export default function KnowledgeVaultPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-primary/20 bg-black/20 backdrop-blur-xl p-5">
+                <div className="rounded-2xl border border-primary/20 bg-card/50 backdrop-blur-xl p-5">
                   <h3 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
                     <BookOpen size={16} className="text-primary" /> Concepts Identified
                   </h3>
@@ -710,7 +710,7 @@ export default function KnowledgeVaultPage() {
                         className={`px-3 py-1 rounded-full text-xs border ${
                           concepts.length > 0
                             ? "bg-primary/10 border-primary/25 text-primary"
-                            : "bg-white/5 border-white/10 text-muted-foreground"
+                            : "bg-muted/30 border-border/70 text-muted-foreground"
                         }`}
                       >
                         {concept}
@@ -720,7 +720,7 @@ export default function KnowledgeVaultPage() {
                 </div>
               </div>
 
-              <div className="px-6 py-3 rounded-xl border border-primary/20 bg-black/20 text-muted-foreground text-sm">
+              <div className="px-6 py-3 rounded-xl border border-primary/20 bg-card/50 text-muted-foreground text-sm">
                 {processingPercent < 100 ? "Please wait while we calibrate your vault..." : "Finalizing vault index..."}
               </div>
             </div>
@@ -729,7 +729,7 @@ export default function KnowledgeVaultPage() {
 
         {view === "home" && (
           <div className="px-4 md:px-6 lg:px-8 py-5 md:py-6 space-y-5">
-            <div className="w-full rounded-3xl border border-primary/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.16),rgba(15,23,42,0.82)_45%,rgba(2,6,23,0.95)_100%)] p-4 md:p-6 shadow-[0_28px_48px_-34px_rgba(2,6,23,1)]">
+            <div className="w-full rounded-3xl border border-border bg-card p-4 md:p-6 shadow-xl">
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.22em] font-black text-foreground/75 mb-2">Knowledge Vault</p>
@@ -742,7 +742,7 @@ export default function KnowledgeVaultPage() {
                   <button
                     onClick={() => setView("home")}
                     className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                      (view as string) === "home" ? "bg-primary text-[#1e1406] border-primary" : "border-primary/30 text-foreground hover:text-foreground"
+                      (view as string) === "home" ? "bg-primary text-primary-foreground border-primary" : "border-primary/30 text-foreground hover:text-foreground"
                     }`}
                   >
                     Home
@@ -750,7 +750,7 @@ export default function KnowledgeVaultPage() {
                   <button
                     onClick={() => setView("uploads")}
                     className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                      (view as string) === "uploads" ? "bg-primary text-[#1e1406] border-primary" : "border-primary/30 text-foreground hover:text-foreground"
+                      (view as string) === "uploads" ? "bg-primary text-primary-foreground border-primary" : "border-primary/30 text-foreground hover:text-foreground"
                     }`}
                   >
                     My Uploads
@@ -758,7 +758,7 @@ export default function KnowledgeVaultPage() {
                 </div>
               </div>
               <div className="mt-5 w-full rounded-2xl border border-primary/25 bg-background/70 p-2.5 backdrop-blur-md">
-                <div className="flex items-center gap-2 rounded-xl bg-black/25 border border-white/5">
+                <div className="flex items-center gap-2 rounded-xl bg-card/60 border border-border/50">
                   <Search size={18} className="text-primary ml-4" />
                   <input
                     value={searchInput}
@@ -771,7 +771,7 @@ export default function KnowledgeVaultPage() {
                   />
                   <button
                     onClick={() => handleSearch()}
-                    className="mr-2 px-5 py-2 rounded-lg bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-primary text-[#211507] font-black text-sm"
+                    className="mr-2 px-5 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-black text-sm"
                   >
                     Search Vault
                   </button>
@@ -795,7 +795,7 @@ export default function KnowledgeVaultPage() {
                   </div>
                   <button
                     onClick={openUploader}
-                    className="shrink-0 rounded-xl border-2 border-dashed border-primary/40 hover:border-primary bg-black/20 hover:bg-primary/10 px-8 py-5 text-center"
+                    className="shrink-0 rounded-xl border-2 border-dashed border-primary/40 hover:border-primary bg-card/50 hover:bg-primary/10 px-8 py-5 text-center"
                   >
                     <div className="w-10 h-10 mx-auto rounded-full bg-primary/15 text-primary flex items-center justify-center">
                       <Upload size={18} />
@@ -816,7 +816,7 @@ export default function KnowledgeVaultPage() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="rounded-2xl border border-primary/30 bg-primary/10 p-5 hover:border-primary/60 transition-colors">
                       <div className="flex items-center justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-primary text-[#2a1904] flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
                           <FolderOpen size={17} />
                         </div>
                         <span className="text-xs text-primary font-bold uppercase">Active</span>
@@ -826,7 +826,7 @@ export default function KnowledgeVaultPage() {
                       <p className="text-2xl text-foreground mt-3 font-bold">{stats.total} <span className="text-sm text-muted-foreground font-medium">Documents</span></p>
                     </div>
                     {topDomainCards.map((item) => (
-                      <div key={item.key} className="rounded-2xl border border-primary/20 bg-black/20 p-5 hover:border-primary/40 transition-colors">
+                      <div key={item.key} className="rounded-2xl border border-primary/20 bg-card/50 p-5 hover:border-primary/40 transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                             <Gavel size={16} />
@@ -839,13 +839,13 @@ export default function KnowledgeVaultPage() {
                       </div>
                     ))}
                     {stats.total === 0 && (
-                      <div className="rounded-2xl border border-primary/20 bg-black/20 p-5 sm:col-span-2">
+                      <div className="rounded-2xl border border-primary/20 bg-card/50 p-5 sm:col-span-2">
                         <p className="text-foreground text-sm">Upload documents to generate domains and sources.</p>
                       </div>
                     )}
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-primary/20 bg-black/20 p-5">
+                  <div className="mt-4 rounded-2xl border border-primary/20 bg-card/50 p-5">
                     <div className="flex items-center justify-between gap-2">
                       <h4 className="text-lg text-foreground font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Sources</h4>
                       {isBackfilling && <span className="text-xs text-primary">Updating domain insights...</span>}
@@ -864,7 +864,7 @@ export default function KnowledgeVaultPage() {
               </div>
 
               <aside className="xl:col-span-4">
-                <div className="rounded-2xl border border-primary/20 bg-black/20 h-full p-4 shadow-[0_20px_36px_-30px_rgba(2,6,23,1)]">
+                <div className="rounded-2xl border border-primary/20 bg-card/50 h-full p-4 shadow-[0_20px_36px_-30px_rgba(2,6,23,1)]">
                   <div className="flex items-center justify-between pb-3 border-b border-primary/20">
                     <h3 className="text-lg text-foreground font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>AI Insights & Updates</h3>
                     <Sparkles size={16} className="text-primary" />
@@ -873,7 +873,7 @@ export default function KnowledgeVaultPage() {
                     {insights.map((item, idx) => (
                       <div key={`${item.title}-${idx}`} className="p-3 rounded-xl border border-primary/15 bg-primary/5 hover:border-primary/35 transition-colors">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-primary text-[#291904] font-black uppercase">{item.tag}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-primary text-primary-foreground font-black uppercase">{item.tag}</span>
                           <span className="text-xs text-muted-foreground">{idx === 0 ? "Just now" : "Recent"}</span>
                         </div>
                         <p className="text-sm text-foreground font-medium">{item.title}</p>
@@ -889,7 +889,7 @@ export default function KnowledgeVaultPage() {
 
         {view === "uploads" && (
           <div className="h-full px-4 md:px-6 lg:px-8 py-4 md:py-5 flex flex-col gap-4">
-            <div className="rounded-3xl border border-primary/25 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.14),rgba(15,23,42,0.82)_46%,rgba(2,6,23,0.95)_100%)] p-4 md:p-5 shadow-[0_24px_42px_-32px_rgba(2,6,23,1)]">
+            <div className="rounded-3xl border border-border bg-card p-4 md:p-5 shadow-xl">
               <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.22em] font-black text-foreground/75 mb-2">Knowledge Vault</p>
@@ -919,7 +919,7 @@ export default function KnowledgeVaultPage() {
                       </button>
                       <button
                         onClick={() => setShowDeleteAllConfirm(false)}
-                        className="px-3 py-1.5 rounded-lg border border-white/15 text-foreground text-[10px] font-black uppercase tracking-widest"
+                        className="px-3 py-1.5 rounded-lg border border-border text-foreground text-[10px] font-black uppercase tracking-widest"
                       >
                         Cancel
                       </button>
@@ -928,7 +928,7 @@ export default function KnowledgeVaultPage() {
 
                   <button
                     onClick={openUploader}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-primary text-[#251607] font-black flex items-center gap-2"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-primary text-primary-foreground font-black flex items-center gap-2"
                   >
                     <Upload size={16} /> Upload New
                   </button>
@@ -946,7 +946,7 @@ export default function KnowledgeVaultPage() {
               </div>
 
               <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="rounded-xl border border-primary/25 bg-black/25 p-3.5">
+                <div className="rounded-xl border border-primary/25 bg-card/60 p-3.5">
                   <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold">Total Files</p>
                   <p className="text-2xl text-foreground font-bold mt-1">{stats.total}</p>
                 </div>
@@ -965,7 +965,7 @@ export default function KnowledgeVaultPage() {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 rounded-2xl border border-primary/20 bg-black/20 overflow-hidden flex flex-col">
+            <div className="flex-1 min-h-0 rounded-2xl border border-primary/20 bg-card/50 overflow-hidden flex flex-col">
               <div className="p-3 md:p-4 border-b border-primary/15 flex flex-col lg:flex-row gap-3 justify-between">
                 <div className="relative w-full lg:max-w-sm">
                   <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -976,7 +976,7 @@ export default function KnowledgeVaultPage() {
                       setUploadPage(1);
                     }}
                     placeholder="Search documents..."
-                    className="w-full rounded-lg border border-white/15 bg-white/5 pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/40"
+                    className="w-full rounded-lg border border-border bg-muted/30 pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/40"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -986,7 +986,7 @@ export default function KnowledgeVaultPage() {
                       setTypeFilter(e.target.value as TypeFilter);
                       setUploadPage(1);
                     }}
-                    className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-foreground outline-none"
+                    className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground outline-none"
                   >
                     <option value="all">All Types</option>
                     <option value="pdf">PDF</option>
@@ -1001,7 +1001,7 @@ export default function KnowledgeVaultPage() {
                       setStatusFilter(e.target.value as StatusFilter);
                       setUploadPage(1);
                     }}
-                    className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-foreground outline-none"
+                    className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground outline-none"
                   >
                     <option value="all">All Status</option>
                     <option value="trained">Trained</option>
@@ -1023,10 +1023,10 @@ export default function KnowledgeVaultPage() {
                   </thead>
                   <tbody>
                     {uploadRows.map((doc) => (
-                      <tr key={doc.id} className="border-t border-white/10 hover:bg-primary/5">
+                      <tr key={doc.id} className="border-t border-border/70 hover:bg-primary/5">
                         <td className="px-8 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg border border-white/10 bg-black/30 flex items-center justify-center text-[10px] font-bold text-primary uppercase">
+                            <div className="w-10 h-10 rounded-lg border border-border/70 bg-muted/50 flex items-center justify-center text-[10px] font-bold text-primary uppercase">
                               {doc.extension === "other" ? "FILE" : doc.extension}
                             </div>
                             <div>
@@ -1052,14 +1052,14 @@ export default function KnowledgeVaultPage() {
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => void openSourceDoc(doc)}
-                              className="p-2 rounded-lg text-foreground hover:text-foreground hover:bg-white/10"
+                              className="p-2 rounded-lg text-foreground hover:text-foreground hover:bg-accent"
                               title="View"
                             >
                               <Eye size={16} />
                             </button>
                             <button
                               onClick={() => downloadDoc(doc)}
-                              className="p-2 rounded-lg text-foreground hover:text-foreground hover:bg-white/10"
+                              className="p-2 rounded-lg text-foreground hover:text-foreground hover:bg-accent"
                               title="Download"
                             >
                               <Download size={16} />
@@ -1104,15 +1104,15 @@ export default function KnowledgeVaultPage() {
                   <button
                     onClick={() => setUploadPage((p) => Math.max(1, p - 1))}
                     disabled={uploadPage <= 1}
-                    className="p-2 rounded-lg border border-white/10 disabled:opacity-40"
+                    className="p-2 rounded-lg border border-border/70 disabled:opacity-40"
                   >
                     <ChevronLeft size={15} />
                   </button>
-                  <span className="px-3 py-1 rounded-lg bg-primary text-[#2b1b06] font-bold">{uploadPage}</span>
+                  <span className="px-3 py-1 rounded-lg bg-primary text-primary-foreground font-bold">{uploadPage}</span>
                   <button
                     onClick={() => setUploadPage((p) => Math.min(uploadPageCount, p + 1))}
                     disabled={uploadPage >= uploadPageCount}
-                    className="p-2 rounded-lg border border-white/10 disabled:opacity-40"
+                    className="p-2 rounded-lg border border-border/70 disabled:opacity-40"
                   >
                     <ChevronRight size={15} />
                   </button>
@@ -1137,7 +1137,7 @@ export default function KnowledgeVaultPage() {
               </div>
 
               <div className="mt-4 rounded-2xl border border-primary/25 bg-background/70 p-2.5 backdrop-blur-md">
-                <div className="flex items-center gap-2 rounded-xl bg-black/25 border border-white/5">
+                <div className="flex items-center gap-2 rounded-xl bg-card/60 border border-border/50">
                   <Search size={17} className="text-primary ml-4" />
                   <input
                     value={searchInput}
@@ -1147,7 +1147,7 @@ export default function KnowledgeVaultPage() {
                     }}
                     className="w-full bg-transparent py-2.5 text-foreground placeholder:text-muted-foreground outline-none"
                   />
-                  <button onClick={() => handleSearch()} className="mr-2 px-4 py-2 rounded-lg bg-gradient-to-r from-primary to-primary text-[#2b1b06] font-black text-sm">
+                  <button onClick={() => handleSearch()} className="mr-2 px-4 py-2 rounded-lg bg-gradient-to-r from-primary to-primary text-primary-foreground font-black text-sm">
                     Search
                   </button>
                 </div>
@@ -1155,7 +1155,7 @@ export default function KnowledgeVaultPage() {
             </div>
 
             <div className="flex-1 min-h-0 grid lg:grid-cols-12 gap-4">
-              <aside className="lg:col-span-3 rounded-2xl border border-primary/20 bg-black/20 p-4 overflow-y-auto">
+              <aside className="lg:col-span-3 rounded-2xl border border-primary/20 bg-card/50 p-4 overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-primary/20 pb-2">
                   <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>Filters</h3>
                   <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-primary">Clear All</button>
@@ -1215,7 +1215,7 @@ export default function KnowledgeVaultPage() {
                       setJurisdictionFilter(e.target.value as JurisdictionFilter);
                       setResultPage(1);
                     }}
-                    className="w-full rounded-lg border border-white/15 bg-black/25 px-3 py-2 text-sm text-foreground"
+                    className="w-full rounded-lg border border-border bg-card/60 px-3 py-2 text-sm text-foreground"
                   >
                     <option value="all">All Jurisdictions</option>
                     <option value="supreme-court">Supreme Court</option>
@@ -1230,17 +1230,17 @@ export default function KnowledgeVaultPage() {
                 </div>
               </aside>
 
-              <section className="lg:col-span-9 rounded-2xl border border-primary/20 bg-black/20 p-3 md:p-4 min-h-0 overflow-y-auto space-y-3">
+              <section className="lg:col-span-9 rounded-2xl border border-primary/20 bg-card/50 p-3 md:p-4 min-h-0 overflow-y-auto space-y-3">
                 {resultRows.map(({ doc, score, snippet }) => (
-                  <article key={doc.id} className="rounded-2xl border border-primary/20 bg-black/20 p-4 hover:border-primary/30 transition">
+                  <article key={doc.id} className="rounded-2xl border border-primary/20 bg-card/50 p-4 hover:border-primary/30 transition">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="px-2 py-0.5 rounded border border-white/15 bg-black/30 uppercase">{doc.extension}</span>
+                        <span className="px-2 py-0.5 rounded border border-border bg-muted/50 uppercase">{doc.extension}</span>
                         <span>Uploaded on {formatDate(doc.createdAt)}</span>
                       </div>
                       <button
                         onClick={() => citeResult(doc, snippet)}
-                        className="px-3 py-1.5 rounded-lg bg-primary text-[#291904] text-xs font-bold hover:bg-primary"
+                        className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary"
                       >
                         Cite in Chat
                       </button>
@@ -1262,7 +1262,7 @@ export default function KnowledgeVaultPage() {
                     <div className="mt-3 flex items-center gap-2">
                       <button
                         onClick={() => void openSourceDoc(doc)}
-                        className="px-3 py-1.5 rounded-lg border border-white/15 text-sm text-foreground hover:bg-white/10"
+                        className="px-3 py-1.5 rounded-lg border border-border text-sm text-foreground hover:bg-accent"
                       >
                         Open Source
                       </button>
@@ -1275,7 +1275,7 @@ export default function KnowledgeVaultPage() {
                       </button>
                       <button
                         onClick={() => downloadDoc(doc)}
-                        className="px-3 py-1.5 rounded-lg border border-white/15 text-sm text-foreground hover:bg-white/10"
+                        className="px-3 py-1.5 rounded-lg border border-border text-sm text-foreground hover:bg-accent"
                       >
                         Download
                       </button>
@@ -1285,7 +1285,7 @@ export default function KnowledgeVaultPage() {
                 ))}
 
                 {!isLoading && resultRows.length === 0 && (
-                  <div className="rounded-2xl border border-primary/20 bg-black/20 p-8 text-center">
+                  <div className="rounded-2xl border border-primary/20 bg-card/50 p-8 text-center">
                     <p className="text-lg text-foreground font-semibold">No matching documents found.</p>
                     <p className="text-sm text-muted-foreground mt-2">Try a broader query or clear filters.</p>
                   </div>
@@ -1296,15 +1296,15 @@ export default function KnowledgeVaultPage() {
                     <button
                       onClick={() => setResultPage((p) => Math.max(1, p - 1))}
                       disabled={resultPage <= 1}
-                      className="p-2 rounded-lg border border-white/15 disabled:opacity-40"
+                      className="p-2 rounded-lg border border-border disabled:opacity-40"
                     >
                       <ChevronLeft size={15} />
                     </button>
-                    <span className="px-3 py-1.5 rounded-lg bg-primary text-[#281806] font-bold">{resultPage}</span>
+                    <span className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold">{resultPage}</span>
                     <button
                       onClick={() => setResultPage((p) => Math.min(resultPageCount, p + 1))}
                       disabled={resultPage >= resultPageCount}
-                      className="p-2 rounded-lg border border-white/15 disabled:opacity-40"
+                      className="p-2 rounded-lg border border-border disabled:opacity-40"
                     >
                       <ChevronRight size={15} />
                     </button>

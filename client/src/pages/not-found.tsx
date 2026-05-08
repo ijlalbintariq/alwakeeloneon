@@ -11,7 +11,7 @@ export default function NotFound() {
         </h1>
         <p className="text-muted-foreground text-sm">The page you seek has been struck from the docket.</p>
         <Link href="/dashboard">
-          <button className="px-8 py-4 bg-primary text-foreground rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-primary transition-all shadow-xl">
+          <button className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-primary transition-all shadow-xl">
             Return to Chambers
           </button>
         </Link>
