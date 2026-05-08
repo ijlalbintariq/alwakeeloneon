@@ -900,8 +900,8 @@ export default function JudgmentSearchPage() {
         <aside className="min-h-0 space-y-4 overflow-y-auto pr-1">
           <section className="overflow-hidden rounded-xl border border-primary/25 bg-card/70">
             <div className="bg-primary px-4 py-3">
-              <h4 className="inline-flex items-center gap-2 text-sm font-black text-primary-foreground uppercase tracking-wider">
-                <BookmarkPlus size={14} /> Saved Judgments
+              <h4 className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-wider" style={{ color: 'white' }}>
+                <BookmarkPlus size={14} color="white" /> Saved Judgments
               </h4>
             </div>
             <div className="p-4 space-y-3">
