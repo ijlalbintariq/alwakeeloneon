@@ -326,6 +326,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     location.startsWith("/statute") ||
     location.startsWith("/knowledge-vault");
   const isEdgeAttachedLayout = location === "/al-wakeelo";
+  const isDraftingLayout = location === "/legal-drafting" || location === "/contract-drafting";
 
   const style = {
     "--sidebar-width": "14.5rem",
@@ -367,7 +368,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <main className={cn(
             `flex-1 overflow-y-auto bg-background/80 backdrop-blur-lg scrollbar-hide ${
-              isEdgeAttachedLayout
+              isEdgeAttachedLayout || isDraftingLayout
                 ? "p-0"
                 : isWideChatLayout
                   ? "p-1 sm:p-1.5 md:p-2.5"

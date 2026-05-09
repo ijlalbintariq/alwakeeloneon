@@ -931,3 +931,35 @@
     margin: 25mm;
   }
 }
+
+/* ── Legal Drafting Zen Mode ─────────────────────────────────────────────── */
+/* When zenMode is active, hide the AppShell sidebar + header so the
+   drafting module takes over the entire viewport like a desktop app. */
+body.legal-drafting-zen {
+  overflow: hidden !important;
+}
+body.legal-drafting-zen .app-sidebar,
+body.legal-drafting-zen [data-sidebar],
+body.legal-drafting-zen .mac-glass-panel,
+body.legal-drafting-zen .mac-app-shell > div:first-child > header,
+body.legal-drafting-zen [data-testid="button-sidebar-toggle"],
+body.legal-drafting-zen [data-testid="button-sidebar-minimize-line"] {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+body.legal-drafting-zen .mac-app-shell > div:nth-child(2) {
+  flex: 1 !important;
+}
+body.legal-drafting-zen .mac-main-layer {
+  padding: 0 !important;
+}
+body.legal-drafting-zen .mac-main-layer > div {
+  max-width: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+}

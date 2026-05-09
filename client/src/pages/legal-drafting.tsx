@@ -38,6 +38,7 @@ import {
   Mic,
   MicOff,
   Square,
+  Maximize2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CourtFeeCalculator } from "@/components/court-fee-calculator";
@@ -1550,6 +1551,7 @@ function LegalDraftingPageInner() {
   const [leftRailOpen, setLeftRailOpen] = useState(true);
   const [rightRailOpen, setRightRailOpen] = useState(true);
   const [focusWritingMode, setFocusWritingMode] = useState(false);
+  const [zenMode, setZenMode] = useState(false);
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryItems, setMemoryItems] = useState<MemoryItem[]>([]);
   const [styleMemoryMeta, setStyleMemoryMeta] = useState<StyleMemoryMeta | null>(null);
@@ -2622,8 +2624,32 @@ function LegalDraftingPageInner() {
     };
   }, []);
 
+  // Zen mode: hide AppShell sidebar/header for immersive drafting
+  useEffect(() => {
+    if (zenMode) {
+      document.body.classList.add("legal-drafting-zen");
+    } else {
+      document.body.classList.remove("legal-drafting-zen");
+    }
+    return () => { document.body.classList.remove("legal-drafting-zen"); };
+  }, [zenMode]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      // Escape exits zen mode
+      if (e.key === "Escape" && zenMode) { setZenMode(false); e.preventDefault(); }
+      // F11 or Ctrl/Cmd+Shift+F toggles zen mode
+      if (e.key === "F11" || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "f")) {
+        e.preventDefault();
+        setZenMode((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [zenMode]);
+
   return (
-    <div className="relative isolate h-full min-h-[500px] md:min-h-[640px] rounded-xl overflow-hidden border border-border/70 bg-background text-foreground fade-in flex flex-col">
+    <div className={`relative isolate overflow-hidden border bg-background text-foreground fade-in flex flex-col ${zenMode ? "fixed inset-0 z-[9999] rounded-none border-none" : "h-full min-h-[500px] md:min-h-[640px] rounded-xl border-border/70"}`}>
       <div className="pointer-events-none absolute -top-24 right-10 h-56 w-56 rounded-full bg-primary/8 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 left-8 h-60 w-60 rounded-full bg-primary/6 blur-3xl" />
       <div
@@ -2634,215 +2660,140 @@ function LegalDraftingPageInner() {
           backgroundSize: "28px 28px",
         }}
       />
-      <header className="h-12 border-b border-border/40 flex items-center justify-between px-3 md:px-4 bg-background/80 backdrop-blur-xl z-20">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="size-6 shrink-0 rounded-md bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
-              <Gavel size={12} className="translate-y-[0.5px]" />
+      <header className="h-9 border-b border-border/40 flex items-center justify-between px-2 md:px-3 bg-background/80 backdrop-blur-xl z-20 gap-1">
+        {/* Left: branding + tabs inline */}
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="size-5 shrink-0 rounded bg-primary text-primary-foreground flex items-center justify-center">
+              <Gavel size={10} />
             </div>
-            <div className="leading-none">
-              <h2 className="text-sm font-bold tracking-tight">Legal Drafting</h2>
-              <p className="text-[7px] uppercase tracking-[0.2em] text-primary/80 font-black mt-0.5">AL WAKEELO</p>
-            </div>
+            <span className="text-[11px] font-bold tracking-tight hidden sm:inline">Legal Drafting</span>
           </div>
-          <div className="hidden md:block h-5 w-px bg-border" />
-          <div className="hidden md:flex items-center gap-2 min-w-0">
-            <span className="text-xs text-muted-foreground truncate max-w-[140px]">{draftTitle || "Untitled"}</span>
-            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 text-[8px] uppercase font-bold tracking-wider">
-              <Sparkles size={9} />
-              {isSavedLocal ? "Saved" : "Typing"}
-            </div>
+          <div className="hidden sm:block h-4 w-px bg-border/60 shrink-0" />
+          {/* Inline tabs */}
+          <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide min-w-0">
+            {draftTabs.tabs.map((tab) => {
+              const isActive = tab.id === draftTabs.activeTabId;
+              return (
+                <div
+                  key={tab.id}
+                  className={`group inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] cursor-pointer transition-all whitespace-nowrap max-w-[120px] ${
+                    isActive
+                      ? "bg-primary/15 text-primary border border-primary/30 font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-card/50 border border-transparent"
+                  }`}
+                  onClick={() => {
+                    if (!isActive) {
+                      draftTabs.updateTab(draftTabs.activeTabId, {
+                        editorHtml: editorRef.current?.getHTML() || editorHtml || docText,
+                        docText: editorRef.current?.getText() || docText,
+                        title: draftTitle,
+                        draftId: selectedDraftId,
+                      });
+                      draftTabs.switchTab(tab.id);
+                      setDraftTitle(tab.title);
+                      setSelectedDraftId(tab.draftId);
+                      setEditorContent(tab.editorHtml || "");
+                      if (tab.editorHtml) setHasDraftInSession(true);
+                    }
+                  }}
+                >
+                  {tab.isDirty && <span className="size-1 rounded-full bg-primary shrink-0" />}
+                  <span className="truncate">{tab.title || "Untitled"}</span>
+                  {draftTabs.tabs.length > 1 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); draftTabs.closeTab(tab.id); }}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 shrink-0 transition-opacity"
+                    >
+                      <Trash2 size={8} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {draftTabs.tabs.length < 5 && (
+              <button
+                onClick={() => {
+                  draftTabs.updateTab(draftTabs.activeTabId, {
+                    editorHtml: editorRef.current?.getHTML() || editorHtml || docText,
+                    docText: editorRef.current?.getText() || docText,
+                    title: draftTitle,
+                    draftId: selectedDraftId,
+                  });
+                  draftTabs.addTab({ title: "Untitled Draft" });
+                  setDraftTitle("Untitled Draft");
+                  setSelectedDraftId(null);
+                  setEditorContent("");
+                  setHasDraftInSession(false);
+                  setDraftChatMessages([createDraftingIntroMessage()]);
+                }}
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all shrink-0"
+                title="New draft tab (max 5)"
+              >
+                <Plus size={9} />
+              </button>
+            )}
+          </div>
+          {/* Save status badge */}
+          <div className="hidden md:flex items-center gap-1 px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 text-[7px] uppercase font-bold tracking-wider shrink-0">
+            <Sparkles size={7} />
+            {isSavedLocal ? "Saved" : "•"}
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* Right: panel toggles + export buttons */}
+        <div className="flex items-center gap-1 shrink-0">
           <div className="hidden md:flex items-center gap-0.5">
-            <Button
-              variant="outline"
-              className="h-7 w-7 p-0 border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+            <button
+              className="h-6 w-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center"
               onClick={() => { setFocusWritingMode(false); setLeftRailOpen((v) => !v); }}
-              data-testid="button-toggle-left-rail"
               title={leftRailVisible ? "Hide workspace" : "Show workspace"}
             >
-              {leftRailVisible ? <PanelLeftClose size={13} /> : <PanelLeftOpen size={13} />}
-            </Button>
-            <Button
-              variant="outline"
-              className="h-7 w-7 p-0 border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+              {leftRailVisible ? <PanelLeftClose size={11} /> : <PanelLeftOpen size={11} />}
+            </button>
+            <button
+              className="h-6 w-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center"
               onClick={() => setFocusWritingMode((v) => !v)}
-              data-testid="button-toggle-focus-writing"
               title={focusWritingMode ? "Exit focus mode" : "Focus mode"}
             >
-              {focusWritingMode ? <Minimize2 size={13} /> : <Focus size={13} />}
-            </Button>
-            <Button
-              variant="outline"
-              className="hidden lg:inline-flex h-7 w-7 p-0 border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+              {focusWritingMode ? <Minimize2 size={11} /> : <Focus size={11} />}
+            </button>
+            <button
+              className="hidden lg:flex h-6 w-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-accent items-center justify-center"
               onClick={() => { setFocusWritingMode(false); setRightRailOpen((v) => !v); }}
-              data-testid="button-toggle-right-rail"
               title={rightRailVisible ? "Hide AI panel" : "Show AI panel"}
             >
-              {rightRailVisible ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}
-            </Button>
+              {rightRailVisible ? <PanelRightClose size={11} /> : <PanelRightOpen size={11} />}
+            </button>
+            {/* Zen / fullscreen mode */}
+            <button
+              className={`h-6 w-6 rounded border flex items-center justify-center transition-all ${zenMode ? "border-primary/50 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"}`}
+              onClick={() => setZenMode((v) => !v)}
+              title={zenMode ? "Exit fullscreen (Esc)" : "Fullscreen mode (F11)"}
+            >
+              <Maximize2 size={11} />
+            </button>
           </div>
-          <div className="hidden lg:flex items-center -space-x-1.5 ml-1">
+          <div className="hidden md:block h-4 w-px bg-border" />
+          <div className="hidden lg:flex items-center -space-x-1.5">
             {collaborators.map((c, idx) => (
-              <div
-                key={`${c}-${idx}`}
-                className="size-6 rounded-md border border-primary/30 bg-primary/10 text-foreground flex items-center justify-center text-[9px] font-bold"
-              >
-              {c}
-              </div>
+              <div key={`${c}-${idx}`} className="size-5 rounded border border-primary/30 bg-primary/10 text-foreground flex items-center justify-center text-[8px] font-bold">{c}</div>
             ))}
           </div>
-          <div className="hidden md:block h-5 w-px bg-border ml-1" />
-          <Button
-            variant="outline"
-            className="h-7 px-2 text-xs border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-            onClick={shareDraft}
-            data-testid="button-share-draft"
-          >
-            <Share2 size={12} className="mr-1" />
-            Share
+          <Button variant="outline" className="h-6 px-1.5 text-[10px] border-border text-muted-foreground hover:text-foreground" onClick={shareDraft}>
+            <Share2 size={10} className="mr-0.5" />Share
           </Button>
-          <Button
-            variant="outline"
-            className="h-7 px-2 text-xs border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-            onClick={exportAsTxt}
-            data-testid="button-export-txt"
-          >
-            <Download size={12} className="mr-1" />
+          <Button variant="outline" className="h-6 px-1.5 text-[10px] border-border text-muted-foreground hover:text-foreground" onClick={exportAsTxt}>
             TXT
           </Button>
-          <Button
-            className="h-7 px-2.5 text-xs bg-red-700/90 text-white hover:bg-red-700 font-bold shadow-sm"
-            onClick={exportAsPdf}
-            data-testid="button-export-pdf"
-          >
-            <Download size={12} className="mr-1" />
+          <Button className="h-6 px-1.5 text-[10px] bg-red-700/90 text-white hover:bg-red-700 font-bold" onClick={exportAsPdf}>
             PDF
           </Button>
-          <Button
-            className="h-7 px-2.5 text-xs bg-primary text-primary-foreground hover:bg-primary font-bold shadow-sm"
-            onClick={exportAsDoc}
-            data-testid="button-export-doc"
-          >
-            <Download size={12} className="mr-1" />
+          <Button className="h-6 px-1.5 text-[10px] bg-primary text-primary-foreground hover:bg-primary font-bold" onClick={exportAsDoc}>
             Word
           </Button>
         </div>
       </header>
-
-      {/* ── Multi-doc tab bar ── */}
-      {draftTabs.tabs.length > 0 && (
-        <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border/40 bg-background/60 backdrop-blur-sm overflow-x-auto scrollbar-hide z-10">
-          {draftTabs.tabs.map((tab) => {
-            const isActive = tab.id === draftTabs.activeTabId;
-            return (
-              <div
-                key={tab.id}
-                className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] cursor-pointer transition-all whitespace-nowrap max-w-[160px] ${
-                  isActive
-                    ? "bg-primary/15 text-primary border border-primary/30 font-bold shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-card/50 border border-transparent"
-                }`}
-                onClick={() => {
-                  if (!isActive) {
-                    // Save current state to the current tab before switching
-                    draftTabs.updateTab(draftTabs.activeTabId, {
-                      editorHtml: editorRef.current?.getHTML() || editorHtml || docText,
-                      docText: editorRef.current?.getText() || docText,
-                      title: draftTitle,
-                      draftId: selectedDraftId,
-                    });
-                    // Switch tab
-                    draftTabs.switchTab(tab.id);
-                    // Restore the new tab's state
-                    setDraftTitle(tab.title);
-                    setSelectedDraftId(tab.draftId);
-                    setEditorContent(tab.editorHtml || "");
-                    if (tab.editorHtml) {
-                      setHasDraftInSession(true);
-                    }
-                  }
-                }}
-              >
-                {tab.isDirty && <span className="size-1.5 rounded-full bg-primary shrink-0" />}
-                <span className="truncate">{tab.title || "Untitled"}</span>
-                {draftTabs.tabs.length > 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      draftTabs.closeTab(tab.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 shrink-0 transition-opacity"
-                  >
-                    <Trash2 size={10} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-          {draftTabs.tabs.length < 5 && (
-            <button
-              onClick={() => {
-                // Save current tab before creating new
-                draftTabs.updateTab(draftTabs.activeTabId, {
-                  editorHtml: editorRef.current?.getHTML() || editorHtml || docText,
-                  docText: editorRef.current?.getText() || docText,
-                  title: draftTitle,
-                  draftId: selectedDraftId,
-                });
-                const newId = draftTabs.addTab({ title: "Untitled Draft" });
-                setDraftTitle("Untitled Draft");
-                setSelectedDraftId(null);
-                setEditorContent("");
-                setHasDraftInSession(false);
-                setDraftChatMessages([createDraftingIntroMessage()]);
-              }}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-muted-foreground hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all"
-              title="New draft tab (max 5)"
-            >
-              <Plus size={11} />
-              New
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Right rail tab switcher - render between header and main content */}
-      {rightRailVisible && (
-        <div className="hidden lg:flex items-center gap-1 px-2 py-1 border-b border-[hsl(var(--preview-border))] bg-background/30">
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={() => setRightRailTab("ai")}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                rightRailTab === "ai"
-                  ? "bg-primary/15 text-primary border border-primary/30"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              AI Assistant
-            </button>
-            <button
-              onClick={() => setRightRailTab("history")}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all inline-flex items-center gap-1 ${
-                rightRailTab === "history"
-                  ? "bg-primary/15 text-primary border border-primary/30"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Clock size={10} />
-              History
-              {draftHistory.snapshots.length > 0 && (
-                <span className="ml-0.5 px-1 py-0 rounded-full bg-primary/20 text-[8px] text-primary font-bold">
-                  {draftHistory.snapshots.length}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="flex flex-1 overflow-hidden">
         <aside
@@ -3015,40 +2966,33 @@ function LegalDraftingPageInner() {
             )}
           </div>
 
-          <div className="h-auto border-b border-[hsl(var(--preview-border))] bg-background/45 backdrop-blur-xl flex items-center px-3 md:px-4 py-1.5 justify-between gap-2 flex-wrap">
-            <div className="text-[10px] text-muted-foreground">
-              Chat-first drafting — prompt below, draft appears in editor.
-            </div>
-            <div className="text-[9px] uppercase tracking-widest text-primary font-bold">Chat View</div>
-          </div>
-
-          <div className="px-3 md:px-4 pt-2 flex items-center gap-2 flex-wrap">
+          {/* Compact title + save + fee calc row */}
+          <div className="flex items-center gap-1.5 px-2 md:px-3 py-1 border-b border-border/30 bg-background/30">
             <input
               value={draftTitle}
               onChange={(e) => setDraftTitle(e.target.value)}
-              className="h-8 w-full sm:w-[200px] bg-card/45 border border-border rounded-md px-2.5 text-xs text-foreground backdrop-blur-md"
+              className="h-6 w-full sm:w-[160px] bg-card/45 border border-border rounded px-2 text-[11px] text-foreground"
               placeholder="Draft title"
             />
             <Button
-              className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary font-semibold"
+              className="h-6 px-2 text-[10px] bg-primary text-primary-foreground hover:bg-primary font-semibold"
               onClick={saveDraft}
               disabled={saveDraftMutation.isPending}
             >
-              <Save size={12} className="mr-1" />
-              {saveDraftMutation.isPending ? "Saving..." : "Save"}
+              <Save size={10} className="mr-0.5" />
+              {saveDraftMutation.isPending ? "..." : "Save"}
             </Button>
             <button
               type="button"
               onClick={() => setFeeCalcOpen(true)}
-              className="h-8 px-2.5 rounded-md border border-border bg-card/40 text-foreground hover:border-primary/40 hover:bg-card/70 text-[10px] font-semibold flex items-center gap-1"
+              className="h-6 px-1.5 rounded border border-border bg-card/40 text-foreground hover:border-primary/40 text-[9px] font-semibold flex items-center gap-0.5"
               title="Calculate court fee per Court Fees Act 1870"
-              data-testid="button-court-fee-calc"
             >
-              <Calculator size={12} />
-              Fee Calc
+              <Calculator size={10} />
+              Fee
             </button>
-            <span className="text-[10px] text-muted-foreground hidden md:inline">
-              {selectedDraftId ? `Draft #${selectedDraftId}` : "Unsaved"}
+            <span className="text-[9px] text-muted-foreground hidden md:inline ml-auto">
+              {selectedDraftId ? `#${selectedDraftId}` : ""}
             </span>
           </div>
 
