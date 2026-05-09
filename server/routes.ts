@@ -2157,8 +2157,8 @@ const MODEL_TIMEOUT_PROFILES: Record<TimeoutProfile, TimeoutConfig> = {
     turboPrimary: 30000,
   },
   analysis: {
-    standardPrimary: 30000,
-    turboPrimary: 30000,
+    standardPrimary: 90000, // Legal drafting with DeepSeek R1 reasoning can take 45-80s for 1000+ word pleadings
+    turboPrimary: 45000,
   },
 };
 
@@ -2308,12 +2308,35 @@ async function callLegalDraftingAI(
     throw new Error("Legal drafting requires DeepSeek R1. Configure DEEPSEEK_API_KEY.");
   }
 
-  const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () =>
-    chatWithDeepSeekPro({ messages, maxTokens, temperature }),
-  );
-  const safeText = assertNonEmptyModelOutput("DeepSeek R1", result.content);
-  console.log(`[AI Routing][legal-drafting] DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
-  return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
+  try {
+    const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () =>
+      chatWithDeepSeekPro({ messages, maxTokens, temperature }),
+    );
+    const safeText = assertNonEmptyModelOutput("DeepSeek R1", result.content);
+    console.log(`[AI Routing][legal-drafting] DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
+    return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
+  } catch (primaryErr: any) {
+    // If R1 reasoner times out or fails, retry once with faster deepseek-chat model
+    const errCode = primaryErr?.code || "";
+    const isTimeout = errCode === "MODEL_TIMEOUT" || primaryErr?.message?.includes("timed out");
+    const isEmpty = errCode === "EMPTY_MODEL_OUTPUT";
+    if (isTimeout || isEmpty) {
+      console.warn(`[AI Routing][legal-drafting] DeepSeek R1 ${isTimeout ? "timed out" : "empty output"} after ${Date.now() - startedAt}ms — retrying with deepseek-chat`);
+      const retryStarted = Date.now();
+      try {
+        const fallbackResult = await withTimeout("DeepSeek-Chat-Fallback", 60000, () =>
+          chatWithDeepSeek({ messages, maxTokens, temperature: Math.min(temperature + 0.05, 0.7) }),
+        );
+        const fallbackText = assertNonEmptyModelOutput("DeepSeek Chat", fallbackResult.content);
+        console.log(`[AI Routing][legal-drafting] DeepSeek Chat fallback succeeded in ${Date.now() - retryStarted}ms`);
+        return { text: enforcePakistanLawOnlyOutput(fallbackText), model: fallbackResult.model };
+      } catch (fallbackErr) {
+        console.error(`[AI Routing][legal-drafting] DeepSeek Chat fallback also failed:`, getErrorMessage(fallbackErr));
+        throw primaryErr; // Re-throw the original error for better error messages
+      }
+    }
+    throw primaryErr;
+  }
 }
 
 async function callApexAIPrimary(
@@ -10375,9 +10398,17 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       }
 
       res.json({ ...generated, attachmentsUsed: files?.length || 0, styleMemory: styleMemoryMeta || undefined });
-    } catch (err) {
-      console.error("Error generating retrieval clause:", err);
-      res.status(500).json({ message: "Failed to generate clause" });
+    } catch (err: any) {
+      const errMsg = getErrorMessage(err);
+      console.error("Error generating retrieval clause:", errMsg, err);
+      const isTimeout = err?.code === "MODEL_TIMEOUT" || errMsg.includes("timed out");
+      const isEmpty = err?.code === "EMPTY_MODEL_OUTPUT";
+      const userMessage = isTimeout
+        ? "AI model timed out generating your draft. This usually resolves on retry — please try again."
+        : isEmpty
+          ? "AI returned an empty response. Please rephrase your instruction with more detail and try again."
+          : `Failed to generate clause: ${errMsg}`;
+      res.status(isTimeout ? 504 : 500).json({ message: userMessage });
     }
   });
 
