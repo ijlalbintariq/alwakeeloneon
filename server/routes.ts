@@ -9756,7 +9756,15 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
     if (/(high court.*criminal appeal|criminal appeal.*high court)/.test(text)) return "high-court-criminal-appeal";
     if (/(writ|article\s*199|constitutional petition|high court writ)/.test(text)) return "high-court-writ-petition";
     if (/(high court.*appeal|civil appeal.*high court|high court civil appeal)/.test(text)) return "high-court-civil-appeal";
-    if (/(family suit|family petition|custody|maintenance|khula|dissolution of marriage|family court)/.test(text)) return "family-suit-petition";
+    if (/(family suit|family petition|child\s*custody|custody\s*of\s*(minor|child)|guardian.*custody|hizanat|khula|dissolution of marriage|family court)/.test(text)) {
+      // Guard: do not classify as family if bail/criminal context is dominant
+      if (/(bail|497|498|fir|arrested|judicial custody|in custody|criminal|accused|challan)/.test(text)) return null;
+      return "family-suit-petition";
+    }
+    if (/(maintenance)/.test(text)) {
+      if (/(bail|497|498|fir|arrested|judicial custody|in custody|criminal|accused|challan)/.test(text)) return null;
+      return "family-suit-petition";
+    }
     if (/(criminal\s*(misc|misc\.?|miscellaneous)|crl\.?\s*misc|crm\.?\s*misc)/.test(text)) return "criminal-misc-application";
     if (/(criminal revision|revision petition)/.test(text)) return "sessions-criminal-revision";
     if (/(criminal appeal|appeal against conviction)/.test(text)) return "sessions-criminal-appeal";
@@ -9772,13 +9780,16 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
   function shouldPromptHierarchyOverrideType(prompt: string, inferredType: LegalDraftingDocType): boolean {
     const text = String(prompt || "").toLowerCase();
     const highCourtSignals = /(writ|article\s*199|constitutional petition|high court)/.test(text);
-    const familySignals = /(family court|family suit|family petition|khula|custody|maintenance|dissolution of marriage)/.test(text);
+    const familySignals = /(family court|family suit|family petition|khula|child\s*custody|custody\s*of\s*(minor|child)|guardian.*custody|hizanat|dissolution of marriage)/.test(text);
+    // Negative signal: if bail/criminal keywords are present, suppress family override
+    const bailCriminalSignals = /(bail|fir|arrested|judicial custody|in custody|accused|challan|497|498|489)/.test(text);
+    const familySignalsNet = familySignals && !bailCriminalSignals;
     const supremeSignals = /(supreme court|cpla|leave to appeal)/.test(text);
     const sessionsSignals = /(sessions court|section\s*497|section\s*498|criminal bail)/.test(text);
     const justiceOfPeaceSignals = /(22[-\s]?a|22[-\s]?b|justice of peace|registration of fir|section\s*154\s*cr\.?p\.?c)/.test(text);
 
     if (inferredType === "high-court-writ-petition" && highCourtSignals) return true;
-    if (inferredType === "family-suit-petition" && familySignals) return true;
+    if (inferredType === "family-suit-petition" && familySignalsNet) return true;
     if ((inferredType === "supreme-court-cpla" || inferredType === "supreme-court-criminal-petition") && supremeSignals) return true;
     if (
       (inferredType === "sessions-bail-application" || inferredType === "sessions-pre-arrest-bail") &&
