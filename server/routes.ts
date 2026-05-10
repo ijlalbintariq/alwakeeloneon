@@ -103,7 +103,7 @@ const TOKEN_LIMITS = {
   "search-statutes": 2048,
   summarize: 3072,
   brief: 6144,
-  draft: 4096,
+  draft: 8192,
   "contract-drafting": 4096,
 };
 
@@ -9621,7 +9621,23 @@ C. ILLEGAL EXERCISE OF JURISDICTION
 D. FAILURE TO CONSIDER MATERIAL EVIDENCE
 
 Each ground must contain a heading, the legal principle, explanation of the error, and where appropriate reference to statute or precedent.
-Each ground must include a brief but meaningful explanation (not just a one-line heading), preferably 2 to 4 sentences tied to the stated facts.
+Each ground MUST be a detailed paragraph of 5 to 10 sentences. Under each ground, discuss the relevant legal principle, explain how the facts of the case satisfy that principle, and cite at least one verified case law authority from the INTERNAL DATABASE REFERENCES with its ratio decidendi. Short one-liner grounds are NOT acceptable — every ground must read like a mini legal argument as found in real Pakistani court filings.
+
+CASE LAW DEPTH REQUIREMENT
+
+Every legal draft MUST cite a minimum of 4 to 8 case law authorities from the INTERNAL DATABASE REFERENCES provided. For each cited case, include:
+- The full citation (e.g. 2024 SCMR 205)
+- The case title (e.g. Naveed Sattar vs The State)
+- A 1-2 sentence summary of the ratio decidendi (the principle laid down)
+Do NOT fabricate citations. Use ONLY citations from the INTERNAL DATABASE REFERENCES section. If insufficient references are available, use what is available and note that additional case law may be added.
+
+DOCUMENT LENGTH
+
+A complete court-ready legal draft must be comprehensive. Typical expected lengths:
+- Bail applications: 1,500 to 3,000 words
+- Writ petitions: 2,000 to 4,000 words
+- Civil suits / appeals: 2,500 to 5,000 words
+Do not cut short. Write the full document as a real Pakistani advocate would file it in court.
 
 LEGAL AUTHORITIES INTEGRATION
 
@@ -10079,7 +10095,7 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
           2600,
         );
         const legalKnowledgeContextRaw = await gatherKnowledgeContextV2(legalKnowledgeQuery, userId);
-        const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 3200);
+        const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 5000);
         const legalKnowledgeContextBlock = legalKnowledgeContext
           ? legalKnowledgeContext
           : "\n\nREFERENCE MATERIALS:\n- No high-confidence internal matches were found for this prompt.\n- If a citation is unavailable in internal references, omit it (do not use placeholders).";
