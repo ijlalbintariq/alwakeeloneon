@@ -98,7 +98,7 @@ import {
 
 
 const TOKEN_LIMITS = {
-  chat: 4096,
+  chat: 8192,
   "search-judgments": 2048,
   "search-statutes": 2048,
   summarize: 3072,
