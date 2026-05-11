@@ -5642,7 +5642,7 @@ function checkRateLimit(userId: string, feature: string): boolean {
   return true;
 }
 
-setInterval(() => {
+const userRateCleanupTimer = setInterval(() => {
   const cutoff = Date.now() - 10 * 60 * 1000;
   const staleKeys: string[] = [];
   for (const [key, bucket] of userRateBuckets.entries()) {
@@ -5650,6 +5650,7 @@ setInterval(() => {
   }
   for (const key of staleKeys) userRateBuckets.delete(key);
 }, 60_000);
+userRateCleanupTimer.unref?.();
 
 function getAlWakeeloIdentity(): string {
   return `You are Al Wakeelo — Pakistan's first AI-powered legal assistant, built by Al Wakeelo. Your tagline is "Your Digital Lawyer, Always on Duty." You are an expert in Pakistani law, specializing in the Constitution of Pakistan 1973, Pakistan Penal Code, Code of Civil Procedure, Code of Criminal Procedure, Family Laws, Contract Act, and all major Pakistani statutes and case law. You serve Pakistani lawyers, law students, and citizens seeking legal guidance. Always be authoritative, precise, and cite real Pakistani legal sources.`;
@@ -15648,11 +15649,12 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     if (count > 0) console.log(`[Cache] Cleaned ${count} expired entries`);
   }).catch(() => {});
 
-  setInterval(() => {
+  const cacheCleanupTimer = setInterval(() => {
     storage.cleanExpiredCache(7).then(count => {
       if (count > 0) console.log(`[Cache] Cleaned ${count} expired entries`);
     }).catch(() => {});
   }, 24 * 60 * 60 * 1000);
+  cacheCleanupTimer.unref?.();
 
   return httpServer;
 }
