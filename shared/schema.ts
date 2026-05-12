@@ -420,6 +420,69 @@ export const styleMemoryEvents = pgTable("style_memory_events", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ── Case File Management System ──────────────────────────────────────────────
+
+export const caseFiles = pgTable("case_files", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "set null" }),
+  referenceNo: varchar("reference_no", { length: 50 }),
+  title: text("title").notNull(),
+  caseType: text("case_type", {
+    enum: ["criminal", "civil", "family", "constitutional", "tax", "corporate", "banking", "labor", "property", "other"],
+  }).notNull().default("other"),
+  court: text("court"),
+  caseNumber: text("case_number"),
+  status: text("status", { enum: ["active", "pending", "closed", "archived"] }).notNull().default("active"),
+  priority: text("priority", { enum: ["low", "normal", "high", "urgent"] }).notNull().default("normal"),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const caseClients = pgTable("case_clients", {
+  id: serial("id").primaryKey(),
+  caseId: integer("case_id").references(() => caseFiles.id, { onDelete: "cascade" }).notNull(),
+  role: text("role", { enum: ["client", "opponent", "witness", "guarantor", "co-accused", "other"] }).notNull().default("client"),
+  name: text("name").notNull(),
+  fatherName: text("father_name"),
+  cnic: text("cnic"),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const caseCompliance = pgTable("case_compliance", {
+  id: serial("id").primaryKey(),
+  caseId: integer("case_id").references(() => caseFiles.id, { onDelete: "cascade" }).notNull(),
+  type: text("type", { enum: ["hearing", "filing_deadline", "compliance", "limitation", "other"] }).notNull(),
+  title: text("title").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  court: text("court"),
+  judge: text("judge"),
+  status: text("status", { enum: ["pending", "done", "missed", "adjourned"] }).notNull().default("pending"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const caseDocuments = pgTable("case_documents", {
+  id: serial("id").primaryKey(),
+  caseId: integer("case_id").references(() => caseFiles.id, { onDelete: "cascade" }).notNull(),
+  documentId: integer("document_id").references(() => documents.id, { onDelete: "cascade" }).notNull(),
+  label: text("label"),
+  addedAt: timestamp("added_at").defaultNow(),
+});
+
+export const caseNotes = pgTable("case_notes", {
+  id: serial("id").primaryKey(),
+  caseId: integer("case_id").references(() => caseFiles.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
@@ -453,6 +516,11 @@ export const insertStyleMemorySettingsSchema = createInsertSchema(styleMemorySet
 export const insertStyleMemorySampleSchema = createInsertSchema(styleMemorySamples).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertStyleMemoryChunkSchema = createInsertSchema(styleMemoryChunks).omit({ id: true, createdAt: true });
 export const insertStyleMemoryEventSchema = createInsertSchema(styleMemoryEvents).omit({ id: true, createdAt: true });
+export const insertCaseFileSchema = createInsertSchema(caseFiles).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCaseClientSchema = createInsertSchema(caseClients).omit({ id: true, createdAt: true });
+export const insertCaseComplianceSchema = createInsertSchema(caseCompliance).omit({ id: true, createdAt: true });
+export const insertCaseDocumentSchema = createInsertSchema(caseDocuments).omit({ id: true, addedAt: true });
+export const insertCaseNoteSchema = createInsertSchema(caseNotes).omit({ id: true, createdAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -521,6 +589,16 @@ export type StyleMemoryChunk = typeof styleMemoryChunks.$inferSelect;
 export type InsertStyleMemoryChunk = z.infer<typeof insertStyleMemoryChunkSchema>;
 export type StyleMemoryEvent = typeof styleMemoryEvents.$inferSelect;
 export type InsertStyleMemoryEvent = z.infer<typeof insertStyleMemoryEventSchema>;
+export type CaseFile = typeof caseFiles.$inferSelect;
+export type InsertCaseFile = z.infer<typeof insertCaseFileSchema>;
+export type CaseClient = typeof caseClients.$inferSelect;
+export type InsertCaseClient = z.infer<typeof insertCaseClientSchema>;
+export type CaseCompliance = typeof caseCompliance.$inferSelect;
+export type InsertCaseCompliance = z.infer<typeof insertCaseComplianceSchema>;
+export type CaseDocument = typeof caseDocuments.$inferSelect;
+export type InsertCaseDocument = z.infer<typeof insertCaseDocumentSchema>;
+export type CaseNote = typeof caseNotes.$inferSelect;
+export type InsertCaseNote = z.infer<typeof insertCaseNoteSchema>;
 
 export type TierPlanConfig = {
   monthlyQueries: number;

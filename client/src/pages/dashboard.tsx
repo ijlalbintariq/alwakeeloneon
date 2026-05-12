@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Scale, Gavel, Book, FileText, Sparkles, Bookmark, History, FileBadge, TrendingUp, AlertTriangle, ArrowUpRight } from "lucide-react";
+import { Scale, Gavel, Book, FileText, Sparkles, Bookmark, History, FileBadge, TrendingUp, AlertTriangle, ArrowUpRight, Calendar, Briefcase } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { getUpgradeActionLabel, getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 
@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const { data: threads } = useQuery<any[]>({ queryKey: ["/api/threads"] });
   const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
   const { data: activitySummary } = useQuery<ActivitySummary>({ queryKey: ["/api/activity/summary"] });
+  const { data: upcomingDeadlines = [] } = useQuery<Array<{ id: number; caseId: number; type: string; title: string; dueDate: string; court?: string; status: string; caseTitle: string }>>({ queryKey: ["/api/case-files-compliance/upcoming"] });
 
   const stats = [
     { label: "Active Sessions", value: threads?.length || 0, icon: Scale, color: "text-primary" },
@@ -249,6 +250,35 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+
+          {upcomingDeadlines.length > 0 && (
+            <div className="rounded-xl border border-amber-500/20 bg-background/55 p-2.5 md:p-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Calendar size={12} className="text-amber-400" />
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Upcoming Deadlines</p>
+              </div>
+              <div className="space-y-1.5">
+                {upcomingDeadlines.slice(0, 4).map((d: any) => (
+                  <Link key={d.id} href={`/case-files/${d.caseId}`} className="block no-underline">
+                    <div className="rounded-lg border border-border/50 bg-card/30 px-2.5 py-1.5 hover:border-primary/30 transition">
+                      <p className="text-[11px] font-bold text-foreground truncate">{d.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[9px] text-amber-400 font-bold">{new Date(d.dueDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })}</span>
+                        <span className="text-[9px] text-muted-foreground">{d.type.replace("_", " ")}</span>
+                        <span className="text-[9px] text-primary/70 truncate ml-auto">{d.caseTitle}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              {upcomingDeadlines.length > 4 && (
+                <Link href="/case-files" className="block text-[10px] text-primary font-bold mt-2 hover:text-foreground no-underline">
+                  +{upcomingDeadlines.length - 4} more deadlines →
+                </Link>
+              )}
+            </div>
+          )}
+
           <div className="mt-2 md:mt-auto rounded-xl border border-[hsl(var(--preview-border))] bg-background/60 p-2.5 md:p-3">
             <p className="text-[10px] uppercase tracking-[0.16em] font-black text-muted-foreground">Operational Status</p>
             <p className="text-xs md:text-sm font-bold text-foreground mt-1">

@@ -7399,6 +7399,352 @@ export async function registerRoutes(
     }
   });
 
+  // ── Case File Management System ──────────────────────────────────────────
+
+  app.get("/api/case-files", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const cases = await storage.getCaseFiles(userId);
+      // Attach counts for each case
+      const enriched = await Promise.all(cases.map(async (cf) => {
+        const clients = await storage.getCaseClients(cf.id);
+        const docs = await storage.getCaseDocumentIds(cf.id);
+        const compliance = await storage.getCaseComplianceItems(cf.id);
+        const pendingCompliance = compliance.filter(c => c.status === "pending");
+        const nextHearing = pendingCompliance.find(c => c.type === "hearing");
+        return {
+          ...cf,
+          clientCount: clients.length,
+          documentCount: docs.length,
+          complianceCount: pendingCompliance.length,
+          primaryClient: clients.find(c => c.role === "client")?.name || null,
+          nextHearing: nextHearing ? { title: nextHearing.title, dueDate: nextHearing.dueDate } : null,
+        };
+      }));
+      res.json(enriched);
+    } catch (err: any) {
+      console.error("Error fetching case files:", err);
+      res.status(500).json({ message: "Failed to fetch case files" });
+    }
+  });
+
+  app.post("/api/case-files", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const parsed = z.object({
+        title: z.string().min(1).max(500),
+        caseType: z.enum(["criminal", "civil", "family", "constitutional", "tax", "corporate", "banking", "labor", "property", "other"]).optional(),
+        court: z.string().max(200).optional(),
+        caseNumber: z.string().max(100).optional(),
+        status: z.enum(["active", "pending", "closed", "archived"]).optional(),
+        priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+        description: z.string().max(5000).optional(),
+        referenceNo: z.string().max(50).optional(),
+      }).parse(req.body);
+      const created = await storage.createCaseFile({ ...parsed, userId });
+      res.status(201).json(created);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      console.error("Error creating case file:", err);
+      res.status(500).json({ message: "Failed to create case file" });
+    }
+  });
+
+  app.get("/api/case-files/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const id = Number(req.params.id);
+    if (!id || id <= 0) return res.status(400).json({ message: "Invalid case file ID" });
+    try {
+      const cf = await storage.getCaseFile(id, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      const clients = await storage.getCaseClients(id);
+      const docs = await storage.getCaseDocuments(id);
+      const compliance = await storage.getCaseComplianceItems(id);
+      const notes = await storage.getCaseNotes(id);
+      res.json({ ...cf, clients, documents: docs, compliance, notes });
+    } catch (err: any) {
+      console.error("Error fetching case file:", err);
+      res.status(500).json({ message: "Failed to fetch case file" });
+    }
+  });
+
+  app.patch("/api/case-files/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const id = Number(req.params.id);
+    if (!id || id <= 0) return res.status(400).json({ message: "Invalid case file ID" });
+    try {
+      const parsed = z.object({
+        title: z.string().min(1).max(500).optional(),
+        caseType: z.enum(["criminal", "civil", "family", "constitutional", "tax", "corporate", "banking", "labor", "property", "other"]).optional(),
+        court: z.string().max(200).optional(),
+        caseNumber: z.string().max(100).optional(),
+        status: z.enum(["active", "pending", "closed", "archived"]).optional(),
+        priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+        description: z.string().max(5000).optional(),
+        referenceNo: z.string().max(50).optional(),
+      }).parse(req.body);
+      const updated = await storage.updateCaseFile(id, userId, parsed);
+      if (!updated) return res.status(404).json({ message: "Case file not found" });
+      res.json(updated);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      console.error("Error updating case file:", err);
+      res.status(500).json({ message: "Failed to update case file" });
+    }
+  });
+
+  app.delete("/api/case-files/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const id = Number(req.params.id);
+    if (!id || id <= 0) return res.status(400).json({ message: "Invalid case file ID" });
+    try {
+      await storage.deleteCaseFile(id, userId);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Error deleting case file:", err);
+      res.status(500).json({ message: "Failed to delete case file" });
+    }
+  });
+
+  // Case Clients
+  app.post("/api/case-files/:id/clients", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const caseId = Number(req.params.id);
+    if (!caseId || caseId <= 0) return res.status(400).json({ message: "Invalid case file ID" });
+    try {
+      const cf = await storage.getCaseFile(caseId, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      const parsed = z.object({
+        name: z.string().min(1).max(200),
+        role: z.enum(["client", "opponent", "witness", "guarantor", "co-accused", "other"]).optional(),
+        fatherName: z.string().max(200).optional(),
+        cnic: z.string().max(15).optional(),
+        phone: z.string().max(20).optional(),
+        email: z.string().max(200).optional(),
+        address: z.string().max(500).optional(),
+        notes: z.string().max(2000).optional(),
+      }).parse(req.body);
+      const created = await storage.addCaseClient({ ...parsed, caseId });
+      res.status(201).json(created);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      console.error("Error adding case client:", err);
+      res.status(500).json({ message: "Failed to add client" });
+    }
+  });
+
+  app.patch("/api/case-files/:id/clients/:clientId", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const caseId = Number(req.params.id);
+    const clientId = Number(req.params.clientId);
+    try {
+      const cf = await storage.getCaseFile(caseId, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      const parsed = z.object({
+        name: z.string().min(1).max(200).optional(),
+        role: z.enum(["client", "opponent", "witness", "guarantor", "co-accused", "other"]).optional(),
+        fatherName: z.string().max(200).optional(),
+        cnic: z.string().max(15).optional(),
+        phone: z.string().max(20).optional(),
+        email: z.string().max(200).optional(),
+        address: z.string().max(500).optional(),
+        notes: z.string().max(2000).optional(),
+      }).parse(req.body);
+      const updated = await storage.updateCaseClient(clientId, caseId, parsed);
+      if (!updated) return res.status(404).json({ message: "Client not found" });
+      res.json(updated);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      console.error("Error updating case client:", err);
+      res.status(500).json({ message: "Failed to update client" });
+    }
+  });
+
+  app.delete("/api/case-files/:id/clients/:clientId", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const caseId = Number(req.params.id);
+    const clientId = Number(req.params.clientId);
+    try {
+      const cf = await storage.getCaseFile(caseId, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      await storage.deleteCaseClient(clientId, caseId);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Error deleting case client:", err);
+      res.status(500).json({ message: "Failed to delete client" });
+    }
+  });
+
+  // Case Compliance
+  app.post("/api/case-files/:id/compliance", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const caseId = Number(req.params.id);
+    try {
+      const cf = await storage.getCaseFile(caseId, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      const parsed = z.object({
+        type: z.enum(["hearing", "filing_deadline", "compliance", "limitation", "other"]),
+        title: z.string().min(1).max(300),
+        dueDate: z.string().min(1),
+        court: z.string().max(200).optional(),
+        judge: z.string().max(200).optional(),
+        status: z.enum(["pending", "done", "missed", "adjourned"]).optional(),
+        notes: z.string().max(2000).optional(),
+      }).parse(req.body);
+      const created = await storage.addCaseCompliance({
+        ...parsed,
+        caseId,
+        dueDate: new Date(parsed.dueDate),
+      });
+      res.status(201).json(created);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      console.error("Error adding compliance:", err);
+      res.status(500).json({ message: "Failed to add compliance item" });
+    }
+  });
+
+  app.patch("/api/case-files/:id/compliance/:compId", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const caseId = Number(req.params.id);
+    const compId = Number(req.params.compId);
+    try {
+      const cf = await storage.getCaseFile(caseId, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      const parsed = z.object({
+        type: z.enum(["hearing", "filing_deadline", "compliance", "limitation", "other"]).optional(),
+        title: z.string().min(1).max(300).optional(),
+        dueDate: z.string().min(1).optional(),
+        court: z.string().max(200).optional(),
+        judge: z.string().max(200).optional(),
+        status: z.enum(["pending", "done", "missed", "adjourned"]).optional(),
+        notes: z.string().max(2000).optional(),
+      }).parse(req.body);
+      const updates: any = { ...parsed };
+      if (parsed.dueDate) updates.dueDate = new Date(parsed.dueDate);
+      const updated = await storage.updateCaseCompliance(compId, caseId, updates);
+      if (!updated) return res.status(404).json({ message: "Compliance item not found" });
+      res.json(updated);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      console.error("Error updating compliance:", err);
+      res.status(500).json({ message: "Failed to update compliance item" });
+    }
+  });
+
+  app.delete("/api/case-files/:id/compliance/:compId", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const caseId = Number(req.params.id);
+    const compId = Number(req.params.compId);
+    try {
+      const cf = await storage.getCaseFile(caseId, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      await storage.deleteCaseCompliance(compId, caseId);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Error deleting compliance:", err);
+      res.status(500).json({ message: "Failed to delete compliance item" });
+    }
+  });
+
+  // Case Documents (junction)
+  app.post("/api/case-files/:id/documents", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const caseId = Number(req.params.id);
+    try {
+      const cf = await storage.getCaseFile(caseId, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      const parsed = z.object({
+        documentId: z.number().int().positive(),
+        label: z.string().max(200).optional(),
+      }).parse(req.body);
+      const created = await storage.linkDocumentToCase({ ...parsed, caseId });
+      res.status(201).json(created);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      if (err?.code === "23505") return res.status(409).json({ message: "Document already linked to this case" });
+      console.error("Error linking document:", err);
+      res.status(500).json({ message: "Failed to link document" });
+    }
+  });
+
+  app.delete("/api/case-files/:id/documents/:docId", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const caseId = Number(req.params.id);
+    const docId = Number(req.params.docId);
+    try {
+      const cf = await storage.getCaseFile(caseId, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      await storage.unlinkDocumentFromCase(caseId, docId);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Error unlinking document:", err);
+      res.status(500).json({ message: "Failed to unlink document" });
+    }
+  });
+
+  // Case Notes
+  app.post("/api/case-files/:id/notes", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const caseId = Number(req.params.id);
+    try {
+      const cf = await storage.getCaseFile(caseId, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      const parsed = z.object({
+        content: z.string().min(1).max(10000),
+      }).parse(req.body);
+      const created = await storage.addCaseNote({ ...parsed, caseId, userId });
+      res.status(201).json(created);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      console.error("Error adding case note:", err);
+      res.status(500).json({ message: "Failed to add note" });
+    }
+  });
+
+  app.delete("/api/case-files/:id/notes/:noteId", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    const caseId = Number(req.params.id);
+    const noteId = Number(req.params.noteId);
+    try {
+      const cf = await storage.getCaseFile(caseId, userId);
+      if (!cf) return res.status(404).json({ message: "Case file not found" });
+      await storage.deleteCaseNote(noteId, caseId, userId);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Error deleting case note:", err);
+      res.status(500).json({ message: "Failed to delete note" });
+    }
+  });
+
+  // Upcoming compliance across all cases
+  app.get("/api/case-files-compliance/upcoming", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const items = await storage.getUpcomingCompliance(userId, 15);
+      res.json(items);
+    } catch (err: any) {
+      console.error("Error fetching upcoming compliance:", err);
+      res.status(500).json({ message: "Failed to fetch upcoming compliance" });
+    }
+  });
+
   app.post("/api/rag/index-document", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -7963,12 +8309,23 @@ export async function registerRoutes(
       const parsed = z.object({
         query: z.string().min(3),
         documentIds: z.array(z.number().int().positive()).optional(),
+        caseFileId: z.number().int().positive().optional(),
       }).parse(req.body);
+
+      // If caseFileId provided, scope to that case's documents
+      let effectiveDocumentIds = parsed.documentIds;
+      if (parsed.caseFileId) {
+        const cf = await storage.getCaseFile(parsed.caseFileId, userId);
+        if (cf) {
+          const caseDocIds = await storage.getCaseDocumentIds(parsed.caseFileId);
+          effectiveDocumentIds = caseDocIds.length > 0 ? caseDocIds : undefined;
+        }
+      }
 
       let retrieval = await retrieveForQuery({
         userId,
         query: parsed.query,
-        documentIds: parsed.documentIds,
+        documentIds: effectiveDocumentIds,
         topK: Number(process.env.RAG_TOP_K || 5),
       });
       let lazyIndexSummary: {

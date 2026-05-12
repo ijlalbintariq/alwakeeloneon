@@ -64,6 +64,23 @@ const OFFSCREEN_MESSAGE_STYLE: CSSProperties = {
   containIntrinsicSize: "260px",
 };
 
+function CaseFileSelector({ value, onChange }: { value: number | null; onChange: (id: number | null) => void }) {
+  const { data: cases = [] } = useQuery<Array<{ id: number; title: string; status: string }>>({ queryKey: ["/api/case-files"] });
+  const activeCases = cases.filter((c: any) => c.status === "active" || c.status === "pending");
+  if (activeCases.length === 0) return null;
+  return (
+    <select
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+      className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-emerald-300 outline-none cursor-pointer max-w-[180px]"
+      title="Scope RAG to a specific case file"
+    >
+      <option value="">All Documents</option>
+      {activeCases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+    </select>
+  );
+}
+
 export default function ChatPage() {
   const initialMessage = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
@@ -116,6 +133,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [ragEnabled, setRagEnabled] = useState(false);
+  const [ragCaseFileId, setRagCaseFileId] = useState<number | null>(null);
   const [agentStatus, setAgentStatus] = useState<string | null>(null);
   // Tool-search status: shown as a timer while AI searches case law DB
   const [toolSearchStatus, setToolSearchStatus] = useState<{
@@ -485,10 +503,12 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       }
 
       if (ragEnabled && isAlWakeelo && text.trim().length > 0 && currentFiles.length === 0) {
-        const ragRes = await apiRequest("POST", "/api/rag/ask", {
+        const ragBody: any = {
           query: text,
           documentIds: userDocuments.map((d) => d.id),
-        });
+        };
+        if (ragCaseFileId) ragBody.caseFileId = ragCaseFileId;
+        const ragRes = await apiRequest("POST", "/api/rag/ask", ragBody);
         const ragData = await ragRes.json();
         const ragCitations: RAGCitation[] = Array.isArray(ragData?.citations) ? ragData.citations : [];
         const formatted = formatRagAnswer(String(ragData?.answer || ""), ragCitations);
@@ -1885,6 +1905,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               <div className="flex justify-between items-center px-4 py-3 border-b border-primary/15 bg-background/50">
                 <div className="flex items-center gap-3">
                   {isAlWakeelo && (
+                    <>
                     <button
                       onClick={() => setRagEnabled((prev) => !prev)}
                       className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60 cursor-pointer ${
@@ -1895,6 +1916,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       <span className={`w-2 h-2 rounded-full ${ragEnabled ? "bg-emerald-400" : "bg-slate-500"}`}></span>
                       {ragEnabled ? "RAG ACTIVE" : "RAG OFF"}
                     </button>
+                    {ragEnabled && (
+                      <CaseFileSelector value={ragCaseFileId} onChange={setRagCaseFileId} />
+                    )}
+                    </>
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider relative">

@@ -37,6 +37,7 @@ const TermsOfServicePage = lazy(() => import("@/pages/terms"));
 const CancellationReturnRefundPolicyPage = lazy(() => import("@/pages/cancellation-return-refund-policy"));
 const OwnershipStatementPage = lazy(() => import("@/pages/ownership-statement"));
 const OrganizationPage = lazy(() => import("@/pages/organization"));
+const CaseFilesPage = lazy(() => import("@/pages/case-files"));
 const InstallAppPage = lazy(() => import("@/pages/install-app"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -164,6 +165,8 @@ function Router({ onReady }: { onReady?: () => void }) {
         <Route path="/bookmarks" component={BookmarksPage} />
         <Route path="/history" component={HistoryPage} />
         <Route path="/knowledge-vault" component={KnowledgeVaultPage} />
+        <Route path="/case-files/:id" component={CaseFilesPage} />
+        <Route path="/case-files" component={CaseFilesPage} />
         <Route path="/organization" component={OrganizationRoute} />
         <Route path="/admin" component={AdminPanelPage} />
         <Route path="/settings" component={UserPanelPage} />

@@ -3,6 +3,7 @@ import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments, savedJudgments,
   organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles, visitorSessions, caseLeads, publicFunnelEvents,
   styleMemorySettings, styleMemorySamples, styleMemoryChunks, styleMemoryEvents,
+  caseFiles, caseClients, caseCompliance, caseDocuments, caseNotes,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -27,7 +28,12 @@ import {
   type OrgInvite, type InsertOrgInvite,
   type OrgKnowledge, type InsertOrgKnowledge,
   type StyleMemorySettings, type InsertStyleMemorySettings,
-  type StyleMemorySample, type InsertStyleMemorySample
+  type StyleMemorySample, type InsertStyleMemorySample,
+  type CaseFile, type InsertCaseFile,
+  type CaseClient, type InsertCaseClient,
+  type CaseCompliance, type InsertCaseCompliance,
+  type CaseDocument, type InsertCaseDocument,
+  type CaseNote, type InsertCaseNote,
 } from "@shared/schema";
 import { users, passwordResetTokens, emailVerificationTokens, type User } from "@shared/models/auth";
 import { eq, desc, or, ilike, sql, and, lt, gte, count, inArray } from "drizzle-orm";
@@ -3062,6 +3068,171 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(orgKnowledge.orgId, orgId), or(...conditions)))
       .limit(limit);
   }
+
+  // ── Case File Management ───────────────────────────────────────────────
+
+  async getCaseFiles(userId: string): Promise<CaseFile[]> {
+    return await db.select()
+      .from(caseFiles)
+      .where(eq(caseFiles.userId, userId))
+      .orderBy(desc(caseFiles.updatedAt));
+  }
+
+  async getCaseFile(id: number, userId: string): Promise<CaseFile | undefined> {
+    const [cf] = await db.select()
+      .from(caseFiles)
+      .where(and(eq(caseFiles.id, id), eq(caseFiles.userId, userId)));
+    return cf;
+  }
+
+  async createCaseFile(entry: InsertCaseFile): Promise<CaseFile> {
+    const [created] = await db.insert(caseFiles).values(entry).returning();
+    return created;
+  }
+
+  async updateCaseFile(id: number, userId: string, updates: Partial<InsertCaseFile>): Promise<CaseFile | undefined> {
+    const [updated] = await db.update(caseFiles)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(caseFiles.id, id), eq(caseFiles.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCaseFile(id: number, userId: string): Promise<void> {
+    await db.delete(caseFiles)
+      .where(and(eq(caseFiles.id, id), eq(caseFiles.userId, userId)));
+  }
+
+  // Case Clients
+  async getCaseClients(caseId: number): Promise<CaseClient[]> {
+    return await db.select()
+      .from(caseClients)
+      .where(eq(caseClients.caseId, caseId))
+      .orderBy(caseClients.createdAt);
+  }
+
+  async addCaseClient(entry: InsertCaseClient): Promise<CaseClient> {
+    const [created] = await db.insert(caseClients).values(entry).returning();
+    return created;
+  }
+
+  async updateCaseClient(id: number, caseId: number, updates: Partial<InsertCaseClient>): Promise<CaseClient | undefined> {
+    const [updated] = await db.update(caseClients)
+      .set(updates)
+      .where(and(eq(caseClients.id, id), eq(caseClients.caseId, caseId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCaseClient(id: number, caseId: number): Promise<void> {
+    await db.delete(caseClients)
+      .where(and(eq(caseClients.id, id), eq(caseClients.caseId, caseId)));
+  }
+
+  // Case Compliance
+  async getCaseComplianceItems(caseId: number): Promise<CaseCompliance[]> {
+    return await db.select()
+      .from(caseCompliance)
+      .where(eq(caseCompliance.caseId, caseId))
+      .orderBy(caseCompliance.dueDate);
+  }
+
+  async getUpcomingCompliance(userId: string, limit: number = 10): Promise<(CaseCompliance & { caseTitle: string })[]> {
+    const rows = await db.select({
+      id: caseCompliance.id,
+      caseId: caseCompliance.caseId,
+      type: caseCompliance.type,
+      title: caseCompliance.title,
+      dueDate: caseCompliance.dueDate,
+      court: caseCompliance.court,
+      judge: caseCompliance.judge,
+      status: caseCompliance.status,
+      notes: caseCompliance.notes,
+      createdAt: caseCompliance.createdAt,
+      caseTitle: caseFiles.title,
+    })
+      .from(caseCompliance)
+      .innerJoin(caseFiles, eq(caseCompliance.caseId, caseFiles.id))
+      .where(and(
+        eq(caseFiles.userId, userId),
+        eq(caseCompliance.status, "pending"),
+        gte(caseCompliance.dueDate, new Date()),
+      ))
+      .orderBy(caseCompliance.dueDate)
+      .limit(limit);
+    return rows;
+  }
+
+  async addCaseCompliance(entry: InsertCaseCompliance): Promise<CaseCompliance> {
+    const [created] = await db.insert(caseCompliance).values(entry).returning();
+    return created;
+  }
+
+  async updateCaseCompliance(id: number, caseId: number, updates: Partial<InsertCaseCompliance>): Promise<CaseCompliance | undefined> {
+    const [updated] = await db.update(caseCompliance)
+      .set(updates)
+      .where(and(eq(caseCompliance.id, id), eq(caseCompliance.caseId, caseId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCaseCompliance(id: number, caseId: number): Promise<void> {
+    await db.delete(caseCompliance)
+      .where(and(eq(caseCompliance.id, id), eq(caseCompliance.caseId, caseId)));
+  }
+
+  // Case Documents (junction)
+  async getCaseDocuments(caseId: number): Promise<(CaseDocument & { docTitle: string; docSourceType: string | null })[]> {
+    const rows = await db.select({
+      id: caseDocuments.id,
+      caseId: caseDocuments.caseId,
+      documentId: caseDocuments.documentId,
+      label: caseDocuments.label,
+      addedAt: caseDocuments.addedAt,
+      docTitle: documents.title,
+      docSourceType: documents.sourceType,
+    })
+      .from(caseDocuments)
+      .innerJoin(documents, eq(caseDocuments.documentId, documents.id))
+      .where(eq(caseDocuments.caseId, caseId))
+      .orderBy(desc(caseDocuments.addedAt));
+    return rows;
+  }
+
+  async getCaseDocumentIds(caseId: number): Promise<number[]> {
+    const rows = await db.select({ documentId: caseDocuments.documentId })
+      .from(caseDocuments)
+      .where(eq(caseDocuments.caseId, caseId));
+    return rows.map((r: { documentId: number }) => r.documentId);
+  }
+
+  async linkDocumentToCase(entry: InsertCaseDocument): Promise<CaseDocument> {
+    const [created] = await db.insert(caseDocuments).values(entry).returning();
+    return created;
+  }
+
+  async unlinkDocumentFromCase(caseId: number, documentId: number): Promise<void> {
+    await db.delete(caseDocuments)
+      .where(and(eq(caseDocuments.caseId, caseId), eq(caseDocuments.documentId, documentId)));
+  }
+
+  // Case Notes
+  async getCaseNotes(caseId: number): Promise<CaseNote[]> {
+    return await db.select()
+      .from(caseNotes)
+      .where(eq(caseNotes.caseId, caseId))
+      .orderBy(desc(caseNotes.createdAt));
+  }
+
+  async addCaseNote(entry: InsertCaseNote): Promise<CaseNote> {
+    const [created] = await db.insert(caseNotes).values(entry).returning();
+    return created;
+  }
+
+  async deleteCaseNote(id: number, caseId: number, userId: string): Promise<void> {
+    await db.delete(caseNotes)
+      .where(and(eq(caseNotes.id, id), eq(caseNotes.caseId, caseId), eq(caseNotes.userId, userId)));
+  }
 }
 
 export const storage = new DatabaseStorage();
@@ -3603,6 +3774,96 @@ export async function ensureSearchIndexes(): Promise<void> {
     },
     { label: "idx_users_subscription_cycle", stmt: sql`CREATE INDEX IF NOT EXISTS idx_users_subscription_cycle ON users (subscription_cycle)` },
     { label: "idx_users_subscription_end_at", stmt: sql`CREATE INDEX IF NOT EXISTS idx_users_subscription_end_at ON users (subscription_end_at)` },
+    // ── Case File Management System ──────────────────────────────────────
+    {
+      label: "case_files_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS case_files (
+          id serial PRIMARY KEY,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          org_id integer REFERENCES organizations(id) ON DELETE SET NULL,
+          reference_no varchar(50),
+          title text NOT NULL,
+          case_type text NOT NULL DEFAULT 'other',
+          court text,
+          case_number text,
+          status text NOT NULL DEFAULT 'active',
+          priority text NOT NULL DEFAULT 'normal',
+          description text,
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "case_clients_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS case_clients (
+          id serial PRIMARY KEY,
+          case_id integer NOT NULL REFERENCES case_files(id) ON DELETE CASCADE,
+          role text NOT NULL DEFAULT 'client',
+          name text NOT NULL,
+          father_name text,
+          cnic text,
+          phone text,
+          email text,
+          address text,
+          notes text,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "case_compliance_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS case_compliance (
+          id serial PRIMARY KEY,
+          case_id integer NOT NULL REFERENCES case_files(id) ON DELETE CASCADE,
+          type text NOT NULL,
+          title text NOT NULL,
+          due_date timestamp NOT NULL,
+          court text,
+          judge text,
+          status text NOT NULL DEFAULT 'pending',
+          notes text,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    {
+      label: "case_documents_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS case_documents (
+          id serial PRIMARY KEY,
+          case_id integer NOT NULL REFERENCES case_files(id) ON DELETE CASCADE,
+          document_id integer NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+          label text,
+          added_at timestamp DEFAULT now(),
+          UNIQUE(case_id, document_id)
+        )
+      `,
+    },
+    {
+      label: "case_notes_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS case_notes (
+          id serial PRIMARY KEY,
+          case_id integer NOT NULL REFERENCES case_files(id) ON DELETE CASCADE,
+          user_id varchar NOT NULL REFERENCES users(id),
+          content text NOT NULL,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    { label: "idx_case_files_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_files_user_id ON case_files (user_id)` },
+    { label: "idx_case_files_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_files_status ON case_files (status)` },
+    { label: "idx_case_files_org_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_files_org_id ON case_files (org_id)` },
+    { label: "idx_case_clients_case_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_clients_case_id ON case_clients (case_id)` },
+    { label: "idx_case_compliance_case_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_compliance_case_id ON case_compliance (case_id)` },
+    { label: "idx_case_compliance_due_date", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_compliance_due_date ON case_compliance (due_date)` },
+    { label: "idx_case_documents_case_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_documents_case_id ON case_documents (case_id)` },
+    { label: "idx_case_documents_document_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_documents_document_id ON case_documents (document_id)` },
+    { label: "idx_case_notes_case_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_notes_case_id ON case_notes (case_id)` },
   ];
 
   for (const { label, stmt } of indexStatements) {

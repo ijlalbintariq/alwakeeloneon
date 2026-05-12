@@ -18,6 +18,7 @@ import {
   Trash2,
   Upload,
   Cpu,
+  Briefcase,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -233,6 +234,8 @@ export default function KnowledgeVaultPage() {
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [ragIndexingIds, setRagIndexingIds] = useState<Record<number, boolean>>({});
   const [isBulkRagIndexing, setIsBulkRagIndexing] = useState(false);
+  const [assignToCaseDocId, setAssignToCaseDocId] = useState<number | null>(null);
+  const { data: caseFiles = [] } = useQuery<Array<{ id: number; title: string; status: string }>>({ queryKey: ["/api/case-files"] });
 
   const [uploadState, setUploadState] = useState<UploadState>({
     total: 0,
@@ -1073,6 +1076,13 @@ export default function KnowledgeVaultPage() {
                               {ragIndexingIds[doc.id] ? <Loader2 size={16} className="animate-spin" /> : <Cpu size={16} />}
                             </button>
                             <button
+                              onClick={() => setAssignToCaseDocId(doc.id)}
+                              className="p-2 rounded-lg text-foreground hover:text-primary hover:bg-primary/15"
+                              title="Assign to Case"
+                            >
+                              <Briefcase size={16} />
+                            </button>
+                            <button
                               onClick={() => deleteMutation.mutate(doc.id)}
                               disabled={deleteMutation.isPending}
                               className="p-2 rounded-lg text-foreground hover:text-red-300 hover:bg-red-500/15 disabled:opacity-60"
@@ -1330,6 +1340,44 @@ export default function KnowledgeVaultPage() {
         <div className="fixed bottom-6 right-6 z-[130] flex items-center gap-2 rounded-xl border border-primary/30 bg-muted px-4 py-3 text-primary text-sm shadow-xl">
           <Loader2 size={15} className="animate-spin" />
           Deleting document...
+        </div>
+      )}
+
+      {assignToCaseDocId !== null && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={() => setAssignToCaseDocId(null)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2"><Briefcase size={18} className="text-primary" /> Assign to Case</h2>
+            <p className="text-sm text-muted-foreground">Select a case file to link this document to:</p>
+            {caseFiles.filter((c: any) => c.status === "active" || c.status === "pending").length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No active case files. Create one from Case Files page first.</p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {caseFiles.filter((c: any) => c.status === "active" || c.status === "pending").map((cf: any) => (
+                  <button
+                    key={cf.id}
+                    onClick={async () => {
+                      try {
+                        await apiRequest("POST", `/api/case-files/${cf.id}/documents`, { documentId: assignToCaseDocId });
+                        toast({ title: "Document linked", description: `Added to "${cf.title}"` });
+                        setAssignToCaseDocId(null);
+                      } catch (err: any) {
+                        const msg = err?.message || "";
+                        toast({ title: msg.includes("already") ? "Already linked" : "Failed", description: msg, variant: msg.includes("already") ? "default" : "destructive" });
+                      }
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-xl border border-border bg-background hover:border-primary/40 hover:bg-primary/5 transition-all"
+                  >
+                    <p className="text-sm font-bold text-foreground">{cf.title}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase">{cf.status} • {cf.caseType || "other"}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <button onClick={() => setAssignToCaseDocId(null)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground">Cancel</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
