@@ -1588,7 +1588,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     <div className="h-full w-full min-h-0 rounded-2xl overflow-hidden border border-border/70 bg-background shadow-xl fade-in">
       <div className="relative h-full w-full">
         <aside
-          className={`hidden lg:flex absolute left-3 top-28 xl:top-20 bottom-36 z-30 transition-[width,opacity,transform] duration-300 ease-out overflow-hidden ${
+          className={`hidden lg:flex absolute left-3 top-28 xl:top-20 bottom-44 z-30 transition-[width,opacity,transform] duration-300 ease-out overflow-hidden ${
             leftRailVisible
               ? "w-64 opacity-100 translate-x-0"
               : "w-0 opacity-0 -translate-x-3 pointer-events-none"
@@ -2092,7 +2092,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         </div>
 
         <aside
-          className={`hidden xl:flex absolute right-3 top-20 bottom-36 z-30 transition-[width,opacity,transform] duration-300 ease-out overflow-hidden ${
+          className={`hidden xl:flex absolute right-3 top-20 bottom-44 z-30 transition-[width,opacity,transform] duration-300 ease-out overflow-hidden ${
             rightRailVisible
               ? "w-64 opacity-100 translate-x-0"
               : "w-0 opacity-0 translate-x-3 pointer-events-none"
