@@ -38,6 +38,7 @@ const CancellationReturnRefundPolicyPage = lazy(() => import("@/pages/cancellati
 const OwnershipStatementPage = lazy(() => import("@/pages/ownership-statement"));
 const OrganizationPage = lazy(() => import("@/pages/organization"));
 const CaseFilesPage = lazy(() => import("@/pages/case-files"));
+const DailyDiaryPage = lazy(() => import("@/pages/daily-diary"));
 const InstallAppPage = lazy(() => import("@/pages/install-app"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -167,6 +168,7 @@ function Router({ onReady }: { onReady?: () => void }) {
         <Route path="/knowledge-vault" component={KnowledgeVaultPage} />
         <Route path="/case-files/:id" component={CaseFilesPage} />
         <Route path="/case-files" component={CaseFilesPage} />
+        <Route path="/daily-diary" component={DailyDiaryPage} />
         <Route path="/organization" component={OrganizationRoute} />
         <Route path="/admin" component={AdminPanelPage} />
         <Route path="/settings" component={UserPanelPage} />

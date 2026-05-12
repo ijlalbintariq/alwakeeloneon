@@ -7747,6 +7747,106 @@ export async function registerRoutes(
     }
   });
 
+  // ─── Daily Diary ────────────────────────────────────────
+  app.get("/api/diary", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const dateFrom = String(req.query.from || req.query.date || new Date().toISOString().slice(0, 10));
+      const dateTo = String(req.query.to || dateFrom);
+      const entries = await storage.getDiaryEntries(userId, dateFrom, dateTo);
+      // Also merge compliance items that fall in this date range
+      const compItems = await storage.getUpcomingCompliance(userId, 100);
+      const merged = compItems
+        .filter((c: any) => {
+          const d = new Date(c.dueDate).toISOString().slice(0, 10);
+          return d >= dateFrom && d <= dateTo;
+        })
+        .map((c: any) => ({
+          id: `comp-${c.id}`,
+          source: "compliance",
+          date: new Date(c.dueDate).toISOString().slice(0, 10),
+          time: null,
+          title: c.title,
+          description: `${c.type.replace(/_/g, " ")}${c.court ? " • " + c.court : ""}`,
+          caseId: c.caseId,
+          caseTitle: c.caseTitle,
+          priority: c.type === "hearing" ? "high" : "normal",
+          completed: c.status === "done",
+          status: c.status,
+          type: c.type,
+        }));
+      const manual = entries.map((e: any) => ({ ...e, source: "manual" }));
+      const all = [...manual, ...merged].sort((a: any, b: any) => {
+        if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+        if (a.time && b.time) return a.time < b.time ? -1 : 1;
+        if (a.time) return -1;
+        if (b.time) return 1;
+        return 0;
+      });
+      res.json(all);
+    } catch (err: any) {
+      console.error("Error fetching diary:", err);
+      res.status(500).json({ message: "Failed to fetch diary" });
+    }
+  });
+
+  app.post("/api/diary", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const parsed = z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        time: z.string().max(10).optional(),
+        title: z.string().min(1).max(300),
+        description: z.string().max(2000).optional(),
+        caseId: z.number().int().positive().optional(),
+        priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+      }).parse(req.body);
+      const entry = await storage.addDiaryEntry({ ...parsed, userId });
+      res.status(201).json(entry);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      console.error("Error adding diary entry:", err);
+      res.status(500).json({ message: "Failed to add diary entry" });
+    }
+  });
+
+  app.patch("/api/diary/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const parsed = z.object({
+        title: z.string().min(1).max(300).optional(),
+        description: z.string().max(2000).optional(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        time: z.string().max(10).optional(),
+        caseId: z.number().int().positive().nullable().optional(),
+        priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+        completed: z.boolean().optional(),
+      }).parse(req.body);
+      const updated = await storage.updateDiaryEntry(Number(req.params.id), userId, parsed);
+      if (!updated) return res.status(404).json({ message: "Entry not found" });
+      res.json(updated);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      console.error("Error updating diary entry:", err);
+      res.status(500).json({ message: "Failed to update diary entry" });
+    }
+  });
+
+  app.delete("/api/diary/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      await storage.deleteDiaryEntry(Number(req.params.id), userId);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Error deleting diary entry:", err);
+      res.status(500).json({ message: "Failed to delete diary entry" });
+    }
+  });
+
   app.post("/api/rag/index-document", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);

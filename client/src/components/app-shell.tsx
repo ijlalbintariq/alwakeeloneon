@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
-  History, FileBadge, Sparkles, Database, LogOut, Briefcase,
+  History, FileBadge, Sparkles, Database, LogOut, Briefcase, CalendarDays,
   User as UserIcon, Shield, Settings, Building2, Sun, Moon
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
@@ -115,6 +115,13 @@ const NAVIGATION_GROUPS: NavigationGroup[] = [
         description: "Manage your active legal cases",
         icon: Briefcase,
         href: "/case-files",
+      },
+      {
+        id: "daily-diary",
+        label: "Daily Diary",
+        description: "Your schedule and tasks",
+        icon: CalendarDays,
+        href: "/daily-diary",
       },
       {
         id: "case-documents",
@@ -332,7 +339,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     location.startsWith("/judgment") ||
     location.startsWith("/statute") ||
     location.startsWith("/knowledge-vault") ||
-    location.startsWith("/case-files");
+    location.startsWith("/case-files") ||
+    location.startsWith("/daily-diary");
   const isEdgeAttachedLayout = location === "/al-wakeelo";
   const isDraftingLayout = location === "/legal-drafting" || location === "/contract-drafting";
 

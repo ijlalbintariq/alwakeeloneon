@@ -484,6 +484,20 @@ export const caseNotes = pgTable("case_notes", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const diaryEntries = pgTable("diary_entries", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  date: text("date").notNull(),
+  time: text("time"),
+  title: text("title").notNull(),
+  description: text("description"),
+  caseId: integer("case_id").references(() => caseFiles.id, { onDelete: "set null" }),
+  complianceId: integer("compliance_id").references(() => caseCompliance.id, { onDelete: "set null" }),
+  priority: text("priority", { enum: ["low", "normal", "high", "urgent"] }).notNull().default("normal"),
+  completed: boolean("completed").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
@@ -522,6 +536,7 @@ export const insertCaseClientSchema = createInsertSchema(caseClients).omit({ id:
 export const insertCaseComplianceSchema = createInsertSchema(caseCompliance).omit({ id: true, createdAt: true });
 export const insertCaseDocumentSchema = createInsertSchema(caseDocuments).omit({ id: true, addedAt: true });
 export const insertCaseNoteSchema = createInsertSchema(caseNotes).omit({ id: true, createdAt: true });
+export const insertDiaryEntrySchema = createInsertSchema(diaryEntries).omit({ id: true, createdAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -706,3 +721,6 @@ export type CreateThreadRequest = {
 export type ChatRequest = {
   message: string;
 };
+
+export type DiaryEntry = typeof diaryEntries.$inferSelect;
+export type InsertDiaryEntry = z.infer<typeof insertDiaryEntrySchema>;

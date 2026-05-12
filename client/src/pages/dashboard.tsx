@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Scale, Gavel, Book, FileText, Sparkles, Bookmark, History, FileBadge, TrendingUp, AlertTriangle, ArrowUpRight, Calendar, Briefcase } from "lucide-react";
+import { Scale, Gavel, Book, FileText, Sparkles, Bookmark, History, FileBadge, TrendingUp, AlertTriangle, ArrowUpRight, Calendar, CalendarDays, Briefcase } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { getUpgradeActionLabel, getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 
@@ -40,6 +40,11 @@ export default function DashboardPage() {
   const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
   const { data: activitySummary } = useQuery<ActivitySummary>({ queryKey: ["/api/activity/summary"] });
   const { data: upcomingDeadlines = [] } = useQuery<Array<{ id: number; caseId: number; type: string; title: string; dueDate: string; court?: string; status: string; caseTitle: string }>>({ queryKey: ["/api/case-files-compliance/upcoming"] });
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const { data: todayAgenda = [] } = useQuery<any[]>({
+    queryKey: ["/api/diary", todayStr],
+    queryFn: async () => { const res = await fetch(`/api/diary?date=${todayStr}`, { credentials: "include" }); return res.json(); },
+  });
 
   const stats = [
     { label: "Active Sessions", value: threads?.length || 0, icon: Scale, color: "text-primary" },
@@ -197,6 +202,27 @@ export default function DashboardPage() {
             <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-foreground">Chamber Activity</p>
           </div>
           <div className="space-y-2">
+            {todayAgenda.length > 0 && (
+              <div className="rounded-xl border border-primary/20 bg-background/55 p-2.5 md:p-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <CalendarDays size={12} className="text-primary" />
+                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Today's Agenda</p>
+                  <span className="ml-auto text-[9px] font-bold text-primary">{todayAgenda.length}</span>
+                </div>
+                <div className="space-y-1">
+                  {todayAgenda.slice(0, 3).map((item: any, i: number) => (
+                    <div key={i} className={`flex items-center gap-2 px-2 py-1 rounded-lg ${item.completed ? "opacity-40" : ""}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${item.source === "compliance" ? "bg-red-400" : "bg-primary"}`} />
+                      <span className="text-[11px] text-foreground font-medium truncate flex-1">{item.title}</span>
+                      {item.time && <span className="text-[9px] text-muted-foreground">{item.time}</span>}
+                    </div>
+                  ))}
+                </div>
+                {todayAgenda.length > 3 && (
+                  <Link href="/daily-diary" className="block text-[10px] text-primary font-bold mt-1.5 hover:text-foreground no-underline">+{todayAgenda.length - 3} more →</Link>
+                )}
+              </div>
+            )}
             <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background/55 p-2.5 md:p-3">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Last Activity Reminder</p>
               {activitySummary?.lastActivity?.threadId ? (

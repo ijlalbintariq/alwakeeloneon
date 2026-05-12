@@ -3,7 +3,7 @@ import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments, savedJudgments,
   organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles, visitorSessions, caseLeads, publicFunnelEvents,
   styleMemorySettings, styleMemorySamples, styleMemoryChunks, styleMemoryEvents,
-  caseFiles, caseClients, caseCompliance, caseDocuments, caseNotes,
+  caseFiles, caseClients, caseCompliance, caseDocuments, caseNotes, diaryEntries,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -36,7 +36,7 @@ import {
   type CaseNote, type InsertCaseNote,
 } from "@shared/schema";
 import { users, passwordResetTokens, emailVerificationTokens, type User } from "@shared/models/auth";
-import { eq, desc, or, ilike, sql, and, lt, gte, count, inArray } from "drizzle-orm";
+import { eq, desc, asc, or, ilike, sql, and, lt, gte, lte, count, inArray } from "drizzle-orm";
 
 export type DocumentInsights = {
   totalDocuments: number;
@@ -3233,6 +3233,43 @@ export class DatabaseStorage implements IStorage {
     await db.delete(caseNotes)
       .where(and(eq(caseNotes.id, id), eq(caseNotes.caseId, caseId), eq(caseNotes.userId, userId)));
   }
+
+  // --- Diary Entries ---
+  async getDiaryEntries(userId: string, dateFrom: string, dateTo: string): Promise<any[]> {
+    return db.select().from(diaryEntries)
+      .where(and(
+        eq(diaryEntries.userId, Number(userId)),
+        gte(diaryEntries.date, dateFrom),
+        lte(diaryEntries.date, dateTo),
+      ))
+      .orderBy(asc(diaryEntries.date), asc(diaryEntries.time));
+  }
+
+  async addDiaryEntry(data: { userId: string; date: string; time?: string; title: string; description?: string; caseId?: number; priority?: string; completed?: boolean }): Promise<any> {
+    const [entry] = await db.insert(diaryEntries).values({
+      userId: Number(data.userId),
+      date: data.date,
+      time: data.time || null,
+      title: data.title,
+      description: data.description || null,
+      caseId: data.caseId || null,
+      priority: (data.priority as any) || "normal",
+      completed: data.completed ?? false,
+    }).returning();
+    return entry;
+  }
+
+  async updateDiaryEntry(id: number, userId: string, updates: Partial<{ title: string; description: string; time: string; date: string; caseId: number | null; priority: string; completed: boolean }>): Promise<any> {
+    const [updated] = await db.update(diaryEntries).set(updates as any)
+      .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, Number(userId))))
+      .returning();
+    return updated;
+  }
+
+  async deleteDiaryEntry(id: number, userId: string): Promise<void> {
+    await db.delete(diaryEntries)
+      .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, Number(userId))));
+  }
 }
 
 export const storage = new DatabaseStorage();
@@ -3871,6 +3908,25 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_case_documents_case_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_documents_case_id ON case_documents (case_id)` },
     { label: "idx_case_documents_document_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_documents_document_id ON case_documents (document_id)` },
     { label: "idx_case_notes_case_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_notes_case_id ON case_notes (case_id)` },
+    {
+      label: "diary_entries_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS diary_entries (
+          id serial PRIMARY KEY,
+          user_id integer NOT NULL,
+          date text NOT NULL,
+          time text,
+          title text NOT NULL,
+          description text,
+          case_id integer REFERENCES case_files(id) ON DELETE SET NULL,
+          compliance_id integer REFERENCES case_compliance(id) ON DELETE SET NULL,
+          priority text NOT NULL DEFAULT 'normal',
+          completed boolean NOT NULL DEFAULT false,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
+    { label: "idx_diary_entries_user_date", stmt: sql`CREATE INDEX IF NOT EXISTS idx_diary_entries_user_date ON diary_entries (user_id, date)` },
   ];
 
   for (const { label, stmt } of indexStatements) {
