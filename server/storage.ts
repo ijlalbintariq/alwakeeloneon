@@ -3245,7 +3245,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(diaryEntries.date), asc(diaryEntries.time));
   }
 
-  async addDiaryEntry(data: { userId: string; date: string; time?: string; title: string; description?: string; caseId?: number; priority?: string; completed?: boolean }): Promise<any> {
+  async addDiaryEntry(data: { userId: string; date: string; time?: string; title: string; description?: string; caseId?: number; priority?: string; completed?: boolean; outcome?: string; nextDate?: string }): Promise<any> {
     const [entry] = await db.insert(diaryEntries).values({
       userId: Number(data.userId),
       date: data.date,
@@ -3255,11 +3255,13 @@ export class DatabaseStorage implements IStorage {
       caseId: data.caseId || null,
       priority: (data.priority as any) || "normal",
       completed: data.completed ?? false,
+      outcome: data.outcome || null,
+      nextDate: data.nextDate || null,
     }).returning();
     return entry;
   }
 
-  async updateDiaryEntry(id: number, userId: string, updates: Partial<{ title: string; description: string; time: string; date: string; caseId: number | null; priority: string; completed: boolean }>): Promise<any> {
+  async updateDiaryEntry(id: number, userId: string, updates: Partial<{ title: string; description: string; time: string; date: string; caseId: number | null; priority: string; completed: boolean; outcome: string; nextDate: string }>): Promise<any> {
     const [updated] = await db.update(diaryEntries).set(updates as any)
       .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, Number(userId))))
       .returning();
@@ -3922,10 +3924,14 @@ export async function ensureSearchIndexes(): Promise<void> {
           compliance_id integer REFERENCES case_compliance(id) ON DELETE SET NULL,
           priority text NOT NULL DEFAULT 'normal',
           completed boolean NOT NULL DEFAULT false,
+          outcome text,
+          next_date text,
           created_at timestamp DEFAULT now()
         )
       `,
     },
+    { label: "diary_entries_outcome_col", stmt: sql`ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS outcome text` },
+    { label: "diary_entries_next_date_col", stmt: sql`ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS next_date text` },
     { label: "idx_diary_entries_user_date", stmt: sql`CREATE INDEX IF NOT EXISTS idx_diary_entries_user_date ON diary_entries (user_id, date)` },
   ];
 

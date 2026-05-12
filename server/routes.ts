@@ -7802,6 +7802,8 @@ export async function registerRoutes(
         description: z.string().max(2000).optional(),
         caseId: z.number().int().positive().optional(),
         priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+        outcome: z.string().max(200).optional(),
+        nextDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       }).parse(req.body);
       const entry = await storage.addDiaryEntry({ ...parsed, userId });
       res.status(201).json(entry);
@@ -7824,6 +7826,8 @@ export async function registerRoutes(
         caseId: z.number().int().positive().nullable().optional(),
         priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
         completed: z.boolean().optional(),
+        outcome: z.string().max(200).optional(),
+        nextDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       }).parse(req.body);
       const updated = await storage.updateDiaryEntry(Number(req.params.id), userId, parsed);
       if (!updated) return res.status(404).json({ message: "Entry not found" });

@@ -495,6 +495,8 @@ export const diaryEntries = pgTable("diary_entries", {
   complianceId: integer("compliance_id").references(() => caseCompliance.id, { onDelete: "set null" }),
   priority: text("priority", { enum: ["low", "normal", "high", "urgent"] }).notNull().default("normal"),
   completed: boolean("completed").notNull().default(false),
+  outcome: text("outcome"),
+  nextDate: text("next_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

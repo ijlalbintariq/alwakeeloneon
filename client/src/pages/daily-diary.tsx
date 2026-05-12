@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CalendarDays, Plus, ChevronLeft, ChevronRight, Trash2, Loader2, Briefcase, Clock, CheckCircle2, Circle, Gavel, FileText, AlertTriangle } from "lucide-react";
+import { CalendarDays, Plus, ChevronLeft, ChevronRight, Trash2, Loader2, Briefcase, Clock, CheckCircle2, Circle, Gavel, FileText, AlertTriangle, ArrowRight } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,6 +17,8 @@ type DiaryItem = {
   completed: boolean;
   type?: string;
   status?: string;
+  outcome?: string | null;
+  nextDate?: string | null;
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -26,6 +28,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   low: "border-border/50",
 };
 const PRIORITY_DOT: Record<string, string> = { urgent: "bg-red-400", high: "bg-amber-400", normal: "bg-foreground/30", low: "bg-slate-500" };
+const OUTCOME_OPTIONS = ["instruction", "arguments", "evidence", "disposed_off", "dnp", "adjourned", "reserved", "dismissed", "allowed", "partly_allowed", "order_passed", "other"] as const;
 
 function formatDateLabel(d: string) {
   const date = new Date(d + "T00:00:00");
@@ -57,6 +60,8 @@ export default function DailyDiaryPage() {
   const [newDesc, setNewDesc] = useState("");
   const [newPriority, setNewPriority] = useState("normal");
   const [newCaseId, setNewCaseId] = useState<number | "">("");
+  const [newOutcome, setNewOutcome] = useState("");
+  const [newNextDate, setNewNextDate] = useState("");
 
   const weekDates = useMemo(() => getWeekDates(weekBase), [weekBase]);
   const weekFrom = weekDates[0];
@@ -87,11 +92,13 @@ export default function DailyDiaryPage() {
         description: newDesc || undefined,
         caseId: newCaseId || undefined,
         priority: newPriority,
+        outcome: newOutcome || undefined,
+        nextDate: newNextDate || undefined,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/diary"] });
-      setNewTitle(""); setNewTime(""); setNewDesc(""); setNewPriority("normal"); setNewCaseId("");
+      setNewTitle(""); setNewTime(""); setNewDesc(""); setNewPriority("normal"); setNewCaseId(""); setNewOutcome(""); setNewNextDate("");
       setShowAdd(false);
       toast({ title: "Entry added" });
     },
@@ -186,7 +193,17 @@ export default function DailyDiaryPage() {
                 {caseFiles.filter((c: any) => c.status === "active" || c.status === "pending").map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
             </div>
-            <textarea placeholder="Description (optional)" value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none" />
+            <div className="grid grid-cols-2 gap-2">
+              <select value={newOutcome} onChange={e => setNewOutcome(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground outline-none">
+                <option value="">Outcome / Result</option>
+                {OUTCOME_OPTIONS.map(o => <option key={o} value={o}>{o.replace(/_/g, " ").replace(/\bdnp\b/i, "DNP (Did Not Proceed)")}</option>)}
+              </select>
+              <div className="relative">
+                <input type="date" value={newNextDate} onChange={e => setNewNextDate(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground outline-none w-full" />
+                {!newNextDate && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">Next Date</span>}
+              </div>
+            </div>
+            <textarea placeholder="Description / Order notes (optional)" value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none" />
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground">Cancel</button>
               <button onClick={() => addEntry.mutate()} disabled={!newTitle.trim() || addEntry.isPending} className="px-5 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold disabled:opacity-50">
@@ -256,6 +273,22 @@ export default function DailyDiaryPage() {
                       )}
                     </div>
                     {item.description && <p className="text-xs text-muted-foreground mt-1">{item.description}</p>}
+                    {(item.outcome || item.nextDate) && (
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        {item.outcome && (
+                          <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-black border ${
+                            item.outcome === "disposed_off" || item.outcome === "dismissed" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                            item.outcome === "dnp" || item.outcome === "adjourned" ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
+                            "bg-foreground/5 border-border text-foreground/60"
+                          }`}>{item.outcome.replace(/_/g, " ")}</span>
+                        )}
+                        {item.nextDate && (
+                          <span className="text-[10px] text-primary/80 flex items-center gap-0.5 font-bold">
+                            <ArrowRight size={9} /> Next: {new Date(item.nextDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
