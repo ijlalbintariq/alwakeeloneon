@@ -7592,13 +7592,14 @@ export async function registerRoutes(
       const cf = await storage.getCaseFile(caseId, userId);
       if (!cf) return res.status(404).json({ message: "Case file not found" });
       const parsed = z.object({
-        type: z.enum(["hearing", "filing_deadline", "compliance", "limitation", "other"]),
+        type: z.enum(["hearing", "filing_deadline", "compliance", "limitation", "identity", "letter_of_authority", "client_matter_enquiry", "action_agreed_form", "client_care_letter", "conflict_check", "other"]),
         title: z.string().min(1).max(300),
         dueDate: z.string().min(1),
         court: z.string().max(200).optional(),
         judge: z.string().max(200).optional(),
         status: z.enum(["pending", "done", "missed", "adjourned"]).optional(),
         notes: z.string().max(2000).optional(),
+        documentId: z.number().int().positive().optional(),
       }).parse(req.body);
       const created = await storage.addCaseCompliance({
         ...parsed,
@@ -7622,13 +7623,14 @@ export async function registerRoutes(
       const cf = await storage.getCaseFile(caseId, userId);
       if (!cf) return res.status(404).json({ message: "Case file not found" });
       const parsed = z.object({
-        type: z.enum(["hearing", "filing_deadline", "compliance", "limitation", "other"]).optional(),
+        type: z.enum(["hearing", "filing_deadline", "compliance", "limitation", "identity", "letter_of_authority", "client_matter_enquiry", "action_agreed_form", "client_care_letter", "conflict_check", "other"]).optional(),
         title: z.string().min(1).max(300).optional(),
         dueDate: z.string().min(1).optional(),
         court: z.string().max(200).optional(),
         judge: z.string().max(200).optional(),
         status: z.enum(["pending", "done", "missed", "adjourned"]).optional(),
         notes: z.string().max(2000).optional(),
+        documentId: z.number().int().positive().optional(),
       }).parse(req.body);
       const updates: any = { ...parsed };
       if (parsed.dueDate) updates.dueDate = new Date(parsed.dueDate);

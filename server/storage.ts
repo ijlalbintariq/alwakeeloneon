@@ -3826,8 +3826,15 @@ export async function ensureSearchIndexes(): Promise<void> {
           judge text,
           status text NOT NULL DEFAULT 'pending',
           notes text,
+          document_id integer,
           created_at timestamp DEFAULT now()
         )
+      `,
+    },
+    {
+      label: "case_compliance_document_id_col",
+      stmt: sql`
+        ALTER TABLE case_compliance ADD COLUMN IF NOT EXISTS document_id integer
       `,
     },
     {

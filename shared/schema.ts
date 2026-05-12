@@ -457,13 +457,14 @@ export const caseClients = pgTable("case_clients", {
 export const caseCompliance = pgTable("case_compliance", {
   id: serial("id").primaryKey(),
   caseId: integer("case_id").references(() => caseFiles.id, { onDelete: "cascade" }).notNull(),
-  type: text("type", { enum: ["hearing", "filing_deadline", "compliance", "limitation", "other"] }).notNull(),
+  type: text("type", { enum: ["hearing", "filing_deadline", "compliance", "limitation", "identity", "letter_of_authority", "client_matter_enquiry", "action_agreed_form", "client_care_letter", "conflict_check", "other"] }).notNull(),
   title: text("title").notNull(),
   dueDate: timestamp("due_date").notNull(),
   court: text("court"),
   judge: text("judge"),
   status: text("status", { enum: ["pending", "done", "missed", "adjourned"] }).notNull().default("pending"),
   notes: text("notes"),
+  documentId: integer("document_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

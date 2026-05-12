@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { Briefcase, Plus, ChevronLeft, Users, FileText, Calendar, StickyNote, Trash2, Loader2, Scale, AlertCircle } from "lucide-react";
+import { Briefcase, Plus, ChevronLeft, Users, FileText, Calendar, StickyNote, Trash2, Loader2, Scale, AlertCircle, Upload, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -146,18 +146,67 @@ function CaseDetail({ id }: { id: number }) {
       )}
 
       {tab === "compliance" && (
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <input placeholder="Title" value={compTitle} onChange={e => setCompTitle(e.target.value)} className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none" />
-            <input type="date" value={compDate} onChange={e => setCompDate(e.target.value)} className="bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none" />
-            <select value={compType} onChange={e => setCompType(e.target.value)} className="bg-background border border-border rounded-lg px-2 py-2 text-sm outline-none">
-              {["hearing","filing_deadline","compliance","limitation","other"].map(t => <option key={t} value={t}>{t.replace("_"," ")}</option>)}
-            </select>
-            <button onClick={() => compTitle.trim() && compDate && addComp.mutate()} disabled={!compTitle.trim() || !compDate} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50">Add</button>
+        <div className="space-y-4">
+          <div className="bg-card/30 border border-border rounded-xl p-4 space-y-3">
+            <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Add Compliance Item</p>
+            <div className="flex gap-2 flex-wrap">
+              <input placeholder="Title" value={compTitle} onChange={e => setCompTitle(e.target.value)} className="flex-1 min-w-[140px] bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none" />
+              <input type="date" value={compDate} onChange={e => setCompDate(e.target.value)} className="bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none" />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <select value={compType} onChange={e => setCompType(e.target.value)} className="flex-1 min-w-[160px] bg-background border border-border rounded-lg px-2 py-2 text-sm outline-none">
+                <optgroup label="Court & Deadlines">
+                  {["hearing","filing_deadline","compliance","limitation"].map(t => <option key={t} value={t}>{t.replace(/_/g," ")}</option>)}
+                </optgroup>
+                <optgroup label="Client Documents">
+                  <option value="identity">Identity</option>
+                  <option value="letter_of_authority">Letter of Authority</option>
+                  <option value="client_matter_enquiry">Client Matter Enquiry</option>
+                  <option value="action_agreed_form">Action Agreed Form</option>
+                  <option value="client_care_letter">Client Care Letter</option>
+                </optgroup>
+                <optgroup label="Checks">
+                  <option value="conflict_check">Conflict Check</option>
+                </optgroup>
+                <option value="other">Other</option>
+              </select>
+              <button onClick={() => compTitle.trim() && compDate && addComp.mutate()} disabled={!compTitle.trim() || !compDate} className="px-5 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50">Add</button>
+            </div>
           </div>
+
+          {["identity","letter_of_authority","client_matter_enquiry","action_agreed_form","client_care_letter","conflict_check"].some(t => !(cf.compliance || []).find((c: any) => c.type === t && c.status === "done")) && (
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
+              <p className="text-[10px] uppercase tracking-widest font-black text-amber-400 mb-2 flex items-center gap-1.5"><ShieldCheck size={12} /> Compliance Checklist</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                {[
+                  { type: "identity", label: "Identity" },
+                  { type: "letter_of_authority", label: "Letter of Authority" },
+                  { type: "client_matter_enquiry", label: "Client Matter Enquiry" },
+                  { type: "action_agreed_form", label: "Action Agreed Form" },
+                  { type: "client_care_letter", label: "Client Care Letter" },
+                  { type: "conflict_check", label: "Conflict Check" },
+                ].map(item => {
+                  const done = (cf.compliance || []).find((c: any) => c.type === item.type && c.status === "done");
+                  return (
+                    <div key={item.type} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold ${done ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-400" : "border-border bg-background text-muted-foreground"}`}>
+                      {done ? <CheckCircle2 size={12} /> : <div className="w-3 h-3 rounded-full border border-muted-foreground/40" />}
+                      {item.label}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {(cf.compliance || []).map((c: any) => (
             <div key={c.id} className="flex items-center justify-between bg-card/50 border border-border rounded-xl p-3">
-              <div><p className="text-sm font-bold text-foreground">{c.title}</p><p className="text-[10px] text-muted-foreground">{c.type.replace("_"," ")} • {formatDate(c.dueDate)}{c.court ? ` • ${c.court}` : ""}</p></div>
+              <div>
+                <p className="text-sm font-bold text-foreground">{c.title}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[10px] text-muted-foreground">{c.type.replace(/_/g," ")} • {formatDate(c.dueDate)}{c.court ? ` • ${c.court}` : ""}</span>
+                  {c.documentId && <span className="text-[10px] text-primary/70 flex items-center gap-0.5"><Upload size={9} /> doc attached</span>}
+                </div>
+              </div>
               <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${STATUS_COLORS[c.status] || ""}`}>{c.status}</span>
             </div>
           ))}
