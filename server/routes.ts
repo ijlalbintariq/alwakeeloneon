@@ -9000,29 +9000,37 @@ RAG POLICY (STRICT):
   });
 
   // Lookup case law / judgment by citation - returns judgment ID for direct opening
+  // Public lookup (used by landing-page chat widget).
+  // Rate-limited: 30 requests/min per IP, min 5-char query.
+  const caseLawLookupRateMap = new Map<string, { count: number; resetAt: number }>();
   app.get("/api/caseLaw/lookup", async (req, res) => {
     try {
+      // --- Rate limit: 30 req/min per IP ---
+      const ip = req.ip || req.socket.remoteAddress || "unknown";
+      const now = Date.now();
+      let bucket = caseLawLookupRateMap.get(ip);
+      if (!bucket || now > bucket.resetAt) {
+        bucket = { count: 0, resetAt: now + 60_000 };
+        caseLawLookupRateMap.set(ip, bucket);
+      }
+      bucket.count++;
+      if (bucket.count > 30) {
+        return res.status(429).json({ message: "Too many requests. Try again shortly." });
+      }
+
       const q = String(req.query.q || "").trim();
-      if (!q) {
-        return res.status(400).json({ message: "Query required" });
+      if (!q || q.length < 5) {
+        return res.status(400).json({ message: "Query must be at least 5 characters" });
       }
 
       // STEP 1: Parsed-parts match (year + report code + page).
-      // Card-displayed citations include the expanded court name
-      // (e.g. "PLD 2023 Supreme Court 362"). The default parser tries a
-      // year-first regex that matches "Supreme Court" as the report token,
-      // producing an invalid journal code. Strip court-name words first so
-      // the parser sees "PLD 2023 362" and extracts {report:PLD, year, page}.
       const courtStripped = q
-        // Period-style first (regex word boundaries don't fire correctly on "S.C." trailing dot)
         .replace(/\bS\.\s*C\.?/gi, " ")
         .replace(/\bF\.\s*S\.\s*C\.?/gi, " ")
-        // Full-word court names
         .replace(
           /\b(Supreme\s+Court|Lahore|Peshawar|Karachi|Sindh|Islamabad|Balochistan|Federal\s+Shariat(?:\s+Court)?|FSC|AJK|SC)\b/gi,
           " ",
         )
-        // Collapse stray punctuation between digits (e.g. "1998 . 1512")
         .replace(/(\d)\s*\.\s*(\d)/g, "$1 $2")
         .replace(/\s+/g, " ")
         .trim();
@@ -9049,24 +9057,18 @@ RAG POLICY (STRICT):
         }
       }
 
-      // STEP 2: Fallback — substring LIKE on citation string or title.
-      // Handles non-standard citation formats and title-only searches.
+      // STEP 2: Fallback — substring LIKE on citation string only.
+      // Title search disabled for public endpoint to prevent data probing.
       const [result] = await db
         .select({
           id: judgments.id,
           citationString: judgments.citationString,
-          title: judgments.title,
           court: courtsRef.name,
           decisionDate: judgments.decisionDate,
         })
         .from(judgments)
         .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
-        .where(
-          or(
-            like(judgments.citationString, `%${q}%`),
-            like(judgments.title, `%${q}%`),
-          ),
-        )
+        .where(like(judgments.citationString, `%${q}%`))
         .limit(1);
 
       if (result) {
@@ -9075,7 +9077,6 @@ RAG POLICY (STRICT):
           id: result.id,
           judgment: {
             citation: result.citationString,
-            title: result.title,
             court: result.court,
             decisionDate: result.decisionDate,
           },
