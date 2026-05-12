@@ -2579,7 +2579,7 @@ function ensureAlWakeeloReferencesBlock(content: string): string {
   return renderSingleReferencesBlock(content, payload);
 }
 
-const REFERENCES_BLOCK_REGEX = /```references\s*([\s\S]*?)```/i;
+const REFERENCES_BLOCK_REGEX = /```references\s*([\s\S]*?)```|(?:^|\n)\s*references\s*(\{[\s\S]*?\})\s*$/i;
 
 function isDirectModePrompt(text: string): boolean {
   const normalized = (text || "").trim().toLowerCase();
@@ -2693,15 +2693,17 @@ async function verifyReferencesBlock(
   // The model's JSON (when valid) is used only as a description-enrichment hint.
   let modelParsed: { laws?: RawLawRef[]; judgments?: RawJudgmentRef[] } = { laws: [], judgments: [] };
   if (match) {
+    // match[1] = fenced ```references …``` body; match[2] = fenceless `references {…}` body.
+    const referencesPayload = (match[1] ?? match[2] ?? "").trim();
     try {
-      const candidate = JSON.parse(match[1].trim() || "{}");
+      const candidate = JSON.parse(referencesPayload || "{}");
       modelParsed = {
         laws: Array.isArray(candidate.laws) ? candidate.laws : [],
         judgments: Array.isArray(candidate.judgments) ? candidate.judgments : [],
       };
     } catch {
       // Malformed JSON — try one repair attempt for description hints, but never block on it.
-      const repaired = await repairReferencesJson(match[1].trim()).catch(() => null);
+      const repaired = await repairReferencesJson(referencesPayload).catch(() => null);
       if (repaired) {
         modelParsed = {
           laws: Array.isArray(repaired.laws) ? (repaired.laws as RawLawRef[]) : [],
