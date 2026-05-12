@@ -196,7 +196,7 @@ export default function DailyDiaryPage() {
             <div className="grid grid-cols-2 gap-2">
               <select value={newOutcome} onChange={e => setNewOutcome(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground outline-none">
                 <option value="">Outcome / Result</option>
-                {OUTCOME_OPTIONS.map(o => <option key={o} value={o}>{o.replace(/_/g, " ").replace(/\bdnp\b/i, "DNP (Did Not Proceed)")}</option>)}
+                {OUTCOME_OPTIONS.map(o => <option key={o} value={o}>{o.replace(/_/g, " ").replace(/\bdnp\b/i, "DNP (Dismissed for Non-Prosecution)")}</option>)}
               </select>
               <div className="relative">
                 <input type="date" value={newNextDate} onChange={e => setNewNextDate(e.target.value)} className="bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground outline-none w-full" />
