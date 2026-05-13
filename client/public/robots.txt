@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://alwakeeloneon-1.onrender.com/sitemap.xml
+Sitemap: https://www.alwakeelo.com/sitemap.xml

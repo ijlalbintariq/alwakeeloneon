@@ -51,6 +51,7 @@ import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAudi
 import { scanUploadedBuffer } from "./file-scan";
 import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
+import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, handleSitemapStatutes } from "./sitemap";
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
@@ -6101,17 +6102,10 @@ export async function registerRoutes(
     res.type("text/plain").send(`User-agent: *\nAllow: /\n\nSitemap: ${base}/sitemap.xml\n`);
   });
 
-  app.get("/sitemap.xml", (req, res) => {
-    const base = normalizeSiteBaseUrl(req);
-    const urls = ["/", "/auth", "/privacy", "/terms", "/cancellation-return-refund-policy", "/ownership-statement", "/install", "/checkout"];
-    const body = `<?xml version="1.0" encoding="UTF-8"?>\n` +
-      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-      urls.map((path) => (
-        `  <url><loc>${base}${path}</loc><changefreq>${path === "/" ? "weekly" : "monthly"}</changefreq><priority>${path === "/" ? "1.0" : "0.6"}</priority></url>`
-      )).join("\n") +
-      `\n</urlset>\n`;
-    res.type("application/xml").send(body);
-  });
+  app.get("/sitemap.xml", handleSitemapIndex);
+  app.get("/sitemap-static.xml", handleSitemapStatic);
+  app.get("/sitemap-judgments-:n.xml", handleSitemapJudgments);
+  app.get("/sitemap-statutes-:n.xml", handleSitemapStatutes);
 
   app.use("/api", (req, res, next) => {
     if (
