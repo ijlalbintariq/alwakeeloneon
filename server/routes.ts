@@ -7846,6 +7846,53 @@ export async function registerRoutes(
     }
   });
 
+  // ─── Notification Settings ──────────────────────────────
+  app.get("/api/settings/notifications", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const prefs = await storage.getNotificationPrefs(userId);
+      res.json(prefs);
+    } catch (err: any) {
+      console.error("Error fetching notification prefs:", err);
+      res.status(500).json({ message: "Failed to fetch notification preferences" });
+    }
+  });
+
+  app.patch("/api/settings/notifications", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const parsed = z.object({
+        dailyEmailEnabled: z.boolean().optional(),
+        weeklyEmailEnabled: z.boolean().optional(),
+        preferredTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        timezone: z.string().max(50).optional(),
+      }).parse(req.body);
+      const updated = await storage.upsertNotificationPrefs(userId, parsed);
+      res.json(updated);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });
+      console.error("Error updating notification prefs:", err);
+      res.status(500).json({ message: "Failed to update notification preferences" });
+    }
+  });
+
+  app.post("/api/settings/notifications/test", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const user = await storage.getUserProfile(userId);
+      if (!user?.email) return res.status(400).json({ message: "No email on account" });
+      const { sendDailyDigestForUser } = await import("./diary-mailer");
+      const sent = await sendDailyDigestForUser(userId, user.email, user.firstName || null);
+      res.json({ ok: sent, message: sent ? "Test email sent" : "Failed to send test email" });
+    } catch (err: any) {
+      console.error("Error sending test digest:", err);
+      res.status(500).json({ message: "Failed to send test email" });
+    }
+  });
+
   app.post("/api/rag/index-document", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);

@@ -230,6 +230,16 @@ app.use((req, res, next) => {
 
   await registerRoutes(httpServer, app);
 
+  // Start diary email scheduler (daily/weekly digests)
+  if (dbAvailable) {
+    try {
+      const { startDiaryEmailScheduler } = await import("./diary-mailer");
+      startDiaryEmailScheduler();
+    } catch (err: any) {
+      console.warn("[Startup] Could not start diary email scheduler:", err?.message);
+    }
+  }
+
   app.get("/health", (_req, res) => {
     res.json({ ok: true });
   });

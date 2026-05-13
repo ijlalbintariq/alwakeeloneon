@@ -500,6 +500,18 @@ export const diaryEntries = pgTable("diary_entries", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().unique(),
+  dailyEmailEnabled: boolean("daily_email_enabled").notNull().default(true),
+  weeklyEmailEnabled: boolean("weekly_email_enabled").notNull().default(true),
+  preferredTime: text("preferred_time").notNull().default("19:00"),
+  timezone: text("timezone").notNull().default("Asia/Karachi"),
+  lastDailySentAt: timestamp("last_daily_sent_at"),
+  lastWeeklySentAt: timestamp("last_weekly_sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });

@@ -3,7 +3,7 @@ import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments, savedJudgments,
   organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles, visitorSessions, caseLeads, publicFunnelEvents,
   styleMemorySettings, styleMemorySamples, styleMemoryChunks, styleMemoryEvents,
-  caseFiles, caseClients, caseCompliance, caseDocuments, caseNotes, diaryEntries,
+  caseFiles, caseClients, caseCompliance, caseDocuments, caseNotes, diaryEntries, notificationPreferences,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -3272,6 +3272,68 @@ export class DatabaseStorage implements IStorage {
     await db.delete(diaryEntries)
       .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, Number(userId))));
   }
+
+  // --- Notification Preferences ---
+  async getNotificationPrefs(userId: string): Promise<any> {
+    const [row] = await db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId));
+    return row || { userId, dailyEmailEnabled: true, weeklyEmailEnabled: true, preferredTime: "19:00", timezone: "Asia/Karachi", lastDailySentAt: null, lastWeeklySentAt: null };
+  }
+
+  async upsertNotificationPrefs(userId: string, updates: Partial<{ dailyEmailEnabled: boolean; weeklyEmailEnabled: boolean; preferredTime: string; timezone: string }>): Promise<any> {
+    const existing = await db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId));
+    if (existing.length > 0) {
+      const [updated] = await db.update(notificationPreferences).set(updates as any).where(eq(notificationPreferences.userId, userId)).returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(notificationPreferences).values({ userId, ...updates } as any).returning();
+      return created;
+    }
+  }
+
+  async getUsersForDailyDigest(): Promise<Array<{ userId: string; email: string; firstName: string | null; preferredTime: string }>> {
+    const rows = await db.execute(sql`
+      SELECT u.id AS user_id, u.email, u.first_name,
+             COALESCE(np.preferred_time, '19:00') AS preferred_time
+      FROM users u
+      LEFT JOIN notification_preferences np ON np.user_id = u.id::text
+      WHERE u.email IS NOT NULL
+        AND u.email_verified = true
+        AND COALESCE(np.daily_email_enabled, true) = true
+        AND (np.last_daily_sent_at IS NULL OR np.last_daily_sent_at < CURRENT_DATE)
+    `);
+    return (rows as any).rows?.map((r: any) => ({ userId: r.user_id, email: r.email, firstName: r.first_name, preferredTime: r.preferred_time })) || [];
+  }
+
+  async getUsersForWeeklyDigest(): Promise<Array<{ userId: string; email: string; firstName: string | null }>> {
+    const rows = await db.execute(sql`
+      SELECT u.id AS user_id, u.email, u.first_name
+      FROM users u
+      LEFT JOIN notification_preferences np ON np.user_id = u.id::text
+      WHERE u.email IS NOT NULL
+        AND u.email_verified = true
+        AND COALESCE(np.weekly_email_enabled, true) = true
+        AND (np.last_weekly_sent_at IS NULL OR np.last_weekly_sent_at < CURRENT_DATE)
+    `);
+    return (rows as any).rows?.map((r: any) => ({ userId: r.user_id, email: r.email, firstName: r.first_name })) || [];
+  }
+
+  async markDailyDigestSent(userId: string): Promise<void> {
+    const existing = await db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId));
+    if (existing.length > 0) {
+      await db.update(notificationPreferences).set({ lastDailySentAt: new Date() } as any).where(eq(notificationPreferences.userId, userId));
+    } else {
+      await db.insert(notificationPreferences).values({ userId, lastDailySentAt: new Date() } as any);
+    }
+  }
+
+  async markWeeklyDigestSent(userId: string): Promise<void> {
+    const existing = await db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId));
+    if (existing.length > 0) {
+      await db.update(notificationPreferences).set({ lastWeeklySentAt: new Date() } as any).where(eq(notificationPreferences.userId, userId));
+    } else {
+      await db.insert(notificationPreferences).values({ userId, lastWeeklySentAt: new Date() } as any);
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
@@ -3933,6 +3995,22 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "diary_entries_outcome_col", stmt: sql`ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS outcome text` },
     { label: "diary_entries_next_date_col", stmt: sql`ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS next_date text` },
     { label: "idx_diary_entries_user_date", stmt: sql`CREATE INDEX IF NOT EXISTS idx_diary_entries_user_date ON diary_entries (user_id, date)` },
+    {
+      label: "notification_preferences_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS notification_preferences (
+          id serial PRIMARY KEY,
+          user_id text NOT NULL UNIQUE,
+          daily_email_enabled boolean NOT NULL DEFAULT true,
+          weekly_email_enabled boolean NOT NULL DEFAULT true,
+          preferred_time text NOT NULL DEFAULT '19:00',
+          timezone text NOT NULL DEFAULT 'Asia/Karachi',
+          last_daily_sent_at timestamp,
+          last_weekly_sent_at timestamp,
+          created_at timestamp DEFAULT now()
+        )
+      `,
+    },
   ];
 
   for (const { label, stmt } of indexStatements) {

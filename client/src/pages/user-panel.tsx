@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
-  User as UserIcon, Mail, Crown, Loader2, Save, TrendingUp, AlertTriangle, Shield, LogOut, Sparkles, Camera, Trash2
+  User as UserIcon, Mail, Crown, Loader2, Save, TrendingUp, AlertTriangle, Shield, LogOut, Sparkles, Camera, Trash2, Bell
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,6 +104,41 @@ export default function UserPanelPage() {
 
   const isNearLimit = usage && usage.percentage >= 80;
   const isAtLimit = usage && usage.percentage >= 100;
+
+  // Notification preferences
+  const { data: notifPrefs } = useQuery<any>({ queryKey: ["/api/settings/notifications"] });
+  const [dailyEnabled, setDailyEnabled] = useState(true);
+  const [weeklyEnabled, setWeeklyEnabled] = useState(true);
+  const [sendTime, setSendTime] = useState("19:00");
+
+  useEffect(() => {
+    if (notifPrefs) {
+      setDailyEnabled(notifPrefs.dailyEmailEnabled ?? true);
+      setWeeklyEnabled(notifPrefs.weeklyEmailEnabled ?? true);
+      setSendTime(notifPrefs.preferredTime || "19:00");
+    }
+  }, [notifPrefs]);
+
+  const updateNotifMutation = useMutation({
+    mutationFn: async (updates: any) => {
+      const res = await apiRequest("PATCH", "/api/settings/notifications", updates);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/notifications"] });
+      toast({ title: "Notification preferences updated" });
+    },
+    onError: () => toast({ title: "Failed to update", variant: "destructive" }),
+  });
+
+  const testEmailMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/settings/notifications/test");
+      return res.json();
+    },
+    onSuccess: (data: any) => toast({ title: data?.ok ? "Test email sent! Check your inbox." : "Failed to send test email" }),
+    onError: () => toast({ title: "Failed to send test email", variant: "destructive" }),
+  });
 
   const tierColor = profile?.subscriptionTier === "enterprise"
     ? "text-emerald-400"
@@ -368,6 +403,63 @@ export default function UserPanelPage() {
               >
                 <LogOut size={14} />
                 <span>Sign Out</span>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="preview-surface rounded-[1.5rem]">
+            <CardHeader className="flex flex-row items-center gap-3 pb-2">
+              <Bell size={16} className="text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
+                Diary Notifications
+              </span>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-2">
+              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-foreground">Daily Email Reminder</p>
+                  <p className="text-[10px] text-muted-foreground">Tomorrow's hearings & tasks</p>
+                </div>
+                <button
+                  onClick={() => { const v = !dailyEnabled; setDailyEnabled(v); updateNotifMutation.mutate({ dailyEmailEnabled: v }); }}
+                  className={`w-10 h-5 rounded-full transition-colors ${dailyEnabled ? "bg-primary" : "bg-muted-foreground/30"}`}
+                >
+                  <div className={`w-4 h-4 bg-white rounded-full transition-transform ${dailyEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-foreground">Weekly Summary</p>
+                  <p className="text-[10px] text-muted-foreground">Full week overview on Saturday</p>
+                </div>
+                <button
+                  onClick={() => { const v = !weeklyEnabled; setWeeklyEnabled(v); updateNotifMutation.mutate({ weeklyEmailEnabled: v }); }}
+                  className={`w-10 h-5 rounded-full transition-colors ${weeklyEnabled ? "bg-primary" : "bg-muted-foreground/30"}`}
+                >
+                  <div className={`w-4 h-4 bg-white rounded-full transition-transform ${weeklyEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5">
+                <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground mb-1.5">Send Time (PKT)</p>
+                <select
+                  value={sendTime}
+                  onChange={e => { setSendTime(e.target.value); updateNotifMutation.mutate({ preferredTime: e.target.value }); }}
+                  className="bg-background border border-[hsl(var(--preview-border))] rounded-lg px-2 py-1.5 text-sm text-foreground outline-none w-full"
+                >
+                  <option value="18:00">6:00 PM</option>
+                  <option value="19:00">7:00 PM</option>
+                  <option value="20:00">8:00 PM</option>
+                  <option value="21:00">9:00 PM</option>
+                </select>
+              </div>
+              <Button
+                onClick={() => testEmailMutation.mutate()}
+                disabled={testEmailMutation.isPending}
+                variant="outline"
+                className="w-full rounded-xl border-primary/30 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary/10"
+              >
+                {testEmailMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
+                <span>Send Test Email</span>
               </Button>
             </CardContent>
           </Card>
