@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
+import { injectSeoMeta } from "./seo-meta";
 
 const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/$/,
@@ -35,6 +36,8 @@ function isKnownSpaRoute(pathname: string): boolean {
   return KNOWN_SPA_ROUTES.some((pattern) => pattern.test(pathname));
 }
 
+const HTML_CACHE_HEADER = "public, max-age=0, must-revalidate, s-maxage=300";
+
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {
@@ -43,9 +46,26 @@ export function serveStatic(app: Express) {
     );
   }
 
+  // Read index.html once at startup so per-request SEO meta injection is
+  // a pure string-replace (no disk I/O per crawl).
+  const indexHtmlPath = path.resolve(distPath, "index.html");
+  const indexHtmlTemplate = fs.readFileSync(indexHtmlPath, "utf8");
+
+  function sendIndexWithSeo(req: express.Request, res: express.Response, statusCode = 200): void {
+    const pathname = req.path || "/";
+    const html = injectSeoMeta(indexHtmlTemplate, pathname);
+    res.setHeader("Cache-Control", HTML_CACHE_HEADER);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(statusCode).send(html);
+  }
+
   app.use(express.static(distPath, {
     etag: true,
     maxAge: "7d",
+    // Don't let express.static serve index.html itself — we want every HTML
+    // response (including "/") to flow through sendIndexWithSeo so SEO meta
+    // is injected. Static middleware still serves /assets, /favicon.png, etc.
+    index: false,
     setHeaders: (res, filePath) => {
       const isHtml = filePath.endsWith(".html");
       if (isHtml) {
@@ -53,14 +73,14 @@ export function serveStatic(app: Express) {
         // edge for up to 5 min. Cuts TTFB for global visitors and bot crawls
         // without serving stale auth state to authenticated users (auth state
         // is established client-side after the shell loads).
-        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate, s-maxage=300");
+        res.setHeader("Cache-Control", HTML_CACHE_HEADER);
       } else {
         res.setHeader("Cache-Control", "public, max-age=604800, immutable");
       }
     },
   }));
 
-  // fall through to index.html if the file doesn't exist
+  // SPA shell with per-route SEO meta injection.
   app.use("/{*path}", (req, res) => {
     const pathname = req.path || "/";
     const method = (req.method || "GET").toUpperCase();
@@ -77,14 +97,12 @@ export function serveStatic(app: Express) {
       : "/";
 
     if (isKnownSpaRoute(normalizedPath)) {
-      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate, s-maxage=300");
-      return res.sendFile(path.resolve(distPath, "index.html"));
+      return sendIndexWithSeo(req, res, 200);
     }
 
     const wantsHtml = (req.get("accept") || "").includes("text/html");
     if (wantsHtml) {
-      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate, s-maxage=300");
-      return res.status(404).sendFile(path.resolve(distPath, "index.html"));
+      return sendIndexWithSeo(req, res, 404);
     }
     return res.status(404).end();
   });
