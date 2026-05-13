@@ -52,7 +52,12 @@ export function serveStatic(app: Express) {
   const indexHtmlTemplate = fs.readFileSync(indexHtmlPath, "utf8");
 
   function sendIndexWithSeo(req: express.Request, res: express.Response, statusCode = 200): void {
-    const pathname = req.path || "/";
+    // Express 5 with `app.use("/{*path}")` mounts the handler with the wildcard
+    // as the mount path, so `req.path` returns the residual ("/") rather than
+    // the full request path. Use originalUrl (minus query) to get the real
+    // route — this is what crawlers actually requested.
+    const raw = req.originalUrl || req.url || req.path || "/";
+    const pathname = raw.split("?")[0] || "/";
     const html = injectSeoMeta(indexHtmlTemplate, pathname);
     res.setHeader("Cache-Control", HTML_CACHE_HEADER);
     res.setHeader("Content-Type", "text/html; charset=utf-8");

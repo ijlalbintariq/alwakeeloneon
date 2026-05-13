@@ -63,13 +63,14 @@ function sqlCountStar() {
   return sql<number>`count(*)`;
 }
 
-function siteOrigin(req: Request): string {
-  const configured = String(process.env.PUBLIC_SITE_URL || "").trim();
-  if (configured) return configured.replace(/\/+$/, "");
-  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0]?.trim();
-  const proto = forwardedProto || req.protocol || "https";
-  const host = req.get("host") || "www.alwakeelo.com";
-  return `${proto}://${host}`;
+// Pin to the canonical www host. We deliberately ignore PUBLIC_SITE_URL here
+// because Render currently has it set to the apex (https://alwakeelo.com),
+// while the site's canonical and final URL is https://www.alwakeelo.com.
+// Emitting non-canonical URLs in the sitemap dilutes indexing signals.
+const CANONICAL_ORIGIN = "https://www.alwakeelo.com";
+
+function siteOrigin(_req: Request): string {
+  return CANONICAL_ORIGIN;
 }
 
 function xmlEscape(value: string): string {
