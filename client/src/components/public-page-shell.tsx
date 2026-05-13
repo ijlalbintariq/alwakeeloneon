@@ -1,6 +1,5 @@
 import { type ReactNode } from "react";
 import { Link } from "wouter";
-import { Scale } from "lucide-react";
 
 /**
  * Minimal layout for pages that anonymous (unauthenticated) visitors can see.
@@ -13,8 +12,8 @@ export function PublicPageShell({ children }: { children: ReactNode }) {
       <header className="border-b border-border bg-card/50 backdrop-blur">
         <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between gap-4">
           <Link href="/" className="inline-flex items-center gap-2 text-foreground hover:text-primary">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-700 shadow-md">
-              <Scale className="text-white" size={18} />
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-700 shadow-md overflow-hidden">
+              <img src="/logo.svg" alt="Al Wakeelo logo" className="h-6 w-6 object-contain" />
             </span>
             <span className="font-bold tracking-tight text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
               Al Wakeelo
