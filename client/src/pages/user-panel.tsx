@@ -191,348 +191,202 @@ export default function UserPanelPage() {
   }
 
   return (
-    <div className="space-y-8 fade-in max-w-5xl" data-testid="user-panel-page">
-      <div className="preview-elevated rounded-[1.8rem] p-8 md:p-10">
-        <div className="flex items-start justify-between gap-6 flex-wrap">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center">
-                <UserIcon size={18} className="text-primary" />
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Profile Settings
-              </h1>
+    <div className="space-y-4 fade-in max-w-4xl" data-testid="user-panel-page">
+      <div className="preview-elevated rounded-2xl px-5 py-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center">
+              <UserIcon size={15} className="text-primary" />
             </div>
-            <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground font-black">
-              Identity, plan, and account controls
-            </p>
+            <div>
+              <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>Settings</h1>
+              <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground font-black">Identity, plan & notifications</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className={`${tierBg} ${tierColor} rounded-lg text-xs font-black uppercase`} data-testid="badge-tier">
-              {profile?.subscriptionTier || "free"} Plan
+            <Badge className={`${tierBg} ${tierColor} rounded-lg text-[10px] font-black uppercase`} data-testid="badge-tier">
+              {profile?.subscriptionTier || "free"}
             </Badge>
-            {profile?.isAdmin && (
-              <Badge className="bg-primary/20 text-primary border-primary/30 rounded-lg text-[9px]">
-                ADMIN
-              </Badge>
-            )}
+            {profile?.isAdmin && <Badge className="bg-primary/20 text-primary border-primary/30 rounded-lg text-[8px]">ADMIN</Badge>}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <Card className="preview-surface rounded-[1.5rem] xl:col-span-2">
-          <CardHeader className="flex flex-row items-center gap-3 pb-2">
-            <UserIcon size={16} className="text-primary" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-              Profile Information
-            </span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="preview-surface rounded-2xl">
+          <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-4 px-4">
+            <UserIcon size={14} className="text-primary" />
+            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground">Profile</span>
           </CardHeader>
-          <CardContent className="space-y-6 pt-2">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-background border border-[hsl(var(--preview-border))] flex items-center justify-center overflow-hidden">
+          <CardContent className="space-y-3 px-4 pb-4 pt-1">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-background border border-[hsl(var(--preview-border))] flex items-center justify-center overflow-hidden shrink-0">
                 {profile?.profileImageUrl ? (
                   <img src={profile.profileImageUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <UserIcon size={24} className="text-muted-foreground" />
+                  <UserIcon size={18} className="text-muted-foreground" />
                 )}
               </div>
-              <div>
-                <p className="font-bold text-foreground text-lg" data-testid="text-profile-name">
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-foreground text-sm truncate" data-testid="text-profile-name">
                   {[profile?.firstName, profile?.lastName].filter(Boolean).join(" ") || profile?.email || "Advocate"}
                 </p>
-                <div className="flex items-center gap-2">
-                  <Mail size={12} className="text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground" data-testid="text-profile-email">{profile?.email}</p>
+                <div className="flex items-center gap-1.5">
+                  <Mail size={10} className="text-muted-foreground shrink-0" />
+                  <p className="text-[10px] text-muted-foreground truncate" data-testid="text-profile-email">{profile?.email}</p>
                 </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="hidden"
-                    onChange={handleSelectAvatar}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => avatarInputRef.current?.click()}
-                    disabled={uploadAvatarMutation.isPending}
-                    className="h-7 px-2.5 rounded-lg border-[hsl(var(--preview-border))] text-foreground"
-                    data-testid="button-upload-avatar"
-                  >
-                    {uploadAvatarMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
-                    <span className="text-[10px] uppercase tracking-wider">Upload Photo</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleSelectAvatar} />
+                <Button type="button" size="sm" variant="outline" onClick={() => avatarInputRef.current?.click()} disabled={uploadAvatarMutation.isPending} className="h-6 px-2 rounded-lg border-[hsl(var(--preview-border))] text-foreground" data-testid="button-upload-avatar">
+                  {uploadAvatarMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Camera size={10} />}
+                </Button>
+                {profile?.profileImageUrl && (
+                  <Button type="button" size="sm" variant="outline" onClick={() => removeAvatarMutation.mutate()} disabled={removeAvatarMutation.isPending} className="h-6 px-2 rounded-lg border-red-500/30 text-red-300 hover:bg-red-500/10" data-testid="button-remove-avatar">
+                    {removeAvatarMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
                   </Button>
-                  {profile?.profileImageUrl && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => removeAvatarMutation.mutate()}
-                      disabled={removeAvatarMutation.isPending}
-                      className="h-7 px-2.5 rounded-lg border-red-500/30 text-red-300 hover:bg-red-500/10"
-                      data-testid="button-remove-avatar"
-                    >
-                      {removeAvatarMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                      <span className="text-[10px] uppercase tracking-wider">Remove</span>
-                    </Button>
-                  )}
-                </div>
+                )}
               </div>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                  First Name
-                </label>
-                <Input
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="bg-background border-[hsl(var(--preview-border))] rounded-xl text-sm text-foreground"
-                  data-testid="input-first-name"
-                />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground">First Name</label>
+                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="bg-background border-[hsl(var(--preview-border))] rounded-lg text-xs h-8 text-foreground" data-testid="input-first-name" />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                  Last Name
-                </label>
-                <Input
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="bg-background border-[hsl(var(--preview-border))] rounded-xl text-sm text-foreground"
-                  data-testid="input-last-name"
-                />
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground">Last Name</label>
+                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="bg-background border-[hsl(var(--preview-border))] rounded-lg text-xs h-8 text-foreground" data-testid="input-last-name" />
               </div>
             </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                Email Address
-              </label>
-              <Input
-                value={profile?.email || ""}
-                readOnly
-                className="bg-background border-[hsl(var(--preview-border))] rounded-xl text-sm text-muted-foreground cursor-not-allowed"
-                data-testid="input-email-readonly"
-              />
-              <p className="text-[10px] text-muted-foreground">Email is managed by your account authentication provider.</p>
+            <div className="space-y-1">
+              <label className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground">Email</label>
+              <Input value={profile?.email || ""} readOnly className="bg-background border-[hsl(var(--preview-border))] rounded-lg text-xs h-8 text-muted-foreground cursor-not-allowed" data-testid="input-email-readonly" />
             </div>
-
-            <Button
-              onClick={() => updateProfileMutation.mutate()}
-              disabled={updateProfileMutation.isPending}
-              className="bg-gradient-to-r from-primary to-primary text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest hover:from-primary hover:to-primary"
-              data-testid="button-save-profile"
-            >
-              {updateProfileMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
-              <span>Save Profile</span>
+            <Button onClick={() => updateProfileMutation.mutate()} disabled={updateProfileMutation.isPending} className="w-full h-8 bg-primary text-foreground rounded-lg font-black text-[9px] uppercase tracking-widest" data-testid="button-save-profile">
+              {updateProfileMutation.isPending ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />}
+              <span>Save</span>
             </Button>
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card className="preview-surface rounded-[1.5rem]">
-            <CardHeader className="flex flex-row items-center gap-3 pb-2">
-              <Crown size={16} className="text-primary" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-                Plan Overview
-              </span>
+        <div className="space-y-4">
+          <Card className="preview-surface rounded-2xl">
+            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-4 px-4">
+              <Crown size={14} className="text-primary" />
+              <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground">Plan</span>
             </CardHeader>
-            <CardContent className="space-y-4 pt-2">
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="space-y-2 px-4 pb-4 pt-1">
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
                 {TIER_LIMITS[profile?.subscriptionTier || "free"]?.description || "10 AI chats + 1 legal draft + 1 contract draft/month"}
               </p>
-              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5">
-                <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground">Billing Cycle</p>
-                <p className="text-xs text-foreground mt-1">
-                  {normalizedCycleLabel} commitment · Renewal window ends on <span className="text-primary font-semibold">{renewalLabel}</span>.
-                </p>
+              <div className="grid grid-cols-2 gap-2 text-[10px]">
+                <div className="rounded-lg border border-[hsl(var(--preview-border))] bg-background px-2.5 py-2">
+                  <p className="text-[8px] uppercase tracking-[0.15em] font-black text-muted-foreground">Billing</p>
+                  <p className="text-foreground mt-0.5">{normalizedCycleLabel} · <span className="text-primary">{renewalLabel}</span></p>
+                </div>
+                <div className="rounded-lg border border-[hsl(var(--preview-border))] bg-background px-2.5 py-2">
+                  <p className="text-[8px] uppercase tracking-[0.15em] font-black text-muted-foreground">Models</p>
+                  <p className="text-foreground mt-0.5">
+                    {(profile?.subscriptionTier === "chamber" || profile?.subscriptionTier === "enterprise") ? "All models" : profile?.subscriptionTier === "pro" ? "Standard + Turbo" : "Standard only"}
+                  </p>
+                </div>
               </div>
-              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5">
-                <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground">Model Access</p>
-                <p className="text-xs text-foreground mt-1">
-                  {profile?.subscriptionTier === "chamber" || profile?.subscriptionTier === "enterprise"
-                    ? "Standard, Turbo, and Apex model menu enabled."
-                    : profile?.subscriptionTier === "pro"
-                      ? "Standard and Turbo model menu enabled."
-                      : "Standard mode enabled. Upgrade to unlock Turbo and Apex."}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button
-                  asChild
-                  className="h-9 rounded-xl bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary"
-                  data-testid="button-upgrade-plan-profile"
-                >
+              <div className="grid grid-cols-2 gap-2">
+                <Button asChild className="h-7 rounded-lg bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-wider" data-testid="button-upgrade-plan-profile">
                   <a href={upgradeHref}>{upgradeLabel}</a>
                 </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  className="h-9 rounded-xl border-[hsl(var(--preview-border))] text-[10px] font-black uppercase tracking-widest text-foreground hover:bg-card/60 hover:text-foreground"
-                  data-testid="button-compare-plans-profile"
-                >
-                  <a href="/#pricing">Compare Plans</a>
+                <Button asChild variant="outline" className="h-7 rounded-lg border-[hsl(var(--preview-border))] text-[9px] font-black uppercase tracking-wider text-foreground" data-testid="button-compare-plans-profile">
+                  <a href="/#pricing">Compare</a>
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="preview-surface rounded-[1.5rem]">
-            <CardHeader className="flex flex-row items-center gap-3 pb-2">
-              <Shield size={16} className="text-emerald-400" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-                Security
-              </span>
+          <Card className="preview-surface rounded-2xl">
+            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-4 px-4">
+              <Shield size={14} className="text-emerald-400" />
+              <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground">Security</span>
             </CardHeader>
-            <CardContent className="space-y-3 pt-2">
-              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5">
-                <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground">Account Status</p>
-                <p className="text-xs text-emerald-300 mt-1 flex items-center gap-2">
-                  <Sparkles size={12} /> Protected session is active
-                </p>
+            <CardContent className="space-y-2 px-4 pb-4 pt-1">
+              <div className="rounded-lg border border-[hsl(var(--preview-border))] bg-background px-2.5 py-2 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles size={10} className="text-emerald-400" />
+                  <p className="text-[10px] text-emerald-300">Session active</p>
+                </div>
               </div>
-              <Button
-                onClick={() => logout()}
-                variant="outline"
-                className="w-full rounded-xl border-red-500/30 text-red-300 hover:text-red-200 hover:bg-red-500/10"
-                data-testid="button-logout-profile"
-              >
-                <LogOut size={14} />
+              <Button onClick={() => logout()} variant="outline" className="w-full h-7 rounded-lg border-red-500/30 text-red-300 hover:text-red-200 hover:bg-red-500/10 text-[9px]" data-testid="button-logout-profile">
+                <LogOut size={12} />
                 <span>Sign Out</span>
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="preview-surface rounded-[1.5rem]">
-            <CardHeader className="flex flex-row items-center gap-3 pb-2">
-              <Bell size={16} className="text-primary" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-                Diary Notifications
-              </span>
+          <Card className="preview-surface rounded-2xl">
+            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-4 px-4">
+              <Bell size={14} className="text-primary" />
+              <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground">Diary Notifications</span>
             </CardHeader>
-            <CardContent className="space-y-3 pt-2">
-              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5 flex items-center justify-between">
+            <CardContent className="space-y-2 px-4 pb-4 pt-1">
+              <div className="rounded-lg border border-[hsl(var(--preview-border))] bg-background px-2.5 py-1.5 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-foreground">Daily Email Reminder</p>
-                  <p className="text-[10px] text-muted-foreground">Tomorrow's hearings & tasks</p>
+                  <p className="text-[10px] font-bold text-foreground">Daily Reminder</p>
+                  <p className="text-[9px] text-muted-foreground">Tomorrow's schedule</p>
                 </div>
-                <button
-                  onClick={() => { const v = !dailyEnabled; setDailyEnabled(v); updateNotifMutation.mutate({ dailyEmailEnabled: v }); }}
-                  className={`w-10 h-5 rounded-full transition-colors ${dailyEnabled ? "bg-primary" : "bg-muted-foreground/30"}`}
-                >
-                  <div className={`w-4 h-4 bg-white rounded-full transition-transform ${dailyEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                <button onClick={() => { const v = !dailyEnabled; setDailyEnabled(v); updateNotifMutation.mutate({ dailyEmailEnabled: v }); }} className={`w-9 h-[18px] rounded-full transition-colors ${dailyEnabled ? "bg-primary" : "bg-muted-foreground/30"}`}>
+                  <div className={`w-3.5 h-3.5 bg-white rounded-full transition-transform ${dailyEnabled ? "translate-x-[18px]" : "translate-x-0.5"}`} />
                 </button>
               </div>
-              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5 flex items-center justify-between">
+              <div className="rounded-lg border border-[hsl(var(--preview-border))] bg-background px-2.5 py-1.5 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-foreground">Weekly Summary</p>
-                  <p className="text-[10px] text-muted-foreground">Full week overview on Saturday</p>
+                  <p className="text-[10px] font-bold text-foreground">Weekly Summary</p>
+                  <p className="text-[9px] text-muted-foreground">Saturday overview</p>
                 </div>
-                <button
-                  onClick={() => { const v = !weeklyEnabled; setWeeklyEnabled(v); updateNotifMutation.mutate({ weeklyEmailEnabled: v }); }}
-                  className={`w-10 h-5 rounded-full transition-colors ${weeklyEnabled ? "bg-primary" : "bg-muted-foreground/30"}`}
-                >
-                  <div className={`w-4 h-4 bg-white rounded-full transition-transform ${weeklyEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                <button onClick={() => { const v = !weeklyEnabled; setWeeklyEnabled(v); updateNotifMutation.mutate({ weeklyEmailEnabled: v }); }} className={`w-9 h-[18px] rounded-full transition-colors ${weeklyEnabled ? "bg-primary" : "bg-muted-foreground/30"}`}>
+                  <div className={`w-3.5 h-3.5 bg-white rounded-full transition-transform ${weeklyEnabled ? "translate-x-[18px]" : "translate-x-0.5"}`} />
                 </button>
               </div>
-              <div className="rounded-xl border border-[hsl(var(--preview-border))] bg-background px-3 py-2.5">
-                <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground mb-1.5">Send Time (PKT)</p>
-                <select
-                  value={sendTime}
-                  onChange={e => { setSendTime(e.target.value); updateNotifMutation.mutate({ preferredTime: e.target.value }); }}
-                  className="bg-background border border-[hsl(var(--preview-border))] rounded-lg px-2 py-1.5 text-sm text-foreground outline-none w-full"
-                >
-                  <option value="18:00">6:00 PM</option>
-                  <option value="19:00">7:00 PM</option>
-                  <option value="20:00">8:00 PM</option>
-                  <option value="21:00">9:00 PM</option>
+              <div className="flex items-center gap-2">
+                <select value={sendTime} onChange={e => { setSendTime(e.target.value); updateNotifMutation.mutate({ preferredTime: e.target.value }); }} className="bg-background border border-[hsl(var(--preview-border))] rounded-lg px-2 py-1 text-[10px] text-foreground outline-none flex-1">
+                  <option value="18:00">6 PM PKT</option>
+                  <option value="19:00">7 PM PKT</option>
+                  <option value="20:00">8 PM PKT</option>
+                  <option value="21:00">9 PM PKT</option>
                 </select>
+                <Button onClick={() => testEmailMutation.mutate()} disabled={testEmailMutation.isPending} variant="outline" className="h-7 rounded-lg border-primary/30 text-primary text-[9px] font-black uppercase tracking-wider hover:bg-primary/10 flex-1">
+                  {testEmailMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Mail size={10} />}
+                  <span>Test Email</span>
+                </Button>
               </div>
-              <Button
-                onClick={() => testEmailMutation.mutate()}
-                disabled={testEmailMutation.isPending}
-                variant="outline"
-                className="w-full rounded-xl border-primary/30 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary/10"
-              >
-                {testEmailMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
-                <span>Send Test Email</span>
-              </Button>
             </CardContent>
           </Card>
         </div>
       </div>
 
       {usage && (
-        <Card
-          className={`border rounded-[1.5rem] ${isAtLimit ? "bg-red-950/30 border-red-800/50" : isNearLimit ? "bg-amber-950/30 border-amber-800/50" : "preview-surface"}`}
-          data-testid="usage-card"
-        >
-          <CardHeader className="flex flex-row items-center gap-3 pb-2">
-            {isAtLimit ? (
-              <AlertTriangle size={16} className="text-red-400" />
-            ) : (
-              <TrendingUp size={16} className="text-primary" />
-            )}
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-              Monthly Usage
-            </span>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-2">
-            <div className="flex items-end justify-between gap-4 flex-wrap">
-              <div>
-                <p className="text-3xl font-bold text-foreground tracking-tight" data-testid="text-usage-count">
-                  {usage.used}
-                </p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                  of {usage.monthlyLimit === Infinity ? "unlimited" : usage.monthlyLimit} queries used
-                </p>
+        <Card className={`border rounded-2xl ${isAtLimit ? "bg-red-950/30 border-red-800/50" : isNearLimit ? "bg-amber-950/30 border-amber-800/50" : "preview-surface"}`} data-testid="usage-card">
+          <CardContent className="px-4 py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                {isAtLimit ? <AlertTriangle size={14} className="text-red-400" /> : <TrendingUp size={14} className="text-primary" />}
+                <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground">Usage</span>
               </div>
-              <div className="text-right">
-                <p className="text-lg font-bold text-primary" data-testid="text-usage-remaining">
-                  {usage.remaining === Infinity ? "Unlimited" : usage.remaining}
-                </p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">remaining</p>
+              <div className="flex items-center gap-3">
+                <span className="text-lg font-bold text-foreground" data-testid="text-usage-count">{usage.used}</span>
+                <span className="text-[10px] text-muted-foreground">/ {usage.monthlyLimit === Infinity ? "∞" : usage.monthlyLimit}</span>
+                <span className="text-sm font-bold text-primary" data-testid="text-usage-remaining">{usage.remaining === Infinity ? "∞" : usage.remaining} left</span>
               </div>
             </div>
-
-            {usage.monthlyLimit !== Infinity && (
-              <Progress
-                value={Math.min(usage.percentage, 100)}
-                className="h-2 bg-card rounded-full"
-                data-testid="progress-usage"
-              />
-            )}
-
+            {usage.monthlyLimit !== Infinity && <Progress value={Math.min(usage.percentage, 100)} className="h-1.5 bg-card rounded-full mt-2" data-testid="progress-usage" />}
             {isAtLimit && (
-              <div className="space-y-2">
-                <p className="text-xs text-red-300 font-medium">
-                  You have reached your monthly limit. Upgrade for more queries.
-                </p>
-                <a
-                  href={upgradeHref}
-                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors"
-                  data-testid="link-upgrade-limit-profile"
-                >
-                  {upgradeLabel}
-                </a>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-[10px] text-red-300">Monthly limit reached.</p>
+                <a href={upgradeHref} className="rounded-lg px-2.5 py-1 bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-wider" data-testid="link-upgrade-limit-profile">{upgradeLabel}</a>
               </div>
             )}
             {isNearLimit && !isAtLimit && (
-              <div className="space-y-2">
-                <p className="text-xs text-primary font-medium">
-                  You are approaching your monthly limit ({usage.percentage.toFixed(0)}% used).
-                </p>
-                <a
-                  href={upgradeHref}
-                  className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 border border-primary/40 text-primary text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-foreground transition-colors"
-                  data-testid="link-upgrade-near-limit-profile"
-                >
-                  View Upgrade Options
-                </a>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-[10px] text-primary">{usage.percentage.toFixed(0)}% used</p>
+                <a href={upgradeHref} className="rounded-lg px-2.5 py-1 border border-primary/40 text-primary text-[9px] font-black uppercase tracking-wider" data-testid="link-upgrade-near-limit-profile">Upgrade</a>
               </div>
             )}
           </CardContent>
