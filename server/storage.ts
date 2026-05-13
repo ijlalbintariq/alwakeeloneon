@@ -3238,7 +3238,7 @@ export class DatabaseStorage implements IStorage {
   async getDiaryEntries(userId: string, dateFrom: string, dateTo: string): Promise<any[]> {
     return db.select().from(diaryEntries)
       .where(and(
-        eq(diaryEntries.userId, Number(userId)),
+        eq(diaryEntries.userId, userId),
         gte(diaryEntries.date, dateFrom),
         lte(diaryEntries.date, dateTo),
       ))
@@ -3247,7 +3247,7 @@ export class DatabaseStorage implements IStorage {
 
   async addDiaryEntry(data: { userId: string; date: string; time?: string; title: string; description?: string; caseId?: number; priority?: string; completed?: boolean; outcome?: string; nextDate?: string }): Promise<any> {
     const [entry] = await db.insert(diaryEntries).values({
-      userId: Number(data.userId),
+      userId: data.userId,
       date: data.date,
       time: data.time || null,
       title: data.title,
@@ -3263,14 +3263,14 @@ export class DatabaseStorage implements IStorage {
 
   async updateDiaryEntry(id: number, userId: string, updates: Partial<{ title: string; description: string; time: string; date: string; caseId: number | null; priority: string; completed: boolean; outcome: string; nextDate: string }>): Promise<any> {
     const [updated] = await db.update(diaryEntries).set(updates as any)
-      .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, Number(userId))))
+      .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, userId)))
       .returning();
     return updated;
   }
 
   async deleteDiaryEntry(id: number, userId: string): Promise<void> {
     await db.delete(diaryEntries)
-      .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, Number(userId))));
+      .where(and(eq(diaryEntries.id, id), eq(diaryEntries.userId, userId)));
   }
 
   // --- Notification Preferences ---
@@ -3977,7 +3977,7 @@ export async function ensureSearchIndexes(): Promise<void> {
       stmt: sql`
         CREATE TABLE IF NOT EXISTS diary_entries (
           id serial PRIMARY KEY,
-          user_id integer NOT NULL,
+          user_id text NOT NULL,
           date text NOT NULL,
           time text,
           title text NOT NULL,
@@ -3992,6 +3992,7 @@ export async function ensureSearchIndexes(): Promise<void> {
         )
       `,
     },
+    { label: "diary_entries_userid_to_text", stmt: sql`ALTER TABLE diary_entries ALTER COLUMN user_id TYPE text USING user_id::text` },
     { label: "diary_entries_outcome_col", stmt: sql`ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS outcome text` },
     { label: "diary_entries_next_date_col", stmt: sql`ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS next_date text` },
     { label: "idx_diary_entries_user_date", stmt: sql`CREATE INDEX IF NOT EXISTS idx_diary_entries_user_date ON diary_entries (user_id, date)` },

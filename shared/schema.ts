@@ -486,7 +486,7 @@ export const caseNotes = pgTable("case_notes", {
 
 export const diaryEntries = pgTable("diary_entries", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: text("user_id").notNull(),
   date: text("date").notNull(),
   time: text("time"),
   title: text("title").notNull(),
