@@ -49,7 +49,11 @@ export function serveStatic(app: Express) {
     setHeaders: (res, filePath) => {
       const isHtml = filePath.endsWith(".html");
       if (isHtml) {
-        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        // Browser must revalidate, but Cloudflare may serve the HTML from its
+        // edge for up to 5 min. Cuts TTFB for global visitors and bot crawls
+        // without serving stale auth state to authenticated users (auth state
+        // is established client-side after the shell loads).
+        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate, s-maxage=300");
       } else {
         res.setHeader("Cache-Control", "public, max-age=604800, immutable");
       }
@@ -73,11 +77,13 @@ export function serveStatic(app: Express) {
       : "/";
 
     if (isKnownSpaRoute(normalizedPath)) {
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate, s-maxage=300");
       return res.sendFile(path.resolve(distPath, "index.html"));
     }
 
     const wantsHtml = (req.get("accept") || "").includes("text/html");
     if (wantsHtml) {
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate, s-maxage=300");
       return res.status(404).sendFile(path.resolve(distPath, "index.html"));
     }
     return res.status(404).end();

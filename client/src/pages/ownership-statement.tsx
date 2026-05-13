@@ -1,7 +1,13 @@
 import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 export default function OwnershipStatementPage() {
+  useDocumentHead({
+    title: "Ownership Statement",
+    description: "Al Wakeelo ownership and operator information. Company details, registration, and the team behind Pakistan's AI legal assistant.",
+    path: "/ownership-statement",
+  });
   const [, navigate] = useLocation();
 
   return (

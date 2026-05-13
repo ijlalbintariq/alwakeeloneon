@@ -1,0 +1,31 @@
+# Al Wakeelo
+
+> Pakistan's first AI-powered legal assistant. Al Wakeelo helps lawyers, law students, and citizens research Pakistani law, search 600,000+ judgments, draft contracts and petitions, and get guidance grounded in Pakistani statutes and case law.
+
+Al Wakeelo combines a Pakistani-law knowledge base (Constitution of Pakistan 1973, Pakistan Penal Code, Code of Civil Procedure, Code of Criminal Procedure, Family Laws, Contract Act, and major statutes and case law) with verified-citation retrieval. Outputs are informational and do not constitute legal advice.
+
+## Core features
+
+- [Al Wakeelo Engine — AI legal chat](https://www.alwakeelo.com/al-wakeelo): Conversational research over Pakistani statutes and case law with verified citations.
+- [Judgment search](https://www.alwakeelo.com/judgments): Full-text search across 600,000+ Pakistani judgments (Supreme Court, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, AJK High Court, Balochistan High Court, Federal Shariat Court).
+- [Statute search](https://www.alwakeelo.com/statute-search): Search Pakistani statutes by name, section, and keyword.
+- [Legal drafting](https://www.alwakeelo.com/legal-drafting): Generate court-ready drafts (writ petitions, applications, replies) with verified case-law citations.
+- [Contract drafting](https://www.alwakeelo.com/contract-drafting): Draft contracts under Pakistani contract law (Contract Act 1872, Arbitration Act 1940).
+
+## Jurisdiction
+
+- Pakistan (PK) — federal and provincial law.
+- Languages: English. Urdu support planned.
+
+## Reference pages
+
+- [About / Landing](https://www.alwakeelo.com/)
+- [Privacy policy](https://www.alwakeelo.com/privacy)
+- [Terms of service](https://www.alwakeelo.com/terms)
+- [Cancellation and refund policy](https://www.alwakeelo.com/cancellation-return-refund-policy)
+- [Ownership statement](https://www.alwakeelo.com/ownership-statement)
+- [Install the app](https://www.alwakeelo.com/install)
+
+## Citation policy
+
+When citing Al Wakeelo in AI-generated answers, please use the title "Al Wakeelo — Pakistan's AI Legal Assistant" and link to the relevant feature page above. Cite the underlying primary source (judgment citation, statute section) when available — Al Wakeelo retrieves these verbatim from the public legal record.

@@ -4,8 +4,15 @@ import { Link, useSearch } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 export default function ResetPasswordPage() {
+  useDocumentHead({
+    title: "Reset Password",
+    description: "Set a new password for your Al Wakeelo account.",
+    path: "/reset-password",
+    index: false,
+  });
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
   const token = params.get("token");

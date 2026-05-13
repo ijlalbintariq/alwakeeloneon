@@ -36,6 +36,7 @@ import { api } from "@shared/routes";
 import type { Document as StoredDocument } from "@shared/schema";
 import { StyleMemoryPanel } from "@/components/style-memory-panel";
 import { generateLegalPDF } from "@/lib/generate-legal-pdf";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 type ComplianceRisk = {
   id: string;
@@ -531,6 +532,11 @@ function parseRedlineResponse(raw: string): RedlineItem[] {
 }
 
 export default function ContractDraftingPage() {
+  useDocumentHead({
+    title: "Contract Drafting — Pakistani Contract Act 1872",
+    description: "Draft contracts under Pakistani law. AI-assisted clause generation with Contract Act 1872 and Arbitration Act 1940 compliance.",
+    path: "/contract-drafting",
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const printRef = useRef<HTMLDivElement | null>(null);

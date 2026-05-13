@@ -1,7 +1,13 @@
 import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 export default function CancellationReturnRefundPolicyPage() {
+  useDocumentHead({
+    title: "Cancellation, Return & Refund Policy",
+    description: "Al Wakeelo subscription cancellation, return, and refund policy. Billing cycle handling, refund eligibility, and how to cancel your plan.",
+    path: "/cancellation-return-refund-policy",
+  });
   const [, navigate] = useLocation();
 
   return (

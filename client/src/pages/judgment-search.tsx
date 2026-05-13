@@ -23,6 +23,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { setJudgmentForView } from "./judgment-view";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 interface CaseLawResult {
   citation: string;
@@ -142,6 +143,11 @@ function parseCitationFromText(value: string): { year: number; journal: string; 
 }
 
 export default function JudgmentSearchPage() {
+  useDocumentHead({
+    title: "Pakistani Judgment Search — 600,000+ Cases",
+    description: "Search 600,000+ Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court. Find case law by citation, party, court, and year.",
+    path: "/judgments",
+  });
   const [, setLocation] = useLocation();
   const currentYear = new Date().getFullYear();
 

@@ -5,10 +5,17 @@ import { useLocation, Link, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 type AuthMode = "login" | "register";
 
 export default function AuthPage() {
+  useDocumentHead({
+    title: "Sign in or create account",
+    description: "Sign in to Al Wakeelo to access AI-powered Pakistani legal research, judgment search, and drafting tools.",
+    path: "/auth",
+    index: false,
+  });
   const TERMS_VERSION = "2026-03";
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);

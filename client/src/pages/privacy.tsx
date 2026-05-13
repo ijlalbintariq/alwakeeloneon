@@ -1,7 +1,13 @@
 import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 export default function PrivacyPolicyPage() {
+  useDocumentHead({
+    title: "Privacy Policy",
+    description: "How Al Wakeelo collects, uses, and protects your data. Pakistani data-protection compliance, account information, AI chat history, and your rights.",
+    path: "/privacy",
+  });
   const [, navigate] = useLocation();
 
   return (

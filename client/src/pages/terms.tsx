@@ -1,7 +1,13 @@
 import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 export default function TermsOfServicePage() {
+  useDocumentHead({
+    title: "Terms of Service",
+    description: "Al Wakeelo terms of service: acceptable use, AI output disclaimer, subscription terms, and legal notices for users in Pakistan.",
+    path: "/terms",
+  });
   const [, navigate] = useLocation();
 
   return (

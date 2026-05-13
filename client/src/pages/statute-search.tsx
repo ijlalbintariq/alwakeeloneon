@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Search, Loader2, X, Book, ChevronRight, FileText } from "lucide-react";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 type StatuteDocResult = {
   id: number;
@@ -46,6 +47,11 @@ const COMMON_STATUTES = [
 ];
 
 export default function StatuteSearchPage() {
+  useDocumentHead({
+    title: "Pakistani Statute Search — Constitution, PPC, CPC, CrPC, Family Laws",
+    description: "Search Pakistani statutes by name, section, or keyword. Constitution of Pakistan, Pakistan Penal Code, CPC, CrPC, Family Laws, Contract Act, and more.",
+    path: "/statute-search",
+  });
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<StatuteDocResult[]>([]);

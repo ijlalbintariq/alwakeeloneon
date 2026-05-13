@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { parseReferences, ReferenceCards } from "@/components/reference-cards";
 import { CaseLawCard, type CaseLawCardData } from "@/components/case-law-card";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 interface ApexModelInfo {
   id: string;
@@ -82,6 +83,11 @@ function CaseFileSelector({ value, onChange }: { value: number | null; onChange:
 }
 
 export default function ChatPage() {
+  useDocumentHead({
+    title: "Al Wakeelo Engine — Pakistani Legal AI Chat",
+    description: "Chat with Al Wakeelo, Pakistan's AI legal assistant. Ask questions about Pakistani statutes, judgments, and procedure. Verified citations from 600,000+ cases.",
+    path: "/al-wakeelo",
+  });
   const initialMessage = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");

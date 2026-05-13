@@ -26,7 +26,7 @@
     <title>Al Wakeelo - Your Digital Lawyer | AI Legal Assistant</title>
     <meta name="description" content="AI-powered Pakistani legal assistant. Search judgments, research statutes, draft contracts, and consult with Al Wakeelo for expert legal guidance." />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
-    <link id="canonical-link" rel="canonical" href="https://alwakeelo.com/" />
+    <link id="canonical-link" rel="canonical" href="https://www.alwakeelo.com/" />
     <meta name="theme-color" content="#f59e0b" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -40,7 +40,7 @@
     <meta property="og:description" content="AI-powered Pakistani legal assistant for judgment search, statute research, and contract drafting." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Al Wakeelo" />
-    <meta id="og-url-meta" property="og:url" content="https://alwakeelo.com/" />
+    <meta id="og-url-meta" property="og:url" content="https://www.alwakeelo.com/" />
     <meta property="og:image" content="/icon-512.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Al Wakeelo - Your Digital Lawyer" />
@@ -52,19 +52,43 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "LegalService",
-        "name": "Al Wakeelo Law Chamber",
-        "url": "https://alwakeelo.com/",
-        "description": "AI-powered Pakistani legal assistant for judgment search, statute research, legal drafting, and intake guidance.",
-        "areaServed": "PK",
-        "availableLanguage": ["en", "ur"],
-        "brand": {
-          "@type": "Brand",
-          "name": "Al Wakeelo"
-        },
-        "sameAs": [
-          "https://alwakeelo.com/privacy",
-          "https://alwakeelo.com/terms"
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.alwakeelo.com/#organization",
+            "name": "Al Wakeelo",
+            "url": "https://www.alwakeelo.com/",
+            "logo": "https://www.alwakeelo.com/icon-512.png",
+            "description": "Al Wakeelo is Pakistan's first AI-powered legal assistant for judgment search, statute research, legal drafting, and intake guidance.",
+            "areaServed": "PK"
+          },
+          {
+            "@type": "LegalService",
+            "@id": "https://www.alwakeelo.com/#legalservice",
+            "name": "Al Wakeelo Law Chamber",
+            "url": "https://www.alwakeelo.com/",
+            "description": "AI-powered Pakistani legal assistant for judgment search, statute research, legal drafting, and intake guidance.",
+            "areaServed": "PK",
+            "availableLanguage": ["en"],
+            "brand": { "@type": "Brand", "name": "Al Wakeelo" },
+            "provider": { "@id": "https://www.alwakeelo.com/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://www.alwakeelo.com/#software",
+            "name": "Al Wakeelo",
+            "applicationCategory": "LegalApplication",
+            "operatingSystem": "Web, Android, iOS",
+            "url": "https://www.alwakeelo.com/",
+            "description": "AI-powered Pakistani legal assistant. Search 600,000+ judgments, draft contracts and petitions, consult Al Wakeelo for guidance on Pakistani law.",
+            "publisher": { "@id": "https://www.alwakeelo.com/#organization" },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "PKR",
+              "description": "Free tier includes 10 AI chats, 1 legal draft, and 1 contract draft per month. Paid plans available."
+            }
+          }
         ]
       }
     </script>

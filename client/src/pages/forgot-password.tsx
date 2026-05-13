@@ -4,8 +4,15 @@ import { Link } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 export default function ForgotPasswordPage() {
+  useDocumentHead({
+    title: "Forgot Password",
+    description: "Reset your Al Wakeelo password. We'll email you a secure link to set a new password.",
+    path: "/forgot-password",
+    index: false,
+  });
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [resetUrl, setResetUrl] = useState<string | null>(null);

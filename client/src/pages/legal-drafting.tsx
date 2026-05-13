@@ -57,6 +57,7 @@ import { useVoiceRecorder, formatDuration } from "@/hooks/use-voice-recorder";
 import { useDraftHistory } from "@/hooks/use-draft-history";
 import { DraftHistoryPanel } from "@/components/draft-history-panel";
 import { DraftTabsProvider, useDraftTabs } from "@/contexts/draft-tabs-context";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 type DraftRecommendation = {
   id: string;
@@ -3515,6 +3516,11 @@ function LegalDraftingPageInner() {
 }
 
 export default function LegalDraftingPage() {
+  useDocumentHead({
+    title: "Legal Drafting — Court-Ready Petitions & Applications",
+    description: "Draft writ petitions, applications, and court documents under Pakistani law. AI-assisted drafting with verified case-law citations and multi-document tabs.",
+    path: "/legal-drafting",
+  });
   return (
     <DraftTabsProvider>
       <LegalDraftingPageInner />

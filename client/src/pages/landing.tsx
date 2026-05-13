@@ -3,6 +3,7 @@ import { ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Cro
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useDocumentHead } from "@/hooks/use-document-head";
 import { SUBSCRIPTION_PLANS, getPlanCyclePricing, type BillingCycle, type SubscriptionPlanKey } from "@/lib/subscription-plans";
 
 function FeatureCard({
@@ -66,6 +67,12 @@ const FAQ_ITEMS = [
 ];
 
 export default function LandingPage() {
+  useDocumentHead({
+    title: "Al Wakeelo — Your Digital Lawyer | AI Legal Assistant for Pakistan",
+    description:
+      "Pakistan's AI-powered legal assistant. Search 600,000+ judgments, draft contracts and petitions, and get guidance grounded in Pakistani statutes and case law.",
+    path: "/",
+  });
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);

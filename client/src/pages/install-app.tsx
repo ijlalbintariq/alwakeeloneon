@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Smartphone, Monitor, Apple, Chrome, ArrowDown, Share, MoreVertical, Plus, ExternalLink, CheckCircle2, Menu } from "lucide-react";
 import { Link } from "wouter";
+import { useDocumentHead } from "@/hooks/use-document-head";
 
 type Platform = "ios" | "android" | "desktop";
 
@@ -98,6 +99,11 @@ const stepsByPlatform: Record<Platform, typeof iosSteps> = {
 };
 
 export default function InstallAppPage() {
+  useDocumentHead({
+    title: "Install Al Wakeelo on iPhone, Android, or Desktop",
+    description: "Install Al Wakeelo as a PWA on iPhone, Android, or desktop. Quick setup guides for iOS Safari, Android Chrome, and Chrome/Edge on Windows and macOS.",
+    path: "/install",
+  });
   const [platform, setPlatform] = useState<Platform>("ios");
   const steps = stepsByPlatform[platform];
 
