@@ -109,21 +109,18 @@ export async function handleSitemapIndex(req: Request, res: Response): Promise<v
     const origin = siteOrigin(req);
     const today = new Date().toISOString().slice(0, 10);
 
-    const [judgmentTotal, statuteTotal] = await Promise.all([
-      countActiveJudgments().catch(() => 0),
-      countStatutes().catch(() => 0),
-    ]);
-
+    const judgmentTotal = await countActiveJudgments().catch(() => 0);
     const judgmentPages = Math.max(0, Math.ceil(judgmentTotal / PAGE_SIZE));
-    const statutePages = Math.max(0, Math.ceil(statuteTotal / PAGE_SIZE));
 
+    // Statutes intentionally omitted from the sitemap: the `statutes` table is
+    // a small lookup of section references (~14 rows), while the actual
+    // public statute page (/statute-view/:id) reads from `statute_documents`,
+    // which is currently auth-gated. When statute pages get a public preview
+    // similar to judgments, re-introduce a /sitemap-statutes-{n}.xml chunk.
     const entries: string[] = [];
     entries.push(sitemapIndexEntry(`${origin}/sitemap-static.xml`, today));
     for (let n = 1; n <= judgmentPages; n += 1) {
       entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-${n}.xml`, today));
-    }
-    for (let n = 1; n <= statutePages; n += 1) {
-      entries.push(sitemapIndexEntry(`${origin}/sitemap-statutes-${n}.xml`, today));
     }
 
     const body =

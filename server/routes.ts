@@ -51,7 +51,7 @@ import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAudi
 import { scanUploadedBuffer } from "./file-scan";
 import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
-import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, handleSitemapStatutes } from "./sitemap";
+import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments } from "./sitemap";
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
@@ -6105,7 +6105,8 @@ export async function registerRoutes(
   app.get("/sitemap.xml", handleSitemapIndex);
   app.get("/sitemap-static.xml", handleSitemapStatic);
   app.get("/sitemap-judgments-:n.xml", handleSitemapJudgments);
-  app.get("/sitemap-statutes-:n.xml", handleSitemapStatutes);
+  // /sitemap-statutes-{n}.xml handler intentionally not wired up — statute
+  // detail pages are still auth-gated. See server/sitemap.ts note.
 
   app.use("/api", (req, res, next) => {
     if (
@@ -9053,6 +9054,92 @@ RAG POLICY (STRICT):
     } catch (err) {
       console.error("Error fetching judgment detail:", err);
       res.status(500).json({ message: "Failed to fetch judgment details" });
+    }
+  });
+
+  // Public, unauthenticated judgment preview for crawlers + anonymous visitors.
+  // Returns title/citation/court/headnotes plus the first ~500 words of the
+  // full text, so the page can render real content for Googlebot, Bing, and AI
+  // search crawlers. Per-IP rate limited; logged-in users should hit the full
+  // /api/judgments/:id endpoint above.
+  const PUBLIC_JUDGMENT_PREVIEW_WORDS = 500;
+  const publicJudgmentIpBuckets = new Map<string, { tokens: number; lastRefillMs: number }>();
+  const PUBLIC_JUDGMENT_CAPACITY = 60;          // 60 fetches/hour per IP
+  const PUBLIC_JUDGMENT_REFILL_PER_SEC = 60 / 3600;
+
+  function clientIp(req: Request): string {
+    const forwarded = req.get("x-forwarded-for")?.split(",")[0]?.trim();
+    return forwarded || req.ip || req.socket?.remoteAddress || "unknown";
+  }
+
+  function takePublicJudgmentToken(req: Request): boolean {
+    const ip = clientIp(req);
+    const now = Date.now();
+    const bucket = publicJudgmentIpBuckets.get(ip);
+    if (!bucket) {
+      publicJudgmentIpBuckets.set(ip, { tokens: PUBLIC_JUDGMENT_CAPACITY - 1, lastRefillMs: now });
+      return true;
+    }
+    const elapsedSec = Math.max(0, (now - bucket.lastRefillMs) / 1000);
+    const refilled = Math.min(PUBLIC_JUDGMENT_CAPACITY, bucket.tokens + elapsedSec * PUBLIC_JUDGMENT_REFILL_PER_SEC);
+    if (refilled < 1) {
+      bucket.tokens = refilled;
+      return false;
+    }
+    publicJudgmentIpBuckets.set(ip, { tokens: refilled - 1, lastRefillMs: now });
+    return true;
+  }
+
+  const publicJudgmentCleanupTimer = setInterval(() => {
+    const cutoff = Date.now() - 2 * 60 * 60 * 1000;
+    for (const [ip, bucket] of publicJudgmentIpBuckets.entries()) {
+      if (bucket.lastRefillMs < cutoff) publicJudgmentIpBuckets.delete(ip);
+    }
+  }, 10 * 60 * 1000);
+  publicJudgmentCleanupTimer.unref?.();
+
+  function trimWords(text: string, maxWords: number): { preview: string; truncated: boolean; totalWords: number } {
+    if (!text) return { preview: "", truncated: false, totalWords: 0 };
+    const normalized = text.replace(/\r\n/g, "\n").trim();
+    const words = normalized.split(/\s+/);
+    const totalWords = words.length;
+    if (totalWords <= maxWords) return { preview: normalized, truncated: false, totalWords };
+    return { preview: words.slice(0, maxWords).join(" "), truncated: true, totalWords };
+  }
+
+  app.get("/api/public/judgments/:id", async (req, res) => {
+    try {
+      if (!takePublicJudgmentToken(req)) {
+        return res.status(429).json({ message: "Too many requests. Please try again shortly." });
+      }
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ message: "Judgment id is required" });
+
+      const judgment = await storage.getJudgmentDetail(id);
+      if (!judgment) return res.status(404).json({ message: "Judgment not found" });
+
+      const { preview, truncated, totalWords } = trimWords(judgment.fullText || "", PUBLIC_JUDGMENT_PREVIEW_WORDS);
+
+      // Cache at the edge so repeat crawls don't hit DB.
+      res.setHeader("Cache-Control", "public, max-age=300, s-maxage=21600");
+      res.json({
+        id: judgment.id,
+        citation: judgment.citation,
+        title: judgment.title,
+        petitioner: judgment.petitioner,
+        respondent: judgment.respondent,
+        court: judgment.court,
+        decisionDate: judgment.decisionDate,
+        headnotes: judgment.headnotes,
+        previewText: preview,
+        previewWordCount: Math.min(totalWords, PUBLIC_JUDGMENT_PREVIEW_WORDS),
+        totalWordCount: totalWords,
+        isPreview: true,
+        isTruncated: truncated,
+      });
+    } catch (err) {
+      console.error("Error fetching public judgment preview:", err);
+      res.status(500).json({ message: "Failed to fetch judgment" });
     }
   });
 

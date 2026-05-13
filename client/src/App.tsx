@@ -9,6 +9,7 @@ import { PublicLegalChatWidget } from "@/components/public-legal-chat-widget";
 import { OnboardingTour } from "@/components/onboarding-tour";
 
 import { AppShell } from "@/components/app-shell";
+import { PublicPageShell } from "@/components/public-page-shell";
 import { ThemeProvider, useTheme } from "@/hooks/use-theme";
 
 import LandingPage from "@/pages/landing";
@@ -134,6 +135,24 @@ function Router({ onReady }: { onReady?: () => void }) {
 
   if (location.startsWith("/checkout")) {
     return <CheckoutPage />;
+  }
+
+  // Public judgment detail — anonymous visitors and search crawlers must reach
+  // the page without redirecting to /auth. JudgmentDetailPage detects the
+  // unauthenticated case and renders a preview view via /api/public/judgments.
+  if (location.startsWith("/judgment/")) {
+    if (user) {
+      return (
+        <AppShell>
+          <JudgmentDetailPage />
+        </AppShell>
+      );
+    }
+    return (
+      <PublicPageShell>
+        <JudgmentDetailPage />
+      </PublicPageShell>
+    );
   }
 
   if (!user) {
