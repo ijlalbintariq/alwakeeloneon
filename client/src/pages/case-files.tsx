@@ -63,12 +63,15 @@ function CaseDetail({ id }: { id: number }) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { data: cf, isLoading } = useQuery<CaseFile>({ queryKey: [`/api/case-files/${id}`] });
-  const [tab, setTab] = useState<"overview"|"parties"|"documents"|"compliance"|"notes">("overview");
+  const [tab, setTab] = useState<"overview"|"parties"|"documents"|"dates"|"compliance"|"notes">("overview");
   const [noteText, setNoteText] = useState("");
   const [clientName, setClientName] = useState(""); const [clientRole, setClientRole] = useState("client");
-  const [compTitle, setCompTitle] = useState(""); const [compDate, setCompDate] = useState(""); const [compType, setCompType] = useState("hearing");
+  const [compTitle, setCompTitle] = useState(""); const [compDate, setCompDate] = useState(""); const [compType, setCompType] = useState("identity");
   const [nextHearingDate, setNextHearingDate] = useState("");
   const [nextHearingTitle, setNextHearingTitle] = useState("");
+  const [eventType, setEventType] = useState("hearing");
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDate, setEventDate] = useState("");
 
   const addNote = useMutation({ mutationFn: async () => { await apiRequest("POST", `/api/case-files/${id}/notes`, { content: noteText }); }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }); setNoteText(""); } });
   const addClient = useMutation({ mutationFn: async () => { await apiRequest("POST", `/api/case-files/${id}/clients`, { name: clientName, role: clientRole }); }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }); setClientName(""); } });
@@ -94,6 +97,23 @@ function CaseDetail({ id }: { id: number }) {
     onError: (e: any) => toast({ title: "Failed", description: e?.message, variant: "destructive" }),
   });
 
+  const addEvent = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/case-files/${id}/compliance`, {
+        title: eventTitle.trim(),
+        dueDate: eventDate,
+        type: eventType,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/diary"] });
+      setEventTitle(""); setEventDate("");
+      toast({ title: "Date added & synced to diary" });
+    },
+    onError: (e: any) => toast({ title: "Failed", description: e?.message, variant: "destructive" }),
+  });
+
   if (isLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin text-primary" size={24} /></div>;
   if (!cf) return <div className="text-center py-20 text-muted-foreground">Case not found</div>;
 
@@ -101,7 +121,8 @@ function CaseDetail({ id }: { id: number }) {
     { key: "overview", label: "Overview", icon: Briefcase },
     { key: "parties", label: "Parties", icon: Users },
     { key: "documents", label: "Documents", icon: FileText },
-    { key: "compliance", label: "Compliance", icon: Calendar },
+    { key: "dates", label: "Dates", icon: Gavel },
+    { key: "compliance", label: "Compliance", icon: ShieldCheck },
     { key: "notes", label: "Notes", icon: StickyNote },
   ] as const;
 
@@ -228,74 +249,128 @@ function CaseDetail({ id }: { id: number }) {
         </div>
       )}
 
-      {tab === "compliance" && (
-        <div className="space-y-4">
-          <div className="bg-card/30 border border-border rounded-xl p-4 space-y-3">
-            <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Add Compliance Item</p>
-            <div className="flex gap-2 flex-wrap">
-              <input placeholder="Title" value={compTitle} onChange={e => setCompTitle(e.target.value)} className="flex-1 min-w-[140px] bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none" />
-              <input type="date" value={compDate} onChange={e => setCompDate(e.target.value)} className="bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none" />
+      {tab === "dates" && (() => {
+        const EVENT_TYPES = ["hearing", "filing_deadline", "limitation"] as const;
+        const events = (cf.compliance || []).filter((c: any) => EVENT_TYPES.includes(c.type));
+        const sorted = [...events].sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+        return (
+          <div className="space-y-4">
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3">
+              <p className="text-[10px] uppercase tracking-widest font-black text-primary flex items-center gap-1.5"><Gavel size={12} /> Add Court Date</p>
+              <p className="text-xs text-muted-foreground">Dates added here automatically appear in your Daily Diary.</p>
+              <div className="flex gap-2 flex-wrap">
+                <input placeholder="e.g. Arguments / Filing" value={eventTitle} onChange={e => setEventTitle(e.target.value)} className="flex-1 min-w-[140px] bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50" />
+                <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50" />
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <select value={eventType} onChange={e => setEventType(e.target.value)} className="flex-1 min-w-[160px] bg-background border border-border rounded-lg px-2 py-2 text-sm text-foreground outline-none">
+                  <option value="hearing">Hearing</option>
+                  <option value="filing_deadline">Filing Deadline</option>
+                  <option value="limitation">Limitation</option>
+                </select>
+                <button onClick={() => eventTitle.trim() && eventDate && addEvent.mutate()} disabled={!eventTitle.trim() || !eventDate || addEvent.isPending} className="px-5 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50 flex items-center gap-1.5">
+                  {addEvent.isPending ? <Loader2 size={12} className="animate-spin" /> : <Calendar size={12} />}
+                  Add Date
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <select value={compType} onChange={e => setCompType(e.target.value)} className="flex-1 min-w-[160px] bg-background border border-border rounded-lg px-2 py-2 text-sm outline-none">
-                <optgroup label="Court & Deadlines">
-                  {["hearing","filing_deadline","compliance","limitation"].map(t => <option key={t} value={t}>{t.replace(/_/g," ")}</option>)}
-                </optgroup>
-                <optgroup label="Client Documents">
+
+            {sorted.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No court dates added yet</p>
+            ) : (
+              <div className="space-y-1.5">
+                {sorted.map((h: any) => {
+                  const d = new Date(h.dueDate);
+                  const isPast = d < new Date() && h.status !== "done";
+                  const isDone = h.status === "done";
+                  return (
+                    <div key={h.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${isPast ? "border-red-500/20 bg-red-500/5" : isDone ? "border-emerald-500/20 bg-emerald-500/5 opacity-60" : "border-border bg-card/50"}`}>
+                      <div className={`text-center min-w-[44px] ${isPast ? "text-red-400" : isDone ? "text-emerald-400" : "text-primary"}`}>
+                        <p className="text-lg font-black leading-none">{d.getDate()}</p>
+                        <p className="text-[9px] uppercase font-bold">{d.toLocaleDateString(undefined, { month: "short", year: "2-digit" })}</p>
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-sm font-bold ${isDone ? "line-through text-muted-foreground" : "text-foreground"}`}>{h.title}</p>
+                        <p className="text-[10px] text-muted-foreground">{h.type.replace(/_/g, " ")}{h.court ? ` • ${h.court}` : ""}</p>
+                      </div>
+                      <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${isPast ? "border-red-500/30 text-red-400 bg-red-500/10" : isDone ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" : "border-amber-500/30 text-amber-400 bg-amber-500/10"}`}>
+                        {isPast ? "overdue" : h.status}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {tab === "compliance" && (() => {
+        const COMP_TYPES = ["identity", "letter_of_authority", "client_matter_enquiry", "action_agreed_form", "client_care_letter", "conflict_check", "compliance", "other"];
+        const compItems = (cf.compliance || []).filter((c: any) => COMP_TYPES.includes(c.type));
+        return (
+          <div className="space-y-4">
+            <div className="bg-card/30 border border-border rounded-xl p-4 space-y-3">
+              <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Add Compliance Item</p>
+              <div className="flex gap-2 flex-wrap">
+                <input placeholder="Title" value={compTitle} onChange={e => setCompTitle(e.target.value)} className="flex-1 min-w-[140px] bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none" />
+                <input type="date" value={compDate} onChange={e => setCompDate(e.target.value)} className="bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none" />
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <select value={compType} onChange={e => setCompType(e.target.value)} className="flex-1 min-w-[160px] bg-background border border-border rounded-lg px-2 py-2 text-sm outline-none">
                   <option value="identity">Identity</option>
                   <option value="letter_of_authority">Letter of Authority</option>
                   <option value="client_matter_enquiry">Client Matter Enquiry</option>
                   <option value="action_agreed_form">Action Agreed Form</option>
                   <option value="client_care_letter">Client Care Letter</option>
-                </optgroup>
-                <optgroup label="Checks">
                   <option value="conflict_check">Conflict Check</option>
-                </optgroup>
-                <option value="other">Other</option>
-              </select>
-              <button onClick={() => compTitle.trim() && compDate && addComp.mutate()} disabled={!compTitle.trim() || !compDate} className="px-5 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50">Add</button>
-            </div>
-          </div>
-
-          {["identity","letter_of_authority","client_matter_enquiry","action_agreed_form","client_care_letter","conflict_check"].some(t => !(cf.compliance || []).find((c: any) => c.type === t && c.status === "done")) && (
-            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
-              <p className="text-[10px] uppercase tracking-widest font-black text-amber-400 mb-2 flex items-center gap-1.5"><ShieldCheck size={12} /> Compliance Checklist</p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
-                {[
-                  { type: "identity", label: "Identity" },
-                  { type: "letter_of_authority", label: "Letter of Authority" },
-                  { type: "client_matter_enquiry", label: "Client Matter Enquiry" },
-                  { type: "action_agreed_form", label: "Action Agreed Form" },
-                  { type: "client_care_letter", label: "Client Care Letter" },
-                  { type: "conflict_check", label: "Conflict Check" },
-                ].map(item => {
-                  const done = (cf.compliance || []).find((c: any) => c.type === item.type && c.status === "done");
-                  return (
-                    <div key={item.type} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold ${done ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-400" : "border-border bg-background text-muted-foreground"}`}>
-                      {done ? <CheckCircle2 size={12} /> : <div className="w-3 h-3 rounded-full border border-muted-foreground/40" />}
-                      {item.label}
-                    </div>
-                  );
-                })}
+                  <option value="compliance">General Compliance</option>
+                  <option value="other">Other</option>
+                </select>
+                <button onClick={() => compTitle.trim() && compDate && addComp.mutate()} disabled={!compTitle.trim() || !compDate} className="px-5 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50">Add</button>
               </div>
             </div>
-          )}
 
-          {(cf.compliance || []).map((c: any) => (
-            <div key={c.id} className="flex items-center justify-between bg-card/50 border border-border rounded-xl p-3">
-              <div>
-                <p className="text-sm font-bold text-foreground">{c.title}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] text-muted-foreground">{c.type.replace(/_/g," ")} • {formatDate(c.dueDate)}{c.court ? ` • ${c.court}` : ""}</span>
-                  {c.documentId && <span className="text-[10px] text-primary/70 flex items-center gap-0.5"><Upload size={9} /> doc attached</span>}
+            {["identity","letter_of_authority","client_matter_enquiry","action_agreed_form","client_care_letter","conflict_check"].some(t => !compItems.find((c: any) => c.type === t && c.status === "done")) && (
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
+                <p className="text-[10px] uppercase tracking-widest font-black text-amber-400 mb-2 flex items-center gap-1.5"><ShieldCheck size={12} /> Compliance Checklist</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                  {[
+                    { type: "identity", label: "Identity" },
+                    { type: "letter_of_authority", label: "Letter of Authority" },
+                    { type: "client_matter_enquiry", label: "Client Matter Enquiry" },
+                    { type: "action_agreed_form", label: "Action Agreed Form" },
+                    { type: "client_care_letter", label: "Client Care Letter" },
+                    { type: "conflict_check", label: "Conflict Check" },
+                  ].map(item => {
+                    const done = compItems.find((c: any) => c.type === item.type && c.status === "done");
+                    return (
+                      <div key={item.type} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold ${done ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-400" : "border-border bg-background text-muted-foreground"}`}>
+                        {done ? <CheckCircle2 size={12} /> : <div className="w-3 h-3 rounded-full border border-muted-foreground/40" />}
+                        {item.label}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${STATUS_COLORS[c.status] || ""}`}>{c.status}</span>
-            </div>
-          ))}
-          {(cf.compliance || []).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No compliance items yet</p>}
-        </div>
-      )}
+            )}
+
+            {compItems.map((c: any) => (
+              <div key={c.id} className="flex items-center justify-between bg-card/50 border border-border rounded-xl p-3">
+                <div>
+                  <p className="text-sm font-bold text-foreground">{c.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground">{c.type.replace(/_/g," ")} • {formatDate(c.dueDate)}</span>
+                    {c.documentId && <span className="text-[10px] text-primary/70 flex items-center gap-0.5"><Upload size={9} /> doc attached</span>}
+                  </div>
+                </div>
+                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${STATUS_COLORS[c.status] || ""}`}>{c.status}</span>
+              </div>
+            ))}
+            {compItems.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No compliance items yet</p>}
+          </div>
+        );
+      })()}
 
       {tab === "notes" && (
         <div className="space-y-3">
