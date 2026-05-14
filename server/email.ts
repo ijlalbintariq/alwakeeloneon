@@ -794,3 +794,74 @@ export async function sendBroadcastEmail(args: {
     text,
   });
 }
+
+export async function sendCaseLeadNotification(args: {
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  caseType: string;
+  urgency: string;
+  caseDescription: string;
+  preferredCallbackTime?: string | null;
+}): Promise<EmailSendResult> {
+  const logoUrl = escapeHtml(resolveBrandLogoUrl());
+  const urgencyColors: Record<string, string> = {
+    urgent: "#ef4444",
+    high: "#f59e0b",
+    normal: "#3b82f6",
+    low: "#6b7280",
+  };
+  const urgColor = urgencyColors[args.urgency] || "#3b82f6";
+
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:8px 12px;font-size:12px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #1e2d47;width:140px;">${escapeHtml(label)}</td><td style="padding:8px 12px;font-size:14px;color:#e8eefb;border-bottom:1px solid #1e2d47;">${escapeHtml(value)}</td></tr>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#0a1222;font-family:'Inter',Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a1222;padding:28px 14px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#101b31;border:1px solid #2a3a56;border-radius:20px;overflow:hidden;">
+        <tr><td style="padding:4px 0 0 0;background:${urgColor};"></td></tr>
+        <tr><td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#0f172a 0%,#0b1427 100%);border-bottom:1px solid #24344f;">
+          <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(244,177,30,0.45);" />
+          <h1 style="margin:0;color:#f8fafc;font-size:22px;line-height:1.2;font-weight:800;">New Case Submitted</h1>
+          <p style="margin:10px 0 0;color:${urgColor};font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
+            ${escapeHtml(args.urgency)} Priority • ${escapeHtml(args.caseType)}
+          </p>
+        </td></tr>
+        <tr><td style="padding:24px 28px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1e2d47;border-radius:12px;overflow:hidden;">
+            ${row("Name", args.name)}
+            ${row("Phone", args.phone)}
+            ${row("Email", args.email)}
+            ${row("City", args.city)}
+            ${row("Case Type", args.caseType)}
+            ${row("Urgency", args.urgency.toUpperCase())}
+            ${args.preferredCallbackTime ? row("Callback Time", args.preferredCallbackTime) : ""}
+          </table>
+          <div style="margin:20px 0 0;padding:16px;background:#0c1526;border:1px solid #1e2d47;border-radius:12px;">
+            <p style="margin:0 0 8px;color:#94a3b8;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">Case Description</p>
+            <p style="margin:0;color:#e8eefb;font-size:14px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(args.caseDescription)}</p>
+          </div>
+        </td></tr>
+        <tr><td style="padding:16px 28px 24px;text-align:center;border-top:1px solid #1e2d47;">
+          <p style="margin:0;color:#475569;font-size:11px;">Al Wakeelo • Case Lead Notification</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `New Case Submitted\n\nName: ${args.name}\nPhone: ${args.phone}\nEmail: ${args.email}\nCity: ${args.city}\nCase Type: ${args.caseType}\nUrgency: ${args.urgency}\n${args.preferredCallbackTime ? `Callback Time: ${args.preferredCallbackTime}\n` : ""}\nCase Description:\n${args.caseDescription}`;
+
+  return sendEmailViaResend({
+    to: "ijlalbintariq420@gmail.com",
+    subject: `🔔 New Case Lead: ${args.name} — ${args.caseType} (${args.urgency})`,
+    html,
+    text,
+  });
+}

@@ -77,7 +77,7 @@ import { isPdfOcrAvailable } from "./ocr";
 import { isCloudPdfOcrAvailable, ocrPdfWithCloud } from "./cloud-ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 import { deleteR2Object, getR2ObjectBinary, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
-import { getEmailProviderStatus, sendResendTestEmail, sendBroadcastEmail } from "./email";
+import { getEmailProviderStatus, sendResendTestEmail, sendBroadcastEmail, sendCaseLeadNotification } from "./email";
 import { verifyCaptchaToken } from "./captcha";
 import {
   backfillStyleMemoryFromSavedDrafts,
@@ -6405,6 +6405,18 @@ export async function registerRoutes(
         message: "Your case has been submitted successfully. Our chamber may contact you soon.",
         lead: created,
       });
+
+      // Send email notification to admin (non-blocking)
+      sendCaseLeadNotification({
+        name,
+        phone,
+        email,
+        city,
+        caseType,
+        urgency,
+        caseDescription,
+        preferredCallbackTime: preferredCallbackTime || null,
+      }).catch((emailErr) => console.error("[CaseLead] Failed to send notification email:", emailErr));
     } catch (err) {
       console.error("Error submitting public case lead:", err);
       res.status(500).json({ message: "Failed to submit your case." });
