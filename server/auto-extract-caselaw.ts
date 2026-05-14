@@ -73,7 +73,7 @@ interface QueueItem {
 const REPORT_CODES = [
   "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
   "PSC", "ALD", "KLR", "PTD", "PTCL", "PLS", "GBLR", "TAX", "CLD", "SLR",
-  "AIR",
+  "AIR", "FTO", "PCTLR", "PSCR",
 ] as const;
 
 function buildFlexibleReportPattern(code: string): string {
@@ -90,7 +90,7 @@ const YEAR_PATTERN  = "(?:19|20)\\d{2}";
 const PAGE_PATTERN  = "\\d{1,6}";
 const SEP           = "\\s*[,;:/-]?\\s*";
 
-const NEUTRAL_COURT_CODES = ["LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC"] as const;
+const NEUTRAL_COURT_CODES = ["LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC", "SCAJK"] as const;
 const NEUTRAL_COURT_CODE_MAP: Record<string, string> = {
   LHC: "Lahore High Court",
   IHC: "Islamabad High Court",
@@ -98,13 +98,14 @@ const NEUTRAL_COURT_CODE_MAP: Record<string, string> = {
   PHC: "Peshawar High Court",
   BHC: "Balochistan High Court",
   AJKHC: "High Court of Azad Jammu and Kashmir",
+  SCAJK: "Supreme Court of Azad Jammu and Kashmir",
 };
 const NEUTRAL_COURT_NORMALIZERS = NEUTRAL_COURT_CODES.map((code) => ({
   code,
   regex: new RegExp(`\\b(${YEAR_PATTERN})\\s*${buildFlexibleReportPattern(code)}\\s*(${PAGE_PATTERN})\\b`, "gi"),
 }));
 const NEUTRAL_COURT_ABBRS = NEUTRAL_COURT_CODES.map(buildFlexibleReportPattern).join("|");
-const COURT_NAMES = "Supreme\\s+Court|Lahore|Sindh|Peshawar|Balochistan|Islamabad|ISB|Federal\\s+Shariat|FSC|Rawalpindi|Multan|Bahawalpur|Azad\\s+J(?:ammu)?\\s*(?:&|and)\\s*K(?:ashmir)?|AJK|Privy\\s+Council";
+const COURT_NAMES = "Supreme\\s+Court|Lahore|Sindh|Peshawar|Balochistan|Islamabad|ISB|Federal\\s+Shariat|FSC|Rawalpindi|Multan|Bahawalpur|Azad\\s+J(?:ammu)?\\s*(?:&|and)\\s*K(?:ashmir)?|AJK|Privy\\s+Council|Dacca|Dhaka|Baghdad[\\w\\s-]*Jadid|Rev(?:enue)?\\.?\\s*\\(?\\s*(?:Punjab|Sind|Sindh|NWFP|KPK|Balochistan|Bengal)\\s*\\)?|SC\\s+AJK|C\\.?S\\.?T\\.?|Cr\\.?C\\.?|AJ\\s*&?\\s*K|Tr\\.?C\\.?";
 
 // Case number prefix patterns (C.A., Civil Appeal, Criminal Petition, Writ, etc.)
 const CASE_NUM_SEP = "\\s*[-/]?\\s*";
@@ -143,21 +144,37 @@ const CASE_NUMBER_PATTERNS: RegExp[] = [
   new RegExp(`\\bFCA\\s+(?:No\\.?\\s*)?${CASE_NUM_ID}(?:\\s+of\\s+|[/])${YEAR_PATTERN}\\b`, "gi"),
 ];
 
+// Flexible court sub-label — matches text between report code+year and page number
+// e.g. "Dacca", "Rev. (Punjab)", "Federal Shariat Court", "Cr.C. (Lahore)",
+// "Labour & Service Cases", "Criminal Cases", "(C.S.T.)", "SC (AJ&K)"
+const COURT_SUB_LABEL = "(?:[A-Za-z.()&/\\-]+\\s*){0,6}";
+
 const CITATION_PATTERNS: RegExp[] = [
   // --- Judgment/Report citations ---
+  // Neutral court codes: 2019LHC123
   new RegExp(`\\b${YEAR_PATTERN}\\s*(?:${NEUTRAL_COURT_ABBRS})\\s*${PAGE_PATTERN}\\b`, "gi"),
+  // SC AJK pattern: 2019 SC AJK 136
+  new RegExp(`\\b${YEAR_PATTERN}\\s+SC\\s+AJK\\s+${PAGE_PATTERN}\\b`, "gi"),
+  // REPORT YEAR Court Page — with flexible court sub-labels (Dacca, Rev., etc.)
   new RegExp(`(?:${REPORT_ABBRS})${SEP}${YEAR_PATTERN}${SEP}(?:${COURT_NAMES})${SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`(?:${REPORT_ABBRS})${SEP}${YEAR_PATTERN}${SEP}${COURT_SUB_LABEL}${PAGE_PATTERN}`, "gi"),
   new RegExp(`(?:${REPORT_ABBRS})${SEP}${YEAR_PATTERN}${SEP}${PAGE_PATTERN}`, "gi"),
+  // YEAR REPORT Court Page
   new RegExp(`${YEAR_PATTERN}${SEP}(?:${REPORT_ABBRS})${SEP}(?:${COURT_NAMES})${SEP}${PAGE_PATTERN}`, "gi"),
+  new RegExp(`${YEAR_PATTERN}${SEP}(?:${REPORT_ABBRS})${SEP}${COURT_SUB_LABEL}${PAGE_PATTERN}`, "gi"),
   new RegExp(`${YEAR_PATTERN}${SEP}(?:${REPORT_ABBRS})${SEP}${PAGE_PATTERN}`, "gi"),
+  // (YEAR) REPORT Court Page
   new RegExp(`\\(${YEAR_PATTERN}\\)${SEP}(?:${REPORT_ABBRS})${SEP}(?:${COURT_NAMES})?${SEP}${PAGE_PATTERN}`, "gi"),
   new RegExp(`(?:${REPORT_ABBRS})${SEP}\\(${YEAR_PATTERN}\\)${SEP}(?:${COURT_NAMES})?${SEP}${PAGE_PATTERN}`, "gi"),
+  // Volume-style citations: 45 TAX 123
+  new RegExp(`\\b\\d{1,3}\\s+(?:TAX|Tax)\\s+${PAGE_PATTERN}\\b`, "gi"),
   // --- Case number patterns (spread at end so report patterns win primary) ---
   ...CASE_NUMBER_PATTERNS,
 ];
 
 const COURT_MAP: Array<[RegExp, string]> = [
   [/\bSupreme\s+Court\b/i, "Supreme Court of Pakistan"],
+  [/\bSC\s+AJK\b/i, "Supreme Court of Azad Jammu and Kashmir"],
   [/\bAzad\s+J(?:ammu)?\s*(?:&|and)\s*K(?:ashmir)?\b|\bA\.?J\.?K\.?\b/i, "High Court of Azad Jammu and Kashmir"],
   [/\bPrivy\s+Council\b/i, "Privy Council"],
   [/\bLah(?:ore)?\b/i, "Lahore High Court"],
@@ -166,6 +183,12 @@ const COURT_MAP: Array<[RegExp, string]> = [
   [/\bBal(?:ochistan)?\b|\bQuetta\b/i, "Balochistan High Court"],
   [/\bIslamabad\b|\bISB\b/i, "Islamabad High Court"],
   [/\bFederal\s+Shariat\b|\bFSC\b/i, "Federal Shariat Court"],
+  [/\bDacca\b|\bDhaka\b/i, "Dacca High Court"],
+  [/\bBaghdad[\w\s-]*Jadid\b/i, "Baghdad-ul-Jadid Court"],
+  [/\bRev(?:enue)?\.?\s*\(?\s*(?:Punjab)\s*\)?/i, "Revenue Court (Punjab)"],
+  [/\bRev(?:enue)?\.?\s*\(?\s*(?:Sind|Sindh)\s*\)?/i, "Revenue Court (Sindh)"],
+  [/\bC\.?S\.?T\.?\b/i, "Central Services Tribunal"],
+  [/\bFTO\b/i, "Federal Tax Ombudsman"],
 ];
 
 const REPORT_COURT_DEFAULT: Record<string, string> = {
@@ -714,12 +737,42 @@ function createFallbackDocumentClassification(text: string, sourceFilename?: str
 // Public: nlpExtractCases
 // ---------------------------------------------------------------------------
 
+/**
+ * Extract "Reported As:" citation from document headers.
+ * Many Pakistani legal documents (especially markdown-formatted ones) include
+ * a structured header like "Reported As: PLD 1970 Dacca 338". This parser
+ * catches those cases even when the citation format doesn't match the standard
+ * regex patterns (e.g. historical courts like Dacca, Revenue courts, etc.).
+ */
+function extractReportedAsCitation(text: string): CitationMention | null {
+  const headerWindow = text.slice(0, Math.min(text.length, 3000));
+  const reportedAsMatch = headerWindow.match(/Reported\s+As:\s*([^\n]{6,140})/i);
+  if (!reportedAsMatch) return null;
+  const rawCitation = reportedAsMatch[1].trim()
+    .replace(/\s*Result:.*$/i, "")   // strip "Result: ..." suffix if on same line
+    .replace(/[\r\n]+.*$/, "")       // strip anything after newline
+    .trim();
+  if (rawCitation.length < 6) return null;
+  // Normalize the citation — handles spaced abbreviations like "P Cr. L J"
+  const normalized = normalizeCitation(rawCitation);
+  if (normalized.length < 6) return null;
+  return { citation: normalized || rawCitation, index: reportedAsMatch.index || 0 };
+}
+
 export function nlpExtractCases(text: string, options?: CitationRoleAssignmentOptions): ExtractedCase[] {
   const filenamePrimary = extractNeutralCitationFromSourceFilename(options?.sourceFilename);
   const preferredPrimary = options?.preferredPrimaryCitation || filenamePrimary || null;
   let mentions = addPreferredPrimaryMention(extractCitationMentionsFromText(text), preferredPrimary);
   if (mentions.length === 0 && preferredPrimary) {
     mentions = [{ citation: normalizeCitation(preferredPrimary), index: 0 }];
+  }
+
+  // Fallback: try "Reported As:" header extraction when regex patterns fail
+  if (mentions.length === 0) {
+    const reportedAs = extractReportedAsCitation(text);
+    if (reportedAs) {
+      mentions = [reportedAs];
+    }
   }
 
   if (mentions.length === 0) {
