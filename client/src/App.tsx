@@ -42,6 +42,7 @@ const CaseFilesPage = lazy(() => import("@/pages/case-files"));
 const DailyDiaryPage = lazy(() => import("@/pages/daily-diary"));
 const InstallAppPage = lazy(() => import("@/pages/install-app"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
+const CheckoutSuccessPage = lazy(() => import("@/pages/checkout-success"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -131,6 +132,10 @@ function Router({ onReady }: { onReady?: () => void }) {
 
   if (location === "/install") {
     return <InstallAppPage />;
+  }
+
+  if (location.startsWith("/checkout/success")) {
+    return <CheckoutSuccessPage />;
   }
 
   if (location.startsWith("/checkout")) {

@@ -512,6 +512,22 @@ export const notificationPreferences = pgTable("notification_preferences", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ── Payment Records (Safepay) ────────────────────────────────────────────────
+
+export const paymentRecords = pgTable("payment_records", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  safepayTracker: text("safepay_tracker").notNull(),
+  safepayToken: text("safepay_token"),
+  planKey: text("plan_key").notNull(),
+  billingCycle: text("billing_cycle").notNull(),
+  amountPkr: integer("amount_pkr").notNull(),
+  status: text("status", { enum: ["pending", "completed", "failed", "refunded"] }).notNull().default("pending"),
+  safepayResponse: jsonb("safepay_response"),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
@@ -551,6 +567,7 @@ export const insertCaseComplianceSchema = createInsertSchema(caseCompliance).omi
 export const insertCaseDocumentSchema = createInsertSchema(caseDocuments).omit({ id: true, addedAt: true });
 export const insertCaseNoteSchema = createInsertSchema(caseNotes).omit({ id: true, createdAt: true });
 export const insertDiaryEntrySchema = createInsertSchema(diaryEntries).omit({ id: true, createdAt: true });
+export const insertPaymentRecordSchema = createInsertSchema(paymentRecords).omit({ id: true, createdAt: true, completedAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -738,3 +755,5 @@ export type ChatRequest = {
 
 export type DiaryEntry = typeof diaryEntries.$inferSelect;
 export type InsertDiaryEntry = z.infer<typeof insertDiaryEntrySchema>;
+export type PaymentRecord = typeof paymentRecords.$inferSelect;
+export type InsertPaymentRecord = z.infer<typeof insertPaymentRecordSchema>;

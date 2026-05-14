@@ -35,6 +35,13 @@ interface Org {
   createdAt?: string;
 }
 
+interface OrgSeatInfo {
+  maxSeats: number;
+  usedSeats: number;
+  pendingInvites: number;
+  available: number;
+}
+
 interface OrgMember {
   id: number;
   orgId: number;
@@ -202,6 +209,15 @@ export default function OrganizationPage() {
     },
   });
 
+  const { data: seatInfo } = useQuery<OrgSeatInfo>({
+    queryKey: ["/api/org/seats", org?.id],
+    enabled: !!org?.id,
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/org/${org!.id}/seats`);
+      return (await res.json()) as OrgSeatInfo;
+    },
+  });
+
   const createOrg = useMutation({
     mutationFn: async (payload: { name: string; description: string }) => {
       const res = await apiRequest("POST", "/api/org", payload);
@@ -346,6 +362,8 @@ export default function OrganizationPage() {
 
   const canCreateOrg = !!(user?.subscriptionTier === "chamber" || user?.subscriptionTier === "enterprise" || user?.isAdmin);
   const isOwner = !!(org && user && org.ownerId === user.id);
+  const seatsAvailable = (seatInfo?.available ?? 999) > 0;
+  const seatsFull = !seatsAvailable;
 
   const filteredMembers = useMemo(() => {
     const q = memberSearch.trim().toLowerCase();
@@ -638,11 +656,13 @@ export default function OrganizationPage() {
               {isOwner && (
                 <button
                   onClick={() => setShowInviteModal(true)}
-                  className="w-full h-10 rounded-xl bg-primary text-[hsl(var(--preview-bg))] text-sm font-bold flex items-center justify-center gap-2 hover:bg-primary transition-colors"
+                  disabled={seatsFull}
+                  className={`w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors ${seatsFull ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-primary text-[hsl(var(--preview-bg))] hover:bg-primary"}`}
                   data-testid="button-open-invite-modal"
+                  title={seatsFull ? `Seat limit reached (${seatInfo?.usedSeats}/${seatInfo?.maxSeats})` : "Invite a team member"}
                 >
                   <UserPlus size={14} />
-                  <span className="hidden lg:inline">Invite Member</span>
+                  <span className="hidden lg:inline">{seatsFull ? "Seats Full" : "Invite Member"}</span>
                 </button>
               )}
               {isOwner && (
@@ -685,17 +705,19 @@ export default function OrganizationPage() {
                     {isOwner && (
                       <button
                         onClick={() => setShowInviteModal(true)}
-                        className="h-10 px-6 rounded-xl bg-primary text-[hsl(var(--preview-bg))] text-sm font-bold shadow-[0_0_15px_rgba(249,164,6,0.28)] hover:bg-primary transition-colors flex items-center gap-2"
+                        disabled={seatsFull}
+                        className={`h-10 px-6 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 ${seatsFull ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-primary text-[hsl(var(--preview-bg))] shadow-[0_0_15px_rgba(249,164,6,0.28)] hover:bg-primary"}`}
                         data-testid="button-invite-top"
+                        title={seatsFull ? `Seat limit reached (${seatInfo?.usedSeats}/${seatInfo?.maxSeats})` : "Invite a team member"}
                       >
                         <Plus size={15} />
-                        Invite Member
+                        {seatsFull ? "Seats Full" : "Invite Member"}
                       </button>
                     )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl p-6">
                     <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider">Shared Documents</p>
                     <p className="text-4xl font-bold text-foreground mt-1">{knowledge.length}</p>
@@ -703,6 +725,15 @@ export default function OrganizationPage() {
                   <div className="rounded-2xl border border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7] backdrop-blur-xl p-6">
                     <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider">Team Members</p>
                     <p className="text-4xl font-bold text-foreground mt-1">{members.length}</p>
+                  </div>
+                  <div className={`rounded-2xl border p-6 backdrop-blur-xl ${seatsFull ? "border-red-500/30 bg-red-500/5" : "border-[hsl(var(--preview-border))] bg-[hsl(var(--preview-surface))/0.7]"}`}>
+                    <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider">Seats Used</p>
+                    <p className={`text-4xl font-bold mt-1 ${seatsFull ? "text-red-400" : "text-foreground"}`}>
+                      {seatInfo ? `${seatInfo.usedSeats}/${seatInfo.maxSeats}` : `${members.length}/—`}
+                    </p>
+                    {seatsFull && (
+                      <p className="text-xs text-red-400 mt-1 font-medium">Upgrade plan for more seats</p>
+                    )}
                   </div>
                 </div>
 

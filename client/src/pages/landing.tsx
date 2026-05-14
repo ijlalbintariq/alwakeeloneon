@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail } from "lucide-react";
+import { ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail, Sun, Moon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useDocumentHead } from "@/hooks/use-document-head";
+import { useTheme } from "@/hooks/use-theme";
 import { SUBSCRIPTION_PLANS, getPlanCyclePricing, type BillingCycle, type SubscriptionPlanKey } from "@/lib/subscription-plans";
 
 function FeatureCard({
@@ -75,6 +76,7 @@ export default function LandingPage() {
   });
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { resolvedTheme, toggle: toggleTheme } = useTheme();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanKey | "free">("pro");
@@ -140,6 +142,15 @@ export default function LandingPage() {
             <a href="#contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</a>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="h-10 w-10 rounded-xl border border-border bg-transparent text-foreground hover:bg-card p-0 inline-flex items-center justify-center transition-colors"
+              aria-label={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              data-testid="landing-theme-toggle"
+            >
+              {resolvedTheme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             <button
               type="button"
               onClick={() => setMobileNavOpen((v) => !v)}

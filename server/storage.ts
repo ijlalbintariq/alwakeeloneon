@@ -3,7 +3,7 @@ import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, adminKnowledge, statuteDocuments, savedJudgments,
   organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles, visitorSessions, caseLeads, publicFunnelEvents,
   styleMemorySettings, styleMemorySamples, styleMemoryChunks, styleMemoryEvents,
-  caseFiles, caseClients, caseCompliance, caseDocuments, caseNotes, diaryEntries, notificationPreferences,
+  caseFiles, caseClients, caseCompliance, caseDocuments, caseNotes, diaryEntries, notificationPreferences, paymentRecords,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
   type Document, type InsertDocument,
@@ -34,6 +34,7 @@ import {
   type CaseCompliance, type InsertCaseCompliance,
   type CaseDocument, type InsertCaseDocument,
   type CaseNote, type InsertCaseNote,
+  type PaymentRecord, type InsertPaymentRecord,
 } from "@shared/schema";
 import { users, passwordResetTokens, emailVerificationTokens, type User } from "@shared/models/auth";
 import { eq, desc, asc, or, ilike, sql, and, lt, gte, lte, count, inArray } from "drizzle-orm";
@@ -603,6 +604,12 @@ export interface IStorage {
   getOrgKnowledge(orgId: number): Promise<OrgKnowledge[]>;
   deleteOrgKnowledge(id: number): Promise<void>;
   searchOrgKnowledge(orgId: number, query: string, limit?: number): Promise<OrgKnowledge[]>;
+
+  // ── Payment Records (Safepay) ─────────────────────────────────────────────
+  createPaymentRecord(data: InsertPaymentRecord): Promise<PaymentRecord>;
+  getPaymentRecordByTracker(tracker: string): Promise<PaymentRecord | undefined>;
+  getPaymentRecordsByUser(userId: string): Promise<PaymentRecord[]>;
+  updatePaymentRecordStatus(tracker: string, status: string, response?: Record<string, unknown>): Promise<PaymentRecord | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3333,6 +3340,43 @@ export class DatabaseStorage implements IStorage {
     } else {
       await db.insert(notificationPreferences).values({ userId, lastWeeklySentAt: new Date() } as any);
     }
+  }
+
+  // ── Payment Records (Safepay) ─────────────────────────────────────────────
+
+  async createPaymentRecord(data: InsertPaymentRecord): Promise<PaymentRecord> {
+    const [record] = await db.insert(paymentRecords).values(data).returning();
+    return record;
+  }
+
+  async getPaymentRecordByTracker(tracker: string): Promise<PaymentRecord | undefined> {
+    const [record] = await db.select()
+      .from(paymentRecords)
+      .where(eq(paymentRecords.safepayTracker, tracker))
+      .limit(1);
+    return record;
+  }
+
+  async getPaymentRecordsByUser(userId: string): Promise<PaymentRecord[]> {
+    return await db.select()
+      .from(paymentRecords)
+      .where(eq(paymentRecords.userId, userId))
+      .orderBy(desc(paymentRecords.createdAt));
+  }
+
+  async updatePaymentRecordStatus(
+    tracker: string,
+    status: string,
+    response?: Record<string, unknown>,
+  ): Promise<PaymentRecord | undefined> {
+    const patch: Record<string, unknown> = { status };
+    if (status === "completed") patch.completedAt = new Date();
+    if (response) patch.safepayResponse = response;
+    const [record] = await db.update(paymentRecords)
+      .set(patch)
+      .where(eq(paymentRecords.safepayTracker, tracker))
+      .returning();
+    return record;
   }
 }
 

@@ -77,7 +77,7 @@ import { isPdfOcrAvailable } from "./ocr";
 import { isCloudPdfOcrAvailable, ocrPdfWithCloud } from "./cloud-ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 import { deleteR2Object, getR2ObjectBinary, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
-import { getEmailProviderStatus, sendResendTestEmail } from "./email";
+import { getEmailProviderStatus, sendResendTestEmail, sendBroadcastEmail } from "./email";
 import { verifyCaptchaToken } from "./captcha";
 import {
   backfillStyleMemoryFromSavedDrafts,
@@ -16050,6 +16050,35 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     res.json(members);
   });
 
+  // ── Org seat limits by subscription tier ───────────────────────────────
+  const ORG_SEAT_LIMITS: Record<string, number> = {
+    chamber: 3,
+    enterprise: 25,
+  };
+
+  function getMaxSeats(tier: string | undefined | null, isAdminUser?: boolean): number {
+    if (isAdminUser) return 999; // admin bypass
+    const normalized = normalizeTier(tier);
+    return ORG_SEAT_LIMITS[normalized] || 0;
+  }
+
+  app.get("/api/org/:id/seats", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const orgId = parseInt(String(req.params.id));
+    const isMember = await storage.isOrgMember(orgId, userId);
+    if (!isMember) return res.status(403).json({ message: "Not a member" });
+    const org = await storage.getOrganization(orgId);
+    if (!org) return res.status(404).json({ message: "Organization not found" });
+    const owner = await storage.getUserProfile(org.ownerId);
+    const members = await storage.getOrgMembers(orgId);
+    const invites = await storage.getOrgInvites(orgId);
+    const pendingInvites = invites.filter((i: any) => i.status === "pending").length;
+    const maxSeats = getMaxSeats(owner?.subscriptionTier, owner?.isAdmin);
+    const usedSeats = members.length;
+    res.json({ maxSeats, usedSeats, pendingInvites, available: Math.max(0, maxSeats - usedSeats) });
+  });
+
   app.post("/api/org/:id/invite", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -16057,6 +16086,17 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     const org = await storage.getOrganization(orgId);
     if (!org) return res.status(404).json({ message: "Organization not found" });
     if (org.ownerId !== userId) return res.status(403).json({ message: "Only the owner can invite members" });
+
+    // Enforce seat limit
+    const owner = await storage.getUserProfile(org.ownerId);
+    const currentMembers = await storage.getOrgMembers(orgId);
+    const maxSeats = getMaxSeats(owner?.subscriptionTier, owner?.isAdmin);
+    if (currentMembers.length >= maxSeats) {
+      return res.status(403).json({
+        message: `Seat limit reached (${currentMembers.length}/${maxSeats}). Upgrade your plan to add more members.`,
+      });
+    }
+
     const { email } = req.body;
     if (!email || typeof email !== "string") return res.status(400).json({ message: "Email is required" });
     const invite = await storage.createOrgInvite({ orgId, email: email.toLowerCase(), invitedBy: userId });
@@ -16105,6 +16145,20 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     if (!invite) return res.status(403).json({ message: "This invite does not belong to you" });
     const existingOrg = await storage.getUserOrganization(userId);
     if (existingOrg) return res.status(400).json({ message: "You already belong to an organization" });
+
+    // Enforce seat limit at accept time too
+    const org = await storage.getOrganization(invite.orgId);
+    if (org) {
+      const owner = await storage.getUserProfile(org.ownerId);
+      const currentMembers = await storage.getOrgMembers(invite.orgId);
+      const maxSeats = getMaxSeats(owner?.subscriptionTier, owner?.isAdmin);
+      if (currentMembers.length >= maxSeats) {
+        return res.status(403).json({
+          message: `This organization has reached its seat limit (${currentMembers.length}/${maxSeats}). The owner needs to upgrade.`,
+        });
+      }
+    }
+
     await storage.acceptOrgInvite(inviteId, userId);
     res.json({ message: "Invite accepted" });
   });
@@ -16238,6 +16292,268 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     await storage.deleteOrgKnowledge(docId);
     res.json({ message: "Knowledge document deleted" });
   });
+
+  // ── Safepay Payment Gateway ──────────────────────────────────────────────
+
+  app.post("/api/safepay/create-session", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+      const { isSafepayConfigured, createPaymentSession, generateCheckoutUrl, calculatePlanAmount, getSafepayEnvironment } = await import("./safepay");
+      if (!isSafepayConfigured()) {
+        return res.status(503).json({ message: "Payment gateway is not configured" });
+      }
+
+      const { planKey, billingCycle } = req.body;
+      if (!planKey || !billingCycle) {
+        return res.status(400).json({ message: "planKey and billingCycle are required" });
+      }
+
+      const validPlans = ["standard", "pro", "chamber"];
+      const validCycles = ["monthly", "quarterly", "yearly"];
+      if (!validPlans.includes(planKey)) {
+        return res.status(400).json({ message: `Invalid plan. Must be one of: ${validPlans.join(", ")}` });
+      }
+      if (!validCycles.includes(billingCycle)) {
+        return res.status(400).json({ message: `Invalid billing cycle. Must be one of: ${validCycles.join(", ")}` });
+      }
+
+      const amountPkr = calculatePlanAmount(planKey, billingCycle);
+
+      // Create Safepay payment session
+      const session = await createPaymentSession({ amountPkr });
+
+      // Generate checkout URL
+      const publicSiteUrl = process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "http://localhost:5001";
+      const checkoutUrl = generateCheckoutUrl({
+        tracker: session.tracker,
+        token: session.token,
+        redirectUrl: `${publicSiteUrl}/checkout/success?tracker=${session.tracker}`,
+        cancelUrl: `${publicSiteUrl}/checkout?cancelled=true`,
+        source: "hosted",
+      });
+
+      // Store payment record
+      await storage.createPaymentRecord({
+        userId,
+        safepayTracker: session.tracker,
+        safepayToken: session.token,
+        planKey,
+        billingCycle,
+        amountPkr,
+        status: "pending",
+      });
+
+      console.log(`[Safepay] Created payment session: tracker=${session.tracker}, plan=${planKey}, cycle=${billingCycle}, amount=PKR ${amountPkr}`);
+
+      res.json({ checkoutUrl, tracker: session.tracker });
+    } catch (err: any) {
+      console.error("[Safepay] Failed to create payment session:", err?.message || err);
+      res.status(500).json({ message: "Failed to create payment session" });
+    }
+  });
+
+  app.post("/api/safepay/webhook", async (req, res) => {
+    try {
+      const { isSafepayConfigured, verifyPayment } = await import("./safepay");
+      if (!isSafepayConfigured()) {
+        return res.status(503).json({ message: "Payment gateway is not configured" });
+      }
+
+      const tracker = req.body?.tracker || req.body?.data?.tracker || "";
+      if (!tracker) {
+        return res.status(400).json({ message: "Missing tracker" });
+      }
+
+      // Verify payment with Safepay
+      const verification = await verifyPayment(tracker);
+
+      // Find the payment record
+      const paymentRecord = await storage.getPaymentRecordByTracker(tracker);
+      if (!paymentRecord) {
+        console.warn(`[Safepay Webhook] No payment record found for tracker: ${tracker}`);
+        return res.status(404).json({ message: "Payment record not found" });
+      }
+
+      if (paymentRecord.status === "completed") {
+        console.log(`[Safepay Webhook] Payment already completed for tracker: ${tracker}`);
+        return res.json({ message: "Already processed" });
+      }
+
+      if (verification.success) {
+        // Update payment record
+        await storage.updatePaymentRecordStatus(tracker, "completed", verification.data);
+
+        // Activate subscription
+        const normalizedCycle = normalizeBillingCycle(paymentRecord.billingCycle);
+        const cycleWindow = getSubscriptionWindow(normalizedCycle, new Date());
+
+        await storage.updateUserSubscription(paymentRecord.userId, {
+          subscriptionTier: paymentRecord.planKey,
+          subscriptionCycle: normalizedCycle,
+          subscriptionStartAt: cycleWindow.startAt,
+          subscriptionEndAt: cycleWindow.endAt,
+        });
+
+        console.log(`[Safepay Webhook] Payment completed & subscription activated: tracker=${tracker}, user=${paymentRecord.userId}, plan=${paymentRecord.planKey}`);
+      } else {
+        await storage.updatePaymentRecordStatus(tracker, "failed", verification.data);
+        console.warn(`[Safepay Webhook] Payment verification failed: tracker=${tracker}, state=${verification.state}`);
+      }
+
+      res.json({ message: "OK" });
+    } catch (err: any) {
+      console.error("[Safepay Webhook] Error:", err?.message || err);
+      res.status(500).json({ message: "Webhook processing failed" });
+    }
+  });
+
+  app.get("/api/safepay/verify", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+      const tracker = String(req.query.tracker || "").trim();
+      if (!tracker) {
+        return res.status(400).json({ message: "Missing tracker parameter" });
+      }
+
+      const { isSafepayConfigured, verifyPayment } = await import("./safepay");
+      if (!isSafepayConfigured()) {
+        return res.status(503).json({ message: "Payment gateway is not configured" });
+      }
+
+      // Find the payment record
+      const paymentRecord = await storage.getPaymentRecordByTracker(tracker);
+      if (!paymentRecord) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      // Verify ownership
+      if (paymentRecord.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // If already completed, return success directly
+      if (paymentRecord.status === "completed") {
+        return res.json({
+          success: true,
+          planKey: paymentRecord.planKey,
+          billingCycle: paymentRecord.billingCycle,
+          amountPkr: paymentRecord.amountPkr,
+          status: "completed",
+        });
+      }
+
+      // Verify with Safepay
+      const verification = await verifyPayment(tracker);
+
+      if (verification.success && paymentRecord.status === "pending") {
+        // Process the payment
+        await storage.updatePaymentRecordStatus(tracker, "completed", verification.data);
+
+        const normalizedCycle = normalizeBillingCycle(paymentRecord.billingCycle);
+        const cycleWindow = getSubscriptionWindow(normalizedCycle, new Date());
+
+        await storage.updateUserSubscription(paymentRecord.userId, {
+          subscriptionTier: paymentRecord.planKey,
+          subscriptionCycle: normalizedCycle,
+          subscriptionStartAt: cycleWindow.startAt,
+          subscriptionEndAt: cycleWindow.endAt,
+        });
+
+        console.log(`[Safepay Verify] Payment verified & subscription activated: tracker=${tracker}, plan=${paymentRecord.planKey}`);
+      } else if (!verification.success && paymentRecord.status === "pending") {
+        await storage.updatePaymentRecordStatus(tracker, "failed", verification.data);
+      }
+
+      res.json({
+        success: verification.success,
+        planKey: paymentRecord.planKey,
+        billingCycle: paymentRecord.billingCycle,
+        amountPkr: paymentRecord.amountPkr,
+        status: verification.success ? "completed" : "failed",
+      });
+    } catch (err: any) {
+      console.error("[Safepay Verify] Error:", err?.message || err);
+      res.status(500).json({ message: "Verification failed" });
+    }
+  });
+
+  // ── Admin Broadcast Email ─────────────────────────────────────────────
+  const SUPER_ADMIN_EMAIL = "ijlalbintariq420@gmail.com";
+
+  app.post("/api/admin/broadcast-email", async (req, res) => {
+    try {
+      if (!(await isAdmin(req, res))) return;
+
+      // Extra check: only the super admin can send broadcast emails
+      const userId = getUserId(req);
+      if (!userId) return res.sendStatus(401);
+      const adminUser = await storage.getUserProfile(userId);
+      if (!adminUser || adminUser.email?.toLowerCase() !== SUPER_ADMIN_EMAIL) {
+        return res.status(403).json({ message: "Only the platform owner can send broadcast emails." });
+      }
+
+      const { subject, body } = req.body;
+      if (!subject || typeof subject !== "string" || !subject.trim()) {
+        return res.status(400).json({ message: "Subject is required." });
+      }
+      if (!body || typeof body !== "string" || !body.trim()) {
+        return res.status(400).json({ message: "Email body is required." });
+      }
+
+      const allUsers = await storage.getAllUsers();
+      const recipients = allUsers.filter(
+        (u: any) => u.email && typeof u.email === "string" && u.email.includes("@")
+      );
+
+      if (recipients.length === 0) {
+        return res.status(400).json({ message: "No users with valid emails found." });
+      }
+
+      // Send immediately but respond fast — the actual sending happens async
+      res.json({
+        message: `Broadcast email queued for ${recipients.length} recipients.`,
+        totalRecipients: recipients.length,
+      });
+
+      // Fire-and-forget: send emails with small delays to avoid rate limits
+      let sent = 0;
+      let failed = 0;
+      for (const user of recipients) {
+        try {
+          const result = await sendBroadcastEmail({
+            to: user.email!,
+            subject: subject.trim(),
+            body: body.trim(),
+            recipientName: user.firstName || user.lastName || undefined,
+          });
+          if (result.ok) {
+            sent++;
+          } else {
+            failed++;
+            console.error(`[Broadcast] Failed for ${user.email}: ${result.error}`);
+          }
+        } catch (err: any) {
+          failed++;
+          console.error(`[Broadcast] Error for ${user.email}: ${err?.message}`);
+        }
+        // Small delay between sends to respect Resend rate limits
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      console.log(`[Broadcast] Complete: ${sent} sent, ${failed} failed out of ${recipients.length}`);
+    } catch (err: any) {
+      console.error("[Broadcast] Error:", err?.message || err);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to send broadcast email." });
+      }
+    }
+  });
+
+  // ── Cache cleanup ───────────────────────────────────────────────────────
 
   storage.cleanExpiredCache(7).then(count => {
     if (count > 0) console.log(`[Cache] Cleaned ${count} expired entries`);

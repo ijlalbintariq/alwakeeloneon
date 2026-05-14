@@ -6,7 +6,7 @@ import { Redirect } from "wouter";
 import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
   UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus,
-  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink, RotateCcw, Download, StopCircle
+  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink, RotateCcw, Download, StopCircle, Mail, Send
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -161,7 +161,9 @@ export default function AdminPanelPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit" | "client-leads">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit" | "client-leads" | "broadcast">("stats");
+
+  const isSuperAdmin = user?.email?.toLowerCase() === "ijlalbintariq420@gmail.com";
 
   if (!user?.isAdmin) {
     return <Redirect to="/dashboard" />;
@@ -194,6 +196,7 @@ export default function AdminPanelPage() {
           { id: "client-leads" as const, label: "Client Leads", icon: FileText },
           { id: "case-law" as const, label: "Case Law", icon: Scale },
           { id: "statute-docs" as const, label: "Statute Library", icon: FileText },
+          ...(isSuperAdmin ? [{ id: "broadcast" as const, label: "Broadcast", icon: Mail }] : []),
         ].map((tab) => (
           <Button
             key={tab.id}
@@ -215,6 +218,7 @@ export default function AdminPanelPage() {
       {activeTab === "client-leads" && <ClientLeadsSection />}
       {activeTab === "case-law" && <CaseLawSection />}
       {activeTab === "statute-docs" && <StatuteDocumentsSection />}
+      {activeTab === "broadcast" && isSuperAdmin && <BroadcastEmailSection />}
     </div>
   );
 }
@@ -3608,6 +3612,148 @@ function StatuteDocumentsSection() {
         )}
         <PaginationStrip page={page} total={totalDocs} pageSize={ADMIN_PAGE_SIZE} onPageChange={setPage} />
       </div>
+    </div>
+  );
+}
+
+function BroadcastEmailSection() {
+  const { toast } = useToast();
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+
+  const { data: allUsers, isLoading: usersLoading } = useQuery<AdminUser[]>({ queryKey: ["/api/admin/users"] });
+  const recipientCount = (allUsers || []).filter(
+    (u) => u.email && typeof u.email === "string" && u.email.includes("@"),
+  ).length;
+
+  const broadcastMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/broadcast-email", {
+        subject: subject.trim(),
+        body: body.trim(),
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Broadcast queued",
+        description: data?.message || `Email is being sent to ${data?.totalRecipients || 0} users.`,
+      });
+      setSubject("");
+      setBody("");
+    },
+    onError: (err: any) => {
+      toast({
+        title: err?.message || "Failed to send broadcast",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSend = () => {
+    if (!subject.trim()) {
+      toast({ title: "Subject is required", variant: "destructive" });
+      return;
+    }
+    if (!body.trim()) {
+      toast({ title: "Email body is required", variant: "destructive" });
+      return;
+    }
+    if (!confirm(`You are about to send this email to ${recipientCount} users. Continue?`)) {
+      return;
+    }
+    broadcastMutation.mutate();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 mb-2">
+        <Mail size={16} className="text-primary" />
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
+          Broadcast Email to All Users
+        </span>
+      </div>
+
+      <Card className="bg-card border-border rounded-[2rem]">
+        <CardContent className="p-6 space-y-5">
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Shield size={15} className="text-primary flex-shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-primary">Super Admin Only</p>
+                <p className="text-[11px] text-muted-foreground">
+                  This email will be sent to <span className="text-foreground font-bold">{usersLoading ? "..." : recipientCount}</span> registered users using the Al Wakeelo branded template.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+              Email Subject
+            </label>
+            <Input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="e.g. Important Update from Al Wakeelo"
+              className="bg-background border-border text-foreground"
+              data-testid="broadcast-subject"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+              Email Body
+            </label>
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Write your announcement here. Line breaks will be preserved in the email."
+              rows={10}
+              className="bg-background border-border text-foreground resize-y"
+              data-testid="broadcast-body"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              The email will include the Al Wakeelo branding, personalized greeting, and a link to the dashboard.
+            </p>
+          </div>
+
+          {(subject.trim() || body.trim()) && (
+            <div className="rounded-2xl border border-border bg-background p-4 space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Preview</p>
+              <div className="rounded-xl border border-border bg-card p-4">
+                <p className="text-xs font-bold text-foreground mb-1">
+                  Subject: {subject.trim() || "(empty)"}
+                </p>
+                <hr className="border-border my-2" />
+                <p className="text-[11px] text-muted-foreground italic mb-2">Assalam-o-Alaikum [Name],</p>
+                <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+                  {body.trim() || "(empty body)"}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <Button
+            onClick={handleSend}
+            disabled={broadcastMutation.isPending || !subject.trim() || !body.trim()}
+            className="w-full bg-primary text-primary-foreground rounded-xl text-[10px] uppercase tracking-widest font-black py-3"
+            data-testid="broadcast-send"
+          >
+            {broadcastMutation.isPending ? (
+              <>
+                <Loader2 size={14} className="animate-spin mr-2" />
+                Sending to {recipientCount} users...
+              </>
+            ) : (
+              <>
+                <Send size={14} className="mr-2" />
+                Send to {recipientCount} Users
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

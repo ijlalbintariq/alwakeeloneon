@@ -271,7 +271,7 @@ export function PublicLegalChatWidget() {
             setIsOpen(next);
             if (next) void trackPublicEvent("widget_open", { path: location });
           }}
-          className="rounded-full h-12 px-5 bg-primary hover:bg-primary text-foreground font-black text-xs tracking-wide shadow-xl shadow-primary/30"
+          className="rounded-full h-12 px-5 bg-primary hover:bg-primary text-primary-foreground font-black text-xs tracking-wide shadow-xl shadow-primary/30"
           data-testid="public-chat-toggle"
         >
           <MessageCircle size={16} className="mr-2" />
