@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CalendarDays, Plus, ChevronLeft, ChevronRight, Trash2, Loader2, Briefcase, Clock, CheckCircle2, Circle, Gavel, FileText, AlertTriangle, ArrowRight } from "lucide-react";
+import { CalendarDays, Plus, ChevronLeft, ChevronRight, Trash2, Loader2, Briefcase, Clock, CheckCircle2, Circle, Gavel, FileText, AlertTriangle, ArrowRight, Pencil, Save, X } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -105,12 +105,67 @@ export default function DailyDiaryPage() {
     onError: (e: any) => toast({ title: "Failed", description: e?.message, variant: "destructive" }),
   });
 
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editOutcome, setEditOutcome] = useState("");
+  const [editNextDate, setEditNextDate] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+
   const toggleComplete = useMutation({
     mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
       await apiRequest("PATCH", `/api/diary/${id}`, { completed });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/diary"] }),
   });
+
+  const updateEntry = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Record<string, any> }) => {
+      await apiRequest("PATCH", `/api/diary/${id}`, data);
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/diary"] });
+      // If next date was set, auto-create a follow-up entry on that date
+      if (editNextDate) {
+        const editingItem = dayItems.find(i => i.id === vars.id);
+        if (editingItem) {
+          autoCreateNextDate.mutate({
+            date: editNextDate,
+            title: editingItem.title,
+            caseId: editingItem.caseId || undefined,
+            priority: editingItem.priority,
+          });
+        }
+      }
+      setEditingId(null);
+      setEditOutcome("");
+      setEditNextDate("");
+      setEditDesc("");
+      toast({ title: "Entry updated" });
+    },
+    onError: (e: any) => toast({ title: "Update failed", description: e?.message, variant: "destructive" }),
+  });
+
+  const autoCreateNextDate = useMutation({
+    mutationFn: async (entry: { date: string; title: string; caseId?: number; priority: string }) => {
+      await apiRequest("POST", "/api/diary", {
+        date: entry.date,
+        title: entry.title,
+        caseId: entry.caseId || undefined,
+        priority: entry.priority,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/diary"] });
+      toast({ title: "Next hearing auto-added to diary" });
+    },
+  });
+
+  const startEditing = (item: DiaryItem) => {
+    if (typeof item.id !== "number") return;
+    setEditingId(item.id);
+    setEditOutcome(item.outcome || "");
+    setEditNextDate(item.nextDate || "");
+    setEditDesc(item.description || "");
+  };
 
   const delEntry = useMutation({
     mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/diary/${id}`); },
@@ -235,67 +290,136 @@ export default function DailyDiaryPage() {
               {dayItems.map(item => (
                 <div
                   key={item.id}
-                  className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
+                  className={`flex flex-col gap-2 p-3 rounded-xl border transition-all ${
                     item.completed ? "opacity-50" : ""
                   } ${PRIORITY_COLORS[item.priority] || PRIORITY_COLORS.normal}`}
                 >
-                  {/* Toggle / indicator */}
-                  <div className="mt-0.5">
-                    {item.source === "manual" ? (
-                      <button
-                        onClick={() => typeof item.id === "number" && toggleComplete.mutate({ id: item.id, completed: !item.completed })}
-                        className="text-foreground/50 hover:text-primary"
-                      >
-                        {item.completed ? <CheckCircle2 size={18} className="text-emerald-400" /> : <Circle size={18} />}
-                      </button>
-                    ) : (
-                      item.type === "hearing" ? <Gavel size={18} className="text-red-400" /> :
-                      item.type === "filing_deadline" ? <AlertTriangle size={18} className="text-amber-400" /> :
-                      <FileText size={18} className="text-primary/60" />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-bold ${item.completed ? "line-through text-muted-foreground" : "text-foreground"}`}>{item.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      {item.time && (
-                        <span className="text-[10px] text-foreground/60 flex items-center gap-0.5 font-bold"><Clock size={9} /> {item.time}</span>
-                      )}
-                      {item.source === "compliance" && (
-                        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 font-black">{item.type?.replace(/_/g, " ")}</span>
-                      )}
-                      {(item.caseTitle || item.caseId) && (
-                        <span className="text-[10px] text-primary/70 flex items-center gap-0.5"><Briefcase size={9} /> {item.caseTitle || `Case #${item.caseId}`}</span>
-                      )}
-                      {item.priority !== "normal" && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold"><span className={`w-1.5 h-1.5 rounded-full ${PRIORITY_DOT[item.priority]}`} />{item.priority}</span>
+                  <div className="flex items-start gap-3">
+                    {/* Toggle / indicator */}
+                    <div className="mt-0.5">
+                      {item.source === "manual" ? (
+                        <button
+                          onClick={() => typeof item.id === "number" && toggleComplete.mutate({ id: item.id, completed: !item.completed })}
+                          className="text-foreground/50 hover:text-primary"
+                        >
+                          {item.completed ? <CheckCircle2 size={18} className="text-emerald-400" /> : <Circle size={18} />}
+                        </button>
+                      ) : (
+                        item.type === "hearing" ? <Gavel size={18} className="text-red-400" /> :
+                        item.type === "filing_deadline" ? <AlertTriangle size={18} className="text-amber-400" /> :
+                        <FileText size={18} className="text-primary/60" />
                       )}
                     </div>
-                    {item.description && <p className="text-xs text-muted-foreground mt-1">{item.description}</p>}
-                    {(item.outcome || item.nextDate) && (
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        {item.outcome && (
-                          <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-black border ${
-                            item.outcome === "disposed_off" || item.outcome === "dismissed" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
-                            item.outcome === "dnp" || item.outcome === "adjourned" ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
-                            "bg-foreground/5 border-border text-foreground/60"
-                          }`}>{item.outcome.replace(/_/g, " ")}</span>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold ${item.completed ? "line-through text-muted-foreground" : "text-foreground"}`}>{item.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {item.time && (
+                          <span className="text-[10px] text-foreground/60 flex items-center gap-0.5 font-bold"><Clock size={9} /> {item.time}</span>
                         )}
-                        {item.nextDate && (
-                          <span className="text-[10px] text-primary/80 flex items-center gap-0.5 font-bold">
-                            <ArrowRight size={9} /> Next: {new Date(item.nextDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                          </span>
+                        {item.source === "compliance" && (
+                          <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 font-black">{item.type?.replace(/_/g, " ")}</span>
+                        )}
+                        {(item.caseTitle || item.caseId) && (
+                          <span className="text-[10px] text-primary/70 flex items-center gap-0.5"><Briefcase size={9} /> {item.caseTitle || `Case #${item.caseId}`}</span>
+                        )}
+                        {item.priority !== "normal" && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold"><span className={`w-1.5 h-1.5 rounded-full ${PRIORITY_DOT[item.priority]}`} />{item.priority}</span>
                         )}
                       </div>
-                    )}
+                      {item.description && editingId !== item.id && <p className="text-xs text-muted-foreground mt-1">{item.description}</p>}
+                      {(item.outcome || item.nextDate) && editingId !== item.id && (
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {item.outcome && (
+                            <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-black border ${
+                              item.outcome === "disposed_off" || item.outcome === "dismissed" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                              item.outcome === "dnp" || item.outcome === "adjourned" ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
+                              "bg-foreground/5 border-border text-foreground/60"
+                            }`}>{item.outcome.replace(/_/g, " ")}</span>
+                          )}
+                          {item.nextDate && (
+                            <span className="text-[10px] text-primary/80 flex items-center gap-0.5 font-bold">
+                              <ArrowRight size={9} /> Next: {new Date(item.nextDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1">
+                      {item.source === "manual" && typeof item.id === "number" && editingId !== item.id && (
+                        <button
+                          onClick={() => startEditing(item)}
+                          className="text-muted-foreground/40 hover:text-primary p-1 mt-0.5"
+                          title="Update outcome & next date"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      {item.source === "manual" && typeof item.id === "number" && editingId !== item.id && (
+                        <button onClick={() => delEntry.mutate(item.id as number)} className="text-muted-foreground/40 hover:text-red-400 p-1 mt-0.5">
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Actions */}
-                  {item.source === "manual" && typeof item.id === "number" && (
-                    <button onClick={() => delEntry.mutate(item.id as number)} className="text-muted-foreground/40 hover:text-red-400 p-1 mt-0.5">
-                      <Trash2 size={14} />
-                    </button>
+                  {/* Inline Edit Form */}
+                  {editingId === item.id && typeof item.id === "number" && (
+                    <div className="border-t border-primary/20 pt-2 mt-1 space-y-2">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-primary">Update after hearing</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={editOutcome}
+                          onChange={e => setEditOutcome(e.target.value)}
+                          className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50"
+                        >
+                          <option value="">Outcome / Result</option>
+                          {OUTCOME_OPTIONS.map(o => <option key={o} value={o}>{o.replace(/_/g, " ").replace(/dnp/i, "DNP (Dismissed for Non-Prosecution)")}</option>)}
+                        </select>
+                        <div className="relative">
+                          <input
+                            type="date"
+                            value={editNextDate}
+                            onChange={e => setEditNextDate(e.target.value)}
+                            className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none w-full focus:border-primary/50"
+                          />
+                          {!editNextDate && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">Next Hearing Date</span>}
+                        </div>
+                      </div>
+                      <textarea
+                        placeholder="Order notes / description (optional)"
+                        value={editDesc}
+                        onChange={e => setEditDesc(e.target.value)}
+                        rows={2}
+                        className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-primary/50"
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => { setEditingId(null); setEditOutcome(""); setEditNextDate(""); setEditDesc(""); }}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <X size={12} /> Cancel
+                        </button>
+                        <button
+                          onClick={() => updateEntry.mutate({
+                            id: item.id as number,
+                            data: {
+                              ...(editOutcome ? { outcome: editOutcome } : {}),
+                              ...(editNextDate ? { nextDate: editNextDate } : {}),
+                              ...(editDesc !== (item.description || "") ? { description: editDesc } : {}),
+                            },
+                          })}
+                          disabled={updateEntry.isPending}
+                          className="flex items-center gap-1 px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50"
+                        >
+                          {updateEntry.isPending ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                          Save
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
