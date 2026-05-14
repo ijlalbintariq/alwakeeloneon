@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { CalendarDays, Plus, ChevronLeft, ChevronRight, Trash2, Loader2, Briefcase, Clock, CheckCircle2, Circle, Gavel, FileText, AlertTriangle, ArrowRight, Pencil, Save, X } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -51,6 +52,7 @@ function getWeekDates(baseDate: Date): string[] {
 
 export default function DailyDiaryPage() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const today = new Date().toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState(today);
   const [weekBase, setWeekBase] = useState(new Date());
@@ -322,7 +324,10 @@ export default function DailyDiaryPage() {
                           <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 font-black">{item.type?.replace(/_/g, " ")}</span>
                         )}
                         {(item.caseTitle || item.caseId) && (
-                          <span className="text-[10px] text-primary/70 flex items-center gap-0.5"><Briefcase size={9} /> {item.caseTitle || `Case #${item.caseId}`}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); if (item.caseId) navigate(`/case-files/${item.caseId}`); }}
+                            className="text-[10px] text-primary/70 flex items-center gap-0.5 hover:text-primary hover:underline cursor-pointer"
+                          ><Briefcase size={9} /> {item.caseTitle || `Case #${item.caseId}`}</button>
                         )}
                         {item.priority !== "normal" && (
                           <span className="flex items-center gap-1 text-[10px] font-bold"><span className={`w-1.5 h-1.5 rounded-full ${PRIORITY_DOT[item.priority]}`} />{item.priority}</span>

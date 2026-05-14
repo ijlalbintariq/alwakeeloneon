@@ -3243,16 +3243,34 @@ export class DatabaseStorage implements IStorage {
 
   // --- Diary Entries ---
   async getDiaryEntries(userId: string, dateFrom: string, dateTo: string): Promise<any[]> {
-    return db.select().from(diaryEntries)
+    const rows = await db.select({
+      id: diaryEntries.id,
+      userId: diaryEntries.userId,
+      date: diaryEntries.date,
+      time: diaryEntries.time,
+      title: diaryEntries.title,
+      description: diaryEntries.description,
+      caseId: diaryEntries.caseId,
+      caseTitle: caseFiles.title,
+      priority: diaryEntries.priority,
+      completed: diaryEntries.completed,
+      outcome: diaryEntries.outcome,
+      nextDate: diaryEntries.nextDate,
+      complianceId: diaryEntries.complianceId,
+      createdAt: diaryEntries.createdAt,
+    })
+      .from(diaryEntries)
+      .leftJoin(caseFiles, eq(diaryEntries.caseId, caseFiles.id))
       .where(and(
         eq(diaryEntries.userId, userId),
         gte(diaryEntries.date, dateFrom),
         lte(diaryEntries.date, dateTo),
       ))
       .orderBy(asc(diaryEntries.date), asc(diaryEntries.time));
+    return rows;
   }
 
-  async addDiaryEntry(data: { userId: string; date: string; time?: string; title: string; description?: string; caseId?: number; priority?: string; completed?: boolean; outcome?: string; nextDate?: string }): Promise<any> {
+  async addDiaryEntry(data: { userId: string; date: string; time?: string; title: string; description?: string; caseId?: number; complianceId?: number; priority?: string; completed?: boolean; outcome?: string; nextDate?: string }): Promise<any> {
     const [entry] = await db.insert(diaryEntries).values({
       userId: data.userId,
       date: data.date,
@@ -3260,6 +3278,7 @@ export class DatabaseStorage implements IStorage {
       title: data.title,
       description: data.description || null,
       caseId: data.caseId || null,
+      complianceId: data.complianceId || null,
       priority: (data.priority as any) || "normal",
       completed: data.completed ?? false,
       outcome: data.outcome || null,

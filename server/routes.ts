@@ -7610,6 +7610,7 @@ export async function registerRoutes(
             date: parsed.dueDate.slice(0, 10), // YYYY-MM-DD
             title: `${cf.title} — ${parsed.title}`,
             caseId,
+            complianceId: created.id,
             priority: cf.priority || "normal",
             description: parsed.notes || undefined,
           });
@@ -7790,7 +7791,13 @@ export async function registerRoutes(
           type: c.type,
         }));
       const manual = entries.map((e: any) => ({ ...e, source: "manual" }));
-      const all = [...manual, ...merged].sort((a: any, b: any) => {
+      // Deduplicate: if a manual entry is already linked to a complianceId, skip that compliance merge
+      const linkedCompIds = new Set(manual.filter((e: any) => e.complianceId).map((e: any) => e.complianceId));
+      const deduped = merged.filter((c: any) => {
+        const compId = Number(String(c.id).replace("comp-", ""));
+        return !linkedCompIds.has(compId);
+      });
+      const all = [...manual, ...deduped].sort((a: any, b: any) => {
         if (a.date !== b.date) return a.date < b.date ? -1 : 1;
         if (a.time && b.time) return a.time < b.time ? -1 : 1;
         if (a.time) return -1;

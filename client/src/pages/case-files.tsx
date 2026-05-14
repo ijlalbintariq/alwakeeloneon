@@ -161,6 +161,40 @@ function CaseDetail({ id }: { id: number }) {
               <div key={s.label} className="bg-card/50 border border-border rounded-xl p-3 text-center"><p className="text-2xl font-bold text-foreground">{s.val}</p><p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">{s.label}</p></div>
             )}
           </div>
+
+          {/* Upcoming Hearings Timeline */}
+          {(() => {
+            const upcomingHearings = (cf.compliance || [])
+              .filter((c: any) => (c.type === "hearing" || c.type === "filing_deadline") && c.status !== "done" && c.status !== "missed")
+              .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+            if (upcomingHearings.length === 0) return null;
+            return (
+              <div className="bg-card/30 border border-border rounded-xl p-4 space-y-2">
+                <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground flex items-center gap-1.5"><Calendar size={12} /> Upcoming Hearings</p>
+                <div className="space-y-1.5">
+                  {upcomingHearings.slice(0, 5).map((h: any) => {
+                    const d = new Date(h.dueDate);
+                    const isPast = d < new Date();
+                    return (
+                      <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg border ${isPast ? "border-red-500/20 bg-red-500/5" : "border-border"}`}>
+                        <div className={`text-center min-w-[40px] ${isPast ? "text-red-400" : "text-primary"}`}>
+                          <p className="text-lg font-black leading-none">{d.getDate()}</p>
+                          <p className="text-[9px] uppercase font-bold">{d.toLocaleDateString(undefined, { month: "short" })}</p>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-foreground">{h.title}</p>
+                          <p className="text-[10px] text-muted-foreground">{h.type.replace(/_/g, " ")}{h.court ? ` • ${h.court}` : ""}</p>
+                        </div>
+                        <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${isPast ? "border-red-500/30 text-red-400 bg-red-500/10" : "border-amber-500/30 text-amber-400 bg-amber-500/10"}`}>
+                          {isPast ? "overdue" : h.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
