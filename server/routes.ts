@@ -7601,6 +7601,24 @@ export async function registerRoutes(
         caseId,
         dueDate: new Date(parsed.dueDate),
       });
+
+      // Auto-create diary entry for hearing/filing_deadline types
+      if (parsed.type === "hearing" || parsed.type === "filing_deadline") {
+        try {
+          await storage.addDiaryEntry({
+            userId,
+            date: parsed.dueDate.slice(0, 10), // YYYY-MM-DD
+            title: `${cf.title} — ${parsed.title}`,
+            caseId,
+            priority: cf.priority || "normal",
+            description: parsed.notes || undefined,
+          });
+        } catch (diaryErr) {
+          console.error("[Auto-Diary] Failed to auto-create diary entry:", diaryErr);
+          // Non-fatal: don't fail the compliance creation
+        }
+      }
+
       res.status(201).json(created);
     } catch (err: any) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0]?.message });

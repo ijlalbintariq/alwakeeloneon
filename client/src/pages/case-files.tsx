@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { Briefcase, Plus, ChevronLeft, Users, FileText, Calendar, StickyNote, Trash2, Loader2, Scale, AlertCircle, Upload, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Briefcase, Plus, ChevronLeft, Users, FileText, Calendar, StickyNote, Trash2, Loader2, Scale, AlertCircle, Upload, ShieldCheck, CheckCircle2, Gavel } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -67,12 +67,32 @@ function CaseDetail({ id }: { id: number }) {
   const [noteText, setNoteText] = useState("");
   const [clientName, setClientName] = useState(""); const [clientRole, setClientRole] = useState("client");
   const [compTitle, setCompTitle] = useState(""); const [compDate, setCompDate] = useState(""); const [compType, setCompType] = useState("hearing");
+  const [nextHearingDate, setNextHearingDate] = useState("");
+  const [nextHearingTitle, setNextHearingTitle] = useState("");
 
   const addNote = useMutation({ mutationFn: async () => { await apiRequest("POST", `/api/case-files/${id}/notes`, { content: noteText }); }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }); setNoteText(""); } });
   const addClient = useMutation({ mutationFn: async () => { await apiRequest("POST", `/api/case-files/${id}/clients`, { name: clientName, role: clientRole }); }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }); setClientName(""); } });
   const addComp = useMutation({ mutationFn: async () => { await apiRequest("POST", `/api/case-files/${id}/compliance`, { title: compTitle, dueDate: compDate, type: compType }); }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }); setCompTitle(""); setCompDate(""); } });
   const delNote = useMutation({ mutationFn: async (nid: number) => { await apiRequest("DELETE", `/api/case-files/${id}/notes/${nid}`); }, onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }) });
   const delClient = useMutation({ mutationFn: async (cid: number) => { await apiRequest("DELETE", `/api/case-files/${id}/clients/${cid}`); }, onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }) });
+
+  const setNextHearing = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/case-files/${id}/compliance`, {
+        title: nextHearingTitle.trim() || "Next Hearing",
+        dueDate: nextHearingDate,
+        type: "hearing",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/diary"] });
+      setNextHearingDate("");
+      setNextHearingTitle("");
+      toast({ title: "Next hearing set & added to diary" });
+    },
+    onError: (e: any) => toast({ title: "Failed", description: e?.message, variant: "destructive" }),
+  });
 
   if (isLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin text-primary" size={24} /></div>;
   if (!cf) return <div className="text-center py-20 text-muted-foreground">Case not found</div>;
@@ -107,6 +127,35 @@ function CaseDetail({ id }: { id: number }) {
       {tab === "overview" && (
         <div className="space-y-3">
           {cf.description && <div className="bg-card/50 border border-border rounded-xl p-4"><p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground mb-1">Description</p><p className="text-sm text-foreground whitespace-pre-wrap">{cf.description}</p></div>}
+
+          {/* Quick Set Next Hearing */}
+          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2">
+            <p className="text-[10px] uppercase tracking-widest font-black text-primary flex items-center gap-1.5"><Gavel size={12} /> Set Next Hearing Date</p>
+            <p className="text-xs text-muted-foreground">This will automatically add the date to your Daily Diary.</p>
+            <div className="flex gap-2 flex-wrap">
+              <input
+                placeholder="e.g. Arguments / Evidence"
+                value={nextHearingTitle}
+                onChange={e => setNextHearingTitle(e.target.value)}
+                className="flex-1 min-w-[160px] bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+              />
+              <input
+                type="date"
+                value={nextHearingDate}
+                onChange={e => setNextHearingDate(e.target.value)}
+                className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50"
+              />
+              <button
+                onClick={() => setNextHearing.mutate()}
+                disabled={!nextHearingDate || setNextHearing.isPending}
+                className="px-5 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {setNextHearing.isPending ? <Loader2 size={12} className="animate-spin" /> : <Calendar size={12} />}
+                Set Date
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[{ label: "Parties", val: cf.clients?.length || 0 }, { label: "Documents", val: cf.documents?.length || 0 }, { label: "Compliance", val: cf.compliance?.length || 0 }, { label: "Notes", val: cf.notes?.length || 0 }].map(s =>
               <div key={s.label} className="bg-card/50 border border-border rounded-xl p-3 text-center"><p className="text-2xl font-bold text-foreground">{s.val}</p><p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">{s.label}</p></div>
