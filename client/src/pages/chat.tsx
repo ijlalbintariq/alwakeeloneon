@@ -1132,17 +1132,17 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
   if (!isAlWakeelo) {
     return (
-      <div className="flex flex-col h-[calc(100vh-120px)] bg-white border border-[#CBD5E1] rounded-2xl overflow-hidden shadow-lg relative fade-in">
-        <div className="p-4 md:p-6 bg-white border-b border-[#CBD5E1] flex items-center justify-between z-20">
+      <div className="flex flex-col h-[calc(100vh-120px)] bg-card border border-border rounded-2xl overflow-hidden shadow-lg relative fade-in">
+        <div className="p-4 md:p-6 bg-card border-b border-border flex items-center justify-between z-20">
           <div className="flex items-center gap-3 md:gap-4">
-            <div className="w-10 h-10 rounded-lg bg-card/10 flex items-center justify-center text-[#1E3A8A]">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
               <Scale size={20} />
             </div>
             <div>
-              <h3 className="text-sm md:text-base font-semibold text-[#0F172A] capitalize">{title || type.replace("-", " ")}</h3>
+              <h3 className="text-sm md:text-base font-semibold text-foreground capitalize">{title || type.replace("-", " ")}</h3>
               <div className="flex items-center gap-2 mt-1">
                 <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${apiError ? "bg-[#DC2626]" : "bg-emerald-500"}`} />
-                <p className="text-[8px] md:text-[9px] text-[#64748B] font-semibold uppercase tracking-widest">
+                <p className="text-[8px] md:text-[9px] text-muted-foreground font-semibold uppercase tracking-widest">
                   {apiError ? "Engine Throttled" : "Active"}
                 </p>
               </div>
@@ -1160,7 +1160,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 className={`px-3 py-2 rounded-lg text-[9px] md:text-[10px] font-semibold uppercase tracking-wide flex items-center gap-2 transition-all duration-150 ${
                   shareUrl
                     ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
-                    : "hover:bg-[#B45309]/10 text-[#64748B] hover:text-[#B45309]"
+                    : "hover:bg-primary/10 text-muted-foreground hover:text-primary"
                 }`}
               >
                 {isSharing ? (
@@ -1177,7 +1177,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <button
               onClick={handleClear}
               data-testid="button-clear-chat"
-              className="px-3 py-2 hover:bg-[#DC2626]/10 rounded-lg text-[#64748B] hover:text-[#DC2626] text-[9px] md:text-[10px] font-semibold uppercase tracking-wide flex items-center gap-2 transition-all duration-150"
+              className="px-3 py-2 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive text-[9px] md:text-[10px] font-semibold uppercase tracking-wide flex items-center gap-2 transition-all duration-150"
             >
               <Trash2 size={14} /> Reset
             </button>
@@ -1187,11 +1187,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 scrollbar-hide bg-muted px-3 sm:px-4 md:px-8 py-3 sm:py-4 md:py-6 flex flex-col">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-              <Scale size={48} className="text-[#94A3B8]" />
-              <p className="text-[#475569] italic text-sm md:text-base" style={{ fontFamily: "'EB Garamond', serif" }}>
+              <Scale size={48} className="text-muted-foreground" />
+              <p className="text-muted-foreground italic text-sm md:text-base" style={{ fontFamily: "'EB Garamond', serif" }}>
                 "Main hoon Al Wakeelo -- not just your lawyer, your strategy partner in justice."
               </p>
-              <p className="text-[9px] text-[#64748B] uppercase tracking-widest font-semibold">Ask about your contract or legal matter</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold">Ask about your contract or legal matter</p>
             </div>
           )}
 
@@ -1214,18 +1214,18 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   className={`flex-1 p-3 sm:p-4 md:p-5 rounded-2xl relative group ${
                     m.role === "user"
                       ? "bg-primary text-primary-foreground rounded-br-none max-w-2xl shadow-md hover:shadow-lg transition-shadow"
-                      : "bg-white border border-[#E2E8F0] text-[#0F172A] rounded-bl-none shadow-sm hover:shadow-md transition-shadow"
+                      : "bg-card border border-border text-foreground rounded-bl-none shadow-sm hover:shadow-md transition-shadow"
                   }`}
                 >
                   {m.role === "assistant" ? (
                     <>
                       {(m.modeName || m.modelName) && (
-                        <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-[#CBD5E1]">
+                        <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-border">
                           <div className="flex flex-col gap-0.5">
                             {m.modeName && (
                               <span className={`text-[7px] font-semibold uppercase tracking-wider ${
-                                m.modeName === "Turbo" ? "text-[#B45309]" :
-                                m.modeName === "Standard" ? "text-[#64748B]" :
+                                m.modeName === "Turbo" ? "text-amber-700 dark:text-amber-500" :
+                                m.modeName === "Standard" ? "text-muted-foreground" :
                                 m.isAgentMode ? "text-cyan-600" :
                                 "text-emerald-600"
                               }`}>
@@ -1253,7 +1253,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                                   {step.type === "reading" && <BookOpen size={12} className="text-blue-500" />}
                                   {step.type === "synthesizing" && <Sparkles size={12} className="text-emerald-500" />}
                                 </span>
-                                <span className="text-[#475569]">{step.content}</span>
+                                <span className="text-muted-foreground">{step.content}</span>
                               </div>
                             ))}
                           </div>
@@ -1268,11 +1268,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           {(m.ragCitations?.length || 0) > 0 && (
                             <div className="space-y-2">
                               {m.ragCitations!.slice(0, 2).map((c, idx) => (
-                                <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="flex gap-3 p-3 rounded-lg bg-muted border border-[#CBD5E1] hover:border-[#B45309]/30 transition-colors duration-150">
-                                  <Gavel size={16} className="text-[#B45309] flex-shrink-0 mt-0.5" />
+                                <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="flex gap-3 p-3 rounded-lg bg-muted border border-border hover:border-primary/30 transition-colors duration-150">
+                                  <Gavel size={16} className="text-primary flex-shrink-0 mt-0.5" />
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-semibold text-[#0F172A] truncate">{c.title}</p>
-                                    <p className="text-[9px] text-[#64748B] mt-1">Relevance: {Math.round(c.score * 100)}%</p>
+                                    <p className="text-[10px] font-semibold text-foreground truncate">{c.title}</p>
+                                    <p className="text-[9px] text-muted-foreground mt-1">Relevance: {Math.round(c.score * 100)}%</p>
                                   </div>
                                 </div>
                               ))}
@@ -1285,12 +1285,12 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                               {[...parsed.references.judgments.slice(0, 2).map((ref) => ({ title: ref.citation, name: ref.citation, description: ref.description })),
                                 ...parsed.references.laws.slice(0, 2).map((ref) => ({ title: ref.name, name: ref.name, description: ref.description })),
                               ].slice(0, 2).map((ref, idx) => (
-                                <div key={idx} className="flex gap-3 p-3 rounded-lg bg-muted border border-[#CBD5E1] hover:border-[#1E3A8A]/30 transition-colors duration-150">
-                                  <Link2 size={16} className="text-[#1E3A8A] flex-shrink-0 mt-0.5" />
+                                <div key={idx} className="flex gap-3 p-3 rounded-lg bg-muted border border-border hover:border-primary/30 transition-colors duration-150">
+                                  <Link2 size={16} className="text-primary flex-shrink-0 mt-0.5" />
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-semibold text-[#0F172A] truncate">{ref.title || ref.name}</p>
+                                    <p className="text-[10px] font-semibold text-foreground truncate">{ref.title || ref.name}</p>
                                     {ref.description && (
-                                      <p className="text-[9px] text-[#64748B] mt-1 line-clamp-1">{ref.description}</p>
+                                      <p className="text-[9px] text-muted-foreground mt-1 line-clamp-1">{ref.description}</p>
                                     )}
                                   </div>
                                 </div>
@@ -1374,19 +1374,19 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         )}
 
-        <div className="p-4 md:p-6 bg-white border-t border-[#CBD5E1]">
+        <div className="p-4 md:p-6 bg-card border-t border-border">
           <div className="flex items-center gap-2 mb-3 px-2 flex-wrap">
             <div className="relative">
               <button
                 onClick={() => setShowModelMenu(!showModelMenu)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-semibold uppercase tracking-wide transition-all border duration-150 ${
                   normalizedAiMode === "turbo"
-                    ? "bg-[#B45309]/10 text-[#B45309] border-[#B45309]/30"
+                    ? "bg-amber-600/10 text-amber-700 dark:text-amber-500 border-amber-600/30"
                     : isApexAgentWebMode
                       ? "bg-cyan-500/10 text-cyan-600 border-cyan-500/30"
                       : isApexMode
                         ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
-                        : "text-[#64748B] border-[#CBD5E1] hover:border-[#B45309] hover:text-[#B45309]"
+                        : "text-muted-foreground border-border hover:border-primary hover:text-primary"
                 }`}
                 data-testid="button-model-selector"
               >
@@ -1516,7 +1516,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           )}
 
 
-          <div className="flex gap-1.5 sm:gap-2 bg-white border border-[#CBD5E1] p-2.5 sm:p-3 rounded-xl shadow-sm items-end">
+          <div className="flex gap-1.5 sm:gap-2 bg-card border border-border p-2.5 sm:p-3 rounded-xl shadow-sm items-end">
             <input
               type="file"
               ref={fileInputRef}
@@ -1536,7 +1536,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading || attachedFiles.length >= 5}
-              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2 text-[#64748B] hover:text-[#B45309] hover:bg-[#B45309]/10 rounded-lg transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
               title="Attach document (TXT, PDF, DOCX)"
             >
               <Paperclip size={16} className="sm:w-[18px] sm:h-[18px]" />
@@ -1547,8 +1547,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               disabled={isLoading || isTranscribing}
               className={`min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2 rounded-lg transition-all duration-150 ${
                 isTranscribing
-                  ? "text-[#B45309] bg-[#B45309]/10"
-                  : "text-[#64748B] hover:text-[#B45309] hover:bg-[#B45309]/10"
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-primary hover:bg-primary/10"
               } disabled:opacity-30 disabled:cursor-not-allowed`}
               title="Transcribe audio file (MP3, WAV, M4A)"
             >
@@ -1560,7 +1560,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               rows={1}
               spellCheck="true"
               autoCorrect="on"
-              className="flex-1 min-h-[40px] sm:min-h-[44px] max-h-40 sm:max-h-44 resize-none overflow-y-auto bg-transparent border-none px-2.5 sm:px-3 py-1.5 sm:py-2 text-sm text-[#0F172A] leading-6 focus:ring-0 focus:outline-none placeholder:text-[#94A3B8]"
+              className="flex-1 min-h-[40px] sm:min-h-[44px] max-h-40 sm:max-h-44 resize-none overflow-y-auto bg-transparent border-none px-2.5 sm:px-3 py-1.5 sm:py-2 text-sm text-foreground leading-6 focus:ring-0 focus:outline-none placeholder:text-muted-foreground"
               placeholder="Ask about your contract..."
               value={input}
               onInput={resizePromptInput}
@@ -1577,7 +1577,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               onClick={() => handleSend()}
               disabled={isLoading || isTranscribing}
               data-testid="button-send"
-              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2.5 bg-[#B45309] text-white rounded-lg hover:bg-[#A23E0A] shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold flex-shrink-0"
+              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold flex-shrink-0"
             >
               <Send size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
@@ -1621,7 +1621,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
                       isActive
                         ? "bg-primary/10 border-primary/25"
-                        : "hover:bg-white/5 border-transparent"
+                        : "hover:bg-muted border-transparent"
                     }`}
                     data-testid={`thread-item-${thread.id}`}
                   >
@@ -1769,8 +1769,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                                     {m.modeName}
                                   </span>
                                 )}
-                                {m.modelName && <span className="uppercase tracking-wider text-emerald-300">{m.modelName}</span>}
-                                {m.moduleProfile && <span className="uppercase tracking-wider text-cyan-300 ml-2">{m.moduleProfile}</span>}
+                                {m.modelName && <span className="uppercase tracking-wider text-emerald-700 dark:text-emerald-300">{m.modelName}</span>}
+                                {m.moduleProfile && <span className="uppercase tracking-wider text-cyan-700 dark:text-cyan-300 ml-2">{m.moduleProfile}</span>}
                                 {m.modelDescription && <span className="block mt-1 text-muted-foreground">{m.modelDescription}</span>}
                               </div>
                             </div>
@@ -1791,10 +1791,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                                       {step.type === "synthesizing" && <Sparkles size={11} className="text-emerald-400" />}
                                     </span>
                                     <span className={`${
-                                      step.type === "thinking" ? "text-purple-300" :
-                                      step.type === "searching" ? "text-cyan-300" :
-                                      step.type === "reading" ? "text-blue-300" :
-                                      "text-emerald-300"
+                                      step.type === "thinking" ? "text-purple-700 dark:text-purple-300" :
+                                      step.type === "searching" ? "text-cyan-700 dark:text-cyan-300" :
+                                      step.type === "reading" ? "text-blue-700 dark:text-blue-300" :
+                                      "text-emerald-700 dark:text-emerald-300"
                                     }`}>{step.content}</span>
                                   </div>
                                 ))}
@@ -1804,7 +1804,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                                   <p className="text-[9px] font-black uppercase tracking-widest text-cyan-500 mb-1">Search Queries</p>
                                   <div className="flex flex-wrap gap-1">
                                     {m.agentSearchQueries!.map((q, idx) => (
-                                      <span key={idx} className="text-[10px] bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                                      <span key={idx} className="text-[10px] bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/20">
                                         {q}
                                       </span>
                                     ))}
@@ -1828,12 +1828,12 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           {parsed?.references && <ReferenceCards references={parsed.references} />}
                           {(m.ragCitations?.length || 0) > 0 && (
                             <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
                                 RAG Citations ({m.ragConfidence || "low"})
                               </p>
                               <div className="mt-2 space-y-1.5">
                                 {m.ragCitations!.slice(0, 5).map((c, idx) => (
-                                  <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[11px] text-emerald-100">
+                                  <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[11px] text-emerald-800 dark:text-emerald-100">
                                     <span className="font-bold">{idx + 1}.</span> {c.title} · chunk {c.chunkIndex} · {Math.round(c.score * 100)}%
                                   </div>
                                 ))}
@@ -1948,7 +1948,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </div>
           </div>
 
-          <div className="p-2 sm:p-6 pt-2 border-t border-primary/15 bg-background/75">
+          <div className="p-2 sm:p-6 pt-2 border-t border-primary/15 bg-background/75" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
             {apiError && (
               <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
                 <AlertCircle size={14} className="text-red-400" />
@@ -1999,11 +1999,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   {showModelMenu && (
                     <div className="model-menu-dropdown absolute bottom-full right-0 mb-2 bg-card border border-primary/20 rounded-xl shadow-2xl overflow-hidden min-w-[280px] z-50">
                       <div className="px-4 py-2 text-[9px] text-muted-foreground uppercase tracking-widest font-black border-b border-primary/15">Select AI Model</div>
-                      <button onClick={() => { setAiMode("standard"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-primary/10 ${normalizedAiMode === "standard" ? "bg-primary/10 text-primary" : "text-foreground"}`}>
+                      <button onClick={() => { setAiMode("standard"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-muted border-b border-primary/10 ${normalizedAiMode === "standard" ? "bg-primary/10 text-primary" : "text-foreground"}`}>
                         <div className="font-bold">Standard</div><div className="text-[10px] text-muted-foreground mt-0.5">Fast, reliable responses</div>
                       </button>
                       {canUseTurbo ? (
-                        <button onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-primary/10 ${normalizedAiMode === "turbo" ? "bg-primary/10 text-primary" : "text-foreground"}`}>
+                        <button onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-muted border-b border-primary/10 ${normalizedAiMode === "turbo" ? "bg-primary/10 text-primary" : "text-foreground"}`}>
                           <div className="font-bold flex items-center gap-1.5"><Zap size={11} className="text-primary" />Turbo</div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">Deep reasoning & analysis</div>
                         </button>
@@ -2020,7 +2020,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                             <button
                               key={model.id}
                               onClick={() => { setAiMode(model.id); setShowModelMenu(false); }}
-                              className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-primary/10 last:border-0 ${normalizedAiMode === model.id.toLowerCase() ? "bg-emerald-500/10 text-emerald-300" : "text-foreground"}`}
+                              className={`w-full text-left px-4 py-3 text-xs hover:bg-muted border-b border-primary/10 last:border-0 ${normalizedAiMode === model.id.toLowerCase() ? "bg-emerald-500/10 text-emerald-300" : "text-foreground"}`}
                             >
                               <div className="font-bold flex items-center gap-1.5"><Sparkles size={11} className="text-emerald-400" />{model.name}</div>
                               <div className="text-[10px] text-muted-foreground mt-0.5">{model.description}</div>
@@ -2039,7 +2039,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           <div className="px-4 py-1.5 text-[9px] text-cyan-300 uppercase tracking-widest font-black border-b border-primary/10 bg-cyan-500/10">Agent Mode</div>
                           <button
                             onClick={() => { setAiMode("apex-agent-web"); setShowModelMenu(false); }}
-                            className={`w-full text-left px-4 py-3 text-xs hover:bg-white/5 border-b border-primary/10 last:border-0 ${normalizedAiMode === "apex-agent-web" ? "bg-cyan-500/12 text-cyan-300" : "text-foreground"}`}
+                            className={`w-full text-left px-4 py-3 text-xs hover:bg-muted border-b border-primary/10 last:border-0 ${normalizedAiMode === "apex-agent-web" ? "bg-cyan-500/12 text-cyan-300" : "text-foreground"}`}
                           >
                             <div className="font-bold flex items-center gap-1.5">
                               <Globe size={11} className="text-cyan-400" />
