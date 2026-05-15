@@ -515,7 +515,7 @@ export function PublicLegalChatWidget() {
                   type="submit"
                   size="icon"
                   disabled={isSending || limitReached || !input.trim()}
-                  className="h-11 w-11 bg-primary text-foreground hover:bg-primary"
+                  className="h-11 w-11 bg-primary text-primary-foreground hover:bg-primary"
                 >
                   {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 </Button>

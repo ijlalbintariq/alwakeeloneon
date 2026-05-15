@@ -1577,7 +1577,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               onClick={() => handleSend()}
               disabled={isLoading || isTranscribing}
               data-testid="button-send"
-              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2.5 bg-[#B45309] text-foreground rounded-lg hover:bg-[#A23E0A] shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold flex-shrink-0"
+              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2.5 bg-[#B45309] text-white rounded-lg hover:bg-[#A23E0A] shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold flex-shrink-0"
             >
               <Send size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
@@ -2041,11 +2041,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
 
                 {isLoading ? (
-                  <button onClick={handleStop} data-testid="button-stop" className="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-foreground h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300/60 flex-shrink-0">
+                  <button onClick={handleStop} data-testid="button-stop" className="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300/60 flex-shrink-0">
                     <Square size={18} fill="currentColor" />
                   </button>
                 ) : (
-                  <button onClick={() => handleSend()} disabled={isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-primary to-primary hover:from-primary hover:to-primary disabled:from-primary/50 disabled:to-primary/50 text-foreground h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 flex-shrink-0">
+                  <button onClick={() => handleSend()} disabled={isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-primary to-primary hover:from-primary hover:to-primary disabled:from-primary/50 disabled:to-primary/50 text-primary-foreground h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 flex-shrink-0">
                     <Send size={20} />
                   </button>
                 )}
