@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
-import { Scale, Send, Square, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2 } from "lucide-react";
+import { Scale, Send, Square, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2, History } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -1657,6 +1657,56 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         </div>
 
         <main className="h-full flex flex-col bg-background">
+
+          {/* Mobile thread drawer — visible only on screens < lg */}
+          <section className="lg:hidden border-b border-primary/10 bg-background/55 px-3 sm:px-6 py-2">
+            <details className="group">
+              <summary className="list-none cursor-pointer flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-primary">
+                <span className="inline-flex items-center gap-2">
+                  <History size={13} />
+                  Recent Consultations
+                  {threads.length > 0 && (
+                    <span className="text-[9px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">{threads.length}</span>
+                  )}
+                </span>
+                <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="pt-3 max-h-[40vh] overflow-y-auto pr-1 scrollbar-hide space-y-1">
+                <button
+                  onClick={handleClear}
+                  className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground w-full py-2.5 rounded-xl font-bold transition-all shadow-md shadow-primary/20 mb-3 text-xs"
+                >
+                  <PlusCircle size={14} />
+                  <span>New Consultation</span>
+                </button>
+                {threads.slice(0, 15).map((thread) => {
+                  const isActive = sharedThreadId === thread.id;
+                  return (
+                    <button
+                      key={thread.id}
+                      onClick={() => handleLoadThread(thread.id)}
+                      className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
+                        isActive
+                          ? "bg-primary/10 border-primary/25"
+                          : "hover:bg-muted border-transparent"
+                      }`}
+                    >
+                      {isActive ? <FolderOpen size={14} className="text-primary shrink-0" /> : <Folder size={14} className="text-muted-foreground shrink-0" />}
+                      <div className="min-w-0">
+                        <p className={`text-xs font-semibold truncate ${isActive ? "text-primary" : "text-foreground"}`}>
+                          {thread.title || "Untitled Consultation"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">{thread.createdAt ? new Date(thread.createdAt).toLocaleDateString() : "Recent"}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+                {threads.length === 0 && (
+                  <p className="text-xs text-muted-foreground px-2 py-3 text-center">No consultations yet. Start your first one above.</p>
+                )}
+              </div>
+            </details>
+          </section>
 
           <section className="xl:hidden border-b border-primary/10 bg-background/55 px-3 sm:px-6 py-2">
             <details className="group">
