@@ -162,7 +162,7 @@ export default function AdminPanelPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit" | "client-leads" | "broadcast">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "users" | "knowledge" | "case-law" | "statute-docs" | "audit" | "client-leads" | "broadcast" | "output-quality">("stats");
 
   const isSuperAdmin = user?.email?.toLowerCase() === "ijlalbintariq420@gmail.com";
 
@@ -197,7 +197,10 @@ export default function AdminPanelPage() {
           { id: "client-leads" as const, label: "Client Leads", icon: FileText },
           { id: "case-law" as const, label: "Case Law", icon: Scale },
           { id: "statute-docs" as const, label: "Statute Library", icon: FileText },
-          ...(isSuperAdmin ? [{ id: "broadcast" as const, label: "Broadcast", icon: Mail }] : []),
+          ...(isSuperAdmin ? [
+            { id: "output-quality" as const, label: "Output Quality", icon: Search },
+            { id: "broadcast" as const, label: "Broadcast", icon: Mail },
+          ] : []),
         ].map((tab) => (
           <Button
             key={tab.id}
@@ -220,6 +223,7 @@ export default function AdminPanelPage() {
       {activeTab === "case-law" && <CaseLawSection />}
       {activeTab === "statute-docs" && <StatuteDocumentsSection />}
       {activeTab === "broadcast" && isSuperAdmin && <BroadcastEmailSection />}
+      {activeTab === "output-quality" && isSuperAdmin && <OutputQualitySection />}
     </div>
   );
 }
@@ -690,6 +694,7 @@ function UsersSection() {
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [activityUserId, setActivityUserId] = useState<string | null>(null);
+  const isSuperAdmin = currentUser?.email?.toLowerCase() === "ijlalbintariq420@gmail.com";
   const [showAddForm, setShowAddForm] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -1093,6 +1098,7 @@ function UsersSection() {
                   <span>Reset Quota</span>
                 </Button>
 
+                {isSuperAdmin && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -1103,6 +1109,7 @@ function UsersSection() {
                   <Eye size={12} />
                   <span>{activityUserId === u.id ? "Hide" : "Activity"}</span>
                 </Button>
+                )}
 
                 <Button
                   size="icon"
@@ -1408,6 +1415,311 @@ function UserActivityPanel({ userId }: { userId: string }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+type QualityStats = {
+  totalLogs: number;
+  avgScore: number;
+  scoreDistribution: Record<number, number>;
+  byFeature: Array<{ feature: string; count: number; avgScore: number }>;
+  flagCounts: Record<string, number>;
+};
+
+type QualityLogItem = {
+  id: number;
+  userId: string;
+  feature: string;
+  model: string;
+  inputSnippet: string;
+  outputSnippet: string;
+  outputLength: number;
+  qualityScore: number;
+  qualityFlags: string[];
+  createdAt: string;
+  userEmail: string | null;
+  userFirstName: string | null;
+};
+
+const SCORE_COLORS: Record<number, string> = {
+  5: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  4: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  3: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  2: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  1: "bg-red-500/20 text-red-400 border-red-500/30",
+};
+
+const SCORE_LABELS: Record<number, string> = {
+  5: "Excellent",
+  4: "Good",
+  3: "Fair",
+  2: "Poor",
+  1: "Bad",
+};
+
+const FLAG_LABELS: Record<string, { label: string; color: string }> = {
+  too_short: { label: "Too Short", color: "text-red-400" },
+  possibly_truncated: { label: "Truncated", color: "text-orange-400" },
+  error_detected: { label: "Error", color: "text-red-400" },
+  no_citations: { label: "No Citations", color: "text-yellow-400" },
+  has_citations: { label: "Citations ✓", color: "text-emerald-400" },
+  poor_formatting: { label: "Poor Format", color: "text-orange-400" },
+  well_structured: { label: "Well Structured", color: "text-emerald-400" },
+  comprehensive: { label: "Comprehensive", color: "text-blue-400" },
+  raw_code_block: { label: "Raw Code", color: "text-orange-400" },
+  malformed_output: { label: "Malformed", color: "text-red-400" },
+};
+
+function OutputQualitySection() {
+  const [page, setPage] = useState(0);
+  const [featureFilter, setFeatureFilter] = useState<string>("");
+  const [scoreFilter, setScoreFilter] = useState<string>("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const { data: stats, isLoading: statsLoading } = useQuery<QualityStats>({
+    queryKey: ["/api/admin/output-quality/stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/output-quality/stats", { credentials: "include" });
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("limit", "20");
+  queryParams.set("offset", String(page * 20));
+  if (featureFilter) queryParams.set("feature", featureFilter);
+  if (scoreFilter === "poor") { queryParams.set("maxScore", "2"); }
+  else if (scoreFilter === "good") { queryParams.set("minScore", "4"); }
+
+  const { data: logsData, isLoading: logsLoading } = useQuery<{ items: QualityLogItem[]; total: number }>({
+    queryKey: ["/api/admin/output-quality", page, featureFilter, scoreFilter],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/output-quality?${queryParams.toString()}`, { credentials: "include" });
+      return res.json();
+    },
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Overview Cards */}
+      {statsLoading ? (
+        <div className="flex items-center justify-center py-16"><Loader2 className="animate-spin text-primary" size={24} /></div>
+      ) : stats ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Total Outputs</span>
+                <p className="text-2xl font-bold text-foreground">{(stats.totalLogs || 0).toLocaleString()}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Avg Score</span>
+                <p className={`text-2xl font-bold ${stats.avgScore >= 4 ? "text-emerald-400" : stats.avgScore >= 3 ? "text-yellow-400" : "text-red-400"}`}>
+                  {stats.avgScore}/5
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Good+ Rate</span>
+                <p className="text-2xl font-bold text-blue-400">
+                  {stats.totalLogs > 0 ? Math.round(((stats.scoreDistribution[4] || 0) + (stats.scoreDistribution[5] || 0)) / stats.totalLogs * 100) : 0}%
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Issues Rate</span>
+                <p className="text-2xl font-bold text-red-400">
+                  {stats.totalLogs > 0 ? Math.round(((stats.scoreDistribution[1] || 0) + (stats.scoreDistribution[2] || 0)) / stats.totalLogs * 100) : 0}%
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Score Distribution + Feature Breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-4">Score Distribution</span>
+                <div className="space-y-2">
+                  {[5, 4, 3, 2, 1].map((score) => {
+                    const cnt = stats.scoreDistribution[score] || 0;
+                    const pct = stats.totalLogs > 0 ? Math.round(cnt / stats.totalLogs * 100) : 0;
+                    return (
+                      <div key={score} className="flex items-center gap-3">
+                        <Badge className={`${SCORE_COLORS[score]} text-[9px] w-20 justify-center`}>{SCORE_LABELS[score]}</Badge>
+                        <div className="flex-1 bg-card rounded-full h-2">
+                          <div className={`h-2 rounded-full transition-all ${score >= 4 ? "bg-emerald-500" : score === 3 ? "bg-yellow-500" : "bg-red-500"}`} style={{ width: `${Math.max(pct, 1)}%` }} />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground w-16 text-right">{cnt.toLocaleString()} ({pct}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-4">Quality by Feature</span>
+                <div className="space-y-2.5">
+                  {(stats.byFeature || []).map((f) => (
+                    <div key={f.feature} className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-bold text-foreground">{FEATURE_LABELS[f.feature] || f.feature}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] text-muted-foreground">{f.count} outputs</span>
+                        <Badge className={`${SCORE_COLORS[Math.round(f.avgScore)] || SCORE_COLORS[3]} text-[9px]`}>
+                          {f.avgScore.toFixed(1)}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Common Flags */}
+          {Object.keys(stats.flagCounts || {}).length > 0 && (
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-3">Common Quality Flags (Recent 500)</span>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(stats.flagCounts).sort((a, b) => b[1] - a[1]).map(([flag, cnt]) => {
+                    const info = FLAG_LABELS[flag] || { label: flag, color: "text-muted-foreground" };
+                    return (
+                      <Badge key={flag} className={`${info.color} bg-card border-border text-[9px]`}>
+                        {info.label}: {cnt}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      ) : null}
+
+      {/* Output Log Table */}
+      <Card className="bg-card border-border rounded-[2rem]">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+              Output Log ({logsData?.total || 0})
+            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={featureFilter} onValueChange={(v) => { setFeatureFilter(v === "all" ? "" : v); setPage(0); }}>
+                <SelectTrigger className="w-32 bg-background border-border text-foreground rounded-xl text-xs">
+                  <SelectValue placeholder="All Features" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Features</SelectItem>
+                  <SelectItem value="chat">Chat</SelectItem>
+                  <SelectItem value="chat-apex">Chat Apex</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="contract">Contract</SelectItem>
+                  <SelectItem value="brief">Brief</SelectItem>
+                  <SelectItem value="summarize">Summarize</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={scoreFilter} onValueChange={(v) => { setScoreFilter(v === "all" ? "" : v); setPage(0); }}>
+                <SelectTrigger className="w-28 bg-background border-border text-foreground rounded-xl text-xs">
+                  <SelectValue placeholder="All Scores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Scores</SelectItem>
+                  <SelectItem value="good">Good (4-5)</SelectItem>
+                  <SelectItem value="poor">Issues (1-2)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {logsLoading ? (
+            <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin text-primary" size={20} /></div>
+          ) : (
+            <div className="space-y-2">
+              {(logsData?.items || []).map((log) => (
+                <div key={log.id}>
+                  <button
+                    className="w-full text-left rounded-xl border border-border hover:border-primary/30 bg-background px-4 py-3 transition-all"
+                    onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+                  >
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Badge className={`${SCORE_COLORS[log.qualityScore] || SCORE_COLORS[3]} text-[9px] flex-shrink-0`}>
+                          {log.qualityScore}/5
+                        </Badge>
+                        <span className="text-[10px] font-bold text-foreground">{FEATURE_LABELS[log.feature] || log.feature}</span>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{log.inputSnippet.slice(0, 80)}</span>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
+                        {(log.qualityFlags || []).slice(0, 3).map((f) => {
+                          const info = FLAG_LABELS[f] || { label: f, color: "text-muted-foreground" };
+                          return <span key={f} className={`text-[8px] font-bold ${info.color}`}>{info.label}</span>;
+                        })}
+                        <span className="text-[9px] text-muted-foreground">{log.userEmail || "Unknown"}</span>
+                        <span className="text-[9px] text-muted-foreground">{log.model}</span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {log.createdAt ? new Date(log.createdAt).toLocaleDateString("en-PK", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
+                        </span>
+                        {expandedId === log.id ? <ChevronUp size={12} className="text-muted-foreground" /> : <ChevronDown size={12} className="text-muted-foreground" />}
+                      </div>
+                    </div>
+                  </button>
+
+                  {expandedId === log.id && (
+                    <div className="mx-4 mt-1 border-l-2 border-primary/20 pl-4 space-y-3 py-3">
+                      <div className="rounded-lg bg-primary/10 border border-primary/20 px-3 py-2">
+                        <Badge className="bg-primary/20 text-primary border-primary/30 text-[8px] mb-1.5">USER INPUT</Badge>
+                        <p className="text-[11px] text-foreground whitespace-pre-wrap break-words">{log.inputSnippet}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted border border-border px-3 py-2">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[8px]">AI OUTPUT</Badge>
+                          <span className="text-[9px] text-muted-foreground">{(log.outputLength || 0).toLocaleString()} chars</span>
+                        </div>
+                        <p className="text-[11px] text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                          {log.outputSnippet}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {(log.qualityFlags || []).map((f) => {
+                          const info = FLAG_LABELS[f] || { label: f, color: "text-muted-foreground" };
+                          return <Badge key={f} className={`${info.color} bg-card border-border text-[8px]`}>{info.label}</Badge>;
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {(logsData?.items || []).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">No output logs yet. Logs will appear after users make AI queries.</p>
+              )}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {logsData && logsData.total > 20 && (
+            <div className="flex items-center justify-between gap-3 pt-4 border-t border-border mt-4">
+              <span className="text-[10px] text-muted-foreground">
+                Showing {page * 20 + 1}-{Math.min((page + 1) * 20, logsData.total)} of {logsData.total}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" className="text-[10px] text-foreground" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>Prev</Button>
+                <span className="text-[10px] text-muted-foreground">Page {page + 1}</span>
+                <Button size="sm" variant="ghost" className="text-[10px] text-foreground" onClick={() => setPage(page + 1)} disabled={(page + 1) * 20 >= logsData.total}>Next</Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

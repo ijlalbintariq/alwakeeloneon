@@ -252,6 +252,19 @@ export const usageTracking = pgTable("usage_tracking", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const aiOutputLog = pgTable("ai_output_log", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  feature: text("feature").notNull(),
+  model: text("model").notNull(),
+  inputSnippet: text("input_snippet").notNull(),
+  outputSnippet: text("output_snippet").notNull(),
+  outputLength: integer("output_length").notNull().default(0),
+  qualityScore: integer("quality_score").notNull().default(4),
+  qualityFlags: text("quality_flags").array().notNull().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const githubKnowledge = pgTable("github_knowledge", {
   id: serial("id").primaryKey(),
   filename: text("filename").notNull(),
@@ -547,6 +560,7 @@ export const insertCitationLinkSchema = createInsertSchema(citationLinks).omit({
 export const insertUnresolvedCitationSchema = createInsertSchema(unresolvedCitations).omit({ id: true, createdAt: true });
 export const insertQueryCacheSchema = createInsertSchema(queryCache).omit({ id: true, createdAt: true, hitCount: true });
 export const insertUsageTrackingSchema = createInsertSchema(usageTracking).omit({ id: true, createdAt: true });
+export const insertAiOutputLogSchema = createInsertSchema(aiOutputLog).omit({ id: true, createdAt: true });
 export const insertGithubKnowledgeSchema = createInsertSchema(githubKnowledge).omit({ id: true, syncedAt: true });
 export const insertStatuteDocumentSchema = createInsertSchema(statuteDocuments).omit({ id: true, createdAt: true });
 export const insertStatuteDocumentFileSchema = createInsertSchema(statuteDocumentFiles).omit({ id: true, createdAt: true });
@@ -608,6 +622,8 @@ export type QueryCache = typeof queryCache.$inferSelect;
 export type InsertQueryCache = z.infer<typeof insertQueryCacheSchema>;
 export type UsageTracking = typeof usageTracking.$inferSelect;
 export type InsertUsageTracking = z.infer<typeof insertUsageTrackingSchema>;
+export type AiOutputLog = typeof aiOutputLog.$inferSelect;
+export type InsertAiOutputLog = z.infer<typeof insertAiOutputLogSchema>;
 export type GithubKnowledge = typeof githubKnowledge.$inferSelect;
 export type InsertGithubKnowledge = z.infer<typeof insertGithubKnowledgeSchema>;
 export type StatuteDocument = typeof statuteDocuments.$inferSelect;

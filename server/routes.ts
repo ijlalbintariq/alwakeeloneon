@@ -5910,8 +5910,114 @@ async function logUsageCost(userId: string, feature: string, model: string, inpu
     const outputTokens = estimateTokens(outputText);
     const cost = estimateCost(model, inputText, outputText);
     await storage.logUsageCost(userId, feature, inputTokens, outputTokens, cost);
+    // Also log output quality (fire-and-forget)
+    logOutputQuality(userId, feature, model, inputText, outputText).catch(() => {});
   } catch (err) {
     console.error("[Cost] Error logging cost:", err);
+  }
+}
+
+// ── AI Output Quality Scoring Engine ──────────────────────────────────
+function scoreOutputQuality(feature: string, inputText: string, outputText: string): { score: number; flags: string[] } {
+  const flags: string[] = [];
+  let score = 4; // base score
+
+  const outLen = (outputText || "").length;
+  const isDraft = feature === "draft" || feature === "contract" || feature === "contract-drafting" || feature === "brief";
+  const isChat = feature === "chat" || feature === "chat-apex";
+
+  // 1. Too short
+  if (outLen < 30) {
+    flags.push("too_short");
+    score -= 2;
+  } else if (isDraft && outLen < 200) {
+    flags.push("possibly_truncated");
+    score -= 1;
+  } else if (isChat && outLen < 50) {
+    flags.push("too_short");
+    score -= 1;
+  }
+
+  // 2. Error indicators
+  const errorPatterns = [
+    /i\s+(apologize|cannot|can't|am unable)/i,
+    /error\s+(occurred|generating|processing)/i,
+    /failed\s+to\s+(generate|process|complete)/i,
+    /something\s+went\s+wrong/i,
+    /please\s+try\s+again/i,
+  ];
+  for (const pat of errorPatterns) {
+    if (pat.test(outputText)) {
+      flags.push("error_detected");
+      score -= 2;
+      break;
+    }
+  }
+
+  // 3. Legal citations presence (for chat & draft features)
+  if (isChat || isDraft) {
+    const hasCitations = /\b\d{4}\s+(PLD|SCMR|CLC|MLD|PCrLJ|PLC|YLR|PLJ|NLR|PCRLJ)\b/i.test(outputText)
+      || /\b(section|s\.)\s+\d+/i.test(outputText)
+      || /\b(Article|clause)\s+\d+/i.test(outputText);
+    if (!hasCitations && outLen > 200) {
+      flags.push("no_citations");
+      score -= 1;
+    }
+    if (hasCitations) {
+      flags.push("has_citations");
+      score += 1;
+    }
+  }
+
+  // 4. Formatting quality (for drafts)
+  if (isDraft && outLen > 300) {
+    const hasHeaders = /^#{1,3}\s/m.test(outputText) || /\*\*[A-Z]/.test(outputText);
+    const hasLists = /^[\-\*\d]\./m.test(outputText) || /\n\d+\.\s/m.test(outputText);
+    if (!hasHeaders && !hasLists) {
+      flags.push("poor_formatting");
+      score -= 1;
+    }
+    if (hasHeaders && hasLists) {
+      flags.push("well_structured");
+    }
+  }
+
+  // 5. Malformed output
+  if (/```json[\s\S]*?```/.test(outputText) && !/\{/.test(outputText.replace(/```json[\s\S]*?```/g, ""))) {
+    // Entire response is just a code block
+    flags.push("raw_code_block");
+    score -= 1;
+  }
+
+  // 6. Good length bonus
+  if (isDraft && outLen > 1500) {
+    flags.push("comprehensive");
+    score += 1;
+  }
+
+  return { score: Math.max(1, Math.min(5, score)), flags };
+}
+
+async function logOutputQuality(userId: string, feature: string, model: string, inputText: string, outputText: string) {
+  try {
+    // Extract user's actual question from input (skip system prompt)
+    const userInput = inputText.length > 500 ? inputText.slice(-500) : inputText;
+    const outputSnippet = (outputText || "").slice(0, 1500);
+    const { score, flags } = scoreOutputQuality(feature, inputText, outputText);
+
+    await storage.logOutputQuality({
+      userId,
+      feature,
+      model,
+      inputSnippet: userInput.slice(0, 500),
+      outputSnippet,
+      outputLength: (outputText || "").length,
+      qualityScore: score,
+      qualityFlags: flags,
+    });
+  } catch (err) {
+    // Never crash the main flow
+    console.error("[QualityLog] Error:", err);
   }
 }
 
@@ -16582,8 +16688,53 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     }
   });
 
-  // ── Admin Broadcast Email ─────────────────────────────────────────────
+  // ── AI Output Quality Monitoring (Super Admin Only) ──────────────────
   const SUPER_ADMIN_EMAIL = "ijlalbintariq420@gmail.com";
+
+  async function isSuperAdminRequest(req: any, res: any): Promise<boolean> {
+    if (!(await isAdmin(req, res))) return false;
+    const userId = getUserId(req);
+    if (!userId) { res.sendStatus(401); return false; }
+    const adminUser = await storage.getUserProfile(userId);
+    if (!adminUser || adminUser.email?.toLowerCase() !== SUPER_ADMIN_EMAIL) {
+      res.status(403).json({ message: "Super admin access required." });
+      return false;
+    }
+    return true;
+  }
+
+  app.get("/api/admin/output-quality/stats", async (req, res) => {
+    if (!(await isSuperAdminRequest(req, res))) return;
+    try {
+      const stats = await storage.getOutputQualityStats();
+      res.json(stats);
+    } catch (err) {
+      console.error("Error fetching output quality stats:", err);
+      res.status(500).json({ message: "Failed to fetch output quality stats" });
+    }
+  });
+
+  app.get("/api/admin/output-quality", async (req, res) => {
+    if (!(await isSuperAdminRequest(req, res))) return;
+    try {
+      const limitRaw = Number(req.query.limit);
+      const offsetRaw = Number(req.query.offset);
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, limitRaw)) : 30;
+      const offset = Number.isFinite(offsetRaw) ? Math.max(0, offsetRaw) : 0;
+      const filters: any = {};
+      if (req.query.feature && typeof req.query.feature === "string") filters.feature = req.query.feature;
+      if (req.query.userId && typeof req.query.userId === "string") filters.userId = req.query.userId;
+      if (req.query.minScore) filters.minScore = Number(req.query.minScore);
+      if (req.query.maxScore) filters.maxScore = Number(req.query.maxScore);
+      const result = await storage.getOutputQualityLogs(limit, offset, filters);
+      res.json(result);
+    } catch (err) {
+      console.error("Error fetching output quality logs:", err);
+      res.status(500).json({ message: "Failed to fetch output quality logs" });
+    }
+  });
+
+  // ── Admin Broadcast Email ─────────────────────────────────────────────
 
   app.post("/api/admin/broadcast-email", async (req, res) => {
     try {
