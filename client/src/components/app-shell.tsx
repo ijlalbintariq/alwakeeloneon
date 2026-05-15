@@ -244,7 +244,7 @@ function AppSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-2.5">
+      <SidebarFooter className="border-t border-sidebar-border p-2.5" style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}>
         <div className="mb-2 rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-1.5">
           <p className="text-[7px] uppercase tracking-[0.2em] text-sidebar-foreground/50 font-black">Signed in as</p>
           <p className="text-[11px] font-bold text-sidebar-foreground truncate">{user?.email || "Advocate"}</p>
