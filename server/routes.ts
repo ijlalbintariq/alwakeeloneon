@@ -13441,6 +13441,70 @@ ${boundedRaw}`;
     }
   });
 
+  // ── Admin: User Activity Dashboard ──────────────────────────────────
+  app.get("/api/admin/users/:id/activity", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const userId = req.params.id;
+      const user = await storage.getUserProfile(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const activity = await storage.getUserActivitySummary(userId);
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          subscriptionTier: user.subscriptionTier,
+          createdAt: user.createdAt,
+        },
+        ...activity,
+      });
+    } catch (err) {
+      console.error("Error fetching user activity:", err);
+      res.status(500).json({ message: "Failed to fetch user activity" });
+    }
+  });
+
+  app.get("/api/admin/users/:id/threads", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const userId = req.params.id;
+      const limitRaw = Number(req.query.limit);
+      const offsetRaw = Number(req.query.offset);
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, limitRaw)) : 30;
+      const offset = Number.isFinite(offsetRaw) ? Math.max(0, offsetRaw) : 0;
+      const result = await storage.getUserThreadsWithMessageCount(userId, limit, offset);
+      res.json(result);
+    } catch (err) {
+      console.error("Error fetching user threads:", err);
+      res.status(500).json({ message: "Failed to fetch user threads" });
+    }
+  });
+
+  app.get("/api/admin/users/:id/threads/:threadId/messages", async (req, res) => {
+    if (!(await isAdmin(req, res))) return;
+    try {
+      const threadId = Number(req.params.threadId);
+      if (!Number.isFinite(threadId)) return res.status(400).json({ message: "Invalid thread ID" });
+      // Verify the thread belongs to the user
+      const threadObj = await storage.getThread(threadId);
+      if (!threadObj || threadObj.userId !== req.params.id) {
+        return res.status(404).json({ message: "Thread not found for this user" });
+      }
+      const msgs = await storage.getMessages(threadId);
+      res.json(msgs.map((m: any) => ({
+        id: m.id,
+        role: m.role,
+        content: typeof m.content === "string" && m.content.length > 5000 ? m.content.slice(0, 5000) + "…" : m.content,
+        createdAt: m.createdAt,
+      })));
+    } catch (err) {
+      console.error("Error fetching thread messages:", err);
+      res.status(500).json({ message: "Failed to fetch thread messages" });
+    }
+  });
+
   app.get("/api/admin/audit-logs", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {

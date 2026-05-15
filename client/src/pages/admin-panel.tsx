@@ -6,7 +6,8 @@ import { Redirect } from "wouter";
 import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
   UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus,
-  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink, RotateCcw, Download, StopCircle, Mail, Send
+  Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink, RotateCcw, Download, StopCircle, Mail, Send,
+  Eye, MessageSquare, Clock, ChevronDown, ChevronUp
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -688,6 +689,7 @@ function UsersSection() {
   const { data: allUsers, isLoading } = useQuery<AdminUser[]>({ queryKey: ["/api/admin/users"] });
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [activityUserId, setActivityUserId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -1092,6 +1094,17 @@ function UsersSection() {
                 </Button>
 
                 <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-blue-300 text-[9px] uppercase tracking-widest font-black"
+                  onClick={() => setActivityUserId(activityUserId === u.id ? null : u.id)}
+                  data-testid={`button-view-activity-${u.id}`}
+                >
+                  <Eye size={12} />
+                  <span>{activityUserId === u.id ? "Hide" : "Activity"}</span>
+                </Button>
+
+                <Button
                   size="icon"
                   variant="ghost"
                   onClick={() => updateUserMutation.mutate({ userId: u.id, data: { isAdmin: !u.isAdmin } })}
@@ -1191,9 +1204,210 @@ function UsersSection() {
                 </div>
               )}
             </CardContent>
+            {activityUserId === u.id && (
+              <div className="border-t border-border">
+                <UserActivityPanel userId={u.id} />
+              </div>
+            )}
           </Card>
         ))}
       </div>
+    </div>
+  );
+}
+
+type UserActivity = {
+  user: { id: string; email: string; firstName: string | null; lastName: string | null; subscriptionTier: string; createdAt: string | null };
+  threadCount: number;
+  messageCount: number;
+  lastActive: string | null;
+  usageByFeature: Array<{ feature: string; totalQueries: number; totalInputTokens: number; totalOutputTokens: number; totalCost: string }>;
+  totalCost: string;
+  totalTokens: number;
+  totalQueries: number;
+  recentSearches: Array<{ id: number; type: string; query: string; createdAt: string | null }>;
+};
+
+type ThreadWithCount = {
+  id: number;
+  title: string;
+  messageCount: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+type ThreadMessage = {
+  id: number;
+  role: string;
+  content: string;
+  createdAt: string | null;
+};
+
+function UserActivityPanel({ userId }: { userId: string }) {
+  const [expandedThreadId, setExpandedThreadId] = useState<number | null>(null);
+  const [threadPage, setThreadPage] = useState(0);
+
+  const { data: activity, isLoading } = useQuery<UserActivity>({
+    queryKey: [`/api/admin/users/${userId}/activity`],
+  });
+
+  const { data: threadsData, isLoading: threadsLoading } = useQuery<{ items: ThreadWithCount[]; total: number }>({
+    queryKey: [`/api/admin/users/${userId}/threads`, threadPage],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/users/${userId}/threads?limit=10&offset=${threadPage * 10}`, { credentials: "include" });
+      return res.json();
+    },
+  });
+
+  const { data: threadMessages, isLoading: messagesLoading } = useQuery<ThreadMessage[]>({
+    queryKey: [`/api/admin/users/${userId}/threads/${expandedThreadId}/messages`],
+    enabled: !!expandedThreadId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="animate-spin text-primary" size={20} />
+      </div>
+    );
+  }
+
+  if (!activity) return null;
+
+  const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+  return (
+    <div className="p-5 space-y-5">
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Threads", value: activity.threadCount, icon: MessageSquare, color: "text-blue-400" },
+          { label: "Messages", value: activity.messageCount, icon: FileText, color: "text-emerald-400" },
+          { label: "AI Queries", value: activity.totalQueries, icon: BarChart3, color: "text-primary" },
+          { label: "Est. Cost", value: `$${activity.totalCost}`, icon: Scale, color: "text-cyan-400" },
+        ].map((s) => (
+          <div key={s.label} className="rounded-xl border border-border bg-background px-3 py-2.5">
+            <div className="flex items-center gap-1.5 mb-1">
+              <s.icon size={12} className={s.color} />
+              <span className="text-[8px] uppercase tracking-widest font-black text-muted-foreground">{s.label}</span>
+            </div>
+            <p className="text-lg font-bold text-foreground">{typeof s.value === "number" ? s.value.toLocaleString() : s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Last Active */}
+      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <Clock size={12} />
+        <span>Last active: {fmtDate(activity.lastActive)}</span>
+        <span>•</span>
+        <span>Total tokens: {activity.totalTokens.toLocaleString()}</span>
+      </div>
+
+      {/* Usage By Feature */}
+      {activity.usageByFeature.length > 0 && (
+        <div className="rounded-xl border border-border bg-background p-4">
+          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground mb-3">Usage by Feature</p>
+          <div className="space-y-2">
+            {activity.usageByFeature.map((f) => (
+              <div key={f.feature} className="flex items-center justify-between gap-3 text-xs">
+                <span className="font-bold text-foreground">{FEATURE_LABELS[f.feature] || f.feature}</span>
+                <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                  <span>{f.totalQueries} queries</span>
+                  <span>{(f.totalInputTokens + f.totalOutputTokens).toLocaleString()} tokens</span>
+                  <span className="text-emerald-400 font-bold">${f.totalCost}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Threads */}
+      <div className="rounded-xl border border-border bg-background p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground">
+            Consultation Threads ({threadsData?.total || 0})
+          </p>
+          {threadsData && threadsData.total > 10 && (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" className="text-[9px] text-foreground" onClick={() => setThreadPage(Math.max(0, threadPage - 1))} disabled={threadPage === 0}>Prev</Button>
+              <span className="text-[9px] text-muted-foreground">Page {threadPage + 1}</span>
+              <Button size="sm" variant="ghost" className="text-[9px] text-foreground" onClick={() => setThreadPage(threadPage + 1)} disabled={(threadPage + 1) * 10 >= (threadsData?.total || 0)}>Next</Button>
+            </div>
+          )}
+        </div>
+        {threadsLoading ? (
+          <div className="flex items-center justify-center py-4"><Loader2 className="animate-spin text-primary" size={16} /></div>
+        ) : (
+          <div className="space-y-1.5">
+            {(threadsData?.items || []).map((t) => (
+              <div key={t.id}>
+                <button
+                  className="w-full text-left rounded-lg border border-border hover:border-primary/30 bg-card px-3 py-2 transition-all"
+                  onClick={() => setExpandedThreadId(expandedThreadId === t.id ? null : t.id)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MessageSquare size={12} className="text-primary flex-shrink-0" />
+                      <span className="text-[11px] font-bold text-foreground truncate">{t.title}</span>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-[9px] text-muted-foreground">{t.messageCount} msgs</span>
+                      <span className="text-[9px] text-muted-foreground">{fmtDate(t.updatedAt)}</span>
+                      {expandedThreadId === t.id ? <ChevronUp size={12} className="text-muted-foreground" /> : <ChevronDown size={12} className="text-muted-foreground" />}
+                    </div>
+                  </div>
+                </button>
+
+                {/* Expanded Messages */}
+                {expandedThreadId === t.id && (
+                  <div className="ml-4 mt-1.5 border-l-2 border-primary/20 pl-4 space-y-2 max-h-[400px] overflow-y-auto scrollbar-hide">
+                    {messagesLoading ? (
+                      <div className="flex items-center justify-center py-4"><Loader2 className="animate-spin text-primary" size={14} /></div>
+                    ) : (
+                      (threadMessages || []).map((m) => (
+                        <div key={m.id} className={`rounded-lg px-3 py-2 ${m.role === "user" ? "bg-primary/10 border border-primary/20" : m.role === "assistant" ? "bg-muted border border-border" : "bg-card border border-border opacity-50"}`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge className={`text-[8px] rounded-md ${m.role === "user" ? "bg-primary/20 text-primary border-primary/30" : m.role === "assistant" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-card text-muted-foreground border-border"}`}>
+                              {m.role.toUpperCase()}
+                            </Badge>
+                            <span className="text-[9px] text-muted-foreground">{fmtDate(m.createdAt)}</span>
+                          </div>
+                          <p className="text-[11px] text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                            {m.content.length > 800 ? m.content.slice(0, 800) + "…" : m.content}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+            {(threadsData?.items || []).length === 0 && (
+              <p className="text-[11px] text-muted-foreground text-center py-4">No threads found</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Recent Searches */}
+      {activity.recentSearches.length > 0 && (
+        <div className="rounded-xl border border-border bg-background p-4">
+          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground mb-3">Recent Searches</p>
+          <div className="space-y-1.5">
+            {activity.recentSearches.map((s) => (
+              <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Badge className="text-[8px] bg-card border-border text-muted-foreground rounded-md flex-shrink-0">{s.type}</Badge>
+                  <span className="text-[11px] text-foreground truncate">{s.query}</span>
+                </div>
+                <span className="text-[9px] text-muted-foreground flex-shrink-0">{fmtDate(s.createdAt)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

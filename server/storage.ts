@@ -563,6 +563,20 @@ export interface IStorage {
   isUserAdmin(userId: string): Promise<boolean>;
   hasAnyAdmin(): Promise<boolean>;
   getSystemStats(): Promise<{ totalUsers: number; totalThreads: number; totalMessages: number; totalDocuments: number; totalKnowledge: number; totalCacheEntries: number; totalUsageThisMonth: number }>;
+  getUserActivitySummary(userId: string): Promise<{
+    threadCount: number;
+    messageCount: number;
+    lastActive: string | null;
+    usageByFeature: Array<{ feature: string; totalQueries: number; totalInputTokens: number; totalOutputTokens: number; totalCost: string }>;
+    totalCost: string;
+    totalTokens: number;
+    totalQueries: number;
+    recentSearches: Array<{ id: number; type: string; query: string; createdAt: Date | null }>;
+  }>;
+  getUserThreadsWithMessageCount(userId: string, limit: number, offset: number): Promise<{
+    items: Array<{ id: number; title: string; messageCount: number; createdAt: Date | null; updatedAt: Date | null }>;
+    total: number;
+  }>;
   getUserProfile(userId: string): Promise<User | undefined>;
   updateUserProfile(userId: string, data: { firstName?: string; lastName?: string; profileImageUrl?: string | null }): Promise<User | undefined>;
 
@@ -2767,6 +2781,106 @@ export class DatabaseStorage implements IStorage {
         citationJudgments: totalCitationJudgments,
       },
     };
+  }
+
+  async getUserActivitySummary(userId: string) {
+    // Thread + message counts
+    const userThreadRows = await db.select({ id: threads.id }).from(threads).where(eq(threads.userId, userId));
+    const threadCount = userThreadRows.length;
+    const threadIds = userThreadRows.map((t: { id: number }) => t.id);
+
+    let messageCount = 0;
+    if (threadIds.length > 0) {
+      const [msgRow] = await db.select({ total: count() }).from(messages).where(inArray(messages.threadId, threadIds));
+      messageCount = Number(msgRow?.total || 0);
+    }
+
+    // Last active (latest thread updatedAt)
+    const [latestThread] = await db.select({ updatedAt: threads.updatedAt })
+      .from(threads)
+      .where(eq(threads.userId, userId))
+      .orderBy(desc(threads.updatedAt))
+      .limit(1);
+    const lastActive = latestThread?.updatedAt?.toISOString() || null;
+
+    // Usage by feature (all time)
+    const usageByFeature = await db.select({
+      feature: usageTracking.feature,
+      totalQueries: count(),
+      totalInputTokens: sql<number>`COALESCE(SUM(${usageTracking.inputTokens}), 0)`,
+      totalOutputTokens: sql<number>`COALESCE(SUM(${usageTracking.outputTokens}), 0)`,
+      totalCost: sql<string>`COALESCE(SUM(CAST(${usageTracking.estimatedCost} AS DECIMAL)), 0)`,
+    })
+      .from(usageTracking)
+      .where(eq(usageTracking.userId, userId))
+      .groupBy(usageTracking.feature);
+
+    const totalCost = usageByFeature.reduce((sum: number, f: any) => sum + parseFloat(String(f.totalCost) || "0"), 0);
+    const totalTokens = usageByFeature.reduce((sum: number, f: any) => sum + (Number(f.totalInputTokens) || 0) + (Number(f.totalOutputTokens) || 0), 0);
+    const totalQueries = usageByFeature.reduce((sum: number, f: any) => sum + (Number(f.totalQueries) || 0), 0);
+
+    // Recent searches
+    const recentSearches = await db.select({
+      id: searchHistory.id,
+      type: searchHistory.type,
+      query: searchHistory.query,
+      createdAt: searchHistory.createdAt,
+    })
+      .from(searchHistory)
+      .where(eq(searchHistory.userId, userId))
+      .orderBy(desc(searchHistory.createdAt))
+      .limit(30);
+
+    return {
+      threadCount,
+      messageCount,
+      lastActive,
+      usageByFeature: usageByFeature.map((f: any) => ({
+        feature: f.feature,
+        totalQueries: Number(f.totalQueries) || 0,
+        totalInputTokens: Number(f.totalInputTokens) || 0,
+        totalOutputTokens: Number(f.totalOutputTokens) || 0,
+        totalCost: parseFloat(String(f.totalCost) || "0").toFixed(4),
+      })),
+      totalCost: totalCost.toFixed(4),
+      totalTokens,
+      totalQueries,
+      recentSearches,
+    };
+  }
+
+  async getUserThreadsWithMessageCount(userId: string, limit: number, offset: number) {
+    const safeLimit = Math.max(1, Math.min(100, limit));
+    const safeOffset = Math.max(0, offset);
+
+    const [totalRow] = await db.select({ total: count() }).from(threads).where(eq(threads.userId, userId));
+    const total = Number(totalRow?.total || 0);
+
+    const threadRows = await db.select({
+      id: threads.id,
+      title: threads.title,
+      createdAt: threads.createdAt,
+      updatedAt: threads.updatedAt,
+    })
+      .from(threads)
+      .where(eq(threads.userId, userId))
+      .orderBy(desc(threads.updatedAt))
+      .limit(safeLimit)
+      .offset(safeOffset);
+
+    const items = [];
+    for (const t of threadRows) {
+      const [msgRow] = await db.select({ total: count() }).from(messages).where(eq(messages.threadId, t.id));
+      items.push({
+        id: t.id,
+        title: t.title,
+        messageCount: Number(msgRow?.total || 0),
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+      });
+    }
+
+    return { items, total };
   }
 
   async getUserProfile(userId: string): Promise<User | undefined> {
