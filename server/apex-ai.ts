@@ -69,7 +69,7 @@ function getModelConfig(model: ApexModel) {
   switch (model) {
     case "apex-pro":
       return {
-        modelId: "kimi-k2.5",
+        modelId: "kimi-k2.6",
         temperature: 1,
         thinking: false,
         displayName: "Apex",
