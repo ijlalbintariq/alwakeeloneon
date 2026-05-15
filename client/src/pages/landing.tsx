@@ -94,7 +94,7 @@ export default function LandingPage() {
         "1 legal draft/month",
         "1 contract draft/month",
         "Mode access: Standard only",
-        "Output cap: Standard 900 tokens/request",
+        "Output cap: Standard 1,200 tokens/request",
         "Uploads: 100 files/month",
         "PDF upload in chat: up to 50 pages/day",
       ],
