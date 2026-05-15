@@ -2623,42 +2623,47 @@ export class DatabaseStorage implements IStorage {
     maxScore?: number;
     userId?: string;
   }): Promise<{ items: any[]; total: number }> {
-    const safeLimit = Math.max(1, Math.min(100, limit));
-    const safeOffset = Math.max(0, offset);
+    try {
+      const safeLimit = Math.max(1, Math.min(100, limit));
+      const safeOffset = Math.max(0, offset);
 
-    const conditions: any[] = [];
-    if (filters?.feature) conditions.push(eq(aiOutputLog.feature, filters.feature));
-    if (filters?.userId) conditions.push(eq(aiOutputLog.userId, filters.userId));
-    if (filters?.minScore !== undefined) conditions.push(gte(aiOutputLog.qualityScore, filters.minScore));
-    if (filters?.maxScore !== undefined) conditions.push(lte(aiOutputLog.qualityScore, filters.maxScore));
+      const conditions: any[] = [];
+      if (filters?.feature) conditions.push(eq(aiOutputLog.feature, filters.feature));
+      if (filters?.userId) conditions.push(eq(aiOutputLog.userId, filters.userId));
+      if (filters?.minScore !== undefined) conditions.push(gte(aiOutputLog.qualityScore, filters.minScore));
+      if (filters?.maxScore !== undefined) conditions.push(lte(aiOutputLog.qualityScore, filters.maxScore));
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [totalRow] = await db.select({ total: count() }).from(aiOutputLog).where(whereClause);
-    const total = Number(totalRow?.total || 0);
+      const [totalRow] = await db.select({ total: count() }).from(aiOutputLog).where(whereClause);
+      const total = Number(totalRow?.total || 0);
 
-    const rows = await db.select({
-      id: aiOutputLog.id,
-      userId: aiOutputLog.userId,
-      feature: aiOutputLog.feature,
-      model: aiOutputLog.model,
-      inputSnippet: aiOutputLog.inputSnippet,
-      outputSnippet: aiOutputLog.outputSnippet,
-      outputLength: aiOutputLog.outputLength,
-      qualityScore: aiOutputLog.qualityScore,
-      qualityFlags: aiOutputLog.qualityFlags,
-      createdAt: aiOutputLog.createdAt,
-      userEmail: users.email,
-      userFirstName: users.firstName,
-    })
-      .from(aiOutputLog)
-      .leftJoin(users, eq(aiOutputLog.userId, users.id))
-      .where(whereClause)
-      .orderBy(desc(aiOutputLog.createdAt))
-      .limit(safeLimit)
-      .offset(safeOffset);
+      const rows = await db.select({
+        id: aiOutputLog.id,
+        userId: aiOutputLog.userId,
+        feature: aiOutputLog.feature,
+        model: aiOutputLog.model,
+        inputSnippet: aiOutputLog.inputSnippet,
+        outputSnippet: aiOutputLog.outputSnippet,
+        outputLength: aiOutputLog.outputLength,
+        qualityScore: aiOutputLog.qualityScore,
+        qualityFlags: aiOutputLog.qualityFlags,
+        createdAt: aiOutputLog.createdAt,
+        userEmail: users.email,
+        userFirstName: users.firstName,
+      })
+        .from(aiOutputLog)
+        .leftJoin(users, eq(aiOutputLog.userId, users.id))
+        .where(whereClause)
+        .orderBy(desc(aiOutputLog.createdAt))
+        .limit(safeLimit)
+        .offset(safeOffset);
 
-    return { items: rows, total };
+      return { items: rows, total };
+    } catch (err) {
+      console.error("[QualityLogs] Table may not exist yet:", err);
+      return { items: [], total: 0 };
+    }
   }
 
   async getOutputQualityStats(): Promise<{
@@ -2668,45 +2673,51 @@ export class DatabaseStorage implements IStorage {
     byFeature: Array<{ feature: string; count: number; avgScore: number }>;
     flagCounts: Record<string, number>;
   }> {
-    const [totalRow] = await db.select({ total: count(), avg: sql<number>`AVG(${aiOutputLog.qualityScore})` }).from(aiOutputLog);
-    const totalLogs = Number(totalRow?.total || 0);
-    const avgScore = Number(totalRow?.avg || 0);
+    const empty = { totalLogs: 0, avgScore: 0, scoreDistribution: {}, byFeature: [], flagCounts: {} };
+    try {
+      const [totalRow] = await db.select({ total: count(), avg: sql<number>`AVG(${aiOutputLog.qualityScore})` }).from(aiOutputLog);
+      const totalLogs = Number(totalRow?.total || 0);
+      const avgScore = Number(totalRow?.avg || 0);
 
-    // Score distribution
-    const distRows = await db.select({
-      score: aiOutputLog.qualityScore,
-      cnt: count(),
-    }).from(aiOutputLog).groupBy(aiOutputLog.qualityScore);
-    const scoreDistribution: Record<number, number> = {};
-    for (const r of distRows) {
-      scoreDistribution[r.score] = Number(r.cnt);
-    }
-
-    // By feature
-    const featureRows = await db.select({
-      feature: aiOutputLog.feature,
-      cnt: count(),
-      avg: sql<number>`AVG(${aiOutputLog.qualityScore})`,
-    }).from(aiOutputLog).groupBy(aiOutputLog.feature);
-    const byFeature = featureRows.map((f: any) => ({
-      feature: f.feature,
-      count: Number(f.cnt),
-      avgScore: Number(Number(f.avg).toFixed(2)),
-    }));
-
-    // Flag counts — aggregate from recent 500 entries
-    const recentFlags = await db.select({ qualityFlags: aiOutputLog.qualityFlags })
-      .from(aiOutputLog)
-      .orderBy(desc(aiOutputLog.createdAt))
-      .limit(500);
-    const flagCounts: Record<string, number> = {};
-    for (const row of recentFlags) {
-      for (const flag of (row.qualityFlags || [])) {
-        flagCounts[flag] = (flagCounts[flag] || 0) + 1;
+      // Score distribution
+      const distRows = await db.select({
+        score: aiOutputLog.qualityScore,
+        cnt: count(),
+      }).from(aiOutputLog).groupBy(aiOutputLog.qualityScore);
+      const scoreDistribution: Record<number, number> = {};
+      for (const r of distRows) {
+        scoreDistribution[r.score] = Number(r.cnt);
       }
-    }
 
-    return { totalLogs, avgScore: Number(avgScore.toFixed(2)), scoreDistribution, byFeature, flagCounts };
+      // By feature
+      const featureRows = await db.select({
+        feature: aiOutputLog.feature,
+        cnt: count(),
+        avg: sql<number>`AVG(${aiOutputLog.qualityScore})`,
+      }).from(aiOutputLog).groupBy(aiOutputLog.feature);
+      const byFeature = featureRows.map((f: any) => ({
+        feature: f.feature,
+        count: Number(f.cnt),
+        avgScore: Number(Number(f.avg).toFixed(2)),
+      }));
+
+      // Flag counts — aggregate from recent 500 entries
+      const recentFlags = await db.select({ qualityFlags: aiOutputLog.qualityFlags })
+        .from(aiOutputLog)
+        .orderBy(desc(aiOutputLog.createdAt))
+        .limit(500);
+      const flagCounts: Record<string, number> = {};
+      for (const row of recentFlags) {
+        for (const flag of (row.qualityFlags || [])) {
+          flagCounts[flag] = (flagCounts[flag] || 0) + 1;
+        }
+      }
+
+      return { totalLogs, avgScore: Number(avgScore.toFixed(2)), scoreDistribution, byFeature, flagCounts };
+    } catch (err) {
+      console.error("[QualityStats] Table may not exist yet:", err);
+      return empty;
+    }
   }
 
   async getAllUsers(): Promise<User[]> {

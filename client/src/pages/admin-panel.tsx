@@ -1481,6 +1481,7 @@ function OutputQualitySection() {
     queryKey: ["/api/admin/output-quality/stats"],
     queryFn: async () => {
       const res = await fetch("/api/admin/output-quality/stats", { credentials: "include" });
+      if (!res.ok) return { totalLogs: 0, avgScore: 0, scoreDistribution: {}, byFeature: [], flagCounts: {} };
       return res.json();
     },
     refetchInterval: 30000,
@@ -1497,6 +1498,7 @@ function OutputQualitySection() {
     queryKey: ["/api/admin/output-quality", page, featureFilter, scoreFilter],
     queryFn: async () => {
       const res = await fetch(`/api/admin/output-quality?${queryParams.toString()}`, { credentials: "include" });
+      if (!res.ok) return { items: [], total: 0 };
       return res.json();
     },
   });
@@ -1527,7 +1529,7 @@ function OutputQualitySection() {
               <CardContent className="p-6">
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Good+ Rate</span>
                 <p className="text-2xl font-bold text-blue-400">
-                  {stats.totalLogs > 0 ? Math.round(((stats.scoreDistribution[4] || 0) + (stats.scoreDistribution[5] || 0)) / stats.totalLogs * 100) : 0}%
+                  {stats.totalLogs > 0 ? Math.round((((stats.scoreDistribution || {})[4] || 0) + ((stats.scoreDistribution || {})[5] || 0)) / stats.totalLogs * 100) : 0}%
                 </p>
               </CardContent>
             </Card>
@@ -1535,7 +1537,7 @@ function OutputQualitySection() {
               <CardContent className="p-6">
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Issues Rate</span>
                 <p className="text-2xl font-bold text-red-400">
-                  {stats.totalLogs > 0 ? Math.round(((stats.scoreDistribution[1] || 0) + (stats.scoreDistribution[2] || 0)) / stats.totalLogs * 100) : 0}%
+                  {stats.totalLogs > 0 ? Math.round((((stats.scoreDistribution || {})[1] || 0) + ((stats.scoreDistribution || {})[2] || 0)) / stats.totalLogs * 100) : 0}%
                 </p>
               </CardContent>
             </Card>
@@ -1548,7 +1550,7 @@ function OutputQualitySection() {
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-4">Score Distribution</span>
                 <div className="space-y-2">
                   {[5, 4, 3, 2, 1].map((score) => {
-                    const cnt = stats.scoreDistribution[score] || 0;
+                    const cnt = (stats.scoreDistribution || {})[score] || 0;
                     const pct = stats.totalLogs > 0 ? Math.round(cnt / stats.totalLogs * 100) : 0;
                     return (
                       <div key={score} className="flex items-center gap-3">
