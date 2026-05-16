@@ -145,8 +145,9 @@ function buildDailyDigestHtml(userName: string, items: DiaryEmailItem[], dateLab
         </tr>
         <tr>
           <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #24344f;text-align:center;">
-            <p style="margin:0;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">Al Wakeelo • Daily Diary Reminder</p>
-            <p style="margin:4px 0 0;color:#4a6080;font-size:9px;">Manage email preferences in Settings</p>
+            <p style="margin:0 0 4px;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">Al Wakeelo • Daily Diary Reminder</p>
+            <p style="margin:0 0 4px;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
+            <p style="margin:0;color:#4a6080;font-size:9px;">Manage email preferences in Settings</p>
           </td>
         </tr>
       </table>
@@ -227,8 +228,9 @@ function buildWeeklyDigestHtml(userName: string, itemsByDay: Record<string, Diar
         </tr>
         <tr>
           <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #24344f;text-align:center;">
-            <p style="margin:0;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">Al Wakeelo • Weekly Diary Summary</p>
-            <p style="margin:4px 0 0;color:#4a6080;font-size:9px;">Manage email preferences in Settings</p>
+            <p style="margin:0 0 4px;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">Al Wakeelo • Weekly Diary Summary</p>
+            <p style="margin:0 0 4px;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
+            <p style="margin:0;color:#4a6080;font-size:9px;">Manage email preferences in Settings</p>
           </td>
         </tr>
       </table>

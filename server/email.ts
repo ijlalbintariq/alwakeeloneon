@@ -185,9 +185,10 @@ export async function sendPasswordResetEmail(
           </tr>
           <tr>
             <td style="padding:16px 28px;background:#0b1220;border-top:1px solid #1f2937;text-align:center;">
-              <p style="margin:0;color:#475569;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
+              <p style="margin:0 0 6px;color:#475569;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
                 Al Wakeelo • Secure Authentication Notice
               </p>
+              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#fbbf24;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
             </td>
           </tr>
         </table>
@@ -196,7 +197,7 @@ export async function sendPasswordResetEmail(
   </table>
 </body>
 </html>`,
-    text: `Hi ${name},\n\nWe received a request to reset the password for your Al Wakeelo account.\n\nClick the link below to set a new password:\n${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can safely ignore this email.\n\n- Al Wakeelo`,
+    text: `Hi ${name},\n\nWe received a request to reset the password for your Al Wakeelo account.\n\nClick the link below to set a new password:\n${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can safely ignore this email.\n\nNeed help? Contact us at support@alwakeelo.com\n\n- Al Wakeelo`,
   });
   if (!sendResult.ok) {
     console.error("[Email] Failed to send password reset email:", sendResult.error);
@@ -273,9 +274,10 @@ export async function sendEmailVerificationEmail(
           </tr>
           <tr>
             <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #24344f;text-align:center;">
-              <p style="margin:0;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
+              <p style="margin:0 0 6px;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
                 Al Wakeelo • Verification Notice
               </p>
+              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
             </td>
           </tr>
         </table>
@@ -284,7 +286,7 @@ export async function sendEmailVerificationEmail(
   </table>
 </body>
 </html>`,
-    text: `Assalam-o-Alaikum ${name},\n\nPlease verify your email to activate your Al Wakeelo account.\n\nVerify link:\n${verifyUrl}\n\nThis link expires in 24 hours.\n\n- Al Wakeelo`,
+    text: `Assalam-o-Alaikum ${name},\n\nPlease verify your email to activate your Al Wakeelo account.\n\nVerify link:\n${verifyUrl}\n\nThis link expires in 24 hours.\n\nNeed help? Contact us at support@alwakeelo.com\n\n- Al Wakeelo`,
   });
 
   if (!sendResult.ok) {
@@ -848,7 +850,8 @@ export async function sendCaseLeadNotification(args: {
           </div>
         </td></tr>
         <tr><td style="padding:16px 28px 24px;text-align:center;border-top:1px solid #1e2d47;">
-          <p style="margin:0;color:#475569;font-size:11px;">Al Wakeelo • Case Lead Notification</p>
+          <p style="margin:0 0 6px;color:#475569;font-size:11px;">Al Wakeelo • Case Lead Notification</p>
+          <p style="margin:0;color:#64748b;font-size:11px;">Support: <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
         </td></tr>
       </table>
     </td></tr>
