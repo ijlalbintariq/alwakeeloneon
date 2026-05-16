@@ -105,7 +105,7 @@ const TOKEN_LIMITS = {
   "search-statutes": 2048,
   summarize: 3072,
   brief: 6144,
-  draft: 8192,
+  draft: 16384,
   "contract-drafting": 4096,
 };
 
@@ -10832,9 +10832,20 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
             }
           : LEGAL_DRAFTING_DOC_TYPES[selectedDocType as LegalDraftingDocType];
 
+        // --- Query Refinement for drafts ---
+        // Refine the user's prompt into structured legal language for better
+        // knowledge retrieval (statute detection, case law matching).
+        const draftRefineResult = await refineUserQuery(safePrompt, [], 3000).catch(() => ({
+          refined: safePrompt, wasRefined: false, elapsedMs: 0,
+        }));
+        const refinedDraftPrompt = draftRefineResult.refined;
+        if (draftRefineResult.wasRefined) {
+          console.log(`[LegalDrafting:QueryRefine] Refined in ${draftRefineResult.elapsedMs}ms`);
+        }
+
         const legalKnowledgeQuery = trimTextToTokenBudget(
           [
-            safePrompt,
+            refinedDraftPrompt,
             profile.label,
             jurisdiction || "",
             baseDraftText.slice(0, 2200),
@@ -10844,10 +10855,35 @@ Always produce a complete court-ready pleading following Pakistani legal draftin
             .join("\n"),
           2600,
         );
-        const legalKnowledgeContextRaw = await gatherKnowledgeContextV2(legalKnowledgeQuery, userId);
-        const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 5000);
-        const legalKnowledgeContextBlock = legalKnowledgeContext
-          ? legalKnowledgeContext
+
+        // --- Tool Judgment Search for drafts ---
+        // Same as chat module: AI picks 2-3 search queries, finds 10-25 verified
+        // judgments from the DB. Critical for the "cite 4-8 case law" requirement.
+        const draftToolSearchPromise = isDeepSeekAvailable()
+          ? runToolJudgmentSearch(refinedDraftPrompt, (q, n) => {
+              console.log(`[LegalDrafting:ToolSearch] query="${q}" found=${n}`);
+            }, undefined, 14000).catch((err) => {
+              console.warn("[LegalDrafting:ToolSearch] Failed:", err?.message || err);
+              return { contextString: "", foundCount: 0, queriesUsed: [] as string[], verifiedCitations: [] as string[], verifiedTitles: [] as Array<{title:string;citation:string}>, verifiedHits: [] as Array<{citation:string;title:string;court:string;summary:string}> };
+            })
+          : Promise.resolve({ contextString: "", foundCount: 0, queriesUsed: [] as string[], verifiedCitations: [] as string[], verifiedTitles: [] as Array<{title:string;citation:string}>, verifiedHits: [] as Array<{citation:string;title:string;court:string;summary:string}> });
+
+        const [legalKnowledgeContextRaw, draftToolSearchResult] = await Promise.all([
+          gatherKnowledgeContextV2(legalKnowledgeQuery, userId),
+          draftToolSearchPromise,
+        ]);
+        const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 8000);
+
+        // Merge tool-searched judgments into the knowledge context block
+        const toolSearchBlock = draftToolSearchResult.contextString
+          ? `\n\n${draftToolSearchResult.contextString}`
+          : "";
+        if (draftToolSearchResult.foundCount > 0) {
+          console.log(`[LegalDrafting:ToolSearch:Done] found=${draftToolSearchResult.foundCount} queries=${JSON.stringify(draftToolSearchResult.queriesUsed)}`);
+        }
+
+        const legalKnowledgeContextBlock = (legalKnowledgeContext || toolSearchBlock)
+          ? `${legalKnowledgeContext}${toolSearchBlock}`
           : "\n\nREFERENCE MATERIALS:\n- No high-confidence internal matches were found for this prompt.\n- If a citation is unavailable in internal references, omit it (do not use placeholders).";
 
         const typeLockInstruction = selectedDocType
@@ -10889,7 +10925,7 @@ Response format:
 - If draft-related, add "Suggested Improvements:" with numbered points.
 - Keep concise but substantive for Pakistani legal practice.`;
 
-          const analysisResult = await callLegalDraftingAI(analysisSystemInstruction, analysisInput, Math.min(TOKEN_LIMITS.draft, 1800), {
+          const analysisResult = await callLegalDraftingAI(analysisSystemInstruction, analysisInput, Math.min(TOKEN_LIMITS.draft, 3500), {
             timeoutProfile: "analysis",
             temperature: 0.2,
           });
@@ -10978,7 +11014,7 @@ ${attachmentContext || "[No attachment context provided]"}
 INTERNAL DATABASE REFERENCES (AUTO-LOADED):
 ${legalKnowledgeContextBlock}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
 
-          const targetedResult = await callLegalDraftingAI(sysInstruction, targetedInput, Math.min(TOKEN_LIMITS.draft, 1800), {
+          const targetedResult = await callLegalDraftingAI(sysInstruction, targetedInput, Math.min(TOKEN_LIMITS.draft, 3500), {
             timeoutProfile: "analysis",
             temperature: 0.2,
           });
