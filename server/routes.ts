@@ -4792,15 +4792,51 @@ function normalizeCourtReadyDraftingText(content: string): string {
     body = body.replace(/^[,;:.-]+\s*/, "").trim();
     if (!body) body = "[______].";
 
-    if (/^that\s+the\b/i.test(body)) {
+    // Already properly formatted
+    if (/^That the\s/i.test(body)) {
       body = `That the ${body.replace(/^that\s+the\s*/i, "").trim()}`;
-    } else {
-      body = body.replace(/^that\s+/i, "");
-      body = body.replace(/^the\s+/i, "");
-      body = `That the ${body.trim()}`;
+    }
+    // Starts with "That" but not "That the"
+    else if (/^That\s/i.test(body)) {
+      const afterThat = body.replace(/^that\s+/i, "").trim();
+      // If next word is an article/preposition that pairs badly with "That the", keep "That" only
+      if (/^(the|a|an|at|on|in|no|it|he|she|this|these|those|said|such|further|aforesaid)\b/i.test(afterThat)) {
+        body = `That ${afterThat}`;
+      } else {
+        body = `That the ${afterThat}`;
+      }
+    }
+    // Doesn't start with "That" at all — prepend intelligently
+    else {
+      // Don't blindly prepend "That the" — check what the sentence starts with
+      const lower = body.toLowerCase();
+      if (/^(the |a |an |at |on |in |no |it |he |she |this |these |those |said |such |further |aforesaid )/.test(lower)) {
+        // These already have an article/preposition — just add "That"
+        body = `That ${body}`;
+      } else if (/^(applicant|petitioner|plaintiff|accused|respondent|defendant|complainant|deponent)/i.test(lower)) {
+        body = `That the ${body}`;
+      } else {
+        body = `That the ${body}`;
+      }
     }
 
-    body = body.replace(/\s{2,}/g, " ").trim();
+    // Post-cleanup: fix known broken grammar patterns
+    body = body
+      .replace(/\bThat the the\b/gi, "That the")
+      .replace(/\bThat the at the\b/gi, "That at the")
+      .replace(/\bThat the no\b/gi, "That no")
+      .replace(/\bThat the it\b/gi, "That it")
+      .replace(/\bThat the he\b/gi, "That he")
+      .replace(/\bThat the she\b/gi, "That she")
+      .replace(/\bThat the this\b/gi, "That this")
+      .replace(/\bThat the these\b/gi, "That these")
+      .replace(/\bThat the those\b/gi, "That those")
+      .replace(/\bThat the further\b/gi, "That further")
+      .replace(/\bThat the aforesaid\b/gi, "That the aforesaid")
+      .replace(/\bThat the on\b/gi, "That on")
+      .replace(/\bThat the in\b/gi, "That in")
+      .replace(/\s{2,}/g, " ")
+      .trim();
     return marker ? `${marker} ${body}` : body;
   };
 
@@ -10286,25 +10322,25 @@ ${headingOrder}`;
 
     if (supportingDocs.length === 0) return draftText;
 
-    // Build the index table in Pakistani court format
-    // S.No. 1 = Petition itself (no annexure letter)
-    // S.No. 2 = Affidavit (no annexure letter)
-    // S.No. 3+ = Supporting documents (Annexure-A, B, C...)
-    const tableRows: string[] = [];
+    // Build HTML table matching Pakistani court INDEX OF DOCUMENTS format
+    const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     let sno = 1;
-    tableRows.push(`${sno}.      ${petitionLabel}                              ---`);
+    let tableRows = '';
+    // Row 1: Petition itself (no annexure letter)
+    tableRows += `<tr><td>${sno}.</td><td>${escHtml(petitionLabel)}</td><td>---</td><td></td></tr>`;
     sno++;
-    tableRows.push(`${sno}.      Affidavit                                           ---`);
+    // Row 2: Affidavit (no annexure letter)
+    tableRows += `<tr><td>${sno}.</td><td>Affidavit</td><td>---</td><td></td></tr>`;
     sno++;
+    // Supporting documents with Annexure letters
     for (let i = 0; i < supportingDocs.length; i++) {
-      tableRows.push(`${sno}.      ${supportingDocs[i]}                    ${letter(i)}`);
+      tableRows += `<tr><td>${sno}.</td><td>${escHtml(supportingDocs[i])}</td><td>${letter(i)}</td><td></td></tr>`;
       sno++;
     }
 
-    const indexBlock = `\nINDEX OF DOCUMENTS\n\nS.No.    Description of Documents                          Annexures\n${tableRows.join("\n")}\n`;
+    const indexBlock = `\n\n<!-- INDEX_TABLE_START -->\n<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin:16px 0;"><thead><tr style="background:#1a2332;color:#fff;"><th style="padding:8px 12px;text-align:left;font-weight:bold;">S.No.</th><th style="padding:8px 12px;text-align:left;font-weight:bold;">Description of Documents</th><th style="padding:8px 12px;text-align:center;font-weight:bold;">Annexures</th><th style="padding:8px 12px;text-align:center;font-weight:bold;">Page No.</th></tr></thead><tbody>${tableRows}</tbody></table>\n<!-- INDEX_TABLE_END -->\n\n`;
 
-    // Insert AFTER the cause title heading (after "PETITION UNDER..." or similar title line)
-    // but BEFORE "RESPECTFULLY SHEWETH" or the first "That the" or first numbered fact
+    // Insert AFTER the cause title heading but BEFORE "RESPECTFULLY SHEWETH"
     const insertionPatterns = [
       /\n(\s*RESPECTFULLY SHEWETH\s*:?\s*\n)/i,
       /\n(\s*1\.\s+That the)/i,
@@ -10314,16 +10350,16 @@ ${headingOrder}`;
     for (const pattern of insertionPatterns) {
       const match = draftText.match(pattern);
       if (match && match.index !== undefined) {
-        return draftText.slice(0, match.index) + "\n" + indexBlock + draftText.slice(match.index);
+        return draftText.slice(0, match.index) + indexBlock + draftText.slice(match.index);
       }
     }
 
     // Fallback: insert after first 15 lines (after heading block)
     const lines = draftText.split("\n");
     if (lines.length > 15) {
-      return lines.slice(0, 15).join("\n") + "\n" + indexBlock + "\n" + lines.slice(15).join("\n");
+      return lines.slice(0, 15).join("\n") + indexBlock + lines.slice(15).join("\n");
     }
-    return draftText + "\n" + indexBlock;
+    return draftText + indexBlock;
   }
 
   const PAKISTANI_JUDICIAL_FORMAT_GUIDANCE = `You are a highly skilled Pakistani litigation lawyer with extensive experience drafting pleadings before Civil Courts, Family Courts, Sessions Courts, High Courts, and the Supreme Court of Pakistan.

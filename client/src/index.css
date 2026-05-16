@@ -277,13 +277,14 @@
   color: hsl(210 40% 80%);
 }
 
-/* ─── Tiptap Legal Draft Editor ─── */
+/* ─── Tiptap Legal Draft Editor — Pakistani Court Style ─── */
 .legal-draft-editor {
   font-family: 'Times New Roman', 'TimesNewRomanPSMT', serif;
   font-size: 13pt;
-  line-height: 1.8;
+  line-height: 1.3;
   color: hsl(var(--foreground));
-  padding: 2rem 2.5rem;
+  text-align: justify;
+  padding: 1in 1in 1in 1.25in;
   min-height: 500px;
   cursor: text;
 }
@@ -294,13 +295,14 @@
 
 .legal-draft-editor h1 {
   font-family: 'Times New Roman', 'TimesNewRomanPSMT', serif;
-  font-size: 16pt;
+  font-size: 14pt;
   font-weight: 700;
   text-transform: uppercase;
-  margin-bottom: 1.2rem;
-  margin-top: 0.5rem;
-  letter-spacing: 0.04em;
-  line-height: 1.4;
+  text-align: center;
+  margin-bottom: 0.3rem;
+  margin-top: 0.2rem;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
 }
 
 .legal-draft-editor h2 {
@@ -308,39 +310,48 @@
   font-size: 14pt;
   font-weight: 700;
   text-transform: uppercase;
-  margin-top: 1.5rem;
-  margin-bottom: 0.6rem;
-  letter-spacing: 0.02em;
-  line-height: 1.4;
+  text-align: left;
+  margin-top: 0.8rem;
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
 }
 
 .legal-draft-editor h3 {
   font-family: 'Times New Roman', 'TimesNewRomanPSMT', serif;
   font-size: 13pt;
-  font-weight: 600;
-  margin-top: 1rem;
-  margin-bottom: 0.4rem;
-  line-height: 1.4;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  margin-bottom: 0.2rem;
+  line-height: 1.35;
 }
 
 .legal-draft-editor p {
-  margin-bottom: 0.65rem;
+  margin-bottom: 6px;
+  text-indent: 0;
 }
 
 .legal-draft-editor ol {
   list-style-type: decimal;
-  padding-left: 2rem;
-  margin-bottom: 0.65rem;
+  padding-left: 25px;
+  margin-bottom: 4px;
+  margin-top: 2px;
+}
+
+.legal-draft-editor ol + ol {
+  /* Prevent visual gap between consecutive ordered lists */
+  margin-top: 0;
 }
 
 .legal-draft-editor ul {
   list-style-type: disc;
-  padding-left: 2rem;
-  margin-bottom: 0.65rem;
+  padding-left: 25px;
+  margin-bottom: 4px;
 }
 
 .legal-draft-editor li {
-  margin-bottom: 0.35rem;
+  margin-bottom: 3px;
+  text-align: justify;
 }
 
 .legal-draft-editor li p {
@@ -349,8 +360,8 @@
 
 .legal-draft-editor blockquote {
   border-left: 3px solid hsl(var(--primary) / 0.5);
-  padding-left: 1.25rem;
-  margin: 1rem 0;
+  padding-left: 1rem;
+  margin: 0.5rem 0;
   font-style: italic;
   color: hsl(var(--muted-foreground));
 }
@@ -365,7 +376,43 @@
 
 .legal-draft-editor u {
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 2px;
+}
+
+/* ── Annexure Table Styling ── */
+.legal-draft-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 12pt;
+}
+
+.legal-draft-editor table th,
+.legal-draft-editor table td {
+  border: 1px solid #333;
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.legal-draft-editor table th {
+  background: #1a2332;
+  color: #fff;
+  font-weight: 700;
+  font-size: 11pt;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.legal-draft-editor table td:first-child {
+  width: 50px;
+  text-align: center;
+}
+
+.legal-draft-editor table td:nth-child(3),
+.legal-draft-editor table td:nth-child(4) {
+  width: 80px;
+  text-align: center;
 }
 
 /* Placeholder text */
@@ -386,6 +433,46 @@
 /* Tiptap gapcursor */
 .legal-draft-editor .ProseMirror-gapcursor::after {
   border-top-color: hsl(var(--primary));
+}
+
+/* ── Print / PDF Export — Legal Paper (8.5 × 14 in) ── */
+@media print {
+  @page {
+    size: Legal;
+    margin: 1in 1in 1in 1.25in;
+  }
+
+  body {
+    font-family: 'Times New Roman', serif;
+    font-size: 13pt;
+    line-height: 1.3;
+    text-align: justify;
+    color: #000;
+  }
+
+  .legal-draft-editor {
+    padding: 0;
+    color: #000;
+  }
+
+  .legal-draft-editor h1,
+  .legal-draft-editor h2,
+  .legal-draft-editor h3 {
+    color: #000;
+  }
+
+  .legal-draft-editor table th {
+    background: #000 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page break before affidavit / verification sections */
+  .legal-draft-editor .page-break,
+  .legal-draft-editor [data-page-break] {
+    page-break-before: always;
+  }
 }
 
 /* ── Citation inline chip ────────────────────────────────────────────── */

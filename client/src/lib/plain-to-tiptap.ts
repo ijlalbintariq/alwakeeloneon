@@ -2,11 +2,13 @@
  * Converts plain-text legal drafts (AI output or legacy saved text)
  * into structured HTML suitable for the Tiptap editor.
  *
- * Recognises Pakistani court formatting conventions:
+ * Pakistani court formatting conventions:
  *  - "IN THE COURT …" / "IN THE HIGH COURT …" → centred H1
  *  - ALL-CAPS headings (PRAYER, GROUNDS, VERIFICATION …) → H2
- *  - Numbered lines (1. / 2.) → ordered list
- *  - Lettered lines (a) / b) / (i)) → ordered list (lower-alpha / lower-roman)
+ *  - Numbered lines (1. / 2. / 3.) → single continuous ordered list
+ *  - Lettered lines (a) / b) / (i)) → ordered list (lower-alpha)
+ *  - HTML table passthrough (INDEX OF DOCUMENTS)
+ *  - AFFIDAVIT section → page-break-before for print
  *  - Blank-line separated paragraphs → <p>
  */
 
@@ -21,7 +23,7 @@ function esc(text: string): string {
 }
 
 const COURT_TITLE_RE =
-  /^IN THE (COURT|HIGH COURT|SUPREME COURT|FAMILY COURT|SESSIONS)/i;
+  /^IN THE (COURT|HIGH COURT|HONOURABLE|SUPREME COURT|FAMILY COURT|SESSIONS)/i;
 
 const ALL_CAPS_HEADING_RE =
   /^[A-Z][A-Z\s:&,./()'-]{4,}$/;
@@ -36,6 +38,8 @@ const SECTION_HEADINGS = new Set([
   "GROUNDS:",
   "GROUNDS OF APPEAL",
   "GROUNDS OF APPEAL:",
+  "GROUNDS FOR BAIL",
+  "GROUNDS FOR BAIL:",
   "VERIFICATION",
   "VERIFICATION:",
   "BRIEF FACTS",
@@ -46,7 +50,11 @@ const SECTION_HEADINGS = new Set([
   "RESPECTFULLY SUBMITTED:",
   "VAKALATNAMA",
   "AFFIDAVIT",
+  "AFFIDAVIT:",
   "LEGAL NOTICE",
+  "INTERIM RELIEF",
+  "INTERIM RELIEF:",
+  "INDEX OF DOCUMENTS",
 ]);
 
 // ── main converter ─────────────────────────────────────────────────────────
@@ -65,8 +73,30 @@ export function plainTextToTiptapHTML(raw: string): string {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // Skip blank lines (they become paragraph breaks naturally)
+    // Skip blank lines
     if (!trimmed) {
+      i++;
+      continue;
+    }
+
+    // ── HTML table passthrough (INDEX OF DOCUMENTS) ──────────────
+    if (trimmed.startsWith("<!-- INDEX_TABLE_START") || trimmed.startsWith("<table")) {
+      // Collect all HTML lines until closing tag
+      const htmlLines: string[] = [];
+      while (i < lines.length) {
+        htmlLines.push(lines[i]);
+        if (lines[i].includes("</table>") || lines[i].includes("INDEX_TABLE_END")) {
+          i++;
+          break;
+        }
+        i++;
+      }
+      blocks.push(htmlLines.join("\n"));
+      continue;
+    }
+
+    // Skip HTML comments
+    if (trimmed.startsWith("<!--")) {
       i++;
       continue;
     }
@@ -85,6 +115,13 @@ export function plainTextToTiptapHTML(raw: string): string {
       continue;
     }
 
+    // ── AFFIDAVIT heading — page break before for print ──────────
+    if (/^AFFIDAVIT\s*:?\s*$/i.test(trimmed)) {
+      blocks.push(`<h2 data-page-break="true" class="page-break">${esc(trimmed)}</h2>`);
+      i++;
+      continue;
+    }
+
     // ── Known section headings ────────────────────────────────────
     if (SECTION_HEADINGS.has(trimmed.toUpperCase().replace(/:$/, "")) ||
         SECTION_HEADINGS.has(trimmed.toUpperCase())) {
@@ -95,9 +132,8 @@ export function plainTextToTiptapHTML(raw: string): string {
 
     // ── ALL-CAPS headings (≥5 chars, all uppercase) ──────────────
     if (ALL_CAPS_HEADING_RE.test(trimmed) && trimmed.length >= 5) {
-      // Distinguish H2 (main sections) from centred titles
       const isCentredTitle =
-        /^(SUIT FOR|APPLICATION|PETITION|MEMORANDUM|CONSTITUTIONAL)/i.test(trimmed);
+        /^(SUIT FOR|APPLICATION|PETITION|MEMORANDUM|CONSTITUTIONAL|CRIMINAL BAIL)/i.test(trimmed);
       if (isCentredTitle) {
         blocks.push(`<h2 style="text-align: center">${esc(trimmed)}</h2>`);
       } else {
@@ -107,11 +143,21 @@ export function plainTextToTiptapHTML(raw: string): string {
       continue;
     }
 
-    // ── Numbered list (1. / 2. / 3.) ─────────────────────────────
+    // ── Numbered list (1. / 2. / 3.) — CONTINUOUS single <ol> ────
     if (NUMBERED_LINE_RE.test(trimmed)) {
       const items: string[] = [];
       while (i < lines.length) {
         const cur = lines[i].trim();
+        if (!cur) {
+          // Allow blank lines within a numbered sequence — check if next non-blank is numbered
+          let peek = i + 1;
+          while (peek < lines.length && !lines[peek].trim()) peek++;
+          if (peek < lines.length && NUMBERED_LINE_RE.test(lines[peek].trim())) {
+            i++;
+            continue;
+          }
+          break;
+        }
         const m = cur.match(NUMBERED_LINE_RE);
         if (!m) break;
         items.push(`<li><p>${esc(cur.replace(NUMBERED_LINE_RE, ""))}</p></li>`);
@@ -135,7 +181,6 @@ export function plainTextToTiptapHTML(raw: string): string {
     }
 
     // ── Regular paragraph ────────────────────────────────────────
-    // Collect consecutive non-blank, non-special lines into one <p>
     const pLines: string[] = [];
     while (i < lines.length) {
       const cur = lines[i].trim();
@@ -146,6 +191,8 @@ export function plainTextToTiptapHTML(raw: string): string {
         NUMBERED_LINE_RE.test(cur) ||
         LETTERED_LINE_RE.test(cur) ||
         /^VERSUS$/i.test(cur) ||
+        cur.startsWith("<!--") ||
+        cur.startsWith("<table") ||
         SECTION_HEADINGS.has(cur.toUpperCase().replace(/:$/, ""))
       ) {
         break;
@@ -174,6 +221,7 @@ export function isHTMLContent(content: string): boolean {
     trimmed.startsWith("<ul") ||
     trimmed.startsWith("<div") ||
     trimmed.startsWith("<!") ||
-    trimmed.startsWith("<br")
+    trimmed.startsWith("<br") ||
+    trimmed.startsWith("<table")
   );
 }
