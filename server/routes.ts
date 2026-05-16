@@ -12090,9 +12090,9 @@ The user has attached the following documents for your reference. Analyze them c
       // verbose responses to "is it bailable?"-style follow-ups.
       const tokenLimit = (!directMode && moduleType === "al-wakeelo")
         ? (queryComplexity === "simple"
-            ? Math.min(600, baseTokenLimit)
+            ? Math.min(2048, baseTokenLimit)
             : queryComplexity === "moderate"
-              ? Math.min(1500, baseTokenLimit)
+              ? Math.min(4096, baseTokenLimit)
               : baseTokenLimit)
         : baseTokenLimit;
       const timeoutProfile: TimeoutProfile = directMode ? "search" : "default";
