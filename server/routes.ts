@@ -9274,9 +9274,36 @@ RAG POLICY (STRICT):
     try {
       const id = String(req.params.id || "").trim();
       if (!id) return res.status(400).json({ message: "Judgment id is required" });
-      const judgment = await storage.getJudgmentDetail(id);
-      if (!judgment) return res.status(404).json({ message: "Judgment not found" });
-      res.json(judgment);
+
+      // Check if it's a UUID (judgments table) or numeric (case_law table)
+      const isNumeric = /^\d+$/.test(id);
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+      if (isUUID) {
+        const judgment = await storage.getJudgmentDetail(id);
+        if (!judgment) return res.status(404).json({ message: "Judgment not found" });
+        return res.json(judgment);
+      }
+
+      if (isNumeric) {
+        // Numeric ID → look up in case_law table and return compatible response
+        const caseLawEntry = await storage.getCaseLawById(Number(id));
+        if (!caseLawEntry) return res.status(404).json({ message: "Case law entry not found" });
+
+        return res.json({
+          id: caseLawEntry.id,
+          citation: caseLawEntry.citation || "",
+          title: caseLawEntry.title || "",
+          court: caseLawEntry.court || "",
+          decisionDate: null,
+          headnotes: caseLawEntry.summary || "",
+          fullText: caseLawEntry.summary || "",
+          petitioner: null,
+          respondent: null,
+        });
+      }
+
+      return res.status(400).json({ message: "Invalid judgment ID format" });
     } catch (err) {
       console.error("Error fetching judgment detail:", err);
       res.status(500).json({ message: "Failed to fetch judgment details" });
