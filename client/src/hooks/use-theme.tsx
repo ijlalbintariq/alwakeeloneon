@@ -15,18 +15,18 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readStoredTheme(): ThemeMode {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   try {
     const v = window.localStorage.getItem(STORAGE_KEY);
     if (v === "dark" || v === "light" || v === "system") return v;
   } catch {
     /* ignore */
   }
-  return "dark"; // existing users default to current dark theme until they toggle
+  return "light"; // default to light theme for new users
 }
 
 function systemPref(): ResolvedTheme {
-  if (typeof window === "undefined" || !window.matchMedia) return "dark";
+  if (typeof window === "undefined" || !window.matchMedia) return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
