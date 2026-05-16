@@ -10208,13 +10208,88 @@ ${headingOrder}`;
 
     if (!/^\s*RESPECTFULLY SHEWETH:\s*$/im.test(text)) issues.push("Missing heading: RESPECTFULLY SHEWETH:");
     if (!/^\s*PRAYER\s*$/im.test(text)) issues.push("Missing heading: PRAYER");
-    if (!/^\s*VERIFICATION\s*$/im.test(text)) issues.push("Missing heading: VERIFICATION");
+    if (!/^\s*VERIFICATION\s*$/im.test(text) && !/^\s*AFFIDAVIT\s*$/im.test(text)) issues.push("Missing heading: VERIFICATION or AFFIDAVIT");
     if (!/^\s*VERSUS\s*$/im.test(text) && !/^\s*IN RE:\s*$/im.test(text)) {
       issues.push("Missing party separator line: VERSUS (or IN RE where appropriate).");
     }
     if (!/(^|\n)\s*1\.\s+/m.test(text)) issues.push("Facts/grounds are not in numbered court format.");
 
+    // --- Grounds depth check ---
+    // Each lettered ground (A., B., C., etc.) must be at least 4 sentences.
+    const groundsMatch = text.match(/GROUNDS?(?:\s+OF\s+(?:APPEAL|PETITION|APPLICATION))?\s*:?\s*\n([\s\S]*?)(?=\n\s*(?:VALUATION|PRAYER|INTERIM|ANNEXURE))/i);
+    if (groundsMatch) {
+      const groundsText = groundsMatch[1];
+      const groundBlocks = groundsText.split(/\n\s*(?=[A-Z]\.)/).filter(b => b.trim().length > 0);
+      let thinGrounds = 0;
+      for (const block of groundBlocks) {
+        const sentences = block.split(/\.\s+|\.$/).filter(s => s.trim().length > 15);
+        if (sentences.length < 4) thinGrounds++;
+      }
+      if (thinGrounds > 0 && groundBlocks.length > 0) {
+        issues.push(`${thinGrounds} of ${groundBlocks.length} legal ground(s) have fewer than 4 sentences. Each ground MUST be a detailed paragraph of 5-10 sentences with legal principle, factual application, and case law citation as required by Pakistani court practice.`);
+      }
+    }
+
     return { ok: issues.length === 0, issues };
+  }
+
+  /**
+   * Post-processor: ensures the draft has an ANNEXURES section.
+   * If missing, auto-generates one by scanning the draft for document references.
+   */
+  function ensureAnnexuresSection(draftText: string): string {
+    // If annexures already exist, return as-is
+    if (/^\s*ANNEXURES?\s*:?\s*$/im.test(draftText)) return draftText;
+
+    // Scan draft for document references to auto-generate annexure list
+    const annexures: string[] = [];
+    const letter = (i: number) => String.fromCharCode(65 + i); // A, B, C, ...
+
+    // Common document patterns in Pakistani filings
+    const patterns: Array<{ regex: RegExp; label: string }> = [
+      { regex: /\b(?:FIR|First Information Report)\s*(?:No\.?)?\s*[\d\/_-]+/i, label: "Copy of FIR" },
+      { regex: /\bshow[- ]?cause\s+notice/i, label: "Copy of Show-Cause Notice" },
+      { regex: /\binquiry\s+report/i, label: "Copy of Inquiry Report" },
+      { regex: /\b(?:suspension|suspended)\s+(?:order|notification)/i, label: "Copy of Suspension Order" },
+      { regex: /\b(?:dismissal|dismissed|termination|terminated)\s+(?:order|notification)/i, label: "Copy of Dismissal/Termination Order" },
+      { regex: /\b(?:impugned|challenged)\s+(?:order|judgment|decree)/i, label: "Copy of Impugned Order/Judgment" },
+      { regex: /\bdepartmental\s+appeal/i, label: "Copy of Departmental Appeal" },
+      { regex: /\b(?:rejection|rejected)\s+(?:order|notification)/i, label: "Copy of Rejection Order" },
+      { regex: /\b(?:award|awards?)\s+(?:certificate|letter)/i, label: "Copies of Award Certificate(s)" },
+      { regex: /\bservice\s+record/i, label: "Copy of Service Record" },
+      { regex: /\bcharge\s+sheet/i, label: "Copy of Charge Sheet" },
+      { regex: /\bsale\s+(?:deed|agreement)/i, label: "Copy of Sale Deed/Agreement" },
+      { regex: /\bregistr(?:y|ation)\s+(?:deed|document)/i, label: "Copy of Registration Document" },
+      { regex: /\bnikah\s*(?:nama)?/i, label: "Copy of Nikah Nama" },
+      { regex: /\b(?:medical|medico[- ]?legal)\s+(?:report|certificate)/i, label: "Copy of Medical/Medico-Legal Report" },
+      { regex: /\bpost[- ]?mortem/i, label: "Copy of Post-Mortem Report" },
+      { regex: /\brecovery\s+memo/i, label: "Copy of Recovery Memo" },
+      { regex: /\bnotice\s+(?:under|u\/s)/i, label: "Copy of Legal Notice" },
+      { regex: /\btrial\s+court\s+(?:order|judgment|decree)/i, label: "Copy of Trial Court Order/Judgment" },
+      { regex: /\bappellate\s+(?:court\s+)?(?:order|judgment|decree)/i, label: "Copy of Appellate Court Order/Judgment" },
+      { regex: /\bcontract(?:ual)?\s+(?:agreement|deed)/i, label: "Copy of Contractual Agreement" },
+      { regex: /\bCNIC|national\s+identity/i, label: "Copy of CNIC" },
+    ];
+
+    const seen = new Set<string>();
+    for (const { regex, label } of patterns) {
+      if (regex.test(draftText) && !seen.has(label)) {
+        seen.add(label);
+        annexures.push(`Annexure-${letter(annexures.length)}: ${label}`);
+      }
+    }
+
+    // Always add petition copy as last annexure
+    if (annexures.length === 0) return draftText;
+
+    const annexureBlock = `\n\nANNEXURES:\n\n${annexures.join("\n")}\n\n(True copies of the above documents are annexed herewith and marked accordingly.)`;
+
+    // Insert before VERIFICATION/AFFIDAVIT or at end
+    const verificationMatch = draftText.match(/\n(\s*(?:VERIFICATION|AFFIDAVIT)\s*:?\s*\n)/i);
+    if (verificationMatch && verificationMatch.index !== undefined) {
+      return draftText.slice(0, verificationMatch.index) + annexureBlock + draftText.slice(verificationMatch.index);
+    }
+    return draftText + annexureBlock;
   }
 
   const PAKISTANI_JUDICIAL_FORMAT_GUIDANCE = `You are a highly skilled Pakistani litigation lawyer with extensive experience drafting pleadings before Civil Courts, Family Courts, Sessions Courts, High Courts, and the Supreme Court of Pakistan.
@@ -10427,15 +10502,45 @@ INTERIM RELIEF:
 
 Pending final decision of the present petition or appeal, it is respectfully prayed that the operation of the impugned order may kindly be suspended.
 
-VERIFICATION
+AFFIDAVIT AND VERIFICATION (MANDATORY)
 
-Where required include verification.
+Every legal draft MUST end with a proper Pakistani affidavit and verification in the following format. Do NOT use a minimal one-line verification.
 
-Example:
+AFFIDAVIT:
+
+I, [Petitioner/Plaintiff Name] son/daughter of [Father's Name], aged about ______ years, resident of [Address], do hereby state on solemn affirmation as under:
+
+1. That I am the Petitioner/Plaintiff in the above titled petition/suit and am fully conversant with the facts and circumstances of the case.
+2. That the contents of paragraphs 1 to [N] of the above petition/plaint are true and correct to the best of my knowledge and belief.
+3. That nothing material has been concealed therefrom.
+4. That no similar petition/application has been filed before any other court or forum.
+
+DEPONENT
 
 VERIFICATION:
 
-Verified on oath at [CITY] on this ___ day of ______ that the contents of the above petition are true and correct to the best of my knowledge and belief.
+Verified on solemn affirmation at [City] on this ___ day of _______ 20__ that the contents of the above affidavit are true and correct to the best of my knowledge and belief and nothing has been concealed therefrom.
+
+DEPONENT
+
+Before me:
+Oath Commissioner / Notary Public
+
+ANNEXURES (MANDATORY)
+
+Every legal draft MUST include an ANNEXURES section listing all supporting documents referenced in the draft. Place the ANNEXURES section after the last ground/prayer section and before the AFFIDAVIT/VERIFICATION.
+
+Example:
+
+ANNEXURES:
+
+Annexure-A: Copy of Impugned Order dated ______
+Annexure-B: Copy of FIR No. ______ dated ______
+Annexure-C: Copy of Departmental Appeal dated ______
+
+(True copies of the above documents are annexed herewith and marked accordingly.)
+
+Scan the entire draft text for any referenced documents (orders, FIRs, notices, reports, certificates, deeds, agreements) and list each one as a separate annexure with the correct letter designation (A, B, C, etc.).
 
 PLACEHOLDERS
 
@@ -11126,6 +11231,12 @@ ${draftedText}`;
             }
           }
         }
+
+        // --- Post-generation: ensure Annexures section ---
+        if (draftedText) {
+          draftedText = ensureAnnexuresSection(draftedText);
+        }
+
         if (!draftedText) {
           return res.status(502).json({ message: "AI returned empty legal draft text" });
         }
