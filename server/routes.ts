@@ -10238,12 +10238,17 @@ ${headingOrder}`;
    * If missing, auto-generates one by scanning the draft for document references.
    */
   function ensureAnnexuresSection(draftText: string): string {
-    // If annexures already exist, return as-is
+    // If annexures table already exists, return as-is
+    if (/INDEX OF DOCUMENTS|S\.?\s*No\.?\s*\|\s*Description/i.test(draftText)) return draftText;
     if (/^\s*ANNEXURES?\s*:?\s*$/im.test(draftText)) return draftText;
 
-    // Scan draft for document references to auto-generate annexure list
-    const annexures: string[] = [];
+    // Scan draft for document references to auto-generate annexure index
+    const supportingDocs: string[] = [];
     const letter = (i: number) => String.fromCharCode(65 + i); // A, B, C, ...
+
+    // Detect document type label from draft heading
+    const headingMatch = draftText.match(/(?:PETITION|APPLICATION|SUIT|APPEAL|REVISION|COMPLAINT)\s+(?:UNDER|FOR|U\/S)[^\n]{5,80}/i);
+    const petitionLabel = headingMatch ? headingMatch[0].trim() : "Petition/Application";
 
     // Common document patterns in Pakistani filings
     const patterns: Array<{ regex: RegExp; label: string }> = [
@@ -10269,27 +10274,58 @@ ${headingOrder}`;
       { regex: /\bappellate\s+(?:court\s+)?(?:order|judgment|decree)/i, label: "Copy of Appellate Court Order/Judgment" },
       { regex: /\bcontract(?:ual)?\s+(?:agreement|deed)/i, label: "Copy of Contractual Agreement" },
       { regex: /\bCNIC|national\s+identity/i, label: "Copy of CNIC" },
+      { regex: /\bsite\s+plan/i, label: "Copy of Site Plan" },
+      { regex: /\bchallan/i, label: "Copy of Challan" },
     ];
 
     const seen = new Set<string>();
     for (const { regex, label } of patterns) {
       if (regex.test(draftText) && !seen.has(label)) {
         seen.add(label);
-        annexures.push(`Annexure-${letter(annexures.length)}: ${label}`);
+        supportingDocs.push(label);
       }
     }
 
-    // Always add petition copy as last annexure
-    if (annexures.length === 0) return draftText;
+    if (supportingDocs.length === 0) return draftText;
 
-    const annexureBlock = `\n\nANNEXURES:\n\n${annexures.join("\n")}\n\n(True copies of the above documents are annexed herewith and marked accordingly.)`;
-
-    // Insert before VERIFICATION/AFFIDAVIT or at end
-    const verificationMatch = draftText.match(/\n(\s*(?:VERIFICATION|AFFIDAVIT)\s*:?\s*\n)/i);
-    if (verificationMatch && verificationMatch.index !== undefined) {
-      return draftText.slice(0, verificationMatch.index) + annexureBlock + draftText.slice(verificationMatch.index);
+    // Build the index table in Pakistani court format
+    // S.No. 1 = Petition itself (no annexure letter)
+    // S.No. 2 = Affidavit (no annexure letter)
+    // S.No. 3+ = Supporting documents (Annexure-A, B, C...)
+    const tableRows: string[] = [];
+    let sno = 1;
+    tableRows.push(`${sno}.      ${petitionLabel}                              ---`);
+    sno++;
+    tableRows.push(`${sno}.      Affidavit                                           ---`);
+    sno++;
+    for (let i = 0; i < supportingDocs.length; i++) {
+      tableRows.push(`${sno}.      ${supportingDocs[i]}                    ${letter(i)}`);
+      sno++;
     }
-    return draftText + annexureBlock;
+
+    const indexBlock = `\nINDEX OF DOCUMENTS\n\nS.No.    Description of Documents                          Annexures\n${tableRows.join("\n")}\n`;
+
+    // Insert AFTER the cause title heading (after "PETITION UNDER..." or similar title line)
+    // but BEFORE "RESPECTFULLY SHEWETH" or the first "That the" or first numbered fact
+    const insertionPatterns = [
+      /\n(\s*RESPECTFULLY SHEWETH\s*:?\s*\n)/i,
+      /\n(\s*1\.\s+That the)/i,
+      /\n(\s*BRIEF FACTS\s*:?\s*\n)/i,
+    ];
+
+    for (const pattern of insertionPatterns) {
+      const match = draftText.match(pattern);
+      if (match && match.index !== undefined) {
+        return draftText.slice(0, match.index) + "\n" + indexBlock + draftText.slice(match.index);
+      }
+    }
+
+    // Fallback: insert after first 15 lines (after heading block)
+    const lines = draftText.split("\n");
+    if (lines.length > 15) {
+      return lines.slice(0, 15).join("\n") + "\n" + indexBlock + "\n" + lines.slice(15).join("\n");
+    }
+    return draftText + "\n" + indexBlock;
   }
 
   const PAKISTANI_JUDICIAL_FORMAT_GUIDANCE = `You are a highly skilled Pakistani litigation lawyer with extensive experience drafting pleadings before Civil Courts, Family Courts, Sessions Courts, High Courts, and the Supreme Court of Pakistan.
@@ -10526,21 +10562,29 @@ DEPONENT
 Before me:
 Oath Commissioner / Notary Public
 
-ANNEXURES (MANDATORY)
+ANNEXURES / INDEX OF DOCUMENTS (MANDATORY)
 
-Every legal draft MUST include an ANNEXURES section listing all supporting documents referenced in the draft. Place the ANNEXURES section after the last ground/prayer section and before the AFFIDAVIT/VERIFICATION.
+Every legal draft MUST include an INDEX OF DOCUMENTS table placed immediately after the cause title and petition heading, BEFORE the body of the petition (before RESPECTFULLY SHEWETH).
 
-Example:
+This is the FIRST PAGE of the filing as practiced in Pakistani courts. It is an index table, NOT a list at the end.
 
-ANNEXURES:
+Format (strict):
 
-Annexure-A: Copy of Impugned Order dated ______
-Annexure-B: Copy of FIR No. ______ dated ______
-Annexure-C: Copy of Departmental Appeal dated ______
+INDEX OF DOCUMENTS
 
-(True copies of the above documents are annexed herewith and marked accordingly.)
+S.No.    Description of Documents                          Annexures
+1.       [Petition/Application title]                      ---
+2.       Affidavit                                         ---
+3.       [Supporting document description]                 A
+4.       [Supporting document description]                 B
+5.       [Supporting document description]                 C
 
-Scan the entire draft text for any referenced documents (orders, FIRs, notices, reports, certificates, deeds, agreements) and list each one as a separate annexure with the correct letter designation (A, B, C, etc.).
+Rules:
+- Item 1 is always the petition/application itself (no annexure letter, marked with ---)
+- Item 2 is always the Affidavit (no annexure letter, marked with ---)
+- Items 3 onward are supporting documents with Annexure letters A, B, C, etc.
+- Scan the draft facts for all referenced documents (orders, FIRs, notices, reports, certificates) and list each one.
+- Place this index BEFORE RESPECTFULLY SHEWETH, not at the end of the document.
 
 PLACEHOLDERS
 
