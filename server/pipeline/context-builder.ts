@@ -164,8 +164,8 @@ function buildAdminDocsSection(docs: RetrievedDoc[]): ContextSection | null {
                          "CHAMBERS KNOWLEDGE VAULT (ADMIN)";
     lines.push(`--- ${label} ---`);
     for (const doc of srcDocs) {
-      const excerpt = doc.content.slice(0, 1200);
-      lines.push(`[${doc.title}]\n${excerpt}${doc.content.length > 1200 ? "..." : ""}`);
+      const excerpt = doc.content.slice(0, 3000);
+      lines.push(`[${doc.title}]\n${excerpt}${doc.content.length > 3000 ? "..." : ""}`);
     }
   }
   if (lines.length === 0) return null;
