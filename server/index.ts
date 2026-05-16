@@ -224,6 +224,27 @@ app.use((req, res, next) => {
 
     const { seedAdminUser } = await import("./seed-admin");
     await seedAdminUser();
+
+    // Ensure ai_output_log table exists (drizzle-kit push may not run in Docker)
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS ai_output_log (
+          id SERIAL PRIMARY KEY,
+          user_id VARCHAR NOT NULL REFERENCES users(id),
+          feature TEXT NOT NULL,
+          model TEXT NOT NULL,
+          input_snippet TEXT NOT NULL,
+          output_snippet TEXT NOT NULL,
+          output_length INTEGER NOT NULL DEFAULT 0,
+          quality_score INTEGER NOT NULL DEFAULT 4,
+          quality_flags TEXT[] NOT NULL DEFAULT '{}',
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      console.log("[Startup] ai_output_log table ready.");
+    } catch (err: any) {
+      console.warn("[Startup] Could not ensure ai_output_log table:", err?.message);
+    }
   } else {
     console.warn(`[Startup] Skipping DB startup tasks. ${dbUnavailableReason || ""}`.trim());
   }

@@ -19,4 +19,4 @@ RUN npm run build
 
 ENV NODE_ENV=production
 
-CMD ["sh", "-c", "npx drizzle-kit push --force && node dist/index.cjs"]
+CMD ["node", "dist/index.cjs"]
