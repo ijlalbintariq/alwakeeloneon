@@ -10362,6 +10362,41 @@ ${headingOrder}`;
     return draftText + indexBlock;
   }
 
+  /**
+   * Ensures a "PETITIONER / Through: Advocate" signature block
+   * appears between PRAYER and VERIFICATION/AFFIDAVIT.
+   */
+  function ensurePetitionerBlock(draftText: string): string {
+    // Skip if already has petitioner/through block
+    if (/\bThrough:\s*\n\s*\[/i.test(draftText)) return draftText;
+    if (/PETITIONER\s*\n\s*\n\s*Through:/i.test(draftText)) return draftText;
+
+    // Detect the party role from the draft heading
+    let role = "PETITIONER";
+    if (/\bAPPLICANT\b/i.test(draftText.slice(0, 1500))) role = "APPLICANT";
+    else if (/\bAPPELLANT\b/i.test(draftText.slice(0, 1500))) role = "APPELLANT";
+    else if (/\bPLAINTIFF\b/i.test(draftText.slice(0, 1500))) role = "PLAINTIFF";
+    else if (/\bCOMPLAINANT\b/i.test(draftText.slice(0, 1500))) role = "COMPLAINANT";
+
+    const sigBlock = `\n\n                                                                    ${role}\n\nThrough:\n[Advocate Name]\nAdvocate High Court\n`;
+
+    // Insert before VERIFICATION or AFFIDAVIT
+    const insertPatterns = [
+      /\n(\s*VERIFICATION\s*:?\s*\n)/i,
+      /\n(\s*AFFIDAVIT\s*:?\s*\n)/i,
+    ];
+
+    for (const pattern of insertPatterns) {
+      const match = draftText.match(pattern);
+      if (match && match.index !== undefined) {
+        return draftText.slice(0, match.index) + sigBlock + draftText.slice(match.index);
+      }
+    }
+
+    // Fallback: append before end
+    return draftText + sigBlock;
+  }
+
   const PAKISTANI_JUDICIAL_FORMAT_GUIDANCE = `You are a highly skilled Pakistani litigation lawyer with extensive experience drafting pleadings before Civil Courts, Family Courts, Sessions Courts, High Courts, and the Supreme Court of Pakistan.
 
 You must draft legal documents exactly in the professional format used by Pakistani advocates. Your drafting style must resemble real pleadings filed in Pakistani courts, particularly those used in High Courts and Sessions Courts.
@@ -10558,6 +10593,18 @@ a. Accept the present petition or appeal.
 b. Set aside the impugned judgment or order dated ______.
 c. Grant the relief as prayed for.
 d. Pass any other order deemed just and proper in the circumstances of the case.
+
+PETITIONER/APPLICANT SIGNATURE BLOCK (MANDATORY)
+
+Immediately after the prayer, add the following right-aligned block:
+
+                                                                    PETITIONER
+
+Through:
+[Advocate Name]
+Advocate High Court / Supreme Court of Pakistan
+
+This block must appear after every PRAYER section, before VERIFICATION/AFFIDAVIT.
 
 INTERIM RELIEF
 
@@ -11309,6 +11356,11 @@ ${draftedText}`;
         // --- Post-generation: ensure Annexures section ---
         if (draftedText) {
           draftedText = ensureAnnexuresSection(draftedText);
+        }
+
+        // --- Post-generation: ensure Petitioner/Through block after Prayer ---
+        if (draftedText) {
+          draftedText = ensurePetitionerBlock(draftedText);
         }
 
         if (!draftedText) {

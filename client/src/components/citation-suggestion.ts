@@ -17,6 +17,8 @@ export interface CitationSuggestionItem {
   decisionDate?: string | null;
 }
 
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const CitationSuggestion = Extension.create({
   name: "citationSuggestion",
 
@@ -25,6 +27,7 @@ export const CitationSuggestion = Extension.create({
       suggestion: {
         char: "/",
         startOfLine: false,
+        allowSpaces: true,
         command: ({ editor, range, props }: any) => {
           editor
             .chain()
@@ -48,27 +51,38 @@ export const CitationSuggestion = Extension.create({
             return [];
           }
           const searchQuery = query.slice(5).trim(); // Remove "cite " prefix
-          if (searchQuery.length < 2) return [];
+          if (searchQuery.length < 3) return [];
 
-          try {
-            const params = new URLSearchParams({ q: searchQuery, limit: "8" });
-            const res = await fetch(`/api/case-law/search?${params.toString()}`, {
-              credentials: "include",
-            });
-            if (!res.ok) return [];
-            const data = await res.json();
-            return (Array.isArray(data) ? data : [])
-              .slice(0, 8)
-              .map((item: any, idx: number) => ({
-                id: item.id || `citation-${idx}`,
-                citation: item.citation || "Unknown Citation",
-                title: item.title || "Untitled",
-                court: item.court || "Court",
-                decisionDate: item.decisionDate || null,
-              }));
-          } catch {
-            return [];
-          }
+          // Debounce to avoid hammering the API
+          if (debounceTimer) clearTimeout(debounceTimer);
+          
+          return new Promise<CitationSuggestionItem[]>((resolve) => {
+            debounceTimer = setTimeout(async () => {
+              try {
+                const params = new URLSearchParams({ q: searchQuery, limit: "8" });
+                const res = await fetch(`/api/case-law/search?${params.toString()}`, {
+                  credentials: "include",
+                });
+                if (!res.ok) {
+                  resolve([]);
+                  return;
+                }
+                const data = await res.json();
+                const results = (Array.isArray(data) ? data : [])
+                  .slice(0, 8)
+                  .map((item: any, idx: number) => ({
+                    id: String(item.id || `citation-${idx}`),
+                    citation: item.citation || "Unknown Citation",
+                    title: item.title || "Untitled",
+                    court: item.court || "Court",
+                    decisionDate: item.decisionDate || null,
+                  }));
+                resolve(results);
+              } catch {
+                resolve([]);
+              }
+            }, 300);
+          });
         },
         // render is provided by the component that registers this extension
       } as Partial<SuggestionOptions<CitationSuggestionItem>>,

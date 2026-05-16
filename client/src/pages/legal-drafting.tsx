@@ -2544,21 +2544,25 @@ function LegalDraftingPageInner() {
   const exportAsDoc = () => {
     const content = editorRef.current?.getHTML() || editorHtml || docText;
     const html = `<!doctype html><html><head><meta charset="utf-8" /><style>
-      body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.6; margin: 2.5cm; color: #000; }
-      h1 { font-size: 16pt; font-weight: bold; text-transform: uppercase; text-align: center; margin-bottom: 1rem; }
-      h2 { font-size: 14pt; font-weight: bold; text-transform: uppercase; margin-top: 1.5rem; margin-bottom: 0.5rem; }
-      h3 { font-size: 13pt; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
-      ol { padding-left: 2rem; } ul { padding-left: 2rem; }
-      p { margin-bottom: 0.5rem; }
+      @page { size: Legal; margin: 1in 1in 1in 1.25in; }
+      body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.3; margin: 1in 1in 1in 1.25in; color: #000; text-align: justify; }
+      h1 { font-size: 14pt; font-weight: bold; text-transform: uppercase; text-align: center; margin-bottom: 0.3rem; }
+      h2 { font-size: 14pt; font-weight: bold; text-transform: uppercase; margin-top: 0.8rem; margin-bottom: 0.3rem; }
+      h3 { font-size: 13pt; font-weight: 700; margin-top: 0.5rem; margin-bottom: 0.2rem; }
+      ol { padding-left: 25px; } ul { padding-left: 25px; }
+      p { margin-bottom: 6px; }
+      table { width: 100%; border-collapse: collapse; }
+      table th, table td { border: 1px solid #333; padding: 6px 10px; }
+      table th { background: #1a2332; color: #fff; font-weight: bold; }
     </style></head><body>${content}</body></html>`;
-    const blob = new Blob([html], { type: "application/msword" });
+    const blob = new Blob([html], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${draftTitle || "legal-draft"}.doc`;
+    a.download = `${draftTitle || "legal-draft"}.docx`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "Exported as Word (.doc)" });
+    toast({ title: "Exported as Word (.docx)" });
   };
 
   const shareDraft = async () => {

@@ -415,6 +415,53 @@
   text-align: center;
 }
 
+/* Tiptap table extension — resize + selection */
+.legal-draft-editor .tableWrapper {
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.legal-draft-editor table .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: hsl(var(--primary) / 0.12);
+  pointer-events: none;
+}
+
+.legal-draft-editor table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 20;
+  background-color: hsl(var(--primary) / 0.5);
+  cursor: col-resize;
+}
+
+.legal-draft-editor.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Highlight mark */
+.legal-draft-editor mark {
+  background-color: #fef08a;
+  color: inherit;
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+
+/* Page break marker */
+.legal-draft-editor .page-break {
+  page-break-before: always;
+}
+
+.legal-draft-editor [data-page-break] {
+  page-break-before: always;
+}
+
 /* Placeholder text */
 .legal-draft-editor p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
