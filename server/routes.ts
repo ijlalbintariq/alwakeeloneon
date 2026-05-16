@@ -57,6 +57,7 @@ import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import { gatherKnowledgeContextV2, type ConversationTurn } from "./pipeline/knowledge-pipeline";
 import { detectQueryComplexity, isFollowUpQuestion, type QueryComplexity } from "./pipeline/intent-classifier";
+import { refineUserQuery } from "./query-refiner";
 import {
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
   GLOBAL_CASELAW_RAG_USER_ID,
@@ -11904,6 +11905,16 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           })
         : Promise.resolve({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] });
 
+      // --- Query Refinement: rewrite casual query into structured legal prompt ---
+      // Runs in parallel with enrichment — finishes in ~1-2s, well within the 20s budget.
+      const refineNeeded = !directMode && !!lastUserMessage && moduleType === "al-wakeelo";
+      const refinePromise = refineNeeded
+        ? refineUserQuery(lastUserMessage!.content, priorTurns, 3000).catch((err) => {
+            console.warn("[QueryRefine] Failed:", err?.message || err);
+            return { refined: lastUserMessage!.content, wasRefined: false, elapsedMs: 0 };
+          })
+        : Promise.resolve({ refined: lastUserMessage?.content || "", wasRefined: false, elapsedMs: 0 });
+
       type StyleFetch = Awaited<ReturnType<typeof retrieveStyleContextForGeneration>> | null;
       const stylePromise: Promise<StyleFetch> = (styleEligible && styleModule)
         ? (async (): Promise<StyleFetch> => {
@@ -11927,14 +11938,36 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
           })()
         : Promise.resolve(null);
 
-      const [knowledgeRace, styleRace, toolSearchRace] = await Promise.all([
+      type RefineResult = { refined: string; wasRefined: boolean; elapsedMs: number };
+      const [knowledgeRace, styleRace, toolSearchRace, refineRace] = await Promise.all([
         raceToDeadline<string>(knowledgePromise, ENRICHMENT_BUDGET_MS, "", "knowledge-context"),
         raceToDeadline<StyleFetch>(stylePromise, ENRICHMENT_BUDGET_MS, null, "style-memory"),
         raceToDeadline<ToolSearchResult>(toolSearchPromise, ENRICHMENT_BUDGET_MS, { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] }, "tool-search"),
+        raceToDeadline<RefineResult>(refinePromise, 4000, { refined: lastUserMessage?.content || "", wasRefined: false, elapsedMs: 0 }, "query-refine"),
       ]);
       const knowledgeContext = knowledgeRace.value;
       const styleRetrieved = styleRace.value;
       const toolSearchResult = toolSearchRace.value;
+      const refineResult = refineRace.value;
+      if (refineResult.wasRefined) {
+        // Replace the last user message in geminiContents with the refined version.
+        // Original query is preserved for display/caching/search-history — only the
+        // AI sees the refined version.
+        const lastGeminiUserIdx = geminiContents.map(c => c.role).lastIndexOf("user");
+        if (lastGeminiUserIdx >= 0) {
+          geminiContents[lastGeminiUserIdx] = {
+            role: "user",
+            parts: [{ text: refineResult.refined }],
+          };
+        }
+        console.log(`[QueryRefine:Done] refined in ${refineResult.elapsedMs}ms`);
+        // Emit SSE event so frontend knows query was refined
+        if (sseHeadersFlushed) {
+          try {
+            res.write(`data: ${JSON.stringify({ queryRefined: true, elapsedMs: refineResult.elapsedMs })}\n\n`);
+          } catch { /* client disconnected */ }
+        }
+      }
       if (toolSearchResult.foundCount > 0) {
         console.log(`[ToolSearch:Done] found=${toolSearchResult.foundCount} queries=${JSON.stringify(toolSearchResult.queriesUsed)}`);
       }
