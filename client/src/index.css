@@ -133,62 +133,65 @@
 
 /*
  * ─── Light-mode readability fix ──────────────────────────────────────────
- * Tailwind's -200 / -300 shades (blue-200, cyan-300, emerald-300, etc.)
- * were chosen for a dark UI.  On a white/light background they are almost
- * invisible.  The overrides below remap those light-shade text classes to
- * their -600 / -700 equivalents so text remains readable in both themes.
- * Because .dark already works fine we only apply when .dark is absent.
+ * Tailwind's -200 / -300 / -400 shades were designed for dark backgrounds.
+ * In light mode they are nearly invisible. Override all to black (#111827)
+ * for maximum readability. Dark mode (.dark) is unaffected.
  */
 :root:not(.dark) {
-  /* ── Blue ─────────────────────────────────────────────────── */
-  .text-blue-200 { color: rgb(37 99 235) !important; }        /* blue-600 */
-  .text-blue-300 { color: rgb(29 78 216) !important; }        /* blue-700 */
-  .text-blue-400 { color: rgb(37 99 235) !important; }        /* blue-600 */
-  .bg-blue-500\/10 { background-color: rgb(59 130 246 / 0.12) !important; }
-  .bg-blue-500\/15 { background-color: rgb(59 130 246 / 0.14) !important; }
-  .bg-blue-500\/20 { background-color: rgb(59 130 246 / 0.16) !important; }
-  .border-blue-500\/30 { border-color: rgb(59 130 246 / 0.3) !important; }
+  /* ── Blue → black ──────────────────────────────────────────── */
+  .text-blue-200 { color: #111827 !important; }
+  .text-blue-300 { color: #111827 !important; }
+  .text-blue-400 { color: #111827 !important; }
+  .text-blue-500 { color: #1f2937 !important; }
+  .bg-blue-500\/10 { background-color: rgb(17 24 39 / 0.07) !important; }
+  .bg-blue-500\/15 { background-color: rgb(17 24 39 / 0.09) !important; }
+  .bg-blue-500\/20 { background-color: rgb(17 24 39 / 0.11) !important; }
+  .border-blue-500\/30 { border-color: rgb(17 24 39 / 0.2) !important; }
 
-  /* ── Cyan ─────────────────────────────────────────────────── */
-  .text-cyan-200 { color: rgb(8 145 178) !important; }        /* cyan-600 */
-  .text-cyan-300 { color: rgb(8 145 178) !important; }        /* cyan-600 */
-  .text-cyan-300\/70 { color: rgb(8 145 178 / 0.7) !important; }
-  .text-cyan-400 { color: rgb(14 116 144) !important; }       /* cyan-700 */
-  .text-cyan-400\/50 { color: rgb(14 116 144 / 0.65) !important; }
+  /* ── Cyan → black ──────────────────────────────────────────── */
+  .text-cyan-200 { color: #111827 !important; }
+  .text-cyan-300 { color: #111827 !important; }
+  .text-cyan-300\/70 { color: rgb(17 24 39 / 0.7) !important; }
+  .text-cyan-400 { color: #111827 !important; }
+  .text-cyan-400\/50 { color: rgb(17 24 39 / 0.6) !important; }
+  .text-cyan-500 { color: #1f2937 !important; }
+  .text-cyan-600 { color: #111827 !important; }
 
-  /* ── Emerald ──────────────────────────────────────────────── */
-  .text-emerald-200 { color: rgb(5 150 105) !important; }     /* emerald-600 */
-  .text-emerald-300 { color: rgb(5 150 105) !important; }     /* emerald-600 */
-  .text-emerald-400 { color: rgb(4 120 87) !important; }      /* emerald-700 */
+  /* ── Emerald → black ───────────────────────────────────────── */
+  .text-emerald-200 { color: #111827 !important; }
+  .text-emerald-300 { color: #111827 !important; }
+  .text-emerald-400 { color: #1f2937 !important; }
 
-  /* ── Red ──────────────────────────────────────────────────── */
-  .text-red-200 { color: rgb(220 38 38) !important; }         /* red-600 */
-  .text-red-300 { color: rgb(220 38 38) !important; }         /* red-600 */
-  .text-red-400 { color: rgb(185 28 28) !important; }         /* red-700 */
+  /* ── Red → dark red (keep semantics for errors/warnings) ──── */
+  .text-red-200 { color: #991b1b !important; }
+  .text-red-300 { color: #991b1b !important; }
+  .text-red-400 { color: #991b1b !important; }
 
-  /* ── Orange ───────────────────────────────────────────────── */
-  .text-orange-200 { color: rgb(234 88 12) !important; }      /* orange-600 */
-  .text-orange-300 { color: rgb(234 88 12) !important; }      /* orange-600 */
-  .text-orange-400 { color: rgb(194 65 12) !important; }      /* orange-700 */
+  /* ── Orange → black ────────────────────────────────────────── */
+  .text-orange-200 { color: #111827 !important; }
+  .text-orange-300 { color: #111827 !important; }
+  .text-orange-400 { color: #1f2937 !important; }
 
-  /* ── Yellow ───────────────────────────────────────────────── */
-  .text-yellow-200 { color: rgb(202 138 4) !important; }      /* yellow-600 */
-  .text-yellow-300 { color: rgb(202 138 4) !important; }      /* yellow-600 */
-  .text-yellow-400 { color: rgb(161 98 7) !important; }       /* yellow-700 */
+  /* ── Yellow → black ────────────────────────────────────────── */
+  .text-yellow-200 { color: #111827 !important; }
+  .text-yellow-300 { color: #111827 !important; }
+  .text-yellow-400 { color: #1f2937 !important; }
 
-  /* ── Violet / Purple ──────────────────────────────────────── */
-  .text-violet-200 { color: rgb(124 58 237) !important; }     /* violet-600 */
-  .text-violet-300 { color: rgb(124 58 237) !important; }     /* violet-600 */
-  .text-purple-300 { color: rgb(147 51 234) !important; }     /* purple-600 */
+  /* ── Violet / Purple → black ───────────────────────────────── */
+  .text-violet-200 { color: #111827 !important; }
+  .text-violet-300 { color: #111827 !important; }
+  .text-purple-300 { color: #111827 !important; }
+  .text-purple-400 { color: #1f2937 !important; }
 
-  /* ── Pink ──────────────────────────────────────────────────── */
-  .text-pink-200 { color: rgb(219 39 119) !important; }       /* pink-600 */
-  .text-pink-300 { color: rgb(219 39 119) !important; }       /* pink-600 */
-  .text-pink-400 { color: rgb(190 24 93) !important; }        /* pink-700 */
+  /* ── Pink → black ──────────────────────────────────────────── */
+  .text-pink-200 { color: #111827 !important; }
+  .text-pink-300 { color: #111827 !important; }
+  .text-pink-400 { color: #1f2937 !important; }
 
-  /* ── Amber ─────────────────────────────────────────────────── */
-  .text-amber-200 { color: rgb(217 119 6) !important; }       /* amber-600 */
-  .text-amber-300 { color: rgb(217 119 6) !important; }       /* amber-600 */
+  /* ── Amber → black ─────────────────────────────────────────── */
+  .text-amber-200 { color: #111827 !important; }
+  .text-amber-300 { color: #111827 !important; }
+  .text-amber-500 { color: #1f2937 !important; }
 }
 @layer base {
   html {

@@ -55,18 +55,18 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
   const hasMore = data.hits.length > DEFAULT_VISIBLE;
 
   return (
-    <div className="mt-3 mb-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-cyan-500/20 bg-cyan-500/10">
+    <div className="mt-3 mb-3 rounded-xl border border-border dark:border-cyan-500/30 bg-muted/30 dark:bg-cyan-500/5 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border dark:border-cyan-500/20 bg-muted/50 dark:bg-cyan-500/10">
         <div className="flex items-center gap-2">
-          <Database size={14} className="text-cyan-400" />
-          <span className="text-[11px] font-black uppercase tracking-widest text-cyan-200">
+          <Database size={14} className="text-foreground dark:text-cyan-400" />
+          <span className="text-[11px] font-black uppercase tracking-widest text-foreground dark:text-cyan-200">
             Case Law from Database
           </span>
-          <span className="text-[10px] text-cyan-300/70 font-mono">
+          <span className="text-[10px] text-muted-foreground dark:text-cyan-300/70 font-mono">
             {data.totalFound} result{data.totalFound !== 1 ? "s" : ""}
           </span>
         </div>
-        <span className="text-[9px] text-cyan-400/60 italic">
+        <span className="text-[9px] text-muted-foreground dark:text-cyan-400/60 italic">
           Direct DB results · no AI processing
         </span>
       </div>
@@ -79,15 +79,15 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
               key={`${hit.citation}-${idx}`}
               type="button"
               onClick={() => onCitationClick(hit.citation)}
-              className="w-full text-left rounded-lg bg-background/40 border border-cyan-500/15 hover:border-cyan-400/50 hover:bg-background/60 transition-all p-2.5 group"
+              className="w-full text-left rounded-lg bg-background/40 border border-border/50 dark:border-cyan-500/15 hover:border-primary/40 dark:hover:border-cyan-400/50 hover:bg-background/60 transition-all p-2.5 group"
               data-testid={`case-law-card-hit-${idx}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2 min-w-0 flex-1">
-                  <ScrollText size={13} className="text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <ScrollText size={13} className="text-foreground dark:text-cyan-400 mt-0.5 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[12px] font-bold text-cyan-100 font-mono">
+                      <span className="text-[12px] font-bold text-foreground dark:text-cyan-100 font-mono">
                         {hit.citation}
                       </span>
                       {cited && (
@@ -108,7 +108,7 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
                       </div>
                     )}
                     {hit.court && (
-                      <div className="text-[10px] text-cyan-400/70 mt-0.5">
+                      <div className="text-[10px] text-muted-foreground dark:text-cyan-400/70 mt-0.5">
                         {hit.court}
                       </div>
                     )}
@@ -121,7 +121,7 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
                 </div>
                 <ExternalLink
                   size={11}
-                  className="text-cyan-400/50 group-hover:text-cyan-300 mt-1 flex-shrink-0"
+                  className="text-muted-foreground dark:text-cyan-400/50 group-hover:text-foreground dark:group-hover:text-cyan-300 mt-1 flex-shrink-0"
                 />
               </div>
             </button>
@@ -133,7 +133,7 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300 hover:bg-cyan-500/10 transition-colors flex items-center justify-center gap-1 border-t border-cyan-500/20"
+          className="w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-foreground dark:text-cyan-300 hover:bg-muted dark:hover:bg-cyan-500/10 transition-colors flex items-center justify-center gap-1 border-t border-border dark:border-cyan-500/20"
           data-testid="case-law-card-toggle"
         >
           {expanded ? (
@@ -151,8 +151,8 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
       )}
 
       {data.queriesUsed && data.queriesUsed.length > 0 && (
-        <div className="px-3 py-1.5 border-t border-cyan-500/15 bg-background/30">
-          <span className="text-[9px] text-cyan-400/50 font-mono">
+        <div className="px-3 py-1.5 border-t border-border dark:border-cyan-500/15 bg-background/30">
+          <span className="text-[9px] text-muted-foreground dark:text-cyan-400/50 font-mono">
             Searched: {data.queriesUsed.join(" · ")}
           </span>
         </div>
