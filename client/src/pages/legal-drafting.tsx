@@ -2082,7 +2082,7 @@ function LegalDraftingPageInner() {
 
     setEditorContent(nextText);
     setHasDraftInSession(!!nextText.trim());
-    runDraftReview(nextText);
+    // Don't re-trigger recommendations after applying a change — let user decide
 
     addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
     let remaining = 0;

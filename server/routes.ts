@@ -13336,6 +13336,8 @@ RULES:
 - Indian judgments (SCC, AIR) are permitted as persuasive authority.
 - Use Pakistani legal references only (for example: PPC, Cr.P.C., Constitution of Islamic Republic of Pakistan 1973, PLD, SCMR, YLR, MLD, CLC, CLD, PCRLJ).
 - If a safe Pakistani equivalent is unclear, use a neutral placeholder like [Pakistani legal provision required] instead of inventing or using Indian citations.
+- IMPORTANT: Do NOT flag any case citation as "unverified" or suggest removing/replacing citations. Citation verification is handled separately by an automated system. Never recommend changes related to citation verification.
+- Do NOT suggest changes that merely rephrase the same idea. Focus only on substantive legal improvements.
 - Do not include markdown, code fences, or extra keys.${knowledgeContext}`;
 
         const userInput = `Draft Title: ${draftTitle}\n\nDraft Content:\n${draftText.slice(0, 16000)}`;

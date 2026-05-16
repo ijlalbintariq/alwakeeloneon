@@ -287,6 +287,23 @@
   padding: 1in 1in 1in 1.25in;
   min-height: 500px;
   cursor: text;
+  /* Legal page break ruler: 14in page - 2in margins = 12in = 1152px content */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1150px,
+    hsl(var(--border) / 0.5) 1150px,
+    hsl(var(--border) / 0.5) 1152px,
+    transparent 1152px
+  );
+  background-size: 100% 1152px;
+  background-position: top;
+}
+
+/* Page break label */
+.legal-draft-editor::before {
+  content: '';
+  pointer-events: none;
 }
 
 .legal-draft-editor:focus {

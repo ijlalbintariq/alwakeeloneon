@@ -1,68 +1,29 @@
 /**
- * Converts plain-text legal drafts (AI output or legacy saved text)
- * into structured HTML suitable for the Tiptap editor.
- *
- * Pakistani court formatting conventions:
- *  - "IN THE COURT …" / "IN THE HIGH COURT …" → centred H1
- *  - ALL-CAPS headings (PRAYER, GROUNDS, VERIFICATION …) → H2
- *  - Numbered lines (1. / 2. / 3.) → single continuous ordered list
- *  - Lettered lines (a) / b) / (i)) → ordered list (lower-alpha)
- *  - HTML table passthrough (INDEX OF DOCUMENTS)
- *  - AFFIDAVIT section → page-break-before for print
- *  - Blank-line separated paragraphs → <p>
+ * Converts plain-text legal drafts into Tiptap HTML.
+ * Pakistani court style: numbered paragraphs (NOT <ol>), centred titles, right-aligned party roles.
  */
 
-// ── helpers ────────────────────────────────────────────────────────────────
-
-function esc(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function esc(t: string): string {
+  return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-const COURT_TITLE_RE =
-  /^IN THE (COURT|HIGH COURT|HONOURABLE|SUPREME COURT|FAMILY COURT|SESSIONS)/i;
-
-const ALL_CAPS_HEADING_RE =
-  /^[A-Z][A-Z\s:&,./()'-]{4,}$/;
-
-const NUMBERED_LINE_RE = /^(\d{1,3})[.)]\s+/;
-const LETTERED_LINE_RE = /^(?:\(?([a-z])\)|\(([ivxlc]+)\))\s+/i;
+const COURT_TITLE_RE = /^IN THE (COURT|HIGH COURT|HONOURABLE|SUPREME COURT|FAMILY COURT|SESSIONS)/i;
+const CENTRED_TITLE_RE = /^(SUIT FOR|APPLICATION|PETITION|MEMORANDUM|CONSTITUTIONAL|CRIMINAL (BAIL|MISC)|CIVIL MISC|BAIL APPLICATION|INDEX OF DOCUMENTS)/i;
+const CASE_NUMBER_RE = /^(CRIMINAL|CIVIL|FAMILY|WRIT|CONSTITUTIONAL)\s+(MISC|BAIL|APPEAL|REVISION|PETITION|SUIT|ORIGINAL)/i;
 
 const SECTION_HEADINGS = new Set([
-  "PRAYER",
-  "PRAYER:",
-  "GROUNDS",
-  "GROUNDS:",
-  "GROUNDS OF APPEAL",
-  "GROUNDS OF APPEAL:",
-  "GROUNDS FOR BAIL",
-  "GROUNDS FOR BAIL:",
-  "VERIFICATION",
-  "VERIFICATION:",
-  "BRIEF FACTS",
-  "BRIEF FACTS:",
-  "RESPECTFULLY SHEWETH",
-  "RESPECTFULLY SHEWETH:",
-  "RESPECTFULLY SUBMITTED",
-  "RESPECTFULLY SUBMITTED:",
-  "VAKALATNAMA",
-  "AFFIDAVIT",
-  "AFFIDAVIT:",
-  "LEGAL NOTICE",
-  "INTERIM RELIEF",
-  "INTERIM RELIEF:",
-  "INDEX OF DOCUMENTS",
+  "PRAYER","PRAYER:","GROUNDS","GROUNDS:","GROUNDS OF APPEAL","GROUNDS OF APPEAL:",
+  "GROUNDS FOR BAIL","GROUNDS FOR BAIL:","VERIFICATION","VERIFICATION:",
+  "BRIEF FACTS","BRIEF FACTS:","RESPECTFULLY SHEWETH","RESPECTFULLY SHEWETH:",
+  "RESPECTFULLY SUBMITTED","RESPECTFULLY SUBMITTED:","VAKALATNAMA","AFFIDAVIT",
+  "AFFIDAVIT:","LEGAL NOTICE","INTERIM RELIEF","INTERIM RELIEF:","INDEX OF DOCUMENTS",
 ]);
 
-// ── main converter ─────────────────────────────────────────────────────────
+const ALL_CAPS_RE = /^[A-Z][A-Z\s:&,./()'-]{4,}$/;
+const PARTY_ROLE_RE = /\.\.\.\s*(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF|COMPLAINANT|RESPONDENT|DEFENDANT|ACCUSED|APPLICANT\/ACCUSED)\s*$/i;
 
 export function plainTextToTiptapHTML(raw: string): string {
   if (!raw || typeof raw !== "string") return "<p></p>";
-
-  // Already HTML — return as-is
   if (raw.trimStart().startsWith("<")) return raw;
 
   const lines = raw.split(/\r?\n/);
@@ -70,131 +31,92 @@ export function plainTextToTiptapHTML(raw: string): string {
   let i = 0;
 
   while (i < lines.length) {
-    const line = lines[i];
-    const trimmed = line.trim();
+    const trimmed = lines[i].trim();
 
-    // Skip blank lines
-    if (!trimmed) {
-      i++;
-      continue;
-    }
+    if (!trimmed) { i++; continue; }
 
-    // ── HTML table passthrough (INDEX OF DOCUMENTS) ──────────────
-    if (trimmed.startsWith("<!-- INDEX_TABLE_START") || trimmed.startsWith("<table")) {
-      // Collect all HTML lines until closing tag
-      const htmlLines: string[] = [];
+    // HTML table passthrough
+    if (trimmed.startsWith("<!-- INDEX_TABLE") || trimmed.startsWith("<table")) {
+      const html: string[] = [];
       while (i < lines.length) {
-        htmlLines.push(lines[i]);
-        if (lines[i].includes("</table>") || lines[i].includes("INDEX_TABLE_END")) {
-          i++;
-          break;
-        }
+        html.push(lines[i]);
+        if (lines[i].includes("</table>") || lines[i].includes("INDEX_TABLE_END")) { i++; break; }
         i++;
       }
-      blocks.push(htmlLines.join("\n"));
+      blocks.push(html.join("\n"));
       continue;
     }
 
     // Skip HTML comments
-    if (trimmed.startsWith("<!--")) {
-      i++;
-      continue;
-    }
+    if (trimmed.startsWith("<!--")) { i++; continue; }
 
-    // ── Court title (centred H1) ──────────────────────────────────
+    // Court title → centred H1
     if (COURT_TITLE_RE.test(trimmed)) {
-      blocks.push(`<h1 style="text-align: center">${esc(trimmed)}</h1>`);
-      i++;
-      continue;
+      blocks.push(`<h1 style="text-align:center">${esc(trimmed)}</h1>`);
+      i++; continue;
     }
 
-    // ── "VERSUS" line (centred, bold) ─────────────────────────────
+    // Case number line → centred paragraph
+    if (CASE_NUMBER_RE.test(trimmed) && /NO\.|____/i.test(trimmed)) {
+      blocks.push(`<p style="text-align:center"><strong>${esc(trimmed)}</strong></p>`);
+      i++; continue;
+    }
+
+    // VERSUS → centred bold
     if (/^VERSUS$/i.test(trimmed)) {
-      blocks.push(`<p style="text-align: center"><strong>${esc(trimmed)}</strong></p>`);
-      i++;
-      continue;
+      blocks.push(`<p style="text-align:center"><strong>VERSUS</strong></p>`);
+      i++; continue;
     }
 
-    // ── AFFIDAVIT heading — page break before for print ──────────
+    // Party role line (... APPLICANT) → right-aligned
+    if (PARTY_ROLE_RE.test(trimmed)) {
+      blocks.push(`<p style="text-align:right">${esc(trimmed)}</p>`);
+      i++; continue;
+    }
+
+    // Right-aligned party role on its own line
+    if (/^\.\.\.\s*(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF|RESPONDENT|DEFENDANT|ACCUSED|COMPLAINANT)/i.test(trimmed)) {
+      blocks.push(`<p style="text-align:right">${esc(trimmed)}</p>`);
+      i++; continue;
+    }
+
+    // AFFIDAVIT → page break
     if (/^AFFIDAVIT\s*:?\s*$/i.test(trimmed)) {
       blocks.push(`<h2 data-page-break="true" class="page-break">${esc(trimmed)}</h2>`);
-      i++;
-      continue;
+      i++; continue;
     }
 
-    // ── Known section headings ────────────────────────────────────
-    if (SECTION_HEADINGS.has(trimmed.toUpperCase().replace(/:$/, "")) ||
-        SECTION_HEADINGS.has(trimmed.toUpperCase())) {
-      blocks.push(`<h2>${esc(trimmed)}</h2>`);
-      i++;
-      continue;
-    }
-
-    // ── ALL-CAPS headings (≥5 chars, all uppercase) ──────────────
-    if (ALL_CAPS_HEADING_RE.test(trimmed) && trimmed.length >= 5) {
-      const isCentredTitle =
-        /^(SUIT FOR|APPLICATION|PETITION|MEMORANDUM|CONSTITUTIONAL|CRIMINAL BAIL)/i.test(trimmed);
-      if (isCentredTitle) {
-        blocks.push(`<h2 style="text-align: center">${esc(trimmed)}</h2>`);
+    // Known section headings → H2
+    const upper = trimmed.toUpperCase().replace(/:$/, "");
+    if (SECTION_HEADINGS.has(upper) || SECTION_HEADINGS.has(trimmed.toUpperCase())) {
+      if (CENTRED_TITLE_RE.test(trimmed)) {
+        blocks.push(`<h2 style="text-align:center">${esc(trimmed)}</h2>`);
       } else {
         blocks.push(`<h2>${esc(trimmed)}</h2>`);
       }
-      i++;
-      continue;
+      i++; continue;
     }
 
-    // ── Numbered list (1. / 2. / 3.) — CONTINUOUS single <ol> ────
-    if (NUMBERED_LINE_RE.test(trimmed)) {
-      const items: string[] = [];
-      while (i < lines.length) {
-        const cur = lines[i].trim();
-        if (!cur) {
-          // Allow blank lines within a numbered sequence — check if next non-blank is numbered
-          let peek = i + 1;
-          while (peek < lines.length && !lines[peek].trim()) peek++;
-          if (peek < lines.length && NUMBERED_LINE_RE.test(lines[peek].trim())) {
-            i++;
-            continue;
-          }
-          break;
-        }
-        const m = cur.match(NUMBERED_LINE_RE);
-        if (!m) break;
-        items.push(`<li><p>${esc(cur.replace(NUMBERED_LINE_RE, ""))}</p></li>`);
-        i++;
+    // ALL-CAPS headings
+    if (ALL_CAPS_RE.test(trimmed) && trimmed.length >= 5) {
+      if (CENTRED_TITLE_RE.test(trimmed) || CASE_NUMBER_RE.test(trimmed)) {
+        blocks.push(`<h2 style="text-align:center">${esc(trimmed)}</h2>`);
+      } else {
+        blocks.push(`<h2>${esc(trimmed)}</h2>`);
       }
-      blocks.push(`<ol>${items.join("")}</ol>`);
-      continue;
+      i++; continue;
     }
 
-    // ── Lettered list (a) / b) or (i) / (ii)) ────────────────────
-    if (LETTERED_LINE_RE.test(trimmed)) {
-      const items: string[] = [];
-      while (i < lines.length) {
-        const cur = lines[i].trim();
-        if (!LETTERED_LINE_RE.test(cur)) break;
-        items.push(`<li><p>${esc(cur.replace(LETTERED_LINE_RE, ""))}</p></li>`);
-        i++;
-      }
-      blocks.push(`<ol>${items.join("")}</ol>`);
-      continue;
-    }
-
-    // ── Regular paragraph ────────────────────────────────────────
+    // Everything else → plain paragraph (numbers stay as text, not <ol>)
     const pLines: string[] = [];
     while (i < lines.length) {
       const cur = lines[i].trim();
       if (!cur) break;
-      if (
-        COURT_TITLE_RE.test(cur) ||
-        ALL_CAPS_HEADING_RE.test(cur) ||
-        NUMBERED_LINE_RE.test(cur) ||
-        LETTERED_LINE_RE.test(cur) ||
-        /^VERSUS$/i.test(cur) ||
-        cur.startsWith("<!--") ||
-        cur.startsWith("<table") ||
-        SECTION_HEADINGS.has(cur.toUpperCase().replace(/:$/, ""))
-      ) {
+      if (COURT_TITLE_RE.test(cur) || ALL_CAPS_RE.test(cur) || /^VERSUS$/i.test(cur) ||
+          cur.startsWith("<!--") || cur.startsWith("<table") ||
+          PARTY_ROLE_RE.test(cur) || /^\.\.\.\s*(PETITIONER|APPLICANT|APPELLANT|RESPONDENT)/i.test(cur) ||
+          SECTION_HEADINGS.has(cur.toUpperCase().replace(/:$/,"")) ||
+          (CASE_NUMBER_RE.test(cur) && /NO\.|____/i.test(cur))) {
         break;
       }
       pLines.push(esc(cur));
@@ -208,20 +130,9 @@ export function plainTextToTiptapHTML(raw: string): string {
   return blocks.length > 0 ? blocks.join("") : "<p></p>";
 }
 
-/**
- * Detect whether a string is already HTML or plain text.
- */
 export function isHTMLContent(content: string): boolean {
   if (!content) return false;
-  const trimmed = content.trimStart();
-  return trimmed.startsWith("<") && (
-    trimmed.startsWith("<p") ||
-    trimmed.startsWith("<h") ||
-    trimmed.startsWith("<ol") ||
-    trimmed.startsWith("<ul") ||
-    trimmed.startsWith("<div") ||
-    trimmed.startsWith("<!") ||
-    trimmed.startsWith("<br") ||
-    trimmed.startsWith("<table")
-  );
+  const t = content.trimStart();
+  return t.startsWith("<") && (t.startsWith("<p") || t.startsWith("<h") || t.startsWith("<ol") ||
+    t.startsWith("<ul") || t.startsWith("<div") || t.startsWith("<!") || t.startsWith("<br") || t.startsWith("<table"));
 }
