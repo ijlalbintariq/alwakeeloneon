@@ -11675,40 +11675,62 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Inter',sans-serif;background:#0f1419;color:#e2e8f0;min-height:100vh;-webkit-user-select:none;user-select:none}
-    .header{background:linear-gradient(135deg,#1a2332 0%,#0f1419 100%);border-bottom:1px solid #1e293b;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
-    .logo{font-size:1.1rem;font-weight:800;color:#64b5f6;letter-spacing:0.5px}
-    .badge{background:#1e293b;color:#94a3b8;font-size:0.7rem;padding:0.25rem 0.75rem;border-radius:9999px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
-    .doc-container{max-width:8.5in;margin:2rem auto;background:#fff;color:#000;border-radius:8px;box-shadow:0 25px 50px rgba(0,0,0,0.4);overflow:hidden;position:relative}
-    .doc-content{padding:1in 1in 1in 1.25in;font-family:'Times New Roman',serif;font-size:13pt;line-height:1.5;text-align:justify;position:relative;z-index:1}
-    .doc-content h1{font-size:14pt;font-weight:bold;text-transform:uppercase;text-align:center;margin-bottom:0.5rem}
-    .doc-content h2{font-size:14pt;font-weight:bold;text-transform:uppercase;margin-top:1rem;margin-bottom:0.3rem}
-    .doc-content p{margin-bottom:8px}
-    .doc-content table{width:100%;border-collapse:collapse;margin:1em 0}
-    .doc-content table th,.doc-content table td{border:1px solid #333;padding:6px 10px}
-    .doc-content table th{background:#f0f0f0;font-weight:bold}
+    .header{background:linear-gradient(135deg,#1a2332 0%,#0f1419 100%);border-bottom:1px solid #1e293b;padding:0.8rem 2rem;display:flex;align-items:center;justify-content:space-between}
+    .logo-wrap{display:flex;align-items:center;gap:0.6rem}
+    .logo-img{width:36px;height:36px;border-radius:10px;border:1px solid rgba(245,158,11,0.4)}
+    .logo-text{display:flex;flex-direction:column}
+    .logo-name{font-size:1rem;font-weight:800;color:#f8fafc;letter-spacing:0.3px}
+    .logo-sub{font-size:0.6rem;font-weight:700;color:#f59e0b;letter-spacing:1.5px;text-transform:uppercase}
+    .badge{background:#1e293b;color:#94a3b8;font-size:0.65rem;padding:0.25rem 0.75rem;border-radius:9999px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+    .doc-container{max-width:8.5in;margin:1.5rem auto;background:#fff;color:#000;border-radius:8px;box-shadow:0 25px 50px rgba(0,0,0,0.4);overflow:hidden;position:relative}
+    /* ── Exact match of legal-draft-editor CSS ── */
+    .doc-content{padding:1in 1in 1in 1.25in;font-family:'Times New Roman','TimesNewRomanPSMT',serif;font-size:13pt;line-height:1.3;text-align:justify;position:relative;z-index:1;color:#000}
+    .doc-content h1{font-family:'Times New Roman','TimesNewRomanPSMT',serif;font-size:14pt;font-weight:700;text-transform:uppercase;text-align:center;margin-bottom:0.3rem;margin-top:0.2rem;letter-spacing:0.02em;line-height:1.35}
+    .doc-content h2{font-family:'Times New Roman','TimesNewRomanPSMT',serif;font-size:14pt;font-weight:700;text-transform:uppercase;text-align:left;margin-top:0.8rem;margin-bottom:0.3rem;letter-spacing:0.01em;line-height:1.35}
+    .doc-content h3{font-family:'Times New Roman','TimesNewRomanPSMT',serif;font-size:13pt;font-weight:700;margin-top:0.5rem;margin-bottom:0.2rem;line-height:1.35}
+    .doc-content p{margin-bottom:6px;text-indent:0}
+    .doc-content ol{list-style-type:decimal;padding-left:25px;margin-bottom:4px;margin-top:2px}
+    .doc-content ul{list-style-type:disc;padding-left:25px;margin-bottom:4px}
+    .doc-content li{margin-bottom:3px;text-align:justify}
+    .doc-content li p{margin-bottom:0}
+    .doc-content blockquote{border-left:3px solid #64748b;padding-left:1rem;margin:0.5rem 0;font-style:italic;color:#475569}
+    .doc-content strong{font-weight:700}
+    .doc-content em{font-style:italic}
+    .doc-content u{text-decoration:underline;text-underline-offset:2px}
+    .doc-content table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12pt}
+    .doc-content table th,.doc-content table td{border:1px solid #333;padding:6px 10px;text-align:left;vertical-align:top}
+    .doc-content table th{background:#1a2332;color:#fff;font-weight:700;font-size:11pt;text-transform:uppercase;letter-spacing:0.02em}
+    .doc-content table td:first-child{width:50px;text-align:center}
+    .doc-content table td:nth-child(3),.doc-content table td:nth-child(4){width:80px;text-align:center}
     .watermark{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:hidden}
     .watermark-big{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-family:'Inter',sans-serif;font-size:5rem;font-weight:800;color:rgba(100,181,246,0.06);white-space:nowrap;letter-spacing:0.15em;text-transform:uppercase}
     .watermark-grid{position:absolute;width:200%;height:200%;top:-50%;left:-50%;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:5rem;transform:rotate(-35deg)}
     .watermark-grid span{font-family:'Inter',sans-serif;font-size:1.2rem;font-weight:800;color:rgba(100,181,246,0.05);white-space:nowrap;letter-spacing:0.1em;text-transform:uppercase}
-    .footer{text-align:center;padding:2rem;color:#64748b;font-size:0.75rem}
-    @media print{body{background:#fff}.header,.footer{display:none}.doc-container{box-shadow:none;margin:0;border-radius:0}}
+    .footer{text-align:center;padding:1.5rem;color:#64748b;font-size:0.7rem}
+    @media print{body{background:#fff}.header,.footer{display:none}.doc-container{box-shadow:none;margin:0;border-radius:0}.watermark{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style>
 </head>
 <body oncontextmenu="return false">
   <div class="header">
-    <div class="logo">AL WAKEELO &middot; LEGAL INTELLIGENCE</div>
+    <div class="logo-wrap">
+      <img src="https://alwakeelo.com/icon-192.png?v=20260312b" alt="Al Wakeelo" class="logo-img" />
+      <div class="logo-text">
+        <span class="logo-name">Al Wakeelo</span>
+        <span class="logo-sub">Legal Intelligence Platform</span>
+      </div>
+    </div>
     <div class="badge">View Only &middot; Draft Preview</div>
   </div>
   <div class="doc-container">
     <div class="watermark">
       <div class="watermark-big">AL WAKEELO</div>
-      <div class="watermark-grid">${'<span>AL WAKEELO</span>'.repeat(50)}</div>
+      <div class="watermark-grid">${'<span>AL WAKEELO</span><span>CONFIDENTIAL</span>'.repeat(25)}</div>
     </div>
     <div class="doc-content">${draft.content}</div>
   </div>
   <div class="footer">
     <p>Confidential legal draft shared via Al Wakeelo &middot; View only &middot; Link expires in 24 hours</p>
-    <p style="margin-top:0.5rem">&copy; ${new Date().getFullYear()} Al Wakeelo &middot; Legal Intelligence Platform</p>
+    <p style="margin-top:0.4rem">&copy; ${new Date().getFullYear()} Al Wakeelo &middot; Legal Intelligence Platform</p>
   </div>
 </body>
 </html>`);
