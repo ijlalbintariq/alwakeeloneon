@@ -135,7 +135,7 @@ export const CitationSuggestion = Extension.create({
                   q: searchQuery,
                   limit: isAutoSuggest ? "6" : "8",
                 });
-                const res = await fetch(`/api/case-law/search?${params.toString()}`, {
+                const res = await fetch(`/api/case-law/cite?${params.toString()}`, {
                   credentials: "include",
                 });
                 if (!res.ok) {
@@ -157,7 +157,7 @@ export const CitationSuggestion = Extension.create({
               } catch {
                 resolve([]);
               }
-            }, isAutoSuggest ? 500 : 300); // Slightly longer debounce for auto-suggest
+            }, isAutoSuggest ? 350 : 150); // Fast debounce for inline cite
           });
         },
         // render is provided by the component that registers this extension

@@ -9044,6 +9044,63 @@ RAG POLICY (STRICT):
     }
   });
 
+  // ── Fast citation lookup for /cite inline command ─────────────────────────
+  // Skips RAG vector search and source text loading — FTS only + judgment UUID.
+  // Designed for sub-200ms response in the editor autocomplete.
+  app.get("/api/case-law/cite", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const query = ((req.query.q as string) || "").trim();
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(20, Math.floor(limitRaw))) : 8;
+      if (!query || query.length < 3) return res.json([]);
+
+      const parsedCitation = parseCaseLawCitationQuery(query);
+
+      const resultsRaw = await storage.searchCaseLaw(query, limit * 2, {
+        year: parsedCitation?.year ?? undefined,
+        report: parsedCitation?.report || undefined,
+        page: parsedCitation?.page ?? undefined,
+        sort: "relevance",
+        parsedCitation,
+        includeSourceContentSearch: false,
+      });
+
+      const results = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(resultsRaw)).slice(0, limit);
+
+      const citations = results.map((r) => String(r.citation || "").trim()).filter(Boolean);
+      const judgmentIdMap = new Map<string, string>();
+      if (citations.length > 0) {
+        try {
+          const rows = await db
+            .select({ id: judgments.id, citationString: judgments.citationString })
+            .from(judgments)
+            .where(inArray(judgments.citationString, citations));
+          for (const row of rows) {
+            judgmentIdMap.set(row.citationString, row.id);
+          }
+        } catch { /* non-fatal */ }
+      }
+
+      const enriched = results.map((r) => ({
+        id: r.id,
+        citation: r.citation,
+        title: r.title,
+        court: r.court,
+        summary: r.summary,
+        keywords: r.keywords,
+        judgmentId: judgmentIdMap.get(String(r.citation || "").trim()) || null,
+      }));
+
+      res.setHeader("Cache-Control", "private, max-age=60");
+      res.json(enriched);
+    } catch (err) {
+      console.error("Error in fast cite lookup:", err);
+      res.status(500).json({ message: "Citation lookup failed" });
+    }
+  });
+
   app.get("/api/case-law/lookup", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
