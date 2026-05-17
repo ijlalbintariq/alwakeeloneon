@@ -1544,6 +1544,9 @@ function LegalDraftingPageInner() {
   const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
+  const [generationElapsed, setGenerationElapsed] = useState(0);
+  const generationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isSavedLocal, setIsSavedLocal] = useState(true);
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<DraftRecommendation[]>([]);
@@ -2407,6 +2410,12 @@ function LegalDraftingPageInner() {
     ]);
 
     setIsGenerating(true);
+    setGenerationStartTime(Date.now());
+    setGenerationElapsed(0);
+    if (generationTimerRef.current) clearInterval(generationTimerRef.current);
+    generationTimerRef.current = setInterval(() => {
+      setGenerationElapsed((prev) => prev + 1);
+    }, 1000);
     try {
       const draftTextForAi = docText.slice(0, 12000);
       let response: Response;
@@ -2516,6 +2525,11 @@ function LegalDraftingPageInner() {
       });
     } finally {
       setIsGenerating(false);
+      setGenerationStartTime(null);
+      if (generationTimerRef.current) {
+        clearInterval(generationTimerRef.current);
+        generationTimerRef.current = null;
+      }
     }
   };
 
@@ -2566,10 +2580,33 @@ function LegalDraftingPageInner() {
   };
 
   const shareDraft = async () => {
+    // If draft is saved, create a shareable preview link
+    if (selectedDraftId) {
+      try {
+        const response = await fetch("/api/legal-drafting/share", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            draftId: selectedDraftId,
+            title: draftTitle,
+            content: editorRef.current?.getHTML() || editorHtml || docText,
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const shareUrl = `${window.location.origin}/draft-preview/${data.shareToken}`;
+          await navigator.clipboard.writeText(shareUrl);
+          toast({ title: "Share link copied!", description: "Send this link to your client for draft approval." });
+          return;
+        }
+      } catch {}
+    }
+    // Fallback: copy draft text
     const shareText = `${draftTitle}\n\n${docText}`;
     try {
       await navigator.clipboard.writeText(shareText);
-      toast({ title: "Draft copied to clipboard" });
+      toast({ title: "Draft text copied to clipboard" });
     } catch {
       toast({ title: "Could not copy draft", variant: "destructive" });
     }
@@ -3044,8 +3081,8 @@ function LegalDraftingPageInner() {
                           {message.role === "user"
                             ? "You"
                             : message.kind === "typing"
-                              ? "AI Drafting Assistant · Writing"
-                            : "AI Drafting Assistant"}
+                              ? `AI Drafting Assistant · Writing${isGenerating && generationElapsed > 0 ? ` ${Math.floor(generationElapsed / 60)}:${String(generationElapsed % 60).padStart(2, "0")}` : ""}`
+                              : "AI Drafting Assistant"}
                         </span>
                         <span className="text-[10px] text-muted-foreground">{new Date(message.createdAt).toLocaleTimeString()}</span>
                       </div>

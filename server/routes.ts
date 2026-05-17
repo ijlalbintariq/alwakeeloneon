@@ -11621,6 +11621,100 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       return res.status(500).json({ message: "Failed to save legal drafting workspace state" });
     }
   });
+  // ── Shareable Draft Preview (in-memory, 24h TTL) ──────────────────────
+  const sharedDrafts = new Map<string, { title: string; content: string; createdAt: number; userId: string }>();
+  // Cleanup stale shares every hour
+  setInterval(() => {
+    const now = Date.now();
+    for (const [token, data] of sharedDrafts) {
+      if (now - data.createdAt > 24 * 60 * 60 * 1000) sharedDrafts.delete(token);
+    }
+  }, 60 * 60 * 1000);
+
+  app.post("/api/legal-drafting/share", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { title, content } = req.body || {};
+      if (!content || typeof content !== "string") {
+        return res.status(400).json({ message: "Draft content is required" });
+      }
+      const crypto = await import("crypto");
+      const shareToken = crypto.randomBytes(24).toString("hex");
+      sharedDrafts.set(shareToken, {
+        title: String(title || "Untitled Draft"),
+        content: String(content).slice(0, 500000),
+        createdAt: Date.now(),
+        userId,
+      });
+      return res.json({ shareToken });
+    } catch (err: any) {
+      console.error("Error creating draft share:", err);
+      return res.status(500).json({ message: "Failed to create share link" });
+    }
+  });
+
+  app.get("/api/draft-preview/:token", async (req, res) => {
+    const token = String(req.params.token || "").trim();
+    if (!token || !sharedDrafts.has(token)) {
+      return res.status(404).send(`<!doctype html><html><head><title>Draft Not Found | Al Wakeelo</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>body{font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#0f1419;color:#e2e8f0}
+        .box{text-align:center;padding:2rem}.logo{font-size:1.5rem;font-weight:800;color:#64b5f6;margin-bottom:1rem}</style></head>
+        <body><div class="box"><div class="logo">AL WAKEELO</div><h2>Draft Not Found</h2><p style="color:#94a3b8">This preview link has expired or is invalid.</p></div></body></html>`);
+    }
+    const draft = sharedDrafts.get(token)!;
+    const safeTitle = draft.title.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return res.send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${safeTitle} — Draft Preview | Al Wakeelo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;background:#0f1419;color:#e2e8f0;min-height:100vh}
+    .header{background:linear-gradient(135deg,#1a2332 0%,#0f1419 100%);border-bottom:1px solid #1e293b;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+    .logo{font-size:1.1rem;font-weight:800;color:#64b5f6;letter-spacing:0.5px}
+    .badge{background:#064e3b;color:#6ee7b7;font-size:0.7rem;padding:0.25rem 0.75rem;border-radius:9999px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+    .doc-container{max-width:8.5in;margin:2rem auto;background:#fff;color:#000;border-radius:8px;box-shadow:0 25px 50px rgba(0,0,0,0.4);overflow:hidden}
+    .doc-content{padding:1in 1in 1in 1.25in;font-family:'Times New Roman',serif;font-size:13pt;line-height:1.5;text-align:justify}
+    .doc-content h1{font-size:14pt;font-weight:bold;text-transform:uppercase;text-align:center;margin-bottom:0.5rem}
+    .doc-content h2{font-size:14pt;font-weight:bold;text-transform:uppercase;margin-top:1rem;margin-bottom:0.3rem}
+    .doc-content p{margin-bottom:8px}
+    .doc-content table{width:100%;border-collapse:collapse;margin:1em 0}
+    .doc-content table th,.doc-content table td{border:1px solid #333;padding:6px 10px}
+    .doc-content table th{background:#f0f0f0;font-weight:bold}
+    .footer{text-align:center;padding:2rem;color:#64748b;font-size:0.75rem}
+    .approve-bar{background:#1a2332;border-top:1px solid #1e293b;padding:1rem 2rem;display:flex;align-items:center;justify-content:center;gap:1rem;position:sticky;bottom:0}
+    .btn{padding:0.6rem 2rem;border-radius:6px;border:none;font-weight:700;font-size:0.85rem;cursor:pointer;transition:all 0.2s}
+    .btn-approve{background:linear-gradient(135deg,#059669,#10b981);color:#fff}
+    .btn-approve:hover{background:linear-gradient(135deg,#047857,#059669)}
+    .btn-reject{background:transparent;border:1px solid #475569;color:#94a3b8}
+    .btn-reject:hover{border-color:#e2e8f0;color:#e2e8f0}
+    @media print{.header,.footer,.approve-bar{display:none}.doc-container{box-shadow:none;margin:0;border-radius:0}}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">AL WAKEELO · LEGAL INTELLIGENCE</div>
+    <div class="badge">Draft Preview</div>
+  </div>
+  <div class="doc-container">
+    <div class="doc-content">${draft.content}</div>
+  </div>
+  <div class="approve-bar">
+    <button class="btn btn-approve" onclick="alert('Approval noted. Your lawyer will be notified.')">✓ Approve Draft</button>
+    <button class="btn btn-reject" onclick="window.print()">⎙ Print / Save PDF</button>
+  </div>
+  <div class="footer">
+    <p>This is a confidential legal draft shared via Al Wakeelo. Link expires in 24 hours.</p>
+    <p style="margin-top:0.5rem">© ${new Date().getFullYear()} Al Wakeelo · Legal Intelligence Platform</p>
+  </div>
+</body>
+</html>`);
+  });
 
   app.post("/api/legal-drafting/references", async (req, res) => {
     const userId = getUserId(req);

@@ -408,8 +408,8 @@ function LegalEditorInner(
 
   return (
     <div className={className}>
-      {/* Formatting toolbar — MS Word–style */}
-      <div className="flex items-center gap-0.5 flex-wrap px-2 py-1.5 border-b border-[hsl(var(--preview-border))] bg-background/50 backdrop-blur-xl">
+      {/* Formatting toolbar — MS Word–style (sticky: follows scroll) */}
+      <div className="flex items-center gap-0.5 flex-wrap px-2 py-1.5 border-b border-[hsl(var(--preview-border))] bg-background/95 backdrop-blur-xl sticky top-0 z-30">
         {/* Undo / Redo */}
         <ToolbarBtn
           disabled={!editor.can().undo()}
