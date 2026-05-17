@@ -11707,7 +11707,8 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
     .watermark-grid{position:absolute;width:200%;height:200%;top:-50%;left:-50%;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:5rem;transform:rotate(-35deg)}
     .watermark-grid span{font-family:'Inter',sans-serif;font-size:1.2rem;font-weight:800;color:rgba(100,181,246,0.05);white-space:nowrap;letter-spacing:0.1em;text-transform:uppercase}
     .footer{text-align:center;padding:1.5rem;color:#64748b;font-size:0.7rem}
-    @media print{body{background:#fff}.header,.footer{display:none}.doc-container{box-shadow:none;margin:0;border-radius:0}.watermark{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    @media print{body *{display:none!important}.print-blocked{display:flex!important;position:fixed;top:0;left:0;width:100%;height:100%;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:1.2rem;font-weight:700;color:#333;background:#fff;z-index:9999}}
+    .print-blocked{display:none}
   </style>
 </head>
 <body oncontextmenu="return false">
@@ -11732,6 +11733,13 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
     <p>Confidential legal draft shared via Al Wakeelo &middot; View only &middot; Link expires in 24 hours</p>
     <p style="margin-top:0.4rem">&copy; ${new Date().getFullYear()} Al Wakeelo &middot; Legal Intelligence Platform</p>
   </div>
+  <div class="print-blocked">&#x1f6ab; Printing is disabled for this confidential document. Contact your lawyer for a printed copy.</div>
+<script>
+window.print=function(){};
+document.addEventListener('keydown',function(e){
+  if((e.ctrlKey||e.metaKey)&&e.key==='p'){e.preventDefault();e.stopImmediatePropagation();alert('Printing is disabled for this confidential document. Please contact your lawyer for a copy.');}
+},true);
+</script>
 </body>
 </html>`);
   });
