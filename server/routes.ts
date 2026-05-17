@@ -10894,7 +10894,7 @@ Rules:
   function normalizeLegalDraftingDocType(
     raw: string | undefined | null,
     prompt: string,
-  ): LegalDraftingDocType {
+  ): LegalDraftingDocType | null {
     const value = String(raw || "").trim().toLowerCase();
     const inferredFromPrompt = inferLegalDraftingDocTypeFromPrompt(prompt);
 
@@ -10911,7 +10911,9 @@ Rules:
     }
 
     if (inferredFromPrompt) return inferredFromPrompt;
-    return "civil-suit-plaint";
+    // Do NOT default to civil-suit-plaint — return null so the caller can
+    // handle unrecognised prompts (e.g. "refresh") by inferring from draft content
+    return null;
   }
 
   const FULL_REWRITE_PROMPT_PATTERN =
@@ -11181,8 +11183,18 @@ Rules:
               skeleton:
                 "IN THE COURT OF ______\nCase No. ____ of ____\n\nPetitioner/Plaintiff/Appellant: ____\nVersus\nRespondent/Defendant: ____\n\nTITLE: ____\n\nFacts:\n1. ...\n2. ...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...\n\nVerification:\n...",
             }
-          : LEGAL_DRAFTING_DOC_TYPES[selectedDocType as LegalDraftingDocType];
+          : selectedDocType && LEGAL_DRAFTING_DOC_TYPES[selectedDocType]
+            ? LEGAL_DRAFTING_DOC_TYPES[selectedDocType]
+            : {
+                // Fallback: no doc type matched — PRESERVE whatever the existing draft is about.
+                // This happens when user says "refresh", "rewrite", "improve" etc.
+                label: "Preserve Existing Draft (same case type, same subject matter)",
+                checklist:
+                  "- PRESERVE the same case type, offence/cause of action, parties, court/forum from the existing draft\n- PRESERVE the same statutory provisions and legal grounds\n- Improve language, formatting, and legal arguments while keeping the same subject matter\n- Do NOT change the filing type (e.g. do not convert a criminal bail to a civil suit)\n- Keep all existing facts, dates, FIR numbers, section numbers intact",
+                skeleton: baseDraftText || "[Existing draft will be provided]",
+              };
 
+        console.log(`[AI Routing][legal-drafting] docType=${selectedDocType || "PRESERVE-EXISTING"} label="${profile.label}" draftLen=${baseDraftText.length} prompt="${safePrompt.slice(0, 60)}"`);
         // --- Query Refinement for drafts ---
         // Refine the user's prompt into structured legal language for better
         // knowledge retrieval (statute detection, case law matching).

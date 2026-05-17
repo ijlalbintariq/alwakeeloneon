@@ -2556,7 +2556,9 @@ function LegalDraftingPageInner() {
       setGenerationElapsed((prev) => prev + 1);
     }, 1000);
     try {
-      const draftTextForAi = docText.slice(0, 12000);
+      // Use getText() directly from editor ref — docText may be stale or empty after page refresh
+      const liveDraftText = editorRef.current?.getText() || docText || "";
+      const draftTextForAi = liveDraftText.slice(0, 12000);
       let response: Response;
       if (aiContextFiles.length > 0) {
         const form = new FormData();
