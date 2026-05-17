@@ -11714,7 +11714,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
 <body oncontextmenu="return false">
   <div class="header">
     <div class="logo-wrap">
-      <img src="https://alwakeelo.com/icon-192.png?v=20260312b" alt="Al Wakeelo" class="logo-img" />
+      <img src="/icon-192.png" alt="Al Wakeelo" class="logo-img" />
       <div class="logo-text">
         <span class="logo-name">Al Wakeelo</span>
         <span class="logo-sub">Legal Intelligence Platform</span>
