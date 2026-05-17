@@ -10469,78 +10469,91 @@ DOCUMENT FORMAT
 
 All drafts must follow this structure.
 
-COURT HEADING
+IMPORTANT: Every legal document has TWO distinct sections — a TITLE/INDEX PAGE (Page 1) and the MEMO/BODY (Page 2+). Both must be generated.
 
-Start with the court heading written in capital letters.
+=== PAGE 1: TITLE / INDEX PAGE ===
 
-Court heading rules:
-- Do NOT include the Act name or year in the court heading line (e.g. write "SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES)" NOT "SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES ACT, 1997)").
-- The city/district name comes AFTER the court name, separated by a comma (e.g. "IN THE SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES), LAHORE").
-- Avoid unnecessary commas within the court title.
-- For special courts under special statutes, use the short jurisdiction name in parentheses.
+Generate the following elements in this exact order with these exact formatting rules:
 
-Examples:
+1. COURT HEADING
+   - Alignment: Center-aligned
+   - Typography: ALL CAPS and Bold
+   - Do NOT include the Act name or year in the court heading (write "SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES)" not "SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES ACT, 1997)")
+   - City/district after court name with comma: "IN THE SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES), LAHORE"
 
-IN THE HONOURABLE [NAME] HIGH COURT, [CITY]
+   Examples:
+   IN THE HONOURABLE [NAME] HIGH COURT, [CITY]
+   IN THE COURT OF [CIVIL JUDGE / SESSIONS JUDGE], [CITY]
+   IN THE SUPREME COURT OF PAKISTAN (APPELLATE JURISDICTION)
+   IN THE SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES), [CITY]
+   IN THE SPECIAL COURT (ANTI-TERRORISM), [CITY]
+   IN THE BANKING COURT, [CITY]
+   IN THE ACCOUNTABILITY COURT, [CITY]
 
-or
+2. CASE NUMBER
+   - Alignment: Center-aligned
+   - Typography: Title Case (NOT all caps) and Bold
+   - Include generous underscore line for missing number
+   - Format: "Criminal Misc. (Bail) No. ________________ of 2025"
+   - Other examples: "Civil Suit No. ________________ of 2025", "Writ Petition No. ________________ of 2025"
 
-IN THE COURT OF [CIVIL JUDGE / ADDITIONAL DISTRICT JUDGE / SESSIONS JUDGE], [CITY]
+3. PETITIONER/APPLICANT NAME
+   - Alignment: Center-aligned
+   - Typography: Bold
+   - Include full name, parentage (son of / daughter of), age, and address
+   - Leave 3-4 blank lines before this block
 
-or
+4. PARTY DESIGNATION
+   - Alignment: Right-aligned
+   - Format: ".... Applicant/Accused" or ".... Petitioner" etc.
 
-IN THE SUPREME COURT OF PAKISTAN
-(APPELLATE JURISDICTION)
+5. VERSUS
+   - Alignment: Center-aligned
+   - Typography: ALL CAPS, Bold
+   - Leave 3-4 blank lines before and after VERSUS
 
-or (for CNSA narcotics cases):
+6. RESPONDENT NAME
+   - Alignment: Center-aligned
+   - Typography: Bold
+   - Include full designation/address
 
-IN THE SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES), [CITY]
+7. RESPONDENT DESIGNATION
+   - Alignment: Right-aligned
+   - Format: ".... Respondent"
 
-or (for Anti-Terrorism cases):
+8. PETITION/APPLICATION TITLE
+   - Alignment: Center-aligned
+   - Typography: ALL CAPS and Bold
+   - Leave 3-4 blank lines before and after this title
+   - Format: "APPLICATION FOR POST-ARREST BAIL UNDER SECTION 497 OF THE CODE OF CRIMINAL PROCEDURE (Cr.P.C.), 1898"
+   - For CNSA cases add: "READ WITH SECTION 51 OF THE CONTROL OF NARCOTIC SUBSTANCES ACT, 1997"
 
-IN THE SPECIAL COURT (ANTI-TERRORISM), [CITY]
+9. INDEX OF DOCUMENTS TABLE
+   - Create a structured table with exactly FOUR columns
+   - Column Headers (Bold): S.No. | Description of Documents | Annexures | Page No.
+   - Row formatting:
+     * Item 1 is always the petition/application itself — Annexures column shows "---"
+     * Item 2 is always "Affidavit in Support" — Annexures column shows "---"
+     * Items 3+ are supporting documents with bold uppercase annexure letters (A, B, C, D...)
+     * Leave Page No. cells completely blank (filled by court clerk)
+   - Scan the draft facts for all referenced documents (FIRs, orders, arrest memos, certificates, reports) and list each one
 
-or (for Banking cases):
+10. SIGNATURE BLOCK (Footer of Page 1)
+    - Right side: Bold text reading "Applicant/Accused" (or "Petitioner" etc.)
+    - Left side: Bold text reading "Through:" followed by advocate name/designation on next line
+    - Leave generous spacing between the index table and this block
 
-IN THE BANKING COURT, [CITY]
+=== PAGE 2+: MEMO OF PETITION (Body) ===
 
-or (for NAB/Accountability cases):
+PAGE 2 MUST begin by REPEATING the full header from Page 1:
+  - Court Heading (center, ALL CAPS, bold)
+  - Case Number (center, Title Case, bold)
+  - Petitioner name (center) .... Party designation (right)
+  - VERSUS (center)
+  - Respondent name (center) .... Party designation (right)
+  - Petition/Application Title (center, ALL CAPS, bold)
 
-IN THE ACCOUNTABILITY COURT, [CITY]
-
-CASE TITLE
-
-After the heading provide the case number and parties.
-
-Example format:
-
-Civil Suit No ______ / 20__
-
-[NAME]
-S/o ______
-Resident of ______
-
-… PLAINTIFF / PETITIONER / APPELLANT
-
-VERSUS
-
-[NAME]
-S/o ______
-Resident of ______
-
-… DEFENDANT / RESPONDENT
-
-TITLE OF PETITION OR APPEAL
-
-Clearly state the nature of proceedings.
-
-Examples:
-
-REGULAR FIRST APPEAL UNDER SECTION 96 OF THE CODE OF CIVIL PROCEDURE, 1908
-
-CONSTITUTIONAL PETITION UNDER ARTICLE 199 OF THE CONSTITUTION OF ISLAMIC REPUBLIC OF PAKISTAN, 1973
-
-APPLICATION FOR POST ARREST BAIL UNDER SECTION 497 Cr.P.C.
+Then the body starts:
 
 OPENING STATEMENT
 
@@ -10550,16 +10563,7 @@ Respectfully Sheweth:
 
 BRIEF FACTS
 
-Provide a structured factual narrative using roman numbering.
-
-Example structure:
-
-BRIEF FACTS:
-
-i.
-ii.
-iii.
-iv.
+Provide numbered paragraphs (1., 2., 3., etc.) with chronological, legally relevant facts. Each paragraph must start with "That..."
 
 Facts must be chronological and legally relevant.
 
@@ -10690,45 +10694,9 @@ DEPONENT
 Before me:
 Oath Commissioner / Notary Public
 
-ANNEXURES / INDEX OF DOCUMENTS (MANDATORY)
+ANNEXURES / INDEX OF DOCUMENTS
 
-Every legal draft MUST include an INDEX OF DOCUMENTS table. It is part of the COVER PAGE of the filing as practiced in Pakistani courts.
-
-The correct page order is:
-
-PAGE 1 (Cover/Title Page):
-  1. Court Heading (centred, caps)
-  2. Case/Application Number (centred)
-  3. Applicant/Petitioner full name with parentage and address (centred)
-  4. .... Applicant/Petitioner (right-aligned designation)
-  5. VERSUS (centred, bold)
-  6. Respondent full name with parentage/designation (centred)
-  7. .... Respondent (right-aligned designation)
-  8. PETITION/APPLICATION TITLE (centred, bold, e.g. "PETITION UNDER SECTION 22-A & 22-B OF THE CODE OF CRIMINAL PROCEDURE (Cr.P.C.), 1898")
-  9. INDEX OF DOCUMENTS (table — see format below)
-  10. Petitioner/Applicant signature block: right-aligned "Petitioners" then "Through:" then advocate name
-
-PAGE 2+ (Body of Application):
-  The body starts with RESPECTFULLY SHEWETH followed by BRIEF FACTS, GROUNDS, PRAYER, VERIFICATION, etc.
-
-INDEX OF DOCUMENTS table format (strict):
-
-INDEX OF DOCUMENTS
-
-S.No.    Description of Documents                          Annexures    Page No.
-1.       [Petition/Application title]                      ---          ---
-2.       Affidavit in Support                              ---          ---
-3.       [Supporting document description]                 A
-4.       [Supporting document description]                 B
-5.       [Supporting document description]                 C
-
-Rules:
-- Item 1 is always the petition/application itself (no annexure letter, marked with ---)
-- Item 2 is always the Affidavit (no annexure letter, marked with ---)
-- Items 3 onward are supporting documents with Annexure letters A, B, C, etc.
-- Include a "Page No." column (leave blank or use --- as it will be filled by court clerk)
-- Scan the draft facts for all referenced documents (orders, FIRs, notices, reports, certificates) and list each one.
-- The INDEX must be on the COVER PAGE, not at the end of the document.
+(See PAGE 1 formatting rules above for complete INDEX OF DOCUMENTS table format and placement rules. The index MUST be on the cover/title page, never at the end.)
 
 PLACEHOLDERS
 
