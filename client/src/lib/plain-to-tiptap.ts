@@ -28,6 +28,13 @@ const PARTY_ROLE_RE = /\.{2,4}\s*(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF|COMPL
 const PARTY_ROLE_LINE_RE = /^\.{2,4}\s*(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF|RESPONDENT|DEFENDANT|ACCUSED|COMPLAINANT|APPLICANT\/ACCUSED|PETITIONERS)/i;
 const THROUGH_RE = /^Through\s*:/i;
 
+// Detect standalone party role labels (with or without dots/ellipsis)
+// Matches: "Applicant/Accused", "... RESPONDENT", "…Petitioner", ".... APPLICANT"
+const STANDALONE_ROLE_RE = /^[.…]*\s*(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF|COMPLAINANT|RESPONDENT|DEFENDANT|ACCUSED|APPLICANT\/ACCUSED|PETITIONERS)\s*$/i;
+
+// Detect numbered items like "1. ", "2. ", "10. " at start of line
+const NUMBERED_ITEM_RE = /^\d{1,3}\.\s+/;
+
 export function plainTextToTiptapHTML(raw: string): string {
   if (!raw || typeof raw !== "string") return "<p></p>";
   if (raw.trimStart().startsWith("<")) return raw;
@@ -40,12 +47,17 @@ export function plainTextToTiptapHTML(raw: string): string {
     const trimmed = lines[i].trim();
 
     // Blank lines → spacer paragraph for visual spacing
+    // Every blank line group creates visual spacing (Pakistani court style)
     if (!trimmed) {
-      // Count consecutive blank lines — 3+ means "generous spacing" from prompt
       let blankCount = 0;
       while (i < lines.length && !lines[i].trim()) { blankCount++; i++; }
+      // Always add a spacer — Pakistani court pleadings need clear section separation
       if (blankCount >= 3) {
         blocks.push(`<p style="margin-top:1.5em">&nbsp;</p>`);
+      } else if (blankCount >= 2) {
+        blocks.push(`<p style="margin-top:0.8em">&nbsp;</p>`);
+      } else {
+        blocks.push(`<p style="margin-top:0.4em">&nbsp;</p>`);
       }
       continue;
     }
@@ -138,15 +150,16 @@ export function plainTextToTiptapHTML(raw: string): string {
       i++; continue;
     }
 
-    // "Through:" line → left-aligned bold (signature block)
-    if (THROUGH_RE.test(trimmed)) {
-      blocks.push(`<p><strong>${esc(trimmed)}</strong></p>`);
+    // Standalone party role labels — with or without dots
+    // "Applicant/Accused", "... RESPONDENT", "…Petitioner"
+    if (STANDALONE_ROLE_RE.test(trimmed)) {
+      blocks.push(`<p style="text-align:right"><strong>${esc(trimmed)}</strong></p>`);
       i++; continue;
     }
 
-    // "Applicant/Accused" or "Petitioners" alone on a line (signature footer) → right-aligned bold
-    if (/^(Applicant|Petitioner|Appellant|Plaintiff|Complainant|Accused|Applicant\/Accused|Petitioners)\s*$/i.test(trimmed)) {
-      blocks.push(`<p style="text-align:right"><strong>${esc(trimmed)}</strong></p>`);
+    // "Through:" line → left-aligned bold (signature block)
+    if (THROUGH_RE.test(trimmed)) {
+      blocks.push(`<p><strong>${esc(trimmed)}</strong></p>`);
       i++; continue;
     }
 
@@ -183,6 +196,37 @@ export function plainTextToTiptapHTML(raw: string): string {
       i++; continue;
     }
 
+    // Numbered items (e.g. "1. Muhammad Bilal s/o ...") → each as its own paragraph
+    // In Pakistani court drafts, numbered items in the cause title (party list) or
+    // numbered grounds should each be a separate, visually distinct block.
+    if (NUMBERED_ITEM_RE.test(trimmed)) {
+      // Collect all continuation lines until we hit a blank line or a special line
+      const pLines: string[] = [esc(trimmed)];
+      i++;
+      while (i < lines.length) {
+        const cur = lines[i].trim();
+        if (!cur) break; // blank line ends this numbered item
+        // If the next line is itself a new numbered item, heading, or special line, stop
+        if (NUMBERED_ITEM_RE.test(cur) ||
+            COURT_TITLE_RE.test(cur) || ALL_CAPS_RE.test(cur) || /^VERSUS$/i.test(cur) ||
+            cur.startsWith("<!--") || cur.startsWith("<table") ||
+            PARTY_ROLE_RE.test(cur) || PARTY_ROLE_LINE_RE.test(cur) ||
+            STANDALONE_ROLE_RE.test(cur) ||
+            THROUGH_RE.test(cur) ||
+            SECTION_HEADINGS.has(cur.toUpperCase().replace(/:$/, "")) ||
+            (CASE_NUMBER_RE.test(cur) && /NO\.|____/i.test(cur)) ||
+            (TITLE_CASE_NUMBER_RE.test(cur) && /No\.|____/i.test(cur))) {
+          break;
+        }
+        // Continuation of the same numbered item (wrap onto next line)
+        pLines.push(esc(cur));
+        i++;
+      }
+      // Numbered items in party blocks: indent slightly like court format
+      blocks.push(`<p style="text-indent:1.5em">${pLines.join(" ")}</p>`);
+      continue;
+    }
+
     // Everything else → plain paragraph (numbers stay as text, not <ol>)
     const pLines: string[] = [];
     while (i < lines.length) {
@@ -191,8 +235,9 @@ export function plainTextToTiptapHTML(raw: string): string {
       if (COURT_TITLE_RE.test(cur) || ALL_CAPS_RE.test(cur) || /^VERSUS$/i.test(cur) ||
           cur.startsWith("<!--") || cur.startsWith("<table") ||
           PARTY_ROLE_RE.test(cur) || PARTY_ROLE_LINE_RE.test(cur) ||
+          STANDALONE_ROLE_RE.test(cur) ||
           THROUGH_RE.test(cur) ||
-          /^(Applicant|Petitioner|Appellant|Plaintiff|Complainant|Accused|Petitioners)\s*$/i.test(cur) ||
+          NUMBERED_ITEM_RE.test(cur) ||
           SECTION_HEADINGS.has(cur.toUpperCase().replace(/:$/,"")) ||
           (CASE_NUMBER_RE.test(cur) && /NO\.|____/i.test(cur)) ||
           (TITLE_CASE_NUMBER_RE.test(cur) && /No\.|____/i.test(cur))) {
