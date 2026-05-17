@@ -2074,7 +2074,6 @@ function LegalDraftingPageInner() {
   const applyRecommendedChange = (edit: DraftRecommendation) => {
     const replacement = edit.suggestedText.trim();
     if (!replacement) return;
-    const source = docText || "";
     if (!edit.originalSnippet.trim()) {
       toast({
         title: "Could not auto-apply",
@@ -2083,8 +2082,16 @@ function LegalDraftingPageInner() {
       });
       return;
     }
-    const range = findSnippetRange(source, edit.originalSnippet);
-    if (!range) {
+
+    // Strategy: try to apply the change on the HTML source first.
+    // This preserves tables (INDEX OF DOCUMENTS) and other rich formatting
+    // that would be lost if we operated on plain text only.
+    const currentHtml = editorRef.current?.getHTML() || editorHtml || "";
+    const plainSource = docText || "";
+
+    // Try finding the snippet in plain text first to get the replacement
+    const plainRange = findSnippetRange(plainSource, edit.originalSnippet);
+    if (!plainRange) {
       toast({
         title: "Snippet not found",
         description: "No matching text found in current draft. No new text was added.",
@@ -2093,10 +2100,69 @@ function LegalDraftingPageInner() {
       return;
     }
 
-    const nextText = source.slice(0, range.start) + replacement + source.slice(range.end);
+    // If the editor has HTML with tables/rich content, do an HTML-aware replacement.
+    // We replace within plain text, then re-render through plainTextToTiptapHTML,
+    // BUT we must first check if the HTML has a table — if so, preserve it.
+    const hasTable = /<table[\s>]/i.test(currentHtml);
 
-    setEditorContent(nextText);
-    setHasDraftInSession(!!nextText.trim());
+    if (hasTable && currentHtml) {
+      // HTML-aware path: find the snippet in the HTML's text nodes and replace.
+      // We need to match the original snippet text within HTML paragraph content.
+      const snippetEscaped = edit.originalSnippet.trim()
+        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        .replace(/\s+/g, "\\s*(?:<[^>]*>)*\\s*"); // Allow HTML tags between words
+      const htmlRegex = new RegExp(snippetEscaped, "i");
+      const htmlMatch = currentHtml.match(htmlRegex);
+
+      if (htmlMatch && typeof htmlMatch.index === "number") {
+        // Replace in HTML directly, wrapping the replacement in a <p> if it's plain text
+        const replacementHtml = isHTMLContent(replacement)
+          ? replacement
+          : plainTextToTiptapHTML(replacement);
+        const nextHtml =
+          currentHtml.slice(0, htmlMatch.index) +
+          replacementHtml +
+          currentHtml.slice(htmlMatch.index + htmlMatch[0].length);
+        setEditorContent(nextHtml);
+        setHasDraftInSession(!!nextHtml.trim());
+      } else {
+        // HTML regex didn't match — fall back to plain text replacement
+        // but reconstruct the full HTML including the table sections
+        const nextText = plainSource.slice(0, plainRange.start) + replacement + plainSource.slice(plainRange.end);
+        // Preserve table sections from the current HTML
+        const tableMatch = currentHtml.match(/(<!--\s*INDEX_TABLE_START\s*-->[\s\S]*?<!--\s*INDEX_TABLE_END\s*-->|<table[\s\S]*?<\/table>)/i);
+        if (tableMatch) {
+          // Convert new text to HTML, then inject the preserved table at the right spot
+          const newHtml = plainTextToTiptapHTML(nextText);
+          // Find where INDEX OF DOCUMENTS heading is and insert table after it
+          const indexHeadingRegex = /(<h[12][^>]*>.*?INDEX OF DOCUMENTS.*?<\/h[12]>)/i;
+          const headingMatch = newHtml.match(indexHeadingRegex);
+          if (headingMatch && typeof headingMatch.index === "number") {
+            const insertPos = headingMatch.index + headingMatch[0].length;
+            const finalHtml = newHtml.slice(0, insertPos) + tableMatch[0] + newHtml.slice(insertPos);
+            setEditorContent(finalHtml);
+          } else {
+            // No INDEX heading found — just inject table before RESPECTFULLY SHEWETH
+            const shewethRegex = /(<h[12][^>]*>.*?RESPECTFULLY SHEWETH.*?<\/h[12]>)/i;
+            const shewethMatch = newHtml.match(shewethRegex);
+            if (shewethMatch && typeof shewethMatch.index === "number") {
+              const finalHtml = newHtml.slice(0, shewethMatch.index) + tableMatch[0] + newHtml.slice(shewethMatch.index);
+              setEditorContent(finalHtml);
+            } else {
+              setEditorContent(newHtml);
+            }
+          }
+        } else {
+          setEditorContent(nextText);
+        }
+        setHasDraftInSession(true);
+      }
+    } else {
+      // No table in HTML — simple plain text replacement (original behavior)
+      const nextText = plainSource.slice(0, plainRange.start) + replacement + plainSource.slice(plainRange.end);
+      setEditorContent(nextText);
+      setHasDraftInSession(!!nextText.trim());
+    }
     // Don't re-trigger recommendations after applying a change — let user decide
 
     addMemoryItem("risk", `Applied AI recommendation: ${edit.title}`);
