@@ -3158,7 +3158,7 @@ function LegalDraftingPageInner() {
                 initialContent={editorHtml}
                 onUpdate={onEditorUpdate}
                 placeholder="Begin drafting or load a template…"
-                className="h-full flex flex-col"
+                className="min-h-full flex flex-col"
               />
             </div>
 

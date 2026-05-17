@@ -623,8 +623,10 @@ function LegalEditorInner(
         </div>
       </div>
 
-      {/* Editor content */}
-      <EditorContent editor={editor} />
+      {/* Editor content — flex-1 ensures it fills remaining space below sticky toolbar */}
+      <div className="flex-1">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }
