@@ -2250,6 +2250,40 @@ function LegalDraftingPageInner() {
     saveDraftMutation.mutate({ id: selectedDraftId, title: cleanTitle, content: currentHtml });
   };
 
+  // ── Auto-save: debounced server save 5s after last edit ──
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAutoSavedContentRef = useRef<string>("");
+
+  useEffect(() => {
+    // Only auto-save if there's content in session
+    if (!hasDraftInSession) return;
+    const currentHtml = editorRef.current?.getHTML() || editorHtml || docText;
+    // Skip if content hasn't changed since last auto-save
+    if (currentHtml === lastAutoSavedContentRef.current) return;
+    // Skip if AI is currently generating (wait until done)
+    if (isGenerating) return;
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      const html = editorRef.current?.getHTML() || editorHtml || docText;
+      if (!html.trim() || html === lastAutoSavedContentRef.current) return;
+      const cleanTitle = draftTitle.trim() || `Draft ${new Date().toLocaleString()}`;
+      lastAutoSavedContentRef.current = html;
+      saveDraftMutation.mutate(
+        { id: selectedDraftId, title: cleanTitle, content: html },
+        {
+          onSuccess: () => {
+            setIsSavedLocal(true);
+          },
+        }
+      );
+    }, 5000);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [docText, editorHtml, hasDraftInSession, isGenerating, draftTitle, selectedDraftId]);
+
   const loadDraft = (doc: DraftDocument) => {
     setSelectedDraftId(doc.id);
     setDraftTitle(doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "") || "Draft");
@@ -2779,7 +2813,7 @@ function LegalDraftingPageInner() {
           {/* Save status badge */}
           <div className="hidden md:flex items-center gap-1 px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 text-[7px] uppercase font-bold tracking-wider shrink-0">
             <Sparkles size={7} />
-            {isSavedLocal ? "Saved" : "•"}
+            {isSavedLocal ? "✓ Auto-saved" : "Saving..."}
           </div>
         </div>
 
