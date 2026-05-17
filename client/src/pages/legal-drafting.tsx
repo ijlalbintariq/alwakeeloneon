@@ -178,6 +178,7 @@ type LegalDraftWorkspaceState = {
   draftChatMessages: DraftChatMessage[];
   memoryItems: MemoryItem[];
   draftReferences?: LegalDraftReferencesPayload;
+  recommendations?: DraftRecommendation[];
   savedAt?: string;
 };
 
@@ -1726,6 +1727,23 @@ function LegalDraftingPageInner() {
         if (state.draftReferences) {
           setDraftReferences(normalizeLegalDraftReferences(state.draftReferences));
         }
+        // Restore AI recommendations from saved state
+        if (Array.isArray(state.recommendations) && state.recommendations.length > 0) {
+          const restoredRecs = state.recommendations
+            .filter((r: any) => r && typeof r.id === "string" && typeof r.suggestedText === "string")
+            .slice(0, 10)
+            .map((r: any) => ({
+              id: String(r.id),
+              title: String(r.title || "Recommendation"),
+              reason: String(r.reason || ""),
+              originalSnippet: String(r.originalSnippet || ""),
+              suggestedText: String(r.suggestedText || ""),
+              impact: (["high", "medium", "low"].includes(r.impact) ? r.impact : "medium") as "high" | "medium" | "low",
+            }));
+          if (restoredRecs.length > 0) {
+            setRecommendations(restoredRecs);
+          }
+        }
       } catch {
         // Silent fallback to local autosave.
       } finally {
@@ -1777,6 +1795,13 @@ function LegalDraftingPageInner() {
           removedCaseCitations: draftReferences.removedCaseCitations.slice(0, 30),
           unresolvedStatutes: draftReferences.unresolvedStatutes.slice(0, 30),
         },
+        recommendations: recommendations.slice(0, 10).map((r) => ({
+          ...r,
+          originalSnippet: String(r.originalSnippet || "").slice(0, 5000),
+          suggestedText: String(r.suggestedText || "").slice(0, 5000),
+          reason: String(r.reason || "").slice(0, 1000),
+          title: String(r.title || "").slice(0, 200),
+        })),
       };
       try {
         await fetch("/api/legal-drafting/workspace-state", {
@@ -1801,6 +1826,7 @@ function LegalDraftingPageInner() {
     draftChatMessages,
     memoryItems,
     draftReferences,
+    recommendations,
   ]);
 
   useEffect(() => {
