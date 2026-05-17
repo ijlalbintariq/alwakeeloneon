@@ -3072,9 +3072,9 @@ function LegalDraftingPageInner() {
             </span>
           </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0 flex flex-col">
             {/* ── Tiptap Legal Editor ── */}
-            <div className="flex-1 min-h-0 overflow-hidden border-b border-[hsl(var(--preview-border))]">
+            <div className="flex-1 min-h-0 overflow-auto border-b border-[hsl(var(--preview-border))]">
               <LegalEditor
                 ref={editorRef}
                 initialContent={editorHtml}
