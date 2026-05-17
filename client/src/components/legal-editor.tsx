@@ -123,7 +123,7 @@ function ToolbarBtn({
       disabled={disabled}
       title={title}
       className={`
-        inline-flex items-center justify-center size-8 rounded text-[13px]
+        inline-flex items-center justify-center size-9 rounded text-sm
         transition-colors
         ${active
           ? "bg-primary/25 text-primary border border-primary/40"
@@ -138,7 +138,7 @@ function ToolbarBtn({
 }
 
 function ToolbarSep() {
-  return <div className="h-4 w-px bg-border/60 mx-0.5 shrink-0" />;
+  return <div className="h-5 w-px bg-border/60 mx-1 shrink-0" />;
 }
 
 // ── Font size select ─────────────────────────────────────────────────────
@@ -409,21 +409,21 @@ function LegalEditorInner(
   return (
     <div className={className}>
       {/* Formatting toolbar — MS Word–style (sticky: follows scroll) */}
-      <div className="flex items-center gap-0.5 flex-wrap px-2 py-1.5 border-b border-[hsl(var(--preview-border))] bg-background/95 backdrop-blur-xl sticky top-0 z-30">
+      <div className="flex items-center gap-1 flex-wrap px-3 py-2 border-b border-[hsl(var(--preview-border))] bg-background/95 backdrop-blur-xl sticky top-0 z-30">
         {/* Undo / Redo */}
         <ToolbarBtn
           disabled={!editor.can().undo()}
           onClick={() => editor.chain().focus().undo().run()}
           title="Undo (Ctrl+Z)"
         >
-          <Undo2 size={15} />
+          <Undo2 size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           disabled={!editor.can().redo()}
           onClick={() => editor.chain().focus().redo().run()}
           title="Redo (Ctrl+Shift+Z)"
         >
-          <Redo2 size={15} />
+          <Redo2 size={18} />
         </ToolbarBtn>
 
         <ToolbarSep />
@@ -439,49 +439,49 @@ function LegalEditorInner(
           onClick={() => editor.chain().focus().toggleBold().run()}
           title="Bold (Ctrl+B)"
         >
-          <Bold size={15} />
+          <Bold size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive("italic")}
           onClick={() => editor.chain().focus().toggleItalic().run()}
           title="Italic (Ctrl+I)"
         >
-          <Italic size={15} />
+          <Italic size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive("underline")}
           onClick={() => editor.chain().focus().toggleUnderline().run()}
           title="Underline (Ctrl+U)"
         >
-          <UnderlineIcon size={15} />
+          <UnderlineIcon size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive("strike")}
           onClick={() => editor.chain().focus().toggleStrike().run()}
           title="Strikethrough"
         >
-          <Strikethrough size={15} />
+          <Strikethrough size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive("highlight")}
           onClick={() => editor.chain().focus().toggleHighlight().run()}
           title="Highlight"
         >
-          <Highlighter size={15} />
+          <Highlighter size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive("subscript")}
           onClick={() => editor.chain().focus().toggleSubscript().run()}
           title="Subscript"
         >
-          <SubscriptIcon size={15} />
+          <SubscriptIcon size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive("superscript")}
           onClick={() => editor.chain().focus().toggleSuperscript().run()}
           title="Superscript"
         >
-          <SuperscriptIcon size={15} />
+          <SuperscriptIcon size={18} />
         </ToolbarBtn>
 
         <ToolbarSep />
@@ -497,21 +497,21 @@ function LegalEditorInner(
           onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
           title="Heading 1 — Court Title"
         >
-          <Heading1 size={15} />
+          <Heading1 size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive("heading", { level: 2 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           title="Heading 2 — Section"
         >
-          <Heading2 size={15} />
+          <Heading2 size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive("heading", { level: 3 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
           title="Heading 3 — Sub-section"
         >
-          <Heading3 size={15} />
+          <Heading3 size={18} />
         </ToolbarBtn>
 
         <ToolbarSep />
@@ -522,14 +522,14 @@ function LegalEditorInner(
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           title="Bullet List"
         >
-          <List size={15} />
+          <List size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive("orderedList")}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           title="Numbered List"
         >
-          <ListOrdered size={15} />
+          <ListOrdered size={18} />
         </ToolbarBtn>
 
         {/* Indent / Outdent */}
@@ -538,14 +538,14 @@ function LegalEditorInner(
           disabled={!editor.can().sinkListItem("listItem")}
           title="Increase Indent"
         >
-          <Indent size={15} />
+          <Indent size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           onClick={() => editor.chain().focus().liftListItem("listItem").run()}
           disabled={!editor.can().liftListItem("listItem")}
           title="Decrease Indent"
         >
-          <Outdent size={15} />
+          <Outdent size={18} />
         </ToolbarBtn>
 
         <ToolbarSep />
@@ -556,28 +556,28 @@ function LegalEditorInner(
           onClick={() => editor.chain().focus().setTextAlign("left").run()}
           title="Align Left"
         >
-          <AlignLeft size={15} />
+          <AlignLeft size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive({ textAlign: "center" })}
           onClick={() => editor.chain().focus().setTextAlign("center").run()}
           title="Align Center"
         >
-          <AlignCenter size={15} />
+          <AlignCenter size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive({ textAlign: "right" })}
           onClick={() => editor.chain().focus().setTextAlign("right").run()}
           title="Align Right"
         >
-          <AlignRight size={15} />
+          <AlignRight size={18} />
         </ToolbarBtn>
         <ToolbarBtn
           active={editor.isActive({ textAlign: "justify" })}
           onClick={() => editor.chain().focus().setTextAlign("justify").run()}
           title="Justify"
         >
-          <AlignJustify size={15} />
+          <AlignJustify size={18} />
         </ToolbarBtn>
 
         <ToolbarSep />
@@ -587,7 +587,7 @@ function LegalEditorInner(
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
           title="Horizontal Line"
         >
-          <Minus size={15} />
+          <Minus size={18} />
         </ToolbarBtn>
 
         {/* Insert Table */}
@@ -601,7 +601,7 @@ function LegalEditorInner(
           }
           title="Insert Table"
         >
-          <TableIcon size={15} />
+          <TableIcon size={18} />
         </ToolbarBtn>
 
         {/* Clear Formatting */}
@@ -609,7 +609,7 @@ function LegalEditorInner(
           onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
           title="Clear Formatting"
         >
-          <RemoveFormatting size={15} />
+          <RemoveFormatting size={18} />
         </ToolbarBtn>
 
         {/* Right side: word count + citation hint */}

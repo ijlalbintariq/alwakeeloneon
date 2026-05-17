@@ -1572,6 +1572,7 @@ function LegalDraftingPageInner() {
   const [hasDraftInSession, setHasDraftInSession] = useState(false);
   const [workspaceStateHydrated, setWorkspaceStateHydrated] = useState(false);
   const [feeCalcOpen, setFeeCalcOpen] = useState(false);
+  const [chatExpanded, setChatExpanded] = useState(false);
   const voice = useVoiceRecorder();
   const draftHistory = useDraftHistory(selectedDraftId ? `draft-${selectedDraftId}` : "workspace");
   const [rightRailTab, setRightRailTab] = useState<"ai" | "history">("ai");
@@ -3152,7 +3153,7 @@ function LegalDraftingPageInner() {
 
           <div className="flex-1 min-h-0 flex flex-col">
             {/* ── Tiptap Legal Editor ── */}
-            <div className="flex-1 min-h-0 overflow-auto border-b border-[hsl(var(--preview-border))]">
+            <div className={`${chatExpanded ? "h-0 overflow-hidden" : "flex-1 min-h-0 overflow-auto border-b border-[hsl(var(--preview-border))]"} flex flex-col transition-all duration-300`}>
               <LegalEditor
                 ref={editorRef}
                 initialContent={editorHtml}
@@ -3163,12 +3164,22 @@ function LegalDraftingPageInner() {
             </div>
 
             {/* ── Chat section (below editor) ── */}
-            <div className="h-[260px] lg:h-[300px] shrink-0 flex flex-col overflow-hidden">
+            <div className={`${chatExpanded ? "flex-1 min-h-0" : "h-[260px] lg:h-[300px]"} shrink-0 flex flex-col overflow-hidden transition-all duration-300`}>
             <div className="h-full w-full rounded-xl border border-border bg-background/72 backdrop-blur-xl flex flex-col overflow-hidden">
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="px-3 py-1.5 border-b border-border bg-background/25 flex items-center justify-between">
                   <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Drafting Chat</p>
-                  <span className="text-[9px] text-muted-foreground">{draftChatMessages.length} msgs</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-muted-foreground">{draftChatMessages.length} msgs</span>
+                    <button
+                      type="button"
+                      onClick={() => setChatExpanded(prev => !prev)}
+                      className="inline-flex items-center justify-center size-6 rounded hover:bg-card/60 text-muted-foreground hover:text-foreground transition-colors"
+                      title={chatExpanded ? "Collapse chat" : "Expand chat"}
+                    >
+                      {chatExpanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                    </button>
+                  </div>
                 </div>
 
                 <div
