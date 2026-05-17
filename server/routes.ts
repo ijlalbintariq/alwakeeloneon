@@ -2315,7 +2315,7 @@ async function callLegalDraftingAI(
       chatWithDeepSeekPro({ messages, maxTokens, temperature }),
     );
     const safeText = assertNonEmptyModelOutput("DeepSeek R1", result.content);
-    console.log(`[AI Routing][legal-drafting] DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
+    console.log(`[AI Routing][legal-drafting] DeepSeek R1 succeeded in ${Date.now() - startedAt}ms (model=${result.model}, output=${result.content.length} chars)`);
     return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
   } catch (primaryErr: any) {
     // If R1 reasoner times out or fails, retry once with faster deepseek-chat model

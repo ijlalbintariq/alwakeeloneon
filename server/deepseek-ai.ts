@@ -62,20 +62,47 @@ interface DeepSeekTranscriptionOptions {
 export async function chatWithDeepSeek(options: DeepSeekChatOptions): Promise<DeepSeekResponse> {
   const client = getClient();
   const model = options.model || DEEPSEEK_CHAT_MODEL;
-  const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
+  const isReasoner = model === DEEPSEEK_REASONER_MODEL;
+  // DeepSeek R1 (reasoner) does NOT support temperature — strip it
+  const temperature = isReasoner ? undefined : (Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7);
+
+  const createParams: any = {
+    model,
+    messages: options.messages,
+    max_tokens: options.maxTokens || 8192,
+  };
+  // Only set temperature for non-reasoner models
+  if (temperature !== undefined) {
+    createParams.temperature = temperature;
+  }
 
   const response = await client.chat.completions.create(
-    {
-      model,
-      messages: options.messages,
-      max_tokens: options.maxTokens || 8192,
-      temperature,
-    },
+    createParams,
     { signal: options.signal, maxRetries: 1 } as any,
   );
 
   const choice = response.choices[0];
-  const content = choice?.message?.content || "No response generated.";
+  const message = choice?.message as any;
+
+  // DeepSeek R1 returns reasoning in `reasoning_content` and the final answer in `content`.
+  // Sometimes `content` is null/empty and the answer is embedded in `reasoning_content`.
+  let content = message?.content || "";
+  if (!content.trim() && isReasoner && message?.reasoning_content) {
+    // R1 put everything in reasoning_content — extract the final answer portion
+    const reasoning = String(message.reasoning_content || "");
+    // Look for a clear answer delimiter (R1 sometimes uses </think> or similar)
+    const thinkEnd = reasoning.lastIndexOf("</think>");
+    if (thinkEnd >= 0 && reasoning.length > thinkEnd + 8) {
+      content = reasoning.slice(thinkEnd + 8).trim();
+    }
+    // If still empty, use the full reasoning_content as-is (better than failing)
+    if (!content.trim()) {
+      content = reasoning;
+    }
+  }
+  if (!content.trim()) {
+    content = "No response generated.";
+  }
 
   // One-time prod log: confirm which DeepSeek version `deepseek-chat` resolves to.
   // V4 launched 2026-04-24; this tells us if our slug is on V4 or still V3.
@@ -93,6 +120,7 @@ export async function chatWithDeepSeek(options: DeepSeekChatOptions): Promise<De
 }
 
 export async function chatWithDeepSeekPro(options: Omit<DeepSeekChatOptions, "model">): Promise<DeepSeekResponse> {
+  // Explicitly use reasoner model — temperature will be stripped inside chatWithDeepSeek
   return chatWithDeepSeek({ ...options, model: DEEPSEEK_REASONER_MODEL });
 }
 
