@@ -1634,9 +1634,19 @@ function LegalDraftingPageInner() {
   const setEditorContent = useCallback((content: string) => {
     const html = isHTMLContent(content) ? content : plainTextToTiptapHTML(content);
     setEditorHtml(html);
-    setDocText(isHTMLContent(content) ? "" : content); // will be overridden by onEditorUpdate
     // Update the Tiptap editor directly
     editorRef.current?.setContent(html);
+    // Sync docText: if the content is plain text, use it directly.
+    // If it's HTML, read the plain text from the editor after it renders.
+    if (!isHTMLContent(content)) {
+      setDocText(content);
+    } else {
+      // Defer to next microtask so Tiptap has processed the HTML
+      queueMicrotask(() => {
+        const text = editorRef.current?.getText() || "";
+        setDocText(text);
+      });
+    }
   }, []);
 
   useEffect(() => {

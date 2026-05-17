@@ -11657,9 +11657,47 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         ).max(200).optional().default([]),
       });
 
-      const parsed = schema.parse(req.body || {});
+      // draftReferences and recommendations are passthrough — validated loosely
+      // to avoid breaking schema changes while still persisting them.
+      const rawBody = req.body || {};
+      const parsed = schema.parse(rawBody);
 
-      const statePayload = {
+      // Preserve draftReferences (case law, statutes) from client
+      let draftReferences: any = undefined;
+      if (rawBody.draftReferences && typeof rawBody.draftReferences === "object") {
+        draftReferences = {
+          caseLaw: Array.isArray(rawBody.draftReferences.caseLaw)
+            ? rawBody.draftReferences.caseLaw.slice(0, 50)
+            : [],
+          statutes: Array.isArray(rawBody.draftReferences.statutes)
+            ? rawBody.draftReferences.statutes.slice(0, 50)
+            : [],
+          removedCaseCitations: Array.isArray(rawBody.draftReferences.removedCaseCitations)
+            ? rawBody.draftReferences.removedCaseCitations.slice(0, 30)
+            : [],
+          unresolvedStatutes: Array.isArray(rawBody.draftReferences.unresolvedStatutes)
+            ? rawBody.draftReferences.unresolvedStatutes.slice(0, 30)
+            : [],
+        };
+      }
+
+      // Preserve AI recommendations from client
+      let recommendations: any[] | undefined = undefined;
+      if (Array.isArray(rawBody.recommendations) && rawBody.recommendations.length > 0) {
+        recommendations = rawBody.recommendations
+          .filter((r: any) => r && typeof r.id === "string" && typeof r.suggestedText === "string")
+          .slice(0, 10)
+          .map((r: any) => ({
+            id: String(r.id || ""),
+            title: String(r.title || "").slice(0, 200),
+            reason: String(r.reason || "").slice(0, 1000),
+            originalSnippet: String(r.originalSnippet || "").slice(0, 5000),
+            suggestedText: String(r.suggestedText || "").slice(0, 5000),
+            impact: ["high", "medium", "low"].includes(r.impact) ? r.impact : "medium",
+          }));
+      }
+
+      const statePayload: Record<string, any> = {
         draftTitle: parsed.draftTitle || "Untitled Draft",
         docText: parsed.docText || "",
         selectedDraftId: parsed.selectedDraftId ?? null,
@@ -11668,6 +11706,8 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         memoryItems: parsed.memoryItems.slice(0, 60),
         savedAt: new Date().toISOString(),
       };
+      if (draftReferences) statePayload.draftReferences = draftReferences;
+      if (recommendations && recommendations.length > 0) statePayload.recommendations = recommendations;
 
       const serialized = JSON.stringify(statePayload);
 
