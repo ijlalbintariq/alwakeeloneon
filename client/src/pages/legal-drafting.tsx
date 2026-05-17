@@ -2629,7 +2629,7 @@ function LegalDraftingPageInner() {
         });
         if (response.ok) {
           const data = await response.json();
-          const shareUrl = `${window.location.origin}/draft-preview/${data.shareToken}`;
+          const shareUrl = `${window.location.origin}/api/draft-preview/${data.shareToken}`;
           await navigator.clipboard.writeText(shareUrl);
           toast({ title: "Share link copied!", description: "Send this link to your client for draft approval." });
           return;
