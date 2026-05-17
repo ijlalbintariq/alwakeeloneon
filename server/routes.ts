@@ -9852,7 +9852,7 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       checklist:
         "- FIR details, offences, police station\n- Bail grounds (further inquiry, delay, etc.)\n- Undertaking to join trial\n- Prayer under correct Cr.P.C section",
       skeleton:
-        "IN THE COURT OF THE SESSIONS JUDGE ______\nBail Application No. ____ of ____\n\nApplicant/Accused: ____\nVersus\nThe State\n\nAPPLICATION FOR BAIL UNDER SECTION ____ Cr.P.C.\n\nFIR details:\n...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
+        "IN THE COURT OF THE SESSIONS JUDGE, ______\n(or IN THE SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES), ______ for CNSA cases)\nBail Application No. ____ of ____\n\nApplicant/Accused: ____\nVersus\nThe State\n\nAPPLICATION FOR BAIL UNDER SECTION ____ Cr.P.C.\n\nFIR details:\n...\n\nGrounds:\n1. ...\n2. ...\n\nPrayer:\n...",
     },
     "sessions-pre-arrest-bail": {
       label: "Sessions Pre-Arrest Bail",
@@ -9981,10 +9981,13 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       "Verification",
     ],
     "sessions-bail-application": [
-      "Cause Title and Bail Provision Invoked",
+      "COVER PAGE: Cause Title (Court Heading, Case Number, Parties with VERSUS, Application Title)",
+      "INDEX OF DOCUMENTS (table on cover page)",
+      "Petitioner/Applicant Signature Block (right-aligned)",
+      "BODY (new page): RESPECTFULLY SHEWETH",
       "FIR Details (No., Date, Police Station, Sections)",
-      "Accused Role and Brief Facts",
-      "Grounds for Bail (numbered)",
+      "Brief Facts (numbered paragraphs)",
+      "Grounds for Bail (lettered A, B, C)",
       "Undertaking to Join Trial / Surety Readiness",
       "Prayer",
       "Verification",
@@ -10141,10 +10144,10 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       ],
     },
     "sessions-bail-application": {
-      forumHeading: "IN THE COURT OF THE SESSIONS JUDGE AT [CITY]",
+      forumHeading: "IN THE COURT OF THE SESSIONS JUDGE, [CITY] (or IN THE SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES), [CITY] for CNSA cases; IN THE SPECIAL COURT (ANTI-TERRORISM), [CITY] for ATA cases)",
       filingCaption: "APPLICATION FOR POST-ARREST BAIL UNDER SECTION 497 Cr.P.C.",
       requiredInHeader: [
-        { regex: /SESSIONS JUDGE/i, label: "Sessions Court heading" },
+        { regex: /(SESSIONS JUDGE|SPECIAL COURT)/i, label: "Sessions/Special Court heading" },
         { regex: /(BAIL APPLICATION|APPLICATION FOR BAIL)/i, label: "Bail caption" },
       ],
     },
@@ -10470,20 +10473,40 @@ COURT HEADING
 
 Start with the court heading written in capital letters.
 
+Court heading rules:
+- Do NOT include the Act name or year in the court heading line (e.g. write "SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES)" NOT "SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES ACT, 1997)").
+- The city/district name comes AFTER the court name, separated by a comma (e.g. "IN THE SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES), LAHORE").
+- Avoid unnecessary commas within the court title.
+- For special courts under special statutes, use the short jurisdiction name in parentheses.
+
 Examples:
 
-IN THE HONOURABLE [NAME] HIGH COURT
-AT [CITY]
+IN THE HONOURABLE [NAME] HIGH COURT, [CITY]
 
 or
 
-IN THE COURT OF [CIVIL JUDGE / ADDITIONAL DISTRICT JUDGE / SESSIONS JUDGE]
-AT [CITY]
+IN THE COURT OF [CIVIL JUDGE / ADDITIONAL DISTRICT JUDGE / SESSIONS JUDGE], [CITY]
 
 or
 
 IN THE SUPREME COURT OF PAKISTAN
 (APPELLATE JURISDICTION)
+
+or (for CNSA narcotics cases):
+
+IN THE SPECIAL COURT (CONTROL OF NARCOTIC SUBSTANCES), [CITY]
+
+or (for Anti-Terrorism cases):
+
+IN THE SPECIAL COURT (ANTI-TERRORISM), [CITY]
+
+or (for Banking cases):
+
+IN THE BANKING COURT, [CITY]
+
+or (for NAB/Accountability cases):
+
+IN THE ACCOUNTABILITY COURT, [CITY]
 
 CASE TITLE
 
@@ -10669,17 +10692,32 @@ Oath Commissioner / Notary Public
 
 ANNEXURES / INDEX OF DOCUMENTS (MANDATORY)
 
-Every legal draft MUST include an INDEX OF DOCUMENTS table placed immediately after the cause title and petition heading, BEFORE the body of the petition (before RESPECTFULLY SHEWETH).
+Every legal draft MUST include an INDEX OF DOCUMENTS table. It is part of the COVER PAGE of the filing as practiced in Pakistani courts.
 
-This is the FIRST PAGE of the filing as practiced in Pakistani courts. It is an index table, NOT a list at the end.
+The correct page order is:
 
-Format (strict):
+PAGE 1 (Cover/Title Page):
+  1. Court Heading (centred, caps)
+  2. Case/Application Number (centred)
+  3. Applicant/Petitioner full name with parentage and address (centred)
+  4. .... Applicant/Petitioner (right-aligned designation)
+  5. VERSUS (centred, bold)
+  6. Respondent full name with parentage/designation (centred)
+  7. .... Respondent (right-aligned designation)
+  8. PETITION/APPLICATION TITLE (centred, bold, e.g. "PETITION UNDER SECTION 22-A & 22-B OF THE CODE OF CRIMINAL PROCEDURE (Cr.P.C.), 1898")
+  9. INDEX OF DOCUMENTS (table — see format below)
+  10. Petitioner/Applicant signature block: right-aligned "Petitioners" then "Through:" then advocate name
+
+PAGE 2+ (Body of Application):
+  The body starts with RESPECTFULLY SHEWETH followed by BRIEF FACTS, GROUNDS, PRAYER, VERIFICATION, etc.
+
+INDEX OF DOCUMENTS table format (strict):
 
 INDEX OF DOCUMENTS
 
-S.No.    Description of Documents                          Annexures
-1.       [Petition/Application title]                      ---
-2.       Affidavit                                         ---
+S.No.    Description of Documents                          Annexures    Page No.
+1.       [Petition/Application title]                      ---          ---
+2.       Affidavit in Support                              ---          ---
 3.       [Supporting document description]                 A
 4.       [Supporting document description]                 B
 5.       [Supporting document description]                 C
@@ -10688,8 +10726,9 @@ Rules:
 - Item 1 is always the petition/application itself (no annexure letter, marked with ---)
 - Item 2 is always the Affidavit (no annexure letter, marked with ---)
 - Items 3 onward are supporting documents with Annexure letters A, B, C, etc.
+- Include a "Page No." column (leave blank or use --- as it will be filled by court clerk)
 - Scan the draft facts for all referenced documents (orders, FIRs, notices, reports, certificates) and list each one.
-- Place this index BEFORE RESPECTFULLY SHEWETH, not at the end of the document.
+- The INDEX must be on the COVER PAGE, not at the end of the document.
 
 PLACEHOLDERS
 
