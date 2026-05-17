@@ -1,24 +1,21 @@
 import { execFile } from "node:child_process";
-import crypto from "node:crypto";
-import { promises as fs } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
 type OcrAvailability = {
-  tesseract: boolean;
-  pdftoppm: boolean;
+  python3: boolean;
+  paddleocr: boolean;
 };
 
 let availabilityCache: OcrAvailability | null = null;
 let availabilityPromise: Promise<OcrAvailability> | null = null;
 
-async function commandExists(command: string): Promise<boolean> {
+async function commandExists(command: string, args: string[] = []): Promise<boolean> {
   try {
-    await execFileAsync("which", [command], {
-      timeout: 2500,
+    await execFileAsync(command, args.length > 0 ? args : ["--version"], {
+      timeout: 10000,
       maxBuffer: 64 * 1024,
     });
     return true;
@@ -32,13 +29,25 @@ async function resolveAvailability(): Promise<OcrAvailability> {
   if (availabilityPromise) return availabilityPromise;
 
   availabilityPromise = (async () => {
-    const [tesseract, pdftoppm] = await Promise.all([
-      commandExists("tesseract"),
-      commandExists("pdftoppm"),
-    ]);
-    const result = { tesseract, pdftoppm };
+    const python3 = await commandExists("python3");
+    let paddleocr = false;
+    if (python3) {
+      try {
+        await execFileAsync("python3", ["-c", "import paddleocr; import fitz; print('ok')"], {
+          timeout: 15000,
+          maxBuffer: 64 * 1024,
+        });
+        paddleocr = true;
+      } catch {
+        paddleocr = false;
+      }
+    }
+    const result = { python3, paddleocr };
     availabilityCache = result;
     availabilityPromise = null;
+    console.log(
+      `[PaddleOCR] Availability check: python3=${python3}, paddleocr=${paddleocr}`,
+    );
     return result;
   })();
 
@@ -47,7 +56,7 @@ async function resolveAvailability(): Promise<OcrAvailability> {
 
 export async function isPdfOcrAvailable(): Promise<boolean> {
   const availability = await resolveAvailability();
-  return availability.tesseract && availability.pdftoppm;
+  return availability.python3 && availability.paddleocr;
 }
 
 function getEnvInt(name: string, fallback: number): number {
@@ -69,91 +78,134 @@ export interface OcrPdfResult {
   language: string;
 }
 
-export async function ocrPdfWithTesseract(
+const WORKER_SCRIPT_PATH = path.resolve(__dirname, "paddle-ocr-worker.py");
+
+/**
+ * OCR a PDF using PaddleOCR PP-OCRv5 Mobile models.
+ *
+ * Calls the Python worker script via child_process for isolation:
+ * - Separate process = memory is fully freed on completion
+ * - Killable via timeout if stuck
+ * - Page-by-page processing inside the worker
+ */
+export async function ocrPdfWithPaddle(
   pdfBuffer: Buffer,
   options: OcrPdfOptions = {},
 ): Promise<OcrPdfResult> {
   if (!(await isPdfOcrAvailable())) {
-    throw new Error("PDF OCR dependencies are unavailable. Install both `tesseract` and `pdftoppm`.");
+    throw new Error(
+      "PaddleOCR is not available. Install: pip install paddlepaddle paddleocr PyMuPDF",
+    );
   }
 
   const maxPages = Math.min(options.maxPages ?? getEnvInt("PDF_OCR_MAX_PAGES", 8), 50);
-  const dpi = Math.min(options.dpi ?? getEnvInt("PDF_OCR_DPI", 220), 600);
-  const timeoutMs = Math.min(options.timeoutMs ?? getEnvInt("PDF_OCR_TIMEOUT_MS", 120000), 600000);
-  const preferredLanguage =
-    (options.language || process.env.TESSERACT_OCR_LANG || process.env.TESSERACT_LANG || "eng+urd").trim();
-  const languageCandidates = Array.from(
-    new Set([preferredLanguage, "eng"].filter((lang) => typeof lang === "string" && lang.trim().length > 0)),
+  const timeoutMs = Math.min(
+    options.timeoutMs ?? getEnvInt("PDF_OCR_TIMEOUT_MS", 120000),
+    600000,
   );
+  const language = (
+    options.language ||
+    process.env.TESSERACT_OCR_LANG ||
+    process.env.TESSERACT_LANG ||
+    process.env.PADDLEOCR_LANG ||
+    "en"
+  ).trim();
 
-  const tempDir = path.join(os.tmpdir(), `alwakeelo-ocr-${Date.now()}-${crypto.randomUUID()}`);
+  // Write PDF buffer to a temp file for the Python worker
+  const fs = await import("node:fs/promises");
+  const os = await import("node:os");
+  const crypto = await import("node:crypto");
+  const tempDir = path.join(
+    os.tmpdir(),
+    `alwakeelo-paddle-${Date.now()}-${crypto.randomUUID()}`,
+  );
   const pdfPath = path.join(tempDir, "input.pdf");
-  const imagePrefix = path.join(tempDir, "page");
 
   await fs.mkdir(tempDir, { recursive: true });
   await fs.writeFile(pdfPath, pdfBuffer);
 
   try {
-    await execFileAsync(
-      "pdftoppm",
+    const { stdout, stderr } = await execFileAsync(
+      "python3",
       [
-        "-f",
-        "1",
-        "-l",
-        String(maxPages),
-        "-r",
-        String(dpi),
-        "-png",
+        WORKER_SCRIPT_PATH,
         pdfPath,
-        imagePrefix,
+        String(maxPages),
+        language,
+        String(timeoutMs),
       ],
       {
-        timeout: timeoutMs,
-        maxBuffer: 2 * 1024 * 1024,
+        timeout: timeoutMs + 10000, // Give 10s extra for Python startup
+        maxBuffer: 32 * 1024 * 1024,
+        env: {
+          ...process.env,
+          // Ensure CPU-only
+          CUDA_VISIBLE_DEVICES: "",
+          OMP_NUM_THREADS: "1",
+          MKL_NUM_THREADS: "1",
+        },
       },
     );
 
-    const pageImages = (await fs.readdir(tempDir))
-      .filter((name) => /^page-\d+\.png$/i.test(name))
-      .sort((a, b) => {
-        const aNum = Number((a.match(/^page-(\d+)\.png$/i) || [])[1] || "0");
-        const bNum = Number((b.match(/^page-(\d+)\.png$/i) || [])[1] || "0");
-        return aNum - bNum;
-      });
-
-    if (pageImages.length === 0) {
-      return { text: "", pageCount: 0, language: preferredLanguage };
-    }
-
-    let lastError: unknown;
-
-    for (const language of languageCandidates) {
-      try {
-        const parts: string[] = [];
-        for (const imageName of pageImages) {
-          const imagePath = path.join(tempDir, imageName);
-          const { stdout } = await execFileAsync(
-            "tesseract",
-            [imagePath, "stdout", "-l", language, "--psm", "6"],
-            {
-              timeout: timeoutMs,
-              maxBuffer: 32 * 1024 * 1024,
-            },
-          );
-          if (stdout && stdout.trim()) parts.push(stdout.trim());
-        }
-        return {
-          text: parts.join("\n\n").trim(),
-          pageCount: pageImages.length,
-          language,
-        };
-      } catch (err) {
-        lastError = err;
+    if (stderr && stderr.trim()) {
+      // PaddleOCR may emit warnings to stderr — log but don't fail
+      const stderrShort = stderr.trim().slice(0, 500);
+      if (!/warning|info|download/i.test(stderrShort)) {
+        console.warn(`[PaddleOCR] stderr: ${stderrShort}`);
       }
     }
 
-    throw lastError || new Error("Tesseract OCR failed for all language candidates.");
+    const result = JSON.parse(String(stdout || "{}")) as {
+      ok?: boolean;
+      payload?: OcrPdfResult;
+      error?: string;
+    };
+
+    if (!result.ok) {
+      throw new Error(result.error || "PaddleOCR worker returned failure");
+    }
+
+    return {
+      text: (result.payload?.text || "").replace(/\x00/g, "").trim(),
+      pageCount: Number(result.payload?.pageCount || 0),
+      language: result.payload?.language || language,
+    };
+  } catch (err: any) {
+    // Try to parse stdout even on error (worker may have written partial output)
+    if (err?.stdout) {
+      try {
+        const parsed = JSON.parse(String(err.stdout)) as {
+          ok?: boolean;
+          payload?: OcrPdfResult;
+          error?: string;
+        };
+        if (parsed.ok && parsed.payload) {
+          return {
+            text: (parsed.payload.text || "").replace(/\x00/g, "").trim(),
+            pageCount: Number(parsed.payload.pageCount || 0),
+            language: parsed.payload.language || language,
+          };
+        }
+        if (parsed.error) {
+          throw new Error(parsed.error);
+        }
+      } catch {
+        // Fall through to original error
+      }
+    }
+
+    if (String(err?.message || "").includes("timed out")) {
+      throw new Error(`PaddleOCR timed out after ${timeoutMs}ms`);
+    }
+    throw new Error(
+      `PaddleOCR failed: ${err?.message || String(err)}`,
+    );
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
   }
 }
+
+// ── Legacy Tesseract compatibility aliases ──────────────────────────────────
+// Keep the old function name so extraction-guard.ts import doesn't break
+// during the transition. Points to PaddleOCR now.
+export const ocrPdfWithTesseract = ocrPdfWithPaddle;

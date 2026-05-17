@@ -179,43 +179,34 @@ async function parseDocx(filePath) {
 
 async function ocrPdf(filePath, options) {
   const maxPages = Math.min(Math.max(1, Number(options.maxPages || 8)), 50);
-  const dpi = Math.min(Math.max(120, Number(options.dpi || 220)), 600);
   const timeoutMs = Math.min(Math.max(3000, Number(options.timeoutMs || 120000)), 600000);
-  const language = String(options.language || "eng+urd").trim() || "eng+urd";
-  const tempDir = path.join(
-    os.tmpdir(),
-    "alwakeelo-worker-ocr-" + Date.now() + "-" + crypto.randomUUID(),
-  );
-  const imagePrefix = path.join(tempDir, "page");
-  await fs.mkdir(tempDir, { recursive: true });
+  const language = String(options.language || "en").trim() || "en";
 
-  try {
-    await execFileAsync(
-      "pdftoppm",
-      ["-f", "1", "-l", String(maxPages), "-r", String(dpi), "-png", filePath, imagePrefix],
-      { timeout: timeoutMs, maxBuffer: 2 * 1024 * 1024 },
-    );
-    const pages = (await fs.readdir(tempDir))
-      .filter((name) => /^page-\d+\.png$/i.test(name))
-      .sort((a, b) => {
-        const ai = Number((a.match(/^page-(\d+)\.png$/i) || [])[1] || "0");
-        const bi = Number((b.match(/^page-(\d+)\.png$/i) || [])[1] || "0");
-        return ai - bi;
-      });
-    if (pages.length === 0) return { text: "", pageCount: 0, language };
-    const parts = [];
-    for (const pageName of pages) {
-      const { stdout } = await execFileAsync(
-        "tesseract",
-        [path.join(tempDir, pageName), "stdout", "-l", language, "--psm", "6"],
-        { timeout: timeoutMs, maxBuffer: 32 * 1024 * 1024 },
-      );
-      if (stdout && String(stdout).trim()) parts.push(String(stdout).trim());
-    }
-    return { text: cleanText(parts.join("\n\n")), pageCount: pages.length, language };
-  } finally {
-    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  // Call PaddleOCR Python worker script
+  const workerScript = path.join(__dirname, "paddle-ocr-worker.py");
+  const { stdout } = await execFileAsync(
+    "python3",
+    [workerScript, filePath, String(maxPages), language, String(timeoutMs)],
+    {
+      timeout: timeoutMs + 10000,
+      maxBuffer: 32 * 1024 * 1024,
+      env: Object.assign({}, process.env, {
+        CUDA_VISIBLE_DEVICES: "",
+        OMP_NUM_THREADS: "1",
+        MKL_NUM_THREADS: "1",
+      }),
+    },
+  );
+
+  const parsed = JSON.parse(String(stdout || "{}"));
+  if (!parsed.ok) {
+    throw new Error(parsed.error || "PaddleOCR worker failed");
   }
+  return {
+    text: cleanText(parsed.payload?.text || ""),
+    pageCount: Number(parsed.payload?.pageCount || 0),
+    language: parsed.payload?.language || language,
+  };
 }
 
 async function main() {
