@@ -24,8 +24,8 @@ const SECTION_HEADINGS = new Set([
 ]);
 
 const ALL_CAPS_RE = /^[A-Z][A-Z\s:&,./()'-]{4,}$/;
-const PARTY_ROLE_RE = /\.\.\.\.\s*(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF|COMPLAINANT|RESPONDENT|DEFENDANT|ACCUSED|APPLICANT\/ACCUSED|PETITIONERS)\s*$/i;
-const PARTY_ROLE_LINE_RE = /^\.\.\.\.\s*(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF|RESPONDENT|DEFENDANT|ACCUSED|COMPLAINANT|APPLICANT\/ACCUSED|PETITIONERS)/i;
+const PARTY_ROLE_RE = /\.{2,4}\s*(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF|COMPLAINANT|RESPONDENT|DEFENDANT|ACCUSED|APPLICANT\/ACCUSED|PETITIONERS)\s*$/i;
+const PARTY_ROLE_LINE_RE = /^\.{2,4}\s*(PETITIONER|APPLICANT|APPELLANT|PLAINTIFF|RESPONDENT|DEFENDANT|ACCUSED|COMPLAINANT|APPLICANT\/ACCUSED|PETITIONERS)/i;
 const THROUGH_RE = /^Through\s*:/i;
 
 export function plainTextToTiptapHTML(raw: string): string {
@@ -62,8 +62,45 @@ export function plainTextToTiptapHTML(raw: string): string {
       continue;
     }
 
+    // Markdown table detection (| col1 | col2 | col3 |)
+    if (/^\|.+\|/.test(trimmed)) {
+      const tableLines: string[] = [];
+      while (i < lines.length && /^\|.+\|/.test(lines[i].trim())) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+      // Skip separator lines like |:---|:---|:---|
+      const dataLines = tableLines.filter(l => {
+        const stripped = l.replace(/\s/g, "");
+        return !/^\|[-:| ]+\|$/.test(stripped);
+      });
+      if (dataLines.length > 0) {
+        let tableHtml = '<table style="width:100%;border-collapse:collapse;border:1px solid #333;margin:1em 0">';
+        dataLines.forEach((line, rowIdx) => {
+          const cells = line.split("|").filter(c => c.trim() !== "" || c.length > 0).map(c => c.trim()).filter(c => c !== "");
+          if (cells.length === 0) return;
+          const tag = rowIdx === 0 ? "th" : "td";
+          const bgStyle = rowIdx === 0 ? 'background:#f0f0f0;font-weight:bold;' : '';
+          tableHtml += "<tr>";
+          cells.forEach(cell => {
+            tableHtml += `<${tag} style="border:1px solid #333;padding:6px 10px;${bgStyle}">${esc(cell)}</${tag}>`;
+          });
+          tableHtml += "</tr>";
+        });
+        tableHtml += "</table>";
+        blocks.push(tableHtml);
+      }
+      continue;
+    }
+
     // Skip HTML comments
     if (trimmed.startsWith("<!--")) { i++; continue; }
+
+    // <br> passthrough for spacing
+    if (/^<br\s*\/?>$/i.test(trimmed)) {
+      blocks.push(`<p>&nbsp;</p>`);
+      i++; continue;
+    }
 
     // Court title → centred H1 bold
     if (COURT_TITLE_RE.test(trimmed)) {
