@@ -10821,7 +10821,20 @@ Do not summarize the draft.
 
 Do not provide explanations unless explicitly requested.
 
-Always produce a complete court-ready pleading following Pakistani legal drafting practice.`;
+Always produce a complete court-ready pleading following Pakistani legal drafting practice.
+
+DRAFT ISOLATION (STRICT — HIGHEST PRIORITY)
+
+You must remain strictly confined to the currently active draft provided in the "ACTIVE DRAFT" block.
+
+Rules:
+1. Do NOT switch to, reference, or incorporate content from any other case, matter, draft, or legal proceeding unless the user expressly starts a completely new draft with fresh facts.
+2. When the user asks to "refresh", "rewrite", "redraft", or "improve" the draft, you MUST rewrite ONLY the current active draft with its existing subject matter, facts, parties, arguments, and legal provisions. Never substitute it with a different case type or different facts.
+3. Preserve the continuity of the same legal matter: same parties, same offence/cause of action, same court/forum, same statutory provisions, same factual matrix.
+4. Do NOT import, merge, blend, or cross-reference content from unrelated drafts, prior chat sessions, or different legal proceedings.
+5. Treat every drafting session as an isolated, self-contained workspace. The only source of truth is the draft text and attachments provided in THIS request.
+6. If the current draft is about narcotics, do not produce an injunction suit. If it is about bail, do not produce a writ petition. The subject matter is locked to whatever is already in the active draft.
+7. Context may change ONLY when the user gives an explicit new drafting command with entirely new facts, parties, and case type — not when they say "refresh" or "rewrite".`;
 
   function inferLegalDraftingDocTypeFromPrompt(prompt: string): LegalDraftingDocType | null {
     const text = String(prompt || "").toLowerCase();
@@ -11244,12 +11257,13 @@ ANALYSIS MODE OVERRIDE (HIGH PRIORITY)
 - Do not rewrite the full draft unless the user explicitly requests full rewrite/redraft.
 - If reviewing a draft, provide concise practical recommendations and targeted improvements.
 - Keep Pakistani forum hierarchy correct and clearly state if forum appears incorrect.
-- Cite only INTERNAL DATABASE REFERENCES. If unavailable, omit citation.`;
+- Cite only INTERNAL DATABASE REFERENCES. If unavailable, omit citation.
+- DRAFT ISOLATION: Analyze ONLY the current draft provided. Do not switch to or reference any other case, matter, or proceeding.`;
 
           const analysisInput = `User legal query:
 ${safePrompt}
 
-Current draft context (if any):
+ACTIVE DRAFT (this is the ONLY draft you are working on — do NOT switch to any other case or matter):
 ${baseDraftText || "[No draft provided]"}
 
 Context files (if any):
@@ -11343,7 +11357,7 @@ ${autoGroundsTargetMode ? "- Scope hint: selected excerpt is the GROUNDS section
 Selected excerpt to replace:
 ${selectedSnippet}
 
-Current full draft context:
+ACTIVE DRAFT (this is the ONLY draft — do NOT switch case/matter):
 ${baseDraftText}
 
 Additional context files (if any):
@@ -11414,7 +11428,7 @@ ${useCustomDocType ? `Custom filing instruction:\n- Draft specifically as: ${cus
 
 Jurisdiction/Forum (if provided): ${jurisdiction || "Pakistan"}
 
-Current draft / case history context:
+ACTIVE DRAFT (this is the ONLY draft you are working on — do NOT switch to any other case or matter):
 ${draftContextForGeneration || "[No draft/context provided]"}
 
 INTERNAL DATABASE REFERENCES (AUTO-LOADED):
