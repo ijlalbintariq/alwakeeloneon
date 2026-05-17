@@ -177,6 +177,7 @@ type LegalDraftWorkspaceState = {
   hasDraftInSession: boolean;
   draftChatMessages: DraftChatMessage[];
   memoryItems: MemoryItem[];
+  draftReferences?: LegalDraftReferencesPayload;
   savedAt?: string;
 };
 
@@ -1720,6 +1721,10 @@ function LegalDraftingPageInner() {
         if (nextMessages.length > 0) {
           setDraftChatMessages(nextMessages);
         }
+        // Restore AI references (case law, statutes) from saved state
+        if (state.draftReferences) {
+          setDraftReferences(normalizeLegalDraftReferences(state.draftReferences));
+        }
       } catch {
         // Silent fallback to local autosave.
       } finally {
@@ -1765,6 +1770,12 @@ function LegalDraftingPageInner() {
           ...item,
           text: String(item.text || "").slice(0, 2000),
         })),
+        draftReferences: {
+          caseLaw: draftReferences.caseLaw.slice(0, 50),
+          statutes: draftReferences.statutes.slice(0, 50),
+          removedCaseCitations: draftReferences.removedCaseCitations.slice(0, 30),
+          unresolvedStatutes: draftReferences.unresolvedStatutes.slice(0, 30),
+        },
       };
       try {
         await fetch("/api/legal-drafting/workspace-state", {
@@ -1788,6 +1799,7 @@ function LegalDraftingPageInner() {
     hasDraftInSession,
     draftChatMessages,
     memoryItems,
+    draftReferences,
   ]);
 
   useEffect(() => {
