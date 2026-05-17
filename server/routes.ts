@@ -18,7 +18,7 @@ import {
   TIER_LIMITS,
   type CaseLaw,
 } from "@shared/schema";
-import { and, count, desc, eq, ilike, lt, sql, like, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, lt, sql, like, or, inArray } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
 import {
@@ -9017,7 +9017,27 @@ RAG POLICY (STRICT):
         sort,
         parsedCitation,
       });
-      res.json(results);
+
+      // Enrich results with judgment UUIDs so citation chips can link to /judgment/:uuid
+      const citations = results.map((r) => String(r.citation || "").trim()).filter(Boolean);
+      const judgmentIdMap = new Map<string, string>();
+      if (citations.length > 0) {
+        try {
+          const rows = await db
+            .select({ id: judgments.id, citationString: judgments.citationString })
+            .from(judgments)
+            .where(inArray(judgments.citationString, citations));
+          for (const row of rows) {
+            judgmentIdMap.set(row.citationString, row.id);
+          }
+        } catch { /* non-fatal — chips just won't link */ }
+      }
+
+      const enriched = results.map((r) => ({
+        ...r,
+        judgmentId: judgmentIdMap.get(String(r.citation || "").trim()) || null,
+      }));
+      res.json(enriched);
     } catch (err) {
       console.error("Error searching case law:", err);
       res.status(500).json({ message: "Failed to search case law" });

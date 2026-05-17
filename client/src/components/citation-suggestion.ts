@@ -71,7 +71,7 @@ export const CitationSuggestion = Extension.create({
                 const results = (Array.isArray(data) ? data : [])
                   .slice(0, 8)
                   .map((item: any, idx: number) => ({
-                    id: String(item.id || `citation-${idx}`),
+                    id: String(item.judgmentId || item.id || `citation-${idx}`),
                     citation: item.citation || "Unknown Citation",
                     title: item.title || "Untitled",
                     court: item.court || "Court",
