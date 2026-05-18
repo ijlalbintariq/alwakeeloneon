@@ -14,7 +14,7 @@ export default function AuthPage() {
     title: "Sign in or create account",
     description: "Sign in to Al Wakeelo to access AI-powered Pakistani legal research, judgment search, and drafting tools.",
     path: "/auth",
-    index: false,
+    index: true,
   });
   const TERMS_VERSION = "2026-03";
   const searchString = useSearch();

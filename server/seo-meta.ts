@@ -48,7 +48,7 @@ const ROUTE_RULES: RouteRule[] = [
       title: "Sign in or create account | Al Wakeelo",
       description:
         "Sign in to Al Wakeelo to access AI-powered Pakistani legal research, judgment search, and drafting tools.",
-      index: false,
+      index: true,
     },
   },
   {
