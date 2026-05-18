@@ -6,7 +6,6 @@
  */
 
 import Safepay from "@sfpy/node-core";
-import axios from "axios";
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -63,31 +62,16 @@ export function getSafepayWebhookSecret(): string {
 
 /**
  * Generate a Time-Based Token (TBT) from the secret key.
- * The TBT is a short-lived auth token (~2 min) required by Safepay's
+ * The TBT is a short-lived auth token required by Safepay's
  * hosted checkout page to authenticate the payment session.
  */
 export async function generateTBT(): Promise<string> {
-  const baseUrl = HOST_MAP[SAFEPAY_ENVIRONMENT] || HOST_MAP.sandbox;
-
-  const response = await axios.post(
-    `${baseUrl}/client/passport/v1/token`,
-    {},
-    {
-      headers: {
-        "Content-Type": "application/json",
-      },
-      auth: {
-        username: SAFEPAY_API_KEY,
-        password: SAFEPAY_SECRET_KEY,
-      },
-    },
-  );
-
-  const token = response?.data?.data?.token || response?.data?.token || "";
+  const safepay = getSafepay();
+  const response = await safepay.client.passport.create();
+  const token = response?.data || "";
   if (!token) {
-    throw new Error("Safepay did not return a valid TBT from auth endpoint");
+    throw new Error("Safepay did not return a valid TBT from passport endpoint");
   }
-
   return token;
 }
 
