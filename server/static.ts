@@ -11,8 +11,11 @@ const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/share\/[^/]+$/,
   /^\/privacy$/,
   /^\/terms$/,
+  /^\/cancellation-return-refund-policy$/,
+  /^\/ownership-statement$/,
   /^\/install$/,
   /^\/dashboard$/,
+  /^\/judgments$/,
   /^\/judgment-search$/,
   /^\/judgment-view$/,
   /^\/citation-search$/,
@@ -84,6 +87,21 @@ export function serveStatic(app: Express) {
       }
     },
   }));
+
+  // ── Server-side 301 redirects for legacy URLs ──────────────────────────
+  // These are old URLs that still get crawled. A proper 301 tells Google
+  // to consolidate link equity to the canonical URL and stops the
+  // "Duplicate, Google chose different canonical" warning.
+  const LEGACY_REDIRECTS: Array<[RegExp, string]> = [
+    [/^\/judgment-search$/, "/judgments"],
+  ];
+
+  for (const [pattern, target] of LEGACY_REDIRECTS) {
+    app.get(pattern, (req, res) => {
+      const qs = req.originalUrl.split("?")[1];
+      res.redirect(301, qs ? `${target}?${qs}` : target);
+    });
+  }
 
   // SPA shell with per-route SEO meta injection.
   app.use("/{*path}", (req, res) => {

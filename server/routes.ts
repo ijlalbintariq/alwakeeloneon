@@ -6239,9 +6239,13 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
-  app.get("/robots.txt", (req, res) => {
-    const base = normalizeSiteBaseUrl(req);
-    res.type("text/plain").send(`User-agent: *\nAllow: /\n\nSitemap: ${base}/sitemap.xml\n`);
+  app.get("/robots.txt", (_req, res) => {
+    // Always use the canonical www origin — must match the canonical URLs
+    // in sitemap.xml and <link rel="canonical">. PUBLIC_SITE_URL may be
+    // the apex domain; using it here caused Google's "Duplicate, Google
+    // chose different canonical than user" warning.
+    const CANONICAL = "https://www.alwakeelo.com";
+    res.type("text/plain").send(`User-agent: *\nAllow: /\n\nSitemap: ${CANONICAL}/sitemap.xml\n`);
   });
 
   app.get("/sitemap.xml", handleSitemapIndex);

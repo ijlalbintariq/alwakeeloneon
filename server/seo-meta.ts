@@ -127,7 +127,7 @@ const ROUTE_RULES: RouteRule[] = [
       title: "Pakistani Judgment Search — 600,000+ Cases | Al Wakeelo",
       description:
         "Search 600,000+ Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court. Find case law by citation, party, court, and year.",
-      index: true,
+      index: false, // Legacy redirect route (/judgment-search -> /judgments). Noindex to avoid duplicate canonical.
     },
   },
   {
