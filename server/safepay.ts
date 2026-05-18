@@ -6,6 +6,7 @@
  */
 
 import Safepay from "@sfpy/node-core";
+import axios from "axios";
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -60,6 +61,36 @@ export function getSafepayWebhookSecret(): string {
   return SAFEPAY_WEBHOOK_SECRET;
 }
 
+/**
+ * Generate a Time-Based Token (TBT) from the secret key.
+ * The TBT is a short-lived auth token (~2 min) required by Safepay's
+ * hosted checkout page to authenticate the payment session.
+ */
+export async function generateTBT(): Promise<string> {
+  const baseUrl = HOST_MAP[SAFEPAY_ENVIRONMENT] || HOST_MAP.sandbox;
+
+  const response = await axios.post(
+    `${baseUrl}/client/passport/v1/token`,
+    {},
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      auth: {
+        username: SAFEPAY_API_KEY,
+        password: SAFEPAY_SECRET_KEY,
+      },
+    },
+  );
+
+  const token = response?.data?.data?.token || response?.data?.token || "";
+  if (!token) {
+    throw new Error("Safepay did not return a valid TBT from auth endpoint");
+  }
+
+  return token;
+}
+
 export type CreateSessionParams = {
   amountPkr: number;
   currency?: string;
@@ -67,12 +98,12 @@ export type CreateSessionParams = {
 
 export type CreateSessionResult = {
   tracker: string;
-  token: string;
+  tbt: string;
 };
 
 /**
  * Create a new payment session with Safepay.
- * Returns the tracker ID and token (tbt) needed for checkout.
+ * Returns the tracker ID and a fresh TBT needed for checkout.
  */
 export async function createPaymentSession(params: CreateSessionParams): Promise<CreateSessionResult> {
   const safepay = getSafepay();
@@ -89,17 +120,19 @@ export async function createPaymentSession(params: CreateSessionParams): Promise
   const data = response?.data || response;
 
   // Safepay SDK returns: { tracker: { token: "track_xxx", ... }, capabilities: {...} }
-  // The tracker string is nested inside data.tracker.token
   const trackerObj = data?.tracker || data;
   const trackerToken = typeof trackerObj === "string"
     ? trackerObj
     : trackerObj?.token || data?.token || "";
 
   if (!trackerToken) {
-    throw new Error("Safepay did not return a valid tracker/token from session setup");
+    throw new Error("Safepay did not return a valid tracker from session setup");
   }
 
-  return { tracker: trackerToken, token: trackerToken };
+  // Generate a fresh Time-Based Token for the checkout page
+  const tbt = await generateTBT();
+
+  return { tracker: trackerToken, tbt };
 }
 
 /**
@@ -118,7 +151,7 @@ export async function configurePaymentMetadata(
 
 export type CheckoutUrlParams = {
   tracker: string;
-  token: string;
+  tbt: string;
   cancelUrl?: string;
   redirectUrl?: string;
   source?: "hosted" | "popup";
@@ -129,12 +162,12 @@ export type CheckoutUrlParams = {
  */
 export function generateCheckoutUrl(params: CheckoutUrlParams): string {
   const safepay = getSafepay();
-  const { tracker, token, cancelUrl, redirectUrl, source = "hosted" } = params;
+  const { tracker, tbt, cancelUrl, redirectUrl, source = "hosted" } = params;
 
   return safepay.checkout.createCheckoutUrl({
     env: SAFEPAY_ENVIRONMENT,
     tracker,
-    tbt: token,
+    tbt,
     source,
     cancel_url: cancelUrl,
     redirect_url: redirectUrl,

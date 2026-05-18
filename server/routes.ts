@@ -17146,7 +17146,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const publicSiteUrl = process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "http://localhost:5001";
       const checkoutUrl = generateCheckoutUrl({
         tracker: session.tracker,
-        token: session.token,
+        tbt: session.tbt,
         redirectUrl: `${publicSiteUrl}/checkout/success?tracker=${session.tracker}`,
         cancelUrl: `${publicSiteUrl}/checkout?cancelled=true`,
         source: "hosted",
@@ -17156,7 +17156,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       await storage.createPaymentRecord({
         userId,
         safepayTracker: session.tracker,
-        safepayToken: session.token,
+        safepayToken: session.tbt,
         planKey,
         billingCycle,
         amountPkr,
