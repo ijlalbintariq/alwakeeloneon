@@ -9,6 +9,7 @@ import Safepay from "@sfpy/node-core";
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
+const SAFEPAY_API_KEY = process.env.SAFEPAY_API_KEY || "";
 const SAFEPAY_SECRET_KEY = process.env.SAFEPAY_SECRET_KEY || "";
 const SAFEPAY_ENVIRONMENT = (process.env.SAFEPAY_ENVIRONMENT || "sandbox") as "sandbox" | "production" | "development";
 const SAFEPAY_WEBHOOK_SECRET = process.env.SAFEPAY_WEBHOOK_SECRET || "";
@@ -78,7 +79,7 @@ export async function createPaymentSession(params: CreateSessionParams): Promise
   const { amountPkr, currency = "PKR" } = params;
 
   const response = await safepay.payments.session.setup({
-    merchant_api_key: SAFEPAY_SECRET_KEY,
+    merchant_api_key: SAFEPAY_API_KEY,
     intent: "CYBERSOURCE",
     mode: "payment",
     currency,
@@ -86,14 +87,19 @@ export async function createPaymentSession(params: CreateSessionParams): Promise
   });
 
   const data = response?.data || response;
-  const tracker = data?.token || data?.tracker || "";
-  const token = data?.token || "";
 
-  if (!tracker) {
+  // Safepay SDK returns: { tracker: { token: "track_xxx", ... }, capabilities: {...} }
+  // The tracker string is nested inside data.tracker.token
+  const trackerObj = data?.tracker || data;
+  const trackerToken = typeof trackerObj === "string"
+    ? trackerObj
+    : trackerObj?.token || data?.token || "";
+
+  if (!trackerToken) {
     throw new Error("Safepay did not return a valid tracker/token from session setup");
   }
 
-  return { tracker, token };
+  return { tracker: trackerToken, token: trackerToken };
 }
 
 /**

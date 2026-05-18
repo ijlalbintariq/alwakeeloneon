@@ -61,3 +61,11 @@ services:
         value: "false"
       - key: GITHUB_SYNC_BATCH_SIZE
         value: "2"
+      - key: SAFEPAY_API_KEY
+        sync: false
+      - key: SAFEPAY_SECRET_KEY
+        sync: false
+      - key: SAFEPAY_ENVIRONMENT
+        value: sandbox
+      - key: SAFEPAY_WEBHOOK_SECRET
+        sync: false

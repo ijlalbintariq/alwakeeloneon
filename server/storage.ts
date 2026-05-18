@@ -4310,6 +4310,28 @@ export async function ensureSearchIndexes(): Promise<void> {
         )
       `,
     },
+    // ── Payment Records (Safepay) ──────────────────────────────────────
+    {
+      label: "payment_records_table",
+      stmt: sql`
+        CREATE TABLE IF NOT EXISTS payment_records (
+          id serial PRIMARY KEY,
+          user_id varchar NOT NULL REFERENCES users(id),
+          safepay_tracker text NOT NULL,
+          safepay_token text,
+          plan_key text NOT NULL,
+          billing_cycle text NOT NULL,
+          amount_pkr integer NOT NULL,
+          status text NOT NULL DEFAULT 'pending',
+          safepay_response jsonb,
+          created_at timestamp DEFAULT now(),
+          completed_at timestamp
+        )
+      `,
+    },
+    { label: "idx_payment_records_tracker", stmt: sql`CREATE INDEX IF NOT EXISTS idx_payment_records_tracker ON payment_records (safepay_tracker)` },
+    { label: "idx_payment_records_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_payment_records_user_id ON payment_records (user_id)` },
+    { label: "idx_payment_records_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_payment_records_status ON payment_records (status)` },
   ];
 
   for (const { label, stmt } of indexStatements) {
