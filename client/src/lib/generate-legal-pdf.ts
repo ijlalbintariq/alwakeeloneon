@@ -59,11 +59,22 @@ type TextRun = {
   underline: boolean;
 };
 
+type TableCell = {
+  text: string;
+  bold: boolean;
+};
+
+type TableRow = {
+  cells: TableCell[];
+  isHeader: boolean;
+};
+
 type ParsedNode =
   | { type: "heading"; level: 1 | 2 | 3; runs: TextRun[] }
   | { type: "paragraph"; runs: TextRun[]; align?: "left" | "center" | "right" | "justify" }
   | { type: "list-item"; runs: TextRun[]; ordered: boolean; index: number }
   | { type: "blockquote"; runs: TextRun[] }
+  | { type: "table"; rows: TableRow[] }
   | { type: "hr" }
   | { type: "spacer" };
 
@@ -151,6 +162,24 @@ function parseHTML(html: string): ParsedNode[] {
           const runs = extractTextRuns(li);
           nodes.push({ type: "list-item", runs, ordered, index: idx });
         });
+      } else if (tag === "table") {
+        // Parse table into structured rows/cells
+        const rows: TableRow[] = [];
+        el.querySelectorAll("tr").forEach((tr) => {
+          const cells: TableCell[] = [];
+          const isHeader = tr.closest("thead") !== null || tr.querySelectorAll("th").length > 0;
+          tr.querySelectorAll("th, td").forEach((cell) => {
+            const text = (cell.textContent || "").trim();
+            const bold = cell.tagName.toLowerCase() === "th";
+            cells.push({ text, bold });
+          });
+          if (cells.length > 0) {
+            rows.push({ cells, isHeader });
+          }
+        });
+        if (rows.length > 0) {
+          nodes.push({ type: "table", rows });
+        }
       } else if (tag === "blockquote") {
         // Blockquotes may contain <p> children
         const runs: TextRun[] = [];
@@ -458,6 +487,82 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
         doc.setLineWidth(0.3);
         doc.line(MARGIN_LEFT, y, PAGE_WIDTH - MARGIN_RIGHT, y);
         y += 5;
+        break;
+      }
+
+      case "table": {
+        const { rows } = node;
+        if (rows.length === 0) break;
+
+        const numCols = Math.max(...rows.map((r) => r.cells.length));
+        if (numCols === 0) break;
+
+        const TABLE_FONT = 10;
+        const CELL_PAD_X = 3;
+        const CELL_PAD_Y = 2.5;
+        const ROW_MIN_H = TABLE_FONT * 0.353 * 1.4 + CELL_PAD_Y * 2;
+
+        // Calculate column widths proportionally based on header text length
+        const headerRow = rows.find((r) => r.isHeader) || rows[0];
+        const rawWidths = Array.from({ length: numCols }, (_, ci) => {
+          const text = headerRow.cells[ci]?.text || "";
+          return Math.max(text.length, 4); // minimum 4 chars
+        });
+        const totalRaw = rawWidths.reduce((a, b) => a + b, 0);
+        const colWidths = rawWidths.map((w) => (w / totalRaw) * CONTENT_WIDTH);
+
+        for (const row of rows) {
+          // Calculate row height based on longest cell content
+          let maxLines = 1;
+          const cellLines: string[][] = [];
+          for (let ci = 0; ci < numCols; ci++) {
+            const text = row.cells[ci]?.text || "";
+            doc.setFont("times", row.cells[ci]?.bold ? "bold" : "normal");
+            doc.setFontSize(TABLE_FONT);
+            const lines = doc.splitTextToSize(text, colWidths[ci] - CELL_PAD_X * 2) as string[];
+            cellLines.push(lines);
+            maxLines = Math.max(maxLines, lines.length);
+          }
+          const rowH = Math.max(ROW_MIN_H, maxLines * (TABLE_FONT * 0.353 * 1.4) + CELL_PAD_Y * 2);
+
+          ensureSpace(rowH + 1);
+
+          let cellX = MARGIN_LEFT;
+          for (let ci = 0; ci < numCols; ci++) {
+            const cellW = colWidths[ci];
+            const isBold = row.cells[ci]?.bold || row.isHeader;
+
+            // Fill header cells
+            if (row.isHeader) {
+              doc.setFillColor(26, 35, 50); // #1a2332
+              doc.rect(cellX, y, cellW, rowH, "F");
+            }
+
+            // Cell border
+            doc.setDrawColor(80, 80, 80);
+            doc.setLineWidth(0.3);
+            doc.rect(cellX, y, cellW, rowH, "S");
+
+            // Cell text
+            doc.setFont("times", isBold ? "bold" : "normal");
+            doc.setFontSize(TABLE_FONT);
+            doc.setTextColor(row.isHeader ? 255 : 0, row.isHeader ? 255 : 0, row.isHeader ? 255 : 0);
+
+            const lines = cellLines[ci] || [];
+            let textY = y + CELL_PAD_Y + TABLE_FONT * 0.353;
+            for (const line of lines) {
+              doc.text(line, cellX + CELL_PAD_X, textY);
+              textY += TABLE_FONT * 0.353 * 1.4;
+            }
+
+            cellX += cellW;
+          }
+
+          doc.setTextColor(0, 0, 0);
+          y += rowH;
+        }
+
+        y += 4; // spacing after table
         break;
       }
 
