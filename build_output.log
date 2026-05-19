@@ -1,0 +1,151 @@
+
+> rest-express@1.0.0 build
+> NODE_OPTIONS=--max-old-space-size=1536 tsx script/build.ts
+
+building client...
+vite v7.3.3 building client environment for production...
+transforming...
+✓ 2539 modules transformed.
+✗ Build failed in 2.69s
+client/src/lib/generate-legal-docx.ts (33:2): "LineRule" is not exported by "node_modules/docx/dist/index.mjs", imported by "client/src/lib/generate-legal-docx.ts".
+file: /Users/macbook/Downloads/Alwakeelo/client/src/lib/generate-legal-docx.ts:33:2
+
+31:   TabStopPosition,
+32:   TabStopType,
+33:   LineRule,
+      ^
+34:   PageBreak,
+35: } from "docx";
+
+    at getRollupError (file:///Users/macbook/Downloads/Alwakeelo/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+    at error (file:///Users/macbook/Downloads/Alwakeelo/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+    at Module.error (/Users/macbook/Downloads/Alwakeelo/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
+    at Module.traceVariable (/Users/macbook/Downloads/Alwakeelo/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
+    at ModuleScope.findVariable (/Users/macbook/Downloads/Alwakeelo/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
+    at FunctionScope.findVariable (/Users/macbook/Downloads/Alwakeelo/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at FunctionBodyScope.findVariable (/Users/macbook/Downloads/Alwakeelo/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at FunctionScope.findVariable (/Users/macbook/Downloads/Alwakeelo/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at FunctionBodyScope.findVariable (/Users/macbook/Downloads/Alwakeelo/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at TrackingScope.findVariable (/Users/macbook/Downloads/Alwakeelo/node_modules/rollup/dist/es/shared/node-entry.js:5673:38) {
+  binding: 'LineRule',
+  code: 'MISSING_EXPORT',
+  exporter: '/Users/macbook/Downloads/Alwakeelo/node_modules/docx/dist/index.mjs',
+  id: '/Users/macbook/Downloads/Alwakeelo/client/src/lib/generate-legal-docx.ts',
+  url: 'https://rollupjs.org/troubleshooting/#error-name-is-not-exported-by-module',
+  pos: 249,
+  loc: {
+    column: 2,
+    file: '/Users/macbook/Downloads/Alwakeelo/client/src/lib/generate-legal-docx.ts',
+    line: 33
+  },
+  frame: '31:   TabStopPosition,\n' +
+    '32:   TabStopType,\n' +
+    '33:   LineRule,\n' +
+    '      ^\n' +
+    '34:   PageBreak,\n' +
+    '35: } from "docx";',
+  watchFiles: [
+    '/Users/macbook/Downloads/Alwakeelo/client/index.html',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/main.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/package.json',
+    '/Users/macbook/Downloads/Alwakeelo/tailwind.config.ts',
+    '/Users/macbook/Downloads/Alwakeelo/node_modules/react/jsx-runtime.js',
+    '/Users/macbook/Downloads/Alwakeelo/node_modules/react-dom/client.js',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/App.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/index.css',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/citation-node.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/citation-suggestion.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/hooks/use-auth.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/hooks/use-document-head.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/hooks/use-documents.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/hooks/use-draft-history.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/hooks/use-threads.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/hooks/use-toast.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/hooks/use-voice-recorder.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/lib/auth-utils.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/lib/case-law-client-extractor.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/lib/court-fee.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/lib/generate-legal-docx.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/lib/generate-legal-pdf.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/lib/plain-to-tiptap.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/lib/queryClient.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/lib/subscription-plans.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/lib/upgrade-path.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/lib/utils.ts',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/app-shell.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/case-law-card.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/chat-dock.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/citation-list.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/court-fee-calculator.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/document-viewer.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/draft-history-panel.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/layout-shell.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/legal-editor.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/legal-markdown.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/onboarding-tour.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/public-legal-chat-widget.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/public-page-shell.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/reference-cards.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/style-memory-panel.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/accordion.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/alert-dialog.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/alert.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/aspect-ratio.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/avatar.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/badge.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/breadcrumb.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/button.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/calendar.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/card.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/carousel.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/chart.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/checkbox.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/collapsible.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/command.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/context-menu.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/dialog.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/drawer.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/dropdown-menu.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/form.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/hover-card.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/input-otp.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/input.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/label.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/menubar.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/navigation-menu.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/pagination.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/popover.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/progress.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/radio-group.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/resizable.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/scroll-area.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/select.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/separator.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/sheet.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/sidebar.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/skeleton.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/slider.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/switch.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/table.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/tabs.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/textarea.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/toast.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/toaster.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/toggle-group.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/toggle.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/components/ui/tooltip.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/contexts/draft-tabs-context.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/hooks/use-chat-session.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/hooks/use-mobile.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/hooks/use-theme.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/pages/admin-panel.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/pages/admin-setup.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/pages/auth.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/pages/bookmarks.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/pages/cancellation-return-refund-policy.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/pages/case-documents.tsx',
+    '/Users/macbook/Downloads/Alwakeelo/client/src/pages/case-files.tsx',
+    ... 2406 more items
+  ],
+  Symbol(augmented): true
+}

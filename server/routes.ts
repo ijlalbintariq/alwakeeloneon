@@ -4647,6 +4647,7 @@ async function passesMalwareScan(
 function normalizeDraftingText(content: string): string {
   return content
     .replace(/```references[\s\S]*?```/gi, "")
+    .replace(/```recommendations[\s\S]*?```/gi, "")
     .replace(/```[a-zA-Z]*\s*/g, "")
     .replace(/```/g, "")
     .trim();
@@ -10685,6 +10686,24 @@ Every legal draft MUST cite exactly the 3 most highly relevant and perfect case 
 - A 1-2 sentence summary of the ratio decidendi (the principle laid down)
 Do NOT fabricate citations. Use ONLY citations from the INTERNAL DATABASE REFERENCES section. If less than 3 relevant cases are available, use what is available.
 
+CASE LAW RECOMMENDATIONS (MANDATORY)
+
+In addition to inserting the 3 best cases directly into the draft, you MUST also recommend 2-3 ALTERNATIVE case laws from the INTERNAL DATABASE REFERENCES that the user could choose to insert into the draft if they wish.
+You must output these recommendations at the VERY END of your response inside a fenced JSON block named \`\`\`recommendations.
+The format must strictly be a JSON array of objects like this:
+\`\`\`recommendations
+[
+  {
+    "id": "rec-1",
+    "title": "Alternative Case Law: [Citation]",
+    "reason": "Explain briefly why this alternative case is relevant to the grounds.",
+    "originalSnippet": "[Provide an exact 5-10 word phrase from your generated draft text where this new case could be inserted or appended]",
+    "suggestedText": "[Provide the exact phrase from originalSnippet] followed by the alternative case law citation and its legal principle.",
+    "impact": "medium"
+  }
+]
+\`\`\`
+
 DOCUMENT LENGTH
 
 A complete court-ready legal draft must be comprehensive. Typical expected lengths:
@@ -11001,6 +11020,20 @@ Rules:
       ok: true,
       text: `${source.slice(0, index)}${replacement}${source.slice(index + snippet.length)}`,
     };
+  }
+
+  function extractCaseLawRecommendations(content: string): any[] {
+    const match = content.match(/```recommendations\s*([\s\S]*?)```/i) || content.match(/(?:^|\n)\s*recommendations\s*(\[[\s\S]*?\])\s*$/i);
+    if (match) {
+      try {
+        const payload = (match[1] ?? match[2] ?? "").trim();
+        const parsed = JSON.parse(payload);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (err) {
+        console.warn("[AI] Failed to parse recommendations JSON", err);
+      }
+    }
+    return [];
   }
 
   app.post("/api/retrieval/clauses/generate", guardedUploadQueue, retrievalAttachmentUpload.array("attachments", 5), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
@@ -11458,6 +11491,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             temperature: 0.25,
           });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
+          let extractedRecs = extractCaseLawRecommendations(aiResult.text);
           draftedText = normalizeCourtReadyDraftingText(aiResult.text);
           if (selectedDocType) {
             const validation = validateDraftForSelectedType(draftedText, selectedDocType);
@@ -11489,6 +11523,8 @@ ${draftedText}`;
                 temperature: 0.15,
               });
               await logUsageCost(userId, "draft", repaired.model, sysInstruction + repairInput, repaired.text);
+              const repairedRecs = extractCaseLawRecommendations(repaired.text);
+              if (repairedRecs.length > 0) extractedRecs = repairedRecs;
               draftedText = normalizeCourtReadyDraftingText(repaired.text);
             }
           }
@@ -11528,6 +11564,7 @@ ${draftedText}`;
           attachmentsUsed: files?.length || 0,
           references: referenceResolution.references,
           styleMemory: styleMemoryMeta || undefined,
+          recommendations: typeof extractedRecs !== "undefined" ? extractedRecs : [],
         });
       }
 

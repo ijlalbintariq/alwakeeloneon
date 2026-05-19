@@ -2272,7 +2272,10 @@ function LegalDraftingPageInner() {
         impact: edit?.impact === "high" || edit?.impact === "low" ? edit.impact : "medium",
       })).filter((edit: DraftRecommendation) => edit.suggestedText.length > 0);
 
-      setRecommendations(normalized);
+      setRecommendations((prev) => {
+        const existingCaseLaws = prev.filter(p => p.id && p.id.startsWith("rec-"));
+        return [...existingCaseLaws, ...normalized];
+      });
       setExpandedRecommendationId(normalized[0]?.id || null);
       if (normalized.length > 0) {
         addMemoryItem(
@@ -2620,6 +2623,24 @@ function LegalDraftingPageInner() {
       if (!clause) throw new Error("No clause generated");
       setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
       setDraftReferences(normalizeLegalDraftReferences(data?.references));
+      if (Array.isArray(data?.recommendations) && data.recommendations.length > 0) {
+        setRecommendations((prev) => {
+          const next = [...prev];
+          data.recommendations.forEach((rec: any) => {
+            if (!next.some((r) => r.id === rec.id)) {
+              next.push({
+                id: rec.id || `rec-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                title: rec.title || "Alternative Case Law",
+                reason: rec.reason || "Case law suggestion",
+                originalSnippet: rec.originalSnippet || "",
+                suggestedText: rec.suggestedText || "",
+                impact: rec.impact || "medium",
+              });
+            }
+          });
+          return next;
+        });
+      }
 
       const assistantMessageId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       setDraftChatMessages((prev) => [
