@@ -14,22 +14,23 @@
 
 import jsPDF from "jspdf";
 
-// ── Configuration ────────────────────────────────────────────────────────
+// ── Configuration (must match generate-legal-docx.ts) ────────────────────
 
-const PAGE_WIDTH = 210; // A4 mm
-const PAGE_HEIGHT = 297;
-const MARGIN_LEFT = 25;
-const MARGIN_RIGHT = 25;
-const MARGIN_TOP = 30;
-const MARGIN_BOTTOM = 25;
+// Legal page: 8.5" × 14" (215.9mm × 355.6mm)
+const PAGE_WIDTH = 215.9;
+const PAGE_HEIGHT = 355.6;
+const MARGIN_LEFT = 31.75;   // 1.25" binding margin
+const MARGIN_RIGHT = 25.4;   // 1"
+const MARGIN_TOP = 30;       // ~1.18"
+const MARGIN_BOTTOM = 25.4;  // 1"
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 const FOOTER_Y = PAGE_HEIGHT - 12;
 
-const FONT_BODY = 12;
-const FONT_H1 = 15;
-const FONT_H2 = 13;
-const FONT_H3 = 12;
-const LINE_HEIGHT_FACTOR = 1.6;
+const FONT_BODY = 13;
+const FONT_H1 = 14;
+const FONT_H2 = 14;
+const FONT_H3 = 13;
+const LINE_HEIGHT_FACTOR = 1.3; // match DOCX default
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -70,8 +71,8 @@ type TableRow = {
 };
 
 type ParsedNode =
-  | { type: "heading"; level: 1 | 2 | 3; runs: TextRun[] }
-  | { type: "paragraph"; runs: TextRun[]; align?: "left" | "center" | "right" | "justify" }
+  | { type: "heading"; level: 1 | 2 | 3; runs: TextRun[]; lineHeight?: number }
+  | { type: "paragraph"; runs: TextRun[]; align?: "left" | "center" | "right" | "justify"; lineHeight?: number }
   | { type: "list-item"; runs: TextRun[]; ordered: boolean; index: number }
   | { type: "blockquote"; runs: TextRun[] }
   | { type: "table"; rows: TableRow[] }
@@ -128,6 +129,13 @@ function parseHTML(html: string): ParsedNode[] {
     return undefined;
   }
 
+  function getElementLineHeight(el: Element): number | undefined {
+    const style = el.getAttribute("style") || "";
+    const match = style.match(/line-height:\s*([\d.]+)/);
+    if (match) return parseFloat(match[1]);
+    return undefined;
+  }
+
   function processChildren(parent: Element) {
     parent.childNodes.forEach((child) => {
       if (child.nodeType !== Node.ELEMENT_NODE) {
@@ -142,15 +150,15 @@ function parseHTML(html: string): ParsedNode[] {
       const tag = el.tagName.toLowerCase();
 
       if (tag === "h1") {
-        nodes.push({ type: "heading", level: 1, runs: extractTextRuns(el) });
+        nodes.push({ type: "heading", level: 1, runs: extractTextRuns(el), lineHeight: getElementLineHeight(el) });
       } else if (tag === "h2") {
-        nodes.push({ type: "heading", level: 2, runs: extractTextRuns(el) });
+        nodes.push({ type: "heading", level: 2, runs: extractTextRuns(el), lineHeight: getElementLineHeight(el) });
       } else if (tag === "h3") {
-        nodes.push({ type: "heading", level: 3, runs: extractTextRuns(el) });
+        nodes.push({ type: "heading", level: 3, runs: extractTextRuns(el), lineHeight: getElementLineHeight(el) });
       } else if (tag === "p") {
         const runs = extractTextRuns(el);
         if (runs.length > 0 && runs.some((r) => r.text.trim())) {
-          nodes.push({ type: "paragraph", runs, align: getAlignment(el) });
+          nodes.push({ type: "paragraph", runs, align: getAlignment(el), lineHeight: getElementLineHeight(el) });
         } else {
           nodes.push({ type: "spacer" });
         }
@@ -221,7 +229,7 @@ function runsToPlainText(runs: TextRun[]): string {
 export function generateLegalPDF(options: LegalPDFOptions): void {
   const { html, title, draftType, court, caseNumber, parties, isDraft } = options;
 
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: [PAGE_WIDTH, PAGE_HEIGHT] });
   const nodes = parseHTML(html);
   let y = MARGIN_TOP;
   let pageNum = 1;
@@ -297,13 +305,15 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
     baseStyle: "normal" | "bold" | "italic" = "normal",
     indent = 0,
     align?: "left" | "center" | "right" | "justify",
+    lineHeightOverride?: number,
   ) {
     // For simplicity and reliability with jsPDF's limited rich-text support,
     // we render runs as lines of text, applying the dominant style per line.
     const plainText = runsToPlainText(runs);
     if (!plainText.trim()) return;
 
-    const lineSpacing = fontSize * 0.353 * LINE_HEIGHT_FACTOR; // pt to mm conversion with spacing
+    const lhFactor = lineHeightOverride ?? LINE_HEIGHT_FACTOR;
+    const lineSpacing = fontSize * 0.353 * lhFactor; // pt to mm conversion with spacing
     const effectiveWidth = CONTENT_WIDTH - indent;
 
     // Determine dominant style from runs
@@ -420,13 +430,13 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
         ensureSpace(spacing + 12);
         y += node.level === 1 ? 4 : 2;
 
-        renderRuns(node.runs, fontSize, "bold", 0, node.level === 1 ? "center" : "left");
+        renderRuns(node.runs, fontSize, "bold", 0, node.level === 1 ? "center" : "left", node.lineHeight);
         y += node.level === 1 ? 4 : 2;
         break;
       }
 
       case "paragraph": {
-        renderRuns(node.runs, FONT_BODY, "normal", 0, node.align);
+        renderRuns(node.runs, FONT_BODY, "normal", 0, node.align, node.lineHeight);
         y += 2; // paragraph spacing
         break;
       }

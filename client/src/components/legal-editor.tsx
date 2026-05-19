@@ -65,7 +65,10 @@ import {
   TableIcon,
   Palette,
   Type,
+  CaseSensitive,
+  ChevronDown,
 } from "lucide-react";
+import { Pilcrow } from "lucide-react";
 
 // ── Public imperative handle ─────────────────────────────────────────────
 
@@ -244,6 +247,217 @@ const FontSize = TextStyle.extend({
   },
 });
 
+// ── Line Spacing Select ──────────────────────────────────────────────────
+
+const LINE_SPACING_OPTIONS = [
+  { label: "1.0", value: "1" },
+  { label: "1.15", value: "1.15" },
+  { label: "1.3", value: "1.3" },
+  { label: "1.5", value: "1.5" },
+  { label: "2.0", value: "2" },
+  { label: "2.5", value: "2.5" },
+  { label: "3.0", value: "3" },
+];
+
+function LineSpacingSelect({ editor }: { editor: any }) {
+  const [open, setOpen] = useState(false);
+
+  // Read current line-height from the focused node
+  const getCurrentSpacing = (): string => {
+    if (!editor) return "1.3";
+    const attrs = editor.getAttributes("paragraph");
+    return attrs?.lineHeight || "1.3";
+  };
+
+  const currentSpacing = getCurrentSpacing();
+
+  const setLineSpacing = (value: string) => {
+    if (!editor) return;
+    // Apply line-height to all selected nodes using updateAttributes
+    editor.chain().focus().updateAttributes("paragraph", { lineHeight: value }).run();
+    // Also update headings if selected
+    try {
+      editor.chain().focus().updateAttributes("heading", { lineHeight: value }).run();
+    } catch (_) {
+      // heading may not be selected — ignore
+    }
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        title="Line Spacing"
+        className="inline-flex items-center justify-center gap-0.5 h-7 px-1.5 rounded text-[10px] border border-border/60 bg-transparent text-foreground hover:bg-card/60 transition-colors cursor-pointer"
+      >
+        <Pilcrow size={11} />
+        <span className="tabular-nums">{parseFloat(currentSpacing).toFixed(currentSpacing.includes(".") ? (currentSpacing.split(".")[1]?.length || 1) : 1)}</span>
+        <ChevronDown size={9} className="text-muted-foreground" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 min-w-[90px] rounded-lg border border-border bg-popover shadow-lg py-1">
+          {LINE_SPACING_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setLineSpacing(opt.value)}
+              className={`w-full text-left px-3 py-1.5 text-[11px] transition-colors ${
+                currentSpacing === opt.value
+                  ? "bg-primary/15 text-primary font-medium"
+                  : "text-foreground hover:bg-card/60"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Text Case Transform ──────────────────────────────────────────────────
+
+type CaseMode = "upper" | "lower" | "capitalize" | "sentence" | "toggle";
+
+function applyCase(text: string, mode: CaseMode): string {
+  switch (mode) {
+    case "upper":
+      return text.toUpperCase();
+    case "lower":
+      return text.toLowerCase();
+    case "capitalize":
+      return text.replace(/\b\w/g, (c) => c.toUpperCase());
+    case "sentence":
+      return text.toLowerCase().replace(/(^|[.!?]\s*)\w/g, (c) => c.toUpperCase());
+    case "toggle":
+      return text
+        .split("")
+        .map((c) => (c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()))
+        .join("");
+    default:
+      return text;
+  }
+}
+
+function TextCaseMenu({ editor }: { editor: any }) {
+  const [open, setOpen] = useState(false);
+
+  const applyTextCase = (mode: CaseMode) => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    const hasSelection = from !== to;
+
+    if (hasSelection) {
+      // Transform selected text
+      const selectedText = editor.state.doc.textBetween(from, to, "\n");
+      const transformed = applyCase(selectedText, mode);
+      editor.chain().focus().deleteSelection().insertContent(transformed).run();
+    } else {
+      // Transform entire document — get all text nodes and transform them
+      const { doc } = editor.state;
+      const { tr } = editor.state;
+      let changed = false;
+
+      doc.descendants((node: any, pos: number) => {
+        if (node.isText && node.text) {
+          const transformed = applyCase(node.text, mode);
+          if (transformed !== node.text) {
+            tr.insertText(transformed, pos, pos + node.text.length);
+            changed = true;
+          }
+        }
+      });
+
+      if (changed) {
+        editor.view.dispatch(tr);
+      }
+    }
+    setOpen(false);
+  };
+
+  const options: Array<{ label: string; mode: CaseMode; preview: string }> = [
+    { label: "UPPERCASE", mode: "upper", preview: "ABC" },
+    { label: "lowercase", mode: "lower", preview: "abc" },
+    { label: "Capitalize Each Word", mode: "capitalize", preview: "Abc" },
+    { label: "Sentence case", mode: "sentence", preview: "Abc." },
+    { label: "tOGGLE cASE", mode: "toggle", preview: "aBC" },
+  ];
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        title="Text Case"
+        className="inline-flex items-center justify-center gap-0.5 h-7 px-1.5 rounded text-[10px] border border-border/60 bg-transparent text-foreground hover:bg-card/60 transition-colors cursor-pointer"
+      >
+        <CaseSensitive size={14} />
+        <ChevronDown size={9} className="text-muted-foreground" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 min-w-[170px] rounded-lg border border-border bg-popover shadow-lg py-1">
+          {options.map((opt) => (
+            <button
+              key={opt.mode}
+              onClick={() => applyTextCase(opt.mode)}
+              className="w-full text-left px-3 py-1.5 text-[11px] text-foreground hover:bg-card/60 transition-colors flex items-center gap-2"
+            >
+              <span className="w-7 text-[9px] text-muted-foreground font-mono">{opt.preview}</span>
+              <span>{opt.label}</span>
+            </button>
+          ))}
+          <div className="mx-2 my-1 border-t border-border/50" />
+          <div className="px-3 py-1 text-[9px] text-muted-foreground">
+            {editor && editor.state.selection.from !== editor.state.selection.to
+              ? "Applies to selection"
+              : "Applies to entire document"}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Custom Paragraph with lineHeight ─────────────────────────────────────
+
+import { Node as PmNode } from "@tiptap/pm/model";
+import ParagraphExtension from "@tiptap/extension-paragraph";
+import HeadingExtension from "@tiptap/extension-heading";
+
+const CustomParagraph = ParagraphExtension.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      lineHeight: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.style.lineHeight || null,
+        renderHTML: (attributes: Record<string, any>) => {
+          if (!attributes.lineHeight) return {};
+          return { style: `line-height: ${attributes.lineHeight}` };
+        },
+      },
+    };
+  },
+});
+
+const CustomHeading = HeadingExtension.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      lineHeight: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.style.lineHeight || null,
+        renderHTML: (attributes: Record<string, any>) => {
+          if (!attributes.lineHeight) return {};
+          return { style: `line-height: ${attributes.lineHeight}` };
+        },
+      },
+    };
+  },
+});
+
 // ── Component ────────────────────────────────────────────────────────────
 
 function LegalEditorInner(
@@ -253,8 +467,11 @@ function LegalEditorInner(
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
+        heading: false,     // replaced by CustomHeading
+        paragraph: false,   // replaced by CustomParagraph
       }),
+      CustomParagraph,
+      CustomHeading.configure({ levels: [1, 2, 3] }),
       Underline,
       TextAlign.configure({
         types: ["heading", "paragraph"],
@@ -579,6 +796,14 @@ function LegalEditorInner(
         >
           <AlignJustify size={18} />
         </ToolbarBtn>
+
+        <ToolbarSep />
+
+        {/* Line Spacing */}
+        <LineSpacingSelect editor={editor} />
+
+        {/* Text Case */}
+        <TextCaseMenu editor={editor} />
 
         <ToolbarSep />
 

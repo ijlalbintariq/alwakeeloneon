@@ -117,6 +117,16 @@ function getAlignment(el: Element): (typeof AlignmentType)[keyof typeof Alignmen
   return AlignmentType.JUSTIFIED; // court default
 }
 
+/** Read line-height from inline style and convert to Word's 240ths-of-a-line */
+function getLineSpacing(el: Element): number {
+  const style = el.getAttribute("style") || "";
+  const match = style.match(/line-height:\s*([\d.]+)/);
+  if (match) {
+    return Math.round(parseFloat(match[1]) * 240);
+  }
+  return LINE_SPACING; // default 1.3
+}
+
 function buildDocxChildren(html: string): (Paragraph | Table)[] {
   const container = document.createElement("div");
   container.innerHTML = html;
@@ -131,6 +141,7 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
       const level = tag === "h1" ? HeadingLevel.HEADING_1 : tag === "h2" ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3;
       const fontSize = tag === "h1" ? FONT_H1 : tag === "h2" ? FONT_H2 : FONT_H3;
       const runs = extractRuns(el, { bold: true, italic: false, underline: false }, fontSize);
+      const lineSpacing = getLineSpacing(el);
 
       children.push(
         new Paragraph({
@@ -140,7 +151,7 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
           spacing: {
             before: tag === "h1" ? 240 : 160,
             after: tag === "h1" ? 120 : 80,
-            line: LINE_SPACING,
+            line: lineSpacing,
           },
         }),
       );
@@ -155,11 +166,12 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
         children.push(new Paragraph({ spacing: { before: 60, after: 60 } }));
         return;
       }
+      const lineSpacing = getLineSpacing(el);
       children.push(
         new Paragraph({
           children: runs,
           alignment: getAlignment(el),
-          spacing: { after: 60, line: LINE_SPACING },
+          spacing: { after: 60, line: lineSpacing },
         }),
       );
       return;
