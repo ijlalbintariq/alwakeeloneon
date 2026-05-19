@@ -21,7 +21,7 @@ const PAGE_WIDTH = 215.9;
 const PAGE_HEIGHT = 355.6;
 const MARGIN_LEFT = 31.75;   // 1.25" binding margin
 const MARGIN_RIGHT = 25.4;   // 1"
-const MARGIN_TOP = 30;       // ~1.18"
+const MARGIN_TOP = 25.4;     // 1"
 const MARGIN_BOTTOM = 25.4;  // 1"
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 const FOOTER_Y = PAGE_HEIGHT - 12;
@@ -77,7 +77,8 @@ type ParsedNode =
   | { type: "blockquote"; runs: TextRun[] }
   | { type: "table"; rows: TableRow[] }
   | { type: "hr" }
-  | { type: "spacer" };
+  | { type: "spacer" }
+  | { type: "page-break" };
 
 // ── HTML parser (lightweight, no DOM dependency for SSR compat) ──────────
 
@@ -148,6 +149,12 @@ function parseHTML(html: string): ParsedNode[] {
       }
       const el = child as Element;
       const tag = el.tagName.toLowerCase();
+
+      const className = el.getAttribute("class") || "";
+      const style = el.getAttribute("style") || "";
+      if (className.includes("page-break") || el.hasAttribute("data-page-break") || style.includes("page-break-before: always")) {
+        nodes.push({ type: "page-break" });
+      }
 
       if (tag === "h1") {
         nodes.push({ type: "heading", level: 1, runs: extractTextRuns(el), lineHeight: getElementLineHeight(el) });
@@ -339,15 +346,19 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
 
       const lines = doc.splitTextToSize(para, effectiveWidth) as string[];
 
-      for (const line of lines) {
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
         ensureSpace(lineSpacing);
 
         const xPos = MARGIN_LEFT + indent;
+        const isLastLine = i === lines.length - 1;
 
         if (align === "center") {
           doc.text(line, PAGE_WIDTH / 2, y, { align: "center" });
         } else if (align === "right") {
           doc.text(line, PAGE_WIDTH - MARGIN_RIGHT, y, { align: "right" });
+        } else if (align === "justify" && !isLastLine) {
+          doc.text(line, xPos, y, { align: "justify", maxWidth: effectiveWidth });
         } else {
           doc.text(line, xPos, y);
         }
@@ -556,6 +567,17 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
 
       case "spacer": {
         y += 3;
+        break;
+      }
+
+      case "page-break": {
+        if (y > MARGIN_TOP + 1) { // Only break if not already at the top of a new page
+          addPageFooter();
+          doc.addPage();
+          pageNum++;
+          y = MARGIN_TOP;
+          addPageHeader();
+        }
         break;
       }
     }

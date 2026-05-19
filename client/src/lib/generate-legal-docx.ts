@@ -30,6 +30,8 @@ import {
   NumberFormat,
   TabStopPosition,
   TabStopType,
+  LineRuleType,
+  PageBreak,
 } from "docx";
 import { saveAs } from "file-saver";
 
@@ -88,7 +90,6 @@ function extractRuns(el: Node, parentStyle: InlineStyle, fontSize = FONT_BODY): 
       if (tag === "em" || tag === "i") style.italic = true;
       if (tag === "u") style.underline = true;
 
-      // Citation chip — render as bold
       if ((child as Element).classList?.contains("citation-chip")) {
         const citationText = (child as Element).textContent || "";
         if (citationText) {
@@ -97,12 +98,19 @@ function extractRuns(el: Node, parentStyle: InlineStyle, fontSize = FONT_BODY): 
         return;
       }
 
+      let currentFontSize = fontSize;
+      const cssText = (child as Element).getAttribute("style") || "";
+      const fontSizeMatch = cssText.match(/font-size:\s*([\d.]+)pt/i);
+      if (fontSizeMatch) {
+         currentFontSize = Math.round(parseFloat(fontSizeMatch[1]) * 2);
+      }
+
       if (tag === "br") {
-        runs.push(new TextRun({ break: 1, font: FONT, size: fontSize }));
+        runs.push(new TextRun({ break: 1, font: FONT, size: currentFontSize }));
         return;
       }
 
-      runs.push(...extractRuns(child, style, fontSize));
+      runs.push(...extractRuns(child, style, currentFontSize));
     }
   });
 
@@ -152,10 +160,19 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
             before: tag === "h1" ? 240 : 160,
             after: tag === "h1" ? 120 : 80,
             line: lineSpacing,
+            lineRule: LineRuleType.AUTO,
           },
         }),
       );
       return;
+    }
+
+    // ── Page Breaks ──
+    const className = el.getAttribute("class") || "";
+    const style = el.getAttribute("style") || "";
+    if (className.includes("page-break") || el.hasAttribute("data-page-break") || style.includes("page-break-before: always")) {
+       children.push(new Paragraph({ children: [new PageBreak()] }));
+       // Don't return, as the element might contain text that we still need to process
     }
 
     // ── Paragraphs ──
@@ -171,7 +188,7 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
         new Paragraph({
           children: runs,
           alignment: getAlignment(el),
-          spacing: { after: 60, line: lineSpacing },
+          spacing: { after: 60, line: lineSpacing, lineRule: LineRuleType.AUTO },
         }),
       );
       return;
@@ -192,7 +209,7 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
               ...runs,
             ],
             indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) },
-            spacing: { after: 40, line: LINE_SPACING },
+            spacing: { after: 40, line: LINE_SPACING, lineRule: LineRuleType.AUTO },
             alignment: AlignmentType.JUSTIFIED,
           }),
         );
@@ -255,7 +272,7 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
         new Paragraph({
           children: runs,
           indent: { left: convertInchesToTwip(0.5) },
-          spacing: { before: 80, after: 80, line: LINE_SPACING },
+          spacing: { before: 80, after: 80, line: LINE_SPACING, lineRule: LineRuleType.AUTO },
           alignment: AlignmentType.JUSTIFIED,
         }),
       );
@@ -287,7 +304,7 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
               new Paragraph({
                 children: [createTextRun(text, defaultStyle)],
                 alignment: AlignmentType.JUSTIFIED,
-                spacing: { after: 60, line: LINE_SPACING },
+                spacing: { after: 60, line: LINE_SPACING, lineRule: LineRuleType.AUTO },
               }),
             );
           }
@@ -303,7 +320,7 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
         new Paragraph({
           children: runs,
           alignment: AlignmentType.JUSTIFIED,
-          spacing: { after: 60, line: LINE_SPACING },
+          spacing: { after: 60, line: LINE_SPACING, lineRule: LineRuleType.AUTO },
         }),
       );
     }
@@ -319,7 +336,7 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
           new Paragraph({
             children: [createTextRun(text, defaultStyle)],
             alignment: AlignmentType.JUSTIFIED,
-            spacing: { after: 60, line: LINE_SPACING },
+            spacing: { after: 60, line: LINE_SPACING, lineRule: LineRuleType.AUTO },
           }),
         );
       }
@@ -352,7 +369,7 @@ export async function generateLegalDocx(options: LegalDocxOptions): Promise<void
             size: FONT_BODY,
           },
           paragraph: {
-            spacing: { line: LINE_SPACING },
+            spacing: { line: LINE_SPACING, lineRule: LineRuleType.AUTO },
             alignment: AlignmentType.JUSTIFIED,
           },
         },
@@ -365,7 +382,7 @@ export async function generateLegalDocx(options: LegalDocxOptions): Promise<void
           },
           paragraph: {
             alignment: AlignmentType.CENTER,
-            spacing: { before: 240, after: 120, line: LINE_SPACING },
+            spacing: { before: 240, after: 120, line: LINE_SPACING, lineRule: LineRuleType.AUTO },
           },
         },
         heading2: {
@@ -376,7 +393,7 @@ export async function generateLegalDocx(options: LegalDocxOptions): Promise<void
             allCaps: true,
           },
           paragraph: {
-            spacing: { before: 160, after: 80, line: LINE_SPACING },
+            spacing: { before: 160, after: 80, line: LINE_SPACING, lineRule: LineRuleType.AUTO },
           },
         },
         heading3: {
@@ -386,7 +403,7 @@ export async function generateLegalDocx(options: LegalDocxOptions): Promise<void
             bold: true,
           },
           paragraph: {
-            spacing: { before: 120, after: 60, line: LINE_SPACING },
+            spacing: { before: 120, after: 60, line: LINE_SPACING, lineRule: LineRuleType.AUTO },
           },
         },
       },
