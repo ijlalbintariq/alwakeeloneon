@@ -3186,13 +3186,13 @@ function LegalDraftingPageInner() {
 
           <div className="flex-1 min-h-0 flex flex-col">
             {/* ── Tiptap Legal Editor ── */}
-            <div className={`${chatExpanded ? "h-0 overflow-hidden" : "flex-1 min-h-0 overflow-auto border-b border-[hsl(var(--preview-border))]"} flex flex-col transition-all duration-300`}>
+            <div className={`${chatExpanded ? "h-0 overflow-hidden" : "flex-1 min-h-0 overflow-hidden border-b border-[hsl(var(--preview-border))]"} flex flex-col transition-all duration-300`}>
               <LegalEditor
                 ref={editorRef}
                 initialContent={editorHtml}
                 onUpdate={onEditorUpdate}
                 placeholder="Begin drafting or load a template…"
-                className="min-h-full flex flex-col"
+                className="flex-1 min-h-0 flex flex-col"
               />
             </div>
 
