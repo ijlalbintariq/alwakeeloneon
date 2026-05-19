@@ -10679,11 +10679,11 @@ Each ground MUST be a detailed paragraph of 5 to 10 sentences. Under each ground
 
 CASE LAW DEPTH REQUIREMENT
 
-Every legal draft MUST cite a minimum of 4 to 8 case law authorities from the INTERNAL DATABASE REFERENCES provided. For each cited case, include:
+Every legal draft MUST cite exactly the 3 most highly relevant and perfect case law authorities from the INTERNAL DATABASE REFERENCES provided that apply to the specific situation. For each cited case, include:
 - The full citation (e.g. 2024 SCMR 205)
 - The case title (e.g. Naveed Sattar vs The State)
 - A 1-2 sentence summary of the ratio decidendi (the principle laid down)
-Do NOT fabricate citations. Use ONLY citations from the INTERNAL DATABASE REFERENCES section. If insufficient references are available, use what is available and note that additional case law may be added.
+Do NOT fabricate citations. Use ONLY citations from the INTERNAL DATABASE REFERENCES section. If less than 3 relevant cases are available, use what is available.
 
 DOCUMENT LENGTH
 
@@ -11225,7 +11225,7 @@ Rules:
 
         // --- Tool Judgment Search for drafts ---
         // Same as chat module: AI picks 2-3 search queries, finds 10-25 verified
-        // judgments from the DB. Critical for the "cite 4-8 case law" requirement.
+        // judgments from the DB. Critical for the "cite 3 case law" requirement.
         const draftToolSearchPromise = isDeepSeekAvailable()
           ? runToolJudgmentSearch(refinedDraftPrompt, (q, n) => {
               console.log(`[LegalDrafting:ToolSearch] query="${q}" found=${n}`);
