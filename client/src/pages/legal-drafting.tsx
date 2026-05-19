@@ -53,6 +53,7 @@ import { DocumentViewer } from "@/components/document-viewer";
 import { LegalEditor, type LegalEditorHandle } from "@/components/legal-editor";
 import { plainTextToTiptapHTML, isHTMLContent } from "@/lib/plain-to-tiptap";
 import { generateLegalPDF } from "@/lib/generate-legal-pdf";
+import { generateLegalDocx } from "@/lib/generate-legal-docx";
 import { useVoiceRecorder, formatDuration } from "@/hooks/use-voice-recorder";
 import { useDraftHistory } from "@/hooks/use-draft-history";
 import { DraftHistoryPanel } from "@/components/draft-history-panel";
@@ -2706,30 +2707,22 @@ function LegalDraftingPageInner() {
     toast({ title: "Exported as PDF" });
   };
 
-  const exportAsDoc = () => {
+  const exportAsDoc = async () => {
     const content = editorRef.current?.getHTML() || editorHtml || docText;
-    const html = `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]--><style>
-      @page { size: 8.5in 14in; margin: 1in 1in 1in 1.25in; }
-      body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.3; color: #000; text-align: justify; }
-      h1 { font-size: 14pt; font-weight: bold; text-transform: uppercase; text-align: center; margin-bottom: 0.3rem; }
-      h2 { font-size: 14pt; font-weight: bold; text-transform: uppercase; margin-top: 0.8rem; margin-bottom: 0.3rem; }
-      h3 { font-size: 13pt; font-weight: 700; margin-top: 0.5rem; margin-bottom: 0.2rem; }
-      ol { padding-left: 25px; } ul { padding-left: 25px; }
-      p { margin-bottom: 6px; }
-      table { width: 100%; border-collapse: collapse; }
-      table th, table td { border: 1px solid #333; padding: 6px 10px; }
-      table th { background: #1a2332; color: #fff; font-weight: bold; }
-    </style></head><body>${content}</body></html>`;
-    // Use .doc extension with HTML content — MS Word natively opens HTML saved as .doc.
-    // Using .docx would require a proper OOXML ZIP structure which browser JS can't produce natively.
-    const blob = new Blob([html], { type: "application/msword" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${draftTitle || "legal-draft"}.doc`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "Exported as Word (.doc)" });
+    try {
+      await generateLegalDocx({
+        html: content,
+        title: draftTitle || "Untitled Draft",
+      });
+      toast({ title: "Exported as Word (.docx)" });
+    } catch (err: any) {
+      console.error("DOCX export failed:", err);
+      toast({
+        title: "Export failed",
+        description: err?.message || "Could not generate Word document.",
+        variant: "destructive",
+      });
+    }
   };
 
   const shareDraft = async () => {
