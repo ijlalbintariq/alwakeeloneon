@@ -1861,6 +1861,19 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             {messages.map((m) => {
               const parsed = m.role === "assistant" ? parsedAssistantMessages.get(m.id) ?? null : null;
               const displayContent = parsed ? parsed.cleanContent : m.content;
+
+              // Skip rendering empty assistant messages to avoid showing blank bubbles
+              // during initial state loading/preparing.
+              if (
+                m.role === "assistant" &&
+                !displayContent.trim() &&
+                !m.caseLawCard &&
+                (!m.ragCitations || m.ragCitations.length === 0) &&
+                (!m.agentSteps || m.agentSteps.length === 0)
+              ) {
+                return null;
+              }
+
               return (
                 <div
                   key={m.id}
@@ -1995,7 +2008,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               );
             })}
 
-            {isLoading && !(messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && (messages[messages.length - 1]?.content?.length ?? 0) > 0) && (
+            {isLoading && !(messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && ((messages[messages.length - 1]?.content?.length ?? 0) > 0 || messages[messages.length - 1]?.caseLawCard || (messages[messages.length - 1]?.agentSteps?.length ?? 0) > 0)) && (
               <div className="flex items-start gap-3 w-full">
                 <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full text-foreground flex items-center justify-center ${isApexAgentWebMode ? "bg-cyan-400" : "bg-primary"}`}>
                   {isApexAgentWebMode ? <Globe size={18} /> : <Scale size={18} />}
