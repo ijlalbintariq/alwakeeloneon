@@ -942,6 +942,139 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       }));
   }, [latestRagCitations]);
   const latestStatutes = (latestRefs?.laws?.length || 0) > 0 ? latestRefs!.laws.slice(0, 8) : latestStatuteFallback;
+
+  const deduplicatedStatutes = useMemo(() => {
+    interface InternalItem {
+      key: string;
+      alias: string;
+      sectionNum: string;
+      name: string;
+      section: string;
+      description?: string;
+      query: string;
+      source: 'structured' | 'inline' | 'fallback';
+    }
+
+    const items: InternalItem[] = [];
+
+    const detectLaw = (str: string) => {
+      const s = str.toLowerCase();
+      if (s.includes("pakistan penal code") || s.includes("ppc") || s.includes("penal code")) {
+        return { alias: "ppc", canonical: "Pakistan Penal Code, 1860" };
+      }
+      if (s.includes("criminal procedure") || s.includes("crpc") || s.includes("code of criminal")) {
+        return { alias: "crpc", canonical: "Code of Criminal Procedure, 1898" };
+      }
+      if (s.includes("civil procedure") || s.includes("cpc") || s.includes("code of civil")) {
+        return { alias: "cpc", canonical: "Code of Civil Procedure, 1908" };
+      }
+      if (s.includes("qanun-e-shahadat") || s.includes("qso") || s.includes("qanun e shahadat")) {
+        return { alias: "qso", canonical: "Qanun-e-Shahadat Order, 1984" };
+      }
+      if (s.includes("constitution")) {
+        return { alias: "constitution", canonical: "Constitution of Pakistan" };
+      }
+      return null;
+    };
+
+    const extractSectionNum = (str: string) => {
+      const yearPattern = /\b(1860|1898|1908|1973|1984)\b/g;
+      const cleanStr = str.replace(yearPattern, "");
+
+      const secMatch = cleanStr.match(/(?:section|sec\.?|article|art\.?)\s*([a-z\d\-\(\)]+)/i);
+      if (secMatch) return secMatch[1].trim();
+
+      const fallbackMatch = cleanStr.match(/\b(\d+(?:-[a-z\d]+)?)\b/i);
+      if (fallbackMatch) return fallbackMatch[1].trim();
+
+      return null;
+    };
+
+    latestStatutes.forEach((law) => {
+      const isFallback = law.section?.startsWith("Chunk");
+      const lawDetect = detectLaw(law.name);
+      
+      let sectionNum = "";
+      if (!isFallback && law.section) {
+        sectionNum = extractSectionNum(law.section) || "";
+      }
+      
+      const alias = lawDetect ? lawDetect.alias : law.name.toLowerCase().trim();
+      const canonicalName = lawDetect ? lawDetect.canonical : law.name;
+      const key = sectionNum ? `${alias}-${sectionNum.toLowerCase()}` : `${alias}-${law.section || ""}`;
+      const query = law.section && !isFallback ? `${canonicalName} ${law.section}` : canonicalName;
+
+      items.push({
+        key,
+        alias,
+        sectionNum,
+        name: canonicalName,
+        section: law.section || "Section reference",
+        description: law.description,
+        query,
+        source: isFallback ? 'fallback' : 'structured'
+      });
+    });
+
+    if (latestInlineReferences?.statutes) {
+      latestInlineReferences.statutes.forEach((statute) => {
+        const lawDetect = detectLaw(statute.name);
+        const sectionNum = extractSectionNum(statute.name) || "";
+        
+        const alias = lawDetect ? lawDetect.alias : "unknown";
+        const canonicalName = lawDetect ? lawDetect.canonical : "Pakistani Statute";
+        
+        const key = sectionNum ? `${alias}-${sectionNum.toLowerCase()}` : `inline-${statute.name.toLowerCase()}`;
+        const query = statute.name;
+
+        items.push({
+          key,
+          alias,
+          sectionNum,
+          name: alias !== "unknown" ? canonicalName : statute.name,
+          section: alias !== "unknown" ? `Section ${sectionNum}` : "Click to view statute",
+          query,
+          source: 'inline'
+        });
+      });
+    }
+
+    const uniqueMap = new Map<string, InternalItem>();
+    items.forEach((item) => {
+      const existing = uniqueMap.get(item.key);
+      if (!existing) {
+        uniqueMap.set(item.key, item);
+      } else {
+        const existingPriority = existing.source === 'structured' ? 3 : existing.source === 'inline' ? 2 : 1;
+        const currentPriority = item.source === 'structured' ? 3 : item.source === 'inline' ? 2 : 1;
+
+        if (currentPriority > existingPriority) {
+          uniqueMap.set(item.key, item);
+        } else if (currentPriority === existingPriority) {
+          if (!existing.description && item.description) {
+            uniqueMap.set(item.key, item);
+          }
+        }
+      }
+    });
+
+    const finalItems: InternalItem[] = [];
+    const allSpecificKeys = Array.from(uniqueMap.keys()).filter(k => !k.startsWith("unknown-"));
+
+    uniqueMap.forEach((item) => {
+      if (item.alias === "unknown" && item.sectionNum) {
+        const targetSuffix = `-${item.sectionNum.toLowerCase()}`;
+        const hasSpecificMatch = allSpecificKeys.some(k => k.endsWith(targetSuffix));
+        if (hasSpecificMatch) {
+          return;
+        }
+      }
+      finalItems.push(item);
+    });
+
+    return finalItems;
+  }, [latestStatutes, latestInlineReferences?.statutes]);
+
   const aiConfidence = useMemo(() => {
     if (latestRagCitations.length > 0) {
       const scores = latestRagCitations.map((c) => Number(c.score) || 0).filter((n) => n > 0);
@@ -1089,34 +1222,21 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           <Scale size={13} /> Relevant Statutes
         </h3>
         <div className="space-y-2">
-          {latestStatutes.length > 0 || (latestInlineReferences?.statutes?.length || 0) > 0 ? (
-            <>
-              {latestStatutes.slice(0, compact ? 5 : 8).map((law, idx) => (
-                <button key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-primary/5 rounded transition-colors w-full text-left" onClick={() => openStatute(law.section && !law.section.startsWith("Chunk") ? `${law.name} ${law.section}` : law.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(law.section && !law.section.startsWith("Chunk") ? `${law.name} ${law.section}` : law.name)}>
-                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shadow-sm shadow-primary/60" />
-                  <div>
-                    <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                      {law.name || "Pakistani Statute"}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">{law.section || "Section reference"}</p>
-                    {law.description && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{law.description}</p>
-                    )}
-                  </div>
-                </button>
-              ))}
-              {(latestInlineReferences?.statutes?.length || 0) > 0 && latestInlineReferences?.statutes.slice(0, compact ? 3 : 5).map((statute, idx) => (
-                <button key={`inline-statute-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-primary/5 rounded transition-colors w-full text-left" onClick={() => openStatute(statute.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(statute.name)}>
-                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shadow-sm shadow-primary/60" />
-                  <div>
-                    <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                      {statute.name}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">Click to view statute</p>
-                  </div>
-                </button>
-              ))}
-            </>
+          {deduplicatedStatutes.length > 0 ? (
+            deduplicatedStatutes.slice(0, compact ? 6 : 10).map((law) => (
+              <button key={law.key} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-primary/5 rounded transition-colors w-full text-left" onClick={() => openStatute(law.query)} onKeyDown={(e) => e.key === 'Enter' && openStatute(law.query)}>
+                <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shadow-sm shadow-primary/60 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                    {law.name}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{law.section}</p>
+                  {law.description && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{law.description}</p>
+                  )}
+                </div>
+              </button>
+            ))
           ) : (
             <p className="text-xs text-muted-foreground">Relevant statutes will appear here when Al Wakeelo cites them in responses.</p>
           )}
