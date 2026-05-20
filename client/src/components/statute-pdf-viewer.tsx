@@ -354,7 +354,7 @@ export function StatutePdfViewer({
       {/* Document wrapper — contains BOTH outline sidebar and pages so
           the <Outline> component can access the PDF document context */}
       <Document
-        file={{ url: fileUrl, withCredentials: true }}
+        file={{ url: fileUrl, withCredentials: true } as any}
         onLoadSuccess={onDocumentLoadSuccess}
         onLoadError={onDocumentLoadError}
         loading={

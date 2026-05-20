@@ -8,6 +8,7 @@ import {
   insertBookmarkSchema,
   insertSearchHistorySchema,
   statutes,
+  statuteDocuments,
   caseLaw,
   judgments,
   courtsRef,
@@ -9487,89 +9488,176 @@ RAG POLICY (STRICT):
         return res.status(400).json({ message: "Query required" });
       }
 
-      const qLower = q.toLowerCase();
+      // Step 1: Parse the section and clean the query
+      let cleanQuery = q;
+      let section: string | null = null;
 
-      // STEP 1: Exact shortTitle match (case-insensitive) — strongest signal
+      // 1. Try to match "section [Number] of [Statute]" or "sec [Number] of [Statute]" or "art [Number] of [Statute]"
+      // Example: "Section 302 of PPC", "Art 199 of Constitution"
+      const ofMatch = cleanQuery.match(/^(?:section|sec|art|article)\s*([0-9]+[-a-zA-Z]*)\s+of\s+(.+)$/i);
+      if (ofMatch) {
+        section = ofMatch[1];
+        cleanQuery = ofMatch[2];
+      } else {
+        // 2. Try to match "[Statute] section [Number]" or "[Statute] sec [Number]" or "[Statute] art [Number]" or "[Statute] article [Number]"
+        // Example: "Pakistan Penal Code Section 302", "PPC Section 302"
+        const sectionWordMatch = cleanQuery.match(/^(.+?)\s+(?:section|sec|art|article)\s*([0-9]+[-a-zA-Z]*)$/i);
+        if (sectionWordMatch) {
+          cleanQuery = sectionWordMatch[1];
+          section = sectionWordMatch[2];
+        } else {
+          // 3. Try to match trailing numbers or section patterns at the end of the query
+          // Example: "PPC 302", "CrPC 497", "Constitution 199", "Contract Act 73"
+          const trailingMatch = cleanQuery.match(/^(.+?)\s+([0-9]+[-a-zA-Z]*)$/i);
+          if (trailingMatch) {
+            cleanQuery = trailingMatch[1];
+            section = trailingMatch[2];
+          } else {
+            // 3b. Try to match leading numbers
+            // Example: "302 PPC", "497 CrPC"
+            const leadingMatch = cleanQuery.match(/^([0-9]+[-a-zA-Z]*)\s+(.+)$/);
+            if (leadingMatch) {
+              section = leadingMatch[1];
+              cleanQuery = leadingMatch[2];
+            } else {
+              // 4. Fallback for things like "Family Khula" -> section: "Khula", cleanQuery: "Family"
+              const khulaMatch = cleanQuery.match(/^Family\s+(Khula)$/i);
+              if (khulaMatch) {
+                cleanQuery = "Family";
+                section = "Khula";
+              }
+            }
+          }
+        }
+      }
+
+      // Normalize search terms
+      const normQuery = cleanQuery.toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+
+      // Common mappings/aliases for Pakistani laws to their titles in statuteDocuments table
+      const STATUTE_ALIASES: Record<string, string> = {
+        "ppc": "pakistan penal code",
+        "penal code": "pakistan penal code",
+        "cpc": "code of civil procedure",
+        "civil procedure": "code of civil procedure",
+        "crpc": "code of criminal procedure",
+        "criminal procedure": "code of criminal procedure",
+        "constitution": "constitution of pakistan",
+        "family": "family courts act",
+        "contract": "contract act",
+      };
+
+      let searchTitle = cleanQuery;
+      for (const [alias, fullTitle] of Object.entries(STATUTE_ALIASES)) {
+        if (normQuery.includes(alias) || alias.includes(normQuery)) {
+          searchTitle = fullTitle;
+          break;
+        }
+      }
+
+      // Step 2: Query the statuteDocuments table for a match
+      // Try exact or substring match in the title first
+      let matchedDoc = (await db.select().from(statuteDocuments).where(
+        ilike(statuteDocuments.title, `%${searchTitle}%`),
+      ).limit(1))[0] ?? null;
+
+      // If no match found using aliases, try matching using tokens
+      if (!matchedDoc) {
+        const tokens = normQuery.split(/\s+/).filter((t: string) => t.length > 2);
+        if (tokens.length > 0) {
+          const conditions = tokens.map((token: string) => ilike(statuteDocuments.title, `%${token}%`));
+          matchedDoc = (await db.select().from(statuteDocuments).where(
+            or(...conditions)
+          ).limit(1))[0] ?? null;
+        }
+      }
+
+      // Step 3: Return the matching document ID and section
+      if (matchedDoc) {
+        return res.json({ 
+          found: true, 
+          id: matchedDoc.id, 
+          section: section || undefined,
+          statute: matchedDoc 
+        });
+      }
+
+      // Internal helper to map a statutes record to the correct statuteDocuments record
+      const getStatuteDocumentForStatute = async (statuteRecord: any) => {
+        const st = statuteRecord.shortTitle || "";
+        let ct = st;
+        let ms = statuteRecord.section || "";
+
+        const tm = st.match(/^(.+?)\s+([0-9]+[-a-zA-Z]*)$/i);
+        if (tm) {
+          ct = tm[1];
+          if (!ms) ms = tm[2];
+        }
+
+        const nt = ct.toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+
+        let stt = ct;
+        for (const [alias, fullTitle] of Object.entries(STATUTE_ALIASES)) {
+          if (nt.includes(alias) || alias.includes(nt)) {
+            stt = fullTitle;
+            break;
+          }
+        }
+
+        let d = (await db.select().from(statuteDocuments).where(
+          ilike(statuteDocuments.title, `%${stt}%`),
+        ).limit(1))[0] ?? null;
+
+        if (!d) {
+          const tk = nt.split(/\s+/).filter((t: string) => t.length > 2);
+          if (tk.length > 0) {
+            const cond = tk.map((token: string) => ilike(statuteDocuments.title, `%${token}%`));
+            d = (await db.select().from(statuteDocuments).where(
+              or(...cond)
+            ).limit(1))[0] ?? null;
+          }
+        }
+
+        return d ? { doc: d, matchedSection: ms } : null;
+      };
+
+      // Fallback: If no document matches in statuteDocuments, try searching in statutes (individual sections)
+      // to maintain backward compatibility/fallback search
       const exactMatch = (await db.select().from(statutes).where(
         ilike(statutes.shortTitle, q),
       ).limit(1))[0] ?? null;
       if (exactMatch) {
-        return res.json({ found: true, id: exactMatch.id, statute: exactMatch });
+        const resolved = await getStatuteDocumentForStatute(exactMatch);
+        if (resolved) {
+          return res.json({ 
+            found: true, 
+            id: resolved.doc.id, 
+            section: resolved.matchedSection || section || undefined, 
+            statute: resolved.doc 
+          });
+        }
       }
 
-      // STEP 2: Full query as substring of shortTitle — fetch multiple candidates,
-      // pick the one whose title is shortest (most specific match).
       const fullQueryCandidates = await db.select().from(statutes).where(
         ilike(statutes.shortTitle, `%${q}%`),
       ).limit(10);
       if (fullQueryCandidates.length > 0) {
-        // Prefer shortest title (closest match to the query)
-        fullQueryCandidates.sort((a: typeof fullQueryCandidates[number], b: typeof fullQueryCandidates[number]) => {
+        fullQueryCandidates.sort((a: any, b: any) => {
           const aTitle = (a.shortTitle || "").toLowerCase();
           const bTitle = (b.shortTitle || "").toLowerCase();
-          // Exact match gets highest priority
-          if (aTitle === qLower) return -1;
-          if (bTitle === qLower) return 1;
-          // Then prefer shorter titles (more specific)
+          if (aTitle === q.toLowerCase()) return -1;
+          if (bTitle === q.toLowerCase()) return 1;
           return aTitle.length - bTitle.length;
         });
         const best = fullQueryCandidates[0];
-        return res.json({ found: true, id: best.id, statute: best });
-      }
-
-      // Also try section/description match with full query
-      const sectionMatch = (await db.select().from(statutes).where(
-        or(
-          ilike(statutes.section, `%${q}%`),
-          ilike(statutes.description, `%${q}%`),
-        ),
-      ).limit(1))[0] ?? null;
-      if (sectionMatch) {
-        return res.json({ found: true, id: sectionMatch.id, statute: sectionMatch });
-      }
-
-      // STEP 3: Token fallback — split query into meaningful tokens, search each,
-      // then score candidates by how many distinct tokens match their title.
-      const NOISE_WORDS = new Set(["act", "of", "the", "and", "or", "in", "for", "to", "on", "an", "a", "code", "ordinance", "rules", "order", "regulation", "law", "section"]);
-      const tokens = q.split(/[\s,]+/)
-        .map((t: string) => t.replace(/[^a-zA-Z0-9]/g, ""))
-        .filter((t: string) => t.length > 2 && !NOISE_WORDS.has(t.toLowerCase()));
-
-      if (tokens.length > 0) {
-        // Fetch candidates matching ANY token in shortTitle
-        const tokenCandidates = await db.select().from(statutes).where(
-          or(
-            ...tokens.map((token: string) => ilike(statutes.shortTitle, `%${token}%`)),
-          ),
-        ).limit(20);
-
-        if (tokenCandidates.length > 0) {
-          // Score each candidate by how many query tokens appear in its title
-          const scored = tokenCandidates.map((candidate: typeof tokenCandidates[number]) => {
-            const titleLower = (candidate.shortTitle || "").toLowerCase();
-            let matchCount = 0;
-            for (const token of tokens) {
-              if (titleLower.includes(token.toLowerCase())) matchCount++;
-            }
-            return { candidate, matchCount, titleLen: titleLower.length };
+        const resolved = await getStatuteDocumentForStatute(best);
+        if (resolved) {
+          return res.json({ 
+            found: true, 
+            id: resolved.doc.id, 
+            section: resolved.matchedSection || section || undefined, 
+            statute: resolved.doc 
           });
-          // Sort: most token matches first, then shortest title (most specific)
-          scored.sort((a: typeof scored[number], b: typeof scored[number]) => {
-            if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
-            return a.titleLen - b.titleLen;
-          });
-          const best = scored[0].candidate;
-          return res.json({ found: true, id: best.id, statute: best });
-        }
-
-        // Last resort: try tokens against description
-        for (const token of tokens) {
-          const descMatch = (await db.select().from(statutes).where(
-            ilike(statutes.description, `%${token}%`),
-          ).limit(1))[0] ?? null;
-          if (descMatch) {
-            return res.json({ found: true, id: descMatch.id, statute: descMatch });
-          }
         }
       }
 
@@ -11441,6 +11529,7 @@ Response format:
           (forceTargetedEdit || !isFullLegalRewriteRequested(safePrompt));
 
         let draftedText = "";
+        let extractedRecs: any[] = [];
         if (targetedEditMode) {
           const targetedInput = `User instruction:
 ${safePrompt}
@@ -11550,7 +11639,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             temperature: 0.25,
           });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
-          let extractedRecs = extractCaseLawRecommendations(aiResult.text);
+          extractedRecs = extractCaseLawRecommendations(aiResult.text);
           draftedText = normalizeCourtReadyDraftingText(aiResult.text);
           if (selectedDocType) {
             const validation = validateDraftForSelectedType(draftedText, selectedDocType);

@@ -998,8 +998,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       const res = await apiRequest("GET", `/api/statute/lookup?q=${encodeURIComponent(statuteName)}`);
       const data = await res.json();
       if (data.found && data.id) {
-        // Open statute directly
-        window.open(`/statute-view/${data.id}`, '_blank');
+        // Open statute directly, with deep link to section if available
+        const url = data.section 
+          ? `/statute-view/${data.id}?section=${encodeURIComponent(data.section)}`
+          : `/statute-view/${data.id}`;
+        window.open(url, '_blank');
       } else {
         // Fallback to search if not found
         window.open(`/statute-search?q=${encodeURIComponent(statuteName)}`, '_blank');
