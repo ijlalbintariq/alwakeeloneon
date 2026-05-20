@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useLocation, useRoute } from "wouter";
-import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, ExternalLink, Gavel, Link2, Loader2, Lock } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, ExternalLink, Gavel, Link2, Loader2, Lock, MessageSquare, Send } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useDocumentHead } from "@/hooks/use-document-head";
+import { apiRequest } from "@/lib/queryClient";
+import { LegalMarkdown } from "@/components/legal-markdown";
+
+type AiMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
 
 type CitationLinkItem = {
   id: number;
@@ -97,6 +104,44 @@ export default function JudgmentDetailPage() {
   const [preview, setPreview] = useState<PublicJudgmentPreview | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Chat State
+  const [chatMessages, setChatMessages] = useState<AiMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages]);
+
+  async function handleChatSend(overrideText?: string) {
+    const text = overrideText || chatInput;
+    if (!text.trim() || !detail || isChatLoading) return;
+    const userMsg = text.trim();
+    setChatInput("");
+    setChatMessages(prev => [...prev, { role: "user", content: userMsg }]);
+    setIsChatLoading(true);
+
+    try {
+      const res = await apiRequest("POST", "/api/ai/document-chat", {
+        documentType: "judgment",
+        documentTitle: `${detail.title} (${detail.citation})`,
+        documentContent: detail.fullText.slice(0, 15000), // send up to 15k chars for context
+        messages: [
+          ...chatMessages.map(m => ({ role: m.role, content: m.content })),
+          { role: "user", content: userMsg },
+        ],
+      });
+      const data = await res.json();
+      setChatMessages(prev => [...prev, { role: "assistant", content: data.content || "I couldn't generate a response." }]);
+    } catch {
+      setChatMessages(prev => [...prev, { role: "assistant", content: "Failed to get a response. Please try again." }]);
+    }
+    setIsChatLoading(false);
+  }
 
   // Per-judgment SEO meta. Server already injects a generic title at the HTML
   // layer; this client-side hook refines it once the title/citation are known.
@@ -279,13 +324,14 @@ export default function JudgmentDetailPage() {
   const hasOverruled = detail.citations.received.some((item) => item.citationType === "overruled");
 
   return (
-    <div className="space-y-7 fade-in" data-testid="judgment-detail-page">
-      <button
-        onClick={() => setLocation("/judgments")}
-        className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-card/50"
-      >
-        <ArrowLeft size={14} /> Back to Judgments
-      </button>
+    <div className="flex flex-col xl:flex-row gap-7 fade-in" data-testid="judgment-detail-page">
+      <div className="flex-1 space-y-7 min-w-0">
+        <button
+          onClick={() => setLocation("/judgments")}
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-card/50"
+        >
+          <ArrowLeft size={14} /> Back to Judgments
+        </button>
 
       <section className="rounded-3xl border border-border bg-card/75 p-5 md:p-7 space-y-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -372,6 +418,97 @@ export default function JudgmentDetailPage() {
           )}
         </div>
       </section>
+    </div>
+
+      {/* AI Chat Sidebar */}
+      <div className="w-full xl:w-[380px] xl:min-w-[340px] flex-shrink-0">
+        <div className="sticky top-6 rounded-2xl border border-border bg-card/60 flex flex-col h-[calc(100vh-120px)] overflow-hidden">
+          <div className="p-4 border-b border-border bg-background/50">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={16} className="text-primary" />
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-foreground">
+                Talk with AI about this Judgment
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ask for summaries, ratio decidendi, cited precedents, or key legal issues.
+            </p>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {chatMessages.length === 0 && (
+              <div className="text-center py-8">
+                <Gavel size={32} className="text-foreground/30 mx-auto mb-3" />
+                <div className="space-y-2">
+                  {[
+                    "Summarize this judgment",
+                    "What is the ratio decidendi?",
+                    "What are the main legal issues?",
+                    "List the cited precedents"
+                  ].map((suggestion, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleChatSend(suggestion)}
+                      disabled={isChatLoading}
+                      className="w-full text-left px-4 py-2.5 bg-background border border-border rounded-xl text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all disabled:opacity-50"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[90%] px-4 py-3 rounded-2xl text-sm ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-foreground border border-border shadow-sm"
+                  }`}
+                >
+                  {msg.role === "assistant" ? (
+                    <div className="prose prose-invert prose-sm max-w-none">
+                      <LegalMarkdown content={msg.content} />
+                    </div>
+                  ) : (
+                    <div className="whitespace-pre-wrap text-[13px]">{msg.content}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {isChatLoading && (
+              <div className="flex justify-start">
+                <div className="bg-background border border-border shadow-sm rounded-2xl px-4 py-3">
+                  <Loader2 size={16} className="animate-spin text-primary" />
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div className="p-3 border-t border-border bg-background/50">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                placeholder="Ask about this judgment..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleChatSend()}
+              />
+              <button
+                onClick={() => handleChatSend()}
+                disabled={!chatInput.trim() || isChatLoading}
+                className="bg-primary text-primary-foreground rounded-xl h-[42px] w-[42px] flex items-center justify-center disabled:opacity-50 transition-opacity"
+              >
+                <Send size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

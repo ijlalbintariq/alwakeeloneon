@@ -4,6 +4,7 @@ import { ArrowLeft, Send, Loader2, MessageSquare, Book, List, ChevronRight, Chev
 import { apiRequest } from "@/lib/queryClient";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { Button } from "@/components/ui/button";
+import { StatutePdfViewer } from "@/components/statute-pdf-viewer";
 
 type AiMessage = {
   role: "user" | "assistant";
@@ -374,10 +375,12 @@ export default function StatuteViewPage() {
         <div className={`flex-1 min-w-0 ${viewMode === "pdf" ? "overflow-hidden" : "overflow-y-auto"}`}>
           {viewMode === "pdf" && doc.file?.viewUrl ? (
             <div className="h-full w-full bg-background">
-              <iframe
-                src={`${doc.file.viewUrl}#view=FitH&toolbar=1&navpanes=1`}
-                title={`PDF Viewer - ${doc.title}`}
-                className="h-full w-full border-0"
+              <StatutePdfViewer 
+                fileUrl={doc.file.viewUrl} 
+                onNavigateToSection={(sectionId) => {
+                  setViewMode("text");
+                  setFocusSectionHint(sectionId);
+                }}
               />
             </div>
           ) : (
