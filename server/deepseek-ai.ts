@@ -382,7 +382,8 @@ export async function runToolJudgmentSearch(
       role: "system",
       content:
         "You are a Pakistani case law search assistant. " +
-        "Call search_judgments 2-3 times with SHORT different queries (2-4 words each) to find relevant judgments. " +
+        "If the user's message is a casual conversation, greeting, or does not require legal research or case law lookup, DO NOT call any tools and just respond 'DONE'. " +
+        "Otherwise, call search_judgments 2-3 times with SHORT different queries (2-4 words each) to find relevant judgments. " +
         "Use specific Pakistani legal terms. Different angles per call. After all searches respond: DONE",
     },
     { role: "user", content: safeQuery },
@@ -411,7 +412,7 @@ export async function runToolJudgmentSearch(
           model: DEEPSEEK_CHAT_MODEL,
           messages,
           tools: [CITATION_SEARCH_TOOL],
-          tool_choice: rounds === 1 ? "required" : "auto",
+          tool_choice: "auto",
           max_tokens: 300,
           temperature: 0.1,
         },

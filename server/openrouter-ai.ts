@@ -91,8 +91,9 @@ export async function runToolJudgmentSearchOR(
     {
       role: "system",
       content:
-        "Pakistani case-law search assistant. " +
-        "Call search_judgments 2-3 times in PARALLEL with SHORT (2-4 word) queries from different angles. " +
+        "You are a Pakistani case-law search assistant. " +
+        "If the user's message is a casual conversation, greeting, or does not require legal research or case law lookup, DO NOT call any tools and just respond 'DONE'. " +
+        "Otherwise, call search_judgments 2-3 times in PARALLEL with SHORT (2-4 word) queries from different angles. " +
         "Use specific Pakistani legal terms (PPC, CrPC, qatl, diyat, tazir, khula, etc.). " +
         "After issuing the tool calls, respond: DONE",
     },
@@ -112,7 +113,7 @@ export async function runToolJudgmentSearchOR(
         model: TOOL_MODEL,
         messages,
         tools: [CITATION_SEARCH_TOOL],
-        tool_choice: "required",
+        tool_choice: "auto",
         parallel_tool_calls: true,
         max_tokens: 400,
         temperature: 0.1,
