@@ -9479,6 +9479,7 @@ RAG POLICY (STRICT):
   });
 
   // Lookup statute by name or section - returns statute ID for direct opening
+  // Ranked matching: exact title > full-query substring > multi-token scoring
   app.get("/api/statute/lookup", async (req, res) => {
     try {
       const q = String(req.query.q || "").trim();
@@ -9486,32 +9487,90 @@ RAG POLICY (STRICT):
         return res.status(400).json({ message: "Query required" });
       }
 
-      // Search by shortTitle (name) or section
-      // Try exact/partial ilike match first
-      let results = (await db.select().from(statutes).where(
+      const qLower = q.toLowerCase();
+
+      // STEP 1: Exact shortTitle match (case-insensitive) — strongest signal
+      const exactMatch = (await db.select().from(statutes).where(
+        ilike(statutes.shortTitle, q),
+      ).limit(1))[0] ?? null;
+      if (exactMatch) {
+        return res.json({ found: true, id: exactMatch.id, statute: exactMatch });
+      }
+
+      // STEP 2: Full query as substring of shortTitle — fetch multiple candidates,
+      // pick the one whose title is shortest (most specific match).
+      const fullQueryCandidates = await db.select().from(statutes).where(
+        ilike(statutes.shortTitle, `%${q}%`),
+      ).limit(10);
+      if (fullQueryCandidates.length > 0) {
+        // Prefer shortest title (closest match to the query)
+        fullQueryCandidates.sort((a: typeof fullQueryCandidates[number], b: typeof fullQueryCandidates[number]) => {
+          const aTitle = (a.shortTitle || "").toLowerCase();
+          const bTitle = (b.shortTitle || "").toLowerCase();
+          // Exact match gets highest priority
+          if (aTitle === qLower) return -1;
+          if (bTitle === qLower) return 1;
+          // Then prefer shorter titles (more specific)
+          return aTitle.length - bTitle.length;
+        });
+        const best = fullQueryCandidates[0];
+        return res.json({ found: true, id: best.id, statute: best });
+      }
+
+      // Also try section/description match with full query
+      const sectionMatch = (await db.select().from(statutes).where(
         or(
-          ilike(statutes.shortTitle, `%${q}%`),
           ilike(statutes.section, `%${q}%`),
           ilike(statutes.description, `%${q}%`),
         ),
       ).limit(1))[0] ?? null;
-
-      // Fallback: try each token individually (handles "Code of Civil Procedure, 1908")
-      if (!results) {
-        const tokens = q.split(/[\s,]+/).filter((t: string) => t.length > 2);
-        for (const token of tokens) {
-          results = (await db.select().from(statutes).where(
-            or(
-              ilike(statutes.shortTitle, `%${token}%`),
-              ilike(statutes.description, `%${token}%`),
-            ),
-          ).limit(1))[0] ?? null;
-          if (results) break;
-        }
+      if (sectionMatch) {
+        return res.json({ found: true, id: sectionMatch.id, statute: sectionMatch });
       }
 
-      if (results) {
-        return res.json({ found: true, id: results.id, statute: results });
+      // STEP 3: Token fallback — split query into meaningful tokens, search each,
+      // then score candidates by how many distinct tokens match their title.
+      const NOISE_WORDS = new Set(["act", "of", "the", "and", "or", "in", "for", "to", "on", "an", "a", "code", "ordinance", "rules", "order", "regulation", "law", "section"]);
+      const tokens = q.split(/[\s,]+/)
+        .map((t: string) => t.replace(/[^a-zA-Z0-9]/g, ""))
+        .filter((t: string) => t.length > 2 && !NOISE_WORDS.has(t.toLowerCase()));
+
+      if (tokens.length > 0) {
+        // Fetch candidates matching ANY token in shortTitle
+        const tokenCandidates = await db.select().from(statutes).where(
+          or(
+            ...tokens.map((token: string) => ilike(statutes.shortTitle, `%${token}%`)),
+          ),
+        ).limit(20);
+
+        if (tokenCandidates.length > 0) {
+          // Score each candidate by how many query tokens appear in its title
+          const scored = tokenCandidates.map((candidate: typeof tokenCandidates[number]) => {
+            const titleLower = (candidate.shortTitle || "").toLowerCase();
+            let matchCount = 0;
+            for (const token of tokens) {
+              if (titleLower.includes(token.toLowerCase())) matchCount++;
+            }
+            return { candidate, matchCount, titleLen: titleLower.length };
+          });
+          // Sort: most token matches first, then shortest title (most specific)
+          scored.sort((a: typeof scored[number], b: typeof scored[number]) => {
+            if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+            return a.titleLen - b.titleLen;
+          });
+          const best = scored[0].candidate;
+          return res.json({ found: true, id: best.id, statute: best });
+        }
+
+        // Last resort: try tokens against description
+        for (const token of tokens) {
+          const descMatch = (await db.select().from(statutes).where(
+            ilike(statutes.description, `%${token}%`),
+          ).limit(1))[0] ?? null;
+          if (descMatch) {
+            return res.json({ found: true, id: descMatch.id, statute: descMatch });
+          }
+        }
       }
 
       res.json({ found: false });
@@ -12395,6 +12454,27 @@ document.addEventListener('keydown',function(e){
         if (hasPriorAssistantTurn && isFollowUpQuestion(lastUserMessage.content, 0)) {
           queryComplexity = "simple";
         }
+        // Additional heuristic: short messages in active conversations are almost
+        // always follow-ups, even if the regex doesn't match their pattern.
+        if (
+          hasPriorAssistantTurn &&
+          queryComplexity !== "simple" &&
+          lastUserMessage.content.trim().length < 150 &&
+          lastUserMessage.content.trim().split(/\s+/).length < 20
+        ) {
+          queryComplexity = "simple";
+        }
+
+        // When there's conversation history, instruct the AI to build on context
+        if (hasPriorAssistantTurn) {
+          systemPrompt += `\n\nCONVERSATION CONTEXT POLICY:
+- The user is continuing an ongoing conversation. Previous messages are included in the chat history above.
+- For follow-up questions: Build on your previous answers. Do NOT repeat information you already provided.
+- For short or clarifying questions: Give a concise, focused response — NOT a full re-analysis.
+- For new topics unrelated to prior messages: Provide a full, complete response as if starting fresh.
+- Use the prior conversation to understand pronouns and references (e.g., "it", "this section", "that act" refer to previously discussed items).`;
+        }
+
         const lengthGuidance =
           queryComplexity === "simple"
             ? `\n\nRESPONSE LENGTH POLICY (THIS QUERY):

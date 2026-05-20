@@ -414,7 +414,14 @@ const SIMPLE_QUERY_STARTERS = /^(is|are|can|could|should|would|do|does|did|will|
 
 const COMPLEX_QUERY_INDICATORS = /\b(compare|comparison|vs\.?|versus|difference|differences|scenario|draft|drafting|prepare|write|analyze|analysis|explain in detail|step.?by.?step|elaborate|comprehensive|my client|i am charged|i was charged|i have been|advise me|advice on|case study|hypothetical)\b/i;
 
-const FOLLOWUP_QUESTION_STARTERS = /^(is it|are they|can it|can they|does it|do they|will it|what about|how about|and|but|so|then|also|why|how|when|where)\b/i;
+const FOLLOWUP_QUESTION_STARTERS = /^(is it|is this|is that|are they|are these|can it|can they|can i|does it|do they|will it|what about|how about|what if|and |but |so |then |also |why |how |when |where |yes|no|ok|okay|sure|right|tell me|explain|elaborate|more about|regarding|concerning|in that case|furthermore|additionally|what's the|whats the|what is the)/i;
+
+/**
+ * Mid-sentence indicators of a follow-up question — checked anywhere in the query,
+ * not just at the start. These reference prior conversational context.
+ */
+const FOLLOWUP_CONTENT_INDICATORS = /\b(you (said|mentioned|stated|explained|noted)|as you|mentioned (above|earlier|before|previously)|above|earlier|previous|previously|follow.?up|in (that|this) (case|regard|context|scenario)|same (question|topic|issue|statute|section|act)|section \d+|the (same|above|previous)|referring to|back to|going back|continue|continuing|more (details?|info|information|about|on)|further)\b/i;
+
 
 /**
  * Classify a query into simple/moderate/complex to scale response length.
@@ -457,8 +464,18 @@ export function isFollowUpQuestion(
   if (previousMessageAgeMs == null) return false;
   // Must be within 10 minutes of last message
   if (previousMessageAgeMs > 10 * 60 * 1000) return false;
-  // Short message
-  if (q.length >= 120) return false;
+  // Short message limit (relaxed from 120)
+  if (q.length >= 200) return false;
+
+  // Very short messages in an active conversation are almost always follow-ups
+  const wordCount = q.split(/\s+/).length;
+  if (q.length < 60 && wordCount <= 8) return true;
+
   // Question-style opener
-  return FOLLOWUP_QUESTION_STARTERS.test(q);
+  if (FOLLOWUP_QUESTION_STARTERS.test(q)) return true;
+
+  // Mid-sentence context references
+  if (FOLLOWUP_CONTENT_INDICATORS.test(q)) return true;
+
+  return false;
 }
