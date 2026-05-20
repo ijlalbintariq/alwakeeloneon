@@ -40,36 +40,48 @@ export function StatutePdfViewer({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showOutline, setShowOutline] = useState(false);
   const [hasOutline, setHasOutline] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("1");
+  // Use a ref for tracking current page to avoid re-renders on scroll
+  const currentPageRef = useRef(1);
+  const [displayPage, setDisplayPage] = useState("1");
+  const [pageCount, setPageCount] = useState("—");
   const containerRef = useRef<HTMLDivElement>(null);
-  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const pdfDocRef = useRef<any>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const pageElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  const debounceTimerRef = useRef<any>(null);
 
   useEffect(() => {
     setLoading(true);
     setLoadError(null);
-    setCurrentPage(1);
-    setPageInput("1");
+    currentPageRef.current = 1;
+    setDisplayPage("1");
+    setPageCount("—");
     setShowOutline(false);
     setHasOutline(false);
-    pageRefs.current.clear();
+    pageElsRef.current.clear();
   }, [fileUrl]);
 
-  // Track which page is currently visible via IntersectionObserver
-  useEffect(() => {
-    if (numPages === 0) return;
+  // Debounced page display update — fires after user stops scrolling for 150ms
+  const updatePageDisplay = useCallback((pageNum: number) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      setDisplayPage(String(pageNum));
+    }, 150);
+  }, []);
 
-    observerRef.current = new IntersectionObserver(
+  // Set up IntersectionObserver once after document loads — never re-runs
+  useEffect(() => {
+    if (numPages === 0 || loading) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
       (entries) => {
-        // Find the most visible page
         let bestEntry: IntersectionObserverEntry | null = null;
         for (const entry of entries) {
           if (
             entry.isIntersecting &&
-            (!bestEntry ||
-              entry.intersectionRatio > bestEntry.intersectionRatio)
+            (!bestEntry || entry.intersectionRatio > bestEntry.intersectionRatio)
           ) {
             bestEntry = entry;
           }
@@ -78,39 +90,39 @@ export function StatutePdfViewer({
           const pageNum = Number(
             (bestEntry.target as HTMLElement).dataset.pageNumber
           );
-          if (pageNum && pageNum !== currentPage) {
-            setCurrentPage(pageNum);
-            setPageInput(String(pageNum));
+          if (pageNum && pageNum !== currentPageRef.current) {
+            currentPageRef.current = pageNum;
+            updatePageDisplay(pageNum);
           }
         }
       },
       {
-        root: containerRef.current,
-        threshold: [0.1, 0.3, 0.5, 0.7],
+        root: container,
+        threshold: [0.2, 0.5],
       }
     );
 
-    pageRefs.current.forEach((el) => {
-      observerRef.current?.observe(el);
-    });
+    // Observe all page wrappers
+    pageElsRef.current.forEach((el) => observer.observe(el));
 
-    return () => {
-      observerRef.current?.disconnect();
-    };
+    return () => observer.disconnect();
+    // Only run when numPages changes (document loaded) — NOT on displayPage changes
   }, [numPages, loading]);
 
   function onDocumentLoadSuccess(pdf: any) {
-    setNumPages(pdf.numPages);
+    const n = pdf.numPages;
+    setNumPages(n);
+    setPageCount(String(n));
     setLoading(false);
     setLoadError(null);
     pdfDocRef.current = pdf;
 
-    // Check if the PDF has an outline/bookmarks
-    pdf.getOutline().then((outline: any) => {
-      if (outline && outline.length > 0) {
-        setHasOutline(true);
-      }
-    });
+    pdf
+      .getOutline()
+      .then((outline: any) => {
+        if (outline && outline.length > 0) setHasOutline(true);
+      })
+      .catch(() => {});
   }
 
   function onDocumentLoadError(error: Error) {
@@ -119,111 +131,96 @@ export function StatutePdfViewer({
     console.error("PDF Load Error:", error);
   }
 
-  // Scroll to a specific page in the continuous scroll view
-  const scrollToPage = useCallback(
-    (pageNum: number) => {
-      if (pageNum < 1 || pageNum > numPages) return;
-      const el = pageRefs.current.get(pageNum);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-        setCurrentPage(pageNum);
-        setPageInput(String(pageNum));
-      }
-    },
-    [numPages]
-  );
+  // Scroll to a specific page
+  const scrollToPage = useCallback((pageNum: number) => {
+    const el = pageElsRef.current.get(pageNum);
+    if (el && containerRef.current) {
+      // Use scrollTop directly to avoid any React re-render side effects
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const offset = elRect.top - containerRect.top + containerRef.current.scrollTop;
+      containerRef.current.scrollTo({ top: offset, behavior: "smooth" });
+      currentPageRef.current = pageNum;
+      setDisplayPage(String(pageNum));
+    }
+  }, []);
 
   function handlePageInputSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const num = parseInt(pageInput, 10);
+    const num = parseInt(displayPage, 10);
     if (!isNaN(num) && num >= 1 && num <= numPages) {
       scrollToPage(num);
     } else {
-      setPageInput(String(currentPage));
+      setDisplayPage(String(currentPageRef.current));
     }
   }
 
   function zoomIn() {
     setScale((prev) => Math.min(prev + 0.25, 4.0));
   }
-
   function zoomOut() {
     setScale((prev) => Math.max(prev - 0.25, 0.5));
   }
-
   function resetZoom() {
     setScale(1.0);
   }
 
-  // Register page refs for the intersection observer
-  const setPageRef = useCallback(
+  // Store page element ref (called once per page mount, never causes re-render)
+  const registerPageEl = useCallback(
     (pageNumber: number, el: HTMLDivElement | null) => {
       if (el) {
-        pageRefs.current.set(pageNumber, el);
-        observerRef.current?.observe(el);
-      } else {
-        pageRefs.current.delete(pageNumber);
+        pageElsRef.current.set(pageNumber, el);
       }
     },
     []
   );
 
-  // Handle clicks on the outline/bookmark sidebar items
-  function handleOutlineItemClick({ dest, pageNumber: destPage }: any) {
+  // Outline item click handler
+  function handleOutlineItemClick(item: any) {
+    // item may have { dest, pageNumber, pageIndex }
+    const destPage = item.pageNumber ?? item.pageIndex;
     if (typeof destPage === "number" && destPage >= 1 && destPage <= numPages) {
       scrollToPage(destPage);
-    } else if (dest) {
-      // pdfjs named destination — resolve to page number
-      pdfDocRef.current?.getDestination(dest).then((resolvedDest: any) => {
-        if (resolvedDest) {
-          pdfDocRef.current?.getPageIndex(resolvedDest[0]).then((idx: number) => {
-            scrollToPage(idx + 1);
-          });
-        }
-      });
+      return;
+    }
+    if (item.dest && pdfDocRef.current) {
+      // Named destination — resolve through pdfjs
+      const destName =
+        typeof item.dest === "string" ? item.dest : item.dest;
+      pdfDocRef.current
+        .getDestination(destName)
+        .then((resolvedDest: any) => {
+          if (resolvedDest) {
+            return pdfDocRef.current.getPageIndex(resolvedDest[0]);
+          }
+          return null;
+        })
+        .then((idx: number | null) => {
+          if (idx !== null && idx !== undefined) scrollToPage(idx + 1);
+        })
+        .catch(() => {});
     }
   }
 
-  // Intercept clicks on annotation layer links
+  // Intercept annotation layer link clicks
   function handleContainerClick(e: React.MouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;
     const anchor = target.closest("a");
-
     if (!anchor) return;
 
     const href = anchor.getAttribute("href");
-    const internalDest = anchor.getAttribute("data-dest");
-
-    // Internal named destination (set by react-pdf annotation layer)
-    if (internalDest) {
-      e.preventDefault();
-      e.stopPropagation();
-      try {
-        const dest = JSON.parse(internalDest);
-        if (dest && pdfDocRef.current) {
-          pdfDocRef.current.getPageIndex(dest[0]).then((idx: number) => {
-            scrollToPage(idx + 1);
-          });
-        }
-      } catch {
-        // Not a valid JSON dest, ignore
-      }
-      return;
-    }
-
     if (!href) return;
 
     e.preventDefault();
     e.stopPropagation();
 
-    // Internal page hash links (e.g., #page=5, #section-10)
+    // Internal page hash links
     if (href.startsWith("#")) {
       const pageMatch = href.match(/page=(\d+)/i);
       if (pageMatch) {
         scrollToPage(parseInt(pageMatch[1], 10));
         return;
       }
-      // Section/article references
       const sectionMatch = href.match(
         /(?:section|article|part)[\s-]*([a-z0-9]+)/i
       );
@@ -234,12 +231,10 @@ export function StatutePdfViewer({
       return;
     }
 
-    // Check if it's a same-origin link that should stay internal
+    // Same-origin links — likely broken internal references
     try {
       const url = new URL(href, window.location.origin);
-
       if (url.origin === window.location.origin) {
-        // Likely a broken internal link encoded as absolute URL
         const hashSection = url.hash.match(
           /(?:section|article|part)[\s-]*([a-z0-9]+)/i
         );
@@ -252,16 +247,13 @@ export function StatutePdfViewer({
           scrollToPage(parseInt(hashPage[1], 10));
           return;
         }
-        // Block same-origin links that would navigate away
         toast({
           title: "Internal Reference",
-          description:
-            "This link appears to be an internal document reference.",
+          description: "This link appears to be an internal document reference.",
         });
         return;
       }
-
-      // Genuine external link — open safely
+      // Genuine external link
       toast({
         title: "Opening External Link",
         description: `Navigating to ${url.hostname}`,
@@ -275,6 +267,12 @@ export function StatutePdfViewer({
       });
     }
   }
+
+  // Memoize page array to prevent re-creation on every render
+  const pageNumbers = React.useMemo(
+    () => Array.from({ length: numPages }, (_, i) => i + 1),
+    [numPages]
+  );
 
   return (
     <div className="flex h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
@@ -317,9 +315,8 @@ export function StatutePdfViewer({
 
       {/* Main Viewer Area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Viewer Toolbar */}
+        {/* Toolbar */}
         <div className="flex items-center justify-between px-3 py-1.5 bg-card border-b border-border shadow-sm z-10 gap-2 flex-wrap">
-          {/* Left: Outline + Page Nav */}
           <div className="flex items-center gap-1.5">
             <Button
               variant={showOutline ? "default" : "outline"}
@@ -330,58 +327,46 @@ export function StatutePdfViewer({
             >
               <List size={15} />
             </Button>
-
             <div className="h-5 w-px bg-border mx-1" />
-
             <Button
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => scrollToPage(currentPage - 1)}
-              disabled={currentPage <= 1}
+              onClick={() => scrollToPage(currentPageRef.current - 1)}
+              disabled={currentPageRef.current <= 1}
             >
               <ChevronLeft size={15} />
             </Button>
-
             <form
               onSubmit={handlePageInputSubmit}
               className="flex items-center gap-1"
             >
               <input
                 type="text"
-                value={pageInput}
-                onChange={(e) => setPageInput(e.target.value)}
-                onBlur={() => setPageInput(String(currentPage))}
+                value={displayPage}
+                onChange={(e) => setDisplayPage(e.target.value)}
+                onBlur={() => setDisplayPage(String(currentPageRef.current))}
                 className="w-10 h-7 text-center text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary/50"
               />
               <span className="text-xs text-muted-foreground">
-                / {numPages || "—"}
+                / {pageCount}
               </span>
             </form>
-
             <Button
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => scrollToPage(currentPage + 1)}
-              disabled={!numPages || currentPage >= numPages}
+              onClick={() => scrollToPage(currentPageRef.current + 1)}
+              disabled={numPages === 0 || currentPageRef.current >= numPages}
             >
               <ChevronRight size={15} />
             </Button>
           </div>
 
-          {/* Right: Zoom Controls */}
           <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={zoomOut}
-              disabled={scale <= 0.5}
-            >
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={zoomOut} disabled={scale <= 0.5}>
               <ZoomOut size={15} />
             </Button>
-
             <button
               onClick={resetZoom}
               className="text-xs font-medium text-muted-foreground hover:text-foreground w-12 text-center transition-colors"
@@ -389,49 +374,24 @@ export function StatutePdfViewer({
             >
               {Math.round(scale * 100)}%
             </button>
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={zoomIn}
-              disabled={scale >= 4.0}
-            >
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={zoomIn} disabled={scale >= 4.0}>
               <ZoomIn size={15} />
             </Button>
-
             <div className="h-5 w-px bg-border mx-0.5" />
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={resetZoom}
-              title="Reset zoom to 100%"
-            >
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={resetZoom} title="Reset zoom to 100%">
               <RotateCw size={13} />
             </Button>
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => scrollToPage(1)}
-              title="Scroll to top"
-            >
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => scrollToPage(1)} title="Scroll to top">
               <ChevronsUp size={15} />
             </Button>
           </div>
         </div>
 
-        {/* PDF Document Container — continuous vertical scroll with horizontal overflow */}
+        {/* Scrollable PDF Container */}
         <div
           ref={containerRef}
           className="flex-1 overflow-auto"
           onClick={handleContainerClick}
-          style={{
-            scrollBehavior: "smooth",
-          }}
         >
           <Document
             file={{ url: fileUrl, withCredentials: true }}
@@ -452,48 +412,43 @@ export function StatutePdfViewer({
                   PDF Load Error
                 </p>
                 <p className="text-xs max-w-sm leading-relaxed opacity-80">
-                  {loadError ||
-                    "The document could not be loaded. Please verify the file exists."}
+                  {loadError || "The document could not be loaded."}
                 </p>
               </div>
             }
           >
-            {/* Render ALL pages for continuous scroll */}
-            {numPages > 0 &&
-              Array.from({ length: numPages }, (_, i) => i + 1).map(
-                (pageNum) => (
-                  <div
-                    key={`page-${pageNum}`}
-                    ref={(el) => setPageRef(pageNum, el)}
-                    data-page-number={pageNum}
-                    className="flex justify-center py-2"
-                  >
-                    <div className="shadow-lg bg-white border border-border/30">
-                      <Page
-                        pageNumber={pageNum}
-                        scale={scale}
-                        renderTextLayer={true}
-                        renderAnnotationLayer={true}
-                        className="bg-white"
-                        loading={
-                          <div
-                            className="bg-white animate-pulse flex items-center justify-center"
-                            style={{
-                              width: `${612 * scale}px`,
-                              height: `${792 * scale}px`,
-                            }}
-                          >
-                            <Loader2
-                              size={20}
-                              className="animate-spin text-muted-foreground/30"
-                            />
-                          </div>
-                        }
-                      />
-                    </div>
-                  </div>
-                )
-              )}
+            {pageNumbers.map((pageNum) => (
+              <div
+                key={`page-${pageNum}`}
+                ref={(el) => registerPageEl(pageNum, el)}
+                data-page-number={pageNum}
+                className="flex justify-center py-2"
+              >
+                <div className="shadow-lg bg-white border border-border/30">
+                  <Page
+                    pageNumber={pageNum}
+                    scale={scale}
+                    renderTextLayer={true}
+                    renderAnnotationLayer={true}
+                    className="bg-white"
+                    loading={
+                      <div
+                        className="bg-white animate-pulse flex items-center justify-center"
+                        style={{
+                          width: `${612 * scale}px`,
+                          height: `${792 * scale}px`,
+                        }}
+                      >
+                        <Loader2
+                          size={20}
+                          className="animate-spin text-muted-foreground/30"
+                        />
+                      </div>
+                    }
+                  />
+                </div>
+              </div>
+            ))}
           </Document>
         </div>
       </div>
