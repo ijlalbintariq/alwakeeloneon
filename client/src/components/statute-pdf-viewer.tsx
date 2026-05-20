@@ -1,10 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
-import { ChevronLeft, ChevronRight, Loader2, ZoomIn, ZoomOut, AlertCircle } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Document, Page, Outline, pdfjs } from "react-pdf";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+  AlertCircle,
+  List,
+  X,
+  ChevronsUp,
+  RotateCw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure the PDF.js worker to use the local build (bypasses cross-origin module worker restrictions)
+// Configure the PDF.js worker to use the local build
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
@@ -18,26 +29,88 @@ interface StatutePdfViewerProps {
   onNavigateToSection?: (sectionId: string) => void;
 }
 
-export function StatutePdfViewer({ fileUrl, onNavigateToSection }: StatutePdfViewerProps) {
+export function StatutePdfViewer({
+  fileUrl,
+  onNavigateToSection,
+}: StatutePdfViewerProps) {
   const { toast } = useToast();
   const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.2);
+  const [scale, setScale] = useState<number>(1.0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showOutline, setShowOutline] = useState(false);
+  const [hasOutline, setHasOutline] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("1");
   const containerRef = useRef<HTMLDivElement>(null);
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const pdfDocRef = useRef<any>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
-    // Reset when file changes
-    setPageNumber(1);
     setLoading(true);
     setLoadError(null);
+    setCurrentPage(1);
+    setPageInput("1");
+    setShowOutline(false);
+    setHasOutline(false);
+    pageRefs.current.clear();
   }, [fileUrl]);
 
-  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
-    setNumPages(numPages);
+  // Track which page is currently visible via IntersectionObserver
+  useEffect(() => {
+    if (numPages === 0) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        // Find the most visible page
+        let bestEntry: IntersectionObserverEntry | null = null;
+        for (const entry of entries) {
+          if (
+            entry.isIntersecting &&
+            (!bestEntry ||
+              entry.intersectionRatio > bestEntry.intersectionRatio)
+          ) {
+            bestEntry = entry;
+          }
+        }
+        if (bestEntry) {
+          const pageNum = Number(
+            (bestEntry.target as HTMLElement).dataset.pageNumber
+          );
+          if (pageNum && pageNum !== currentPage) {
+            setCurrentPage(pageNum);
+            setPageInput(String(pageNum));
+          }
+        }
+      },
+      {
+        root: containerRef.current,
+        threshold: [0.1, 0.3, 0.5, 0.7],
+      }
+    );
+
+    pageRefs.current.forEach((el) => {
+      observerRef.current?.observe(el);
+    });
+
+    return () => {
+      observerRef.current?.disconnect();
+    };
+  }, [numPages, loading]);
+
+  function onDocumentLoadSuccess(pdf: any) {
+    setNumPages(pdf.numPages);
     setLoading(false);
     setLoadError(null);
+    pdfDocRef.current = pdf;
+
+    // Check if the PDF has an outline/bookmarks
+    pdf.getOutline().then((outline: any) => {
+      if (outline && outline.length > 0) {
+        setHasOutline(true);
+      }
+    });
   }
 
   function onDocumentLoadError(error: Error) {
@@ -46,162 +119,383 @@ export function StatutePdfViewer({ fileUrl, onNavigateToSection }: StatutePdfVie
     console.error("PDF Load Error:", error);
   }
 
-  function handlePrevious() {
-    setPageNumber((prev) => Math.max(prev - 1, 1));
-  }
+  // Scroll to a specific page in the continuous scroll view
+  const scrollToPage = useCallback(
+    (pageNum: number) => {
+      if (pageNum < 1 || pageNum > numPages) return;
+      const el = pageRefs.current.get(pageNum);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        setCurrentPage(pageNum);
+        setPageInput(String(pageNum));
+      }
+    },
+    [numPages]
+  );
 
-  function handleNext() {
-    setPageNumber((prev) => Math.min(prev + 1, numPages));
+  function handlePageInputSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const num = parseInt(pageInput, 10);
+    if (!isNaN(num) && num >= 1 && num <= numPages) {
+      scrollToPage(num);
+    } else {
+      setPageInput(String(currentPage));
+    }
   }
 
   function zoomIn() {
-    setScale((prev) => Math.min(prev + 0.5, 3.0));
+    setScale((prev) => Math.min(prev + 0.25, 4.0));
   }
 
   function zoomOut() {
-    setScale((prev) => Math.max(prev - 0.5, 0.5));
+    setScale((prev) => Math.max(prev - 0.25, 0.5));
   }
 
-  // Intercept clicks on the container to catch hyperlink clicks in the annotation layer
+  function resetZoom() {
+    setScale(1.0);
+  }
+
+  // Register page refs for the intersection observer
+  const setPageRef = useCallback(
+    (pageNumber: number, el: HTMLDivElement | null) => {
+      if (el) {
+        pageRefs.current.set(pageNumber, el);
+        observerRef.current?.observe(el);
+      } else {
+        pageRefs.current.delete(pageNumber);
+      }
+    },
+    []
+  );
+
+  // Handle clicks on the outline/bookmark sidebar items
+  function handleOutlineItemClick({ dest, pageNumber: destPage }: any) {
+    if (typeof destPage === "number" && destPage >= 1 && destPage <= numPages) {
+      scrollToPage(destPage);
+    } else if (dest) {
+      // pdfjs named destination — resolve to page number
+      pdfDocRef.current?.getDestination(dest).then((resolvedDest: any) => {
+        if (resolvedDest) {
+          pdfDocRef.current?.getPageIndex(resolvedDest[0]).then((idx: number) => {
+            scrollToPage(idx + 1);
+          });
+        }
+      });
+    }
+  }
+
+  // Intercept clicks on annotation layer links
   function handleContainerClick(e: React.MouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;
     const anchor = target.closest("a");
 
-    if (anchor) {
+    if (!anchor) return;
+
+    const href = anchor.getAttribute("href");
+    const internalDest = anchor.getAttribute("data-dest");
+
+    // Internal named destination (set by react-pdf annotation layer)
+    if (internalDest) {
       e.preventDefault();
-      const href = anchor.getAttribute("href");
-
-      if (!href) return;
-
-      // 1. Check if it's an internal hash or recognizable section reference
-      if (href.startsWith("#") || href.toLowerCase().includes("section") || href.toLowerCase().includes("article")) {
-        // If we have an external handler (e.g. to switch to text view), call it
-        if (onNavigateToSection) {
-          // Extract a section hint from the href
-          const match = href.match(/(?:section|article|part)[\s-]*([a-z0-9]+)/i);
-          if (match && match[1]) {
-            onNavigateToSection(match[0]);
-            toast({
-              title: "Navigating to Reference",
-              description: `Redirecting to ${match[0]}...`,
-            });
-            return;
-          }
-        }
-      }
-
-      // 2. External links validation
+      e.stopPropagation();
       try {
-        const url = new URL(href, window.location.origin);
-        
-        // Prevent broken internal links disguised as root redirects (e.g., http://localhost:5001/#section-5)
-        if (url.origin === window.location.origin) {
-           const hashMatch = url.hash.match(/(?:section|article|part)[\s-]*([a-z0-9]+)/i);
-           if (hashMatch && onNavigateToSection) {
-             onNavigateToSection(hashMatch[0]);
-             return;
-           }
+        const dest = JSON.parse(internalDest);
+        if (dest && pdfDocRef.current) {
+          pdfDocRef.current.getPageIndex(dest[0]).then((idx: number) => {
+            scrollToPage(idx + 1);
+          });
         }
-
-        // Allow actual external links but warn the user
-        toast({
-          title: "External Link Verification",
-          description: "Opening verified external reference in a new tab.",
-        });
-        window.open(url.toString(), "_blank", "noopener,noreferrer");
-
-      } catch (err) {
-        toast({
-          title: "Invalid Hyperlink",
-          description: "This document contains a broken or invalid hyperlink.",
-          variant: "destructive",
-        });
+      } catch {
+        // Not a valid JSON dest, ignore
       }
+      return;
     }
-  }
 
-  // Handle native PDF.js internal destination routing (e.g., #page=5)
-  function handleItemClick({ pageNumber: destPage }: { destPage?: number }) {
-    if (destPage && destPage >= 1 && destPage <= numPages) {
-      setPageNumber(destPage);
+    if (!href) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Internal page hash links (e.g., #page=5, #section-10)
+    if (href.startsWith("#")) {
+      const pageMatch = href.match(/page=(\d+)/i);
+      if (pageMatch) {
+        scrollToPage(parseInt(pageMatch[1], 10));
+        return;
+      }
+      // Section/article references
+      const sectionMatch = href.match(
+        /(?:section|article|part)[\s-]*([a-z0-9]+)/i
+      );
+      if (sectionMatch && onNavigateToSection) {
+        onNavigateToSection(sectionMatch[0]);
+        return;
+      }
+      return;
+    }
+
+    // Check if it's a same-origin link that should stay internal
+    try {
+      const url = new URL(href, window.location.origin);
+
+      if (url.origin === window.location.origin) {
+        // Likely a broken internal link encoded as absolute URL
+        const hashSection = url.hash.match(
+          /(?:section|article|part)[\s-]*([a-z0-9]+)/i
+        );
+        if (hashSection && onNavigateToSection) {
+          onNavigateToSection(hashSection[0]);
+          return;
+        }
+        const hashPage = url.hash.match(/page=(\d+)/i);
+        if (hashPage) {
+          scrollToPage(parseInt(hashPage[1], 10));
+          return;
+        }
+        // Block same-origin links that would navigate away
+        toast({
+          title: "Internal Reference",
+          description:
+            "This link appears to be an internal document reference.",
+        });
+        return;
+      }
+
+      // Genuine external link — open safely
       toast({
-        title: "Internal Navigation",
-        description: `Jumped to page ${destPage}`,
+        title: "Opening External Link",
+        description: `Navigating to ${url.hostname}`,
+      });
+      window.open(url.toString(), "_blank", "noopener,noreferrer");
+    } catch {
+      toast({
+        title: "Invalid Hyperlink",
+        description: "This document contains a broken or invalid hyperlink.",
+        variant: "destructive",
       });
     }
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
-      {/* Viewer Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border shadow-sm z-10">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handlePrevious} disabled={pageNumber <= 1}>
-            <ChevronLeft size={16} />
-          </Button>
-          <span className="text-sm font-medium text-muted-foreground w-24 text-center">
-            {loading ? "Loading..." : `Page ${pageNumber} of ${numPages || "-"}`}
-          </span>
-          <Button variant="outline" size="icon" onClick={handleNext} disabled={!numPages || pageNumber >= numPages}>
-            <ChevronRight size={16} />
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={zoomOut} disabled={scale <= 0.5}>
-            <ZoomOut size={16} />
-          </Button>
-          <span className="text-xs font-medium text-muted-foreground w-12 text-center">
-            {Math.round(scale * 100)}%
-          </span>
-          <Button variant="outline" size="icon" onClick={zoomIn} disabled={scale >= 3.0}>
-            <ZoomIn size={16} />
-          </Button>
-        </div>
-      </div>
-
-      {/* PDF Document Container */}
-      <div 
-        ref={containerRef}
-        className="flex-1 overflow-auto custom-scrollbar flex justify-center p-4 md:p-8"
-        onClick={handleContainerClick}
-      >
-        <Document
-          file={{ url: fileUrl, withCredentials: true }}
-          onItemClick={handleItemClick}
-          onLoadSuccess={onDocumentLoadSuccess}
-          onLoadError={onDocumentLoadError}
-          loading={
-            <div className="flex flex-col items-center justify-center mt-32 space-y-4">
-              <Loader2 className="animate-spin text-primary w-8 h-8" />
-              <p className="text-sm text-muted-foreground font-medium">Processing PDF document...</p>
-            </div>
-          }
-          error={
-            <div className="flex flex-col items-center justify-center mt-32 space-y-4 text-destructive p-8 bg-destructive/10 rounded-xl border border-destructive/20 text-center mx-4">
-              <AlertCircle className="w-10 h-10 mb-2" />
-              <p className="text-sm font-bold uppercase tracking-wider">PDF Load Error</p>
-              <p className="text-xs max-w-sm leading-relaxed opacity-80">{loadError || "The document could not be loaded. Please verify the file exists."}</p>
-              {loadError?.includes("CORS") && (
-                <p className="text-xs text-muted-foreground mt-2 border-t border-destructive/20 pt-3">
-                  This appears to be a Cross-Origin Resource Sharing (CORS) issue. The server hosting the PDF must allow access from this domain.
+    <div className="flex h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
+      {/* Outline Sidebar */}
+      {showOutline && (
+        <div className="w-[280px] min-w-[240px] border-r border-border bg-card flex flex-col overflow-hidden z-20">
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-background">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+              Document Outline
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setShowOutline(false)}
+            >
+              <X size={14} />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 text-sm outline-sidebar">
+            {hasOutline ? (
+              <Outline
+                onItemClick={handleOutlineItemClick}
+                className="react-pdf-outline"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center p-4 text-muted-foreground">
+                <List size={24} className="mb-2 opacity-40" />
+                <p className="text-xs">
+                  No bookmarks or outline available in this document.
                 </p>
-              )}
-            </div>
-          }
-          className="shadow-xl rounded-sm overflow-hidden border border-border/50 bg-white"
+                <p className="text-[10px] mt-1 opacity-60">
+                  Page navigation is available via the toolbar above.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Main Viewer Area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Viewer Toolbar */}
+        <div className="flex items-center justify-between px-3 py-1.5 bg-card border-b border-border shadow-sm z-10 gap-2 flex-wrap">
+          {/* Left: Outline + Page Nav */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant={showOutline ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setShowOutline((v) => !v)}
+              title="Toggle document outline"
+            >
+              <List size={15} />
+            </Button>
+
+            <div className="h-5 w-px bg-border mx-1" />
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => scrollToPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+            >
+              <ChevronLeft size={15} />
+            </Button>
+
+            <form
+              onSubmit={handlePageInputSubmit}
+              className="flex items-center gap-1"
+            >
+              <input
+                type="text"
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                onBlur={() => setPageInput(String(currentPage))}
+                className="w-10 h-7 text-center text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary/50"
+              />
+              <span className="text-xs text-muted-foreground">
+                / {numPages || "—"}
+              </span>
+            </form>
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => scrollToPage(currentPage + 1)}
+              disabled={!numPages || currentPage >= numPages}
+            >
+              <ChevronRight size={15} />
+            </Button>
+          </div>
+
+          {/* Right: Zoom Controls */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={zoomOut}
+              disabled={scale <= 0.5}
+            >
+              <ZoomOut size={15} />
+            </Button>
+
+            <button
+              onClick={resetZoom}
+              className="text-xs font-medium text-muted-foreground hover:text-foreground w-12 text-center transition-colors"
+              title="Reset to 100%"
+            >
+              {Math.round(scale * 100)}%
+            </button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={zoomIn}
+              disabled={scale >= 4.0}
+            >
+              <ZoomIn size={15} />
+            </Button>
+
+            <div className="h-5 w-px bg-border mx-0.5" />
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={resetZoom}
+              title="Reset zoom to 100%"
+            >
+              <RotateCw size={13} />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => scrollToPage(1)}
+              title="Scroll to top"
+            >
+              <ChevronsUp size={15} />
+            </Button>
+          </div>
+        </div>
+
+        {/* PDF Document Container — continuous vertical scroll with horizontal overflow */}
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-auto"
+          onClick={handleContainerClick}
+          style={{
+            scrollBehavior: "smooth",
+          }}
         >
-          {numPages > 0 && (
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
-              className="bg-white"
-              loading={<div className="w-full h-full min-h-[600px] bg-white animate-pulse" />}
-            />
-          )}
-        </Document>
+          <Document
+            file={{ url: fileUrl, withCredentials: true }}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={onDocumentLoadError}
+            loading={
+              <div className="flex flex-col items-center justify-center mt-32 space-y-4">
+                <Loader2 className="animate-spin text-primary w-8 h-8" />
+                <p className="text-sm text-muted-foreground font-medium">
+                  Processing PDF document...
+                </p>
+              </div>
+            }
+            error={
+              <div className="flex flex-col items-center justify-center mt-32 space-y-4 text-destructive p-8 bg-destructive/10 rounded-xl border border-destructive/20 text-center mx-4">
+                <AlertCircle className="w-10 h-10 mb-2" />
+                <p className="text-sm font-bold uppercase tracking-wider">
+                  PDF Load Error
+                </p>
+                <p className="text-xs max-w-sm leading-relaxed opacity-80">
+                  {loadError ||
+                    "The document could not be loaded. Please verify the file exists."}
+                </p>
+              </div>
+            }
+          >
+            {/* Render ALL pages for continuous scroll */}
+            {numPages > 0 &&
+              Array.from({ length: numPages }, (_, i) => i + 1).map(
+                (pageNum) => (
+                  <div
+                    key={`page-${pageNum}`}
+                    ref={(el) => setPageRef(pageNum, el)}
+                    data-page-number={pageNum}
+                    className="flex justify-center py-2"
+                  >
+                    <div className="shadow-lg bg-white border border-border/30">
+                      <Page
+                        pageNumber={pageNum}
+                        scale={scale}
+                        renderTextLayer={true}
+                        renderAnnotationLayer={true}
+                        className="bg-white"
+                        loading={
+                          <div
+                            className="bg-white animate-pulse flex items-center justify-center"
+                            style={{
+                              width: `${612 * scale}px`,
+                              height: `${792 * scale}px`,
+                            }}
+                          >
+                            <Loader2
+                              size={20}
+                              className="animate-spin text-muted-foreground/30"
+                            />
+                          </div>
+                        }
+                      />
+                    </div>
+                  </div>
+                )
+              )}
+          </Document>
+        </div>
       </div>
     </div>
   );
