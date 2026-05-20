@@ -4,8 +4,11 @@ import { ChevronLeft, ChevronRight, Loader2, ZoomIn, ZoomOut, AlertCircle } from
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure the PDF.js worker using unpkg CDN to avoid bundler issues
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Configure the PDF.js worker to use the local build (bypasses cross-origin module worker restrictions)
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
