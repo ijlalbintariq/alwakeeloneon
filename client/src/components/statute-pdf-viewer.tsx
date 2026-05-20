@@ -4,11 +4,8 @@ import { ChevronLeft, ChevronRight, Loader2, ZoomIn, ZoomOut, AlertCircle } from
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure the PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
+// Configure the PDF.js worker using unpkg CDN to avoid bundler issues
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -24,17 +21,26 @@ export function StatutePdfViewer({ fileUrl, onNavigateToSection }: StatutePdfVie
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.2);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Reset when file changes
     setPageNumber(1);
     setLoading(true);
+    setLoadError(null);
   }, [fileUrl]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
     setLoading(false);
+    setLoadError(null);
+  }
+
+  function onDocumentLoadError(error: Error) {
+    setLoading(false);
+    setLoadError(error.message || "Failed to parse PDF file.");
+    console.error("PDF Load Error:", error);
   }
 
   function handlePrevious() {
@@ -158,9 +164,10 @@ export function StatutePdfViewer({ fileUrl, onNavigateToSection }: StatutePdfVie
         onClick={handleContainerClick}
       >
         <Document
-          file={fileUrl}
+          file={{ url: fileUrl, withCredentials: true }}
           onItemClick={handleItemClick}
           onLoadSuccess={onDocumentLoadSuccess}
+          onLoadError={onDocumentLoadError}
           loading={
             <div className="flex flex-col items-center justify-center mt-32 space-y-4">
               <Loader2 className="animate-spin text-primary w-8 h-8" />
@@ -168,9 +175,15 @@ export function StatutePdfViewer({ fileUrl, onNavigateToSection }: StatutePdfVie
             </div>
           }
           error={
-            <div className="flex flex-col items-center justify-center mt-32 space-y-4 text-destructive">
-              <AlertCircle className="w-8 h-8" />
-              <p className="text-sm font-medium">Failed to load the PDF document.</p>
+            <div className="flex flex-col items-center justify-center mt-32 space-y-4 text-destructive p-8 bg-destructive/10 rounded-xl border border-destructive/20 text-center mx-4">
+              <AlertCircle className="w-10 h-10 mb-2" />
+              <p className="text-sm font-bold uppercase tracking-wider">PDF Load Error</p>
+              <p className="text-xs max-w-sm leading-relaxed opacity-80">{loadError || "The document could not be loaded. Please verify the file exists."}</p>
+              {loadError?.includes("CORS") && (
+                <p className="text-xs text-muted-foreground mt-2 border-t border-destructive/20 pt-3">
+                  This appears to be a Cross-Origin Resource Sharing (CORS) issue. The server hosting the PDF must allow access from this domain.
+                </p>
+              )}
             </div>
           }
           className="shadow-xl rounded-sm overflow-hidden border border-border/50 bg-white"
