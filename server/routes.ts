@@ -12449,16 +12449,19 @@ document.addEventListener('keydown',function(e){
       let queryComplexity: QueryComplexity = "moderate";
       if (!directMode && lastUserMessage && moduleType === "al-wakeelo") {
         queryComplexity = detectQueryComplexity(lastUserMessage.content);
-        // Treat brief follow-ups as simple regardless of base classification.
+        // Treat brief follow-ups as simple — but never downgrade a "complex" classification.
+        // "elaborate on constitutional provisions" should stay complex even in a conversation.
         const hasPriorAssistantTurn = userMessages.some((m) => m.role === "assistant");
-        if (hasPriorAssistantTurn && isFollowUpQuestion(lastUserMessage.content, 0)) {
+        if (hasPriorAssistantTurn && queryComplexity !== "complex" && isFollowUpQuestion(lastUserMessage.content, 0)) {
           queryComplexity = "simple";
         }
         // Additional heuristic: short messages in active conversations are almost
         // always follow-ups, even if the regex doesn't match their pattern.
+        // GUARD: never downgrade a "complex" classification — queries with drafting,
+        // comparison, or scenario keywords should stay complex even if short.
         if (
           hasPriorAssistantTurn &&
-          queryComplexity !== "simple" &&
+          queryComplexity === "moderate" &&
           lastUserMessage.content.trim().length < 150 &&
           lastUserMessage.content.trim().split(/\s+/).length < 20
         ) {
