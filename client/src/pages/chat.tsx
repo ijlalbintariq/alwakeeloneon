@@ -1089,7 +1089,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           {latestStatutes.length > 0 || (latestInlineReferences?.statutes?.length || 0) > 0 ? (
             <>
               {latestStatutes.slice(0, compact ? 5 : 8).map((law, idx) => (
-                <button key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-primary/5 rounded transition-colors w-full text-left" onClick={() => openStatute(law.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(law.name)}>
+                <button key={`${law.name}-${idx}`} className="flex items-start gap-3 p-2 group cursor-pointer hover:bg-primary/5 rounded transition-colors w-full text-left" onClick={() => openStatute(law.section && !law.section.startsWith("Chunk") ? `${law.name} ${law.section}` : law.name)} onKeyDown={(e) => e.key === 'Enter' && openStatute(law.section && !law.section.startsWith("Chunk") ? `${law.name} ${law.section}` : law.name)}>
                   <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shadow-sm shadow-primary/60" />
                   <div>
                     <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
