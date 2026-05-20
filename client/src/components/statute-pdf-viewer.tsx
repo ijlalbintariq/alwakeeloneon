@@ -376,14 +376,19 @@ export function StatutePdfViewer({
             </p>
           </div>
         }
-        className="flex-1 flex overflow-hidden min-h-0"
+        className="flex-1 flex overflow-hidden min-h-0 relative"
       >
-        {/* Outline Sidebar — inside <Document> so it accesses the PDF context */}
-        {showOutline && (
-          <div className="w-[260px] min-w-[220px] border-r border-border bg-card flex flex-col overflow-hidden z-20 flex-shrink-0">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-background">
+        {/* Outline Sidebar — slides in from the left over the PDF content */}
+        <div
+          className={`absolute top-0 left-0 h-full z-30 transition-transform duration-300 ease-in-out ${
+            showOutline ? "translate-x-0" : "-translate-x-full"
+          }`}
+          style={{ width: 280 }}
+        >
+          <div className="h-full w-full bg-card border-r border-border shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-background flex-shrink-0">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                Outline
+                Document Outline
               </span>
               <Button
                 variant="ghost"
@@ -411,7 +416,7 @@ export function StatutePdfViewer({
               )}
             </div>
           </div>
-        )}
+        </div>
 
         {/* Scrollable Page Container */}
         <div
