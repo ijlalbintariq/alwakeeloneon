@@ -216,35 +216,59 @@ app.use((req, res, next) => {
   );
 
   if (dbAvailable) {
-    const { ensureSearchIndexes } = await import("./storage");
-    await ensureSearchIndexes();
+    // Wrap DB startup tasks in a timeout to prevent port-binding failures on Render.
+    // If any migration/seed hangs, the server still starts with degraded DB features.
+    const DB_STARTUP_TIMEOUT_MS = 120_000; // 2 minutes
+    const dbStartupPromise = (async () => {
+      const { ensureSearchIndexes } = await import("./storage");
+      await ensureSearchIndexes();
 
-    const { initializeSecurityGovernance } = await import("./security-governance");
-    await initializeSecurityGovernance();
+      const { initializeSecurityGovernance } = await import("./security-governance");
+      await initializeSecurityGovernance();
 
-    const { seedAdminUser } = await import("./seed-admin");
-    await seedAdminUser();
+      const { seedAdminUser } = await import("./seed-admin");
+      await seedAdminUser();
 
-    // Ensure ai_output_log table exists (drizzle-kit push may not run in Docker)
-    try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS ai_output_log (
-          id SERIAL PRIMARY KEY,
-          user_id VARCHAR NOT NULL REFERENCES users(id),
-          feature TEXT NOT NULL,
-          model TEXT NOT NULL,
-          input_snippet TEXT NOT NULL,
-          output_snippet TEXT NOT NULL,
-          output_length INTEGER NOT NULL DEFAULT 0,
-          quality_score INTEGER NOT NULL DEFAULT 4,
-          quality_flags TEXT[] NOT NULL DEFAULT '{}',
-          created_at TIMESTAMP DEFAULT NOW()
-        )
-      `);
-      console.log("[Startup] ai_output_log table ready.");
-    } catch (err: any) {
-      console.warn("[Startup] Could not ensure ai_output_log table:", err?.message);
-    }
+      // Ensure ai_output_log table exists (drizzle-kit push may not run in Docker)
+      try {
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS ai_output_log (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR NOT NULL REFERENCES users(id),
+            feature TEXT NOT NULL,
+            model TEXT NOT NULL,
+            input_snippet TEXT NOT NULL,
+            output_snippet TEXT NOT NULL,
+            output_length INTEGER NOT NULL DEFAULT 0,
+            quality_score INTEGER NOT NULL DEFAULT 4,
+            quality_flags TEXT[] NOT NULL DEFAULT '{}',
+            created_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        console.log("[Startup] ai_output_log table ready.");
+      } catch (err: any) {
+        console.warn("[Startup] Could not ensure ai_output_log table:", err?.message);
+      }
+
+      console.log("[Startup] All DB startup tasks completed.");
+    })();
+
+    const dbStartupTimeout = new Promise<void>((resolve) => {
+      const timer = setTimeout(() => {
+        console.error(`[Startup] DB startup tasks did not complete within ${DB_STARTUP_TIMEOUT_MS / 1000}s — continuing server startup without full DB initialization.`);
+        resolve();
+      }, DB_STARTUP_TIMEOUT_MS);
+      // Don't hold the process open for the timeout alone
+      if (timer.unref) timer.unref();
+      dbStartupPromise.then(() => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+
+    await Promise.race([dbStartupPromise, dbStartupTimeout]).catch((err) => {
+      console.error("[Startup] DB startup tasks failed:", err);
+    });
   } else {
     console.warn(`[Startup] Skipping DB startup tasks. ${dbUnavailableReason || ""}`.trim());
   }

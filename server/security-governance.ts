@@ -133,23 +133,38 @@ export async function getUserBan(userId: string): Promise<UserBanInfo | null> {
     };
   }
 
-  const result = await (pool as any).query(
-    "SELECT user_id, reason, banned_by, created_at FROM user_bans WHERE user_id = $1 LIMIT 1",
-    [userId],
-  );
-  const row = result?.rows?.[0];
-  if (!row) return null;
-  return {
-    userId: String(row.user_id),
-    reason: row.reason ? String(row.reason) : null,
-    bannedBy: row.banned_by ? String(row.banned_by) : null,
-    createdAt: new Date(row.created_at).toISOString(),
-  };
+  try {
+    const result = await (pool as any).query(
+      "SELECT user_id, reason, banned_by, created_at FROM user_bans WHERE user_id = $1 LIMIT 1",
+      [userId],
+    );
+    const row = result?.rows?.[0];
+    if (!row) return null;
+    return {
+      userId: String(row.user_id),
+      reason: row.reason ? String(row.reason) : null,
+      bannedBy: row.banned_by ? String(row.banned_by) : null,
+      createdAt: new Date(row.created_at).toISOString(),
+    };
+  } catch (err: any) {
+    // Table may not exist yet if migration failed; treat as "not banned"
+    if (err?.code === "42P01") {
+      console.warn("[Security Governance] user_bans table does not exist yet; treating user as not banned.");
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function isUserBanned(userId: string): Promise<boolean> {
-  const ban = await getUserBan(userId);
-  return !!ban;
+  try {
+    const ban = await getUserBan(userId);
+    return !!ban;
+  } catch (err: any) {
+    // Gracefully degrade: if we can't check ban status, don't block the user
+    console.warn("[Security Governance] Could not check ban status:", err?.message || err);
+    return false;
+  }
 }
 
 export async function getUserBanMap(userIds: string[]): Promise<Record<string, UserBanInfo>> {
@@ -170,23 +185,31 @@ export async function getUserBanMap(userIds: string[]): Promise<Record<string, U
     return map;
   }
 
-  const result = await (pool as any).query(
-    `
-      SELECT user_id, reason, banned_by, created_at
-      FROM user_bans
-      WHERE user_id = ANY($1::varchar[])
-    `,
-    [userIds],
-  );
+  try {
+    const result = await (pool as any).query(
+      `
+        SELECT user_id, reason, banned_by, created_at
+        FROM user_bans
+        WHERE user_id = ANY($1::varchar[])
+      `,
+      [userIds],
+    );
 
-  for (const row of result?.rows || []) {
-    const userId = String(row.user_id);
-    map[userId] = {
-      userId,
-      reason: row.reason ? String(row.reason) : null,
-      bannedBy: row.banned_by ? String(row.banned_by) : null,
-      createdAt: new Date(row.created_at).toISOString(),
-    };
+    for (const row of result?.rows || []) {
+      const userId = String(row.user_id);
+      map[userId] = {
+        userId,
+        reason: row.reason ? String(row.reason) : null,
+        bannedBy: row.banned_by ? String(row.banned_by) : null,
+        createdAt: new Date(row.created_at).toISOString(),
+      };
+    }
+  } catch (err: any) {
+    if (err?.code === "42P01") {
+      console.warn("[Security Governance] user_bans table does not exist yet; returning empty ban map.");
+      return map;
+    }
+    throw err;
   }
 
   return map;

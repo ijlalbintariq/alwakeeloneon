@@ -17,7 +17,12 @@ if (!dbAvailable) {
 }
 
 export const pool = (canInitPool && validatedDatabaseUrl.value
-  ? new Pool({ connectionString: validatedDatabaseUrl.value })
+  ? new Pool({
+      connectionString: validatedDatabaseUrl.value,
+      connectionTimeoutMillis: 10_000,
+      idle_in_transaction_session_timeout: 30_000,
+      statement_timeout: 60_000,
+    })
   : undefined) as any;
 export const db = (canInitPool && validatedDatabaseUrl.value
   ? drizzle(pool, { schema })
