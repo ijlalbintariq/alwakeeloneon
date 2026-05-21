@@ -240,9 +240,9 @@ export function buildContext(
   }
 
   if (hasStatutes) {
-    parts.push("STATUTE RULE: ONLY cite statutes listed in the VERIFIED STATUTES section below. Use the exact statute name and section number as shown. Do NOT guess or invent specific article/section numbers from your training data. If you need to reference a statute not in the verified list, refer to it generally (e.g., 'refer to the relevant provision of the Limitation Act, 1908') without citing a specific article number.");
+    parts.push("STATUTE RULE (ABSOLUTE — matches CASE LAW citation integrity): ONLY cite statute names AND section/article numbers that appear VERBATIM in the VERIFIED STATUTES section below. Copy each statute name and section number EXACTLY as shown. Do NOT cite any section number from memory or training data. Do NOT guess or infer section numbers. If a statute name appears in the verified list but the specific section you want to cite does NOT, write: 'refer to the relevant provision of [Statute Name]' instead of citing a specific section number. YOUR TRAINING DATA IS NOT A SOURCE FOR SECTION NUMBERS.");
   } else {
-    parts.push("STATUTE RULE: No verified statutes were found in the database for this query. You may discuss statutes by their general name (e.g., 'The Limitation Act, 1908 governs time limits'). ABSOLUTELY DO NOT cite any specific section or article numbers — your training data contains incorrect section mappings for Pakistani statutes. Instead, write 'refer to the relevant provision of [Statute Name]' or direct the user to search the statute library.");
+    parts.push("STATUTE RULE (ABSOLUTE — NO VERIFIED STATUTES FOUND): No statutes were found in the internal database for this query. CRITICAL: Do NOT cite ANY specific section numbers or article numbers. Do NOT cite section numbers from memory or training data — they are unreliable for Pakistani law. You may mention a statute by its general name only (e.g., 'The Pakistan Penal Code, 1860 addresses this area'). For ANY specific section reference, write: 'refer to the relevant provision of [Statute Name]' or 'consult the statute library for the applicable section'. Direct the user to search the statute library for exact provisions.");
   }
   parts.push("");
 

@@ -146,6 +146,25 @@ export async function runKnowledgePipeline(
       cacheSet(key, ctx.contextString);
     }
 
+    // R4: If context is empty (no results found), inject safety gate
+    if (ctx.contextString.length === 0) {
+      const safetyGateContext = "\n\n" +
+        "[SYSTEM SAFETY GATE — NO MATCHING DATABASE RESULTS]\n" +
+        "No relevant statutes or case law were found in the database for this query.\n" +
+        "CRITICAL RULES:\n" +
+        "1. Do NOT cite ANY specific section numbers, article numbers, or case citations from memory.\n" +
+        "2. You may provide general legal guidance about the area of law.\n" +
+        "3. Direct the user to search at /judgment-search for case law.\n" +
+        "4. Direct the user to the statute library for specific provisions.";
+      return {
+        contextString: safetyGateContext,
+        hasCaseLaw: false,
+        hasStatutes: false,
+        topics: intent.topics.map((t) => t.label),
+        durationMs: Date.now() - t0,
+      };
+    }
+
     return {
       contextString: ctx.contextString,
       hasCaseLaw: ctx.hasCaseLawCitations,
@@ -159,7 +178,17 @@ export async function runKnowledgePipeline(
   if (result === null) {
     const durationMs = Date.now() - t0;
     console.warn(`[Pipeline:Timeout] exceeded ${OUTER_DEADLINE_MS}ms — returning empty context`);
-    return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs };
+    const safetyGateContext = "\n\n" +
+      "[SYSTEM SAFETY GATE — NO DATABASE RESULTS AVAILABLE]\n" +
+      "The knowledge pipeline returned no results (timeout or no matching data).\n" +
+      "CRITICAL RULES:\n" +
+      "1. Do NOT cite ANY specific section numbers, article numbers, or case citations from memory.\n" +
+      "2. Do NOT cite ANY judgment citations from memory — no PLD, SCMR, YLR, etc.\n" +
+      "3. You may provide general legal guidance about the area of law.\n" +
+      "4. For specific case law, direct the user to search at /judgment-search.\n" +
+      "5. For specific statutes, direct the user to the statute library.\n" +
+      "6. Say: 'I recommend searching our judgment database and statute library for the specific provisions applicable to your case.'";
+    return { contextString: safetyGateContext, hasCaseLaw: false, hasStatutes: false, topics: [], durationMs };
   }
   return result;
 }
@@ -178,7 +207,9 @@ export async function gatherKnowledgeContextV2(
     return result.contextString;
   } catch (err) {
     console.error("[Pipeline:Error]", err instanceof Error ? err.message : String(err));
-    return "";
+    return "\n\n[SYSTEM SAFETY GATE — KNOWLEDGE PIPELINE ERROR]\n" +
+      "CRITICAL: Do NOT cite ANY specific section numbers, article numbers, or case citations from memory. " +
+      "Provide general legal guidance only. Direct users to /judgment-search for case law and the statute library for specific provisions.";
   }
 }
 
