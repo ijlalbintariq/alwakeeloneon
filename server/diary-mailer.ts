@@ -22,18 +22,47 @@ function escapeHtml(value: string): string {
   return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+/** Rate-limit safe delay helper */
+function delay(ms: number): Promise<void> {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+/** Resend rate limit: 2 req/s. We use 600ms spacing + retry with exponential backoff. */
+const MAX_RETRIES = 3;
+const BASE_RETRY_DELAY_MS = 1000;
+
 async function sendEmail(to: string, subject: string, html: string, text: string): Promise<boolean> {
   const apiKey = resolveResendApiKey();
   if (!apiKey) { console.warn("[DiaryMailer] No Resend API key"); return false; }
-  try {
-    const resend = new Resend(apiKey);
-    const { error } = await resend.emails.send({ from: resolveFromEmail(), to, subject, html, text });
-    if (error) { console.error("[DiaryMailer] Send error:", error); return false; }
-    return true;
-  } catch (err: any) {
-    console.error("[DiaryMailer] Exception:", err?.message);
-    return false;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const resend = new Resend(apiKey);
+      const { error } = await resend.emails.send({ from: resolveFromEmail(), to, subject, html, text });
+      if (error) {
+        // Check for rate limit (429) — retry with backoff
+        if ((error as any).statusCode === 429 && attempt < MAX_RETRIES) {
+          const backoff = BASE_RETRY_DELAY_MS * Math.pow(2, attempt);
+          console.warn(`[DiaryMailer] Rate limited for ${to}, retrying in ${backoff}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          await delay(backoff);
+          continue;
+        }
+        console.error("[DiaryMailer] Send error:", error);
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      if (attempt < MAX_RETRIES && err?.statusCode === 429) {
+        const backoff = BASE_RETRY_DELAY_MS * Math.pow(2, attempt);
+        console.warn(`[DiaryMailer] Rate limited (exception) for ${to}, retrying in ${backoff}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await delay(backoff);
+        continue;
+      }
+      console.error("[DiaryMailer] Exception:", err?.message);
+      return false;
+    }
   }
+  return false;
 }
 
 // ─── Email Templates ──────────────────────────────────────
@@ -337,6 +366,9 @@ export async function sendWeeklyDigestForUser(userId: string, email: string, fir
 
 // ─── Scheduler ──────────────────────────────────────────
 
+/** Resend allows 2 req/s. Send emails sequentially with 600ms spacing to stay safe. */
+const SEND_INTERVAL_MS = 600;
+
 async function runDailyDigestJob(): Promise<void> {
   if (!isEmailProviderConfigured()) return;
 
@@ -344,20 +376,25 @@ async function runDailyDigestJob(): Promise<void> {
     const users = await storage.getUsersForDailyDigest();
     if (users.length === 0) return;
 
-    console.log(`[DiaryMailer] Running daily digest for ${users.length} user(s)`);
+    console.log(`[DiaryMailer] Running daily digest for ${users.length} user(s) (sequential, ${SEND_INTERVAL_MS}ms spacing)`);
 
-    // Send in batches of 5
-    for (let i = 0; i < users.length; i += 5) {
-      const batch = users.slice(i, i + 5);
-      await Promise.all(
-        batch.map(u => sendDailyDigestForUser(u.userId, u.email, u.firstName).catch(err => {
-          console.error(`[DiaryMailer] Failed for ${u.email}:`, err?.message);
-        }))
-      );
-      if (i + 5 < users.length) {
-        await new Promise(r => setTimeout(r, 500));
+    let sent = 0;
+    let failed = 0;
+    for (let i = 0; i < users.length; i++) {
+      const u = users[i];
+      try {
+        const ok = await sendDailyDigestForUser(u.userId, u.email, u.firstName);
+        if (ok) sent++; else failed++;
+      } catch (err: any) {
+        failed++;
+        console.error(`[DiaryMailer] Failed for ${u.email}:`, err?.message);
+      }
+      // Throttle: wait between sends (skip after last one)
+      if (i < users.length - 1) {
+        await delay(SEND_INTERVAL_MS);
       }
     }
+    console.log(`[DiaryMailer] Daily digest complete: ${sent} sent, ${failed} failed out of ${users.length}`);
   } catch (err: any) {
     console.error("[DiaryMailer] Daily digest job error:", err?.message);
   }
@@ -370,19 +407,25 @@ async function runWeeklyDigestJob(): Promise<void> {
     const users = await storage.getUsersForWeeklyDigest();
     if (users.length === 0) return;
 
-    console.log(`[DiaryMailer] Running weekly digest for ${users.length} user(s)`);
+    console.log(`[DiaryMailer] Running weekly digest for ${users.length} user(s) (sequential, ${SEND_INTERVAL_MS}ms spacing)`);
 
-    for (let i = 0; i < users.length; i += 5) {
-      const batch = users.slice(i, i + 5);
-      await Promise.all(
-        batch.map(u => sendWeeklyDigestForUser(u.userId, u.email, u.firstName).catch(err => {
-          console.error(`[DiaryMailer] Weekly failed for ${u.email}:`, err?.message);
-        }))
-      );
-      if (i + 5 < users.length) {
-        await new Promise(r => setTimeout(r, 500));
+    let sent = 0;
+    let failed = 0;
+    for (let i = 0; i < users.length; i++) {
+      const u = users[i];
+      try {
+        const ok = await sendWeeklyDigestForUser(u.userId, u.email, u.firstName);
+        if (ok) sent++; else failed++;
+      } catch (err: any) {
+        failed++;
+        console.error(`[DiaryMailer] Weekly failed for ${u.email}:`, err?.message);
+      }
+      // Throttle: wait between sends (skip after last one)
+      if (i < users.length - 1) {
+        await delay(SEND_INTERVAL_MS);
       }
     }
+    console.log(`[DiaryMailer] Weekly digest complete: ${sent} sent, ${failed} failed out of ${users.length}`);
   } catch (err: any) {
     console.error("[DiaryMailer] Weekly digest job error:", err?.message);
   }
