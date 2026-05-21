@@ -502,6 +502,7 @@ export interface IStorage {
   getSearchHistory(userId: string): Promise<SearchHistory[]>;
 
   searchStatutes(query: string, limit?: number): Promise<Statute[]>;
+  getStatuteByTitleAndSection(shortTitle: string, section: string): Promise<Statute | undefined>;
   getAllStatutes(): Promise<Statute[]>;
 
   searchCaseLaw(query: string, limit?: number, options?: CaseLawSearchOptions): Promise<CaseLaw[]>;
@@ -1424,6 +1425,19 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .limit(limit);
+  }
+
+  async getStatuteByTitleAndSection(shortTitle: string, section: string): Promise<Statute | undefined> {
+    const [row] = await db.select()
+      .from(statutes)
+      .where(
+        and(
+          ilike(statutes.shortTitle, shortTitle),
+          ilike(statutes.section, section)
+        )
+      )
+      .limit(1);
+    return row;
   }
 
   async getAllStatutes(): Promise<Statute[]> {

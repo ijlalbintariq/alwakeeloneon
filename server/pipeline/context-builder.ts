@@ -239,7 +239,11 @@ export function buildContext(
     parts.push(buildNoCaseLawMessage(intent));
   }
 
-  parts.push("STATUTE RULE: For well-known Pakistani statutes (PPC, CPC, Constitution, Family Courts Act, etc.) you may also cite from your training knowledge using full formal names.");
+  if (hasStatutes) {
+    parts.push("STATUTE RULE: ONLY cite statutes listed in the VERIFIED STATUTES section below. Use the exact statute name and section number as shown. Do NOT guess or invent specific article/section numbers from your training data. If you need to reference a statute not in the verified list, refer to it generally (e.g., 'refer to the relevant provision of the Limitation Act, 1908') without citing a specific article number.");
+  } else {
+    parts.push("STATUTE RULE: No verified statutes were found in the database for this query. You may discuss statutes by their general name (e.g., 'The Limitation Act, 1908 governs time limits'). ABSOLUTELY DO NOT cite any specific section or article numbers — your training data contains incorrect section mappings for Pakistani statutes. Instead, write 'refer to the relevant provision of [Statute Name]' or direct the user to search the statute library.");
+  }
   parts.push("");
 
   for (const section of sections) {

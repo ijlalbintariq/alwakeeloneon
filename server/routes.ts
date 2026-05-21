@@ -2837,19 +2837,60 @@ async function verifyReferencesBlock(
   const verifiedJudgments: Array<{ citation: string; court: string; description: string }> = [];
   const seenLaws = new Set<string>();
   const seenJudgments = new Set<string>();
+  // Verify each statute mention against the DB. Only DB-verified statutes
+  // are included in the final laws array — unverified ones are dropped
+  // (analogous to how judgment citations are verified/rejected).
   const lawRows = await Promise.all(
     inputLaws.map(async (law) => {
       const name = sanitizeReferenceText(law?.name || "", 180);
       const section = sanitizeReferenceText(law?.section || "", 80);
       const description = sanitizeReferenceText(law?.description || "", 320);
       if (!name && !section) return null;
+
+      // Attempt to verify this statute against the database.
       const query = `${name} ${section}`.trim();
-      const matched = query ? await storage.searchStatutes(query, 3).catch(() => []) : [];
-      const primary = matched.length > 0 ? matched[0] : null;
+      const matched = query ? await storage.searchStatutes(query, 10).catch(() => []) : [];
+
+      // Score each search result for name + section match quality.
+      const nameNorm = normalizeTextForMatch(name);
+      const sectionNorm = normalizeSectionForMatch(section);
+      let bestRow: (typeof matched)[number] | null = null;
+      let bestScore = -1;
+
+      for (const row of matched) {
+        const rowNameNorm = normalizeTextForMatch(row.shortTitle);
+        const rowSectionNorm = normalizeSectionForMatch(row.section);
+        let score = 0;
+
+        // Name match: +6 if one contains the other (handles aliases and abbreviations)
+        if (nameNorm && rowNameNorm && (rowNameNorm.includes(nameNorm) || nameNorm.includes(rowNameNorm))) {
+          score += 6;
+        }
+        // Section match: +7 for exact match, +4 for partial/containment match
+        if (sectionNorm && rowSectionNorm) {
+          if (rowSectionNorm === sectionNorm) {
+            score += 7;
+          } else if (rowSectionNorm.includes(sectionNorm) || sectionNorm.includes(rowSectionNorm)) {
+            score += 4;
+          }
+        }
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestRow = row;
+        }
+      }
+
+      // If the AI specified a section number, require BOTH name AND section to match (score >= 10).
+      // If no section was specified, name-only match (score >= 6) is acceptable.
+      const hasSpecificSection = sectionNorm && sectionNorm.length > 0;
+      const STATUTE_VERIFY_THRESHOLD = hasSpecificSection ? 10 : 6;
+      if (bestScore < STATUTE_VERIFY_THRESHOLD || !bestRow) return null;
+
       return {
-        name: sanitizeReferenceText(primary?.shortTitle || name || "Pakistani Statute", 180),
-        section: sanitizeReferenceText(section || primary?.section || "", 80),
-        description: sanitizeReferenceText(description || primary?.description || "", 320),
+        name: sanitizeReferenceText(bestRow.shortTitle || name, 180),
+        section: sanitizeReferenceText(bestScore >= 10 ? bestRow.section : (section || bestRow.section || ""), 80),
+        description: sanitizeReferenceText(description || bestRow.description || "", 320),
       };
     }),
   );
@@ -2934,6 +2975,76 @@ async function verifyReferencesBlock(
   return renderSingleReferencesBlock(content, JSON.parse(normalized));
 }
 
+/**
+ * Prose-level statute fact-checking: extracts "Section X of Y" / "Article X of Y"
+ * mentions from prose, validates each against the statute database, and replaces
+ * unverified section references with generic text.
+ */
+async function enforceStatuteSectionIntegrity(content: string): Promise<string> {
+  // Only process the prose body (not the references block)
+  const refsMatch = content.match(REFERENCES_BLOCK_REGEX);
+  const proseBody = content.replace(REFERENCES_BLOCK_REGEX, "");
+  const refsBlock = refsMatch ? refsMatch[0] : "";
+
+  // Extract all "Section X of Y" and "Article X of Y" patterns from prose
+  const sectionPattern = /\b((?:Section|Article|S\.)\s+\d+[A-Za-z]?)\s+(?:of\s+(?:the\s+)?)((?:(?:Pakistan|Pak\.?)\s+)?[A-Z][A-Za-z\s,.'()]+?(?:Act|Code|Ordinance|Order|Rules|Regulation|Constitution)[^\n,;)]*?)(?=[,;.)\s]|$)/gi;
+
+  let modifiedProse = proseBody;
+  const replacements: Array<{ original: string; replacement: string }> = [];
+
+  let match;
+  const seen = new Set<string>();
+  while ((match = sectionPattern.exec(proseBody)) !== null) {
+    const fullMatch = match[0];
+    const sectionPart = match[1].trim(); // e.g., "Section 302"
+    const statuteName = match[2].trim(); // e.g., "Pakistan Penal Code, 1860"
+
+    const key = `${sectionPart.toLowerCase()}::${statuteName.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    // Validate against DB
+    const query = `${statuteName} ${sectionPart}`;
+    const matched = await storage.searchStatutes(query, 5).catch(() => []);
+
+    const sectionNum = normalizeSectionForMatch(sectionPart);
+    const nameNorm = normalizeTextForMatch(statuteName);
+
+    let verified = false;
+    for (const row of matched) {
+      const rowNameNorm = normalizeTextForMatch(row.shortTitle);
+      const rowSectionNorm = normalizeSectionForMatch(row.section);
+
+      const nameMatches = nameNorm && rowNameNorm &&
+        (rowNameNorm.includes(nameNorm) || nameNorm.includes(rowNameNorm));
+      const sectionMatches = sectionNum && rowSectionNorm && rowSectionNorm === sectionNum;
+
+      if (nameMatches && sectionMatches) {
+        verified = true;
+        break;
+      }
+    }
+
+    if (!verified) {
+      replacements.push({
+        original: fullMatch,
+        replacement: `the relevant provision of ${statuteName}`,
+      });
+    }
+  }
+
+  // Apply replacements
+  for (const { original, replacement } of replacements) {
+    modifiedProse = modifiedProse.split(original).join(replacement);
+  }
+
+  // Reconstruct content with references block
+  if (refsBlock) {
+    return `${modifiedProse.trimEnd()}\n\n${refsBlock}`;
+  }
+  return modifiedProse;
+}
+
 async function applyAlWakeeloSafetyGuardrails(
   content: string,
   policy?: CitationPolicy,
@@ -2942,7 +3053,9 @@ async function applyAlWakeeloSafetyGuardrails(
 ): Promise<string> {
   const withRefs = ensureAlWakeeloReferencesBlock(content);
   const verifiedRefs = await verifyReferencesBlock(withRefs, policy, trustedCitations, trustedTitles);
-  return verifiedRefs;
+  // R3: Prose-level statute fact-checking — replace unverified Section X of Y mentions
+  const statuteChecked = await enforceStatuteSectionIntegrity(verifiedRefs);
+  return statuteChecked;
 }
 
 type CitationParts = { year: number; journalCode: string; page: number };
@@ -5802,6 +5915,34 @@ EXACT STRING RULES:
 - DO NOT write [I], [II], [III], [A], [B], (1), (2), (3) — these are forbidden placeholder notations
 - DO NOT invent citation variations or recall citations from training data
 - If a record has an empty citation field: skip it entirely
+
+━━━ STATUTE CITATION INTEGRITY — NON-NEGOTIABLE ━━━
+
+RULE S1 — ONLY DATABASE STATUTE SECTIONS:
+You may ONLY cite specific statute section/article numbers that appear in the "VERIFIED STATUTES FROM INTERNAL DATABASE" section below.
+NEVER cite a specific section number from your training memory. NEVER guess an article number.
+Your training data contains INCORRECT section/article mappings for Pakistani statutes.
+
+RULE S2 — NO SECTION FOR A STATUTE = USE GENERAL REFERENCE:
+If the database has no specific section for a statute point, do NOT guess the section number.
+Instead write: "refer to the relevant provision of [Full Statute Name]" or direct the user to the statute library.
+NEVER fill a section number gap with one you recall from training.
+
+RULE S3 — EMPTY STATUTES = NO SECTION NUMBERS:
+If the "VERIFIED STATUTES" section is absent or empty, you may discuss statutes generally by name only.
+Do NOT cite ANY specific section or article numbers. Write general references like "under the Pakistan Penal Code" without specific section numbers.
+
+RULE S4 — NO FABRICATED STATUTE DETAILS:
+NEVER invent punishment descriptions, fine amounts, or imprisonment terms for any statute section.
+Only state punishments that appear verbatim in the VERIFIED STATUTES data.
+
+RULE S5 — STATUTE VERIFICATION:
+Every statute section you cite is verified against the database by the system.
+A fabricated section number will be detected and removed, destroying the reference card.
+
+RULE S6 — GENERAL STATUTE NAMES ARE ALLOWED:
+You MAY name statutes generally (e.g., "The Limitation Act, 1908 governs time limits") without citing specific sections.
+This is safe because no specific section number is being claimed.
 
 ### Practical Legal Strategy and Case Preparation
 Provide actionable litigation strategy including:
@@ -12982,6 +13123,28 @@ The user has attached the following documents for your reference. Analyze them c
               },
             ]
           : [];
+      // R5: Statute mandate injection — inject verified statutes as fake user/assistant
+      // turns, matching the case law pool pattern for improved adherence.
+      const statuteInjectionTurns: Array<{ role: "user" | "assistant"; content: string }> =
+        boundedKnowledgeContext.includes("VERIFIED STATUTES FROM INTERNAL DATABASE")
+          ? [
+              {
+                role: "user" as const,
+                content:
+                  `Before answering, please note these verified Pakistani statute provisions from our internal database:\n\n` +
+                  `${boundedKnowledgeContext.split("=== VERIFIED STATUTES FROM INTERNAL DATABASE ===")[1]?.split("===")[0]?.trim() || ""}\n\n` +
+                  `STATUTE MANDATE: You MUST reference statutes from this list when relevant to the query. ` +
+                  `Use the EXACT section numbers shown. Do NOT cite section numbers from memory.`,
+              },
+              {
+                role: "assistant" as const,
+                content:
+                  `Understood. I will only cite statute sections from the verified list above. ` +
+                  `I will not guess or invent section numbers from my training data. ` +
+                  `What is your legal question?`,
+              },
+            ]
+          : [];
       const useStream = requestedStream && moduleProfile.modelStrategy.stream && selectedRoute !== "apex";
       const routeLabel = selectedRoute === "apex" ? `apex:${selectedApexModel || "auto"}` : selectedRoute;
       const routingPath: string[] = [`profile:${moduleType}`, `route:${routeLabel}`];
@@ -13060,8 +13223,8 @@ The user has attached the following documents for your reference. Analyze them c
           // last user message so the model sees: [system, ...prior turns,
           // user(pool), assistant(ack), user(actual question)].
           const lastUserIdx = baseMessages.map(m => m.role).lastIndexOf("user");
-          const streamMessages = lastUserIdx >= 0 && toolSearchTurns.length > 0
-            ? [...baseMessages.slice(0, lastUserIdx), ...toolSearchTurns, ...baseMessages.slice(lastUserIdx)]
+          const streamMessages = lastUserIdx >= 0 && (toolSearchTurns.length > 0 || statuteInjectionTurns.length > 0)
+            ? [...baseMessages.slice(0, lastUserIdx), ...toolSearchTurns, ...statuteInjectionTurns, ...baseMessages.slice(lastUserIdx)]
             : baseMessages;
           // Al Wakeelo: tool-searched judgments + pipeline statutes injected via systemPromptFull.
           if (isAiRouterV2Enabled()) {
@@ -13206,8 +13369,8 @@ The user has attached the following documents for your reference. Analyze them c
         const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
         const baseNonStreamMessages = buildMessages(systemPromptFull, geminiContents);
         const lastUserIdxNS = baseNonStreamMessages.map(m => m.role).lastIndexOf("user");
-        const nonStreamMessages = lastUserIdxNS >= 0 && toolSearchTurns.length > 0
-          ? [...baseNonStreamMessages.slice(0, lastUserIdxNS), ...toolSearchTurns, ...baseNonStreamMessages.slice(lastUserIdxNS)]
+        const nonStreamMessages = lastUserIdxNS >= 0 && (toolSearchTurns.length > 0 || statuteInjectionTurns.length > 0)
+          ? [...baseNonStreamMessages.slice(0, lastUserIdxNS), ...toolSearchTurns, ...statuteInjectionTurns, ...baseNonStreamMessages.slice(lastUserIdxNS)]
           : baseNonStreamMessages;
         const routerResult = await callWithFallback(chain, {
           messages: nonStreamMessages,
