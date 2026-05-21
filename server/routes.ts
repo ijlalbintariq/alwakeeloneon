@@ -2681,7 +2681,7 @@ function hasLinkedPrimaryCaseLawSource(
   return sourceType === "admin" || sourceType === "user" || sourceType === "statute";
 }
 
-async function verifyReferencesBlock(
+export async function verifyReferencesBlock(
   content: string,
   policy?: CitationPolicy,
   trustedCitations?: Iterable<string>,
@@ -2848,8 +2848,10 @@ async function verifyReferencesBlock(
       if (!name && !section) return null;
 
       // Attempt to verify this statute against the database.
-      const query = `${name} ${section}`.trim();
-      const matched = query ? await storage.searchStatutes(query, 10).catch(() => []) : [];
+      // We search by section or canonicalized name since database columns are separate (shortTitle and section).
+      const canonicalName = canonicalizeStatuteName(name);
+      const searchQuery = section ? section : canonicalName;
+      const matched = searchQuery ? await storage.searchStatutes(searchQuery, 25).catch(() => []) : [];
 
       // Score each search result for name + section match quality.
       const nameNorm = normalizeTextForMatch(name);
@@ -2980,44 +2982,169 @@ async function verifyReferencesBlock(
  * mentions from prose, validates each against the statute database, and replaces
  * unverified section references with generic text.
  */
-async function enforceStatuteSectionIntegrity(content: string): Promise<string> {
+export async function enforceStatuteSectionIntegrity(content: string): Promise<string> {
   // Only process the prose body (not the references block)
   const refsMatch = content.match(REFERENCES_BLOCK_REGEX);
   const proseBody = content.replace(REFERENCES_BLOCK_REGEX, "");
   const refsBlock = refsMatch ? refsMatch[0] : "";
 
-  // Extract all "Section X of Y" and "Article X of Y" patterns from prose
-  const sectionPattern = /\b((?:Section|Article|S\.)\s+\d+[A-Za-z]?)\s+(?:of\s+(?:the\s+)?)((?:(?:Pakistan|Pak\.?)\s+)?[A-Z][A-Za-z\s,.'()]+?(?:Act|Code|Ordinance|Order|Rules|Regulation|Constitution)[^\n,;)]*?)(?=[,;.)\s]|$)/gi;
-
   let modifiedProse = proseBody;
   const replacements: Array<{ original: string; replacement: string }> = [];
-
-  let match;
   const seen = new Set<string>();
-  while ((match = sectionPattern.exec(proseBody)) !== null) {
-    const fullMatch = match[0];
-    const sectionPart = match[1].trim(); // e.g., "Section 302"
-    const statuteName = match[2].trim(); // e.g., "Pakistan Penal Code, 1860"
 
-    const key = `${sectionPart.toLowerCase()}::${statuteName.toLowerCase()}`;
+  // 1. Explicit Section/Article pattern
+  const explicitPattern =
+    /\b(section|sec\.?|s\.|article|art\.?)\s*([0-9A-Za-z-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z-]+)*)\s+of\s+(?:the\s+)?([A-Z][A-Za-z0-9(),.'\-\/\s]{3,140}?)(?=[\n,.;:]|$)/gi;
+
+  for (const match of proseBody.matchAll(explicitPattern)) {
+    let fullMatch = match[0];
+    const labelType = (match[1] || "").toLowerCase();
+    const prefix: "Section" | "Article" = labelType.startsWith("art") ? "Article" : "Section";
+    const sectionRaw = match[2] || "";
+    let statuteNameRaw = match[3] || "";
+
+    // Year extension look-ahead check to capture e.g., ", 1991" chopped off by non-greedy regex
+    const matchEndIndex = (match.index ?? 0) + match[0].length;
+    const remainingText = proseBody.slice(matchEndIndex);
+    const yearExtensionMatch = remainingText.match(/^(\s*,\s*\d{4})\b/);
+    if (yearExtensionMatch) {
+      const yearExt = yearExtensionMatch[1];
+      fullMatch += yearExt;
+      statuteNameRaw += yearExt;
+    }
+
+    const statuteName = canonicalizeStatuteName(statuteNameRaw);
+    if (!statuteName) continue;
+
+    const key = `${sectionRaw.toLowerCase()}::${statuteName.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
 
-    // Validate against DB
-    const query = `${statuteName} ${sectionPart}`;
-    const matched = await storage.searchStatutes(query, 5).catch(() => []);
+    const tokens = splitSectionTokens(sectionRaw);
+    if (tokens.length === 0) continue;
 
-    const sectionNum = normalizeSectionForMatch(sectionPart);
-    const nameNorm = normalizeTextForMatch(statuteName);
+    let allVerified = true;
+    for (const token of tokens) {
+      const sectionLabel = `${prefix} ${token}`;
+      const matched = await storage.searchStatutes(sectionLabel, 25).catch(() => []);
+
+      let verified = false;
+      const nameNorm = normalizeTextForMatch(statuteName);
+      const sectionNorm = normalizeSectionForMatch(sectionLabel);
+
+      for (const row of matched) {
+        const rowNameNorm = normalizeTextForMatch(row.shortTitle);
+        const rowSectionNorm = normalizeSectionForMatch(row.section);
+
+        const nameMatches = nameNorm && rowNameNorm &&
+          (rowNameNorm.includes(nameNorm) || nameNorm.includes(rowNameNorm));
+        const sectionMatches = sectionNorm && rowSectionNorm && rowSectionNorm === sectionNorm;
+
+        if (nameMatches && sectionMatches) {
+          verified = true;
+          break;
+        }
+      }
+      if (!verified) {
+        allVerified = false;
+        break;
+      }
+    }
+
+    if (!allVerified) {
+      const isMultiple = tokens.length > 1;
+      const replacementText = isMultiple
+        ? `the relevant provisions of ${statuteNameRaw}`
+        : `the relevant provision of ${statuteNameRaw}`;
+      replacements.push({ original: fullMatch, replacement: replacementText });
+    }
+  }
+
+  // 2. Shorthand Pattern (e.g., Section 13 of PPC)
+  const shorthandPattern =
+    /\b(section|sec\.?|s\.|article|art\.?)\s*([0-9A-Za-z-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z-]+)*)\s*(?:of\s+)?(Cr\.?\s*P\.?\s*C\.?|C\.?\s*P\.?\s*C\.?|P\.?\s*P\.?\s*C\.?|Constitution(?:\s+of\s+Pakistan)?|Qanun[-\s]?e[-\s]?Shahadat(?:\s+Order)?|Family Courts?\s*Act|Specific Relief Act|Limitation Act|Negotiable Instruments Act)\b/gi;
+
+  for (const match of proseBody.matchAll(shorthandPattern)) {
+    const fullMatch = match[0];
+    const labelType = (match[1] || "").toLowerCase();
+    const prefix: "Section" | "Article" = labelType.startsWith("art") ? "Article" : "Section";
+    const sectionRaw = match[2] || "";
+    const statuteNameRaw = match[3] || "";
+    const statuteName = canonicalizeStatuteName(statuteNameRaw);
+    if (!statuteName) continue;
+
+    const key = `${sectionRaw.toLowerCase()}::${statuteName.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const tokens = splitSectionTokens(sectionRaw);
+    if (tokens.length === 0) continue;
+
+    let allVerified = true;
+    for (const token of tokens) {
+      const sectionLabel = `${prefix} ${token}`;
+      const matched = await storage.searchStatutes(sectionLabel, 25).catch(() => []);
+
+      let verified = false;
+      const nameNorm = normalizeTextForMatch(statuteName);
+      const sectionNorm = normalizeSectionForMatch(sectionLabel);
+
+      for (const row of matched) {
+        const rowNameNorm = normalizeTextForMatch(row.shortTitle);
+        const rowSectionNorm = normalizeSectionForMatch(row.section);
+
+        const nameMatches = nameNorm && rowNameNorm &&
+          (rowNameNorm.includes(nameNorm) || nameNorm.includes(rowNameNorm));
+        const sectionMatches = sectionNorm && rowSectionNorm && rowSectionNorm === sectionNorm;
+
+        if (nameMatches && sectionMatches) {
+          verified = true;
+          break;
+        }
+      }
+      if (!verified) {
+        allVerified = false;
+        break;
+      }
+    }
+
+    if (!allVerified) {
+      const isMultiple = tokens.length > 1;
+      const replacementText = isMultiple
+        ? `the relevant provisions of ${statuteNameRaw}`
+        : `the relevant provision of ${statuteNameRaw}`;
+      replacements.push({ original: fullMatch, replacement: replacementText });
+    }
+  }
+
+  // 3. CPC Order Pattern (e.g. Order XLI Rule 19 of CPC)
+  const cpcOrderPattern =
+    /\b(Order\s+[IVXLCDM0-9]+(?:\s+Rules?\s+(?:(?:(?!\bof\b)[0-9A-Za-z,&\s-])+))?)\s*(?:of\s+)?(?:the\s+)?(C\.?\s*P\.?\s*C\.?|Code of Civil Procedure)\b/gi;
+
+  for (const match of proseBody.matchAll(cpcOrderPattern)) {
+    const fullMatch = match[0];
+    const orderPart = (match[1] || "").trim();
+    const statuteNameRaw = match[2] || "";
+    const statuteName = canonicalizeStatuteName(statuteNameRaw);
+    if (!statuteName || !orderPart) continue;
+
+    const key = `${orderPart.toLowerCase()}::${statuteName.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const matched = await storage.searchStatutes(orderPart, 25).catch(() => []);
 
     let verified = false;
+    const nameNorm = normalizeTextForMatch(statuteName);
+    const orderNorm = normalizeSectionForMatch(orderPart);
+
     for (const row of matched) {
       const rowNameNorm = normalizeTextForMatch(row.shortTitle);
       const rowSectionNorm = normalizeSectionForMatch(row.section);
 
       const nameMatches = nameNorm && rowNameNorm &&
         (rowNameNorm.includes(nameNorm) || nameNorm.includes(rowNameNorm));
-      const sectionMatches = sectionNum && rowSectionNorm && rowSectionNorm === sectionNum;
+      const sectionMatches = orderNorm && rowSectionNorm && rowSectionNorm === orderNorm;
 
       if (nameMatches && sectionMatches) {
         verified = true;
@@ -3028,7 +3155,7 @@ async function enforceStatuteSectionIntegrity(content: string): Promise<string> 
     if (!verified) {
       replacements.push({
         original: fullMatch,
-        replacement: `the relevant provision of ${statuteName}`,
+        replacement: `the relevant provision of ${statuteNameRaw}`,
       });
     }
   }
@@ -3045,7 +3172,7 @@ async function enforceStatuteSectionIntegrity(content: string): Promise<string> 
   return modifiedProse;
 }
 
-async function applyAlWakeeloSafetyGuardrails(
+export async function applyAlWakeeloSafetyGuardrails(
   content: string,
   policy?: CitationPolicy,
   trustedCitations?: Iterable<string>,
@@ -5205,7 +5332,14 @@ function extractStatuteMentions(text: string): DraftStatuteMention[] {
   for (const match of text.matchAll(explicitPattern)) {
     const head = (match[1] || "").toLowerCase();
     const prefix: "Section" | "Article" = head.startsWith("art") ? "Article" : "Section";
-    pushMention(match[3] || "", match[2] || "", prefix);
+    let statuteNameRaw = match[3] || "";
+    const matchEndIndex = (match.index ?? 0) + match[0].length;
+    const remainingText = text.slice(matchEndIndex);
+    const yearExtensionMatch = remainingText.match(/^(\s*,\s*\d{4})\b/);
+    if (yearExtensionMatch) {
+      statuteNameRaw += yearExtensionMatch[1];
+    }
+    pushMention(statuteNameRaw, match[2] || "", prefix);
   }
 
   const shorthandPattern =
@@ -5217,10 +5351,10 @@ function extractStatuteMentions(text: string): DraftStatuteMention[] {
   }
 
   const cpcOrderPattern =
-    /\b(Order\s+[IVXLCDM0-9]+(?:\s+Rules?\s+[0-9A-Za-z,&\s-]+)?)\s*(?:of\s+)?(C\.?\s*P\.?\s*C\.?|Code of Civil Procedure)\b/gi;
+    /\b(Order\s+[IVXLCDM0-9]+(?:\s+Rules?\s+(?:(?:(?!\bof\b)[0-9A-Za-z,&\s-])+))?)\s*(?:of\s+)?(?:the\s+)?(C\.?\s*P\.?\s*C\.?|Code of Civil Procedure)\b/gi;
   for (const match of text.matchAll(cpcOrderPattern)) {
     const statuteName = canonicalizeStatuteName(match[2] || "");
-    const sectionLabel = normalizeSpaces(match[1] || "");
+    const sectionLabel = normalizeSpaces(match[1] || "").trim();
     if (!statuteName || !sectionLabel) continue;
     const key = `${normalizeTextForMatch(statuteName)}::${normalizeSectionForMatch(sectionLabel)}`;
     if (seen.has(key)) continue;

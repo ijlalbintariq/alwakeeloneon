@@ -33,8 +33,8 @@ async function runTest(label: string, query: string) {
       });
     }
 
-    const { buildContextString } = await import("./server/pipeline/context-builder");
-    const ctx = buildContextString(retrieval, intent);
+    const { buildContext } = await import("./server/pipeline/context-builder");
+    const ctx = buildContext(intent, retrieval).contextString;
     const citPat = /\b(PLD|SCMR|PCrLJ|YLR|MLD|NLR|PLJ|CLC)\s+\d{4}/g;
     const ctxCitations = [...new Set(ctx.match(citPat) || [])];
     console.log(`CONTEXT_CITATIONS (${ctxCitations.length}): ${ctxCitations.slice(0, 10).join(', ')}`);
