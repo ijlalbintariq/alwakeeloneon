@@ -11,6 +11,8 @@ function getClient(): OpenAI | null {
   moonshotClient = new OpenAI({
     apiKey,
     baseURL: MOONSHOT_BASE_URL,
+    timeout: 60_000, // 60s client-level timeout for Moonshot web research
+    maxRetries: 2,
   });
   return moonshotClient;
 }
@@ -230,10 +232,11 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
   // Use moonshot-v1-128k for agent mode — supports $web_search tool
   const agentModelId = "moonshot-v1-128k";
   const maxIterations = options.maxIterations ?? 6;
-  const totalBudgetMs = Math.max(5_000, options.totalBudgetMs ?? 45_000);
-  // Per-iteration capped at 8s so multiple search iterations fit within the total budget.
-  // 45s total / ~8s per = ~5 usable iterations, which matches maxIterations=6 with a buffer.
-  const perIterationTimeoutMs = Math.max(5_000, options.perIterationTimeoutMs ?? 8_000);
+  const totalBudgetMs = Math.max(5_000, options.totalBudgetMs ?? 120_000);
+  // Per-iteration timeout: 30s. Web search iterations need time to search, fetch,
+  // and read pages before the model can synthesize. 8s was too aggressive and caused
+  // "Request was aborted" errors. 120s total / ~30s per = ~4 iterations with buffer.
+  const perIterationTimeoutMs = Math.max(5_000, options.perIterationTimeoutMs ?? 30_000);
   const agentStartedAt = Date.now();
   const remainingBudgetMs = () => totalBudgetMs - (Date.now() - agentStartedAt);
 
@@ -278,6 +281,14 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
     const iterationCtrl = new AbortController();
     const iterationTimer = setTimeout(() => iterationCtrl.abort(), iterationTimeoutMs);
 
+    // If the caller passed a parent signal (e.g. client disconnect), wire it to
+    // our per-iteration controller so both can cancel the request.
+    const parentSignal = options.signal;
+    const onParentAbort = () => iterationCtrl.abort();
+    if (parentSignal && !parentSignal.aborted) {
+      parentSignal.addEventListener("abort", onParentAbort, { once: true });
+    }
+
     let response: any;
     try {
       response = await (client.chat.completions.create as any)(
@@ -290,22 +301,35 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
           tools: [webSearchTool],
           tool_choice: "auto",
         },
-        { signal: options.signal || iterationCtrl.signal, maxRetries: 1 } as any,
+        { signal: iterationCtrl.signal, maxRetries: 1 } as any,
       );
-    } catch (iterationErr) {
+    } catch (iterationErr: any) {
       clearTimeout(iterationTimer);
+      parentSignal?.removeEventListener("abort", onParentAbort);
+
+      const isAbort = iterationErr?.name === "AbortError"
+        || iterationErr?.message?.includes("aborted")
+        || iterationErr?.message?.includes("abort");
+
       // If we have accumulated some partial content from a prior iteration, return gracefully.
-      if (finalContent) {
+      if (finalContent || isAbort) {
         budgetExhausted = true;
         steps.push({
           type: "synthesizing",
-          content: "Upstream iteration failed — returning best partial answer gathered so far.",
+          content: isAbort && !finalContent
+            ? "Web research request timed out — please try a more specific query."
+            : "Upstream iteration failed — returning best partial answer gathered so far.",
         });
+        // If abort with no content, set a user-friendly fallback
+        if (!finalContent) {
+          finalContent = "The web research request took longer than expected. This can happen with broad or complex queries. Please try again with a more specific question, or use the standard Al Wakeelo chat for instant answers from our internal legal database.";
+        }
         break;
       }
       throw iterationErr;
     }
     clearTimeout(iterationTimer);
+    parentSignal?.removeEventListener("abort", onParentAbort);
 
     totalInputTokens += response.usage?.prompt_tokens || 0;
     totalOutputTokens += response.usage?.completion_tokens || 0;
