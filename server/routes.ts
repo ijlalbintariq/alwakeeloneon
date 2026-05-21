@@ -14524,12 +14524,15 @@ ${boundedRaw}`;
   app.post("/api/admin/users", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
-      const { email, password, firstName, lastName, subscriptionTier, subscriptionCycle, isAdmin: makeAdmin } = req.body;
-      if (!email || !password || !firstName || !lastName) {
-        return res.status(400).json({ message: "Email, password, first name, and last name are required" });
+      const { email, password, firstName, lastName, phoneNumber, subscriptionTier, subscriptionCycle, isAdmin: makeAdmin } = req.body;
+      if (!email || !password || !firstName || !lastName || !phoneNumber) {
+        return res.status(400).json({ message: "Email, password, first name, last name, and phone number are required" });
       }
       if (password.length < 8) {
         return res.status(400).json({ message: "Password must be at least 8 characters" });
+      }
+      if (typeof phoneNumber !== "string" || phoneNumber.trim().length === 0) {
+        return res.status(400).json({ message: "Phone number is required" });
       }
       const { authStorage } = await import("./replit_integrations/auth/storage");
       const existing = await authStorage.getUserByEmail(email);
@@ -14542,6 +14545,7 @@ ${boundedRaw}`;
         email,
         firstName,
         lastName,
+        phoneNumber,
         passwordHash,
         authProvider: "email",
         emailVerified: true,

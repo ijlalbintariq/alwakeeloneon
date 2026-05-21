@@ -7,7 +7,7 @@ import {
   Shield, Users, BarChart3, Database, Upload, Trash2, Crown,
   UserCheck, UserX, Loader2, FileText, AlertTriangle, Plus,
   Scale, Pencil, X, Check, FileUp, Search, AlertOctagon, Globe, ExternalLink, RotateCcw, Download, StopCircle, Mail, Send,
-  Eye, MessageSquare, Clock, ChevronDown, ChevronUp
+  Eye, MessageSquare, Clock, ChevronDown, ChevronUp, Phone
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -703,6 +703,7 @@ function UsersSection() {
   const [newTier, setNewTier] = useState("free");
   const [newCycle, setNewCycle] = useState<"monthly" | "quarterly" | "yearly">("monthly");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
+  const [newPhoneNumber, setNewPhoneNumber] = useState("");
   const [banReasons, setBanReasons] = useState<Record<string, string>>({});
   const [isExportingUsersCsv, setIsExportingUsersCsv] = useState(false);
 
@@ -713,6 +714,7 @@ function UsersSection() {
         password: newPassword,
         firstName: newFirstName,
         lastName: newLastName,
+        phoneNumber: newPhoneNumber,
         subscriptionTier: newTier,
         subscriptionCycle: newCycle,
         isAdmin: newIsAdmin,
@@ -728,6 +730,7 @@ function UsersSection() {
       setNewPassword("");
       setNewFirstName("");
       setNewLastName("");
+      setNewPhoneNumber("");
       setNewTier("free");
       setNewCycle("monthly");
       setNewIsAdmin(false);
@@ -843,6 +846,7 @@ function UsersSection() {
         "email",
         "first_name",
         "last_name",
+        "phone_number",
         "subscription_tier",
         "subscription_cycle",
         "subscription_start_at",
@@ -860,6 +864,7 @@ function UsersSection() {
         u.email || "",
         u.firstName || "",
         u.lastName || "",
+        u.phoneNumber || "",
         u.subscriptionTier || "",
         u.subscriptionCycle || "monthly",
         u.subscriptionStartAt || "",
@@ -969,6 +974,13 @@ function UsersSection() {
               className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
               data-testid="input-new-password"
             />
+            <Input
+              placeholder="Phone number"
+              value={newPhoneNumber}
+              onChange={(e) => setNewPhoneNumber(e.target.value)}
+              className="bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-sm"
+              data-testid="input-new-phonenumber"
+            />
             <div className="flex items-center gap-4 flex-wrap">
               <Select value={newTier} onValueChange={setNewTier}>
                 <SelectTrigger className="w-40 bg-background border-[hsl(var(--preview-border))] text-foreground rounded-xl text-xs" data-testid="select-new-tier">
@@ -1004,7 +1016,7 @@ function UsersSection() {
             </div>
             <Button
               onClick={() => addUserMutation.mutate()}
-              disabled={addUserMutation.isPending || !newEmail || !newPassword || !newFirstName || !newLastName}
+              disabled={addUserMutation.isPending || !newEmail || !newPassword || !newFirstName || !newLastName || !newPhoneNumber}
               className="bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase tracking-widest"
               data-testid="button-create-user"
             >
@@ -1032,6 +1044,12 @@ function UsersSection() {
                     {u.firstName || u.email || "Unknown"}
                   </p>
                   <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                  {u.phoneNumber && (
+                    <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1.5 mt-0.5" data-testid={`text-user-phone-${u.id}`}>
+                      <Phone size={10} className="text-primary flex-shrink-0" />
+                      <span>{u.phoneNumber}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1098,7 +1116,6 @@ function UsersSection() {
                   <span>Reset Quota</span>
                 </Button>
 
-                {isSuperAdmin && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -1109,7 +1126,6 @@ function UsersSection() {
                   <Eye size={12} />
                   <span>{activityUserId === u.id ? "Hide" : "Activity"}</span>
                 </Button>
-                )}
 
                 <Button
                   size="icon"
@@ -1253,6 +1269,7 @@ type ThreadMessage = {
 function UserActivityPanel({ userId }: { userId: string }) {
   const [expandedThreadId, setExpandedThreadId] = useState<number | null>(null);
   const [threadPage, setThreadPage] = useState(0);
+  const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({});
 
   const { data: activity, isLoading } = useQuery<UserActivity>({
     queryKey: [`/api/admin/users/${userId}/activity`],
@@ -1381,9 +1398,27 @@ function UserActivityPanel({ userId }: { userId: string }) {
                             </Badge>
                             <span className="text-[9px] text-muted-foreground">{fmtDate(m.createdAt)}</span>
                           </div>
-                          <p className="text-[11px] text-foreground leading-relaxed whitespace-pre-wrap break-words">
-                            {m.content.length > 800 ? m.content.slice(0, 800) + "…" : m.content}
-                          </p>
+                          {(() => {
+                            const isExpanded = !!expandedMessages[m.id];
+                            const showToggle = m.content.length > 800;
+                            const displayText = isExpanded ? m.content : (showToggle ? m.content.slice(0, 800) + "…" : m.content);
+                            return (
+                              <>
+                                <p className="text-[11px] text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                                  {displayText}
+                                </p>
+                                {showToggle && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedMessages(prev => ({ ...prev, [m.id]: !isExpanded }))}
+                                    className="text-[10px] text-primary font-black uppercase tracking-wider mt-1.5 hover:underline focus:outline-none flex items-center gap-1"
+                                  >
+                                    {isExpanded ? "Show Less" : "Show More"}
+                                  </button>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       ))
                     )}

@@ -25,6 +25,7 @@ const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  phoneNumber: z.string().min(1, "Phone number is required"),
   acceptedTerms: z.boolean().refine((value) => value === true, {
     message: TERMS_REQUIRED_MESSAGE,
   }),
@@ -238,7 +239,7 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(400).json({ message: parsed.error.errors[0].message });
       }
 
-      const { email, password, firstName, lastName, termsVersion } = parsed.data;
+      const { email, password, firstName, lastName, phoneNumber, termsVersion } = parsed.data;
 
       const existingUser = await authStorage.getUserByEmail(email);
       if (existingUser) {
@@ -251,6 +252,7 @@ export function registerAuthRoutes(app: Express): void {
         email,
         firstName,
         lastName,
+        phoneNumber,
         passwordHash,
         authProvider: "email",
         subscriptionTier: "free",

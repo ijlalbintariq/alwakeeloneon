@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Phone } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
 import { useLocation, Link, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,6 +27,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -97,6 +98,7 @@ export default function AuthPage() {
         password,
         firstName,
         lastName,
+        phoneNumber,
         acceptedTerms,
         termsVersion: TERMS_VERSION,
         captchaToken: getCaptchaToken(),
@@ -106,6 +108,7 @@ export default function AuthPage() {
     onSuccess: (data: any) => {
       setMode("login");
       setPassword("");
+      setPhoneNumber("");
       setVerificationHintEmail(String(data?.email || email || "").trim());
       toast({
         title: "Verify your email",
@@ -269,32 +272,46 @@ export default function AuthPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "register" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="relative">
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="relative">
+                  <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    data-testid="input-first-name"
+                    className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
+                  />
+                </div>
+                <div className="relative">
+                  <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    data-testid="input-last-name"
+                    className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
+                  />
+                </div>
+              </div>
+              <div className="relative animate-fadeIn">
+                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
-                  type="text"
-                  placeholder="First Name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  type="tel"
+                  placeholder="Phone Number"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
                   required
-                  data-testid="input-first-name"
+                  data-testid="input-phone-number"
                   className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
                 />
               </div>
-              <div className="relative">
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Last Name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                  data-testid="input-last-name"
-                  className="w-full bg-background/75 border border-[hsl(var(--preview-border))] text-foreground placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl text-sm transition-all preview-focus"
-                />
-              </div>
-            </div>
+            </>
           )}
 
           <div className="relative">
@@ -461,6 +478,7 @@ export default function AuthPage() {
               const nextMode: AuthMode = mode === "login" ? "register" : "login";
               setMode(nextMode);
               setPassword("");
+              setPhoneNumber("");
               setAcceptedTerms(false);
               if (typeof window !== "undefined") {
                 const next = new URLSearchParams(window.location.search);
