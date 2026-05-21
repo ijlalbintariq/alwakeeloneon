@@ -229,8 +229,9 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
     throw new Error("Apex AI is not configured. MOONSHOT_API_KEY is required.");
   }
 
-  // Use moonshot-v1-128k for agent mode — supports $web_search tool
-  const agentModelId = "moonshot-v1-128k";
+  // Use kimi-k2.6 for agent mode — same model as Kimi web agent.
+  // $web_search requires thinking mode disabled on K2.6 (per Kimi API docs).
+  const agentModelId = "kimi-k2.6";
   const maxIterations = options.maxIterations ?? 6;
   const totalBudgetMs = Math.max(5_000, options.totalBudgetMs ?? 120_000);
   // Per-iteration timeout: 30s. Web search iterations need time to search, fetch,
@@ -300,6 +301,8 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
           top_p: 0.95,
           tools: [webSearchTool],
           tool_choice: "auto",
+          // K2.6 requires thinking disabled for $web_search tool compatibility
+          chat_template_kwargs: { thinking: false },
         },
         { signal: iterationCtrl.signal, maxRetries: 1 } as any,
       );
