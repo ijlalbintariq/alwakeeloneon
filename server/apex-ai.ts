@@ -217,11 +217,15 @@ interface ApexAgentOptions {
 }
 
 /**
- * chatWithApexAgent — uses Kimi's built-in $web_search tool to perform
- * multi-step legal research across the web, then synthesizes findings.
+ * chatWithApexAgent — uses Kimi K2.6 with built-in $web_search tool for
+ * Pakistani legal research.
  *
- * Moonshot API supports the special "$web_search" tool which lets the model
- * autonomously decide when and what to search, then read results and continue.
+ * How K2.6 $web_search works:
+ * 1. We send the request with the $web_search builtin_function tool
+ * 2. K2.6 decides to search → returns finish_reason="tool_calls" with
+ *    search results embedded in the tool_call arguments as {search_result: {search_id: "..."}}
+ * 3. We send the tool result back (passing through the search data)
+ * 4. K2.6 reads the search results and generates the final synthesized answer
  */
 export async function chatWithApexAgent(options: ApexAgentOptions): Promise<ApexAgentResponse> {
   const client = getClient();
@@ -229,15 +233,11 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
     throw new Error("Apex AI is not configured. MOONSHOT_API_KEY is required.");
   }
 
-  // Use kimi-k2.6 for agent mode — same model as Kimi web agent.
-  // $web_search requires thinking mode disabled on K2.6 (per Kimi API docs).
   const agentModelId = "kimi-k2.6";
   const maxIterations = options.maxIterations ?? 6;
-  const totalBudgetMs = Math.max(5_000, options.totalBudgetMs ?? 120_000);
-  // Per-iteration timeout: 30s. Web search iterations need time to search, fetch,
-  // and read pages before the model can synthesize. 8s was too aggressive and caused
-  // "Request was aborted" errors. 120s total / ~30s per = ~4 iterations with buffer.
-  const perIterationTimeoutMs = Math.max(5_000, options.perIterationTimeoutMs ?? 30_000);
+  const totalBudgetMs = Math.max(10_000, options.totalBudgetMs ?? 120_000);
+  // Per-iteration timeout: 60s — each iteration may involve web search + synthesis
+  const perIterationTimeoutMs = Math.max(10_000, options.perIterationTimeoutMs ?? 60_000);
   const agentStartedAt = Date.now();
   const remainingBudgetMs = () => totalBudgetMs - (Date.now() - agentStartedAt);
 
@@ -245,47 +245,38 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
   const searchQueries: string[] = [];
   const sourcesUsed: AgentSearchResult[] = [];
 
-  // The $web_search tool definition for Moonshot API
   const webSearchTool = {
     type: "builtin_function" as const,
-    function: {
-      name: "$web_search",
-    },
+    function: { name: "$web_search" },
   };
 
-  let messages: any[] = [...options.messages];
+  const messages: any[] = [...options.messages];
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let finalContent = "";
   let finalReasoning: string | undefined;
-  let budgetExhausted = false;
 
   steps.push({
     type: "thinking",
-    content: "Analyzing your legal query and planning research strategy...",
+    content: "Analyzing your legal query and planning web research strategy...",
   });
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
-    // Guard: do not start another iteration if we would breach the budget.
     const remaining = remainingBudgetMs();
     if (remaining <= 2_000) {
-      budgetExhausted = true;
       steps.push({
         type: "synthesizing",
-        content: `Time budget (${totalBudgetMs}ms) nearly exhausted — finalizing best available answer.`,
+        content: `Time budget exhausted — finalizing best available answer.`,
       });
       break;
     }
 
-    // Cap this iteration's model call at min(perIterationTimeout, remainingBudget).
-    const iterationTimeoutMs = Math.min(perIterationTimeoutMs, Math.max(2_000, remaining - 500));
-    const iterationCtrl = new AbortController();
-    const iterationTimer = setTimeout(() => iterationCtrl.abort(), iterationTimeoutMs);
+    const iterationTimeoutMs = Math.min(perIterationTimeoutMs, Math.max(5_000, remaining - 500));
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), iterationTimeoutMs);
 
-    // If the caller passed a parent signal (e.g. client disconnect), wire it to
-    // our per-iteration controller so both can cancel the request.
     const parentSignal = options.signal;
-    const onParentAbort = () => iterationCtrl.abort();
+    const onParentAbort = () => ctrl.abort();
     if (parentSignal && !parentSignal.aborted) {
       parentSignal.addEventListener("abort", onParentAbort, { once: true });
     }
@@ -296,42 +287,37 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
         {
           model: agentModelId,
           messages,
-          temperature: 0.3,
+          temperature: 0.6, // K2.6 with thinking disabled requires 0.6
           max_tokens: options.maxTokens || 8192,
-          top_p: 0.95,
           tools: [webSearchTool],
           tool_choice: "auto",
-          // K2.6 requires thinking disabled for $web_search tool compatibility
-          chat_template_kwargs: { thinking: false },
+          thinking: { type: "disabled" },
         },
-        { signal: iterationCtrl.signal, maxRetries: 1 } as any,
+        { signal: ctrl.signal, maxRetries: 1 } as any,
       );
-    } catch (iterationErr: any) {
-      clearTimeout(iterationTimer);
+    } catch (err: any) {
+      clearTimeout(timer);
       parentSignal?.removeEventListener("abort", onParentAbort);
 
-      const isAbort = iterationErr?.name === "AbortError"
-        || iterationErr?.message?.includes("aborted")
-        || iterationErr?.message?.includes("abort");
+      const isAbort = err?.name === "AbortError"
+        || err?.message?.includes("aborted")
+        || err?.message?.includes("abort");
 
-      // If we have accumulated some partial content from a prior iteration, return gracefully.
       if (finalContent || isAbort) {
-        budgetExhausted = true;
         steps.push({
           type: "synthesizing",
           content: isAbort && !finalContent
             ? "Web research request timed out — please try a more specific query."
-            : "Upstream iteration failed — returning best partial answer gathered so far.",
+            : "Returning best partial answer gathered so far.",
         });
-        // If abort with no content, set a user-friendly fallback
         if (!finalContent) {
-          finalContent = "The web research request took longer than expected. This can happen with broad or complex queries. Please try again with a more specific question, or use the standard Al Wakeelo chat for instant answers from our internal legal database.";
+          finalContent = "The web research request took longer than expected. Please try a more specific question, or use the standard Al Wakeelo chat for instant answers from our internal legal database.";
         }
         break;
       }
-      throw iterationErr;
+      throw err;
     }
-    clearTimeout(iterationTimer);
+    clearTimeout(timer);
     parentSignal?.removeEventListener("abort", onParentAbort);
 
     totalInputTokens += response.usage?.prompt_tokens || 0;
@@ -339,76 +325,68 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
 
     const choice = response.choices[0];
     const message = choice?.message;
-
     if (!message) break;
 
-    // Add assistant message to conversation
-    messages.push(message);
+    // Strip reasoning_content before pushing back to avoid K2.6 validation errors
+    const cleanMessage = { ...message };
+    delete cleanMessage.reasoning_content;
+    messages.push(cleanMessage);
 
     const finishReason = choice.finish_reason;
 
-    // Check if model wants to call a tool (web search)
-    if (finishReason === "tool_calls" && message.tool_calls && message.tool_calls.length > 0) {
+    // Handle $web_search tool calls — K2.6 returns search results embedded
+    // in the tool_call arguments as {search_result: {search_id: "..."}}
+    if (finishReason === "tool_calls" && message.tool_calls?.length > 0) {
       for (const toolCall of message.tool_calls) {
         if (toolCall.function?.name === "$web_search") {
-          let searchArgs: { query?: string } = {};
-          try {
-            searchArgs = JSON.parse(toolCall.function.arguments || "{}");
-          } catch {
-            searchArgs = {};
-          }
+          // The arguments contain the actual search results from Moonshot API
+          const rawArgs = toolCall.function.arguments || "{}";
 
-          const query = searchArgs.query || "Pakistan legal research";
-          searchQueries.push(query);
+          // Try to extract search query for logging
+          try {
+            const parsed = JSON.parse(rawArgs);
+            const query = parsed.query || parsed.search_query || "";
+            if (query) searchQueries.push(query);
+          } catch {}
 
           steps.push({
             type: "searching",
-            content: `Searching the web for: "${query}"`,
-            searchQuery: query,
+            content: `Searching the web for Pakistani legal information...`,
           });
 
-          // Return the tool result — Moonshot handles the actual search
-          // We provide a placeholder result; the API processes the search internally
-          const toolResultMessage = {
+          // CRITICAL: Pass the search results back as the tool response.
+          // The arguments already contain the search_id and results from
+          // Moonshot's internal search — we pass them through unchanged.
+          messages.push({
             role: "tool" as const,
             tool_call_id: toolCall.id,
             name: "$web_search",
-            content: JSON.stringify({
-              query,
-              status: "searching",
-            }),
-          };
-
-          messages.push(toolResultMessage);
+            content: rawArgs,
+          });
 
           steps.push({
             type: "reading",
-            content: `Reading and analyzing search results for: "${query}"`,
-            searchQuery: query,
+            content: "Reading and analyzing web search results...",
           });
         }
       }
-      // Continue the loop to get the next response after tool calls
-      continue;
+      continue; // Next iteration — model will now synthesize the search results
     }
 
-    // Model has finished — extract final content
-    const rawContent = message.content || "";
+    // Model finished — extract final content
+    const rawContent = (message.content || "").trim();
     const reasoning = (message as any).reasoning_content || undefined;
 
     if (rawContent) {
       finalContent = rawContent;
       finalReasoning = reasoning;
-
       steps.push({
         type: "synthesizing",
         content: "Synthesizing research findings into comprehensive legal analysis...",
       });
-
       break;
     }
 
-    // If no content and no tool calls, break to avoid infinite loop
     if (finishReason === "stop" || finishReason === "length") {
       finalContent = rawContent || "Research complete. No additional information found.";
       break;
@@ -416,15 +394,13 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
   }
 
   if (!finalContent) {
-    finalContent = budgetExhausted
-      ? `Agent research stopped early (time budget ${totalBudgetMs}ms reached). Returning partial findings where available.`
-      : "Agent research completed. Please review the analysis above.";
+    finalContent = "Agent research completed but no content was generated. Please try rephrasing your query.";
   }
 
   return {
     content: finalContent,
     reasoning: finalReasoning,
-    model: "Apex Agent (Kimi Web Research)",
+    model: "Apex Agent (Kimi K2.6 Web Research)",
     steps,
     searchQueries,
     sourcesUsed,
@@ -432,3 +408,5 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
     outputTokens: totalOutputTokens,
   };
 }
+
+
