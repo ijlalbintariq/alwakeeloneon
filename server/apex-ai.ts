@@ -373,12 +373,29 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
       continue; // Next iteration — model will now synthesize the search results
     }
 
-    // Model finished — extract final content
+    // Model returned text content
     const rawContent = (message.content || "").trim();
     const reasoning = (message as any).reasoning_content || undefined;
 
     if (rawContent) {
-      finalContent = rawContent;
+      // Detect if the model wants to continue searching (partial answer)
+      const wantsMoreSearch = /\b(let me search|let me look|i('ll| will) (search|look|find|check)|searching for more|need to (search|find|look|check)|i should search)\b/i.test(rawContent);
+
+      if (wantsMoreSearch && finishReason !== "stop" && iteration < maxIterations - 1) {
+        // Accumulate partial content and let the model continue
+        finalContent = (finalContent ? finalContent + "\n\n" : "") + rawContent;
+        finalReasoning = reasoning;
+        steps.push({
+          type: "thinking",
+          content: "Continuing research for more comprehensive answer...",
+        });
+        continue; // Let the model do another iteration
+      }
+
+      // Final answer — combine with any previously accumulated partial content
+      finalContent = finalContent
+        ? finalContent + "\n\n" + rawContent
+        : rawContent;
       finalReasoning = reasoning;
       steps.push({
         type: "synthesizing",
@@ -388,7 +405,7 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
     }
 
     if (finishReason === "stop" || finishReason === "length") {
-      finalContent = rawContent || "Research complete. No additional information found.";
+      finalContent = finalContent || rawContent || "Research complete. No additional information found.";
       break;
     }
   }
