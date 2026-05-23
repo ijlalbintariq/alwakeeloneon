@@ -149,6 +149,7 @@ export async function chatWithApex(options: ApexChatOptions): Promise<ApexRespon
       const retryTemp = 0.8;
       console.warn(`[chatWithApex] Moonshot 400 (${config.modelId}), retrying with ${retryModelId}: ${err?.message}`);
       try {
+        const retryExtra = { chat_template_kwargs: { thinking: false } };
         response = await client.chat.completions.create(
           {
             model: retryModelId,
@@ -156,7 +157,7 @@ export async function chatWithApex(options: ApexChatOptions): Promise<ApexRespon
             temperature: retryTemp,
             max_tokens: options.maxTokens || 8192,
             top_p: 0.95,
-            chat_template_kwargs: { thinking: false },
+            ...retryExtra,
           },
           { signal: options.signal, maxRetries: 1 } as any,
         );
