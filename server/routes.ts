@@ -2654,6 +2654,140 @@ function suppressWrongIndianJurisdictionForPakCitation(responseText: string, _us
   return String(responseText || "");
 }
 
+/**
+ * Strip leaked chain-of-thought / reasoning from the beginning of AI responses.
+ * K2.6 sometimes outputs its internal planning (e.g. "The user is asking...",
+ * "Let me review the judgments...", "I need to cite...") before the actual response.
+ * This function detects the transition point and returns only the user-facing content.
+ */
+function stripChainOfThought(text: string): string {
+  if (!text) return text;
+
+  // Common prefixes that indicate chain-of-thought reasoning
+  const cotPrefixes = [
+    /^The user is asking/i,
+    /^The user also/i,
+    /^The user('s)? (question|query|request|prompt)/i,
+    /^I need to/i,
+    /^I should/i,
+    /^I must/i,
+    /^I('ll| will) (use|cite|review|check|analyze|need|start|draft)/i,
+    /^Let me (review|analyze|check|draft|think|plan|look|consider)/i,
+    /^Here I (need|must|should|will|can)/i,
+    /^I could also/i,
+    /^I can see/i,
+    /^The list shows/i,
+    /^Now I (need|will|should|can|must)/i,
+    /^First,? (I|let)/i,
+    /^Looking at/i,
+    /^Based on the (provided|above|given)/i,
+    /^The (query|question|prompt) (is|asks|requires)/i,
+  ];
+
+  const lines = text.split("\n");
+  const firstLine = lines[0]?.trim() || "";
+
+  // Check if the response starts with chain-of-thought
+  const startsWithCoT = cotPrefixes.some(rx => rx.test(firstLine));
+  if (!startsWithCoT) return text;
+
+  // Find the actual response — look for Al Wakeelo's structured response markers
+  const responseMarkers = [
+    /^#{1,3}\s+(Legal Context|Statutory Framework|Leading Case Law|Practical Legal|Overview|Analysis|Introduction)/i,
+    /^#{1,3}\s+/,  // Any markdown header
+    /^\*\*[A-Z]/,  // Bold text starting a response
+    /^Knowledge of Law/i,
+    /^---\s*$/,    // Horizontal rule
+    /^Dear /i,
+    /^Respected /i,
+    /^As per /i,
+    /^Under (the|Pakistani|Section|Article|Order)/i,
+    /^In (Pakistan|Pakistani law|the matter|light of)/i,
+    /^The (limitation|law|court|Supreme|High|provision|relevant|applicable)/i,
+  ];
+
+  // Also look for the references block pattern to find where real content ends
+  // and for content that starts after a blank line following reasoning
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue; // skip blank lines
+
+    // Check if this line starts the actual response
+    const isResponseStart = responseMarkers.some(rx => rx.test(line));
+    if (isResponseStart) {
+      const cleaned = lines.slice(i).join("\n").trim();
+      if (cleaned.length > 200) { // Ensure we're not cutting too much
+        console.log(`[stripChainOfThought] Stripped ${i} lines of reasoning (${lines.slice(0, i).join("").length} chars)`);
+        return cleaned;
+      }
+    }
+  }
+
+  // If no clear marker found, return original text unchanged
+  return text;
+}
+
+/**
+ * Remove irrelevant statutes from the references block.
+ * Detects statutes that are topically irrelevant to the query context
+ * (e.g. PPC/criminal sections in a civil contract query).
+ */
+function filterIrrelevantStatuteRefs(text: string, userQuery: string): string {
+  if (!text || !userQuery) return text;
+
+  const refsMatch = text.match(/```references\s*\n([\s\S]*?)\n```/);
+  if (!refsMatch) return text;
+
+  try {
+    const refs = JSON.parse(refsMatch[1]);
+    const laws: Array<{ name?: string; section?: string; description?: string }> = refs.laws || [];
+    if (laws.length === 0) return text;
+
+    const queryLower = userQuery.toLowerCase();
+
+    // Detect query domain
+    const isCivilQuery = /\b(contract|specific performance|sale|lease|mortgage|rent|property|partition|injunction|declaration|possession|civil|cpc|transfer|easement|limitation|arbitration|gift|trust|will)\b/i.test(queryLower);
+    const isCriminalQuery = /\b(murder|theft|robbery|dacoity|hurt|kidnap|abduct|fraud|cheat|forgery|ppc|crpc|criminal|bail|fir|challan|arrest|offence|sentence|qatl|zina|hudood|narcotics|anti-terrorism)\b/i.test(queryLower);
+
+    // Criminal statutes that are irrelevant in civil queries
+    const criminalStatutes = /\b(pakistan penal code|ppc|criminal procedure|crpc|anti-terrorism|narcotics|hudood|arms ordinance|prevention of electronic crimes)\b/i;
+    // Civil statutes that are irrelevant in criminal queries
+    const civilStatutes = /\b(specific relief|transfer of property|contract act|partnership act|sale of goods|easements|trust act|registration act)\b/i;
+
+    const filteredLaws = laws.filter(law => {
+      const lawName = (law.name || "").toLowerCase();
+      const lawSection = (law.section || "").toLowerCase();
+
+      // If civil query and statute is criminal → remove
+      if (isCivilQuery && !isCriminalQuery && criminalStatutes.test(lawName)) {
+        // Exception: if the user specifically mentioned this statute, keep it
+        const shortRef = lawName.replace(/,?\s*\d{4}$/, "").trim();
+        if (queryLower.includes(shortRef)) return true;
+        console.log(`[filterIrrelevantStatuteRefs] Removed criminal statute "${law.name} ${law.section}" from civil query`);
+        return false;
+      }
+
+      // If criminal query and statute is civil → remove
+      if (isCriminalQuery && !isCivilQuery && civilStatutes.test(lawName)) {
+        const shortRef = lawName.replace(/,?\s*\d{4}$/, "").trim();
+        if (queryLower.includes(shortRef)) return true;
+        console.log(`[filterIrrelevantStatuteRefs] Removed civil statute "${law.name} ${law.section}" from criminal query`);
+        return false;
+      }
+
+      return true;
+    });
+
+    if (filteredLaws.length === laws.length) return text; // nothing changed
+
+    refs.laws = filteredLaws;
+    const newRefsBlock = "```references\n" + JSON.stringify(refs) + "\n```";
+    return text.replace(/```references\s*\n[\s\S]*?\n```/, newRefsBlock);
+  } catch {
+    return text;
+  }
+}
+
 type RawLawRef = { name?: string; section?: string; description?: string };
 type RawJudgmentRef = { citation?: string; court?: string; description?: string };
 
@@ -13529,6 +13663,9 @@ The user has attached the following documents for your reference. Analyze them c
       usedModel = result.model;
       routingPath.push(`model:${usedModel}`);
       let completion = suppressWrongIndianJurisdictionForPakCitation(result.text, latestUserPromptText);
+      // Strip chain-of-thought reasoning and irrelevant statute refs from Apex responses
+      completion = stripChainOfThought(completion);
+      completion = filterIrrelevantStatuteRefs(completion, latestUserPromptText);
 
       if (moduleType === "al-wakeelo" && !directMode) {
         // Use module profile strictCitations — hardcoded true was stripping valid judgments-table citations
@@ -17273,6 +17410,9 @@ Instructions:
         maxTokens: apexRequestCap,
       });
       responseContent = assertNonEmptyModelOutput(`Kimi(${selectedApexModel})`, result.content);
+      // Strip chain-of-thought reasoning and irrelevant statute refs
+      responseContent = stripChainOfThought(responseContent);
+      responseContent = filterIrrelevantStatuteRefs(responseContent, message);
       responseReasoning = result.reasoning;
       responseModel = result.model;
       console.log(`[AI Routing][apex] Primary Kimi(${selectedApexModel}) succeeded in ${Date.now() - apexStartedAt}ms`);
@@ -17484,6 +17624,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       console.log(`[Apex Agent] Completed in ${Date.now() - startedAt}ms, steps: ${agentResult.steps.length}, searches: ${agentResult.searchQueries.length}`);
 
       let safeContent = await applyAlWakeeloSafetyGuardrails(agentResult.content).catch(() => ensureAlWakeeloReferencesBlock(agentResult.content));
+      // Strip chain-of-thought reasoning and irrelevant statute refs
+      safeContent = stripChainOfThought(safeContent);
+      safeContent = filterIrrelevantStatuteRefs(safeContent, message);
       safeContent = enforcePakistanLawOnlyOutput(safeContent);
       safeContent = (await enforceInternalCaseCitationIntegrity(safeContent, {
         placeholder: "",
