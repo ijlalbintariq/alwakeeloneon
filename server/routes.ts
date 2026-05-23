@@ -17145,10 +17145,11 @@ Instructions:
       });
     }
 
-    const apexRequestCap = Math.max(256, getModeOutputCap(tier, "apex") || 1800);
+    const apexRequestCap = Math.max(256, getModeOutputCap(tier, "apex") || 8192);
 
     try {
-      let systemPrompt = getLegalSystemPrompt();
+      // Build the full Al Wakeelo system prompt — same as main handler
+      let systemPrompt = `${getLegalSystemPrompt()}${VERIFIED_JUDGMENTS_CITATION_ADDON}`;
       if (systemContext) {
         systemPrompt += `\n\n${systemContext}`;
       }
@@ -17156,6 +17157,14 @@ Instructions:
       const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
       systemPrompt += knowledgeContext;
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
+
+      // Wrap with Apex mode profile (same as main handler)
+      systemPrompt = buildApexModeSystemPrompt(
+        systemPrompt,
+        model as ApexModel,
+        "al-wakeelo",
+        false,
+      );
 
       // Tool-based judgment search — same as Standard/Turbo for citation accuracy
       const useOpenRouterTools = isOpenRouterAvailable();
@@ -17333,8 +17342,8 @@ Instructions:
     if (!allowed) return;
 
     try {
-      // Build system prompt with legal context
-      let systemPrompt = getLegalSystemPrompt();
+      // Build the full Al Wakeelo system prompt — same as main handler
+      let systemPrompt = `${getLegalSystemPrompt()}${VERIFIED_JUDGMENTS_CITATION_ADDON}`;
       systemPrompt += `\n\nYou are operating in APEX AGENT mode with web research capabilities. You have access to the $web_search tool to research Pakistani legal topics, case law, statutes, and legal news from authoritative sources. When answering legal questions:
 
 1. Use web search to find current, authoritative Pakistani legal information
@@ -17360,6 +17369,14 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
       systemPrompt += knowledgeContext;
+
+      // Wrap with Apex mode profile (same as main handler)
+      systemPrompt = buildApexModeSystemPrompt(
+        systemPrompt,
+        "apex-agent" as ApexModel,
+        "al-wakeelo",
+        false,
+      );
 
       // Tool-based judgment search — same as Standard/Turbo for citation accuracy
       const useOpenRouterTools = isOpenRouterAvailable();
