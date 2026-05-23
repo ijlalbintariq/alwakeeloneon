@@ -13491,7 +13491,16 @@ The user has attached the following documents for your reference. Analyze them c
           extractedAttachmentCount > 0,
         );
         routingPath.push(`apex-profile:${selectedApexModel}`);
-        const apexMessages = buildMessages(apexSystemPrompt, geminiContents);
+        // Build Apex messages with tool-search and statute injection turns
+        // spliced in, matching Standard/Turbo for the same citation accuracy.
+        // LLMs weight user/assistant content much higher than system prompt,
+        // so framing the DB pool as conversation turns dramatically improves
+        // citation adherence over burying it in the system prompt.
+        const baseApexMessages = buildMessages(apexSystemPrompt, geminiContents);
+        const lastApexUserIdx = baseApexMessages.map(m => m.role).lastIndexOf("user");
+        const apexMessages = lastApexUserIdx >= 0 && (toolSearchTurns.length > 0 || statuteInjectionTurns.length > 0)
+          ? [...baseApexMessages.slice(0, lastApexUserIdx), ...toolSearchTurns, ...statuteInjectionTurns, ...baseApexMessages.slice(lastApexUserIdx)]
+          : baseApexMessages;
         const apexResult = await callApexAIPrimary(
           apexMessages,
           selectedApexModel,
@@ -17150,6 +17159,83 @@ Instructions:
       systemPrompt += knowledgeContext;
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
+      // Tool-based judgment search — same as Standard/Turbo for citation accuracy
+      const useOpenRouterTools = isOpenRouterAvailable();
+      const toolSearchEnabled = useOpenRouterTools || isDeepSeekAvailable();
+      interface ApexToolSearchResult {
+        contextString: string;
+        foundCount: number;
+        queriesUsed: string[];
+        verifiedCitations: string[];
+        verifiedTitles: Array<{ title: string; citation: string }>;
+        verifiedHits: Array<{ citation: string; title: string; court: string; summary: string }>;
+      }
+      const toolSearchResult: ApexToolSearchResult = toolSearchEnabled
+        ? await (useOpenRouterTools
+            ? runToolJudgmentSearchOR(message, () => {}, undefined, 18000)
+            : runToolJudgmentSearch(message, () => {})
+          ).catch(() => ({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] }))
+        : { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
+
+      if (toolSearchResult.foundCount > 0) {
+        console.log(`[Apex Chat:ToolSearch] found=${toolSearchResult.foundCount} queries=${JSON.stringify(toolSearchResult.queriesUsed)}`);
+      }
+
+      // Build tool-search injection turns (same pattern as Standard/Turbo)
+      const toolMandateBlock =
+        toolSearchResult.foundCount > 0
+          ? `\n\nCITATION MANDATE (REQUIRED — read carefully):\n` +
+            `- You MUST cite at least 3 judgments from the AI-SEARCHED JUDGMENTS list above.\n` +
+            `- Always use the FORMAL CITATION string, never the case name alone.\n` +
+            `- Do NOT cite any case that is not in the list above — those citations will be removed.\n` +
+            `- Do NOT cite from memory or training data.`
+          : "";
+      const toolSearchTurns: Array<{ role: "user" | "assistant"; content: string }> =
+        toolSearchResult.contextString
+          ? [
+              {
+                role: "user" as const,
+                content:
+                  `Before answering my next question, please use these Pakistani case-law records I just retrieved from our internal database:\n\n` +
+                  `${toolSearchResult.contextString}${toolMandateBlock}`,
+              },
+              {
+                role: "assistant" as const,
+                content:
+                  `Understood. I will cite at least 3 judgments from this list by their exact formal citation, ` +
+                  `not their case names, and I will not cite any judgment that is not in the list above. ` +
+                  `What is your legal question?`,
+              },
+            ]
+          : [];
+
+      // Statute injection turns
+      const statuteInjectionTurns: Array<{ role: "user" | "assistant"; content: string }> =
+        knowledgeContext.includes("VERIFIED STATUTES FROM INTERNAL DATABASE")
+          ? [
+              {
+                role: "user" as const,
+                content:
+                  `Before answering, please note these verified Pakistani statute provisions from our internal database:\n\n` +
+                  `${knowledgeContext.split("=== VERIFIED STATUTES FROM INTERNAL DATABASE ===")[1]?.split("===")[0]?.trim() || ""}\n\n` +
+                  `STATUTE MANDATE: You MUST reference statutes from this list when relevant. Use EXACT section numbers. Do NOT cite from memory.`,
+              },
+              {
+                role: "assistant" as const,
+                content:
+                  `Understood. I will only cite statute sections from the verified list above. What is your legal question?`,
+              },
+            ]
+          : [];
+
+      // Strip pipeline case law from system prompt when tool search found results (avoid conflicts)
+      if (toolSearchResult.foundCount > 0 && knowledgeContext) {
+        systemPrompt = systemPrompt
+          .replace(/=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===[\s\S]*?(?===|$)/g, "")
+          .replace(/=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===[\s\S]*?(?===|$)/g, "")
+          .trim();
+      }
+
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
         { role: "system", content: systemPrompt },
       ];
@@ -17162,6 +17248,9 @@ Instructions:
         }
       }
 
+      // Inject tool-search and statute turns before the user's question
+      messages.push(...toolSearchTurns);
+      messages.push(...statuteInjectionTurns);
       messages.push({ role: "user", content: message });
 
       let responseContent = "";
@@ -17191,6 +17280,7 @@ Instructions:
         normalizeVerified: true,
         requirePrimary: true,
         requireLinkedSource: true,
+        trustedCitations: toolSearchResult.verifiedCitations,
       })).content;
       const inputText = messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat-apex", actualModel, inputText, safeResponseContent);
@@ -17275,6 +17365,79 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
       systemPrompt += knowledgeContext;
 
+      // Tool-based judgment search — same as Standard/Turbo for citation accuracy
+      const useOpenRouterTools = isOpenRouterAvailable();
+      const agentToolSearchEnabled = useOpenRouterTools || isDeepSeekAvailable();
+      interface AgentToolSearchResult {
+        contextString: string;
+        foundCount: number;
+        queriesUsed: string[];
+        verifiedCitations: string[];
+        verifiedTitles: Array<{ title: string; citation: string }>;
+        verifiedHits: Array<{ citation: string; title: string; court: string; summary: string }>;
+      }
+      const agentToolSearchResult: AgentToolSearchResult = agentToolSearchEnabled
+        ? await (useOpenRouterTools
+            ? runToolJudgmentSearchOR(message, () => {}, undefined, 18000)
+            : runToolJudgmentSearch(message, () => {})
+          ).catch(() => ({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] }))
+        : { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
+
+      if (agentToolSearchResult.foundCount > 0) {
+        console.log(`[Apex Agent:ToolSearch] found=${agentToolSearchResult.foundCount} queries=${JSON.stringify(agentToolSearchResult.queriesUsed)}`);
+      }
+
+      // Build tool-search injection turns
+      const agentToolMandateBlock =
+        agentToolSearchResult.foundCount > 0
+          ? `\n\nCITATION MANDATE (REQUIRED):\n` +
+            `- You MUST cite at least 3 judgments from the AI-SEARCHED JUDGMENTS list above.\n` +
+            `- Always use the FORMAL CITATION string, never the case name alone.\n` +
+            `- Do NOT cite any case that is not in the list above.`
+          : "";
+      const agentToolSearchTurns: Array<{ role: "user" | "assistant"; content: string }> =
+        agentToolSearchResult.contextString
+          ? [
+              {
+                role: "user" as const,
+                content:
+                  `Before answering, use these Pakistani case-law records from our internal database:\n\n` +
+                  `${agentToolSearchResult.contextString}${agentToolMandateBlock}`,
+              },
+              {
+                role: "assistant" as const,
+                content:
+                  `Understood. I will cite judgments from this list by exact formal citation. What is your legal question?`,
+              },
+            ]
+          : [];
+
+      // Statute injection turns
+      const agentStatuteTurns: Array<{ role: "user" | "assistant"; content: string }> =
+        knowledgeContext.includes("VERIFIED STATUTES FROM INTERNAL DATABASE")
+          ? [
+              {
+                role: "user" as const,
+                content:
+                  `Note these verified Pakistani statute provisions from our database:\n\n` +
+                  `${knowledgeContext.split("=== VERIFIED STATUTES FROM INTERNAL DATABASE ===")[1]?.split("===")[0]?.trim() || ""}\n\n` +
+                  `STATUTE MANDATE: Use EXACT section numbers from this list. Do NOT cite from memory.`,
+              },
+              {
+                role: "assistant" as const,
+                content: `Understood. I will only cite statute sections from the verified list. What is your legal question?`,
+              },
+            ]
+          : [];
+
+      // Strip pipeline case law from system prompt when tool search found results
+      if (agentToolSearchResult.foundCount > 0 && knowledgeContext) {
+        systemPrompt = systemPrompt
+          .replace(/=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===[\s\S]*?(?===|$)/g, "")
+          .replace(/=== INTERNAL KNOWLEDGE VAULT: CASE LAW ===[\s\S]*?(?===|$)/g, "")
+          .trim();
+      }
+
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
         { role: "system", content: systemPrompt },
       ];
@@ -17288,6 +17451,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         }
       }
 
+      // Inject tool-search and statute turns before the user's question
+      messages.push(...agentToolSearchTurns);
+      messages.push(...agentStatuteTurns);
       messages.push({ role: "user", content: message });
 
       const apexRequestCap = Math.max(256, getModeOutputCap(tier, "apex") || 4096);
@@ -17311,6 +17477,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         normalizeVerified: true,
         requirePrimary: true,
         requireLinkedSource: true,
+        trustedCitations: agentToolSearchResult.verifiedCitations,
       })).content;
       const inputText = messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat-apex", agentResult.model, inputText, safeContent);
