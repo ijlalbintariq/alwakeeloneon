@@ -2141,7 +2141,7 @@ function buildMessages(systemPrompt: string, contents: Array<{ role: string; par
 const MODEL_TIMEOUT_MS = {
   standardPrimary: 30000,
   turboPrimary: 30000,
-  apexPrimary: 30000,
+  apexPrimary: 90000, // K2.6 with enriched tool-search context needs 60-90s
 };
 
 type TimeoutProfile = "default" | "search" | "analysis";
