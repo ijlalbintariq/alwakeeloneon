@@ -2360,15 +2360,13 @@ async function callApexAIPrimary(
   let responseReasoning: string | undefined;
   let responseModel = "";
   const apexStartedAt = Date.now();
-  const result = await withTimeout(
-    `Kimi(${primaryModel})`,
-    MODEL_TIMEOUT_MS.apexPrimary,
-    () => chatWithApex({
-      model: primaryModel,
-      messages,
-      maxTokens,
-    }),
-  );
+  // No withTimeout — K2.6 with enriched context needs 60-120s.
+  // The Moonshot client has its own 120s timeout + chatWithApex handles 400 errors gracefully.
+  const result = await chatWithApex({
+    model: primaryModel,
+    messages,
+    maxTokens,
+  });
   responseContent = assertNonEmptyModelOutput(`Kimi(${primaryModel})`, result.content);
   responseReasoning = result.reasoning;
   responseModel = result.model;
@@ -17258,15 +17256,13 @@ Instructions:
       let responseModel = "";
       const apexStartedAt = Date.now();
       const selectedApexModel = model as ApexModel;
-      const result = await withTimeout(
-        `Kimi(${selectedApexModel})`,
-        MODEL_TIMEOUT_MS.apexPrimary,
-        () => chatWithApex({
-          model: selectedApexModel,
-          messages,
-          maxTokens: apexRequestCap,
-        }),
-      );
+      // No withTimeout — K2.6 with enriched context needs 60-120s.
+      // The Moonshot client has its own 120s timeout + chatWithApex handles 400 errors gracefully.
+      const result = await chatWithApex({
+        model: selectedApexModel,
+        messages,
+        maxTokens: apexRequestCap,
+      });
       responseContent = assertNonEmptyModelOutput(`Kimi(${selectedApexModel})`, result.content);
       responseReasoning = result.reasoning;
       responseModel = result.model;
