@@ -107,14 +107,14 @@ export default function UserPanelPage() {
 
   // Notification preferences
   const { data: notifPrefs } = useQuery<any>({ queryKey: ["/api/settings/notifications"] });
-  const [dailyEnabled, setDailyEnabled] = useState(true);
-  const [weeklyEnabled, setWeeklyEnabled] = useState(true);
+  const [dailyEnabled, setDailyEnabled] = useState(false);
+  const [weeklyEnabled, setWeeklyEnabled] = useState(false);
   const [sendTime, setSendTime] = useState("19:00");
 
   useEffect(() => {
     if (notifPrefs) {
-      setDailyEnabled(notifPrefs.dailyEmailEnabled ?? true);
-      setWeeklyEnabled(notifPrefs.weeklyEmailEnabled ?? true);
+      setDailyEnabled(notifPrefs.dailyEmailEnabled ?? false);
+      setWeeklyEnabled(notifPrefs.weeklyEmailEnabled ?? false);
       setSendTime(notifPrefs.preferredTime || "19:00");
     }
   }, [notifPrefs]);

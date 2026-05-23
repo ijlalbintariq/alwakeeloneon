@@ -3551,7 +3551,7 @@ export class DatabaseStorage implements IStorage {
   // --- Notification Preferences ---
   async getNotificationPrefs(userId: string): Promise<any> {
     const [row] = await db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId));
-    return row || { userId, dailyEmailEnabled: true, weeklyEmailEnabled: true, preferredTime: "19:00", timezone: "Asia/Karachi", lastDailySentAt: null, lastWeeklySentAt: null };
+    return row || { userId, dailyEmailEnabled: false, weeklyEmailEnabled: false, preferredTime: "19:00", timezone: "Asia/Karachi", lastDailySentAt: null, lastWeeklySentAt: null };
   }
 
   async upsertNotificationPrefs(userId: string, updates: Partial<{ dailyEmailEnabled: boolean; weeklyEmailEnabled: boolean; preferredTime: string; timezone: string }>): Promise<any> {
@@ -3573,7 +3573,7 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN notification_preferences np ON np.user_id = u.id::text
       WHERE u.email IS NOT NULL
         AND u.email_verified = true
-        AND COALESCE(np.daily_email_enabled, true) = true
+        AND COALESCE(np.daily_email_enabled, false) = true
         AND (np.last_daily_sent_at IS NULL OR np.last_daily_sent_at < CURRENT_DATE)
     `);
     return (rows as any).rows?.map((r: any) => ({ userId: r.user_id, email: r.email, firstName: r.first_name, preferredTime: r.preferred_time })) || [];
@@ -3586,7 +3586,7 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN notification_preferences np ON np.user_id = u.id::text
       WHERE u.email IS NOT NULL
         AND u.email_verified = true
-        AND COALESCE(np.weekly_email_enabled, true) = true
+        AND COALESCE(np.weekly_email_enabled, false) = true
         AND (np.last_weekly_sent_at IS NULL OR np.last_weekly_sent_at < CURRENT_DATE)
     `);
     return (rows as any).rows?.map((r: any) => ({ userId: r.user_id, email: r.email, firstName: r.first_name })) || [];
