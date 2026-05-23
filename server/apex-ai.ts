@@ -11,8 +11,8 @@ function getClient(): OpenAI | null {
   moonshotClient = new OpenAI({
     apiKey,
     baseURL: MOONSHOT_BASE_URL,
-    timeout: 60_000, // 60s client-level timeout for Moonshot web research
-    maxRetries: 2,
+    timeout: 120_000, // 120s client-level timeout — K2.6 web searches can take 90s+
+    maxRetries: 1, // Reduce retries to avoid doubling an already-slow call
   });
   return moonshotClient;
 }
@@ -235,9 +235,9 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
 
   const agentModelId = "kimi-k2.6";
   const maxIterations = options.maxIterations ?? 6;
-  const totalBudgetMs = Math.max(10_000, options.totalBudgetMs ?? 120_000);
-  // Per-iteration timeout: 60s — each iteration may involve web search + synthesis
-  const perIterationTimeoutMs = Math.max(10_000, options.perIterationTimeoutMs ?? 60_000);
+  const totalBudgetMs = Math.max(10_000, options.totalBudgetMs ?? 180_000);
+  // Per-iteration timeout: 90s — K2.6 web search + synthesis can take 60-80s
+  const perIterationTimeoutMs = Math.max(10_000, options.perIterationTimeoutMs ?? 90_000);
   const agentStartedAt = Date.now();
   const remainingBudgetMs = () => totalBudgetMs - (Date.now() - agentStartedAt);
 
@@ -325,7 +325,14 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
 
     const choice = response.choices[0];
     const message = choice?.message;
-    if (!message) break;
+    if (!message) {
+      // K2.6 occasionally returns empty choices — treat as end of conversation
+      steps.push({
+        type: "synthesizing",
+        content: "Model returned no response — finalizing with available information.",
+      });
+      break;
+    }
 
     // Strip reasoning_content before pushing back to avoid K2.6 validation errors
     const cleanMessage = { ...message };
@@ -373,7 +380,7 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
       continue; // Next iteration — model will now synthesize the search results
     }
 
-    // Model returned text content
+    // Model returned text content (or empty — handle both)
     const rawContent = (message.content || "").trim();
     const reasoning = (message as any).reasoning_content || undefined;
 
@@ -404,8 +411,20 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
       break;
     }
 
+    // Empty content with stop/length — use whatever we have
     if (finishReason === "stop" || finishReason === "length") {
-      finalContent = finalContent || rawContent || "Research complete. No additional information found.";
+      finalContent = finalContent || "Research complete. No additional information found.";
+      break;
+    }
+
+    // Empty content, no tool_calls, no stop — K2.6 returned nothing useful.
+    // This can happen when the model is confused by a complex prompt.
+    // Don't loop forever — break and return what we have.
+    if (!message.tool_calls?.length) {
+      steps.push({
+        type: "synthesizing",
+        content: "Model response was empty — finalizing with gathered information.",
+      });
       break;
     }
   }
