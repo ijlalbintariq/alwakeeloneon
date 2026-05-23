@@ -121,17 +121,52 @@ export async function chatWithApex(options: ApexChatOptions): Promise<ApexRespon
     extraBody.chat_template_kwargs = { thinking: false };
   }
 
-  const response = await client.chat.completions.create(
-    {
-      model: config.modelId,
-      messages: options.messages,
-      temperature: config.temperature,
-      max_tokens: options.maxTokens || 8192,
-      top_p: 0.95,
-      ...extraBody,
-    },
-    { signal: options.signal, maxRetries: 1 } as any,
-  );
+  let response: any;
+  try {
+    response = await client.chat.completions.create(
+      {
+        model: config.modelId,
+        messages: options.messages,
+        temperature: config.temperature,
+        max_tokens: options.maxTokens || 8192,
+        top_p: 0.95,
+        ...extraBody,
+      },
+      { signal: options.signal, maxRetries: 1 } as any,
+    );
+  } catch (err: any) {
+    // Moonshot sometimes returns 400 "model output must contain either output text or tool calls"
+    // Retry once without chat_template_kwargs which can conflict with certain prompt patterns
+    const isEmptyOutputError = err?.status === 400
+      || err?.message?.includes("model output")
+      || err?.message?.includes("cannot both be empty");
+
+    if (isEmptyOutputError) {
+      console.warn(`[chatWithApex] Moonshot 400 error, retrying without chat_template_kwargs: ${err?.message}`);
+      try {
+        response = await client.chat.completions.create(
+          {
+            model: config.modelId,
+            messages: options.messages,
+            temperature: config.temperature,
+            max_tokens: options.maxTokens || 8192,
+            top_p: 0.95,
+          },
+          { signal: options.signal, maxRetries: 1 } as any,
+        );
+      } catch (retryErr: any) {
+        console.warn(`[chatWithApex] Retry also failed: ${retryErr?.message}`);
+        // Return a graceful fallback instead of crashing
+        return {
+          content: "The AI model encountered a temporary issue processing this request. Please try again, or use Standard/Turbo mode for instant answers from our internal legal database.",
+          reasoning: undefined,
+          model: config.displayName,
+        };
+      }
+    } else {
+      throw err;
+    }
+  }
 
   const choice = response.choices[0];
   const rawContent = choice?.message?.content || "";
