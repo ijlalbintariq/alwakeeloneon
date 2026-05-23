@@ -136,26 +136,32 @@ export async function chatWithApex(options: ApexChatOptions): Promise<ApexRespon
     );
   } catch (err: any) {
     // Moonshot sometimes returns 400 "model output must contain either output text or tool calls"
-    // Retry once without chat_template_kwargs which can conflict with certain prompt patterns
     const isEmptyOutputError = err?.status === 400
       || err?.message?.includes("model output")
       || err?.message?.includes("cannot both be empty");
 
     if (isEmptyOutputError) {
-      console.warn(`[chatWithApex] Moonshot 400 error, retrying without chat_template_kwargs: ${err?.message}`);
+      // Retry with the non-thinking model (kimi-k2.6) + explicit thinking:false + lower temperature.
+      // For thinking models (apex-agent), the original call had no chat_template_kwargs,
+      // so retrying identically would fail the same way. Falling back to kimi-k2.6 ensures
+      // the retry is genuinely different.
+      const retryModelId = "kimi-k2.6";
+      const retryTemp = 0.8;
+      console.warn(`[chatWithApex] Moonshot 400 (${config.modelId}), retrying with ${retryModelId}: ${err?.message}`);
       try {
         response = await client.chat.completions.create(
           {
-            model: config.modelId,
+            model: retryModelId,
             messages: options.messages,
-            temperature: config.temperature,
+            temperature: retryTemp,
             max_tokens: options.maxTokens || 8192,
             top_p: 0.95,
+            chat_template_kwargs: { thinking: false },
           },
           { signal: options.signal, maxRetries: 1 } as any,
         );
       } catch (retryErr: any) {
-        console.warn(`[chatWithApex] Retry also failed: ${retryErr?.message}`);
+        console.warn(`[chatWithApex] Retry with ${retryModelId} also failed: ${retryErr?.message}`);
         // Return a graceful fallback instead of crashing
         return {
           content: "The AI model encountered a temporary issue processing this request. Please try again, or use Standard/Turbo mode for instant answers from our internal legal database.",
