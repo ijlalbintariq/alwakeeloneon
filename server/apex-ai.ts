@@ -287,7 +287,7 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
         {
           model: agentModelId,
           messages,
-          temperature: 0.6, // K2.6 with thinking disabled requires 0.6
+          temperature: 0.6,
           max_tokens: options.maxTokens || 8192,
           tools: [webSearchTool],
           tool_choice: "auto",
@@ -303,7 +303,41 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
         || err?.message?.includes("aborted")
         || err?.message?.includes("abort");
 
-      if (finalContent || isAbort) {
+      // Moonshot sometimes returns 400 "model output must contain either output text or tool calls"
+      // This happens when thinking:disabled conflicts with $web_search or context is too large.
+      // Retry once without thinking:disabled before giving up.
+      const isEmptyOutputError = err?.message?.includes("model output")
+        || err?.message?.includes("cannot both be empty")
+        || err?.status === 400;
+
+      if (isEmptyOutputError && iteration === 0) {
+        console.warn(`[Apex Agent] K2.6 empty-output error on iteration 0, retrying without thinking:disabled...`);
+        try {
+          const retryCtrl = new AbortController();
+          const retryTimer = setTimeout(() => retryCtrl.abort(), iterationTimeoutMs);
+          response = await (client.chat.completions.create as any)(
+            {
+              model: agentModelId,
+              messages,
+              temperature: 0.6,
+              max_tokens: options.maxTokens || 8192,
+              tools: [webSearchTool],
+              tool_choice: "auto",
+            },
+            { signal: retryCtrl.signal, maxRetries: 1 } as any,
+          );
+          clearTimeout(retryTimer);
+          // Fall through to normal processing below
+        } catch (retryErr: any) {
+          console.warn(`[Apex Agent] Retry also failed:`, retryErr?.message);
+          steps.push({
+            type: "synthesizing",
+            content: "Web research could not be completed — returning answer from internal database.",
+          });
+          finalContent = "The Apex web research agent encountered an issue. Please use the standard Al Wakeelo chat for answers from our comprehensive internal legal database, or try a simpler query.";
+          break;
+        }
+      } else if (finalContent || isAbort) {
         steps.push({
           type: "synthesizing",
           content: isAbort && !finalContent
@@ -314,8 +348,19 @@ export async function chatWithApexAgent(options: ApexAgentOptions): Promise<Apex
           finalContent = "The web research request took longer than expected. Please try a more specific question, or use the standard Al Wakeelo chat for instant answers from our internal legal database.";
         }
         break;
+      } else if (isEmptyOutputError) {
+        // Failed on a later iteration — return what we have
+        steps.push({
+          type: "synthesizing",
+          content: "Model returned empty response — finalizing with gathered information.",
+        });
+        if (!finalContent) {
+          finalContent = "The web research agent could not generate a complete response. Please try a simpler or more specific query.";
+        }
+        break;
+      } else {
+        throw err;
       }
-      throw err;
     }
     clearTimeout(timer);
     parentSignal?.removeEventListener("abort", onParentAbort);
