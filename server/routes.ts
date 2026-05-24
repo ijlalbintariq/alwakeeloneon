@@ -7791,6 +7791,24 @@ export async function registerRoutes(
         return res.status(400).json({ message: "No files uploaded" });
       }
 
+      // ── Tier-based upload and OCR limit enforcement ──
+      const uploadUserTier = normalizeTier(await storage.getUserTier(userId));
+      const uploadIsAdmin = await storage.isUserAdmin(userId);
+      const uploadTierPlan = getTierPlan(uploadUserTier);
+      if (!uploadIsAdmin) {
+        const uploadLimit = typeof uploadTierPlan.uploadLimitPerMonth === "number" ? uploadTierPlan.uploadLimitPerMonth : Infinity;
+        const uploadedThisMonth = await storage.getMonthlyDocumentUploadCount(userId);
+        if (uploadedThisMonth + files.length > uploadLimit) {
+          return res.status(429).json({
+            message: `Monthly upload limit reached (${uploadLimit} files/month on ${uploadTierPlan.label} plan). ${uploadedThisMonth} already uploaded this month.`,
+            limit: uploadLimit,
+            used: uploadedThisMonth,
+            tier: uploadUserTier,
+          });
+        }
+      }
+      const ocrPageTracker = !uploadIsAdmin ? { pagesUsed: 0 } : null;
+
       const uploaded: any[] = [];
       const errors: string[] = [];
 
@@ -7852,8 +7870,19 @@ export async function registerRoutes(
             content = "";
           }
           if (!content) {
+            // Check daily OCR page limit before attempting OCR
+            if (ocrPageTracker) {
+              const ocrLimit = typeof uploadTierPlan.ocrPagesPerDay === "number" ? uploadTierPlan.ocrPagesPerDay : Infinity;
+              if (ocrLimit !== Infinity) {
+                const dailyOcrPages = await storage.getDailyOcrPageCount(userId);
+                if (dailyOcrPages + ocrPageTracker.pagesUsed >= ocrLimit) {
+                  errors.push(`${original}: daily OCR page limit reached (${ocrLimit} pages/day on ${uploadTierPlan.label} plan)`);
+                  continue;
+                }
+              }
+            }
             try {
-              content = await extractPdfTextWithOcrFallback(stableFile, "documents-upload");
+              content = await extractPdfTextWithOcrFallback(stableFile, "documents-upload", ocrPageTracker);
             } catch (ocrErr) {
               if (isExtractionQueueFullError(ocrErr)) return sendExtractionBusy(res);
               throw ocrErr;
@@ -7925,6 +7954,11 @@ export async function registerRoutes(
           }
         }
         uploaded.push(toApiDocument(doc));
+      }
+
+      // Log OCR page usage for the day
+      if (ocrPageTracker && ocrPageTracker.pagesUsed > 0) {
+        storage.logOcrPages(userId, ocrPageTracker.pagesUsed).catch(() => {});
       }
 
       if (uploaded.length === 0) {
@@ -13872,6 +13906,8 @@ The user has attached the following documents for your reference. Analyze them c
       }));
 
       // Keep this endpoint citation-safe: return only DB-verified judgments.
+      // Log usage for free-tier bucket counting
+      await storage.logUsage(userId, "search-judgments").catch(() => {});
       res.json(verified);
     } catch (err: any) {
       console.error("Error searching judgments:", err?.message || err, err?.stack);
@@ -14176,7 +14212,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         }
 
         const aiResult = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS["judgment-summary"], { timeoutProfile: "analysis", temperature: 0.3 });
-        await logUsageCost(userId, "judgment-summary", aiResult.model, sysInstruction + userInput, aiResult.text);
+        await logUsageCost(userId, "summarize", aiResult.model, sysInstruction + userInput, aiResult.text);
         return aiResult.text;
       });
 
@@ -14229,6 +14265,8 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       }));
 
       // Return only statute data verifiable from the database.
+      // Log usage for free-tier bucket counting
+      await storage.logUsage(userId, "search-statutes").catch(() => {});
       res.json(verified);
     } catch (err) {
       console.error("Error searching statutes via AI:", err);
@@ -14592,6 +14630,7 @@ ${boundedRaw}`;
   async function extractPdfTextWithOcrFallback(
     file: Express.Multer.File,
     context: string,
+    ocrPageTracker?: { pagesUsed: number } | null,
   ): Promise<string> {
     const sourceBuffer = getUploadBufferOrThrow(file);
     const requestedLanguage = process.env.TESSERACT_OCR_LANG || process.env.TESSERACT_LANG || "eng+urd";
@@ -14612,6 +14651,7 @@ ${boundedRaw}`;
           console.log(
             `[OCR][${context}] Extracted ${text.length} chars from ${file.originalname} using ${result.pageCount} page(s), language ${result.language}.`,
           );
+          if (ocrPageTracker) ocrPageTracker.pagesUsed += result.pageCount;
           if (context === "chat-attachment") {
             const refined = await refineChatOcrTextWithStandardAI(text, file.originalname);
             return stripNullBytes(refined);
@@ -14644,6 +14684,7 @@ ${boundedRaw}`;
         console.log(
           `[OCR][${context}] Cloud OCR extracted ${text.length} chars from ${file.originalname} using ${cloudResult.pageCount} page(s), language ${cloudResult.language}.`,
         );
+        if (ocrPageTracker) ocrPageTracker.pagesUsed += cloudResult.pageCount;
         if (context === "chat-attachment") {
           const refined = await refineChatOcrTextWithStandardAI(text, file.originalname);
           return stripNullBytes(refined);

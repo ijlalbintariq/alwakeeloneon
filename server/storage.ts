@@ -544,6 +544,9 @@ export interface IStorage {
   logUsageCost(userId: string, feature: string, inputTokens: number, outputTokens: number, estimatedCost: number): Promise<void>;
   getMonthlyUsageCount(userId: string): Promise<number>;
   getMonthlyUsageCountByFeature(userId: string, feature: string): Promise<number>;
+  getMonthlyDocumentUploadCount(userId: string): Promise<number>;
+  getDailyOcrPageCount(userId: string): Promise<number>;
+  logOcrPages(userId: string, pageCount: number): Promise<void>;
   resetMonthlyUsageCount(userId: string): Promise<{ before: number; deleted: number; after: number; windowStart: Date }>;
   getUserTier(userId: string): Promise<string>;
   getCostAnalytics(): Promise<{ byFeature: Array<{ feature: string; totalQueries: number; totalInputTokens: number; totalOutputTokens: number; totalCost: string }>; totalCost: string; totalTokens: number }>;
@@ -2567,6 +2570,41 @@ export class DatabaseStorage implements IStorage {
         gte(usageTracking.createdAt, startOfMonth)
       ));
     return result?.total || 0;
+  }
+
+  async getMonthlyDocumentUploadCount(userId: string): Promise<number> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [result] = await db.select({ total: count() })
+      .from(documents)
+      .where(and(
+        eq(documents.userId, userId),
+        gte(documents.createdAt, startOfMonth)
+      ));
+    return Number(result?.total || 0);
+  }
+
+  async getDailyOcrPageCount(userId: string): Promise<number> {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const [result] = await db.select({ total: sql<number>`COALESCE(SUM(${usageTracking.inputTokens}), 0)` })
+      .from(usageTracking)
+      .where(and(
+        eq(usageTracking.userId, userId),
+        eq(usageTracking.feature, "ocr-pages" as any),
+        gte(usageTracking.createdAt, startOfDay)
+      ));
+    return Number(result?.total || 0);
+  }
+
+  async logOcrPages(userId: string, pageCount: number): Promise<void> {
+    await db.insert(usageTracking).values({
+      userId,
+      feature: "ocr-pages" as any,
+      inputTokens: pageCount,
+      outputTokens: 0,
+      estimatedCost: "0",
+    });
   }
 
   async resetMonthlyUsageCount(userId: string): Promise<{ before: number; deleted: number; after: number; windowStart: Date }> {
