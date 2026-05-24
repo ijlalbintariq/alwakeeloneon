@@ -1249,6 +1249,7 @@ type UserActivity = {
   totalTokens: number;
   totalQueries: number;
   recentSearches: Array<{ id: number; type: string; query: string; createdAt: string | null }>;
+  recentMessages: Array<{ id: number; threadId: number; threadTitle: string; content: string; createdAt: string | null }>;
 };
 
 type ThreadWithCount = {
@@ -1270,7 +1271,7 @@ function UserActivityPanel({ userId }: { userId: string }) {
   const [expandedThreadId, setExpandedThreadId] = useState<number | null>(null);
   const [threadPage, setThreadPage] = useState(0);
   const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({});
-  const [expandedSearches, setExpandedSearches] = useState<Record<number, boolean>>({});
+  const [expandedSearches, setExpandedSearches] = useState<Record<string, boolean>>({});
 
   const { data: activity, isLoading } = useQuery<UserActivity>({
     queryKey: [`/api/admin/users/${userId}/activity`],
@@ -1347,6 +1348,139 @@ function UserActivityPanel({ userId }: { userId: string }) {
           </div>
         </div>
       )}
+
+      {/* ── Unified Recent Activity Roster ──────────────────────────── */}
+      {(() => {
+        type RosterItem = {
+          key: string;
+          kind: "search" | "message";
+          icon: string;
+          label: string;
+          badgeColor: string;
+          text: string;
+          meta: string;
+          timestamp: number;
+          createdAt: string | null;
+        };
+
+        const searchItems: RosterItem[] = (activity.recentSearches || []).map(s => {
+          const icons: Record<string, string> = { judgment: "⚖️", draft: "📝", statute: "📜", contract: "📄", chat: "💬" };
+          const colors: Record<string, string> = {
+            judgment: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+            draft: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+            statute: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+            contract: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+            chat: "bg-card border-border text-muted-foreground",
+          };
+          return {
+            key: `s-${s.id}`,
+            kind: "search",
+            icon: icons[s.type] || "🔍",
+            label: `${s.type.charAt(0).toUpperCase() + s.type.slice(1)} Search`,
+            badgeColor: colors[s.type] || colors.chat,
+            text: s.query,
+            meta: "",
+            timestamp: s.createdAt ? new Date(s.createdAt).getTime() : 0,
+            createdAt: s.createdAt,
+          };
+        });
+
+        const msgItems: RosterItem[] = (activity.recentMessages || []).map(m => ({
+          key: `m-${m.id}`,
+          kind: "message",
+          icon: "💬",
+          label: "Chat Message",
+          badgeColor: "bg-primary/20 text-primary border-primary/30",
+          text: m.content,
+          meta: m.threadTitle || "Thread",
+          timestamp: m.createdAt ? new Date(m.createdAt).getTime() : 0,
+          createdAt: m.createdAt,
+        }));
+
+        const allItems = [...searchItems, ...msgItems]
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 50);
+
+        if (allItems.length === 0) return null;
+
+        return (
+          <div className="rounded-xl border border-border bg-background p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground">
+                📋 Recent Activity Roster ({allItems.length})
+              </p>
+              <span className="text-[8px] text-muted-foreground">
+                All searches, messages & prompts — chronological
+              </span>
+            </div>
+
+            <div className="space-y-1 max-h-[600px] overflow-y-auto scrollbar-hide">
+              {allItems.map((item) => {
+                const isExp = !!expandedSearches[item.key];
+                const isLong = item.text.length > 150;
+                const cleanText = item.text
+                  .replace(/```references\s*\n[\s\S]*?\n```/g, " [📎 refs] ")
+                  .replace(/```json\s*\n[\s\S]*?\n```/g, " [📎 json] ")
+                  .trim();
+
+                return (
+                  <div key={item.key} className="rounded-lg border border-border bg-card overflow-hidden">
+                    <button
+                      className="w-full text-left px-3 py-2 hover:bg-muted/30 transition-colors"
+                      onClick={() => setExpandedSearches(prev => ({ ...prev, [item.key]: !isExp }))}
+                    >
+                      <div className="flex items-start gap-2">
+                        {/* Time column */}
+                        <span className="text-[9px] text-muted-foreground flex-shrink-0 w-[100px] pt-0.5 font-mono">
+                          {item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-PK", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
+                        </span>
+
+                        {/* Icon + Badge */}
+                        <Badge className={`text-[7px] rounded-md flex-shrink-0 ${item.badgeColor}`}>
+                          {item.icon} {item.label.toUpperCase()}
+                        </Badge>
+
+                        {/* Thread title for messages */}
+                        {item.meta && (
+                          <span className="text-[9px] text-muted-foreground flex-shrink-0 bg-muted/50 px-1.5 py-0.5 rounded">
+                            {item.meta.length > 30 ? item.meta.slice(0, 30) + "…" : item.meta}
+                          </span>
+                        )}
+
+                        {/* Preview text */}
+                        <span className={`text-[11px] text-foreground flex-1 min-w-0 ${isExp ? "" : "truncate"}`}>
+                          {isExp ? "" : (isLong ? cleanText.slice(0, 150) + "…" : cleanText)}
+                        </span>
+
+                        {/* Expand indicator */}
+                        {isLong && (
+                          <span className="flex-shrink-0">
+                            {isExp ? <ChevronUp size={10} className="text-muted-foreground" /> : <ChevronDown size={10} className="text-muted-foreground" />}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+
+                    {isExp && (
+                      <div className="px-3 pb-3 border-t border-border/50 bg-muted/20">
+                        <p className="text-[11px] text-foreground leading-relaxed whitespace-pre-wrap break-words pt-2">
+                          {cleanText}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="text-[8px] text-muted-foreground">{item.text.length.toLocaleString()} chars</span>
+                          {item.kind === "message" && item.meta && (
+                            <span className="text-[8px] text-primary">Thread: {item.meta}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Threads */}
       <div className="rounded-xl border border-border bg-background p-4">

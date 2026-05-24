@@ -2966,6 +2966,44 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(searchHistory.createdAt))
       .limit(30);
 
+    // Recent user messages across all threads (for unified roster)
+    let recentMessages: Array<{ id: number; threadId: number; threadTitle: string; content: string; createdAt: Date | null }> = [];
+    if (threadIds.length > 0) {
+      const rawMsgs = await db.select({
+        id: messages.id,
+        threadId: messages.threadId,
+        content: messages.content,
+        createdAt: messages.createdAt,
+      })
+        .from(messages)
+        .where(and(inArray(messages.threadId, threadIds), eq(messages.role, "user")))
+        .orderBy(desc(messages.createdAt))
+        .limit(40);
+
+      // Map threadId to title
+      const threadTitleMap: Record<number, string> = {};
+      for (const t of userThreadRows as Array<{ id: number }>) {
+        threadTitleMap[t.id] = "";
+      }
+      if (rawMsgs.length > 0) {
+        const neededIds = [...new Set(rawMsgs.map(m => m.threadId))];
+        const titleRows = await db.select({ id: threads.id, title: threads.title })
+          .from(threads)
+          .where(inArray(threads.id, neededIds));
+        for (const t of titleRows) {
+          threadTitleMap[t.id] = t.title;
+        }
+      }
+
+      recentMessages = rawMsgs.map(m => ({
+        id: m.id,
+        threadId: m.threadId,
+        threadTitle: threadTitleMap[m.threadId] || "Untitled",
+        content: m.content,
+        createdAt: m.createdAt,
+      }));
+    }
+
     return {
       threadCount,
       messageCount,
@@ -2981,6 +3019,7 @@ export class DatabaseStorage implements IStorage {
       totalTokens,
       totalQueries,
       recentSearches,
+      recentMessages,
     };
   }
 
