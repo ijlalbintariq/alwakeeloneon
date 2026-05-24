@@ -2788,6 +2788,70 @@ function filterIrrelevantStatuteRefs(text: string, userQuery: string): string {
   }
 }
 
+/**
+ * Normalize citation spacing in AI responses.
+ * The model sometimes outputs citations without spaces (e.g. "2025SHC10")
+ * but the DB stores them with spaces ("2025 SHC 10"). This function inserts
+ * proper spacing so citations match the DB format and display correctly.
+ *
+ * Handles patterns like:
+ *   2025SHC10      → 2025 SHC 10
+ *   2023SCMR1371   → 2023 SCMR 1371
+ *   PLD2020SC456   → PLD 2020 SC 456
+ *   2024CLC37      → 2024 CLC 37
+ */
+function normalizeCitationSpacing(text: string): string {
+  if (!text) return text;
+
+  // Pakistani legal reporters
+  const reporters = "SCMR|PLD|CLC|CLD|MLD|YLR|SHC|PSC|PCrLJ|PCRLJ|PTD|PLJ|ALD|KLR|BLC|GBLR|ICR|NLR|PHC|LHC|IHC|BHCP|RCR";
+
+  // Pattern 1: YEAR + REPORTER + PAGE (no spaces)
+  // e.g., "2025SHC10", "2023SCMR1371"
+  const yearFirstRe = new RegExp(`\\b(\\d{4})(${reporters})(\\d+)\\b`, "gi");
+  text = text.replace(yearFirstRe, "$1 $2 $3");
+
+  // Pattern 2: REPORTER + YEAR + PAGE or REPORTER + YEAR + COURT + PAGE
+  // e.g., "PLD2020SC456", "PLD2016Lahore487"
+  const reporterFirstRe = new RegExp(`\\b(${reporters})(\\d{4})([A-Za-z]+)(\\d+)\\b`, "gi");
+  text = text.replace(reporterFirstRe, "$1 $2 $3 $4");
+
+  // Pattern 3: REPORTER + YEAR + PAGE (no court)
+  // e.g., "PLD2020456"
+  const reporterYearPageRe = new RegExp(`\\b(${reporters})(\\d{4})(\\d+)\\b`, "gi");
+  text = text.replace(reporterYearPageRe, "$1 $2 $3");
+
+  // Also fix citations in the references block JSON
+  const refsMatch = text.match(/```references\s*\n([\s\S]*?)\n```/);
+  if (refsMatch) {
+    try {
+      const refs = JSON.parse(refsMatch[1]);
+      const judgments: Array<{ citation?: string; [k: string]: any }> = refs.judgments || [];
+      let changed = false;
+      for (const j of judgments) {
+        if (!j.citation) continue;
+        const normalized = j.citation
+          .replace(yearFirstRe, "$1 $2 $3")
+          .replace(reporterFirstRe, "$1 $2 $3 $4")
+          .replace(reporterYearPageRe, "$1 $2 $3");
+        if (normalized !== j.citation) {
+          j.citation = normalized;
+          changed = true;
+        }
+      }
+      if (changed) {
+        refs.judgments = judgments;
+        const newRefsBlock = "```references\n" + JSON.stringify(refs) + "\n```";
+        text = text.replace(/```references\s*\n[\s\S]*?\n```/, newRefsBlock);
+      }
+    } catch {
+      // JSON parse failed — leave text unchanged
+    }
+  }
+
+  return text;
+}
+
 type RawLawRef = { name?: string; section?: string; description?: string };
 type RawJudgmentRef = { citation?: string; court?: string; description?: string };
 
@@ -13666,6 +13730,7 @@ The user has attached the following documents for your reference. Analyze them c
       // Strip chain-of-thought reasoning and irrelevant statute refs from Apex responses
       completion = stripChainOfThought(completion);
       completion = filterIrrelevantStatuteRefs(completion, latestUserPromptText);
+      completion = normalizeCitationSpacing(completion);
 
       if (moduleType === "al-wakeelo" && !directMode) {
         // Use module profile strictCitations — hardcoded true was stripping valid judgments-table citations
@@ -17413,6 +17478,7 @@ Instructions:
       // Strip chain-of-thought reasoning and irrelevant statute refs
       responseContent = stripChainOfThought(responseContent);
       responseContent = filterIrrelevantStatuteRefs(responseContent, message);
+      responseContent = normalizeCitationSpacing(responseContent);
       responseReasoning = result.reasoning;
       responseModel = result.model;
       console.log(`[AI Routing][apex] Primary Kimi(${selectedApexModel}) succeeded in ${Date.now() - apexStartedAt}ms`);
@@ -17627,6 +17693,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       // Strip chain-of-thought reasoning and irrelevant statute refs
       safeContent = stripChainOfThought(safeContent);
       safeContent = filterIrrelevantStatuteRefs(safeContent, message);
+      safeContent = normalizeCitationSpacing(safeContent);
       safeContent = enforcePakistanLawOnlyOutput(safeContent);
       safeContent = (await enforceInternalCaseCitationIntegrity(safeContent, {
         placeholder: "",
