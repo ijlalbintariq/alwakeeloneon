@@ -2986,7 +2986,7 @@ export class DatabaseStorage implements IStorage {
         threadTitleMap[t.id] = "";
       }
       if (rawMsgs.length > 0) {
-        const neededIds = [...new Set(rawMsgs.map(m => m.threadId))];
+        const neededIds = [...new Set(rawMsgs.map((m: { threadId: number }) => m.threadId))] as number[];
         const titleRows = await db.select({ id: threads.id, title: threads.title })
           .from(threads)
           .where(inArray(threads.id, neededIds));
@@ -2995,7 +2995,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      recentMessages = rawMsgs.map(m => ({
+      recentMessages = rawMsgs.map((m: any) => ({
         id: m.id,
         threadId: m.threadId,
         threadTitle: threadTitleMap[m.threadId] || "Untitled",
