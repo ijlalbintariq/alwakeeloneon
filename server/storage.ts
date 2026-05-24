@@ -3714,7 +3714,7 @@ export class DatabaseStorage implements IStorage {
     if (existing.length > 0) {
       await db.update(notificationPreferences).set({ lastDailySentAt: new Date() } as any).where(eq(notificationPreferences.userId, userId));
     } else {
-      await db.insert(notificationPreferences).values({ userId, lastDailySentAt: new Date() } as any);
+      await db.insert(notificationPreferences).values({ userId, dailyEmailEnabled: false, weeklyEmailEnabled: false, lastDailySentAt: new Date() } as any);
     }
   }
 
@@ -3723,7 +3723,7 @@ export class DatabaseStorage implements IStorage {
     if (existing.length > 0) {
       await db.update(notificationPreferences).set({ lastWeeklySentAt: new Date() } as any).where(eq(notificationPreferences.userId, userId));
     } else {
-      await db.insert(notificationPreferences).values({ userId, lastWeeklySentAt: new Date() } as any);
+      await db.insert(notificationPreferences).values({ userId, dailyEmailEnabled: false, weeklyEmailEnabled: false, lastWeeklySentAt: new Date() } as any);
     }
   }
 
@@ -4431,14 +4431,30 @@ export async function ensureSearchIndexes(): Promise<void> {
         CREATE TABLE IF NOT EXISTS notification_preferences (
           id serial PRIMARY KEY,
           user_id text NOT NULL UNIQUE,
-          daily_email_enabled boolean NOT NULL DEFAULT true,
-          weekly_email_enabled boolean NOT NULL DEFAULT true,
+          daily_email_enabled boolean NOT NULL DEFAULT false,
+          weekly_email_enabled boolean NOT NULL DEFAULT false,
           preferred_time text NOT NULL DEFAULT '19:00',
           timezone text NOT NULL DEFAULT 'Asia/Karachi',
           last_daily_sent_at timestamp,
           last_weekly_sent_at timestamp,
           created_at timestamp DEFAULT now()
         )
+      `,
+    },
+    {
+      label: "disable_diary_emails_default",
+      stmt: sql`
+        ALTER TABLE notification_preferences
+          ALTER COLUMN daily_email_enabled SET DEFAULT false,
+          ALTER COLUMN weekly_email_enabled SET DEFAULT false
+      `,
+    },
+    {
+      label: "disable_all_diary_emails",
+      stmt: sql`
+        UPDATE notification_preferences
+        SET daily_email_enabled = false, weekly_email_enabled = false
+        WHERE daily_email_enabled = true OR weekly_email_enabled = true
       `,
     },
     // ── Payment Records (Safepay) ──────────────────────────────────────

@@ -516,8 +516,8 @@ export const diaryEntries = pgTable("diary_entries", {
 export const notificationPreferences = pgTable("notification_preferences", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull().unique(),
-  dailyEmailEnabled: boolean("daily_email_enabled").notNull().default(true),
-  weeklyEmailEnabled: boolean("weekly_email_enabled").notNull().default(true),
+  dailyEmailEnabled: boolean("daily_email_enabled").notNull().default(false),
+  weeklyEmailEnabled: boolean("weekly_email_enabled").notNull().default(false),
   preferredTime: text("preferred_time").notNull().default("19:00"),
   timezone: text("timezone").notNull().default("Asia/Karachi"),
   lastDailySentAt: timestamp("last_daily_sent_at"),
