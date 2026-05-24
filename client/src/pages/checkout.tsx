@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, ChevronRight, CreditCard, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronRight, CreditCard, Loader2, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -29,6 +29,7 @@ export default function CheckoutPage() {
   );
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanKey>(initialPlan.key);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(initialCycle);
+  const [autoRenew, setAutoRenew] = useState(true);
 
   // Detect cancellation redirect from Safepay
   useEffect(() => {
@@ -64,6 +65,7 @@ export default function CheckoutPage() {
       const res = await apiRequest("POST", "/api/safepay/create-session", {
         planKey: selectedPlan,
         billingCycle,
+        autoRenew,
       });
       return res.json();
     },
@@ -263,6 +265,37 @@ export default function CheckoutPage() {
                     <span className="text-sm font-bold text-foreground">Total</span>
                     <span className="text-lg font-bold text-primary">{selectedPlanPricing.totalLabel}</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Auto-Renew Toggle */}
+              <div className="rounded-2xl border border-border bg-background p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <RefreshCw size={15} className="text-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Auto-Renew Subscription</p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                        We'll send you a payment link before your plan expires so you can renew seamlessly.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={autoRenew}
+                    onClick={() => setAutoRenew(!autoRenew)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      autoRenew ? "bg-primary" : "bg-muted"
+                    }`}
+                    data-testid="checkout-auto-renew-toggle"
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        autoRenew ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
 

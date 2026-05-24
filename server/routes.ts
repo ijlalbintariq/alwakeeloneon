@@ -10364,6 +10364,7 @@ RAG POLICY (STRICT):
         subscriptionCycle,
         subscriptionStartAt: profile.subscriptionStartAt ? profile.subscriptionStartAt.toISOString() : null,
         subscriptionEndAt: profile.subscriptionEndAt ? profile.subscriptionEndAt.toISOString() : null,
+        autoRenew: Boolean(profile.autoRenew),
         monthlyLimit: limits.monthlyQueries,
         used,
         remaining,
@@ -18172,7 +18173,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         return res.status(503).json({ message: "Payment gateway is not configured" });
       }
 
-      const { planKey, billingCycle } = req.body;
+      const { planKey, billingCycle, autoRenew } = req.body;
       if (!planKey || !billingCycle) {
         return res.status(400).json({ message: "planKey and billingCycle are required" });
       }
@@ -18210,9 +18211,10 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         billingCycle,
         amountPkr,
         status: "pending",
+        autoRenew: Boolean(autoRenew),
       });
 
-      console.log(`[Safepay] Created payment session: tracker=${session.tracker}, plan=${planKey}, cycle=${billingCycle}, amount=PKR ${amountPkr}`);
+      console.log(`[Safepay] Created payment session: tracker=${session.tracker}, plan=${planKey}, cycle=${billingCycle}, amount=PKR ${amountPkr}, autoRenew=${!!autoRenew}`);
 
       res.json({ checkoutUrl, tracker: session.tracker });
     } catch (err: any) {
@@ -18261,6 +18263,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
           subscriptionCycle: normalizedCycle,
           subscriptionStartAt: cycleWindow.startAt,
           subscriptionEndAt: cycleWindow.endAt,
+          autoRenew: Boolean(paymentRecord.autoRenew),
         });
 
         console.log(`[Safepay Webhook] Payment completed & subscription activated: tracker=${tracker}, user=${paymentRecord.userId}, plan=${paymentRecord.planKey}`);
@@ -18328,6 +18331,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
           subscriptionCycle: normalizedCycle,
           subscriptionStartAt: cycleWindow.startAt,
           subscriptionEndAt: cycleWindow.endAt,
+          autoRenew: Boolean(paymentRecord.autoRenew),
         });
 
         console.log(`[Safepay Verify] Payment verified & subscription activated: tracker=${tracker}, plan=${paymentRecord.planKey}`);
@@ -18477,6 +18481,19 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     }).catch(() => {});
   }, 24 * 60 * 60 * 1000);
   cacheCleanupTimer.unref?.();
+
+  // ── Subscription expiry enforcement (hourly) ──────────────────────────
+
+  storage.downgradeExpiredSubscriptions().then(count => {
+    if (count > 0) console.log(`[Subscription] Downgraded ${count} expired subscriptions on startup`);
+  }).catch(() => {});
+
+  const subscriptionExpiryTimer = setInterval(() => {
+    storage.downgradeExpiredSubscriptions().then(count => {
+      if (count > 0) console.log(`[Subscription] Downgraded ${count} expired subscriptions`);
+    }).catch(() => {});
+  }, 60 * 60 * 1000); // Every hour
+  subscriptionExpiryTimer.unref?.();
 
   return httpServer;
 }

@@ -37,7 +37,7 @@ import {
   type PaymentRecord, type InsertPaymentRecord,
 } from "@shared/schema";
 import { users, passwordResetTokens, emailVerificationTokens, type User } from "@shared/models/auth";
-import { eq, desc, asc, or, ilike, sql, and, lt, gte, lte, count, inArray } from "drizzle-orm";
+import { eq, desc, asc, or, ilike, sql, and, lt, gte, lte, ne, count, inArray, isNotNull } from "drizzle-orm";
 
 export type DocumentInsights = {
   totalDocuments: number;
@@ -549,6 +549,7 @@ export interface IStorage {
   logOcrPages(userId: string, pageCount: number): Promise<void>;
   resetMonthlyUsageCount(userId: string): Promise<{ before: number; deleted: number; after: number; windowStart: Date }>;
   getUserTier(userId: string): Promise<string>;
+  downgradeExpiredSubscriptions(): Promise<number>;
   getCostAnalytics(): Promise<{ byFeature: Array<{ feature: string; totalQueries: number; totalInputTokens: number; totalOutputTokens: number; totalCost: string }>; totalCost: string; totalTokens: number }>;
 
   getAllUsers(): Promise<User[]>;
@@ -561,6 +562,7 @@ export interface IStorage {
       subscriptionCycle?: BillingCycle;
       subscriptionStartAt?: Date | null;
       subscriptionEndAt?: Date | null;
+      autoRenew?: boolean;
     },
   ): Promise<User | undefined>;
   updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<User | undefined>;
@@ -2641,14 +2643,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserTier(userId: string): Promise<string> {
-    const [user] = await db.select({ tier: users.subscriptionTier })
+    const [user] = await db.select({
+      tier: users.subscriptionTier,
+      subscriptionEndAt: users.subscriptionEndAt,
+    })
       .from(users)
       .where(eq(users.id, userId));
     const rawTier = (user?.tier || "free").toLowerCase();
-    if (rawTier === "free" || rawTier === "standard" || rawTier === "pro" || rawTier === "chamber" || rawTier === "enterprise") {
-      return rawTier;
+    if (rawTier === "free") return "free";
+    if (rawTier !== "standard" && rawTier !== "pro" && rawTier !== "chamber" && rawTier !== "enterprise") {
+      return "free";
     }
-    return "free";
+
+    // Check if subscription has expired
+    if (user?.subscriptionEndAt && new Date(user.subscriptionEndAt) < new Date()) {
+      // Lazy downgrade: update DB in background so future lookups are fast
+      db.update(users)
+        .set({ subscriptionTier: "free", updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .then(() => {
+          console.log(`[Subscription] Auto-downgraded user ${userId} from ${rawTier} to free (expired ${user.subscriptionEndAt?.toISOString()})`);
+        })
+        .catch((err: any) => {
+          console.warn(`[Subscription] Failed to auto-downgrade user ${userId}:`, err?.message || err);
+        });
+      return "free";
+    }
+
+    return rawTier;
+  }
+
+  async downgradeExpiredSubscriptions(): Promise<number> {
+    const now = new Date();
+    const result = await db.update(users)
+      .set({ subscriptionTier: "free", updatedAt: now })
+      .where(and(
+        ne(users.subscriptionTier, "free"),
+        isNotNull(users.subscriptionEndAt),
+        lte(users.subscriptionEndAt, now)
+      ))
+      .returning({ id: users.id, tier: users.subscriptionTier });
+    return result.length;
   }
 
   // ── AI Output Quality Monitoring ──────────────────────────────────────
@@ -2833,6 +2868,7 @@ export class DatabaseStorage implements IStorage {
       subscriptionCycle?: BillingCycle;
       subscriptionStartAt?: Date | null;
       subscriptionEndAt?: Date | null;
+      autoRenew?: boolean;
     },
   ): Promise<User | undefined> {
     const patch: {
@@ -2840,6 +2876,7 @@ export class DatabaseStorage implements IStorage {
       subscriptionCycle?: BillingCycle;
       subscriptionStartAt?: Date | null;
       subscriptionEndAt?: Date | null;
+      autoRenew?: boolean;
       updatedAt: Date;
     } = {
       updatedAt: new Date(),
@@ -2856,6 +2893,9 @@ export class DatabaseStorage implements IStorage {
     }
     if (data.subscriptionEndAt !== undefined) {
       patch.subscriptionEndAt = data.subscriptionEndAt;
+    }
+    if (data.autoRenew !== undefined) {
+      patch.autoRenew = data.autoRenew;
     }
 
     const [updated] = await db

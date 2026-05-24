@@ -536,6 +536,7 @@ export const paymentRecords = pgTable("payment_records", {
   billingCycle: text("billing_cycle").notNull(),
   amountPkr: integer("amount_pkr").notNull(),
   status: text("status", { enum: ["pending", "completed", "failed", "refunded"] }).notNull().default("pending"),
+  autoRenew: boolean("auto_renew").default(false).notNull(),
   safepayResponse: jsonb("safepay_response"),
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
