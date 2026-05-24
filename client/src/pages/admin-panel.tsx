@@ -1270,6 +1270,7 @@ function UserActivityPanel({ userId }: { userId: string }) {
   const [expandedThreadId, setExpandedThreadId] = useState<number | null>(null);
   const [threadPage, setThreadPage] = useState(0);
   const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({});
+  const [expandedSearches, setExpandedSearches] = useState<Record<number, boolean>>({});
 
   const { data: activity, isLoading } = useQuery<UserActivity>({
     queryKey: [`/api/admin/users/${userId}/activity`],
@@ -1390,18 +1391,25 @@ function UserActivityPanel({ userId }: { userId: string }) {
                     {messagesLoading ? (
                       <div className="flex items-center justify-center py-4"><Loader2 className="animate-spin text-primary" size={14} /></div>
                     ) : (
-                      (threadMessages || []).map((m) => (
+                      (threadMessages || []).map((m) => {
+                        // Strip references block and clean up for admin readability
+                        const cleanContent = m.content
+                          .replace(/```references\s*\n[\s\S]*?\n```/g, "\n[📎 References block — see live chat for details]\n")
+                          .replace(/```json\s*\n[\s\S]*?\n```/g, "\n[📎 JSON data block]\n")
+                          .trim();
+                        return (
                         <div key={m.id} className={`rounded-lg px-3 py-2 ${m.role === "user" ? "bg-primary/10 border border-primary/20" : m.role === "assistant" ? "bg-muted border border-border" : "bg-card border border-border opacity-50"}`}>
                           <div className="flex items-center gap-2 mb-1">
                             <Badge className={`text-[8px] rounded-md ${m.role === "user" ? "bg-primary/20 text-primary border-primary/30" : m.role === "assistant" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-card text-muted-foreground border-border"}`}>
                               {m.role.toUpperCase()}
                             </Badge>
                             <span className="text-[9px] text-muted-foreground">{fmtDate(m.createdAt)}</span>
+                            <span className="text-[8px] text-muted-foreground/50">{m.content.length.toLocaleString()} chars</span>
                           </div>
                           {(() => {
                             const isExpanded = !!expandedMessages[m.id];
-                            const showToggle = m.content.length > 800;
-                            const displayText = isExpanded ? m.content : (showToggle ? m.content.slice(0, 800) + "…" : m.content);
+                            const showToggle = cleanContent.length > 2000;
+                            const displayText = isExpanded ? cleanContent : (showToggle ? cleanContent.slice(0, 2000) + "…" : cleanContent);
                             return (
                               <>
                                 <p className="text-[11px] text-foreground leading-relaxed whitespace-pre-wrap break-words">
@@ -1413,14 +1421,15 @@ function UserActivityPanel({ userId }: { userId: string }) {
                                     onClick={() => setExpandedMessages(prev => ({ ...prev, [m.id]: !isExpanded }))}
                                     className="text-[10px] text-primary font-black uppercase tracking-wider mt-1.5 hover:underline focus:outline-none flex items-center gap-1"
                                   >
-                                    {isExpanded ? "Show Less" : "Show More"}
+                                    {isExpanded ? "Show Less" : `Show More (${cleanContent.length.toLocaleString()} chars)`}
                                   </button>
                                 )}
                               </>
                             );
                           })()}
                         </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 )}
@@ -1433,20 +1442,61 @@ function UserActivityPanel({ userId }: { userId: string }) {
         )}
       </div>
 
-      {/* Recent Searches */}
+      {/* Recent Searches — Judgment, Draft, Statute, Contract, Chat */}
       {activity.recentSearches.length > 0 && (
         <div className="rounded-xl border border-border bg-background p-4">
-          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground mb-3">Recent Searches</p>
+          <p className="text-[9px] uppercase tracking-[0.2em] font-black text-muted-foreground mb-3">
+            Recent Searches ({activity.recentSearches.length})
+          </p>
           <div className="space-y-1.5">
-            {activity.recentSearches.map((s) => (
-              <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-1.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Badge className="text-[8px] bg-card border-border text-muted-foreground rounded-md flex-shrink-0">{s.type}</Badge>
-                  <span className="text-[11px] text-foreground truncate">{s.query}</span>
+            {activity.recentSearches.map((s) => {
+              const isExpanded = !!expandedSearches[s.id];
+              const isLong = s.query.length > 120;
+              const typeBadgeColor: Record<string, string> = {
+                judgment: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                draft: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+                statute: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                contract: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+                chat: "bg-card border-border text-muted-foreground",
+              };
+              const typeIcon: Record<string, string> = {
+                judgment: "⚖️",
+                draft: "📝",
+                statute: "📜",
+                contract: "📄",
+                chat: "💬",
+              };
+              return (
+                <div key={s.id} className="rounded-lg border border-border bg-card overflow-hidden">
+                  <button
+                    className="w-full text-left px-3 py-2 hover:bg-muted/30 transition-colors"
+                    onClick={() => setExpandedSearches(prev => ({ ...prev, [s.id]: !isExpanded }))}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Badge className={`text-[8px] rounded-md flex-shrink-0 ${typeBadgeColor[s.type] || typeBadgeColor.chat}`}>
+                          {typeIcon[s.type] || "💬"} {s.type.toUpperCase()}
+                        </Badge>
+                        <span className={`text-[11px] text-foreground ${isExpanded ? "" : "truncate"}`}>
+                          {isExpanded ? "" : (isLong ? s.query.slice(0, 120) + "…" : s.query)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-[9px] text-muted-foreground">{fmtDate(s.createdAt)}</span>
+                        {isLong && (isExpanded ? <ChevronUp size={10} className="text-muted-foreground" /> : <ChevronDown size={10} className="text-muted-foreground" />)}
+                      </div>
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <div className="px-3 pb-2.5 border-t border-border/50 bg-muted/20">
+                      <p className="text-[11px] text-foreground leading-relaxed whitespace-pre-wrap break-words pt-2">
+                        {s.query}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <span className="text-[9px] text-muted-foreground flex-shrink-0">{fmtDate(s.createdAt)}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
