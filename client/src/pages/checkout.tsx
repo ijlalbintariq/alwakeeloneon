@@ -298,19 +298,28 @@ export default function CheckoutPage() {
                   <CreditCard size={13} className="text-muted-foreground" />
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cards</span>
                 </div>
-                <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">JazzCash</span>
-                </div>
-                <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">EasyPaisa</span>
-                </div>
+              </div>
+
+              {/* JazzCash / EasyPaisa Notice */}
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-center">
+                <p className="text-sm font-extrabold text-foreground leading-relaxed">
+                  For JazzCash and EasyPaisa payments, kindly contact us on WhatsApp:{" "}
+                  <a
+                    href="https://wa.me/923358341897"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline hover:no-underline"
+                  >
+                    0335 8341897
+                  </a>
+                </p>
               </div>
 
               {/* Pay Now Button */}
               {selectedPlan === "enterprise" ? (
                 <a
                   href="mailto:support@alwakeelo.com?subject=Enterprise%20Plan%20Inquiry"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-xs font-black uppercase tracking-widest text-foreground hover:bg-primary/90 transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/90 transition-colors"
                   data-testid="checkout-contact-enterprise"
                 >
                   Contact Chamber for Enterprise
@@ -320,7 +329,7 @@ export default function CheckoutPage() {
                   type="button"
                   onClick={handlePayNow}
                   disabled={paymentMutation.isPending}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-xs font-black uppercase tracking-widest text-foreground hover:bg-primary/90 transition-colors disabled:opacity-70"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-70"
                   data-testid="checkout-pay-now"
                 >
                   {paymentMutation.isPending ? (

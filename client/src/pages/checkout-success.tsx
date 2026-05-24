@@ -150,7 +150,7 @@ export default function CheckoutSuccessPage() {
               <button
                 type="button"
                 onClick={() => navigate("/settings")}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-foreground hover:bg-primary/90 transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/90 transition-colors"
                 data-testid="checkout-success-settings"
               >
                 <ArrowRight size={14} />
@@ -187,7 +187,7 @@ export default function CheckoutSuccessPage() {
               <button
                 type="button"
                 onClick={() => navigate(`/checkout?plan=${data?.planKey || "pro"}&cycle=${data?.billingCycle || "monthly"}`)}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-foreground hover:bg-primary/90 transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/90 transition-colors"
                 data-testid="checkout-failed-retry"
               >
                 Try Again
