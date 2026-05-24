@@ -382,10 +382,10 @@ export function PublicLegalChatWidget() {
                       Phone:{" "}
                       <a
                         className="underline hover:text-foreground"
-                        href="tel:00923096875797"
+                        href="tel:00923358341897"
                         onClick={() => void trackPublicEvent("contact_click", { channel: "phone" })}
                       >
-                        00923096875797
+                        00923358341897
                       </a>
                     </p>
                   </div>

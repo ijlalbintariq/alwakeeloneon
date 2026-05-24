@@ -202,7 +202,7 @@ export default function CheckoutSuccessPage() {
                   <Mail size={14} /> Email Support
                 </a>
                 <a
-                  href="tel:00923096875797"
+                  href="tel:00923358341897"
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-xs font-black uppercase tracking-widest text-foreground hover:border-primary hover:text-primary transition-colors"
                   data-testid="checkout-failed-call"
                 >

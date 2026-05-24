@@ -179,8 +179,8 @@ export default function LandingPage() {
                 <a href="mailto:support@alwakeelo.com" className="inline-flex items-center gap-2 text-sm text-primary hover:text-foreground transition-colors">
                   <Mail size={14} /> support@alwakeelo.com
                 </a>
-                <a href="tel:00923096875797" className="inline-flex items-center gap-2 text-sm text-primary hover:text-foreground transition-colors">
-                  <PhoneCall size={14} /> 00923096875797
+                <a href="tel:00923358341897" className="inline-flex items-center gap-2 text-sm text-primary hover:text-foreground transition-colors">
+                  <PhoneCall size={14} /> 00923358341897
                 </a>
               </div>
             </div>
@@ -568,7 +568,7 @@ export default function LandingPage() {
               <Mail size={15} /> Email Chamber
             </a>
             <a
-              href="tel:00923096875797"
+              href="tel:00923358341897"
               className="px-8 py-3.5 border border-border text-foreground rounded-2xl text-sm font-bold hover:border-primary hover:text-primary transition-all inline-flex items-center gap-2"
             >
               <PhoneCall size={15} /> Call Chamber
