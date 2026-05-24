@@ -106,6 +106,7 @@ const TOKEN_LIMITS = {
   "search-statutes": 2048,
   summarize: 3072,
   brief: 6144,
+  "judgment-summary": 8192,
   draft: 16384,
   "contract-drafting": 4096,
 };
@@ -13878,6 +13879,57 @@ The user has attached the following documents for your reference. Analyze them c
     }
   });
 
+  /** Smart excerpt for judgment summaries — prioritises HELD/ORDER sections over naive truncation */
+  function extractSmartJudgmentExcerpt(text: string, budget = 30000): string {
+    if (text.length <= budget) return text;
+
+    // Priority 1: Find HELD / ORDER / DECISION / JUDGMENT section (usually at end)
+    const heldPatterns = [
+      /\b(?:HELD|HOLDING|PER CURIAM)\s*[:\-\u2013\u2014]?\s*([\s\S]{50,})/i,
+      /\b(?:ORDER|FINAL ORDER|SHORT ORDER)\s*[:\-\u2013\u2014]?\s*([\s\S]{50,})/i,
+      /\b(?:JUDGMENT|DECISION|DECREE)\s*[:\-\u2013\u2014]?\s*([\s\S]{50,})/i,
+      /\b(?:RATIO DECIDENDI)\s*[:\-\u2013\u2014]?\s*([\s\S]{50,})/i,
+    ];
+
+    let heldSection = "";
+    for (const pattern of heldPatterns) {
+      const match = text.match(pattern);
+      if (match && match[1] && match[1].length > 100) {
+        heldSection = match[1].slice(0, 8000);
+        break;
+      }
+    }
+
+    // Priority 2: Headnotes section
+    let headnoteSection = "";
+    const headnoteMatch = text.match(/\b(?:HEADNOTES?|HEAD\s*NOTES?)\s*[:\-\u2013\u2014]?\s*([\s\S]{50,5000}?)(?=\n{2,}|\b(?:FACTS|JUDGMENT|HELD)\b)/i);
+    if (headnoteMatch) {
+      headnoteSection = headnoteMatch[1].slice(0, 3000);
+    }
+
+    // Build excerpt: opening + headnotes + held/order + middle fill
+    const openingBudget = heldSection ? 10000 : 15000;
+    const opening = text.slice(0, openingBudget);
+
+    let combined = opening;
+    if (headnoteSection && !opening.includes(headnoteSection.slice(0, 100))) {
+      combined += "\n\n===== HEADNOTES =====\n" + headnoteSection;
+    }
+    if (heldSection && !opening.includes(heldSection.slice(0, 100))) {
+      combined += "\n\n===== HELD / ORDER =====\n" + heldSection;
+    }
+
+    // Fill remaining budget from the middle of the document (court's analysis)
+    if (combined.length < budget && text.length > openingBudget) {
+      const remaining = budget - combined.length;
+      const midStart = Math.floor(text.length * 0.4);
+      const midSection = text.slice(midStart, midStart + remaining);
+      combined += "\n\n===== COURT'S ANALYSIS =====\n" + midSection;
+    }
+
+    return combined.slice(0, budget);
+  }
+
   app.post(api.ai.judgmentSummary.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -13928,7 +13980,11 @@ The user has attached the following documents for your reference. Analyze them c
             bestRow = row;
           }
         }
-        if (bestRow) {
+        // Require minimum confidence score to avoid feeding the wrong judgment to the AI.
+        // Citation-match alone gives +120; title-match gives +80. A threshold of 30
+        // prevents contamination from unrelated low-score matches.
+        const MIN_SOURCE_MATCH_SCORE = 30;
+        if (bestRow && bestScore >= MIN_SOURCE_MATCH_SCORE) {
           fullText = await loadCaseLawSourceText(bestRow, userId, { includeMetadataFallback: false });
         }
 
@@ -13984,7 +14040,7 @@ The user has attached the following documents for your reference. Analyze them c
 
       const hasSourceText = !!fullText;
       const uniqueKey = `${citation}::${title}::${court || ""}`;
-      const cacheKey = `judgment-summary-v3::${uniqueKey}`;
+      const cacheKey = `judgment-summary-v4::${uniqueKey}`;
       const { content: aiSummary, fromCache } = await getCachedOrCall("judgment-summary", cacheKey, async () => {
         const contextInfo = briefSummary ? `\nBrief Summary: ${briefSummary}` : "";
         const courtInfo = court ? `\nCourt: ${court}` : "";
@@ -14029,10 +14085,49 @@ Provide a detailed analysis using this structure:
 ### Practical Implications
 - What practitioners should note from this specific ruling
 
-NO EMOJIS. Be precise. Only state what the judgment text actually says.`;
+NO EMOJIS. Be precise. Only state what the judgment text actually says.${knowledgeContext}`;
 
-          userInput = `Analyze this judgment based EXCLUSIVELY on the full text provided:\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}\n\n===== FULL JUDGMENT TEXT (VERIFIED SOURCE) =====\n${fullText!.substring(0, 10000)}\n===== END OF JUDGMENT TEXT =====`;
+          userInput = `Analyze this judgment based EXCLUSIVELY on the full text provided:\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}\n\n===== FULL JUDGMENT TEXT (VERIFIED SOURCE) =====\n${extractSmartJudgmentExcerpt(fullText!)}\n===== END OF JUDGMENT TEXT =====`;
+        } else if (briefSummary && briefSummary.trim().length > 50) {
+          // Tier 2: We have the headnote/summary from the database — use it as semi-verified source
+          sysInstruction = `You are Al Wakeelo, a Pakistani legal research assistant. Today's date is ${new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}.
+
+You have been provided with the HEADNOTE / SUMMARY of a Pakistani court judgment from our database. While the full judgment text is not available, the headnote contains the key legal points and holding of the case.
+
+YOUR TASK: Provide a focused legal analysis based on the headnote/summary provided below. You may supplement with your knowledge of Pakistani law, but clearly distinguish between what comes from the headnote and what is your supplementary analysis.
+
+RULES:
+- Start by analyzing the specific legal points from the provided headnote
+- Identify the applicable statutory provisions mentioned or implied
+- Discuss the legal principles established
+- You may add relevant context from established Pakistani law, but label it as "Supplementary Analysis"
+- Do NOT invent specific case facts, arguments, or reasoning not present in the headnote
+- Do NOT pretend you have the full judgment text
+- STAY STRICTLY within the relevant area of law
+
+Use this structure:
+
+### Case Summary (from Database Headnote)
+- Key legal points as stated in the headnote
+
+### Applicable Statutory Framework
+- Statutes and sections directly relevant to this case
+
+### Legal Principles Established
+- Ratio decidendi and legal principles from the headnote
+
+### Supplementary Analysis
+- Additional context from established Pakistani law on this topic
+- Related landmark judgments you are confident about
+
+### Practical Implications
+- What practitioners should note
+
+NO EMOJIS. Be precise.${knowledgeContext}`;
+
+          userInput = `Analyze this judgment based on its database headnote/summary:\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}\n\n===== CASE HEADNOTE (FROM DATABASE) =====\n${briefSummary}\n===== END OF HEADNOTE =====`;
         } else {
+          // Tier 3: No source text and no meaningful headnote — general area-of-law analysis
           sysInstruction = `You are Al Wakeelo, a Pakistani legal research assistant. Today's date is ${new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}.
 
 IMPORTANT: You do NOT have the actual text of this judgment. You only have the citation and title. You must be COMPLETELY HONEST about this limitation.
@@ -14075,12 +14170,12 @@ Use this structure:
 - What is the settled legal position on this topic in Pakistani law
 - Any notable developments or trends
 
-NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference unrelated areas of law.`;
+NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference unrelated areas of law.${knowledgeContext}`;
 
           userInput = `Provide a general legal analysis around the TOPIC of this judgment. Remember: you do NOT have the actual judgment text, so do NOT fabricate case-specific details. Stay strictly within the relevant area of law.\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}`;
         }
 
-        const aiResult = await callStandardAISimple(sysInstruction, userInput, 6144, { timeoutProfile: "analysis", temperature: 0.3 });
+        const aiResult = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS["judgment-summary"], { timeoutProfile: "analysis", temperature: 0.3 });
         await logUsageCost(userId, "judgment-summary", aiResult.model, sysInstruction + userInput, aiResult.text);
         return aiResult.text;
       });
@@ -14092,8 +14187,21 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         verified: hasSourceText,
       });
     } catch (err) {
-      console.error("Error generating judgment summary:", err);
-      res.status(500).json({ message: "Failed to generate judgment summary" });
+      const detail = getErrorMessage(err);
+      console.error("Error generating judgment summary:", detail, err);
+      if (/timed out|timeout/i.test(detail)) {
+        return res.status(504).json({
+          message: "Analysis is taking longer than expected. This judgment may be very large. Please try again.",
+          retryable: true,
+        });
+      }
+      if (/empty model output/i.test(detail)) {
+        return res.status(503).json({
+          message: "AI model returned empty output. Please retry.",
+          retryable: true,
+        });
+      }
+      res.status(500).json({ message: "Failed to generate judgment summary. Please try again.", retryable: true });
     }
   });
 

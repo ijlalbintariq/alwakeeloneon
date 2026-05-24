@@ -230,6 +230,7 @@ export default function AdminPanelPage() {
 
 const FEATURE_LABELS: Record<string, string> = {
   chat: "Chat",
+  "chat-apex": "Chat Apex",
   "search-judgments": "Judgment Search",
   "search-statutes": "Statute Search",
   summarize: "Summarize",
@@ -237,6 +238,7 @@ const FEATURE_LABELS: Record<string, string> = {
   draft: "Draft",
   contract: "Contract",
   "contract-drafting": "Contract Draft",
+  "judgment-summary": "Judgment Summary",
 };
 
 const ADMIN_PAGE_SIZE = 50;
@@ -1711,7 +1713,9 @@ function OutputQualitySection() {
   queryParams.set("offset", String(page * 20));
   if (featureFilter) queryParams.set("feature", featureFilter);
   if (scoreFilter === "poor") { queryParams.set("maxScore", "2"); }
+  else if (scoreFilter === "fair") { queryParams.set("minScore", "3"); queryParams.set("maxScore", "3"); }
   else if (scoreFilter === "good") { queryParams.set("minScore", "4"); }
+  else if (scoreFilter === "excellent") { queryParams.set("minScore", "5"); }
 
   const { data: logsData, isLoading: logsLoading } = useQuery<{ items: QualityLogItem[]; total: number }>({
     queryKey: ["/api/admin/output-quality", page, featureFilter, scoreFilter],
@@ -1742,6 +1746,9 @@ function OutputQualitySection() {
                 <p className={`text-2xl font-bold ${stats.avgScore >= 4 ? "text-emerald-400" : stats.avgScore >= 3 ? "text-yellow-400" : "text-red-400"}`}>
                   {stats.avgScore}/5
                 </p>
+                <span className="text-[9px] text-muted-foreground mt-1 block">
+                  {stats.avgScore >= 4.5 ? "Excellent" : stats.avgScore >= 4 ? "Good" : stats.avgScore >= 3 ? "Needs Improvement" : "Critical"}
+                </span>
               </CardContent>
             </Card>
             <Card className="bg-card border-border rounded-[2rem]">
@@ -1750,6 +1757,9 @@ function OutputQualitySection() {
                 <p className="text-2xl font-bold text-blue-400">
                   {stats.totalLogs > 0 ? Math.round((((stats.scoreDistribution || {})[4] || 0) + ((stats.scoreDistribution || {})[5] || 0)) / stats.totalLogs * 100) : 0}%
                 </p>
+                <span className="text-[9px] text-muted-foreground mt-1 block">
+                  {(((stats.scoreDistribution || {})[4] || 0) + ((stats.scoreDistribution || {})[5] || 0)).toLocaleString()} outputs scored 4-5
+                </span>
               </CardContent>
             </Card>
             <Card className="bg-card border-border rounded-[2rem]">
@@ -1758,6 +1768,67 @@ function OutputQualitySection() {
                 <p className="text-2xl font-bold text-red-400">
                   {stats.totalLogs > 0 ? Math.round((((stats.scoreDistribution || {})[1] || 0) + ((stats.scoreDistribution || {})[2] || 0)) / stats.totalLogs * 100) : 0}%
                 </p>
+                <span className="text-[9px] text-muted-foreground mt-1 block">
+                  {(((stats.scoreDistribution || {})[1] || 0) + ((stats.scoreDistribution || {})[2] || 0)).toLocaleString()} outputs scored 1-2
+                </span>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Additional Score Insight Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Fair Rate (Score 3)</span>
+                <p className="text-2xl font-bold text-yellow-400">
+                  {stats.totalLogs > 0 ? Math.round(((stats.scoreDistribution || {})[3] || 0) / stats.totalLogs * 100) : 0}%
+                </p>
+                <span className="text-[9px] text-muted-foreground mt-1 block">
+                  {((stats.scoreDistribution || {})[3] || 0).toLocaleString()} outputs — room for improvement
+                </span>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Excellent Rate (5/5)</span>
+                <p className="text-2xl font-bold text-emerald-400">
+                  {stats.totalLogs > 0 ? Math.round(((stats.scoreDistribution || {})[5] || 0) / stats.totalLogs * 100) : 0}%
+                </p>
+                <span className="text-[9px] text-muted-foreground mt-1 block">
+                  {((stats.scoreDistribution || {})[5] || 0).toLocaleString()} perfect score outputs
+                </span>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Top Feature</span>
+                {(() => {
+                  const sorted = [...(stats.byFeature || [])].sort((a, b) => b.avgScore - a.avgScore);
+                  const best = sorted[0];
+                  if (!best) return <p className="text-lg font-bold text-muted-foreground">—</p>;
+                  return (
+                    <>
+                      <p className="text-lg font-bold text-emerald-400">{FEATURE_LABELS[best.feature] || best.feature}</p>
+                      <span className="text-[9px] text-muted-foreground mt-1 block">Avg {best.avgScore.toFixed(1)}/5 across {best.count.toLocaleString()} outputs</span>
+                    </>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border rounded-[2rem]">
+              <CardContent className="p-6">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-2">Worst Feature</span>
+                {(() => {
+                  const sorted = [...(stats.byFeature || [])].filter(f => f.count >= 3).sort((a, b) => a.avgScore - b.avgScore);
+                  const worst = sorted[0];
+                  if (!worst) return <p className="text-lg font-bold text-muted-foreground">—</p>;
+                  return (
+                    <>
+                      <p className="text-lg font-bold text-red-400">{FEATURE_LABELS[worst.feature] || worst.feature}</p>
+                      <span className="text-[9px] text-muted-foreground mt-1 block">Avg {worst.avgScore.toFixed(1)}/5 across {worst.count.toLocaleString()} outputs</span>
+                    </>
+                  );
+                })()}
               </CardContent>
             </Card>
           </div>
@@ -1788,18 +1859,27 @@ function OutputQualitySection() {
             <Card className="bg-card border-border rounded-[2rem]">
               <CardContent className="p-6">
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-4">Quality by Feature</span>
-                <div className="space-y-2.5">
-                  {(stats.byFeature || []).map((f) => (
-                    <div key={f.feature} className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-bold text-foreground">{FEATURE_LABELS[f.feature] || f.feature}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-muted-foreground">{f.count} outputs</span>
-                        <Badge className={`${SCORE_COLORS[Math.round(f.avgScore)] || SCORE_COLORS[3]} text-[9px]`}>
-                          {f.avgScore.toFixed(1)}
-                        </Badge>
+                <div className="space-y-3">
+                  {[...(stats.byFeature || [])].sort((a, b) => b.avgScore - a.avgScore).map((f) => {
+                    const pct = Math.round((f.avgScore / 5) * 100);
+                    const barColor = f.avgScore >= 4 ? "bg-emerald-500" : f.avgScore >= 3 ? "bg-yellow-500" : "bg-red-500";
+                    return (
+                      <div key={f.feature} className="space-y-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-bold text-foreground">{FEATURE_LABELS[f.feature] || f.feature}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] text-muted-foreground">{f.count.toLocaleString()} outputs</span>
+                            <Badge className={`${SCORE_COLORS[Math.round(f.avgScore)] || SCORE_COLORS[3]} text-[9px]`}>
+                              {f.avgScore.toFixed(1)}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-1.5">
+                          <div className={`h-1.5 rounded-full transition-all ${barColor}`} style={{ width: `${Math.max(pct, 2)}%` }} />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -1842,8 +1922,10 @@ function OutputQualitySection() {
                   <SelectItem value="all">All Features</SelectItem>
                   <SelectItem value="chat">Chat</SelectItem>
                   <SelectItem value="chat-apex">Chat Apex</SelectItem>
+                  <SelectItem value="judgment-summary">Judgment Summary</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="contract">Contract</SelectItem>
+                  <SelectItem value="contract-drafting">Contract Draft</SelectItem>
                   <SelectItem value="brief">Brief</SelectItem>
                   <SelectItem value="summarize">Summarize</SelectItem>
                 </SelectContent>
@@ -1854,7 +1936,9 @@ function OutputQualitySection() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Scores</SelectItem>
+                  <SelectItem value="excellent">Excellent (5)</SelectItem>
                   <SelectItem value="good">Good (4-5)</SelectItem>
+                  <SelectItem value="fair">Fair (3)</SelectItem>
                   <SelectItem value="poor">Issues (1-2)</SelectItem>
                 </SelectContent>
               </Select>
@@ -1896,6 +1980,28 @@ function OutputQualitySection() {
 
                   {expandedId === log.id && (
                     <div className="mx-4 mt-1 border-l-2 border-primary/20 pl-4 space-y-3 py-3">
+                      {/* Metadata row */}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <Badge className="bg-card border-border text-[8px] text-muted-foreground">
+                          📊 Score: {log.qualityScore}/5 — {SCORE_LABELS[log.qualityScore] || "Unknown"}
+                        </Badge>
+                        <Badge className="bg-card border-border text-[8px] text-muted-foreground">
+                          🤖 {log.model}
+                        </Badge>
+                        <Badge className="bg-card border-border text-[8px] text-muted-foreground">
+                          📝 {(log.outputLength || 0).toLocaleString()} chars · ~{Math.round((log.outputLength || 0) / 5).toLocaleString()} words
+                        </Badge>
+                        <Badge className="bg-card border-border text-[8px] text-muted-foreground">
+                          👤 {log.userFirstName || ""} {log.userEmail ? `(${log.userEmail})` : "Unknown"}
+                        </Badge>
+                        <Badge className="bg-card border-border text-[8px] text-muted-foreground">
+                          🏷️ {FEATURE_LABELS[log.feature] || log.feature}
+                        </Badge>
+                        <Badge className="bg-card border-border text-[8px] text-muted-foreground">
+                          🕐 {log.createdAt ? new Date(log.createdAt).toLocaleString("en-PK", { dateStyle: "medium", timeStyle: "short" }) : "—"}
+                        </Badge>
+                      </div>
+
                       <div className="rounded-lg bg-primary/10 border border-primary/20 px-3 py-2">
                         <Badge className="bg-primary/20 text-primary border-primary/30 text-[8px] mb-1.5">USER INPUT</Badge>
                         <p className="text-[11px] text-foreground whitespace-pre-wrap break-words">{log.inputSnippet}</p>
@@ -1904,12 +2010,18 @@ function OutputQualitySection() {
                         <div className="flex items-center gap-2 mb-1.5">
                           <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[8px]">AI OUTPUT</Badge>
                           <span className="text-[9px] text-muted-foreground">{(log.outputLength || 0).toLocaleString()} chars</span>
+                          <span className="text-[9px] text-muted-foreground">·</span>
+                          <span className="text-[9px] text-muted-foreground">~{Math.round((log.outputLength || 0) / 4)} tokens (est.)</span>
                         </div>
                         <p className="text-[11px] text-foreground whitespace-pre-wrap break-words leading-relaxed">
                           {log.outputSnippet}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground">Flags:</span>
+                        {(log.qualityFlags || []).length === 0 && (
+                          <span className="text-[9px] text-muted-foreground italic">No flags</span>
+                        )}
                         {(log.qualityFlags || []).map((f) => {
                           const info = FLAG_LABELS[f] || { label: f, color: "text-muted-foreground" };
                           return <Badge key={f} className={`${info.color} bg-card border-border text-[8px]`}>{info.label}</Badge>;
