@@ -104,6 +104,11 @@ export const globalApiRateLimiter = createRateLimiter({
   keyPrefix: "global-api-limit",
   skip: (req: Request) => {
     const url = req.originalUrl;
-    return url.startsWith("/api/auth") || url.startsWith("/api/ai") || url.startsWith("/api/apex");
+    return (
+      url.startsWith("/api/auth") ||
+      url.startsWith("/api/ai") ||
+      url.startsWith("/api/apex") ||
+      url.startsWith("/api/admin")
+    );
   },
 });
