@@ -414,3 +414,45 @@ Integrity mode: development
 - [ ] All core codebase unit tests run and pass cleanly with **16/16 passing tests** (`npm test`) showing zero regressions in existing utility logic.
 - [ ] No duplicate statutory sections are present in the database (i.e. every combination of `shortTitle` and `section` is unique).
 - [ ] A professional-grade Markdown report (`statute_seeding_walkthrough.md`) is generated containing a complete database summary showing the total relational section counts grouped by each of the 29 base acts.
+
+## Follow-up — 2026-05-25T09:17:29+05:00
+
+Yes, Project Sentinel, please proceed immediately to kick off the Case Law Ingestion task! 
+
+Here are the requirements:
+
+Working directory: /Users/macbook/Downloads/Alwakeelo
+Integrity mode: development
+
+## Requirements
+
+### R1. Relational Metadata Extraction Parser
+- Build a high-performance, memory-safe parser script (`scripts/extract-judgment-metadata.ts`) that reads the headers pre-pended in the `full_text` column of the `judgments` table using precise, case-insensitive regex patterns (matching variables like `Title:`, `Date of Judgment:`, `Court:`, `Judge(s):`).
+- Extract the structured values:
+  *   **petitioner** (e.g. "Imran Ahmed Khan Niazi" from "Imran Ahmed Khan Niazi vs Federation of Pakistan")
+  *   **respondent** (e.g. "Federation of Pakistan")
+  *   **decision_date** (parse standard and textual date formats safely into SQL Dates, e.g. "2017-07-28", "28th July 2017", "28-07-2017")
+  *   **court_id** (by matching the parsed court name against the standard names in the `courts_ref` table)
+- Bulk-update the corresponding SQL columns in the `judgments` table in chunked transaction batches (e.g., 500–1,000 rows per batch) using Drizzle to avoid connection pool starvation or query timeouts on the live Neon PostgreSQL database.
+
+### R2. Citation Graph Linking Engine
+- Build a high-performance offline resolution script (`scripts/resolve-citation-backlog.ts`) that loops through the 190,925 pending unresolved citations in the `unresolved_citations` table.
+- For each citation in the backlog, check if a matching judgment citation exists in the `judgments` table (matching the `citation_string`). If found, create a relational link in the `citation_links` table mapping `source_id` to `target_id`, and safely delete or resolve the row from the backlog.
+- Apply strict linking: only create links for citations whose target judgments *actually exist* in our 182k judgments database, keeping the rest in "pending" status, using chunked transaction batches to prevent table locking.
+
+### R3. Programmatic Verification Suite
+- Create an automated verification script (`scripts/verify-case-metadata.ts`) that programmatically queries the live database and asserts:
+  *   **Metadata Coverage:** At least **90%** of the 182,458 judgments now have non-null `petitioner`, `respondent`, and `decision_date` columns populated.
+  *   **Court Reference Mapping:** At least **80%** of judgments are correctly mapped to their corresponding `court_id` (non-null).
+  *   **Citation Grounding:** Asserts that citation links have been successfully established in the `citation_links` table and resolved citations are removed from the backlog.
+  *   **Random Integrity Check:** Randomly samples 50 judgments and asserts that their parsed petitioners, respondents, dates, and court names perfectly match the pre-pended raw text headers at the top of their `full_text` columns.
+
+## Acceptance Criteria
+
+### Technical & Compilation Quality
+- [ ] The programmatic verification script (`scripts/verify-case-metadata.ts`) runs successfully and returns a **100% PASS** verdict with all assertions satisfied.
+- [ ] Codebase compiles cleanly with **0 TypeScript errors** when running `npm run check`.
+- [ ] All core codebase unit tests run and pass cleanly with **25/25 passing tests** (`npm test`) showing zero regressions in existing utility logic.
+- [ ] No duplicate citation links are present in the database, and all transaction boundaries are closed cleanly.
+- [ ] A professional-grade Markdown report (`judgment_ingestion_walkthrough.md`) is generated in the workspace root showing counts and metadata coverage statistics.
+
