@@ -5,7 +5,8 @@ type SecurityEventType =
   | "malware_scan_error"
   | "csrf_block"
   | "captcha_failure"
-  | "payment_anomaly";
+  | "payment_anomaly"
+  | "rate_limit_exceeded";
 
 export interface SecurityEventSnapshot {
   id: number;

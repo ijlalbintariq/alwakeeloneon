@@ -6,6 +6,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { dbAvailable, dbUnavailableReason, pool } from "./db";
 import { recordSecurityEvent } from "./security-monitoring";
+import { authRateLimiter, aiRateLimiter, globalApiRateLimiter } from "./middleware/rate-limiter";
 
 const app = express();
 const httpServer = createServer(app);
@@ -272,6 +273,12 @@ app.use((req, res, next) => {
   } else {
     console.warn(`[Startup] Skipping DB startup tasks. ${dbUnavailableReason || ""}`.trim());
   }
+
+  // Apply rate limiters to protect API routes before registering route handlers
+  app.use("/api/auth", authRateLimiter);
+  app.use("/api/ai", aiRateLimiter);
+  app.use("/api/apex", aiRateLimiter);
+  app.use("/api", globalApiRateLimiter);
 
   await registerRoutes(httpServer, app);
 
