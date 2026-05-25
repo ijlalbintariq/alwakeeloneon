@@ -170,7 +170,7 @@ export async function verifyPayment(tracker: string): Promise<{
   const safepay = getSafepay();
 
   try {
-    const response = await safepay.order.tracker.action({ tracker });
+    const response = await safepay.reporter.payments.fetch(tracker);
     const data = response?.data || response;
     const state = String(data?.state || data?.status || "").toUpperCase();
     const isSuccess = state === "TRACKER_ENDED" || state === "COMPLETED" || state === "PAID";

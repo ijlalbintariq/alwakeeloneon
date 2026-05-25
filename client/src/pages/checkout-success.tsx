@@ -40,7 +40,10 @@ export default function CheckoutSuccessPage() {
 
   const tracker = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("tracker") || "";
+    const raw = params.get("tracker") || "";
+    // Clean any query string injection or duplicates (e.g. "track_xxx?tracker=track_xxx" or "track_xxx,track_xxx")
+    const clean = raw.split(/[?,&]/)[0] || "";
+    return clean.trim();
   }, []);
 
   useEffect(() => {

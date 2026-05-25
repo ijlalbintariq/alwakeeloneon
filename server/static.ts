@@ -33,6 +33,8 @@ const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/admin$/,
   /^\/settings$/,
   /^\/admin-setup$/,
+  /^\/checkout$/,
+  /^\/checkout\/success$/,
 ];
 
 function isKnownSpaRoute(pathname: string): boolean {

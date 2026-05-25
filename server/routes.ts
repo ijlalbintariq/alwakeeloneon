@@ -18356,6 +18356,28 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         });
 
         console.log(`[Safepay Webhook] Payment completed & subscription activated: tracker=${tracker}, user=${paymentRecord.userId}, plan=${paymentRecord.planKey}`);
+
+        // Send confirmation invoice email to the user
+        const userProfile = await storage.getUserProfile(paymentRecord.userId);
+        if (userProfile && userProfile.email) {
+          const { sendSubscriptionInvoiceEmail } = await import("./email");
+          sendSubscriptionInvoiceEmail({
+            to: userProfile.email,
+            customerName: `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Valued Customer",
+            planKey: paymentRecord.planKey as any,
+            billingCycle: paymentRecord.billingCycle as any,
+            issuedAt: new Date(),
+            periodStartAt: cycleWindow.startAt,
+            periodEndAt: cycleWindow.endAt,
+            paymentMethod: "Credit/Debit Card (via Safepay)",
+            transactionRef: tracker,
+            subtotalPkr: paymentRecord.amountPkr,
+            discountPkr: 0,
+            taxPkr: 0,
+          }).catch(err => {
+            console.error(`[Safepay Webhook Email] Failed to send invoice email for user ${paymentRecord.userId}:`, err);
+          });
+        }
       } else {
         await storage.updatePaymentRecordStatus(tracker, "failed", verification.data);
         console.warn(`[Safepay Webhook] Payment verification failed: tracker=${tracker}, state=${verification.state}`);
@@ -18373,7 +18395,21 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-      const tracker = String(req.query.tracker || "").trim();
+      let tracker = "";
+      if (Array.isArray(req.query.tracker)) {
+        tracker = String(req.query.tracker[0] || "").trim();
+      } else {
+        tracker = String(req.query.tracker || "").trim();
+      }
+
+      // Clean up any query-string characters or duplicates appended by Safepay redirect (e.g. track_xxx?tracker=track_xxx or track_xxx&sig=xxx)
+      if (tracker.includes("?")) {
+        tracker = tracker.split("?")[0].trim();
+      }
+      if (tracker.includes("&")) {
+        tracker = tracker.split("&")[0].trim();
+      }
+
       if (!tracker) {
         return res.status(400).json({ message: "Missing tracker parameter" });
       }
@@ -18424,6 +18460,28 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         });
 
         console.log(`[Safepay Verify] Payment verified & subscription activated: tracker=${tracker}, plan=${paymentRecord.planKey}`);
+
+        // Send confirmation invoice email to the user
+        const userProfile = await storage.getUserProfile(paymentRecord.userId);
+        if (userProfile && userProfile.email) {
+          const { sendSubscriptionInvoiceEmail } = await import("./email");
+          sendSubscriptionInvoiceEmail({
+            to: userProfile.email,
+            customerName: `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || "Valued Customer",
+            planKey: paymentRecord.planKey as any,
+            billingCycle: paymentRecord.billingCycle as any,
+            issuedAt: new Date(),
+            periodStartAt: cycleWindow.startAt,
+            periodEndAt: cycleWindow.endAt,
+            paymentMethod: "Credit/Debit Card (via Safepay)",
+            transactionRef: tracker,
+            subtotalPkr: paymentRecord.amountPkr,
+            discountPkr: 0,
+            taxPkr: 0,
+          }).catch(err => {
+            console.error(`[Safepay Verify Email] Failed to send invoice email for user ${paymentRecord.userId}:`, err);
+          });
+        }
       } else if (!verification.success && paymentRecord.status === "pending") {
         await storage.updatePaymentRecordStatus(tracker, "failed", verification.data);
       }
