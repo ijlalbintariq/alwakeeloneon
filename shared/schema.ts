@@ -116,13 +116,19 @@ export const searchHistory = pgTable("search_history", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const statutes = pgTable("statutes", {
-  id: serial("id").primaryKey(),
-  shortTitle: text("short_title").notNull(),
-  section: text("section").notNull(),
-  description: text("description").notNull(),
-  punishment: text("punishment").notNull(),
-});
+export const statutes = pgTable(
+  "statutes",
+  {
+    id: serial("id").primaryKey(),
+    shortTitle: text("short_title").notNull(),
+    section: text("section").notNull(),
+    description: text("description").notNull(),
+    punishment: text("punishment").notNull(),
+  },
+  (table) => ({
+    uniqueShortTitleSection: uniqueIndex("statutes_short_title_section_unique").on(table.shortTitle, table.section),
+  }),
+);
 
 export const caseLaw = pgTable("case_law", {
   id: serial("id").primaryKey(),

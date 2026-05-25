@@ -377,6 +377,40 @@ Specifically, you must ensure that:
 
 Please update the project plan and BRIEFING.md, and instruct all workers and specialists to implement these calibrations to maximize our final quality scores!
 
+## Follow-up — 2026-05-25T08:36:34+05:00
 
+Build an automated, high-performance, and robust bulk-parsing and database seeding system to extract and relational-index every single section, article, and order rule (approximately 4,500 to 5,000 entries) from the unabridged master legal PDFs into the live Neon PostgreSQL database.
 
+Working directory: /Users/macbook/Downloads/Alwakeelo
+Integrity mode: development
 
+## Requirements
+
+### R1. Bulk Statute PDF Parser & Section Extractor
+- Build an automated extraction system that programmatically reads the unabridged base legal PDFs (such as the Pakistan Penal Code, Code of Criminal Procedure, and Code of Civil Procedure) locally registered in the workspace or fetched from `statute_documents`.
+- The parser must leverage high-accuracy regex patterns or layout boundaries to split each document into its individual statutory sections, articles, or order rules, extracting:
+  *   **shortTitle** (the full official name of the act, e.g., "Code of Civil Procedure, 1908")
+  *   **section** (the exact section, article, or rule title, e.g., "Order IX Rule 13" or "Section 302")
+  *   **description** (the full legal text of the provision)
+  *   **punishment** (any associated criminal penalties, if explicitly defined in that section)
+- Handle extremely large files (e.g. 500+ pages) in-memory without memory leaks, using streams or chunked batch parsing.
+
+### R2. Database Seeder & Upsert Engine
+- Build an ingestion and seeding script (`scripts/seed-all-statutes.ts`) that bulk-inserts the extracted statutory provisions into the database's `statutes` table.
+- Implement an **upsert** (insert-or-update) strategy matching `shortTitle` and `section` to ensure that if a section already exists (such as one of the 457 curated core sections), its description and punishment are updated with the newly parsed PDF text while maintaining 0 duplicate records in the database.
+- Wrap the seeding operation in chunked batches (e.g., 50–100 rows per transaction) to prevent database connection timeouts on the live Neon PostgreSQL database.
+
+### R3. Programmatic Verification Suite
+- Create an automated verification script (`scripts/verify-bulk-statutes.ts`) that programmatically queries the live database and asserts:
+  *   **Grounding Volume:** Total rows in the `statutes` table is greater than **4,000**.
+  *   **Core Integrity:** Confirms that landmark provisions (PPC Section 302, CPC Order IX Rule 13, CrPC Section 154, and Specific Relief Act Section 12) are fully intact, correctly formatted, and non-empty.
+  *   **Text Validity:** Randomly samples 50 parsed sections from different acts and asserts that their `shortTitle`, `section`, and `description` characters are valid, non-empty, and free of scrambled PDF parsing blocks.
+
+## Acceptance Criteria
+
+### Technical & Compilation Quality
+- [ ] The programmatic verification script (`scripts/verify-bulk-statutes.ts`) runs successfully and returns a **100% PASS** verdict with all assertions satisfied.
+- [ ] Codebase compiles cleanly with **0 TypeScript errors** when running `npm run check`.
+- [ ] All core codebase unit tests run and pass cleanly with **16/16 passing tests** (`npm test`) showing zero regressions in existing utility logic.
+- [ ] No duplicate statutory sections are present in the database (i.e. every combination of `shortTitle` and `section` is unique).
+- [ ] A professional-grade Markdown report (`statute_seeding_walkthrough.md`) is generated containing a complete database summary showing the total relational section counts grouped by each of the 29 base acts.
