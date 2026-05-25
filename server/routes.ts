@@ -18642,5 +18642,68 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
   }, 60 * 60 * 1000); // Every hour
   subscriptionExpiryTimer.unref?.();
 
+  // ── Subscription renewal warning reminders (hourly) ──────────────────
+
+  async function sendSubscriptionExpiryReminders(): Promise<number> {
+    try {
+      const { sendSubscriptionExpiryWarningEmail } = await import("./email");
+      const { db } = await import("./db");
+      const { users } = await import("../shared/schema");
+      const { and, ne, eq, gte, lte, isNotNull } = await import("drizzle-orm");
+
+      const now = new Date();
+      // Target a 1-hour window exactly 3 days (72 hours) in the future
+      const threeDaysFromNowStart = new Date();
+      threeDaysFromNowStart.setHours(now.getHours() + 72, 0, 0, 0);
+      const threeDaysFromNowEnd = new Date();
+      threeDaysFromNowEnd.setHours(now.getHours() + 73, 0, 0, 0);
+
+      const expiringUsers = await db.select()
+        .from(users)
+        .where(and(
+          ne(users.subscriptionTier, "free"),
+          eq(users.autoRenew, false),
+          isNotNull(users.subscriptionEndAt),
+          gte(users.subscriptionEndAt, threeDaysFromNowStart),
+          lte(users.subscriptionEndAt, threeDaysFromNowEnd)
+        ));
+
+      let sentCount = 0;
+      for (const user of expiringUsers) {
+        if (user.email) {
+          try {
+            await sendSubscriptionExpiryWarningEmail({
+              to: user.email,
+              customerName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Valued Customer",
+              planKey: user.subscriptionTier,
+              expiryDate: user.subscriptionEndAt!,
+            });
+            sentCount++;
+            console.log(`[Subscription Reminder] Sent expiry warning email to ${user.email} (expires: ${user.subscriptionEndAt})`);
+          } catch (err: any) {
+            console.error(`[Subscription Reminder] Failed to send reminder to ${user.email}:`, err?.message || err);
+          }
+        }
+      }
+      return sentCount;
+    } catch (err: any) {
+      console.error("[Subscription Reminder] Error running warning reminders:", err?.message || err);
+      return 0;
+    }
+  }
+
+  // Run on startup
+  sendSubscriptionExpiryReminders().then(count => {
+    if (count > 0) console.log(`[Subscription Reminder] Sent ${count} subscription expiry warning reminders on startup`);
+  }).catch(() => {});
+
+  // Run hourly
+  const subscriptionReminderTimer = setInterval(() => {
+    sendSubscriptionExpiryReminders().then(count => {
+      if (count > 0) console.log(`[Subscription Reminder] Sent ${count} subscription expiry warning reminders`);
+    }).catch(() => {});
+  }, 60 * 60 * 1000); // Every hour
+  subscriptionReminderTimer.unref?.();
+
   return httpServer;
 }

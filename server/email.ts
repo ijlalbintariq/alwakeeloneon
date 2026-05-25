@@ -868,3 +868,92 @@ export async function sendCaseLeadNotification(args: {
     text,
   });
 }
+
+export async function sendSubscriptionExpiryWarningEmail(args: {
+  to: string;
+  customerName: string;
+  planKey: string;
+  expiryDate: Date;
+}): Promise<EmailSendResult> {
+  const safeName = escapeHtml(args.customerName);
+  const safePlan = escapeHtml(args.planKey.toUpperCase());
+  const safeDate = escapeHtml(formatDatePk(args.expiryDate));
+  const logoUrl = escapeHtml(resolveBrandLogoUrl());
+  
+  const siteUrl = process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "https://alwakeelo.com";
+  const checkoutUrl = `${siteUrl}/checkout?plan=${encodeURIComponent(args.planKey.toLowerCase())}&cycle=monthly`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#0a1222;font-family:'Inter',Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a1222;padding:28px 14px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#101b31;border:1px solid #2a3a56;border-radius:20px;overflow:hidden;">
+          <tr>
+            <td style="padding:4px 0 0 0;background:#f59e0b;"></td>
+          </tr>
+          <tr>
+            <td style="padding:30px 28px 20px 28px;text-align:center;background:linear-gradient(180deg,#0f172a 0%,#0b1427 100%);border-bottom:1px solid #24344f;">
+              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 14px;border:1px solid rgba(244,177,30,0.45);" />
+              <h1 style="margin:0;color:#f8fafc;font-size:24px;line-height:1.2;font-weight:800;">Your Subscription is Expiring</h1>
+              <p style="margin:10px 0 0;color:#f59e0b;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
+                Subscription Renewal Notice
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 10px;color:#e8eefb;font-size:15px;line-height:1.6;">Assalam-o-Alaikum ${safeName},</p>
+              <p style="margin:0 0 16px;color:#b6c4d9;font-size:14px;line-height:1.7;">
+                This is a friendly reminder that your active <strong style="color:#f8fafc;">${safePlan} Plan</strong> subscription on Al Wakeelo is scheduled to expire on <strong style="color:#f59e0b;">${safeDate}</strong>.
+              </p>
+              <p style="margin:0 0 20px;color:#b6c4d9;font-size:14px;line-height:1.7;">
+                Since Auto-Renew is currently disabled for your account, your access will revert to the free plan once your cycle ends. To avoid any interruptions to your legal AI workspace, workflows, and documents, please click the button below to renew your plan.
+              </p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+                <tr>
+                  <td align="center" bgcolor="#f59e0b" style="border-radius:12px;box-shadow:0 12px 24px rgba(245,158,11,0.24);">
+                    <a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;padding:14px 28px;color:#0d172a;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;">
+                      Renew Subscription Now
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0;color:#9bb0cc;font-size:12px;line-height:1.6;">
+                If you have any questions or need billing support, please contact us at
+                <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a>.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #24344f;text-align:center;">
+              <p style="margin:0 0 4px;color:#7a90ae;font-size:10px;line-height:1.6;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">
+                Al Wakeelo • Billing Reminder
+              </p>
+              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#f4b11e;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Assalam-o-Alaikum ${args.customerName},\n\nThis is a friendly reminder that your active ${safePlan} Plan subscription on Al Wakeelo is scheduled to expire on ${safeDate}.\n\nSince Auto-Renew is disabled, please use the link below to renew your plan and avoid any service interruptions:\n${checkoutUrl}\n\nNeed help? support@alwakeelo.com\n\n- Al Wakeelo`;
+
+  return sendEmailViaResend({
+    to: args.to,
+    subject: `⚠️ Reminder: Your Al Wakeelo ${safePlan} Subscription is Expiring Soon`,
+    html,
+    text,
+  });
+}
