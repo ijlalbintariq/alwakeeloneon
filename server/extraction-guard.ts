@@ -4,6 +4,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { Worker } from "node:worker_threads";
 import mammoth from "mammoth";
 import { extractText } from "unpdf";
 import { ocrPdfWithTesseract, type OcrPdfOptions, type OcrPdfResult } from "./ocr";
@@ -137,6 +138,7 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { promisify } = require("node:util");
+const { parentPort, workerData } = require("node:worker_threads");
 const execFileAsync = promisify(execFile);
 
 function cleanText(value) {
@@ -219,13 +221,7 @@ async function ocrPdf(filePath, options) {
 }
 
 async function main() {
-  // node -e shifts argv compared to file execution, so read from tail.
-  const argvTail = process.argv.slice(-3);
-  const kind = argvTail[0];
-  const inputPath = argvTail[1];
-  const optionsRaw = argvTail[2];
-  const options = optionsRaw ? JSON.parse(optionsRaw) : {};
-
+  const { kind, inputPath, options } = workerData;
   let payload;
   if (kind === "pdf-parse") {
     payload = { text: await parsePdf(inputPath) };
@@ -237,13 +233,12 @@ async function main() {
     throw new Error("Unknown extraction worker task kind: " + kind);
   }
 
-  process.stdout.write(JSON.stringify({ ok: true, payload }));
+  parentPort.postMessage({ ok: true, payload });
 }
 
 main().catch((err) => {
   const message = err && err.message ? err.message : String(err);
-  process.stdout.write(JSON.stringify({ ok: false, error: message }));
-  process.exitCode = 1;
+  parentPort.postMessage({ ok: false, error: message });
 });
 `;
 
@@ -253,49 +248,40 @@ async function runWorkerTask<T>(kind: WorkerKind, buffer: Buffer, timeoutMs: num
   const inputPath = path.join(tempDir, `input${ext}`);
   await fs.writeFile(inputPath, buffer);
 
-  try {
-    const { stdout } = await execFileAsync(
-      process.execPath,
-      ["-e", WORKER_SCRIPT, kind, inputPath, JSON.stringify(options || {})],
-      {
-        timeout: timeoutMs,
-        maxBuffer: 8 * 1024 * 1024,
-      },
-    );
+  return new Promise<T>((resolve, reject) => {
+    const worker = new Worker(WORKER_SCRIPT, {
+      eval: true,
+      workerData: { kind, inputPath, options: options || {} },
+    });
 
-    const parsed = JSON.parse(String(stdout || "{}")) as { ok?: boolean; payload?: T; error?: string };
-    if (!parsed.ok) {
-      throw new Error(parsed.error || `Extraction worker failed for ${kind}`);
-    }
-    return parsed.payload as T;
-  } catch (err: any) {
-    const stdoutText = typeof err?.stdout === "string"
-      ? err.stdout
-      : Buffer.isBuffer(err?.stdout)
-        ? err.stdout.toString("utf-8")
-        : "";
-    if (stdoutText.trim()) {
-      try {
-        const parsed = JSON.parse(stdoutText) as { ok?: boolean; payload?: T; error?: string };
-        if (parsed.ok) {
-          return parsed.payload as T;
-        }
-        if (parsed.error) {
-          throw new Error(parsed.error);
-        }
-      } catch (parseErr) {
-        if (parseErr instanceof Error && parseErr.message) {
-          throw parseErr;
-        }
+    const timer = setTimeout(() => {
+      worker.terminate();
+      reject(new Error(`Worker timed out for ${kind} after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    worker.on("message", (parsed: any) => {
+      clearTimeout(timer);
+      if (!parsed.ok) {
+        reject(new Error(parsed.error || `Extraction worker failed for ${kind}`));
+      } else {
+        resolve(parsed.payload as T);
       }
-    }
-    if (String(err?.message || "").includes("timed out")) {
-      throw new Error(`Extraction worker timed out for ${kind} after ${timeoutMs}ms`);
-    }
-    throw new Error(err?.message || `Extraction worker failed for ${kind}`);
-  } finally {
+    });
+
+    worker.on("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+
+    worker.on("exit", (code) => {
+      clearTimeout(timer);
+      if (code !== 0) {
+        reject(new Error(`Worker stopped with exit code ${code}`));
+      }
+    });
+  }).finally(async () => {
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
-  }
+  });
 }
 
 export async function extractPdfTextGuarded(

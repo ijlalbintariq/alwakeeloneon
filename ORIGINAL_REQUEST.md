@@ -254,3 +254,129 @@ Integrity mode: development
 - [ ] `npm run check` compiles with 0 TypeScript errors.
 - [ ] `npm test` runs and passes with 0 failures.
 
+
+## Follow-up — 2026-05-25T05:47:33+05:00
+
+Conduct a comprehensive, end-to-end forensic audit of the Alwakeelo AI Engine (live on `https://alwakeelo.com`) from the perspective of a real Pakistani lawyer and end-user. The audit will evaluate database integrity (Neon PostgreSQL statutes and case law), semantic/citation search retrieval accuracy, multi-modal AI reasoning performance (Standard, Turbo, Apex, Apex Pro, Web Search), user journeys using browser automation (Playwright), and reliability under stress.
+
+Working directory: /Users/macbook/Downloads/Alwakeelo
+Integrity mode: development
+
+## Requirements
+
+### R1. Database Audit & Integrity Verification
+Verify database completeness, structure, and accuracy by programmatically querying the Neon PostgreSQL instance (configured in `.env`):
+- **Statutes:** Total count, identification of missing major Pakistani laws, duplicates, incorrect titles/years, broken metadata, incorrect section indexing, missing amendments, and PDF availability/integrity. Cross-check against official Pakistani legal sources.
+- **Case Law:** Landmark judgments presence, correct court/judge metadata, citation accuracy, headnotes, duplicate/broken records, and OCR scan quality.
+
+### R2. Live Retrieval & UI/UX Audit (Playwright)
+Evaluate the live application (`https://alwakeelo.com`) using Playwright browser automation logged in with:
+- **Email:** `ijlalbintariq420@gmail.com`
+- **Password:** `admin12345678`
+- **Statutes viewer:** Verify that search queries retrieve correct statutes/sections, relevant sections rank highest, sidebar references match, internal hyperlinks and section anchors function properly, and the PDF opens correctly.
+- **Judgment viewer:** Check the ranking of binding precedents, precision of citation queries, correct rendering of AI summaries/holdings, the Talk-to-AI feature, and the public page vs. login-wall behavior.
+- **Legal Consultation:** Check context retention in long conversations, follow-up flow, and case submission workflows.
+
+### R3. Multi-Mode AI Legal Analysis Audit
+Test and grade (1–10) AI responses across 17 distinct legal domains (Constitutional, CPC, CrPC, PPC, Family, Inheritance, Property, Service, Banking, Tax, Labour, Contract, Specific Relief, Arbitration, Company, Cybercrime, Election Law) based on:
+- Legal accuracy and reasoning
+- Fact analysis and issue spotting
+- Statutory interpretation and case law application
+- Procedural/practical litigation strategy
+- Drafting quality and hallucination rate
+
+### R4. Cross-Mode and Stress Comparison
+Run identical complex legal queries through all active modes (Standard, Turbo, Apex, Apex Pro, Web Search) to evaluate response depth, accuracy, speed, and context window limits. Perform stress testing using long fact patterns, contradictory facts, consecutive follow-ups, and mixed legal drafting/appeal strategy questions.
+
+### R5. Audit Report & Fix Roadmap
+Produce a professional, publication-quality markdown audit report stored at `/Users/macbook/Downloads/Alwakeelo/reports/detailed_forensic_audit_report.md` containing:
+1. Executive Summary
+2. Overall Score (/100) & Production Readiness Verdict
+3. Detailed SWOT Analysis
+4. Database Audit Findings Table
+5. Statute Retrieval Findings Table
+6. Case Law Retrieval Findings Table
+7. AI Analysis Findings Table
+8. UX Findings Table
+9. Priority Fix Roadmap (Critical, High, Medium, Low) with exact reproduction steps, root cause analysis, and technical fixes.
+
+## Acceptance Criteria
+
+### Verification & Deliverables
+- [ ] Automated or programmatic audit logs verify database completeness (Neon Postgres query logs).
+- [ ] Playwright browser test scripts run successfully against `https://alwakeelo.com`, confirming user flow execution (Statute Module, Judgment Module, Chat, Legal Consultation).
+- [ ] Completed comprehensive audit tables covering at least 15+ simulated user search/retrieval queries and AI responses across all 5 AI modes.
+- [ ] A professional-grade Markdown audit report with an overall readiness score, SWOT analysis, and structured tables saved to `/Users/macbook/Downloads/Alwakeelo/reports/detailed_forensic_audit_report.md`.
+- [ ] A technical fix roadmap outlining reproduction steps and specific codebase modifications needed to fix found issues.
+
+
+## Follow-up — 2026-05-25T01:43:23Z
+
+Execute a comprehensive, codebase-wide remediation to fix all 42 critical, high, medium, and low priority issues identified during the Alwakeelo AI Engine Forensic Audit. The team will implement the exact technical drop-in code fixes specified in the Priority Fix Roadmap inside `/Users/macbook/Downloads/Alwakeelo/reports/detailed_forensic_audit_report.md` and `/Users/macbook/.gemini/antigravity/brain/8ddca10b-e235-48b2-aace-e2e41dc963ff/implementation_plan.md`.
+
+Working directory: /Users/macbook/Downloads/Alwakeelo
+Integrity mode: development
+
+## Requirements
+
+### R1. Implement Compilation & Security Patches (P0 - P1)
+- Declare `let extractedRecs: any[] = [];` centrally in `/api/admin/users` or generators inside `server/routes.ts` (L11626) to fix block-scope compiler errors.
+- Fix options nesting inside the `<Document>` react-pdf component in `statute-pdf-viewer.tsx` (L357) by moving `withCredentials` inside the `options` prop.
+- Lock down `/api/admin/setup` globally across all environments with `ADMIN_SETUP_KEY` checks and verify if administrative users already exist before bootstrapping.
+- Wrap user queries inside strict, non-executable XML tags within the query refiner system message (`server/query-refiner.ts`) and sanitize quote bounds to eliminate prompt-poisoning vectors.
+
+### R2. Performance & Streaming Remediation (P1)
+- Replace separate, RAM-intensive child process spawner loops (`child_process.spawn`) inside `extraction-guard.ts` (L250) with a persistent Node.js `worker_threads` pool and bounded task queue for document OCR.
+- Fix cloud storage uploads race condition inside `routes.ts` (L14785) by forcing the background vector indexer to strictly `await` the R2 upload and SQL database metadata insertion.
+- implement try-catch guards on stream body readers (`chat-box.tsx`) to catch aborted connections (`BODYSTREAMBUFFER WAS ABORTED`) and show clean subscription warnings instead of crashing.
+- Embed a prominent, permanent legal advice warning and safety disclaimer banner inside the chat interface (`chat-box.tsx`).
+
+### R3. Ingestion & Database Repair (P1 - P2)
+- Replace all N+1 nested database loops inside the `/api/case-files` handlers with bulk `inArray(cases.id)` query parameters, grouping results in-memory.
+- implement a robust regex-based citation repair fallback inside `ensureAlWakeeloReferencesBlock` (L619) to restore citation links from truncated stream JSON.
+- Create a script to upload the Code of Criminal Procedure, 1898 base PDF to the R2 bucket and register it inside `statute_documents`.
+- Set up a batch resolver or trigger to map the backlog of 190,925 pending `unresolved_citations` back to their corresponding judgments, restoring case-to-case hyperlinks.
+- Synchronize development case law data into the production Neon PostgreSQL database (configured in `.env`) so the stats panel reflects live counts and citation search is functional.
+
+### R4. UI/UX, PDF, & Routing Corrections (P1 - P2)
+- Correct obsolete sidebar router link targets inside `sidebar.tsx` from `/statutes` and `/chat` to the active `/statute-search` and `/al-wakeelo` pages, eliminating 404 screens.
+- Bind the chat stream auto-scroll `useEffect` inside `legal-drafting.tsx` to active message content updates rather than array length, resolving viewport lockups.
+- Integrate `react-window` virtualized scrolling into `statute-pdf-viewer.tsx` to render only the pages currently within the client's viewport, preventing browser OOM crashes on large statutes.
+- Register standard Base64 Jameel Noori Nastaliq or Amiri TTF fonts inside jsPDF's Virtual File System (`generate-legal-pdf.ts`) to enable proper Urdu unicode PDF exports.
+- Compute PDF table column widths dynamically based on maximum cell string lengths.
+
+### R5. AI Engine & RAG Calibration (P2 - P3)
+- Extend the client-level Moonshot/Kimi API timeout to **180,000ms** (3 minutes) inside `server/apex-ai.ts` and apply sliding context window truncation on RAG inputs to cap payloads at 45,000 tokens, preventing timeouts.
+- Inject a loop-breaker in the Web Search Agent (`chatWithApexAgent`) that halts execution if Kimi repeats search intents more than 3 times.
+- Soften the Apex Pro system instructions (`apexProThinking` prompt block in `server/routes.ts`) to allow general legal analysis (e.g. *"I cannot verify this specific provision in our internal database, but under standard Pakistani law..."*) rather than total refusals.
+- Enforce strict predictability by lowering standard/turbo temperatures to `0.0` or `0.2` on direct legal advisory completions to eliminate citation hallucinations.
+- Update RAG citation boundary matching regex inside `rag-service.ts` to allow alphanumeric matches without rigid boundary bounds, ensuring normalized citations receive their relevance boost.
+- Calibrate reranking weights inside `rag-service.ts` to sum to exactly `1.0` (instead of `1.1`).
+- Add constitutional abbreviation keywords (`constitution`, `const`) to the fast-path regex intent resolver inside `intent-classifier.ts`.
+
+## Acceptance Criteria
+
+### Verification & Deliverables
+- [ ] Codebase compiles successfully (`npm run check` or `tsc --noEmit` returns 0 compilation errors).
+- [ ] Unit tests pass successfully (`npm test` returns 16 passed tests, 0 failures).
+- [ ] Automated browser tests (`node audit.mjs`) verify that standard routes (`/statute-search`, `/al-wakeelo`) function properly with no 404s, disclaimers are visible, and stream body reader crashes are resolved.
+- [ ] Multi-mode AI benchmark runner (`npx tsx .agents/explorer_ai_audit/run-audit-modes.ts`) runs successfully, confirming Apex Pro (Kimi thinking) execution bypasses validation errors and Apex timeouts are resolved.
+- [ ] A professional-grade Markdown walkthrough report (`walkthrough.md`) verifying that all 42 issues are resolved with proof of build success and test outputs.
+
+
+## Follow-up — 2026-05-25T01:44:31Z
+
+The user has added a critical high-priority requirement: during the remediation phase, the team must target a 10/10 score (or as close to it as possible) across all the AI legal reasoning and retrieval tests.
+
+Specifically, you must ensure that:
+1. **Apex Mode Timeout is resolved** by extending timeouts (to 180s) and using sliding context window truncation to keep payloads within limits.
+2. **Apex Pro Mode (Kimi thinking) prompt constraints are softened** to permit general legal analysis (with unverified disclaimers) instead of executing total refusals when a provision is missing from the RAG seed, boosting its rating from 2/10 to 9+/10.
+3. **Web Search Mode loop-breakers are implemented** to abort cognitive repetitions and compile successful synthesized summaries, raising its rating from 1/10.
+4. **Standard/Turbo temperatures are optimized to 0.0 or 0.2** to eliminate citation hallucinations and ensure 100% precision, targeting a perfect 10/10 for Turbo (DeepSeek R1).
+5. **Case Law Vault is fully synchronized** so search queries receive precise matches (10/10 retrieval rate).
+
+Please update the project plan and BRIEFING.md, and instruct all workers and specialists to implement these calibrations to maximize our final quality scores!
+
+
+
+

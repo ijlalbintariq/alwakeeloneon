@@ -617,109 +617,118 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
         if (reader) {
           let buffer = "";
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || "";
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const jsonStr = line.slice(6).trim();
-                if (!jsonStr) continue;
-                try {
-                  const parsed = JSON.parse(jsonStr);
-                  if (parsed.error) {
-                    throw { message: parsed.error, isLimit: false };
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+              for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                  const jsonStr = line.slice(6).trim();
+                  if (!jsonStr) continue;
+                  try {
+                    const parsed = JSON.parse(jsonStr);
+                    if (parsed.error) {
+                      throw { message: parsed.error, isLimit: false };
+                    }
+                    // Tool-search status events — show searching indicator with timer
+                    if (parsed.searching === true) {
+                      setToolSearchStatus(prev => ({
+                        ...prev,
+                        active: true,
+                        queries: [...prev.queries, { query: parsed.query, found: parsed.found ?? 0, elapsedMs: parsed.elapsedMs ?? 0 }],
+                      }));
+                      continue;
+                    }
+                    if (parsed.searching === false) {
+                      setToolSearchStatus(prev => ({
+                        ...prev,
+                        active: false,
+                        totalFound: parsed.found ?? prev.totalFound,
+                        totalMs: parsed.totalMs ?? prev.totalMs,
+                      }));
+                      continue;
+                    }
+                    // Case Law Card payload — raw DB judgment hits, no AI processing.
+                    // Arrives right after tool-search completes, before AI streaming.
+                    if (parsed.caseLawCard && Array.isArray(parsed.caseLawCard.hits)) {
+                      const cardData: CaseLawCardData = {
+                        hits: parsed.caseLawCard.hits,
+                        totalFound: parsed.caseLawCard.totalFound ?? parsed.caseLawCard.hits.length,
+                        queriesUsed: Array.isArray(parsed.caseLawCard.queriesUsed) ? parsed.caseLawCard.queriesUsed : [],
+                      };
+                      setMessages(prev => {
+                        const last = prev[prev.length - 1];
+                        if (last && last.id === assistantId) {
+                          return [...prev.slice(0, -1), { ...last, caseLawCard: cardData }];
+                        }
+                        return prev;
+                      });
+                      continue;
+                    }
+                    if (parsed.reset) {
+                      accumulated = "";
+                      setMessages(prev => {
+                        const last = prev[prev.length - 1];
+                        if (last && last.id === assistantId) {
+                          return [...prev.slice(0, -1), { ...last, content: "" }];
+                        }
+                        return prev;
+                      });
+                      continue;
+                    }
+                    if (parsed.done) {
+                      const modelId = parsed.model || selectedApexModel || normalizedAiMode || "standard";
+                      const modelLabel = getModelDisplayName(modelId);
+                      const modelDescription = getModelFunctionDescription(modelId);
+                      const modeLabel = isApexAgentWebMode
+                        ? "Apex Agent Web"
+                        : isApexModelMode
+                          ? getModelDisplayName(selectedApexModel || modelId)
+                          : (turboMode && canUseTurbo ? "Turbo" : "Standard");
+                      setMessages(prev => {
+                        const last = prev[prev.length - 1];
+                        if (last && last.id === assistantId) {
+                          return [...prev.slice(0, -1), {
+                            ...last,
+                            modeName: canUseTurbo ? modeLabel : undefined,
+                            modelName: modelLabel,
+                            modelId,
+                            modelDescription,
+                            moduleProfile: typeof parsed.moduleProfile === "string" ? parsed.moduleProfile : undefined,
+                            routingPath: Array.isArray(parsed.routingPath) ? parsed.routingPath.map(String) : undefined,
+                          }];
+                        }
+                        return prev;
+                      });
+                      persistedAssistantContent = accumulated;
+                      break;
+                    }
+                    if (parsed.text) {
+                      accumulated += parsed.text;
+                      const current = accumulated;
+                      setMessages(prev => {
+                        const last = prev[prev.length - 1];
+                        if (last && last.id === assistantId) {
+                          return [...prev.slice(0, -1), { ...last, content: current }];
+                        }
+                        return prev;
+                      });
+                    }
+                  } catch (e: any) {
+                    if (e?.isLimit !== undefined) throw e;
                   }
-                  // Tool-search status events — show searching indicator with timer
-                  if (parsed.searching === true) {
-                    setToolSearchStatus(prev => ({
-                      ...prev,
-                      active: true,
-                      queries: [...prev.queries, { query: parsed.query, found: parsed.found ?? 0, elapsedMs: parsed.elapsedMs ?? 0 }],
-                    }));
-                    continue;
-                  }
-                  if (parsed.searching === false) {
-                    setToolSearchStatus(prev => ({
-                      ...prev,
-                      active: false,
-                      totalFound: parsed.found ?? prev.totalFound,
-                      totalMs: parsed.totalMs ?? prev.totalMs,
-                    }));
-                    continue;
-                  }
-                  // Case Law Card payload — raw DB judgment hits, no AI processing.
-                  // Arrives right after tool-search completes, before AI streaming.
-                  if (parsed.caseLawCard && Array.isArray(parsed.caseLawCard.hits)) {
-                    const cardData: CaseLawCardData = {
-                      hits: parsed.caseLawCard.hits,
-                      totalFound: parsed.caseLawCard.totalFound ?? parsed.caseLawCard.hits.length,
-                      queriesUsed: Array.isArray(parsed.caseLawCard.queriesUsed) ? parsed.caseLawCard.queriesUsed : [],
-                    };
-                    setMessages(prev => {
-                      const last = prev[prev.length - 1];
-                      if (last && last.id === assistantId) {
-                        return [...prev.slice(0, -1), { ...last, caseLawCard: cardData }];
-                      }
-                      return prev;
-                    });
-                    continue;
-                  }
-                  if (parsed.reset) {
-                    accumulated = "";
-                    setMessages(prev => {
-                      const last = prev[prev.length - 1];
-                      if (last && last.id === assistantId) {
-                        return [...prev.slice(0, -1), { ...last, content: "" }];
-                      }
-                      return prev;
-                    });
-                    continue;
-                  }
-                  if (parsed.done) {
-                    const modelId = parsed.model || selectedApexModel || normalizedAiMode || "standard";
-                    const modelLabel = getModelDisplayName(modelId);
-                    const modelDescription = getModelFunctionDescription(modelId);
-                    const modeLabel = isApexAgentWebMode
-                      ? "Apex Agent Web"
-                      : isApexModelMode
-                        ? getModelDisplayName(selectedApexModel || modelId)
-                        : (turboMode && canUseTurbo ? "Turbo" : "Standard");
-                    setMessages(prev => {
-                      const last = prev[prev.length - 1];
-                      if (last && last.id === assistantId) {
-                        return [...prev.slice(0, -1), {
-                          ...last,
-                          modeName: canUseTurbo ? modeLabel : undefined,
-                          modelName: modelLabel,
-                          modelId,
-                          modelDescription,
-                          moduleProfile: typeof parsed.moduleProfile === "string" ? parsed.moduleProfile : undefined,
-                          routingPath: Array.isArray(parsed.routingPath) ? parsed.routingPath.map(String) : undefined,
-                        }];
-                      }
-                      return prev;
-                    });
-                    persistedAssistantContent = accumulated;
-                    break;
-                  }
-                  if (parsed.text) {
-                    accumulated += parsed.text;
-                    const current = accumulated;
-                    setMessages(prev => {
-                      const last = prev[prev.length - 1];
-                      if (last && last.id === assistantId) {
-                        return [...prev.slice(0, -1), { ...last, content: current }];
-                      }
-                      return prev;
-                    });
-                  }
-                } catch (e: any) {
-                  if (e?.isLimit !== undefined) throw e;
                 }
               }
+            }
+          } catch (streamErr: any) {
+            console.warn("Stream interrupted:", streamErr);
+            if (accumulated.trim()) {
+              persistedAssistantContent = accumulated;
+            } else {
+              throw streamErr;
             }
           }
         }
@@ -2254,6 +2263,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 </div>
               )}
             </div>
+
+            <p className="text-[10px] text-muted-foreground/60 text-center mt-2 px-4 leading-relaxed">
+              Disclaimer: Al Wakeelo generates AI-derived legal information and draft suggestions based on available Pakistani laws. AI answers are not binding legal advice; please consult a licensed attorney for official legal representation.
+            </p>
 
             {usage && usage.percentage >= 80 && (
               <div className={`w-full mt-3 px-3 py-2 rounded-lg border flex items-center justify-between gap-3 ${usage.percentage >= 100 ? "bg-red-500/10 border-red-500/20" : "bg-primary/10 border-primary/20"}`}>

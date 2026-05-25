@@ -64,6 +64,18 @@ function LegacyCitationSearchRedirect() {
   return <Redirect to={next ? `/judgments?${next}` : "/judgments"} />;
 }
 
+function LegacyStatutesSearchRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const next = params.toString();
+  return <Redirect to={next ? `/statute-search?${next}` : "/statute-search"} />;
+}
+
+function LegacyChatRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const next = params.toString();
+  return <Redirect to={next ? `/al-wakeelo?${next}` : "/al-wakeelo"} />;
+}
+
 function Router({ onReady }: { onReady?: () => void }) {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
@@ -180,6 +192,8 @@ function Router({ onReady }: { onReady?: () => void }) {
         <Route path="/judgment-search" component={LegacyJudgmentSearchRedirect} />
         <Route path="/judgment-view" component={JudgmentViewPage} />
         <Route path="/citation-search" component={LegacyCitationSearchRedirect} />
+        <Route path="/statutes" component={LegacyStatutesSearchRedirect} />
+        <Route path="/chat" component={LegacyChatRedirect} />
         <Route path="/judgment/:id" component={JudgmentDetailPage} />
         <Route path="/statute-search" component={StatuteSearchPage} />
         <Route path="/statute-view/:id" component={StatuteViewPage} />

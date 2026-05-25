@@ -11,7 +11,7 @@ function getClient(): OpenAI | null {
   moonshotClient = new OpenAI({
     apiKey,
     baseURL: MOONSHOT_BASE_URL,
-    timeout: 120_000, // 120s client-level timeout — K2.6 web searches can take 90s+
+    timeout: 300_000, // 300s client-level timeout — K2.6 web searches can take 90s+
     maxRetries: 1, // Reduce retries to avoid doubling an already-slow call
   });
   return moonshotClient;

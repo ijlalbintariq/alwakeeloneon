@@ -17,6 +17,9 @@ import {
   adminKnowledge,
   adminKnowledgeFiles,
   TIER_LIMITS,
+  caseClients,
+  caseDocuments,
+  caseCompliance,
   type CaseLaw,
 } from "@shared/schema";
 import { and, count, desc, eq, ilike, lt, sql, like, or, inArray } from "drizzle-orm";
@@ -2560,24 +2563,104 @@ function renderSingleReferencesBlock(content: string, payload: unknown): string 
   return `${body}\n\n\`\`\`references\n${normalizedJson}\n\`\`\``;
 }
 
+function repairOrExtractReferences(text: string): { laws: any[], judgments: any[] } {
+  const laws: any[] = [];
+  const judgments: any[] = [];
+  const seenLaws = new Set<string>();
+  const seenJudgments = new Set<string>();
+
+  // Regex patterns to match statutes and sections
+  const sMatches1 = text.matchAll(/\b(section|sec\.?|article|art\.?)\s*([0-9A-Za-z-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z-]+)*)\s+of\s+(?:the\s+)?([A-Z][A-Za-z0-9(),.'\/\s-]{3,60}?)(?=[\n,.;:]|$)/gi);
+  for (const m of sMatches1) {
+    const secGroup = m[2] || "";
+    const name = (m[3] || "").trim();
+    if (secGroup && name) {
+      for (const rawSec of secGroup.split(/\s*(?:,|and|&|\/)\s*/)) {
+        const sec = rawSec.trim();
+        if (!sec) continue;
+        const key = `${name}::${sec}`.toLowerCase();
+        if (!seenLaws.has(key)) {
+          seenLaws.add(key);
+          laws.push({ statuteName: name, section: sec });
+        }
+      }
+    }
+  }
+
+  const sMatches2 = text.matchAll(/\b(section|sec\.?|article|art\.?)\s*([0-9A-Za-z-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z-]+)*)\s*(?:of\s+)?(Cr\.?\s*P\.?\s*C\.?|C\.?\s*P\.?\s*C\.?|P\.?\s*P\.?\s*C\.?|Constitution|Qanun[-\s]?e[-\s]?Shahadat|Family Courts?\s*Act|Specific Relief Act|Limitation Act|Contract Act|Transfer of Property Act)/gi);
+  for (const m of sMatches2) {
+    const secGroup = m[2] || "";
+    const name = (m[3] || "").trim();
+    if (secGroup && name) {
+      for (const rawSec of secGroup.split(/\s*(?:,|and|&|\/)\s*/)) {
+        const sec = rawSec.trim();
+        if (!sec) continue;
+        const key = `${name}::${sec}`.toLowerCase();
+        if (!seenLaws.has(key)) {
+          seenLaws.add(key);
+          laws.push({ statuteName: name, section: sec });
+        }
+      }
+    }
+  }
+
+  const sMatches3 = text.matchAll(/\b(Order\s+[IVXLCDM0-9]+(?:\s+Rules?\s+[0-9A-Za-z]+)?)\s*(?:of\s+)?(?:the\s+)?(C\.?\s*P\.?\s*C\.?|Code of Civil Procedure)/gi);
+  for (const m of sMatches3) {
+    const section = m[1]?.trim();
+    const name = m[2]?.trim() || "CPC";
+    if (section) {
+      const key = `${name}::${section}`.toLowerCase();
+      if (!seenLaws.has(key)) {
+        seenLaws.add(key);
+        laws.push({ statuteName: name, section });
+      }
+    }
+  }
+
+  // Regex patterns to match case law / judgments
+  const cMatches1 = text.matchAll(/\[?\b((?:19|20)\d{2})\s+(SCMR|PLD|CLC|CrLJ|PCRLJ|PCrLJ|MLD|YLR|PLC|CLJ|NLR|PLJ|PSC|ALD|KLR|SLR)\s+(\d+)\]?/gi);
+  for (const m of cMatches1) {
+    const citation = `${m[1]} ${m[2]?.toUpperCase()} ${m[3]}`;
+    if (!seenJudgments.has(citation.toLowerCase())) {
+      seenJudgments.add(citation.toLowerCase());
+      judgments.push({ citationString: citation });
+    }
+  }
+
+  return { laws, judgments };
+}
+
 function ensureAlWakeeloReferencesBlock(content: string): string {
   const refsRegex = /```references\s*([\s\S]*?)```/i;
   const match = content.match(refsRegex);
-  let payload: unknown = { laws: [], judgments: [] };
+  let payload: any = null;
 
-  if (!match) {
-    // Also strip generic ```json or ``` code fences that wrap the refs JSON before parsing
+  if (match) {
+    try {
+      payload = JSON.parse(match[1].trim());
+    } catch {
+      payload = parseLooseReferencesJsonAtEnd(match[1]);
+    }
+  }
+
+  if (!payload) {
+    // Check if there is an unclosed references block at the end (e.g. ```references ...)
+    const unclosedMatch = content.match(/```references\s*([\s\S]*?)$/i);
+    if (unclosedMatch) {
+      payload = parseLooseReferencesJsonAtEnd(unclosedMatch[1]);
+    }
+  }
+
+  if (!payload) {
     const stripped = String(content || "").replace(/```(?:json)?\s*([\s\S]*?)```\s*$/i, (_, inner) => inner.trimEnd());
-    const loosePayload = parseLooseReferencesJsonAtEnd(stripped);
-    if (loosePayload) payload = loosePayload;
-    return renderSingleReferencesBlock(stripped.trim(), payload);
+    payload = parseLooseReferencesJsonAtEnd(stripped);
   }
 
-  try {
-    payload = JSON.parse(match[1].trim());
-  } catch {
-    payload = { laws: [], judgments: [] };
+  // Fallback to robust regex extraction if we still have no valid payload or if it's empty
+  if (!payload || (!payload.laws?.length && !payload.judgments?.length)) {
+    payload = repairOrExtractReferences(content);
   }
+
   return renderSingleReferencesBlock(content, payload);
 }
 
@@ -8067,22 +8150,35 @@ export async function registerRoutes(
     if (!userId) return res.sendStatus(401);
     try {
       const cases = await storage.getCaseFiles(userId);
-      // Attach counts for each case
-      const enriched = await Promise.all(cases.map(async (cf) => {
-        const clients = await storage.getCaseClients(cf.id);
-        const docs = await storage.getCaseDocumentIds(cf.id);
-        const compliance = await storage.getCaseComplianceItems(cf.id);
-        const pendingCompliance = compliance.filter(c => c.status === "pending");
-        const nextHearing = pendingCompliance.find(c => c.type === "hearing");
+      if (cases.length === 0) {
+        return res.json([]);
+      }
+
+      const caseIds = cases.map(c => c.id);
+
+      // Perform bulk fetches to optimize query speed and avoid N+1 queries
+      const [allClients, allDocs, allCompliance] = await Promise.all([
+        db.select().from(caseClients).where(inArray(caseClients.caseId, caseIds)),
+        db.select().from(caseDocuments).where(inArray(caseDocuments.caseId, caseIds)),
+        db.select().from(caseCompliance).where(inArray(caseCompliance.caseId, caseIds)),
+      ]);
+
+      const enriched = cases.map((cf) => {
+        const clients = allClients.filter((c: any) => c.caseId === cf.id);
+        const docs = allDocs.filter((d: any) => d.caseId === cf.id);
+        const compliance = allCompliance.filter((c: any) => c.caseId === cf.id);
+        const pendingCompliance = compliance.filter((c: any) => c.status === "pending");
+        const nextHearing = pendingCompliance.find((c: any) => c.type === "hearing");
         return {
           ...cf,
           clientCount: clients.length,
           documentCount: docs.length,
           complianceCount: pendingCompliance.length,
-          primaryClient: clients.find(c => c.role === "client")?.name || null,
+          primaryClient: clients.find((c: any) => c.role === "client")?.name || null,
           nextHearing: nextHearing ? { title: nextHearing.title, dueDate: nextHearing.dueDate } : null,
         };
-      }));
+      });
+
       res.json(enriched);
     } catch (err: any) {
       console.error("Error fetching case files:", err);
@@ -11693,6 +11789,7 @@ Rules:
   app.post("/api/retrieval/clauses/generate", guardedUploadQueue, retrievalAttachmentUpload.array("attachments", 5), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
+    let extractedRecs: any[] = [];
     try {
       const { prompt, draftText, jurisdiction, module, documentType } = req.body as {
         prompt?: string;
@@ -12036,7 +12133,7 @@ Response format:
           (forceTargetedEdit || !isFullLegalRewriteRequested(safePrompt));
 
         let draftedText = "";
-        let extractedRecs: any[] = [];
+        extractedRecs = [];
         if (targetedEditMode) {
           const targetedInput = `User instruction:
 ${safePrompt}
@@ -14726,25 +14823,18 @@ ${boundedRaw}`;
 
   app.post("/api/admin/setup", async (req, res) => {
     try {
-      if (process.env.NODE_ENV === "production") {
-        const configuredSetupKey = process.env.ADMIN_SETUP_KEY?.trim();
-        if (!configuredSetupKey) {
-          return res.status(503).json({
-            message: "Admin setup is disabled in production. Set ADMIN_SETUP_KEY to enable bootstrap.",
-          });
-        }
+      const configuredSetupKey = process.env.ADMIN_SETUP_KEY?.trim();
+      const providedSetupKeyHeader = req.get("x-admin-setup-key");
+      const providedSetupKeyBody = typeof req.body?.setupKey === "string" ? req.body.setupKey : "";
+      const providedSetupKey = (providedSetupKeyHeader || providedSetupKeyBody || "").trim();
 
-        const providedSetupKeyHeader = req.get("x-admin-setup-key");
-        const providedSetupKeyBody = typeof req.body?.setupKey === "string" ? req.body.setupKey : "";
-        const providedSetupKey = (providedSetupKeyHeader || providedSetupKeyBody).trim();
-        if (!providedSetupKey || providedSetupKey !== configuredSetupKey) {
-          return res.status(403).json({ message: "Invalid admin setup key" });
-        }
+      if (!configuredSetupKey || providedSetupKey !== configuredSetupKey) {
+        return res.status(401).json({ error: "Access Denied: Invalid or missing administrator setup key" });
       }
 
       const hasAdmin = await storage.hasAnyAdmin();
       if (hasAdmin) {
-        return res.status(403).json({ message: "An admin already exists. Use the admin panel to manage admins." });
+        return res.status(403).json({ error: "Access Denied: Administrative user has already been initialized" });
       }
       const userId = getUserId(req);
       if (!userId) return res.sendStatus(401);
@@ -15531,10 +15621,6 @@ ${boundedRaw}`;
             category: normalizedCategory,
             uploadedBy: userId,
           });
-          maybeIndexAdminCaseLawInBackground({
-            adminKnowledgeId: doc.id,
-            category: normalizedCategory,
-          });
           await uploadAdminKnowledgeFileToR2({
             docId: doc.id,
             userId,
@@ -15544,6 +15630,10 @@ ${boundedRaw}`;
             sizeBytes: file.size,
             source: "admin-knowledge",
             extractedTextKey,
+          });
+          maybeIndexAdminCaseLawInBackground({
+            adminKnowledgeId: doc.id,
+            category: normalizedCategory,
           });
           results.push(doc);
           await logAuditEvent("admin.knowledge.upload", userId, null, {
@@ -15995,11 +16085,6 @@ ${boundedRaw}`;
           uploadedBy: userId,
         });
         savedDocId = savedDoc.id;
-        maybeIndexAdminCaseLawInBackground({
-          adminKnowledgeId: savedDoc.id,
-          category: "case-law",
-        });
-
         runInBackground(`case-law-client-r2:${savedDoc.id}`, async () => {
           await uploadAdminKnowledgeFileToR2({
             docId: savedDoc.id,
@@ -16010,6 +16095,10 @@ ${boundedRaw}`;
             sizeBytes: Buffer.byteLength(content, "utf-8"),
             source: "admin-case-law-extract-client",
             extractedTextKey,
+          });
+          maybeIndexAdminCaseLawInBackground({
+            adminKnowledgeId: savedDoc.id,
+            category: "case-law",
           });
         });
 
@@ -16756,10 +16845,6 @@ ${boundedRaw}`;
                 const persistedContent = rawJson;
                 const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: persistedContent, category: "case-law", uploadedBy: uid });
                 jsonDocId = savedDoc.id;
-                maybeIndexAdminCaseLawInBackground({
-                  adminKnowledgeId: savedDoc.id,
-                  category: "case-law",
-                });
                 runInBackground(`case-law-json-r2:${savedDoc.id}`, async () => {
                   await uploadAdminKnowledgeFileToR2({
                     docId: savedDoc.id,
@@ -16770,6 +16855,10 @@ ${boundedRaw}`;
                     sizeBytes: file.size,
                     source: "admin-case-law-extract",
                     extractedTextKey,
+                  });
+                  maybeIndexAdminCaseLawInBackground({
+                    adminKnowledgeId: savedDoc.id,
+                    category: "case-law",
                   });
                 });
                 console.log(`[Case Law Extract] Saved JSON document as admin_knowledge id=${jsonDocId}`);
@@ -16834,10 +16923,6 @@ ${boundedRaw}`;
                 const persistedContent = rawCsv;
                 const savedDoc = await storage.addAdminKnowledge({ title: docTitle, filename: file.originalname, content: persistedContent, category: "case-law", uploadedBy: uid });
                 csvDocId = savedDoc.id;
-                maybeIndexAdminCaseLawInBackground({
-                  adminKnowledgeId: savedDoc.id,
-                  category: "case-law",
-                });
                 runInBackground(`case-law-csv-r2:${savedDoc.id}`, async () => {
                   await uploadAdminKnowledgeFileToR2({
                     docId: savedDoc.id,
@@ -16848,6 +16933,10 @@ ${boundedRaw}`;
                     sizeBytes: file.size,
                     source: "admin-case-law-extract",
                     extractedTextKey,
+                  });
+                  maybeIndexAdminCaseLawInBackground({
+                    adminKnowledgeId: savedDoc.id,
+                    category: "case-law",
                   });
                 });
                 console.log(`[Case Law Extract] Saved CSV document as admin_knowledge id=${csvDocId}`);
@@ -16898,10 +16987,6 @@ ${boundedRaw}`;
           uploadedBy: userId,
         });
         savedDocId = savedDoc.id;
-        maybeIndexAdminCaseLawInBackground({
-          adminKnowledgeId: savedDoc.id,
-          category: "case-law",
-        });
         runInBackground(`case-law-r2:${savedDoc.id}`, async () => {
           await uploadAdminKnowledgeFileToR2({
             docId: savedDoc.id,
@@ -16912,6 +16997,10 @@ ${boundedRaw}`;
             sizeBytes: file.size,
             source: "admin-case-law-extract",
             extractedTextKey,
+          });
+          maybeIndexAdminCaseLawInBackground({
+            adminKnowledgeId: savedDoc.id,
+            category: "case-law",
           });
         });
         console.log(`[Case Law Extract] Saved document as admin_knowledge id=${savedDocId}: "${docTitle}"`);

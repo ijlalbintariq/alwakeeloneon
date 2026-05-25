@@ -2821,7 +2821,7 @@ function LegalDraftingPageInner() {
     const el = chatListRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [draftChatMessages.length, isGenerating]);
+  }, [draftChatMessages[draftChatMessages.length - 1]?.content, isGenerating]);
 
   useEffect(() => {
     const dismissPopover = () => setChatSnippetPopover(null);

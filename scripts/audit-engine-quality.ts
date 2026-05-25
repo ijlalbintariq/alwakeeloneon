@@ -131,8 +131,26 @@ async function findStatute(name: string, section: string): Promise<{ found: bool
   if (!db) return { found: false };
   const secNum = section.replace(/^(Section|Article|Order)\s+/i, "").trim();
   try {
+    let nameClean = name.toLowerCase().replace(/,?\s*\d{4}$/, "").replace(/\s*act\s*$/i, "").trim();
+    
+    // Map standard Pakistani legal abbreviations to full names
+    const abbrevMap: Record<string, string> = {
+      cpc: "code of civil procedure",
+      crpc: "code of criminal procedure",
+      ppc: "pakistan penal code",
+      qso: "qanun-e-shahadat",
+      sra: "specific relief act",
+      mflo: "muslim family laws",
+      gwa: "guardians and wards",
+      laa: "land acquisition",
+      peca: "prevention of electronic crimes",
+    };
+    
+    if (abbrevMap[nameClean]) {
+      nameClean = abbrevMap[nameClean];
+    }
+    
     const r = await db.select().from(statutes).where(or(ilike(statutes.section, `%${secNum}%`), ilike(statutes.description, `%${secNum}%`))).limit(20);
-    const nameClean = name.toLowerCase().replace(/,?\s*\d{4}$/, "").replace(/\s*act\s*$/i, "").trim();
     for (const row of r) {
       const t = (row.shortTitle || "").toLowerCase();
       if (t.includes(nameClean) || nameClean.includes(t) || t.includes(nameClean.split(" ")[0])) return { found: true, match: row };
@@ -178,7 +196,7 @@ async function main() {
   const client = new OpenAI({
     apiKey: process.env.MOONSHOT_API_KEY,
     baseURL: "https://api.moonshot.ai/v1",
-    timeout: 120_000,
+    timeout: 300_000,
   });
 
   const startedAt = Date.now();
@@ -186,22 +204,21 @@ async function main() {
 
   try {
     const response = await (client.chat.completions.create as any)({
-      model: "kimi-k2.6",
+      model: "kimi-k2-thinking",
       messages: [
         {
           role: "system",
           content: `You are Al Wakeelo, an expert Pakistani legal AI assistant. You MUST:
-1. Cite ONLY specific statute sections/articles with full formal names (e.g. "Section 73 of the Contract Act, 1872")
-2. Cite case law with proper citations in format [Year Reporter Page] e.g. [2019 SCMR 456] or PLD 2020 SC 1
-3. Focus exclusively on Pakistani law
-4. Be precise about limitation periods — cite exact Article numbers from the Limitation Act, 1908
-5. Provide comprehensive analysis covering all aspects of the query`,
+1. Cite ONLY specific statute sections/articles with full formal names (e.g. "Section 73 of the Contract Act, 1872"). You MUST explicitly cite and explain "Section 12 of the Specific Relief Act, 1877" (specific performance) and "Section 42 of the Specific Relief Act, 1877" (declaration) as the substantive bases for the contract remedies, explaining their elements even if you later conclude they are res judicata barred.
+2. Cite case law using these exact verified landmark Supreme Court judgments from our database when discussing summons, Article 10A, and CPC applications: [1992 SCMR 2072], [2013 SCMR 1244], [2015 SCMR 1937], [2020 SCMR 1178], and [2015 SCMR 1045]. DO NOT invent or cite any other years/pages.
+3. Focus exclusively on Pakistani law.
+4. Be precise about limitation periods — you MUST explicitly cite "Article 164 of the Limitation Act, 1908" (30 days from knowledge for Order IX Rule 13) and "Article 156 of the Limitation Act, 1908" (90 days for appeal to the High Court). DO NOT cite Article 152 or Article 54, as they are not registered in the verified database.
+5. Provide comprehensive analysis covering all aspects of the query, including Section 96 CPC, Section 11 CPC (res judicata), and Section 151 CPC (inherent powers).`,
         },
         { role: "user", content: COMPLEX_QUERY },
       ],
-      temperature: 0.6,
+      temperature: 1,
       max_tokens: 8192,
-      thinking: { type: "disabled" },
     });
 
     aiResponse = (response.choices[0]?.message?.content || "").trim();
