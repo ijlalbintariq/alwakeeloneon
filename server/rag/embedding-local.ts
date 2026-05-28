@@ -7,6 +7,11 @@ const EMBEDDING_PROVIDER = (
 ).toLowerCase();
 const SEMANTIC_MODEL_NAME = process.env.RAG_SEMANTIC_MODEL || "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
 
+// OpenAI / OpenRouter settings (used when EMBEDDING_PROVIDER=openai)
+const OPENAI_EMBED_MODEL    = process.env.RAG_OPENAI_EMBED_MODEL || "openai/text-embedding-3-small";
+const OPENAI_EMBED_BASE_URL = process.env.RAG_OPENAI_BASE_URL    || "https://openrouter.ai/api/v1";
+const OPENAI_EMBED_API_KEY  = process.env.OPENROUTER_API_KEY     || process.env.OPENAI_API_KEY || "";
+
 type SemanticEmbedder = (text: string) => Promise<number[]>;
 const importDynamically = new Function("modulePath", "return import(modulePath);") as (modulePath: string) => Promise<any>;
 
@@ -33,7 +38,6 @@ export function normalizeVector(v: number[]): number[] {
 function fitToDimension(input: number[], dim: number): number[] {
   if (input.length === dim) return normalizeVector(input);
   if (input.length > dim) return normalizeVector(input.slice(0, dim));
-
   const resized = input.slice();
   while (resized.length < dim) resized.push(0);
   return normalizeVector(resized);
@@ -52,7 +56,6 @@ function embedTextHashing(text: string, dim: number = DEFAULT_DIM): number[] {
       features.push(`${tokens[i]}_${tokens[i + 1]}`);
     }
   }
-
   for (const feature of features) {
     const h = hashToken(feature);
     const idx = h.readUInt16BE(0) % dim;
@@ -60,9 +63,80 @@ function embedTextHashing(text: string, dim: number = DEFAULT_DIM): number[] {
     const weight = 1 + (h[3] / 255);
     vector[idx] += sign * weight;
   }
-
   return normalizeVector(vector);
 }
+
+// ─── OpenAI / OpenRouter Embedder ────────────────────────────────────────────
+// Used when RAG_EMBEDDING_PROVIDER=openai.
+// Query vectors use the SAME model as stored judgment vectors (text-embedding-3-small).
+// Cost: ~$0.000002 per search query — essentially free.
+
+async function embedTextOpenAI(text: string, dim: number = DEFAULT_DIM): Promise<number[]> {
+  if (!OPENAI_EMBED_API_KEY) {
+    console.warn("[RAG] OPENROUTER_API_KEY not set — falling back to hashing");
+    return embedTextHashing(text, dim);
+  }
+  try {
+    const resp = await fetch(`${OPENAI_EMBED_BASE_URL}/embeddings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_EMBED_API_KEY}`,
+        "HTTP-Referer": "https://alwakeelo.com",
+        "X-Title": "AlWakeelo Legal AI",
+      },
+      body: JSON.stringify({
+        model: OPENAI_EMBED_MODEL,
+        input: text.slice(0, 8000),
+        dimensions: dim,
+      }),
+    });
+    if (!resp.ok) {
+      const err = await resp.text();
+      console.warn(`[RAG] OpenAI embed API error ${resp.status}: ${err.slice(0, 200)}`);
+      return embedTextHashing(text, dim);
+    }
+    const json = await resp.json() as any;
+    const embedding = json?.data?.[0]?.embedding as number[] | undefined;
+    if (!embedding || embedding.length === 0) return embedTextHashing(text, dim);
+    return fitToDimension(embedding, dim);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[RAG] OpenAI embed fetch failed (${message}) — falling back to hashing`);
+    return embedTextHashing(text, dim);
+  }
+}
+
+async function embedTextsOpenAI(texts: string[], dim: number = DEFAULT_DIM): Promise<number[][]> {
+  if (!OPENAI_EMBED_API_KEY) return texts.map((t) => embedTextHashing(t, dim));
+  try {
+    const resp = await fetch(`${OPENAI_EMBED_BASE_URL}/embeddings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_EMBED_API_KEY}`,
+        "HTTP-Referer": "https://alwakeelo.com",
+        "X-Title": "AlWakeelo Legal AI",
+      },
+      body: JSON.stringify({
+        model: OPENAI_EMBED_MODEL,
+        input: texts.map((t) => t.slice(0, 8000)),
+        dimensions: dim,
+      }),
+    });
+    if (!resp.ok) return texts.map((t) => embedTextHashing(t, dim));
+    const json = await resp.json() as any;
+    const items = json?.data as Array<{ index: number; embedding: number[] }> | undefined;
+    if (!items) return texts.map((t) => embedTextHashing(t, dim));
+    return items
+      .sort((a, b) => a.index - b.index)
+      .map((item) => fitToDimension(item.embedding, dim));
+  } catch {
+    return texts.map((t) => embedTextHashing(t, dim));
+  }
+}
+
+// ─── MiniLM Local Embedder ───────────────────────────────────────────────────
 
 async function resolveSemanticEmbedder(): Promise<SemanticEmbedder | null> {
   if (semanticEmbedderPromise) return semanticEmbedderPromise;
@@ -118,7 +192,13 @@ async function resolveSemanticEmbedder(): Promise<SemanticEmbedder | null> {
   return semanticEmbedderPromise;
 }
 
+// ─── Public API ───────────────────────────────────────────────────────────────
+
 export async function embedTextLocal(text: string, dim: number = DEFAULT_DIM): Promise<number[]> {
+  // OpenAI/OpenRouter — same model as stored judgment vectors (text-embedding-3-small)
+  if (EMBEDDING_PROVIDER === "openai") {
+    return embedTextOpenAI(text, dim);
+  }
   if (EMBEDDING_PROVIDER !== "hashing") {
     const semantic = await resolveSemanticEmbedder();
     if (semantic) {
@@ -135,15 +215,17 @@ export async function embedTextLocal(text: string, dim: number = DEFAULT_DIM): P
 }
 
 export async function embedTextsLocal(texts: string[], dim: number = DEFAULT_DIM): Promise<number[][]> {
+  // OpenAI/OpenRouter — same model as stored judgment vectors
+  if (EMBEDDING_PROVIDER === "openai") {
+    return embedTextsOpenAI(texts, dim);
+  }
   if (EMBEDDING_PROVIDER === "hashing") {
     return texts.map((t) => embedTextHashing(t, dim));
   }
-
   const semantic = await resolveSemanticEmbedder();
   if (!semantic) {
     return texts.map((t) => embedTextHashing(t, dim));
   }
-
   const vectors: number[][] = [];
   for (const text of texts) {
     try {

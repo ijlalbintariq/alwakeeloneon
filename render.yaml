@@ -46,7 +46,7 @@ services:
       - key: R2_PUBLIC_BASE_URL
         sync: false
       - key: RAG_EMBEDDING_PROVIDER
-        value: semantic
+        value: openai
       - key: RAG_SEMANTIC_MODEL
         value: Xenova/paraphrase-multilingual-MiniLM-L12-v2
       - key: RAG_EMBEDDING_DIM
