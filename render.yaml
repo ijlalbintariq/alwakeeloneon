@@ -46,9 +46,13 @@ services:
       - key: R2_PUBLIC_BASE_URL
         sync: false
       - key: RAG_EMBEDDING_PROVIDER
-        value: hashing
+        value: semantic
+      - key: RAG_SEMANTIC_MODEL
+        value: Xenova/paraphrase-multilingual-MiniLM-L12-v2
+      - key: RAG_EMBEDDING_DIM
+        value: "384"
       - key: RAG_INDEX_BATCH_SIZE
-        value: "8"
+        value: "16"
       - key: CLOUD_OCR_PROVIDER
         value: ocrspace
       - key: OCRSPACE_API_KEY
