@@ -10118,6 +10118,11 @@ RAG POLICY (STRICT):
       const id = String(req.params.id || "").trim();
       if (!id) return res.status(400).json({ message: "Judgment id is required" });
 
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      if (!isUUID) {
+        return res.status(404).json({ message: "Judgment not found" });
+      }
+
       const judgment = await storage.getJudgmentDetail(id);
       if (!judgment) return res.status(404).json({ message: "Judgment not found" });
 

@@ -144,6 +144,7 @@ export async function handleSitemapIndex(req: Request, res: Response): Promise<v
 const STATIC_URLS: Array<{ path: string; changefreq: string; priority: string }> = [
   { path: "/",                                  changefreq: "weekly",  priority: "1.0" },
   { path: "/judgments",                         changefreq: "daily",   priority: "0.9" },
+  { path: "/judgments/browse",                  changefreq: "daily",   priority: "0.9" },
   { path: "/statute-search",                    changefreq: "weekly",  priority: "0.9" },
   { path: "/al-wakeelo",                        changefreq: "weekly",  priority: "0.9" },
   { path: "/legal-drafting",                    changefreq: "weekly",  priority: "0.8" },
