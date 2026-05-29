@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { Request, Response, NextFunction } from "express";
-import { createRateLimiter } from "../../server/middleware/rate-limiter";
+import { createRateLimiter, isSearchCrawler, globalApiRateLimiter } from "../../server/middleware/rate-limiter";
 
 function mockRequest(ip: string, originalUrl = "/api/test", headers: Record<string, string> = {}): Partial<Request> {
   return {
@@ -132,4 +132,32 @@ test("Rate limiter supports skip option", async () => {
   limiter(req4 as Request, res4 as Response, () => { next4 = true; });
   assert.ok(!next4);
   assert.equal(res4.statusCode, 429);
+});
+
+test("isSearchCrawler detects typical search engine bots and allows them to bypass global API rate limiter on public routes", () => {
+  // Test bot detection
+  const googlebotReq = mockRequest("66.249.64.32", "/api/public/judgments/123", { "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" });
+  const bingbotReq = mockRequest("157.55.39.18", "/api/public/browse/list", { "user-agent": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)" });
+  const normalReq = mockRequest("192.168.1.100", "/api/public/judgments/123", { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
+
+  assert.ok(isSearchCrawler(googlebotReq as Request));
+  assert.ok(isSearchCrawler(bingbotReq as Request));
+  assert.ok(!isSearchCrawler(normalReq as Request));
+
+  // Test rate limiter bypass
+  const globalLimiter = globalApiRateLimiter;
+  
+  // Set up mock responses
+  let nextGoogle = false;
+  let nextNormal = false;
+  
+  // A bot should bypass the global rate limiter on public routes
+  const resGoogle = mockResponse();
+  globalLimiter(googlebotReq as Request, resGoogle as Response, () => { nextGoogle = true; });
+  assert.ok(nextGoogle);
+
+  // Normal request also passes initially
+  const resNormal = mockResponse();
+  globalLimiter(normalReq as Request, resNormal as Response, () => { nextNormal = true; });
+  assert.ok(nextNormal);
 });

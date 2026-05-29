@@ -2,6 +2,12 @@ import type { Request, Response, NextFunction } from "express";
 import { recordSecurityEvent } from "../security-monitoring";
 import { resolveRequestIp } from "../replit_integrations/auth/ip";
 
+export function isSearchCrawler(req: Request): boolean {
+  const ua = req.get("User-Agent");
+  if (!ua) return false;
+  return /googlebot|bingbot|yandexbot|applebot|duckduckbot|slurp|baiduspider/i.test(ua);
+}
+
 interface RateLimitRecord {
   count: number;
   resetAt: number;
@@ -104,11 +110,18 @@ export const globalApiRateLimiter = createRateLimiter({
   keyPrefix: "global-api-limit",
   skip: (req: Request) => {
     const url = req.originalUrl;
-    return (
+    if (
       url.startsWith("/api/auth") ||
       url.startsWith("/api/ai") ||
       url.startsWith("/api/apex") ||
       url.startsWith("/api/admin")
-    );
+    ) {
+      return true;
+    }
+    // Skip standard search crawlers on public routes to allow indexing of public judgments/directory listing.
+    if (url.startsWith("/api/public") && isSearchCrawler(req)) {
+      return true;
+    }
+    return false;
   },
 });

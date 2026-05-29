@@ -102,6 +102,7 @@ import {
   getExtractionQueueStats,
   isExtractionQueueFullError,
 } from "./extraction-guard";
+import { isSearchCrawler } from "./middleware/rate-limiter";
 
 
 const TOKEN_LIMITS = {
@@ -10076,6 +10077,9 @@ RAG POLICY (STRICT):
   }
 
   function takePublicJudgmentToken(req: Request): boolean {
+    if (isSearchCrawler(req)) {
+      return true;
+    }
     const ip = clientIp(req);
     const now = Date.now();
     const bucket = publicJudgmentIpBuckets.get(ip);
