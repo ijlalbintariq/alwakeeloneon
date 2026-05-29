@@ -13,3 +13,5 @@ vite.config.ts.*
 
 # Agent audit scripts — may contain env context, never commit
 .agents/
+*.bak*
+.env.bak*
