@@ -6599,7 +6599,7 @@ function scoreOutputQuality(feature: string, inputText: string, outputText: stri
 
   // 2. Error indicators
   const errorPatterns = [
-    /i\s+(apologize|cannot|can't|am unable)/i,
+    /i\s+(apologize|am unable)\s+to\s+(generate|complete|summarize|answer|process)/i,
     /error\s+(occurred|generating|processing)/i,
     /failed\s+to\s+(generate|process|complete)/i,
     /something\s+went\s+wrong/i,
