@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { clearSitemapCache } from "./sitemap";
 import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, aiOutputLog, adminKnowledge, statuteDocuments, savedJudgments,
   organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles, visitorSessions, caseLeads, publicFunnelEvents,
@@ -2412,6 +2413,7 @@ export class DatabaseStorage implements IStorage {
 
   async createJudgment(entry: InsertJudgment): Promise<Judgment> {
     const [created] = await db.insert(judgments).values(entry).returning();
+    clearSitemapCache();
     return created;
   }
 

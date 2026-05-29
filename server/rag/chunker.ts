@@ -146,7 +146,7 @@ function splitAtBoundaries(text: string): string[] {
     const candidate = buffer ? `${buffer}\n\n${para}` : para;
     const tokenCount = countTokens(candidate);
 
-    if (tokenCount <= DEFAULT_CHUNKING_CONFIG.chunkSize * 1.5) {
+    if (tokenCount <= DEFAULT_CHUNKING_CONFIG.chunkSize * 1.0) {
       // Keep accumulating paragraphs until we approach the size limit
       buffer = candidate;
     } else {

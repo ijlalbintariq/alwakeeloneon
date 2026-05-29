@@ -31,6 +31,10 @@ interface CachedCount {
 
 const countCache = new Map<string, CachedCount>();
 
+export function clearSitemapCache(): void {
+  countCache.clear();
+}
+
 async function cachedCount(key: string, loader: () => Promise<number>): Promise<number> {
   const now = Date.now();
   const hit = countCache.get(key);

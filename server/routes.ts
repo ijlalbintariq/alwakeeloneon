@@ -55,7 +55,7 @@ import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAudi
 import { scanUploadedBuffer } from "./file-scan";
 import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
-import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments } from "./sitemap";
+import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, clearSitemapCache } from "./sitemap";
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
@@ -391,7 +391,9 @@ function buildApexModeSystemPrompt(
 - Do not use live web search tools in this mode.
 - Use only user prompt, conversation history, attached files (if any), and internal knowledge context provided by the app.
 - Never claim to have searched external websites in this mode.
-- If a legal citation is not present in available internal context, state it as unavailable instead of fabricating.`;
+- If a legal citation is not present in available internal context, state it as unavailable instead of fabricating.
+- JURISDICTIONAL GROUNDING: You represent Pakistani law. You are STRICTLY FORBIDDEN from citing the Indian Evidence Act 1872 or Indian case law. Always use the Qanun-e-Shahadat Order 1984.
+- Under Section 24 CPC, a High Court has ZERO jurisdiction to transfer a case to another province. Inter-provincial transfers are strictly reserved for the Supreme Court of Pakistan.`;
 
   const apexInstant = `APEX PROFILE (KIMI-K2.5-INSTANT):
  - Primary goal: fast, polished legal output with clear structure.
@@ -6240,8 +6242,8 @@ const RATE_LIMITS_BY_FEATURE: Record<string, RateLimitConfig> = {
   chat: { capacity: 4, refillPerSec: 1.4 },
   "public-chat": { capacity: 3, refillPerSec: 0.5 },
   "public-funnel": { capacity: 8, refillPerSec: 1.2 },
-  "search-judgments": { capacity: 3, refillPerSec: 1.1 },
-  "search-statutes": { capacity: 3, refillPerSec: 1.1 },
+  "search-judgments": { capacity: 15, refillPerSec: 1.5 },
+  "search-statutes": { capacity: 15, refillPerSec: 1.5 },
   summarize: { capacity: 2, refillPerSec: 0.7 },
   brief: { capacity: 2, refillPerSec: 0.6 },
   draft: { capacity: 2, refillPerSec: 0.7 },
@@ -15282,6 +15284,7 @@ ${boundedRaw}`;
   app.get("/api/admin/seo/status", async (req, res) => {
     if (!(await isAdmin(req, res))) return;
     try {
+      clearSitemapCache();
       const siteBase = normalizeSiteBaseUrl(req);
       const parsedBase = new URL(siteBase);
       const hostname = parsedBase.hostname.toLowerCase();
@@ -15322,7 +15325,7 @@ ${boundedRaw}`;
       const homeHtml = homeProbe.body || "";
 
       const sitemapMentionedInRobots = /sitemap:\s*https?:\/\/\S+/i.test(robotsText);
-      const sitemapLooksValid = sitemapProbe.ok && /<urlset[\s>]/i.test(sitemapText);
+      const sitemapLooksValid = sitemapProbe.ok && /<(?:urlset|sitemapindex)[\s>]/i.test(sitemapText);
       const noindexOnHome = /<meta[^>]+name=["']robots["'][^>]+content=["'][^"']*noindex/i.test(homeHtml);
       const canonicalMatch = homeHtml.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
       const canonicalUrl = canonicalMatch?.[1] || null;
