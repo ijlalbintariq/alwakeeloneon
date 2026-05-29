@@ -46,7 +46,7 @@ export function PublicPageShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
             <Link href="/terms" className="hover:text-foreground">Terms</Link>
-            <Link href="/judgments" className="hover:text-foreground">Browse Judgments</Link>
+            <Link href="/judgments/browse" className="hover:text-foreground">Browse Judgments</Link>
           </div>
         </div>
       </footer>

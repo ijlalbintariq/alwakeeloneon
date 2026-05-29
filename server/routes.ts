@@ -12,6 +12,7 @@ import {
   caseLaw,
   judgments,
   courtsRef,
+  lawJournals,
   threads,
   documents,
   adminKnowledge,
@@ -10142,6 +10143,96 @@ RAG POLICY (STRICT):
     } catch (err) {
       console.error("Error fetching public judgment preview:", err);
       res.status(500).json({ message: "Failed to fetch judgment" });
+    }
+  });
+
+  app.get("/api/public/browse/index", async (req, res) => {
+    try {
+      const courts = await storage.getCourtsRef();
+      const journals = await storage.getLawJournals();
+      
+      const currentYear = new Date().getFullYear();
+      const years: number[] = [];
+      for (let y = currentYear; y >= 1947; y--) {
+        years.push(y);
+      }
+      
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.json({
+        courts,
+        journals,
+        years,
+      });
+    } catch (err) {
+      console.error("Error in GET /api/public/browse/index:", err);
+      return res.status(500).json({ message: "Failed to fetch directory index." });
+    }
+  });
+
+  app.get("/api/public/browse/list", async (req, res) => {
+    try {
+      const courtId = req.query.courtId ? Number(req.query.courtId) : undefined;
+      const journalId = req.query.journalId ? Number(req.query.journalId) : undefined;
+      const year = req.query.year ? Number(req.query.year) : undefined;
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+      const offset = (page - 1) * limit;
+
+      const conditions: any[] = [eq(judgments.isActive, true)];
+      if (courtId !== undefined && !isNaN(courtId)) {
+        conditions.push(eq(judgments.courtId, courtId));
+      }
+      if (journalId !== undefined && !isNaN(journalId)) {
+        conditions.push(eq(judgments.journalId, journalId));
+      }
+      if (year !== undefined && !isNaN(year)) {
+        conditions.push(eq(judgments.year, year));
+      }
+
+      const whereClause = and(...conditions);
+
+      const [countResult] = await db
+        .select({ value: count() })
+        .from(judgments)
+        .where(whereClause);
+      const total = Number(countResult?.value || 0);
+
+      const items = await db
+        .select({
+          id: judgments.id,
+          year: judgments.year,
+          page: judgments.page,
+          citation: judgments.citationString,
+          title: judgments.title,
+          decisionDate: judgments.decisionDate,
+          courtName: courtsRef.name,
+          courtSnapshot: judgments.courtNameSnapshot,
+          journalCode: lawJournals.code,
+        })
+        .from(judgments)
+        .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
+        .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+        .where(whereClause)
+        .orderBy(desc(judgments.createdAt), desc(judgments.id))
+        .limit(limit)
+        .offset(offset);
+
+      const totalPages = Math.ceil(total / limit);
+
+      res.setHeader("Cache-Control", "public, max-age=300");
+      return res.json({
+        items,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasMore: page < totalPages,
+        }
+      });
+    } catch (err) {
+      console.error("Error in GET /api/public/browse/list:", err);
+      return res.status(500).json({ message: "Failed to fetch directory judgments." });
     }
   });
 

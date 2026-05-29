@@ -18,6 +18,7 @@ const DashboardPage = lazy(() => import("@/pages/dashboard"));
 const JudgmentsPage = lazy(() => import("@/pages/judgments"));
 const JudgmentViewPage = lazy(() => import("@/pages/judgment-view"));
 const JudgmentDetailPage = lazy(() => import("@/pages/judgment-detail"));
+const JudgmentDirectoryPage = lazy(() => import("@/pages/judgment-directory"));
 const StatuteSearchPage = lazy(() => import("@/pages/statute-search"));
 const StatuteViewPage = lazy(() => import("@/pages/statute-view"));
 const ChatPage = lazy(() => import("@/pages/chat"));
@@ -172,6 +173,21 @@ function Router({ onReady }: { onReady?: () => void }) {
     );
   }
 
+  if (location === "/judgments/browse") {
+    if (user) {
+      return (
+        <AppShell>
+          <JudgmentDirectoryPage />
+        </AppShell>
+      );
+    }
+    return (
+      <PublicPageShell>
+        <JudgmentDirectoryPage />
+      </PublicPageShell>
+    );
+  }
+
   if (!user) {
     return <Redirect to="/auth" />;
   }
@@ -188,6 +204,7 @@ function Router({ onReady }: { onReady?: () => void }) {
     <AppShell>
       <Switch>
         <Route path="/dashboard" component={DashboardPage} />
+        <Route path="/judgments/browse" component={JudgmentDirectoryPage} />
         <Route path="/judgments" component={JudgmentsPage} />
         <Route path="/judgment-search" component={LegacyJudgmentSearchRedirect} />
         <Route path="/judgment-view" component={JudgmentViewPage} />

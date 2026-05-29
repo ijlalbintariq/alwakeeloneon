@@ -1,7 +1,10 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { injectSeoMeta } from "./seo-meta";
+import { injectSeoMeta, type SeoMeta } from "./seo-meta";
+import { db } from "./db";
+import { judgments } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/$/,
@@ -16,6 +19,7 @@ const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/install$/,
   /^\/dashboard$/,
   /^\/judgments$/,
+  /^\/judgments\/browse$/,
   /^\/judgment-search$/,
   /^\/judgment-view$/,
   /^\/citation-search$/,
@@ -56,14 +60,84 @@ export function serveStatic(app: Express) {
   const indexHtmlPath = path.resolve(distPath, "index.html");
   const indexHtmlTemplate = fs.readFileSync(indexHtmlPath, "utf8");
 
-  function sendIndexWithSeo(req: express.Request, res: express.Response, statusCode = 200): void {
+  // 24-hour cache for dynamic SEO metadata to keep Render/Neon DB load near zero
+  const seoCache = new Map<string, { meta: SeoMeta; expiresAt: number }>();
+  const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+  async function getJudgmentSeoMeta(id: string): Promise<SeoMeta | undefined> {
+    const now = Date.now();
+    const cached = seoCache.get(id);
+    if (cached && cached.expiresAt > now) {
+      return cached.meta;
+    }
+
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      if (!isUuid) return undefined;
+
+      const [row] = await db
+        .select({
+          title: judgments.title,
+          citationString: judgments.citationString,
+          courtNameSnapshot: judgments.courtNameSnapshot,
+          decisionDate: judgments.decisionDate
+        })
+        .from(judgments)
+        .where(eq(judgments.id, id))
+        .limit(1);
+
+      if (row) {
+        const title = row.title ? String(row.title).trim() : "";
+        const citation = row.citationString ? String(row.citationString).trim() : "";
+        const courtName = row.courtNameSnapshot ? String(row.courtNameSnapshot).trim() : "Supreme Court / High Court of Pakistan";
+        const decisionDateStr = row.decisionDate ? new Date(row.decisionDate).toISOString().slice(0, 10) : "";
+
+        // Dynamically compile CourtCase JSON-LD schema markup for Google Search rich snippets
+        const schema = {
+          "@context": "https://schema.org",
+          "@type": "CourtCase",
+          "name": title,
+          "identifier": citation,
+          "caseNumber": citation,
+          "court": {
+            "@type": "GovernmentOrganization",
+            "name": courtName
+          },
+          ...(decisionDateStr ? { "datePublished": decisionDateStr } : {})
+        };
+        const schemaMarkup = `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n</script>`;
+
+        const meta: SeoMeta = {
+          title: `${title}${citation ? ` (${citation})` : ""} | Al Wakeelo`,
+          description: `Read the full case law: ${title}${citation ? `, ${citation}` : ""} on Al Wakeelo — Pakistan's AI legal assistant. Full judgment text, court, and citations.`,
+          index: true,
+          schemaMarkup,
+        };
+        seoCache.set(id, { meta, expiresAt: now + CACHE_TTL_MS });
+        return meta;
+      }
+    } catch (err) {
+      console.error(`[SEO Meta] Failed dynamic lookup for judgment ${id}:`, err);
+    }
+    return undefined;
+  }
+
+  async function sendIndexWithSeo(req: express.Request, res: express.Response, statusCode = 200): Promise<void> {
     // Express 5 with `app.use("/{*path}")` mounts the handler with the wildcard
     // as the mount path, so `req.path` returns the residual ("/") rather than
     // the full request path. Use originalUrl (minus query) to get the real
     // route — this is what crawlers actually requested.
     const raw = req.originalUrl || req.url || req.path || "/";
     const pathname = raw.split("?")[0] || "/";
-    const html = injectSeoMeta(indexHtmlTemplate, pathname);
+
+    let customMeta: SeoMeta | undefined;
+    const judgmentMatch = pathname.match(/^\/judgment\/([^/]+)$/);
+    if (judgmentMatch) {
+      const judgmentId = judgmentMatch[1];
+      customMeta = await getJudgmentSeoMeta(judgmentId);
+    }
+
+    const html = injectSeoMeta(indexHtmlTemplate, pathname, customMeta);
     res.setHeader("Cache-Control", HTML_CACHE_HEADER);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(statusCode).send(html);
@@ -106,7 +180,7 @@ export function serveStatic(app: Express) {
   }
 
   // SPA shell with per-route SEO meta injection.
-  app.use("/{*path}", (req, res) => {
+  app.use("/{*path}", async (req, res) => {
     const pathname = req.path || "/";
     const method = (req.method || "GET").toUpperCase();
     if (method !== "GET" && method !== "HEAD") {
@@ -122,13 +196,15 @@ export function serveStatic(app: Express) {
       : "/";
 
     if (isKnownSpaRoute(normalizedPath)) {
-      return sendIndexWithSeo(req, res, 200);
+      await sendIndexWithSeo(req, res, 200);
+      return;
     }
 
     const wantsHtml = (req.get("accept") || "").includes("text/html");
     if (wantsHtml) {
-      return sendIndexWithSeo(req, res, 404);
+      await sendIndexWithSeo(req, res, 404);
+      return;
     }
-    return res.status(404).end();
+    res.status(404).end();
   });
 }

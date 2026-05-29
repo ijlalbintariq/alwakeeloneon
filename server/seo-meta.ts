@@ -18,6 +18,7 @@ export interface SeoMeta {
   title: string;
   description: string;
   index: boolean;
+  schemaMarkup?: string;
 }
 
 interface RouteRule {
@@ -118,6 +119,15 @@ const ROUTE_RULES: RouteRule[] = [
       title: "Pakistani Judgment Search — 600,000+ Cases | Al Wakeelo",
       description:
         "Search 600,000+ Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court. Find case law by citation, party, court, and year.",
+      index: true,
+    },
+  },
+  {
+    match: /^\/judgments\/browse$/,
+    meta: {
+      title: "Browse Pakistani Case Law & Judgments Directory | Al Wakeelo",
+      description:
+        "Browse our directory of Pakistani judgments and case law. Find cases categorized by Court (Supreme Court, High Courts), Year, and Law Journal (PLD, SCMR, CLC).",
       index: true,
     },
   },
@@ -245,8 +255,8 @@ function buildCanonicalUrl(pathname: string): string {
  * Replace SEO-relevant tags in the cached index.html with values for this route.
  * Touches only tags that exist in client/index.html — leaves everything else intact.
  */
-export function injectSeoMeta(html: string, pathname: string): string {
-  const meta = lookupSeoMeta(pathname);
+export function injectSeoMeta(html: string, pathname: string, customMeta?: SeoMeta): string {
+  const meta = customMeta || lookupSeoMeta(pathname);
   const canonical = buildCanonicalUrl(pathname);
   const titleSafe = escapeHtmlText(meta.title);
   const descSafe = escapeHtmlAttr(meta.description);
@@ -255,7 +265,7 @@ export function injectSeoMeta(html: string, pathname: string): string {
     ? "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"
     : "noindex,nofollow";
 
-  return html
+  let resultHtml = html
     .replace(/<title>[\s\S]*?<\/title>/i, `<title>${titleSafe}</title>`)
     .replace(
       /<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i,
@@ -289,4 +299,9 @@ export function injectSeoMeta(html: string, pathname: string): string {
       /<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i,
       `<meta name="twitter:description" content="${descSafe}" />`,
     );
+
+  if (meta.schemaMarkup) {
+    resultHtml = resultHtml.replace("</body>", `${meta.schemaMarkup}\n</body>`);
+  }
+  return resultHtml;
 }
