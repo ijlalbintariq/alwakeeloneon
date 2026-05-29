@@ -3944,22 +3944,71 @@ async function searchCaseLawWithFullText(args: {
           topK: Math.min(120, Math.max(args.limit * 4, 24)),
         });
 
-        const sourceDocIds: number[] = [];
+        // Path A: admin-case-law PDFs (old 806 docs) → fetch by sourceDocumentId
+        const adminCaseLawDocIds: number[] = [];
         const seenDocIds = new Set<number>();
+
+        // Path B: judgment vectors (new 223k) → fetch by citationString from metadata
+        const judgmentCitations: string[] = [];
+        const seenCitations = new Set<string>();
+
         for (const match of retrieval.matches) {
           const sourceType = String((match.metadata || {}).sourceType || "").toLowerCase();
-          if (sourceType !== "admin-case-law") continue;
           const sourceDocId = Number(match.sourceDocumentId);
-          if (!Number.isInteger(sourceDocId) || sourceDocId <= 0 || seenDocIds.has(sourceDocId)) continue;
-          seenDocIds.add(sourceDocId);
-          sourceDocIds.push(sourceDocId);
-          if (sourceDocIds.length >= Math.max(args.limit * 4, 30)) break;
+
+          if (sourceType === "admin-case-law") {
+            if (Number.isInteger(sourceDocId) && sourceDocId > 0 && !seenDocIds.has(sourceDocId)) {
+              seenDocIds.add(sourceDocId);
+              adminCaseLawDocIds.push(sourceDocId);
+              if (adminCaseLawDocIds.length >= Math.max(args.limit * 2, 20)) break;
+            }
+          } else if (sourceType === "judgment") {
+            const citation = String((match.metadata || {}).citationString || "").trim();
+            if (citation && !seenCitations.has(citation.toLowerCase())) {
+              seenCitations.add(citation.toLowerCase());
+              judgmentCitations.push(citation);
+              if (judgmentCitations.length >= Math.max(args.limit * 4, 40)) break;
+            }
+          }
         }
 
-        if (sourceDocIds.length === 0) return [];
-        const rowsRaw = await storage.getCaseLawBySourceDocuments(sourceDocIds, "admin");
-        const rows = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(rowsRaw));
-        const filteredRows = filterCaseLawByStructuredFields(rows, {
+        // Fetch both paths in parallel
+        const [adminCaseLawRows, judgmentRows] = await Promise.all([
+          // Path A: old admin case law PDFs
+          adminCaseLawDocIds.length > 0
+            ? storage.getCaseLawBySourceDocuments(adminCaseLawDocIds, "admin")
+            : Promise.resolve([] as CaseLaw[]),
+          // Path B: new 223k judgment vectors — lookup by citation string
+          judgmentCitations.length > 0
+            ? (async () => {
+                const results: CaseLaw[] = [];
+                const seen = new Set<string>();
+                // Batch lookups in parallel (max 10 at once)
+                const batchSize = 10;
+                for (let i = 0; i < judgmentCitations.length; i += batchSize) {
+                  const batch = judgmentCitations.slice(i, i + batchSize);
+                  const batchResults = await Promise.all(
+                    batch.map(citation =>
+                      storage.findJudgmentByCitationString(citation, 1).catch(() => [] as CaseLaw[])
+                    )
+                  );
+                  for (const rows of batchResults) {
+                    for (const row of rows) {
+                      const key = String(row.citation || "").toLowerCase();
+                      if (key && !seen.has(key)) {
+                        seen.add(key);
+                        results.push(row);
+                      }
+                    }
+                  }
+                }
+                return results;
+              })()
+            : Promise.resolve([] as CaseLaw[]),
+        ]);
+
+        const filteredAdminRows = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(adminCaseLawRows));
+        const filteredAdminByFields = filterCaseLawByStructuredFields(filteredAdminRows, {
           year: args.year,
           report: args.report,
           page: args.page,
@@ -3967,7 +4016,7 @@ async function searchCaseLawWithFullText(args: {
         });
 
         const bestBySourceDoc = new Map<number, CaseLaw>();
-        for (const row of filteredRows) {
+        for (const row of filteredAdminByFields) {
           const sourceDocId = Number(row.sourceDocId || 0);
           if (!Number.isInteger(sourceDocId) || sourceDocId <= 0) continue;
           const existing = bestBySourceDoc.get(sourceDocId);
@@ -3988,14 +4037,27 @@ async function searchCaseLawWithFullText(args: {
           }
         }
 
-        return sourceDocIds
+        const adminResults = adminCaseLawDocIds
           .map((sourceDocId) => bestBySourceDoc.get(sourceDocId))
           .filter((row): row is CaseLaw => Boolean(row));
+
+        // Merge: judgment vector results first (semantic), then admin case law PDF results
+        const combined: CaseLaw[] = [];
+        const combinedSeen = new Set<string>();
+        for (const row of [...judgmentRows, ...adminResults]) {
+          const key = String(row.citation || "").toLowerCase() || String(row.id || "");
+          if (!combinedSeen.has(key)) {
+            combinedSeen.add(key);
+            combined.push(row);
+          }
+        }
+        return combined;
       } catch (err) {
         console.warn("[CaseLaw Search] Full-text retrieval fallback unavailable:", err);
         return [];
       }
     })();
+
 
   const [baseResultsRaw, ragCandidates] = await Promise.all([baseResultsPromise, ragCandidatesPromise]);
   const baseResults = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(baseResultsRaw));
