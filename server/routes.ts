@@ -3262,6 +3262,76 @@ export async function verifyReferencesBlock(
 }
 
 /**
+ * Prose-level citation hallucination scrubber.
+ *
+ * Problem: The references block verification strips fake citations from clickable
+ * cards, but the AI's prose text still contains **[2025 SCMR 773]** or
+ * **[2024 PLD 251]** — fully hallucinated citations visible to the user.
+ *
+ * Solution: Scan prose for **[CITATION]** patterns, check each against the trusted
+ * pool (tool-search-verified citations). Any citation NOT in the pool gets replaced
+ * with a safe fallback that directs the user to /judgment-search.
+ *
+ * This is a CODE-LEVEL guard — it catches hallucinations that prompt engineering
+ * cannot prevent. Even if the AI ignores all anti-hallucination instructions,
+ * this function strips the fake citation before the user sees it.
+ */
+export function enforceProseCitationIntegrity(
+  content: string,
+  trustedCitations?: Iterable<string>,
+): string {
+  if (!trustedCitations) return content;
+
+  // Build normalised set of trusted citations from the tool search pool
+  const trustedKeys = new Set<string>();
+  for (const c of trustedCitations) {
+    const key = String(c || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (key) trustedKeys.add(key);
+  }
+  // If no trusted pool exists, skip (non-al-wakeelo modules, or tool search disabled)
+  if (trustedKeys.size === 0) return content;
+
+  // Separate references block from prose — don't touch the block (already verified)
+  const refsMatch = content.match(/(```references[\s\S]*?```)/);
+  const refsBlock = refsMatch ? refsMatch[0] : "";
+  let proseBody = refsMatch ? content.replace(refsMatch[0], "<<<REFS_PLACEHOLDER>>>") : content;
+
+  // Match **[CITATION]** patterns in prose — the standard citation format
+  // Matches: **[PLD 2020 Supreme Court 456]**, **[2024 SCMR 1419]**, etc.
+  const citationPattern = /\*\*\[([^\]]{5,140})\]\*\*/g;
+
+  proseBody = proseBody.replace(citationPattern, (fullMatch, citationInner: string) => {
+    const key = citationInner
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Check if this citation is in the trusted pool
+    if (trustedKeys.has(key)) return fullMatch; // verified — keep it
+
+    // Check partial matches (formatting variants)
+    for (const tk of trustedKeys) {
+      if (tk.includes(key) || key.includes(tk)) return fullMatch; // close enough — keep it
+    }
+
+    // NOT in trusted pool — this is a hallucinated citation. Replace with safe fallback.
+    console.warn(`[CitationScrubber] Stripped hallucinated citation: "${citationInner}"`);
+    return `*(a relevant judicial precedent should be verified via the Judgment Search database at /judgment-search)*`;
+  });
+
+  // Restore references block
+  if (refsBlock) {
+    proseBody = proseBody.replace("<<<REFS_PLACEHOLDER>>>", refsBlock);
+  }
+  return proseBody;
+}
+
+/**
  * Prose-level statute fact-checking: extracts "Section X of Y" / "Article X of Y"
  * mentions from prose, validates each against the statute database, and replaces
  * unverified section references with generic text.
@@ -3466,7 +3536,11 @@ export async function applyAlWakeeloSafetyGuardrails(
   const verifiedRefs = await verifyReferencesBlock(withRefs, policy, trustedCitations, trustedTitles);
   // R3: Prose-level statute fact-checking — replace unverified Section X of Y mentions
   const statuteChecked = await enforceStatuteSectionIntegrity(verifiedRefs);
-  return statuteChecked;
+  // R4: Prose-level citation hallucination scrubber — strip **[fake PLD/SCMR]** from
+  // prose text when they're not in the trusted tool-search pool. This is the final
+  // CODE-LEVEL guard against hallucinated citations reaching the user.
+  const citationScrubbed = enforceProseCitationIntegrity(statuteChecked, trustedCitations);
+  return citationScrubbed;
 }
 
 type CitationParts = { year: number; journalCode: string; page: number };
@@ -6467,13 +6541,19 @@ PROTOCOL 2 — NUANCED EVALUATION OF CONFLICTING PROVISIONS:
 When asked about property transfers following an ex-parte decree, ALWAYS analyse the tension between:
 - **Section 52 TPA (Lis Pendens)**: pendente lite transfers are subject to the outcome of litigation
 - **Section 41 TPA (Protected Bona Fide Purchaser)**: ostensible owner transactions require factual determination of good faith
-Acknowledge that an ex-parte decree remains valid and executable until formally suspended or set aside under Order IX Rule 13 CPC. Third-party transactions executed PRIOR to the filing or notice of a Rule 13 application create vested rights that require a FACTUAL determination of "good faith" and "due diligence" — NOT an automatic declaration of invalidity.
+CRITICAL INTERREGNUM ANALYSIS (MANDATORY):
+The period between the passing of an ex-parte decree and the filing of an Order IX Rule 13 CPC application is an INTERREGNUM (gap). You MUST acknowledge these binding principles:
+1. An ex-parte decree is a VALID, BINDING decree until it is formally set aside. The Supreme Court of Pakistan has repeatedly affirmed this.
+2. A purchaser who relies on a valid court decree before an active stay order or application is formally brought to their knowledge CAN mount a strong defence under Section 41 TPA.
+3. Third-party transactions executed PRIOR to the filing or notice of a Rule 13 application create VESTED RIGHTS that require a FACTUAL determination of "good faith" and "due diligence" — NOT an automatic declaration of invalidity.
+4. Section 52 TPA (lis pendens) does NOT automatically strip away bona fide purchaser protection during this interregnum.
+NEVER declare that a third-party purchaser during the interregnum is "never protected" — this is a legally incorrect absolute statement.
 Apply this same nuanced analysis pattern to ALL conflicting statutory provisions — never resolve a conflict with a single conclusory statement.
 
 PROTOCOL 3 — PRECEDENT ANCHORING RULE:
 Anchor your legal reasoning ONLY in authentic, verified landmark rulings from the database.
 When evaluating malicious or mala fide litigation strategies designed to circumvent statutory rules:
-- Cross-reference established precedents regarding misuse of discretionary court remedies
+- Cross-reference established precedents such as PLD 2010 Supreme Court 691 (Rai Ashraf vs. Muhammad Saleem Bhatti) regarding the misuse of discretionary court remedies — BUT ONLY if this citation appears in the VERIFIED JUDGMENTS section. If it does not appear, state the general principle and direct the user to /judgment-search.
 - Analyse whether the litigant's conduct amounts to abuse of process
 - Consider the court's inherent powers under Section 151 CPC to prevent abuse
 NEVER fabricate a "landmark ruling" to fill an analysis gap. If no verified precedent exists, state the general legal principle and direct the user to /judgment-search.
