@@ -213,30 +213,31 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
       for (const t of queryTokens) if (hay.includes(t)) hits++;
       const base = 1 + hits / queryTokens.length;
 
-      // Domain-mismatch penalty: detect cross-domain citations (e.g. criminal case
-      // retrieved for a property query) and heavily penalise them.
-      // Without this, a criminal case about "possession" of weapons matches a
-      // property query about "possession" of land and pollutes the results.
-      const CIVIL_DOMAINS = ["property", "transfer", "mortgage", "sale", "rent", "tenant", "landlord", "eviction", "tpa", "registration", "specific performance", "agreement", "conveyance", "title", "deed", "possession", "notice", "partition", "easement"];
-      const CRIMINAL_DOMAINS = ["murder", "qatl", "ppc", "crpc", "bail", "fir", "sentence", "conviction", "acquittal", "prisoner", "remand", "criminal", "offence", "penal", "prosecution", "accused", "complainant", "investigation"];
-      const FAMILY_DOMAINS = ["khula", "divorce", "maintenance", "custody", "dower", "mehr", "nikah", "iddat", "family", "guardian", "dissolution", "marriage"];
+      // Domain-mismatch penalty: ONLY for strong, clear mismatches.
+      // Softened from v1 — family cases often contain civil terms (property, decree,
+      // possession) and were being incorrectly penalized.
+      //
+      // Only penalize when there's a HARD signal: PCRLJ citation in a civil query,
+      // or murder/bail keywords in a property dispute.
+      const HARD_CRIMINAL_SIGNALS = ["murder", "qatl", "bail", "fir", "conviction", "acquittal", "prisoner", "penal", "prosecution", "accused"];
+      const HARD_CIVIL_SIGNALS = ["mortgage", "tenant", "landlord", "eviction", "easement", "partition", "conveyance"];
 
       const queryLower = query.toLowerCase();
-      const queryCivil = CIVIL_DOMAINS.some(d => queryLower.includes(d));
-      const queryCriminal = CRIMINAL_DOMAINS.some(d => queryLower.includes(d));
-      const queryFamily = FAMILY_DOMAINS.some(d => queryLower.includes(d));
+      const queryCivil = HARD_CIVIL_SIGNALS.some(d => queryLower.includes(d)) || queryLower.includes("property") || queryLower.includes("tpa");
+      const queryCriminal = HARD_CRIMINAL_SIGNALS.some(d => queryLower.includes(d)) || queryLower.includes("ppc") || queryLower.includes("crpc");
 
-      const citCourt = String(r.court || "").toLowerCase();
       const citText = hay;
-      const citCriminal = CRIMINAL_DOMAINS.some(d => citText.includes(d)) || citCourt.includes("criminal") || String(r.citation || "").toUpperCase().includes("PCRLJ") || String(r.citation || "").toUpperCase().includes("PPC");
-      const citCivil = CIVIL_DOMAINS.some(d => citText.includes(d));
-      const citFamily = FAMILY_DOMAINS.some(d => citText.includes(d));
+      const citIsCriminalJournal = String(r.citation || "").toUpperCase().includes("PCRLJ");
+      const citHardCriminal = HARD_CRIMINAL_SIGNALS.some(d => citText.includes(d)) || citIsCriminalJournal;
+      const citHardCivil = HARD_CIVIL_SIGNALS.some(d => citText.includes(d));
 
-      // Penalise cross-domain citations: 0.15x multiplier makes them rank near the bottom
-      if (queryCivil && !queryCriminal && citCriminal && !citCivil) return base * 0.15;
-      if (queryCriminal && !queryCivil && citCivil && !citCriminal) return base * 0.15;
-      if (queryFamily && !queryCriminal && citCriminal && !citFamily) return base * 0.15;
-      if (queryFamily && !queryCivil && citCivil && !citFamily) return base * 0.2;
+      // Only penalize CLEAR cross-domain: criminal case in civil query or vice versa
+      // Penalty is 0.3x (downranks but doesn't bury — still appears if nothing better exists)
+      if (queryCivil && !queryCriminal && citHardCriminal && !citHardCivil) return base * 0.3;
+      if (queryCriminal && !queryCivil && citHardCivil && !citHardCriminal) return base * 0.3;
+
+      // NO penalty for family-civil overlap — family cases naturally discuss property, maintenance, etc.
+      // NO penalty for family-criminal overlap — family cases mention cruelty, harassment, etc.
 
       return base;
     };
