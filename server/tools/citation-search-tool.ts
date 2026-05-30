@@ -1,5 +1,6 @@
 import type { ChatCompletionTool } from "openai/resources/chat/completions";
 import { storage } from "../storage";
+import { retrieveForQuery } from "../rag/rag-service";
 
 // ── Tool schema (sent to DeepSeek so it knows when/how to call it) ──────────
 
@@ -150,14 +151,46 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
   }
 
   try {
-    // Search both tables in parallel — same as Judgments search page behaviour.
-    // Previously case_law was searched first and judgments only as fallback,
-    // meaning case_law results (often unrelated extracted citations) blocked
-    // the richer judgments table from being searched at all.
-    const [caseLawResults, judgmentResults] = await Promise.all([
+    // Search both tables in parallel alongside a high-performance Vector Similarity Search (RAG).
+    // Previously, pure keyword search only matched titles or metadata, missing rich context inside
+    // full text and headnotes. Hybrid RAG vector search fetches semantically relevant judgments.
+    const [caseLawResults, judgmentResults, vectorResultsRaw] = await Promise.all([
       storage.searchCaseLaw(query, safeLimit, { court: court || undefined }),
       storage.searchJudgmentsByKeywords(query, safeLimit),
+      retrieveForQuery({
+        userId: "global-admin-judgments",
+        query,
+        topK: safeLimit,
+      }).catch((err) => {
+        console.warn("[executeCitationSearch:Vector] Hybrid search failed, falling back to keywords:", err?.message || err);
+        return { matches: [] };
+      }),
     ]);
+
+    // Map RAG vector matches to the unified CaseLaw structure.
+    const vectorResults: typeof caseLawResults = (vectorResultsRaw?.matches || []).map((m) => {
+      const parts = String(m.title || "").split(" — ");
+      const citation = String(m.metadata?.citationString || parts[0] || "");
+      const title = String(m.metadata?.title || parts.slice(1).join(" — ") || "Judgment");
+      return {
+        id: Number(m.metadata?.judgmentId || m.sourceDocumentId || 0),
+        citation,
+        citationYear: null,
+        citationReport: null,
+        citationPage: null,
+        citationRole: "cited" as const,
+        court: String(m.metadata?.court || ""),
+        title,
+        summary: String(m.chunkText || ""),
+        keywords: [],
+        sourceDocId: null,
+        sourceType: "judgment",
+        sourceFilename: null,
+        documentClassification: "case_law" as const,
+        fallbackExtraction: false,
+        statuteReferences: [],
+      };
+    });
 
     // Filter out non-judgment rows from case_law table. The auto-extract
     // pipeline creates fallback entries with court="Statute Reference" and
@@ -172,10 +205,11 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
       return true;
     });
 
-    // Merge + dedupe by normalised citation string. Judgments table preferred.
+    // Merge + dedupe by normalised citation string. Judgments table preferred,
+    // followed by Vector Similarity hits, and then keyword fallback matches.
     const seen = new Set<string>();
     const dedup: typeof caseLawResults = [];
-    for (const r of [...judgmentResults, ...caseLawClean]) {
+    for (const r of [...judgmentResults, ...vectorResults, ...caseLawClean]) {
       const key = normalizeCitationKey(r.citation);
       if (!key || seen.has(key)) continue;
       seen.add(key);
