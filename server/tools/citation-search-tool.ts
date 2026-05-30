@@ -263,7 +263,7 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
         citation: r.citation,
         court: r.court,
         title: r.title,
-        summary: (r.summary || "").slice(0, 800),
+        summary: (r.summary || "").slice(0, 1500),
       })),
     });
     cacheSet(ck, payload);
