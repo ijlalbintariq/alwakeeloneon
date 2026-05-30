@@ -257,9 +257,17 @@ function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: numbe
       1,
     );
 
+    const isSupremeCourt =
+      String(m.metadata?.court || "").toLowerCase().includes("supreme court") ||
+      /\b(?:SCMR|PSC)\b/.test(m.title) ||
+      /\bPLD\s+\d{4}\s+SC\b/.test(m.title) ||
+      /\bSC\b/.test(m.title);
+
+    const finalScore = clamp(isSupremeCourt ? rerankedScore * 1.10 : rerankedScore, 0, 1);
+
     return {
       ...m,
-      score: rerankedScore,
+      score: finalScore,
     };
   });
 
