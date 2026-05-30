@@ -6355,7 +6355,8 @@ EVERY response involving cases, judgments, or judicial precedent MUST reference 
 
 ━━━ CITATION INTEGRITY — NON-NEGOTIABLE ━━━
 
-RULE 1 — ONLY DATABASE CITATIONS:
+RULE 1 — MANDATORY DATABASE CITATIONS:
+When the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section below contains cases relevant to the user's query, you MUST cite ALL of them that apply. Do NOT skip or omit a relevant case that is present in that section.
 You may ONLY cite judgments that appear verbatim in the "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section below.
 NEVER cite a case from your training memory. NEVER invent a citation. NEVER guess a citation.
 YOUR TRAINING DATA IS NOT A SOURCE. Even if you strongly believe a judgment exists, if it is not in the section below, it does not exist for this response.
@@ -6398,7 +6399,8 @@ EXACT STRING RULES:
 
 ━━━ STATUTE CITATION INTEGRITY — NON-NEGOTIABLE ━━━
 
-RULE S1 — ONLY DATABASE STATUTE SECTIONS:
+RULE S1 — MANDATORY STATUTE SECTIONS:
+When the "VERIFIED STATUTES FROM INTERNAL DATABASE" section contains sections relevant to the user's query, you MUST cite them with their exact section numbers. Do NOT omit a section number that is present in the database context.
 You may ONLY cite specific statute section/article numbers that appear in the "VERIFIED STATUTES FROM INTERNAL DATABASE" section below.
 NEVER cite a specific section number from your training memory. NEVER guess an article number.
 Your training data contains INCORRECT section/article mappings for Pakistani statutes.
@@ -7010,8 +7012,37 @@ export async function registerRoutes(
         });
       }
 
+      // RAG enrichment: retrieve top judgment + statute chunks for this query so
+      // the public-chat response can include real PLD/SCMR citations and section numbers.
+      let publicChatRagContext = "";
+      try {
+        const ragResult = await retrieveForQuery({
+          userId: GLOBAL_JUDGMENTS_RAG_USER_ID,
+          query: message,
+          topK: 5,
+        });
+        const judgmentChunks = ragResult.matches
+          .filter((m) => m.metadata?.citationString)
+          .slice(0, 4);
+        if (judgmentChunks.length > 0) {
+          publicChatRagContext =
+            "\n\n=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===\n" +
+            judgmentChunks
+              .map(
+                (m) =>
+                  `CITATION: ${m.metadata?.citationString}\nCOURT: ${m.metadata?.court || "Pakistani Court"}\nEXCERPT: ${(m.chunkText || "").slice(0, 300)}`,
+              )
+              .join("\n---\n") +
+            "\n=== END VERIFIED JUDGMENTS ===\n" +
+            "\nIMPORTANT: You MUST cite relevant cases above using format: **[CITATION]** — what the court held. Only cite from the section above — never from training memory.";
+        }
+      } catch {
+        // RAG enrichment is best-effort — proceed without it on failure
+      }
+
+      const publicChatSystemContent = withPakistanLawOnlyPolicy(PUBLIC_CHAT_SYSTEM_PROMPT) + publicChatRagContext;
       const aiMessages = [
-        { role: "system" as const, content: withPakistanLawOnlyPolicy(PUBLIC_CHAT_SYSTEM_PROMPT) },
+        { role: "system" as const, content: publicChatSystemContent },
         { role: "user" as const, content: message },
       ];
       const preferredLanguage = resolvePublicChatLanguage(message);
@@ -7022,7 +7053,7 @@ export async function registerRoutes(
       let aiReply = "";
       const primary = await chatWithDeepSeek({
         messages: aiMessages,
-        maxTokens: 900,
+        maxTokens: 1200,
         temperature: 0.4,
       });
       aiReply = primary.content;
