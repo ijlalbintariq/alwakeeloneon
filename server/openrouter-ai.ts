@@ -93,7 +93,13 @@ export async function runToolJudgmentSearchOR(
       content:
         "You are a Pakistani case-law search assistant. " +
         "If the user's message is a casual conversation, greeting, or does not require legal research or case law lookup, DO NOT call any tools and just respond 'DONE'. " +
-        "Otherwise, call search_judgments 2-3 times in PARALLEL with SHORT (2-4 word) queries from different angles. " +
+        "Search the Al Wakeelo internal Pakistani case law database for real, verified judgments. " +
+        "ALWAYS call this tool before citing any case law. Never cite a judgment not returned by this tool. " +
+        "STRATEGY: For complex multi-issue queries, call this tool 5-6 times with DIFFERENT queries covering EACH legal sub-issue. " +
+        "For simple queries, call 2-3 times with different angles. " +
+        "Example for property dispute: call 1 → 'Section 53A part performance', call 2 → 'bona fide purchaser Section 41', call 3 → 'specific performance readiness', call 4 → 'constructive notice possession', call 5 → 'agreement to sell vs sale'. " +
+        "Example for bail cancellation: call 1 → query:'bail cancellation', call 2 → query:'Section 497 misuse liberty', call 3 → query:'supervening circumstances bail'. " +
+        "Use all results from all calls to build your citation list." +
         "CRITICAL DOMAIN RULE: Stay STRICTLY within the same legal domain as the query. " +
         "For PROPERTY queries: use terms like 'Section 53A part performance', 'agreement to sell TPA', 'mortgage priority', 'constructive notice transfer', 'specific performance property', 'ostensible owner Section 41'. " +
         "For CRIMINAL queries: use terms like 'Section 302 qatl', 'bail cancellation', 'acquittal benefit doubt'. " +
@@ -120,7 +126,7 @@ export async function runToolJudgmentSearchOR(
         tools: [CITATION_SEARCH_TOOL],
         tool_choice: "auto",
         parallel_tool_calls: true,
-        max_tokens: 400,
+        max_tokens: 600,
         temperature: 0.1,
       },
       { signal: callAbort.signal, maxRetries: 0 } as any,

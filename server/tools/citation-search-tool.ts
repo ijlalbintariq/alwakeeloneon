@@ -10,9 +10,10 @@ export const CITATION_SEARCH_TOOL: ChatCompletionTool = {
     description:
       "Search the Al Wakeelo internal Pakistani case law database for real, verified judgments. " +
       "ALWAYS call this tool before citing any case law. Never cite a judgment not returned by this tool. " +
-      "STRATEGY: Call this tool 2-3 times with DIFFERENT short queries to maximise results. " +
-      "Example for bail cancellation: call 1 → query:'bail cancellation', call 2 → query:'Section 497 misuse liberty', call 3 → query:'supervening circumstances bail'. " +
-      "Example for murder: call 1 → query:'Section 302 intention qatl', call 2 → query:'culpable homicide PPC', call 3 → query:'murder conviction evidence'. " +
+      "STRATEGY: For complex multi-issue queries (property disputes, multi-party litigation), call this tool 5-6 times with DIFFERENT queries covering EACH legal sub-issue. " +
+      "For simple queries, call 2-3 times with different angles. " +
+      "Example for property dispute: call 1 → 'Section 53A part performance', call 2 → 'bona fide purchaser Section 41', call 3 → 'specific performance readiness', call 4 → 'constructive notice possession', call 5 → 'agreement to sell vs sale deed', call 6 → 'mortgage priority equitable interest'. " +
+      "Example for bail: call 1 → 'bail cancellation', call 2 → 'Section 497 misuse liberty', call 3 → 'supervening circumstances bail'. " +
       "Use all results from all calls to build your citation list.",
     parameters: {
       type: "object",
