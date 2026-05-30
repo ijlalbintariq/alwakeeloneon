@@ -57,7 +57,7 @@ export type RAGGlobalEnsureSummary = {
   indexedNow: number;
 };
 
-const MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.25);
+const MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.15);
 const TOP_K = Number(process.env.RAG_TOP_K || 5);
 const VECTOR_WEIGHT_RAW = Number(process.env.RAG_VECTOR_WEIGHT || 0.72);
 const KEYWORD_WEIGHT_RAW = Number(process.env.RAG_KEYWORD_WEIGHT || 0.28);
