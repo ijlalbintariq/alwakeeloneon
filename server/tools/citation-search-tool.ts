@@ -210,7 +210,34 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
       const hay = `${r.title || ""} ${r.summary || ""}`.toLowerCase();
       let hits = 0;
       for (const t of queryTokens) if (hay.includes(t)) hits++;
-      return 1 + hits / queryTokens.length;
+      const base = 1 + hits / queryTokens.length;
+
+      // Domain-mismatch penalty: detect cross-domain citations (e.g. criminal case
+      // retrieved for a property query) and heavily penalise them.
+      // Without this, a criminal case about "possession" of weapons matches a
+      // property query about "possession" of land and pollutes the results.
+      const CIVIL_DOMAINS = ["property", "transfer", "mortgage", "sale", "rent", "tenant", "landlord", "eviction", "tpa", "registration", "specific performance", "agreement", "conveyance", "title", "deed", "possession", "notice", "partition", "easement"];
+      const CRIMINAL_DOMAINS = ["murder", "qatl", "ppc", "crpc", "bail", "fir", "sentence", "conviction", "acquittal", "prisoner", "remand", "criminal", "offence", "penal", "prosecution", "accused", "complainant", "investigation"];
+      const FAMILY_DOMAINS = ["khula", "divorce", "maintenance", "custody", "dower", "mehr", "nikah", "iddat", "family", "guardian", "dissolution", "marriage"];
+
+      const queryLower = query.toLowerCase();
+      const queryCivil = CIVIL_DOMAINS.some(d => queryLower.includes(d));
+      const queryCriminal = CRIMINAL_DOMAINS.some(d => queryLower.includes(d));
+      const queryFamily = FAMILY_DOMAINS.some(d => queryLower.includes(d));
+
+      const citCourt = String(r.court || "").toLowerCase();
+      const citText = hay;
+      const citCriminal = CRIMINAL_DOMAINS.some(d => citText.includes(d)) || citCourt.includes("criminal") || String(r.citation || "").toUpperCase().includes("PCRLJ") || String(r.citation || "").toUpperCase().includes("PPC");
+      const citCivil = CIVIL_DOMAINS.some(d => citText.includes(d));
+      const citFamily = FAMILY_DOMAINS.some(d => citText.includes(d));
+
+      // Penalise cross-domain citations: 0.15x multiplier makes them rank near the bottom
+      if (queryCivil && !queryCriminal && citCriminal && !citCivil) return base * 0.15;
+      if (queryCriminal && !queryCivil && citCivil && !citCriminal) return base * 0.15;
+      if (queryFamily && !queryCriminal && citCriminal && !citFamily) return base * 0.15;
+      if (queryFamily && !queryCivil && citCivil && !citFamily) return base * 0.2;
+
+      return base;
     };
     const scored = dedup.map((r) => ({
       r,
@@ -236,7 +263,7 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
         citation: r.citation,
         court: r.court,
         title: r.title,
-        summary: (r.summary || "").slice(0, 300),
+        summary: (r.summary || "").slice(0, 800),
       })),
     });
     cacheSet(ck, payload);

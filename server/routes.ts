@@ -13774,7 +13774,17 @@ The user has attached the following documents for your reference. Analyze them c
             `  Copy each citation EXACTLY as listed (e.g. "2024 SCMR 1419", "PLD 2020 SC 456", "2019 PCRLJ 1683").\n` +
             `- Do NOT cite any case that is not in the list above — those citations will be removed.\n` +
             `- Do NOT cite from memory or training data, even on familiar topics like Section 302 PPC or cheque dishonour.\n` +
-            `- Each cited judgment must appear in your prose AND in the final references block.`
+            `- Each cited judgment must appear in your prose AND in the final references block.\n` +
+            `\nTOPIC RELEVANCE CHECK (MANDATORY before citing):\n` +
+            `- For EACH case in the list, verify it is DIRECTLY relevant to the legal domain being discussed.\n` +
+            `- SKIP any case that belongs to a different legal domain (e.g. criminal case in a property dispute, prisoner rights case in a contract matter).\n` +
+            `- PCRLJ/Criminal citations in a civil/property/family query = SKIP IT.\n` +
+            `- A topically irrelevant citation DESTROYS credibility — citing 2 relevant cases is ALWAYS better than 3 mixed-domain cases.\n` +
+            `\nCITATION DEPTH (MANDATORY for each case cited):\n` +
+            `- State the LEGAL PRINCIPLE the case established.\n` +
+            `- State the RATIO DECIDENDI (the court's key deciding reason).\n` +
+            `- State the APPLICATION (why this case directly applies to the present query).\n` +
+            `- NEVER cite a case with just "the court held that X" — explain WHY the court reached that conclusion.`
           : "";
       // Tool-search context is now injected as a fake user/assistant turn
       // (see toolSearchTurns below) — NOT in the system prompt. LLMs weight
