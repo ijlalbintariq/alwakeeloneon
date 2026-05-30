@@ -266,6 +266,9 @@ function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: numbe
   const pool = rescored.sort((a, b) => b.score - a.score);
   const selected: RagMatch[] = [];
   const perDoc = new Map<number, number>();
+  let statuteCount = 0;
+  let judgmentCount = 0;
+  let userCount = 0;
 
   while (pool.length > 0 && selected.length < limit) {
     let bestIdx = 0;
@@ -273,7 +276,18 @@ function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: numbe
     for (let i = 0; i < pool.length; i++) {
       const candidate = pool[i];
       const existing = perDoc.get(candidate.sourceDocumentId) || 0;
-      const adjusted = candidate.score - (existing * RERANK_DOC_PENALTY);
+      
+      const srcType = String(candidate.metadata?.sourceType || "");
+      let typePenalty = 0;
+      if (srcType === "statute" || srcType === "admin-statute") {
+        typePenalty = statuteCount * 0.12;
+      } else if (srcType === "judgment" || srcType === "admin-case-law") {
+        typePenalty = judgmentCount * 0.12;
+      } else {
+        typePenalty = userCount * 0.12;
+      }
+
+      const adjusted = candidate.score - (existing * RERANK_DOC_PENALTY) - typePenalty;
       if (adjusted > bestScore) {
         bestScore = adjusted;
         bestIdx = i;
@@ -282,6 +296,15 @@ function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: numbe
     const [picked] = pool.splice(bestIdx, 1);
     selected.push(picked);
     perDoc.set(picked.sourceDocumentId, (perDoc.get(picked.sourceDocumentId) || 0) + 1);
+    
+    const srcType = String(picked.metadata?.sourceType || "");
+    if (srcType === "statute" || srcType === "admin-statute") {
+      statuteCount += 1;
+    } else if (srcType === "judgment" || srcType === "admin-case-law") {
+      judgmentCount += 1;
+    } else {
+      userCount += 1;
+    }
   }
 
   return selected;
@@ -680,25 +703,27 @@ export async function retrieveForQuery(args: {
     .filter((m) => Number.isFinite(m.score) && m.score >= MIN_SCORE)
     .filter((m) => !m.title.startsWith("__"));
 
-  // Ensure source diversity: don't let user docs crowd out global case law/statutes.
-  // Separate user-scoped and global-scoped results, then interleave with a 60% global reservation.
+  // Ensure source diversity: separate statutes, judgments, and user documents.
+  const statuteResults = filtered.filter((m) => {
+    const srcType = String(m.metadata?.sourceType || "");
+    return srcType === "statute" || srcType === "admin-statute";
+  });
+  const judgmentResults = filtered.filter((m) => {
+    const srcType = String(m.metadata?.sourceType || "");
+    return srcType === "judgment" || srcType === "admin-case-law";
+  });
   const userResults = filtered.filter((m) => {
     const srcType = String(m.metadata?.sourceType || "");
-    return !srcType.startsWith("admin-") && srcType !== "judgment";
-  });
-  const globalResults = filtered.filter((m) => {
-    const srcType = String(m.metadata?.sourceType || "");
-    return srcType.startsWith("admin-") || srcType === "judgment";
+    return srcType !== "statute" && srcType !== "admin-statute" && srcType !== "judgment" && srcType !== "admin-case-law";
   });
 
-  // Reserve at least 60% of slots for global sources when available
-  const globalReserved = Math.max(Math.ceil(requestedTopK * 0.6), 3);
-  const userSlots = Math.max(requestedTopK - Math.min(globalResults.length, globalReserved), 0);
-  const diverseResults = [
-    ...globalResults.slice(0, globalReserved),
-    ...userResults.slice(0, userSlots),
-    ...globalResults.slice(globalReserved),
-  ].slice(0, Math.max(candidateTopK, requestedTopK));
+  // Build diverseResults by including candidates from all three categories.
+  // Slice each category up to candidateTopK to ensure we pass a rich selection to reranking.
+  const diverseResults: RagMatch[] = [];
+  const maxCategorySlice = Math.max(candidateTopK, 15);
+  diverseResults.push(...statuteResults.slice(0, maxCategorySlice));
+  diverseResults.push(...judgmentResults.slice(0, maxCategorySlice));
+  diverseResults.push(...userResults.slice(0, maxCategorySlice));
 
   const reranked = rerankAndDiversify(diverseResults, queryText, requestedTopK);
   const confidence = resolveConfidence(reranked.map((m) => m.score));
