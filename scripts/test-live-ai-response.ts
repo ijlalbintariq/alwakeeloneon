@@ -16,6 +16,10 @@ const QUERIES = {
     name: "Islamic Inheritance & Oral Hiba Dispute",
     text: "A Muslim man died leaving behind a widow, two daughters, and a brother. He owned a commercial building and agricultural land in Punjab. During his lifetime, the brother claims the deceased gifted (Hiba) the agricultural land to him via an oral gift (Hiba) followed by a mutation in revenue records. The daughters claim the gift is fraudulent, designed to deprive female heirs of their legal inheritance under Shariat, and that under Section 498-A PPC, depriving women of inheritance is a criminal offense. What are the rules of Islamic inheritance for this family, the legal requirements of a valid oral Hiba (gift) under Muslim personal law, and the burden of proof for the brother's claim? Citing relevant Pakistani statutes and landmark Supreme Court judgments is mandatory. Please analyze specifically under Punjab laws with recently verified judgments."
   },
+  inheritance_shia: {
+    name: "Shia Islamic Inheritance & Oral Hiba Dispute",
+    text: "A deceased Shia Muslim man leaves behind a widow, one daughter, and a full sister. He owned agricultural land in Punjab and a house in Lahore. The sister claims that under the general rules of inheritance, she is entitled to a share in the estate as a residuary. The daughter claims that as a Shia heir of the first class, she completely excludes the sister (who belongs to the second class of heirs) from inheritance, and that the widow is entitled to her fixed share. Furthermore, the sister claims that the deceased orally gifted (Hiba) the agricultural land to her during his lifetime, but has no possession. Please analyze the rules of inheritance under Shia personal law for this family, whether the sister is entitled to any share, the exclusion rules of Shia jurisprudence, and the validity of the oral gift without possession. Cite relevant Pakistani statutes and landmark Supreme Court judgments on Shia inheritance and oral Hiba."
+  },
   constitutional: {
     name: "Article 199 Writ Jurisdiction & Mandamus",
     text: "Under Article 199 of the Constitution of Pakistan, 1973, what are the jurisdictional prerequisites for filing a Constitutional Writ Petition of Mandamus against a federal public authority? Explain the distinction between extraordinary constitutional jurisdiction and an alternate adequate remedy, and describe the requirements for establishing a clear legal right and public duty. Please cite authoritative, verified Supreme Court of Pakistan judgments on writ jurisdiction."
@@ -110,6 +114,9 @@ async function main() {
     // 2. Run selected tests
     if (mode === "all" || mode === "inheritance") {
       await runTest("inheritance", cookie);
+    }
+    if (mode === "all" || mode === "inheritance_shia") {
+      await runTest("inheritance_shia", cookie);
     }
     if (mode === "all" || mode === "constitutional") {
       await runTest("constitutional", cookie);
