@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
-import { Scale, Send, Square, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2, History } from "lucide-react";
+import { Scale, Send, Square, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2, History, ShieldCheck, AlertTriangle, CircleDot, Database } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -117,6 +117,72 @@ interface RAGCitation {
   chunkIndex: number;
   score: number;
   quote: string;
+  sourceScope?: string;
+}
+
+/** Clean up raw RAG document titles for display */
+function cleanRagTitle(title: string): string {
+  let cleaned = title.replace(/^_+|_+$/g, "").replace(/_/g, " ").trim();
+  if (cleaned.length > 60) cleaned = cleaned.slice(0, 57) + "…";
+  return cleaned || "Untitled Document";
+}
+
+/** Determine if a RAG citation should be shown (filter out internal docs) */
+function isVisibleCitation(c: RAGCitation): boolean {
+  const t = (c.title || "").trim();
+  if (t.startsWith("__")) return false;
+  if (t.toUpperCase().includes("WORKSPACE_STATE")) return false;
+  return true;
+}
+
+/** Normalize API sourceScope to a canonical key */
+function normalizeScope(c: RAGCitation): string {
+  const s = (c.sourceScope || "").toLowerCase();
+  if (s.includes("case") || s.includes("judgment")) return "case_law";
+  if (s.includes("statute")) return "statute";
+  if (s.includes("knowledge")) return "knowledge_base";
+  if (s.includes("user") || s.includes("document")) return "user_document";
+  // Fallback: infer from title
+  const t = (c.title || "").toLowerCase();
+  if (t.includes("judgment") || t.includes("case") || t.includes("plj") || t.includes("pld") || t.includes("scmr") || t.includes("pcrlj") || t.includes("ylr")) return "case_law";
+  if (t.includes("ppc") || t.includes("act") || t.includes("ordinance") || t.includes("section") || t.includes("code") || t.includes("constitution") || t.includes("penal")) return "statute";
+  return "user_document";
+}
+
+/** Get scope icon for a RAG citation */
+function ragScopeIcon(c: RAGCitation): string {
+  const scope = normalizeScope(c);
+  if (scope === "case_law") return "⚖️";
+  if (scope === "statute") return "📜";
+  if (scope === "knowledge_base") return "📚";
+  return "📁";
+}
+
+/** Get scope label for a RAG citation */
+function ragScopeLabel(c: RAGCitation): string {
+  const scope = normalizeScope(c);
+  if (scope === "case_law") return "Case Law";
+  if (scope === "statute") return "Statute";
+  if (scope === "knowledge_base") return "Knowledge Base";
+  if (scope === "user_document") return "User Document";
+  return "Document";
+}
+
+/** Get scope badge color for a RAG citation */
+function ragScopeColor(c: RAGCitation): string {
+  const label = ragScopeLabel(c);
+  if (label === "Case Law") return "text-amber-300 bg-amber-500/15 border-amber-500/30";
+  if (label === "Statute") return "text-blue-300 bg-blue-500/15 border-blue-500/30";
+  if (label === "Knowledge Base") return "text-purple-300 bg-purple-500/15 border-purple-500/30";
+  return "text-emerald-300 bg-emerald-500/15 border-emerald-500/30";
+}
+
+/** Get score bar color */
+function ragScoreColor(score: number): string {
+  const pct = Math.round(score * 100);
+  if (pct >= 70) return "bg-emerald-400";
+  if (pct >= 45) return "bg-amber-400";
+  return "bg-red-400";
 }
 
 export function ChatModule({ type, title, initialMessage }: { type: string; title?: string; initialMessage?: string }) {
@@ -422,12 +488,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     }
   }, [sharedThreadId]);
 
-  const formatRagAnswer = (answer: string, citations: RAGCitation[]): string => {
-    if (!citations || citations.length === 0) return answer;
-    const sourceLines = citations.slice(0, 5).map((c, idx) => {
-      return `${idx + 1}. ${c.title} (Doc ${c.sourceDocumentId}, Chunk ${c.chunkIndex}, Score ${Math.round(c.score * 100)}%)`;
-    });
-    return `${answer}\n\n**Retrieved Sources**\n${sourceLines.join("\n")}`;
+  const formatRagAnswer = (answer: string, _citations: RAGCitation[]): string => {
+    // Sources are rendered as rich citation cards below the message — no raw text appending.
+    return answer;
   };
 
   const handleStop = () => {
@@ -519,7 +582,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         const ragCitations: RAGCitation[] = Array.isArray(ragData?.citations) ? ragData.citations : [];
         const formatted = formatRagAnswer(String(ragData?.answer || ""), ragCitations);
         const modelName = ragData?.model?.name ? String(ragData.model.name) : "RAG";
-        const modeName = "RAG";
+        const modeName = "Vault Search";
         const assistantMessage: ChatMessage = {
           id: assistantId,
           role: "assistant",
@@ -527,7 +590,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           modeName,
           modelName,
           modelId: modelName,
-          modelDescription: "Retrieval-grounded response from indexed vault documents.",
+          modelDescription: "Powered by document intelligence",
           ragCitations,
           ragConfidence: ragData?.confidence || "low",
         };
@@ -1182,15 +1245,21 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           <FileText size={13} /> Legal Citations
         </h3>
         <div className="space-y-3">
-          {(latestRagCitations?.length || 0) > 0 && latestRagCitations.slice(0, compact ? 3 : 4).map((c, idx) => (
-            <div key={`rag-${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 transition-all">
+          {(latestRagCitations?.length || 0) > 0 && latestRagCitations.filter(isVisibleCitation).slice(0, compact ? 3 : 4).map((c, idx) => (
+            <div key={`rag-${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 transition-all hover:border-emerald-500/40 hover:bg-emerald-500/10">
               <div className="flex justify-between items-start mb-2 gap-2">
-                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded truncate">
-                  Doc {c.sourceDocumentId} · Chunk {c.chunkIndex}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${ragScopeColor(c)}`}>
+                  {ragScopeIcon(c)} {ragScopeLabel(c)}
                 </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="w-12 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${ragScoreColor(c.score)}`} style={{ width: `${Math.round(c.score * 100)}%` }} />
+                  </div>
+                  <span className="text-[9px] text-muted-foreground tabular-nums">{Math.round(c.score * 100)}%</span>
+                </div>
               </div>
-              <p className="text-xs font-bold text-foreground mb-1">{c.title}</p>
-              <p className="text-[10px] text-muted-foreground leading-relaxed italic line-clamp-3">{c.quote}</p>
+              <p className="text-xs font-bold text-foreground mb-1">{cleanRagTitle(c.title)}</p>
+              {c.quote && <p className="text-[10px] text-muted-foreground leading-relaxed italic line-clamp-3">{c.quote}</p>}
             </div>
           ))}
           {(latestRefs?.judgments?.length || 0) > 0 && latestRefs?.judgments
@@ -1971,20 +2040,52 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           )}
                           <LegalMarkdown content={displayContent} />
                           {parsed?.references && <ReferenceCards references={parsed.references} />}
-                          {(m.ragCitations?.length || 0) > 0 && (
-                            <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-                                RAG Citations ({m.ragConfidence || "low"})
-                              </p>
-                              <div className="mt-2 space-y-1.5">
-                                {m.ragCitations!.slice(0, 5).map((c, idx) => (
-                                  <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="text-[11px] text-emerald-800 dark:text-emerald-100">
-                                    <span className="font-bold">{idx + 1}.</span> {c.title} · chunk {c.chunkIndex} · {Math.round(c.score * 100)}%
-                                  </div>
-                                ))}
+                          {(m.ragCitations?.length || 0) > 0 && (() => {
+                            const visibleCitations = m.ragCitations!.filter(isVisibleCitation);
+                            if (visibleCitations.length === 0) return null;
+                            const conf = m.ragConfidence || "low";
+                            const confColor = conf === "high" ? "text-emerald-400" : conf === "medium" ? "text-amber-400" : "text-red-400";
+                            const confBg = conf === "high" ? "bg-emerald-500/10 border-emerald-500/25" : conf === "medium" ? "bg-amber-500/10 border-amber-500/25" : "bg-red-500/10 border-red-500/25";
+                            const ConfIcon = conf === "high" ? ShieldCheck : conf === "medium" ? CircleDot : AlertTriangle;
+                            return (
+                              <div className="mt-4 rounded-xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-transparent p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300 flex items-center gap-1.5">
+                                    <Database size={11} /> Document Sources
+                                  </p>
+                                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${confBg} ${confColor}`}>
+                                    <ConfIcon size={10} />
+                                    {conf} confidence
+                                  </span>
+                                </div>
+                                <div className="space-y-2.5">
+                                  {visibleCitations.slice(0, 5).map((c, idx) => {
+                                    const scorePct = Math.round(c.score * 100);
+                                    return (
+                                      <div key={`${c.sourceDocumentId}-${c.chunkIndex}-${idx}`} className="p-3 rounded-lg bg-background/60 border border-emerald-500/10 hover:border-emerald-500/25 transition-colors">
+                                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-sm shrink-0">{ragScopeIcon(c)}</span>
+                                            <span className="text-xs font-bold text-foreground truncate">{cleanRagTitle(c.title)}</span>
+                                          </div>
+                                          <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-1 ${ragScopeColor(c)}`}>
+                                            {ragScopeLabel(c)}
+                                          </span>
+                                        </div>
+                                        {c.quote && <p className="text-[10px] text-muted-foreground leading-relaxed italic line-clamp-2 mb-2">{c.quote}</p>}
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex-1 h-1.5 bg-slate-700/40 rounded-full overflow-hidden">
+                                            <div className={`h-full rounded-full transition-all ${ragScoreColor(c.score)}`} style={{ width: `${scorePct}%` }} />
+                                          </div>
+                                          <span className="text-[9px] font-mono text-muted-foreground tabular-nums w-8 text-right">{scorePct}%</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </>
                       ) : (
                         <>
@@ -2109,16 +2210,26 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     <>
                     <button
                       onClick={() => setRagEnabled((prev) => !prev)}
-                      className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60 cursor-pointer ${
-                        ragEnabled ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" : "text-muted-foreground border-primary/20"
+                      className={`group/rag relative flex items-center gap-2 text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 cursor-pointer ${
+                        ragEnabled
+                          ? "text-emerald-200 border-emerald-400/50 bg-emerald-500/15 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                          : "text-muted-foreground border-border/40 bg-muted/20 hover:border-emerald-500/30 hover:text-emerald-300"
                       }`}
-                      title="Toggle Retrieval-Augmented Generation"
+                      title={ragEnabled ? "Document AI active — searching your indexed vault" : "Enable Document AI to search your uploaded documents"}
                     >
-                      <span className={`w-2 h-2 rounded-full ${ragEnabled ? "bg-emerald-400" : "bg-slate-500"}`}></span>
-                      {ragEnabled ? "RAG ACTIVE" : "RAG OFF"}
+                      <Brain size={14} className={`transition-colors ${ragEnabled ? "text-emerald-400" : "text-muted-foreground group-hover/rag:text-emerald-400"}`} />
+                      <span className="tracking-wide">{ragEnabled ? "Vault Search" : "Vault Search"}</span>
+                      <span className={`relative flex h-2.5 w-2.5 ${ ragEnabled ? "" : "opacity-0"}`}>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-50"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+                      </span>
+                      {!ragEnabled && <span className="relative flex h-2.5 w-2.5"><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-500"></span></span>}
                     </button>
                     {ragEnabled && (
-                      <CaseFileSelector value={ragCaseFileId} onChange={setRagCaseFileId} />
+                      <>
+                        <span className="text-[9px] text-emerald-400/70 font-medium tracking-wide hidden sm:inline">Searching indexed vault</span>
+                        <CaseFileSelector value={ragCaseFileId} onChange={setRagCaseFileId} />
+                      </>
                     )}
                     </>
                   )}

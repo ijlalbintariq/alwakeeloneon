@@ -637,6 +637,7 @@ export async function retrieveForQuery(args: {
   query: string;
   documentIds?: number[];
   topK?: number;
+  expandedQueryText?: string;
 }): Promise<RAGRetrievalResult> {
   await ensureRagSchema();
 
@@ -644,6 +645,11 @@ export async function retrieveForQuery(args: {
   if (!queryText) {
     return { matches: [], confidence: "low" };
   }
+
+  // Use expanded query for keyword search (better recall) but keep original for embedding
+  const keywordQueryText = args.expandedQueryText
+    ? cleanLegalDocumentText(args.expandedQueryText)
+    : queryText;
 
   const requestedTopK = Math.max(1, args.topK || TOP_K);
   const queryEmbedding = await embedTextLocal(queryText);
@@ -655,7 +661,7 @@ export async function retrieveForQuery(args: {
       similaritySearch({
         userId: globalUserId,
         queryEmbedding,
-        queryText,
+        queryText: keywordQueryText,
         topK: candidateTopK,
         vectorWeight,
         keywordWeight,
@@ -666,7 +672,7 @@ export async function retrieveForQuery(args: {
     similaritySearch({
       userId: args.userId,
       queryEmbedding,
-      queryText,
+      queryText: keywordQueryText,
       sourceDocumentIds: args.documentIds,
       topK: candidateTopK,
       vectorWeight,
@@ -681,9 +687,32 @@ export async function retrieveForQuery(args: {
 
   // Strict filter: only return results that meet the minimum relevance threshold.
   // No last-resort fallbacks — returning wrong documents is worse than returning nothing.
-  const filtered = matches.filter((m) => Number.isFinite(m.score) && m.score >= MIN_SCORE);
+  // Also filter out internal workspace state documents (not real user content).
+  const filtered = matches
+    .filter((m) => Number.isFinite(m.score) && m.score >= MIN_SCORE)
+    .filter((m) => !m.title.startsWith("__"));
 
-  const reranked = rerankAndDiversify(filtered, queryText, requestedTopK);
+  // Ensure source diversity: don't let user docs crowd out global case law/statutes.
+  // Separate user-scoped and global-scoped results, then interleave with a 60% global reservation.
+  const userResults = filtered.filter((m) => {
+    const srcType = String(m.metadata?.sourceType || "");
+    return !srcType.startsWith("admin-") && srcType !== "judgment";
+  });
+  const globalResults = filtered.filter((m) => {
+    const srcType = String(m.metadata?.sourceType || "");
+    return srcType.startsWith("admin-") || srcType === "judgment";
+  });
+
+  // Reserve at least 60% of slots for global sources when available
+  const globalReserved = Math.max(Math.ceil(requestedTopK * 0.6), 3);
+  const userSlots = Math.max(requestedTopK - Math.min(globalResults.length, globalReserved), 0);
+  const diverseResults = [
+    ...globalResults.slice(0, globalReserved),
+    ...userResults.slice(0, userSlots),
+    ...globalResults.slice(globalReserved),
+  ].slice(0, Math.max(candidateTopK, requestedTopK));
+
+  const reranked = rerankAndDiversify(diverseResults, queryText, requestedTopK);
   const confidence = resolveConfidence(reranked.map((m) => m.score));
   return { matches: reranked, confidence };
 }

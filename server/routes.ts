@@ -61,7 +61,7 @@ import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-lib
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
 import { gatherKnowledgeContextV2, type ConversationTurn } from "./pipeline/knowledge-pipeline";
-import { detectQueryComplexity, isFollowUpQuestion, type QueryComplexity } from "./pipeline/intent-classifier";
+import { classifyQueryIntent, detectQueryComplexity, isFollowUpQuestion, type QueryComplexity } from "./pipeline/intent-classifier";
 import { refineUserQuery } from "./query-refiner";
 import {
   GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
@@ -9526,11 +9526,16 @@ export async function registerRoutes(
         }
       }
 
+      // Expand query with legal synonyms for better keyword search recall
+      const intent = classifyQueryIntent(parsed.query);
+      const expandedQuery = intent.expandedQuery || parsed.query;
+
       let retrieval = await retrieveForQuery({
         userId,
         query: parsed.query,
         documentIds: effectiveDocumentIds,
         topK: Number(process.env.RAG_TOP_K || 5),
+        expandedQueryText: expandedQuery,
       });
       let lazyIndexSummary: {
         candidates: number;
@@ -9583,6 +9588,7 @@ export async function registerRoutes(
             query: parsed.query,
             documentIds: parsed.documentIds,
             topK: Number(process.env.RAG_TOP_K || 5),
+            expandedQueryText: expandedQuery,
           });
         }
       }
