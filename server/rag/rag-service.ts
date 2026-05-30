@@ -263,7 +263,17 @@ function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: numbe
       /\bPLD\s+\d{4}\s+SC\b/.test(m.title) ||
       /\bSC\b/.test(m.title);
 
-    const finalScore = clamp(isSupremeCourt ? rerankedScore * 1.10 : rerankedScore, 0, 1);
+    let yearBoost = 0;
+    const yearMatch = m.title.match(/\b(19\d{2}|20\d{2})\b/);
+    if (yearMatch) {
+      const year = parseInt(yearMatch[1], 10);
+      if (year >= 1980) {
+        yearBoost = Math.min(0.05, (year - 1980) / 1000);
+      }
+    }
+
+    const baseScore = rerankedScore + yearBoost;
+    const finalScore = clamp(isSupremeCourt ? baseScore * 1.10 : baseScore, 0, 1);
 
     return {
       ...m,
