@@ -3,13 +3,14 @@ import { storage } from "../storage";
 import { db, dbAvailable, pool } from "../db";
 import { judgments, courtsRef, lawJournals } from "../../shared/schema";
 import { eq } from "drizzle-orm";
-import { chunkTextByTokens } from "./chunker";
+import { chunkTextByTokens, type TextChunk } from "./chunker";
 import { embedTextLocal, embedTextsLocal } from "./embedding-local";
 import { cleanLegalDocumentText } from "./text-cleaner";
 import {
   deleteVectorsBySourceDocument,
   ensureRagSchema,
   insertDocumentChunkBatch,
+  insertDocumentChunksReturningIds,
   markRagDocumentIndexed,
   resetDocumentChunks,
   similaritySearch,
@@ -92,6 +93,89 @@ function sha256(text: string): string {
   return crypto.createHash("sha256").update(text).digest("hex");
 }
 
+async function indexChunksInDb(
+  ragDocumentId: number,
+  userId: string,
+  sourceDocumentId: number,
+  chunks: TextChunk[],
+  metadataBase: Record<string, any>,
+): Promise<number> {
+  await resetDocumentChunks(ragDocumentId);
+
+  // 1. Separate Parent and Child chunks
+  const parents = chunks.filter((c) => c.isParent);
+  const children = chunks.filter((c) => !c.isParent);
+
+  if (parents.length === 0) return 0;
+
+  // 2. Insert parent chunks first (no embeddings, embedding = null)
+  // We insert parents in batches and receive their mapped database row IDs
+  const parentEntries = parents.map((p) => ({
+    ragDocumentId,
+    userId,
+    sourceDocumentId,
+    chunkIndex: p.chunkIndex,
+    tokenCount: p.tokenCount,
+    chunkText: p.text,
+    embedding: null, // Parents do not get vector embeddings
+    metadata: {
+      ...metadataBase,
+      isParent: true,
+      sectionType: p.sectionType,
+      statuteCitations: p.statuteCitations,
+      judgmentResult: p.judgmentResult,
+    },
+  }));
+
+  const parentResultRows = await insertDocumentChunksReturningIds(parentEntries);
+  // Map parent chunkIndex to database ID
+  const parentIdMap = new Map<number, number>();
+  for (const row of parentResultRows) {
+    parentIdMap.set(row.chunkIndex, row.id);
+  }
+
+  // 3. Insert child chunks in batches (with embeddings)
+  // Each child chunk's parentIndex is mapped to its database parent row ID
+  const childEntriesWithText = children.map((c) => {
+    const parentDbId = c.parentIndex !== undefined ? parentIdMap.get(c.parentIndex) : null;
+    return {
+      chunk: c,
+      parentChunkId: parentDbId,
+    };
+  });
+
+  let insertedCount = parents.length;
+  // Batch embed and insert child chunks
+  for (let start = 0; start < childEntriesWithText.length; start += INDEX_BATCH_SIZE) {
+    const batch = childEntriesWithText.slice(start, start + INDEX_BATCH_SIZE);
+    
+    // Generate embeddings for children
+    const embeddings = await embedTextsLocal(batch.map((item) => item.chunk.text));
+    
+    const dbEntries = batch.map((item, idx) => ({
+      ragDocumentId,
+      userId,
+      sourceDocumentId,
+      chunkIndex: item.chunk.chunkIndex,
+      tokenCount: item.chunk.tokenCount,
+      chunkText: item.chunk.text,
+      embedding: embeddings[idx], // child gets vector embedding
+      parentChunkId: item.parentChunkId,
+      metadata: {
+        ...metadataBase,
+        isParent: false,
+        sectionType: item.chunk.sectionType,
+        statuteCitations: item.chunk.statuteCitations,
+        judgmentResult: item.chunk.judgmentResult,
+      },
+    }));
+
+    insertedCount += await insertDocumentChunkBatch(dbEntries);
+  }
+
+  return insertedCount;
+}
+
 function normalizeCategoryToken(value: string | null | undefined): string {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -162,13 +246,13 @@ function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: numbe
     })();
 
     const rerankedScore = clamp(
-      (m.score * 0.62) +
-      (m.vectorScore * 0.08) +
-      (Math.min(1, m.keywordScore) * 0.08) +
-      (tokenCoverage * 0.14) +
-      (titleCoverage * 0.04) +
-      (phraseMatch * 0.04) +
-      (citationMatch * 0.1),
+      (m.score * 0.50) +
+      (m.vectorScore * 0.10) +
+      (Math.min(1, m.keywordScore) * 0.10) +
+      (tokenCoverage * 0.15) +
+      (titleCoverage * 0.05) +
+      (phraseMatch * 0.05) +
+      (citationMatch * 0.05),
       0,
       1,
     );
@@ -243,30 +327,10 @@ export async function indexUserDocument(userId: string, sourceDocumentId: number
   });
 
   const chunks = chunkTextByTokens(cleaned).slice(0, MAX_CHUNKS_PER_DOC);
-  await resetDocumentChunks(ragDoc.id);
-
-  let inserted = 0;
-  for (let start = 0; start < chunks.length; start += INDEX_BATCH_SIZE) {
-    const batch = chunks.slice(start, start + INDEX_BATCH_SIZE);
-    const embeddings = await embedTextsLocal(batch.map((c) => c.text));
-    const entries = batch.map((chunk, idx) => ({
-      ragDocumentId: ragDoc.id,
-      userId,
-      sourceDocumentId,
-      chunkIndex: chunk.chunkIndex,
-      tokenCount: chunk.tokenCount,
-      chunkText: chunk.text,
-      embedding: embeddings[idx],
-      metadata: {
-        sourceType: doc.sourceType || "other",
-        fileExtension: doc.fileExtension || null,
-        sectionType: chunk.sectionType,
-        statuteCitations: chunk.statuteCitations,
-        judgmentResult: chunk.judgmentResult,
-      },
-    }));
-    inserted += await insertDocumentChunkBatch(entries);
-  }
+  const inserted = await indexChunksInDb(ragDoc.id, userId, sourceDocumentId, chunks, {
+    sourceType: doc.sourceType || "other",
+    fileExtension: doc.fileExtension || null,
+  });
 
   await markRagDocumentIndexed(ragDoc.id, inserted);
 
@@ -327,32 +391,12 @@ export async function indexAdminCaseLawDocument(adminKnowledgeId: number): Promi
   });
 
   const chunks = chunkTextByTokens(cleaned).slice(0, MAX_CHUNKS_PER_DOC);
-  await resetDocumentChunks(ragDoc.id);
-
-  let inserted = 0;
-  for (let start = 0; start < chunks.length; start += INDEX_BATCH_SIZE) {
-    const batch = chunks.slice(start, start + INDEX_BATCH_SIZE);
-    const embeddings = await embedTextsLocal(batch.map((c) => c.text));
-    const entries = batch.map((chunk, idx) => ({
-      ragDocumentId: ragDoc.id,
-      userId: GLOBAL_CASELAW_RAG_USER_ID,
-      sourceDocumentId: doc.id,
-      chunkIndex: chunk.chunkIndex,
-      tokenCount: chunk.tokenCount,
-      chunkText: chunk.text,
-      embedding: embeddings[idx],
-      metadata: {
-        sourceType: "admin-case-law",
-        category: "case-law",
-        adminKnowledgeId: doc.id,
-        filename: fileName,
-        sectionType: chunk.sectionType,
-        statuteCitations: chunk.statuteCitations,
-        judgmentResult: chunk.judgmentResult,
-      },
-    }));
-    inserted += await insertDocumentChunkBatch(entries);
-  }
+  const inserted = await indexChunksInDb(ragDoc.id, GLOBAL_CASELAW_RAG_USER_ID, doc.id, chunks, {
+    sourceType: "admin-case-law",
+    category: "case-law",
+    adminKnowledgeId: doc.id,
+    filename: fileName,
+  });
 
   await markRagDocumentIndexed(ragDoc.id, inserted);
 
@@ -413,32 +457,12 @@ export async function indexAdminKnowledgeDocument(adminKnowledgeId: number): Pro
   });
 
   const chunks = chunkTextByTokens(cleaned).slice(0, MAX_CHUNKS_PER_DOC);
-  await resetDocumentChunks(ragDoc.id);
-
-  let inserted = 0;
-  for (let start = 0; start < chunks.length; start += INDEX_BATCH_SIZE) {
-    const batch = chunks.slice(start, start + INDEX_BATCH_SIZE);
-    const embeddings = await embedTextsLocal(batch.map((c) => c.text));
-    const entries = batch.map((chunk, idx) => ({
-      ragDocumentId: ragDoc.id,
-      userId: GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
-      sourceDocumentId: doc.id,
-      chunkIndex: chunk.chunkIndex,
-      tokenCount: chunk.tokenCount,
-      chunkText: chunk.text,
-      embedding: embeddings[idx],
-      metadata: {
-        sourceType: "admin-knowledge",
-        category: doc.category || "general",
-        adminKnowledgeId: doc.id,
-        filename: fileName,
-        sectionType: chunk.sectionType,
-        statuteCitations: chunk.statuteCitations,
-        judgmentResult: chunk.judgmentResult,
-      },
-    }));
-    inserted += await insertDocumentChunkBatch(entries);
-  }
+  const inserted = await indexChunksInDb(ragDoc.id, GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID, doc.id, chunks, {
+    sourceType: "admin-knowledge",
+    category: doc.category || "general",
+    adminKnowledgeId: doc.id,
+    filename: fileName,
+  });
 
   await markRagDocumentIndexed(ragDoc.id, inserted);
 
@@ -496,32 +520,12 @@ export async function indexAdminStatuteDocument(statuteDocumentId: number): Prom
   });
 
   const chunks = chunkTextByTokens(cleaned).slice(0, MAX_CHUNKS_PER_DOC);
-  await resetDocumentChunks(ragDoc.id);
-
-  let inserted = 0;
-  for (let start = 0; start < chunks.length; start += INDEX_BATCH_SIZE) {
-    const batch = chunks.slice(start, start + INDEX_BATCH_SIZE);
-    const embeddings = await embedTextsLocal(batch.map((c) => c.text));
-    const entries = batch.map((chunk, idx) => ({
-      ragDocumentId: ragDoc.id,
-      userId: GLOBAL_STATUTE_RAG_USER_ID,
-      sourceDocumentId: doc.id,
-      chunkIndex: chunk.chunkIndex,
-      tokenCount: chunk.tokenCount,
-      chunkText: chunk.text,
-      embedding: embeddings[idx],
-      metadata: {
-        sourceType: "admin-statute",
-        category: doc.category || "general",
-        statuteDocumentId: doc.id,
-        filename: fileName,
-        sectionType: chunk.sectionType,
-        statuteCitations: chunk.statuteCitations,
-        judgmentResult: chunk.judgmentResult,
-      },
-    }));
-    inserted += await insertDocumentChunkBatch(entries);
-  }
+  const inserted = await indexChunksInDb(ragDoc.id, GLOBAL_STATUTE_RAG_USER_ID, doc.id, chunks, {
+    sourceType: "admin-statute",
+    category: doc.category || "general",
+    statuteDocumentId: doc.id,
+    filename: fileName,
+  });
 
   await markRagDocumentIndexed(ragDoc.id, inserted);
 
@@ -592,34 +596,14 @@ export async function indexJudgmentDocument(judgmentId: string): Promise<RAGInde
   });
 
   const chunks = chunkTextByTokens(cleaned).slice(0, MAX_CHUNKS_PER_DOC);
-  await resetDocumentChunks(ragDoc.id);
-
-  let inserted = 0;
-  for (let start = 0; start < chunks.length; start += INDEX_BATCH_SIZE) {
-    const batch = chunks.slice(start, start + INDEX_BATCH_SIZE);
-    const embeddings = await embedTextsLocal(batch.map((c) => c.text));
-    const entries = batch.map((chunk, idx) => ({
-      ragDocumentId: ragDoc.id,
-      userId: GLOBAL_JUDGMENTS_RAG_USER_ID,
-      sourceDocumentId,
-      chunkIndex: chunk.chunkIndex,
-      tokenCount: chunk.tokenCount,
-      chunkText: chunk.text,
-      embedding: embeddings[idx],
-      metadata: {
-        sourceType: "judgment",
-        category: "judgment",
-        judgmentId: row.id,
-        citationString: row.citationString,
-        court: row.courtName || "",
-        title: row.title || "",
-        sectionType: chunk.sectionType,
-        statuteCitations: chunk.statuteCitations,
-        judgmentResult: chunk.judgmentResult,
-      },
-    }));
-    inserted += await insertDocumentChunkBatch(entries);
-  }
+  const inserted = await indexChunksInDb(ragDoc.id, GLOBAL_JUDGMENTS_RAG_USER_ID, sourceDocumentId, chunks, {
+    sourceType: "judgment",
+    category: "judgment",
+    judgmentId: row.id,
+    citationString: row.citationString,
+    court: row.courtName || "",
+    title: row.title || "",
+  });
 
   await markRagDocumentIndexed(ragDoc.id, inserted);
 
@@ -636,6 +620,7 @@ export async function retrieveForQuery(args: {
   userId: string;
   query: string;
   documentIds?: number[];
+  metadataFilters?: Record<string, string>;
   topK?: number;
   expandedQueryText?: string;
 }): Promise<RAGRetrievalResult> {
@@ -662,6 +647,7 @@ export async function retrieveForQuery(args: {
         userId: globalUserId,
         queryEmbedding,
         queryText: keywordQueryText,
+        metadataFilters: args.metadataFilters,
         topK: candidateTopK,
         vectorWeight,
         keywordWeight,
@@ -674,6 +660,7 @@ export async function retrieveForQuery(args: {
       queryEmbedding,
       queryText: keywordQueryText,
       sourceDocumentIds: args.documentIds,
+      metadataFilters: args.metadataFilters,
       topK: candidateTopK,
       vectorWeight,
       keywordWeight,

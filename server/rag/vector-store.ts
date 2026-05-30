@@ -7,8 +7,9 @@ export type RagChunkInsert = {
   chunkIndex: number;
   tokenCount: number;
   chunkText: string;
-  embedding: number[];
+  embedding: number[] | null;
   metadata?: Record<string, unknown>;
+  parentChunkId?: number | null;
 };
 
 export type RagMatch = {
@@ -69,11 +70,18 @@ export async function ensureRagSchema(): Promise<void> {
       token_count INTEGER NOT NULL,
       chunk_text TEXT NOT NULL,
       metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-      embedding VECTOR(384) NOT NULL,
+      embedding VECTOR(384) NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (rag_document_id, chunk_index)
     )
   `);
+
+  // Ensure embedding is nullable in existing databases
+  await pool.query("ALTER TABLE rag_chunks ALTER COLUMN embedding DROP NOT NULL");
+
+  // Add parent_chunk_id column and index for Parent-Child relationships
+  await pool.query("ALTER TABLE rag_chunks ADD COLUMN IF NOT EXISTS parent_chunk_id BIGINT NULL REFERENCES rag_chunks(id) ON DELETE CASCADE");
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_chunks_parent ON rag_chunks (parent_chunk_id)");
 
   await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_documents_user_source ON rag_documents (user_id, source_document_id)");
   await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_chunks_user_doc ON rag_chunks (user_id, source_document_id)");
@@ -150,14 +158,15 @@ export async function insertDocumentChunkBatch(entries: RagChunkInsert[]): Promi
   if (entries.length === 0) return 0;
 
   // Build a single multi-row INSERT for performance.
-  // Each row occupies 8 consecutive $N placeholders.
+  // Each row occupies 9 consecutive $N placeholders.
   const valuePlaceholders: string[] = [];
   const params: unknown[] = [];
   let p = 1;
 
   for (const chunk of entries) {
+    const embedVal = chunk.embedding ? vectorLiteral(chunk.embedding) : null;
     valuePlaceholders.push(
-      `($${p},$${p+1},$${p+2},$${p+3},$${p+4},$${p+5},$${p+6}::jsonb,$${p+7}::vector)`,
+      `($${p},$${p+1},$${p+2},$${p+3},$${p+4},$${p+5},$${p+6}::jsonb,$${p+7},$${p+8})`,
     );
     params.push(
       chunk.ragDocumentId,
@@ -167,20 +176,66 @@ export async function insertDocumentChunkBatch(entries: RagChunkInsert[]): Promi
       chunk.tokenCount,
       chunk.chunkText,
       JSON.stringify(chunk.metadata || {}),
-      vectorLiteral(chunk.embedding),
+      embedVal,
+      chunk.parentChunkId || null,
     );
-    p += 8;
+    p += 9;
   }
 
   const sql = `
     INSERT INTO rag_chunks
-      (rag_document_id, user_id, source_document_id, chunk_index, token_count, chunk_text, metadata, embedding)
+      (rag_document_id, user_id, source_document_id, chunk_index, token_count, chunk_text, metadata, embedding, parent_chunk_id)
     VALUES ${valuePlaceholders.join(",")}
     ON CONFLICT (rag_document_id, chunk_index) DO NOTHING
   `;
 
   const result = await pool.query(sql, params);
   return result.rowCount ?? entries.length;
+}
+
+export async function insertDocumentChunksReturningIds(entries: RagChunkInsert[]): Promise<{ id: number; chunkIndex: number }[]> {
+  assertDb();
+  if (entries.length === 0) return [];
+
+  const valuePlaceholders: string[] = [];
+  const params: unknown[] = [];
+  let p = 1;
+
+  for (const chunk of entries) {
+    const embedVal = chunk.embedding ? vectorLiteral(chunk.embedding) : null;
+    valuePlaceholders.push(
+      `($${p},$${p+1},$${p+2},$${p+3},$${p+4},$${p+5},$${p+6}::jsonb,$${p+7},$${p+8})`,
+    );
+    params.push(
+      chunk.ragDocumentId,
+      chunk.userId,
+      chunk.sourceDocumentId,
+      chunk.chunkIndex,
+      chunk.tokenCount,
+      chunk.chunkText,
+      JSON.stringify(chunk.metadata || {}),
+      embedVal,
+      chunk.parentChunkId || null,
+    );
+    p += 9;
+  }
+
+  const sql = `
+    INSERT INTO rag_chunks
+      (rag_document_id, user_id, source_document_id, chunk_index, token_count, chunk_text, metadata, embedding, parent_chunk_id)
+    VALUES ${valuePlaceholders.join(",")}
+    ON CONFLICT (rag_document_id, chunk_index) DO UPDATE SET
+      chunk_text = EXCLUDED.chunk_text,
+      metadata = EXCLUDED.metadata,
+      embedding = COALESCE(EXCLUDED.embedding, rag_chunks.embedding)
+    RETURNING id, chunk_index
+  `;
+
+  const result = await pool.query(sql, params);
+  return result.rows.map((row: any) => ({
+    id: Number(row.id),
+    chunkIndex: Number(row.chunk_index),
+  }));
 }
 
 export async function markRagDocumentIndexed(ragDocumentId: number, chunkCount: number): Promise<void> {
@@ -193,6 +248,7 @@ export async function similaritySearch(args: {
   queryEmbedding: number[];
   queryText: string;
   sourceDocumentIds?: number[];
+  metadataFilters?: Record<string, string>;
   topK: number;
   vectorWeight?: number;
   keywordWeight?: number;
@@ -209,6 +265,32 @@ export async function similaritySearch(args: {
     ? " AND c.source_document_id = ANY($8::int[])"
     : "";
 
+  const params: any[] = [
+    args.userId,
+    vectorLiteral(args.queryEmbedding),
+    args.queryText,
+    args.topK,
+    candidateLimit,
+    vectorWeight,
+    keywordWeight,
+  ];
+  if (args.sourceDocumentIds && args.sourceDocumentIds.length > 0) {
+    params.push(args.sourceDocumentIds);
+  }
+
+  let filterSql = "";
+  if (args.metadataFilters) {
+    for (const [key, val] of Object.entries(args.metadataFilters)) {
+      if (val !== undefined && val !== null) {
+        const safeKey = key.replace(/[^a-zA-Z0-9_]/g, "");
+        if (safeKey) {
+          filterSql += ` AND c.metadata->>'${safeKey}' = $${params.length + 1}`;
+          params.push(val);
+        }
+      }
+    }
+  }
+
   const sql = `
     WITH vector_hits AS (
       SELECT
@@ -217,14 +299,15 @@ export async function similaritySearch(args: {
         c.source_document_id,
         d.title,
         c.chunk_index,
-        c.token_count,
-        c.chunk_text,
+        COALESCE(p.token_count, c.token_count) as token_count,
+        COALESCE(p.chunk_text, c.chunk_text) as chunk_text,
         c.metadata,
         GREATEST(0, 1 - (c.embedding <=> $2::vector)) AS vector_score,
-        COALESCE(ts_rank_cd(to_tsvector('simple', c.chunk_text), plainto_tsquery('simple', $3)), 0) AS keyword_score
+        COALESCE(ts_rank_cd(to_tsvector('simple', COALESCE(p.chunk_text, c.chunk_text)), plainto_tsquery('simple', $3)), 0) AS keyword_score
       FROM rag_chunks c
       JOIN rag_documents d ON d.id = c.rag_document_id
-      WHERE c.user_id = $1${sourceFilter}
+      LEFT JOIN rag_chunks p ON p.id = c.parent_chunk_id
+      WHERE c.user_id = $1${sourceFilter}${filterSql}
       ORDER BY c.embedding <=> $2::vector ASC
       LIMIT $5
     ),
@@ -235,15 +318,16 @@ export async function similaritySearch(args: {
         c.source_document_id,
         d.title,
         c.chunk_index,
-        c.token_count,
-        c.chunk_text,
+        COALESCE(p.token_count, c.token_count) as token_count,
+        COALESCE(p.chunk_text, c.chunk_text) as chunk_text,
         c.metadata,
         GREATEST(0, 1 - (c.embedding <=> $2::vector)) AS vector_score,
-        COALESCE(ts_rank_cd(to_tsvector('simple', c.chunk_text), plainto_tsquery('simple', $3)), 0) AS keyword_score
+        COALESCE(ts_rank_cd(to_tsvector('simple', COALESCE(p.chunk_text, c.chunk_text)), plainto_tsquery('simple', $3)), 0) AS keyword_score
       FROM rag_chunks c
       JOIN rag_documents d ON d.id = c.rag_document_id
-      WHERE c.user_id = $1${sourceFilter}
-        AND to_tsvector('simple', c.chunk_text) @@ plainto_tsquery('simple', $3)
+      LEFT JOIN rag_chunks p ON p.id = c.parent_chunk_id
+      WHERE c.user_id = $1${sourceFilter}${filterSql}
+        AND to_tsvector('simple', COALESCE(p.chunk_text, c.chunk_text)) @@ plainto_tsquery('simple', $3)
       ORDER BY keyword_score DESC
       LIMIT $5
     ),
@@ -268,19 +352,6 @@ export async function similaritySearch(args: {
     ORDER BY score DESC, vector_score DESC
     LIMIT $4
   `;
-
-  const params: any[] = [
-    args.userId,
-    vectorLiteral(args.queryEmbedding),
-    args.queryText,
-    args.topK,
-    candidateLimit,
-    vectorWeight,
-    keywordWeight,
-  ];
-  if (args.sourceDocumentIds && args.sourceDocumentIds.length > 0) {
-    params.push(args.sourceDocumentIds);
-  }
 
   const result = await pool.query(sql, params);
   return result.rows.map((row: any) => ({

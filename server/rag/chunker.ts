@@ -34,6 +34,8 @@ export type TextChunk = {
   statuteCitations?: string[];
   /** Judgment result indicator: approved, dismissed, partial, etc. */
   judgmentResult?: string;
+  isParent?: boolean;
+  parentIndex?: number;
 };
 
 export type ChunkingConfig = {
@@ -212,30 +214,53 @@ export function chunkTextByTokens(
 ): TextChunk[] {
   if (!text || text.trim().length === 0) return [];
 
-  // Pass 1: structural split into semantic segments
+  // Pass 1: split into structural parent segments (paragraphs/clauses)
   const segments = splitAtBoundaries(text);
 
-  // Pass 2: sub-chunk any segment that exceeds the token cap
-  const rawChunks: string[] = [];
+  const chunks: TextChunk[] = [];
+  let chunkIndex = 0;
+
   for (const segment of segments) {
-    const tokenCount = countTokens(segment);
-    if (tokenCount <= config.chunkSize) {
-      if (tokenCount >= config.minTokens) {
-        rawChunks.push(segment);
-      }
-    } else {
-      const sub = subChunkSegment(segment, config);
-      rawChunks.push(...sub);
+    const parentTokens = countTokens(segment);
+    if (parentTokens < config.minTokens) continue;
+
+    // 1. Create the Parent Chunk
+    const parentChunk: TextChunk = {
+      chunkIndex,
+      text: segment,
+      tokenCount: parentTokens,
+      sectionType: extractSectionType(segment),
+      statuteCitations: extractStatuteCitations(segment) || undefined,
+      judgmentResult: extractJudgmentResult(segment),
+      isParent: true,
+    };
+    chunks.push(parentChunk);
+    const parentIdx = chunkIndex;
+    chunkIndex += 1;
+
+    // 2. Sub-chunk into smaller child chunks for precise vector footprint matching
+    const childConfig: ChunkingConfig = {
+      chunkSize: 150,
+      overlap: 40,
+      minTokens: 30,
+    };
+
+    const childTexts = subChunkSegment(segment, childConfig);
+    for (const childText of childTexts) {
+      const childChunk: TextChunk = {
+        chunkIndex,
+        text: childText,
+        tokenCount: countTokens(childText),
+        sectionType: parentChunk.sectionType,
+        statuteCitations: extractStatuteCitations(childText) || undefined,
+        judgmentResult: parentChunk.judgmentResult,
+        isParent: false,
+        parentIndex: parentIdx,
+      };
+      chunks.push(childChunk);
+      chunkIndex += 1;
     }
   }
 
-  // Assign chunk indices and extract metadata
-  return rawChunks.map((text, idx) => ({
-    chunkIndex: idx,
-    text,
-    tokenCount: countTokens(text),
-    sectionType: extractSectionType(text),
-    statuteCitations: extractStatuteCitations(text) || undefined,
-    judgmentResult: extractJudgmentResult(text),
-  }));
+  return chunks;
 }

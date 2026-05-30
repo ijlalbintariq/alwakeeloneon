@@ -160,6 +160,7 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
       retrieveForQuery({
         userId: "global-admin-judgments",
         query,
+        metadataFilters: court ? { court } : undefined,
         topK: safeLimit,
       }).catch((err) => {
         console.warn("[executeCitationSearch:Vector] Hybrid search failed, falling back to keywords:", err?.message || err);
