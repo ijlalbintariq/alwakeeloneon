@@ -640,7 +640,8 @@ export async function retrieveForQuery(args: {
   const queryEmbedding = await embedTextLocal(queryText);
   const { vectorWeight, keywordWeight } = resolveHybridWeights();
   const candidateTopK = Math.min(RERANK_POOL_CAP, Math.max(requestedTopK, requestedTopK * 4));
-  const includeGlobalAdminSources = !args.documentIds || args.documentIds.length === 0;
+  const isGlobalAdminUser = GLOBAL_ADMIN_RAG_USER_IDS.includes(args.userId as any);
+  const includeGlobalAdminSources = !isGlobalAdminUser && (!args.documentIds || args.documentIds.length === 0);
   const globalSearches = includeGlobalAdminSources
     ? GLOBAL_ADMIN_RAG_USER_IDS.map((globalUserId) =>
       similaritySearch({
