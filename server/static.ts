@@ -61,14 +61,15 @@ export function serveStatic(app: Express) {
   const indexHtmlTemplate = fs.readFileSync(indexHtmlPath, "utf8");
 
   // 24-hour cache for dynamic SEO metadata to keep Render/Neon DB load near zero
-  const seoCache = new Map<string, { meta: SeoMeta; expiresAt: number }>();
+  const seoCache = new Map<string, { meta: SeoMeta; preRenderBlock: string; expiresAt: number }>();
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-  async function getJudgmentSeoMeta(id: string): Promise<SeoMeta | undefined> {
+  // Returns { meta, preRenderBlock } tuple — null when judgment not found.
+  async function getJudgmentSeoData(id: string): Promise<{ meta: SeoMeta; preRenderBlock: string } | undefined> {
     const now = Date.now();
     const cached = seoCache.get(id);
     if (cached && cached.expiresAt > now) {
-      return cached.meta;
+      return { meta: cached.meta, preRenderBlock: cached.preRenderBlock };
     }
 
     try {
@@ -91,6 +92,7 @@ export function serveStatic(app: Express) {
         const citation = row.citationString ? String(row.citationString).trim() : "";
         const courtName = row.courtNameSnapshot ? String(row.courtNameSnapshot).trim() : "Supreme Court / High Court of Pakistan";
         const decisionDateStr = row.decisionDate ? new Date(row.decisionDate).toISOString().slice(0, 10) : "";
+        const yearStr = decisionDateStr ? decisionDateStr.slice(0, 4) : "";
 
         // Dynamically compile CourtCase JSON-LD schema markup for Google Search rich snippets
         const schema = {
@@ -113,8 +115,25 @@ export function serveStatic(app: Express) {
           index: true,
           schemaMarkup,
         };
-        seoCache.set(id, { meta, expiresAt: now + CACHE_TTL_MS });
-        return meta;
+
+        // Pre-rendered body block: real visible HTML text that Google can index
+        // without executing JavaScript. Positioned off-screen via inline style so
+        // it doesn't affect the visual UI but is fully readable by crawlers.
+        // This is the direct fix for citations ("2017 YLR 1300") not ranking even
+        // though party names do — citations need to appear in the page BODY, not
+        // only in <head> meta tags, for Google to associate the citation with the URL.
+        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const preRenderBlock = `<div id="seo-prerender" aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">
+  <h1>${esc(title)}${citation ? ` — ${esc(citation)}` : ""}</h1>
+  ${citation ? `<p>Citation: ${esc(citation)}</p>` : ""}
+  <p>Court: ${esc(courtName)}</p>
+  ${yearStr ? `<p>Year: ${esc(yearStr)}</p>` : ""}
+  ${decisionDateStr ? `<p>Decision Date: ${esc(decisionDateStr)}</p>` : ""}
+  <p>This judgment is available in full text on Al Wakeelo — Pakistan&#39;s AI legal assistant. Search Pakistani case law by citation, party name, court, and year.</p>
+</div>`;
+
+        seoCache.set(id, { meta, preRenderBlock, expiresAt: now + CACHE_TTL_MS });
+        return { meta, preRenderBlock };
       }
     } catch (err) {
       console.error(`[SEO Meta] Failed dynamic lookup for judgment ${id}:`, err);
@@ -131,13 +150,25 @@ export function serveStatic(app: Express) {
     const pathname = raw.split("?")[0] || "/";
 
     let customMeta: SeoMeta | undefined;
+    let preRenderBlock: string | undefined;
     const judgmentMatch = pathname.match(/^\/judgment\/([^/]+)$/);
     if (judgmentMatch) {
       const judgmentId = judgmentMatch[1];
-      customMeta = await getJudgmentSeoMeta(judgmentId);
+      const seoData = await getJudgmentSeoData(judgmentId);
+      if (seoData) {
+        customMeta = seoData.meta;
+        preRenderBlock = seoData.preRenderBlock;
+      }
     }
 
-    const html = injectSeoMeta(indexHtmlTemplate, pathname, customMeta);
+    let html = injectSeoMeta(indexHtmlTemplate, pathname, customMeta);
+
+    // Inject pre-rendered body block for judgment pages so Google can index
+    // the citation, parties, and court as real body text without JavaScript.
+    if (preRenderBlock) {
+      html = html.replace("</body>", `${preRenderBlock}\n</body>`);
+    }
+
     res.setHeader("Cache-Control", HTML_CACHE_HEADER);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(statusCode).send(html);
