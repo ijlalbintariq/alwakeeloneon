@@ -572,9 +572,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       }
 
       if (ragEnabled && isAlWakeelo && text.trim().length > 0 && currentFiles.length === 0) {
+        // Include recent conversation history so RAG can understand follow-up questions
+        const recentHistory = updated
+          .slice(-10)
+          .filter((m) => m.content.trim().length > 0)
+          .map((m) => ({ role: m.role as "user" | "assistant", content: m.content.substring(0, 500) }));
         const ragBody: any = {
           query: text,
           documentIds: userDocuments.map((d) => d.id),
+          conversationHistory: recentHistory.length > 1 ? recentHistory : undefined,
         };
         if (ragCaseFileId) ragBody.caseFileId = ragCaseFileId;
         const ragRes = await apiRequest("POST", "/api/rag/ask", ragBody);

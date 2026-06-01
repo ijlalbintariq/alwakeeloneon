@@ -9664,6 +9664,10 @@ export async function registerRoutes(
         query: z.string().min(3),
         documentIds: z.array(z.number().int().positive()).optional(),
         caseFileId: z.number().int().positive().optional(),
+        conversationHistory: z.array(z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string(),
+        })).max(10).optional(),
       }).parse(req.body);
 
       // If caseFileId provided, scope to that case's documents
@@ -9771,7 +9775,18 @@ RAG POLICY (STRICT):
 - Keep answer concise, legally structured, and practical for Pakistani legal practice.
 - Provide supportable claims only.`;
 
-      const userPrompt = `User question:\n${parsed.query}\n\nRetrieved context:\n${ragContext}\n\nReturn a clear answer grounded only in this context.`;
+      // Build conversation context if history was provided
+      let conversationContext = "";
+      if (parsed.conversationHistory && parsed.conversationHistory.length > 0) {
+        conversationContext = "\n\nPrevious conversation (for context only — still answer from retrieved documents):\n" +
+          parsed.conversationHistory
+            .slice(-8) // Keep last 8 messages to stay within token limits
+            .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+            .join("\n") +
+          "\n\n---\n";
+      }
+
+      const userPrompt = `${conversationContext}User question:\n${parsed.query}\n\nRetrieved context:\n${ragContext}\n\nReturn a clear answer grounded only in the retrieved context. If the user refers to something from the conversation history, use that to understand their intent but still answer using the retrieved documents.`;
       const result = await callStandardAISimple(systemPrompt, userPrompt, TOKEN_LIMITS.chat, { timeoutProfile: "search", temperature: 0.2 });
       await logUsageCost(userId, "chat", result.model, systemPrompt + userPrompt, result.text);
       const lowConfidenceContext = strictContext && retrieval.confidence === "low";
