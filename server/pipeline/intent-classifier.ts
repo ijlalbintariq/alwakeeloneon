@@ -269,6 +269,22 @@ export const LEGAL_TOPICS: LegalTopic[] = [
     synonyms: ["reinstatement", "provident fund", "eobi", "industrial relations", "factories act", "workman", "wrongful termination"],
     minRelevanceScore: 18,
   },
+  {
+    id: "banking",
+    label: "Banking / Finance / Recovery",
+    primary: ["bank", "banking", "financing", "loan", "mortgage", "markup", "recovery", "credit"],
+    synonyms: [
+      "set-off", "lien", "guarantee", "guarantor", "restructuring",
+      "credit bureau", "defaulter", "overdue", "installment",
+      "letter of credit", "term finance", "cash finance", "overdraft",
+      "floating charge", "hypothecation", "pledge", "security",
+      "prudential regulations", "state bank", "sbp",
+      "financial institution", "recovery proceedings",
+      "banking court", "banking tribunal",
+      "interest", "markup rate", "riba",
+    ],
+    minRelevanceScore: 18,
+  },
 ];
 
 // ---------------------------------------------------------------------------

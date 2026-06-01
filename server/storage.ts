@@ -2077,6 +2077,10 @@ export class DatabaseStorage implements IStorage {
       "haq", "mehr", "dower", "nikahnama", "mahr", "mehar", "hiba",
       "talaq", "nafaqa", "iddat", "walima", "mflo",
       "dissolution", "marriage", "restitution", "conjugal",
+      // Banking / finance / recovery tokens
+      "bank", "banking", "financing", "loan", "mortgage", "markup",
+      "recovery", "credit", "guarantee", "guarantor", "restructuring",
+      "defaulter", "lien", "hypothecation", "overdraft", "set-off",
     ]);
 
     const queryTokens = safeQuery
