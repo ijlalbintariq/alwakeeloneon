@@ -1459,7 +1459,7 @@ export class DatabaseStorage implements IStorage {
     const queryTokens = hasTextQuery
       ? safeQuery
           .toLowerCase()
-          .split(/\s+/g)
+          .split(MULTIPLE_SPACES_REGEX)
           .map((token) => token.trim())
           .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
           .slice(0, 10)
@@ -2052,7 +2052,7 @@ export class DatabaseStorage implements IStorage {
 
     const queryTokens = safeQuery
       .toLowerCase()
-      .split(/\s+/g)
+      .split(MULTIPLE_SPACES_REGEX)
       .map((token) => token.trim())
       .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
       .slice(0, 10);
@@ -2075,11 +2075,32 @@ export class DatabaseStorage implements IStorage {
     const fetchRows = async (queryParam: string): Promise<any[]> => {
       const tsvMatchExpr = sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, '') || ' ' || coalesce(${judgments.fullText}, '')) @@ to_tsquery('simple', ${queryParam})`;
 
+      // We define a nested textMatchExpr referencing "sub" to run regex checks on the limited GIN candidates
+      const subJudgments = {
+        title: sql`sub.title`,
+        headnotes: sql`sub.headnotes`,
+        fullText: sql`sub.full_text`,
+      };
+      const subPerTokenExprs = queryTokens.map((token) => {
+        return or(
+          buildSearchTokenMatch(subJudgments.title, token),
+          buildSearchTokenMatch(subJudgments.headnotes, token),
+          buildSearchTokenMatch(subJudgments.fullText, token),
+        )!;
+      });
+      const subTextMatchExpr = subPerTokenExprs.length > 0
+        ? (subPerTokenExprs.length === 1 ? subPerTokenExprs[0] : and(...subPerTokenExprs)!)
+        : undefined;
+
       const res = await db.execute(sql`
         WITH candidates AS (
-          SELECT id FROM judgments
-          WHERE is_active = true AND ${tsvMatchExpr}
-          ORDER BY year DESC
+          SELECT id FROM (
+            SELECT id, title, headnotes, full_text, year FROM judgments
+            WHERE is_active = true AND ${tsvMatchExpr}
+            ORDER BY year DESC
+            LIMIT ${safeLimit * 8}
+          ) sub
+          ${subTextMatchExpr ? sql`WHERE ${subTextMatchExpr}` : sql``}
           LIMIT ${safeLimit * 2}
         )
         SELECT
