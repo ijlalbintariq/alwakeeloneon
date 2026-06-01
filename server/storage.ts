@@ -2080,18 +2080,17 @@ export class DatabaseStorage implements IStorage {
           SELECT id FROM judgments
           WHERE is_active = true AND ${tsvMatchExpr}
           ORDER BY year DESC
-          LIMIT ${safeLimit * 20}
+          LIMIT ${safeLimit * 2}
         )
         SELECT
-          judgments.id, judgments.year, judgments.page, judgments.citation_string as "citationString", judgments.title, judgments.petitioner, judgments.respondent, judgments.headnotes,
-          LEFT(judgments.full_text, 1500) as "fullTextHead",
-          courts_ref.name as "courtName", judgments.court_name_snapshot as "courtSnapshot", law_journals.code as "journalCode"
+          j.id, j.year, j.page, j.citation_string as "citationString", j.title, j.petitioner, j.respondent, j.headnotes,
+          LEFT(j.full_text, 1500) as "fullTextHead",
+          c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode"
         FROM candidates cand
-        INNER JOIN judgments ON cand.id = judgments.id
-        LEFT JOIN courts_ref ON judgments.court_id = courts_ref.id
-        INNER JOIN law_journals ON judgments.journal_id = law_journals.id
-        WHERE ${textMatchExpr ? textMatchExpr : sql`true`}
-        ORDER BY judgments.year DESC
+        INNER JOIN judgments j ON cand.id = j.id
+        LEFT JOIN courts_ref c ON j.court_id = c.id
+        INNER JOIN law_journals l ON j.journal_id = l.id
+        ORDER BY j.year DESC
       `);
       return res.rows as any[];
     };
@@ -2125,22 +2124,14 @@ export class DatabaseStorage implements IStorage {
       // and the Case Law Card both see proper titles/courts immediately.
       // fullTextHead is already capped at 1500 chars by the SELECT — header parsing only.
       const fullTextStr = String(row.fullTextHead || "");
-      const fullTextHeader = fullTextStr;
-      // Multi-line title support: real judgment titles often look like
-      //   Title:Government Of The Punjab through Secretary Special Education
-      //
-      //   Department, Lahore and others vs Abdul Jabbar
-      // i.e. the title spans 2-3 lines until the next labeled header
-      // ("Case No.:", "Reported As:", "Date of Judgment:", "JUDGMENT", etc.).
-      const headerMatch = (label: string): string => {
-        const m = fullTextHeader.match(
-          new RegExp(`(?:^|\\n)\\s*${label}\\s*:\\s*([\\s\\S]*?)(?=\\n\\s*(?:Case No\\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\\(s\\)|Court Name|Title)\\s*:|$)`, "i"),
-        );
-        if (!m) return "";
-        return m[1].replace(/\s+/g, " ").trim();
-      };
-      const fullTextTitle = headerMatch("Title");
-      const fullTextCourt = headerMatch("Court Name") || headerMatch("Court");
+      
+      const fullTextTitleMatch = fullTextStr.match(TITLE_HEADER_REGEX);
+      const fullTextTitle = fullTextTitleMatch ? fullTextTitleMatch[1].replace(MULTIPLE_SPACES_REGEX, " ").trim() : "";
+
+      const fullTextCourtNameMatch = fullTextStr.match(COURT_NAME_HEADER_REGEX);
+      const fullTextCourtMatch = fullTextStr.match(COURT_HEADER_REGEX);
+      const fullTextCourt = (fullTextCourtNameMatch ? fullTextCourtNameMatch[1].replace(MULTIPLE_SPACES_REGEX, " ").trim() : "") ||
+                            (fullTextCourtMatch ? fullTextCourtMatch[1].replace(MULTIPLE_SPACES_REGEX, " ").trim() : "");
 
       const courtRaw = String(row.courtName || row.courtSnapshot || "").trim();
       const courtStr = courtRaw || fullTextCourt;
@@ -2154,16 +2145,9 @@ export class DatabaseStorage implements IStorage {
       //   woman..."). These don't match a placeholder pattern but are
       //   clearly not a case title — real case titles always contain
       //   `vs`, `v.`, `versus`, or are an ALL-CAPS petitioner name.
-      const looksLikeRealCaseTitle = (s: string): boolean => {
-        if (!s) return false;
-        if (/\b(vs?\.?|versus)\b/i.test(s)) return true;
-        // ALL-CAPS prefix (>= 4 chars) is the standard SCMR/PLD style: "MRS. HAZARBAI..."
-        if (/^[A-Z][A-Z .'-]{3,}/.test(s)) return true;
-        return false;
-      };
       const isPlaceholderTitle =
         !dbTitleRaw ||
-        /^case\s+(?:reported\s+at|cited\s+as|no\.?)\b/i.test(dbTitleRaw) ||
+        PLACEHOLDER_TITLE_REGEX.test(dbTitleRaw) ||
         dbTitleRaw === `Case ${citation}` ||
         !looksLikeRealCaseTitle(dbTitleRaw);
       // Prefer fullText Title (real header) over the parties join, which is
@@ -2181,7 +2165,7 @@ export class DatabaseStorage implements IStorage {
       const headnotesRaw = String(row.headnotes || "").trim();
       const isPlaceholderHeadnotes =
         !headnotesRaw || 
-        /^case\s+(?:cited\s+as|reported\s+at)\b/i.test(headnotesRaw) ||
+        PLACEHOLDER_HEADNOTES_REGEX.test(headnotesRaw) ||
         isMetadataOnlySummary(headnotesRaw);
       const fullTextBody = extractSubstantiveSummary(fullTextStr);
       const summaryStr = isPlaceholderHeadnotes && fullTextBody
@@ -4546,6 +4530,36 @@ export const STOP_WORDS = new Set([
   "right","old","same","new","want","need","take","make","come","get","put","ask",
 ]);
 
+// Statically pre-compiled regular expressions to prevent V8 CPU bottlenecks in mapping loops
+export const TITLE_SEP_REGEX = /\s+\b(vs\.?|versus|v\.?)\b\s+/i;
+export const CLEAN_FALLBACK_REGEX = /(?<!^)(?:\.|\b)(?:Honorable\s+)?Justice\b[\s\S]*|(?<!^)(?:\.|\b)Before\b[\s\S]*|(?<!^)(?:\.|\b)(?:Advocate|Barrister|Counsel)\b[\s\S]*/i;
+export const CLEAN_RESPONDENT_REGEX = /(?:\.|\b)(?:Honorable\s+)?Justice\b[\s\S]*|(?:\.|\b)Before\b[\s\S]*|(?:\.|\b)(?:Advocate|Barrister|Counsel)\b[\s\S]*|(?:\.|\b|---)(?:Respondents?|decided\s+on)\b[\s\S]*/i;
+export const MULTIPLE_SPACES_REGEX = /\s+/g;
+export const END_PUNCTUATION_REGEX = /[.,\s\-–—]+$/;
+
+export const REAL_CASE_TITLE_SEP_REGEX = /\b(vs?\.?|versus)\b/i;
+export const ALL_CAPS_PREFIX_REGEX = /^[A-Z][A-Z .'-]{3,}/;
+export const PLACEHOLDER_TITLE_REGEX = /^case\s+(?:reported\s+at|cited\s+as|no\.?)\b/i;
+export const PLACEHOLDER_HEADNOTES_REGEX = /^case\s+(?:cited\s+as|reported\s+at)\b/i;
+
+export const TITLE_HEADER_REGEX = /(?:^|\n)\s*Title\s*:\s*([\s\S]*?)(?=\n\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;
+export const COURT_NAME_HEADER_REGEX = /(?:^|\n)\s*Court Name\s*:\s*([\s\S]*?)(?=\n\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;
+export const COURT_HEADER_REGEX = /(?:^|\n)\s*Court\s*:\s*([\s\S]*?)(?=\n\s*(?:Case No\.?|Reported As|Date of Judgment|Result|JUDGMENT|ORDER|Judge\(s\)|Court Name|Title)\s*:|$)/i;
+
+export const STANDALONE_JUDGMENT_REGEX = /(?:^|\r?\n)\s*(JUDGMENT|ORDER)\s*(?:\r?\n)+([\s\S]*)$/i;
+export const STRIP_JUDGE_SIGNATURE_REGEX = /^[A-Z\s,.'’-]+,\s*(?:[J|C]\.?\s*){1,2}[:\-–—\s]+/i;
+export const STRIP_TITLE_HEADER_REGEX = /^[\s\S]*?\bTitle\s*:\s*[^\n]*/i;
+
+export const METADATA_BULLET_REGEX = /\([a-z]\)\s*$/;
+export const METADATA_NARRATIVE_REGEX = /\b(held|observed|dismissed|allowed|declared|illegal|lawful|entitled|refund|order|judgment|appeal|contended)\b/i;
+
+export function looksLikeRealCaseTitle(s: string): boolean {
+  if (!s) return false;
+  if (REAL_CASE_TITLE_SEP_REGEX.test(s)) return true;
+  if (ALL_CAPS_PREFIX_REGEX.test(s)) return true;
+  return false;
+}
+
 /**
  * Builds a case-insensitive whole-word Postgres regex match or standard ILIKE wildcard.
  * For short tokens (under 5 characters, like "mehr" or "haq") or critical signal tokens,
@@ -4566,8 +4580,8 @@ export function isMetadataOnlySummary(text: string): boolean {
   if (cleaned.length < 250) return true;
   
   // Look for trailing bulletin marker e.g. "(a)" at the end
-  const endsWithBullet = /\([a-z]\)\s*$/.test(cleaned);
-  const hasNarrative = /\b(held|observed|dismissed|allowed|declared|illegal|lawful|entitled|refund|order|judgment|appeal|contended)\b/i.test(lower);
+  const endsWithBullet = METADATA_BULLET_REGEX.test(cleaned);
+  const hasNarrative = METADATA_NARRATIVE_REGEX.test(lower);
   
   if (endsWithBullet && !hasNarrative) {
     return true;
@@ -4589,13 +4603,12 @@ export function cleanCaseTitle(title: string): string {
   if (!title) return "";
   
   // Find standard vs/versus separators (case-insensitive)
-  const match = title.match(/\s+\b(vs\.?|versus|v\.?)\b\s+/i);
+  const match = title.match(TITLE_SEP_REGEX);
   if (!match) {
     // Fallback: apply the regex only if it doesn't match the very start of the string
     let cleaned = title;
-    const regex = /(?<!^)(?:\.|\b)(?:Honorable\s+)?Justice\b[\s\S]*|(?<!^)(?:\.|\b)Before\b[\s\S]*|(?<!^)(?:\.|\b)(?:Advocate|Barrister|Counsel)\b[\s\S]*/i;
-    cleaned = cleaned.replace(regex, "");
-    return cleaned.replace(/\s+/g, " ").replace(/[.,\s\-–—]+$/, "").trim();
+    cleaned = cleaned.replace(CLEAN_FALLBACK_REGEX, "");
+    return cleaned.replace(MULTIPLE_SPACES_REGEX, " ").replace(END_PUNCTUATION_REGEX, "").trim();
   }
   
   // Split the title into Petitioner and Respondent to completely protect Petitioner names
@@ -4605,11 +4618,10 @@ export function cleanCaseTitle(title: string): string {
   const respondent = title.substring(sepIndex + sep.length).trim();
   
   // Clean Respondent metadata leakage (Justice, Before, counsel, decided on, Respondents suffix)
-  const regex = /(?:\.|\b)(?:Honorable\s+)?Justice\b[\s\S]*|(?:\.|\b)Before\b[\s\S]*|(?:\.|\b)(?:Advocate|Barrister|Counsel)\b[\s\S]*|(?:\.|\b|---)(?:Respondents?|decided\s+on)\b[\s\S]*/i;
-  const cleanedRespondent = respondent.replace(regex, "");
+  const cleanedRespondent = respondent.replace(CLEAN_RESPONDENT_REGEX, "");
   
   const joined = `${petitioner}${sep}${cleanedRespondent}`;
-  return joined.replace(/\s+/g, " ").replace(/[.,\s\-–—]+$/, "").trim();
+  return joined.replace(MULTIPLE_SPACES_REGEX, " ").replace(END_PUNCTUATION_REGEX, "").trim();
 }
 
 export function extractSubstantiveSummary(fullTextStr: string): string {
@@ -4617,16 +4629,16 @@ export function extractSubstantiveSummary(fullTextStr: string): string {
   
   let bodyText = fullTextStr;
   // Match stand-alone JUDGMENT or ORDER on its own line to strip metadata headers
-  const standAloneMatch = fullTextStr.match(/(?:^|\r?\n)\s*(JUDGMENT|ORDER)\s*(?:\r?\n)+([\s\S]*)$/i);
+  const standAloneMatch = fullTextStr.match(STANDALONE_JUDGMENT_REGEX);
   
   if (standAloneMatch) {
     bodyText = standAloneMatch[2];
     // Strip initial judge signature patterns like "ADNAN IQBAL CHAUDHRY, J:—"
-    bodyText = bodyText.replace(/^[A-Z\s,.'’-]+,\s*(?:[J|C]\.?\s*){1,2}[:\-–—\s]+/i, "");
+    bodyText = bodyText.replace(STRIP_JUDGE_SIGNATURE_REGEX, "");
   } else {
     // Fallback: if no standalone JUDGMENT tag is found, strip standard header labels
-    bodyText = bodyText.replace(/^[\s\S]*?\bTitle\s*:\s*[^\n]*/i, "");
+    bodyText = bodyText.replace(STRIP_TITLE_HEADER_REGEX, "");
   }
   
-  return bodyText.replace(/\s+/g, " ").trim().slice(0, 600);
+  return bodyText.replace(MULTIPLE_SPACES_REGEX, " ").trim().slice(0, 600);
 }
