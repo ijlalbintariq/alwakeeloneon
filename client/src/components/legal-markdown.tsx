@@ -32,7 +32,10 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
 }
 
 function LegalMarkdownComponent({ content, className }: { content: string; className?: string }) {
-  const citationPattern = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s+\d+)\b/gi;
+  // Year-first: 2010 PLJ 122, 2024 SCMR 142
+  const citationPattern = /\b(\d{4}\s+(?:P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|Y\.?\s*L\.?\s*R|M\.?\s*L\.?\s*D|C\.?\s*L\.?\s*C|P\.?\s*C\.?\s*R\.?\s*L\.?\s*J|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C|SCMR|PLJ|CLD|LHC|IHC|SHC)\s+\d+)\b/gi;
+  // Report-first: PLJ 2010 Lahore 122, PLD 2020 Supreme Court 686
+  const reportFirstPattern = /\b((?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ|PLC|NLR|PSC|ALD|KLR|PTD|PTCL|PLS|GBLR|CLD|TAX|SLR)\s+(?:19|20)\d{2}\s+(?:Supreme Court|Lahore|Karachi|Peshawar|Islamabad|Sindh|Balochistan|FSC|SC|Lah|Kar|Pesh|Federal Shariat Court|Federal Shariat)?\s*\d+)\b/gi;
   // Matches: [Full Statute Name, Year] or [Full Statute Name Year] — full names in brackets
   const bracketStatutePattern = /\[([^\]]*(?:Act|Ordinance|Code|Order|Rules?|Constitution|Regulation|Decree|Qanun)[^\]]*\d{4}[^\]]*)\]/gi;
   // Matches: Section X or short abbreviations
@@ -45,6 +48,11 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
 
     let match;
     while ((match = citationPattern.exec(text)) !== null) {
+      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[0], type: 'citation' });
+    }
+
+    // Report-first citations: PLJ 2010 Lahore 122, PLD 2020 Supreme Court 686
+    while ((match = reportFirstPattern.exec(text)) !== null) {
       allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[0], type: 'citation' });
     }
 
@@ -132,7 +140,10 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
                 </LegalLink>
               );
             }
-            if (citationPattern.test(text)) {
+            // Use fresh non-global regex to avoid stateful lastIndex bug with g flag
+            const isCitation = /\b\d{4}\s+(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ|PLC|NLR|PSC|ALD|KLR|PTD|PTCL|PLS|GBLR|CLD|TAX|SLR|LHC|IHC|SHC)\s+\d+\b/i.test(text)
+              || /\b(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ|PLC|NLR|PSC|ALD|KLR|PTD|PTCL|PLS|GBLR|CLD|TAX|SLR)\s+(?:19|20)\d{2}\b/i.test(text);
+            if (isCitation) {
               const searchQuery = encodeURIComponent(text);
               return (
                 <LegalLink href={`/judgments?q=${searchQuery}`}>
