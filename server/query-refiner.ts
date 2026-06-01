@@ -110,12 +110,48 @@ export async function refineUserQuery(
 
     clearTimeout(timer);
 
-    const refined = (result.content || "").trim();
+    let refined = (result.content || "").trim();
     const elapsedMs = Date.now() - startMs;
 
     // Sanity checks: reject if AI returned garbage
     if (!refined || refined.length < 5) {
       console.warn("[QueryRefine] Empty or too-short refinement, using original");
+      return { refined: rawQuery, wasRefined: false, elapsedMs };
+    }
+
+    // CRITICAL: Detect meta-responses where the AI echoes back instructions
+    // instead of returning just the refined query. This happens when DeepSeek
+    // generates text like "Understood. You are a query refinement layer..."
+    // or "I will supply a raw, unoptimized legal question..." — these must
+    // NEVER reach the main AI as the "user's question".
+    const metaPatterns = [
+      /you are a.*(?:query|refinement|optimizer|layer)/i,
+      /^understood[\.\,\!]?\s/i,
+      /^sure[\.\,\!]?\s/i,
+      /^okay[\.\,\!]?\s/i,
+      /^certainly[\.\,\!]?\s/i,
+      /^i (?:will|shall|can|would) (?:supply|provide|refine|optimize|rewrite|help)/i,
+      /(?:refine|optimize|rewrite)\s+(?:this|the|your)\s+(?:query|question)/i,
+      /al\s*wakeelo\s*(?:system|engine|assistant)/i,
+      /raw,?\s*unoptimized/i,
+      /query\s*refinement\s*layer/i,
+      /please\s*optimize\s*this\s*query/i,
+      /here\s*is\s*(?:the|my)\s*refined/i,
+    ];
+    if (metaPatterns.some(p => p.test(refined))) {
+      console.warn(`[QueryRefine] Detected meta-response, discarding: "${refined.slice(0, 100)}..."`);
+      return { refined: rawQuery, wasRefined: false, elapsedMs };
+    }
+
+    // Strip common preamble labels the AI sometimes adds
+    refined = refined
+      .replace(/^(?:output|refined query|refined|here is the refined query|optimized query)[:\s]*/i, "")
+      .replace(/^["'`]+|["'`]+$/g, "")  // strip wrapping quotes
+      .trim();
+
+    // If stripping made it too short, reject
+    if (refined.length < 10) {
+      console.warn("[QueryRefine] Refined text too short after cleanup, using original");
       return { refined: rawQuery, wasRefined: false, elapsedMs };
     }
 
