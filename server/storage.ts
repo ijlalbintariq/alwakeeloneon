@@ -2061,55 +2061,39 @@ export class DatabaseStorage implements IStorage {
 
     const tsQueryStr = queryTokens.join(' & ');
 
-    const fetchRows = async (queryParam: string) => {
+    const perTokenExprs = queryTokens.map((token) => {
+      return or(
+        buildSearchTokenMatch(judgments.title, token),
+        buildSearchTokenMatch(judgments.headnotes, token),
+        buildSearchTokenMatch(judgments.fullText, token),
+      )!;
+    });
+    const textMatchExpr = perTokenExprs.length > 0
+      ? (perTokenExprs.length === 1 ? perTokenExprs[0] : and(...perTokenExprs)!)
+      : undefined;
+
+    const fetchRows = async (queryParam: string): Promise<any[]> => {
       const tsvMatchExpr = sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, '') || ' ' || coalesce(${judgments.fullText}, '')) @@ to_tsquery('simple', ${queryParam})`;
 
-      const candidateIds = await db
-        .select({
-          id: judgments.id,
-          citationString: judgments.citationString,
-        })
-        .from(judgments)
-        .where(and(eq(judgments.isActive, true), tsvMatchExpr))
-        .orderBy(desc(judgments.year))
-        .limit(safeLimit * 4);
-
-      if (candidateIds.length === 0) return [];
-
-      const seenCits = new Set<string>();
-      const ids: string[] = [];
-      for (const cand of candidateIds) {
-        const citation = String(cand.citationString || "").trim().toLowerCase();
-        if (!citation || seenCits.has(citation)) continue;
-        seenCits.add(citation);
-        ids.push(cand.id);
-        if (ids.length >= safeLimit) break;
-      }
-
-      if (ids.length === 0) return [];
-
-      const rows = await db
-        .select({
-          id: judgments.id,
-          year: judgments.year,
-          page: judgments.page,
-          citationString: judgments.citationString,
-          title: judgments.title,
-          petitioner: judgments.petitioner,
-          respondent: judgments.respondent,
-          headnotes: judgments.headnotes,
-          fullTextHead: sql<string>`LEFT(${judgments.fullText}, 1500)`,
-          courtName: courtsRef.name,
-          courtSnapshot: judgments.courtNameSnapshot,
-          journalCode: lawJournals.code,
-        })
-        .from(judgments)
-        .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
-        .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
-        .where(and(eq(judgments.isActive, true), inArray(judgments.id, ids)))
-        .orderBy(desc(judgments.year));
-
-      return rows;
+      const res = await db.execute(sql`
+        WITH candidates AS (
+          SELECT id FROM judgments
+          WHERE is_active = true AND ${tsvMatchExpr}
+          ORDER BY year DESC
+          LIMIT ${safeLimit * 20}
+        )
+        SELECT
+          judgments.id, judgments.year, judgments.page, judgments.citation_string as "citationString", judgments.title, judgments.petitioner, judgments.respondent, judgments.headnotes,
+          LEFT(judgments.full_text, 1500) as "fullTextHead",
+          courts_ref.name as "courtName", judgments.court_name_snapshot as "courtSnapshot", law_journals.code as "journalCode"
+        FROM candidates cand
+        INNER JOIN judgments ON cand.id = judgments.id
+        LEFT JOIN courts_ref ON judgments.court_id = courts_ref.id
+        INNER JOIN law_journals ON judgments.journal_id = law_journals.id
+        WHERE ${textMatchExpr ? textMatchExpr : sql`true`}
+        ORDER BY judgments.year DESC
+      `);
+      return res.rows as any[];
     };
 
     let rows = await fetchRows(tsQueryStr);
