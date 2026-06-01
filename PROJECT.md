@@ -12,10 +12,10 @@ This project covers the optimization of the Alwakeelo chat engine to behave as a
 
 | # | Name | Scope / Modules | Dependencies | Status | Conversation ID |
 |---|------|-----------------|--------------|--------|-----------------|
-| 1 | R1: Conversation History for RAG | Extract prior turns in REST endpoints and pass to knowledge pipeline | None | DONE | a9fba036-cb91-44ec-8cf1-af552fd9deb9 |
-| 2 | R2: Complexity & Length Scaling | Query complexity detection and response length/word-count scaling | M1 | DONE | a9fba036-cb91-44ec-8cf1-af552fd9deb9 |
-| 3 | R3: System Prompt Exceptions | Except simple/follow-up queries from mandatory issue mapping/legal tests | M2 | DONE | a9fba036-cb91-44ec-8cf1-af552fd9deb9 |
-| 4 | Verification & Integration testing | Verify typescript compiles and all tests pass | M3 | DONE | a9fba036-cb91-44ec-8cf1-af552fd9deb9 |
+| 1 | R1: Conversation History for RAG | Extract prior turns in REST endpoints and pass to knowledge pipeline | None | IN_PROGRESS | a9fba036-cb91-44ec-8cf1-af552fd9deb9 |
+| 2 | R2: Complexity & Length Scaling | Query complexity detection and response length/word-count scaling | M1 | IN_PROGRESS | a9fba036-cb91-44ec-8cf1-af552fd9deb9 |
+| 3 | R3: System Prompt Exceptions | Except simple/follow-up queries from mandatory issue mapping/legal tests | M2 | IN_PROGRESS | a9fba036-cb91-44ec-8cf1-af552fd9deb9 |
+| 4 | Verification & Integration testing | Verify typescript compiles and all tests pass | M3 | PLANNED | TBD |
 
 ## Interface Contracts
 - **Thread Creation**: `/api/threads` (POST) requires `{ title?, firstMessage }`. Returns the created thread object.

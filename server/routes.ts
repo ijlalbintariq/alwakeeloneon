@@ -6448,14 +6448,14 @@ CONVERSATIONAL CLIENT MODE (MANDATORY):
 MANDATORY RESPONSE STRUCTURE (FOR LEGAL QUERIES):
 Use markdown sections (### headings) for legal analysis, legal advice, legal drafting, case strategy, statute interpretation, and citation-backed answers.
 
-If the user message is only greeting/small talk/no legal request (e.g., "hi", "hello", "how are you"), or if it is a brief conversational follow-up/clarifying question (e.g. simple questions like "is it bailable?", "what is the penalty?", "does this apply here?"), the LLM MUST NOT use the multi-section legal brief mapping or markdown headings. Reply conversationally, directly, and concisely (typically in 1-2 paragraphs under 250 words) without lengthy analytical reports.
+If the user message is only greeting/small talk/no legal request (e.g., "hi", "hello", "how are you"), do NOT use legal headings; reply conversationally in 3-6 lines and ask one clarifying legal question.
 
 At the start of legal responses, include one short opening line that naturally reflects:
 - Tagline: "Knowledge of Law is Power — and I'm Your Power Source."
 - Motto: "Main hoon Al Wakeelo — not just your lawyer, your strategy partner in justice."
 
 ### Comprehensive Legal Issue Mapping (MANDATORY FIRST STEP for complex queries)
-This section does NOT apply to simple follow-up/clarifying queries. Before analysing ANY complex legal query, you MUST first identify ALL areas of law that potentially apply. Do NOT skip an area just because the user did not ask about it.
+Before analysing ANY complex legal query, you MUST first identify ALL areas of law that potentially apply. Do NOT skip an area just because the user did not ask about it.
 For each applicable area, you MUST create a SEPARATE ANALYSIS SECTION (### heading) — do NOT merely mention an area in passing. Each section must contain: the applicable provision, how it applies to the facts, and the legal conclusion.
 
 MANDATORY AREAS TO CHECK (with specific analytical requirements):
@@ -6489,8 +6489,8 @@ MANDATORY AREAS TO CHECK (with specific analytical requirements):
 - **Limitation Act, 1908**: applicable time limits with specific article numbers
 After mapping, analyse EACH applicable area thoroughly. Missing even one area is a legal malpractice failure.
 
-### Conditional Legal Test Analysis (MANDATORY for complex queries)
-This section does NOT apply to simple follow-up/clarifying queries. Whenever you apply a legal test or statutory provision that has multiple conditions (e.g., Section 53A part performance, Section 41 ostensible owner, Section 497 bail, Section 9 Specific Relief), you MUST:
+### Conditional Legal Test Analysis (MANDATORY)
+Whenever you apply a legal test or statutory provision that has multiple conditions (e.g., Section 53A part performance, Section 41 ostensible owner, Section 497 bail, Section 9 Specific Relief), you MUST:
 1. State ALL conditions of the test explicitly and completely
 2. Analyse EACH condition separately against the facts given
 3. State for each condition: SATISFIED / NOT SATISFIED / UNCERTAIN (with reason)
@@ -6675,7 +6675,7 @@ Provide actionable litigation strategy including:
 - **Limitation Period**: Applicable time limits for filing
 - **Estimated Timeline**: Realistic timeframe expectations
 
-For simple questions and conversational follow-up/clarifying questions, you are explicitly excepted from the mandatory multi-section legal brief mapping and heading requirements. Do NOT use headers or multiple sections; instead, provide a direct, concise conversational response of 80-250 words.
+For simple questions, you may omit sections that are not applicable, but always include at least Legal Context and one other section.
 
 STRUCTURED REFERENCES (MANDATORY - DO NOT SKIP):
 At the VERY END of every legal response, you MUST include a structured references block in the following exact format (even if empty). This block is parsed by the system to create clickable reference cards that users rely on.
@@ -7491,34 +7491,8 @@ export async function registerRoutes(
         content: firstMessage,
       });
 
-      // Pass empty priorTurns array since this is the first message in the thread
-      const knowledgeContext = await gatherKnowledgeContextV2(firstMessage, userId, []);
-
-      // Synchronize with streaming chat endpoint complexity detection and length guidance
-      const queryComplexity: QueryComplexity = detectQueryComplexity(firstMessage);
-      let systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
-
-      const lengthGuidance =
-        queryComplexity === "simple"
-          ? `\n\nRESPONSE LENGTH POLICY (THIS QUERY):
-- This is a SIMPLE / FOLLOW-UP question. Be BRIEF.
-- Target: 80-250 words. One short paragraph + at most ONE supporting case or section.
-- Do NOT repeat context already provided in earlier turns.
-- Do NOT pad with general background, headers, or multi-section structure.
-- The references block can be empty or contain 1-2 entries — only what you actually cite.`
-          : queryComplexity === "complex"
-            ? `\n\nRESPONSE LENGTH POLICY (THIS QUERY):
-- This is a COMPLEX query (drafting / comparison / multi-part scenario).
-- Target: 1200-2200 words. Comprehensive legal analysis.
-- Include multiple relevant cases and statute sections.
-- Use headers/sections where it aids clarity.`
-            : `\n\nRESPONSE LENGTH POLICY (THIS QUERY):
-- This is a MODERATE query.
-- Target: 350-800 words. Direct, focused answer.
-- Cite 2-4 relevant cases or sections — only what is actually on point.
-- Avoid filler, restated context, or unrelated background.`;
-
-      systemPromptFull += lengthGuidance;
+      const knowledgeContext = await gatherKnowledgeContextV2(firstMessage, userId);
+      const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       let usedModel = "";
       const { content: aiResponse, fromCache } = await getCachedOrCall("chat", firstMessage, async () => {
@@ -7739,63 +7713,8 @@ export async function registerRoutes(
         parts: [{ text: m.content }],
       }));
 
-      // Extract prior conversation turns (excluding the user message we just inserted)
-      const priorTurns: ConversationTurn[] = history
-        .slice(0, -1)
-        .slice(-6)
-        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
-
-      // Pass extracted prior conversation turns to support history-aware follow-up query rewriting
-      const knowledgeContext = await gatherKnowledgeContextV2(message, userId, priorTurns);
-
-      // Synchronize with streaming chat endpoint query complexity detection and length styling
-      const hasPriorAssistantTurn = history.some((m) => m.role === "assistant");
-      let queryComplexity: QueryComplexity = detectQueryComplexity(message);
-      if (hasPriorAssistantTurn && queryComplexity !== "complex" && isFollowUpQuestion(message, 0)) {
-        queryComplexity = "simple";
-      }
-
-      if (
-        hasPriorAssistantTurn &&
-        queryComplexity === "moderate" &&
-        message.trim().length < 150 &&
-        message.trim().split(/\s+/).length < 20
-      ) {
-        queryComplexity = "simple";
-      }
-
-      let systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
-
-      if (hasPriorAssistantTurn) {
-        systemPromptFull += `\n\nCONVERSATION CONTEXT POLICY:
-- The user is continuing an ongoing conversation. Previous messages are included in the chat history above.
-- For follow-up questions: Build on your previous answers. Do NOT repeat information you already provided.
-- For short or clarifying questions: Give a concise, focused response — NOT a full re-analysis.
-- For new topics unrelated to prior messages: Provide a full, complete response as if starting fresh.
-- Use the prior conversation to understand pronouns and references (e.g., "it", "this section", "that act" refer to previously discussed items).`;
-      }
-
-      const lengthGuidance =
-        queryComplexity === "simple"
-          ? `\n\nRESPONSE LENGTH POLICY (THIS QUERY):
-- This is a SIMPLE / FOLLOW-UP question. Be BRIEF.
-- Target: 80-250 words. One short paragraph + at most ONE supporting case or section.
-- Do NOT repeat context already provided in earlier turns.
-- Do NOT pad with general background, headers, or multi-section structure.
-- The references block can be empty or contain 1-2 entries — only what you actually cite.`
-          : queryComplexity === "complex"
-            ? `\n\nRESPONSE LENGTH POLICY (THIS QUERY):
-- This is a COMPLEX query (drafting / comparison / multi-part scenario).
-- Target: 1200-2200 words. Comprehensive legal analysis.
-- Include multiple relevant cases and statute sections.
-- Use headers/sections where it aids clarity.`
-            : `\n\nRESPONSE LENGTH POLICY (THIS QUERY):
-- This is a MODERATE query.
-- Target: 350-800 words. Direct, focused answer.
-- Cite 2-4 relevant cases or sections — only what is actually on point.
-- Avoid filler, restated context, or unrelated background.`;
-
-      systemPromptFull += lengthGuidance;
+      const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
+      const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       const result = await callStandardAI(systemPromptFull, geminiContents, TOKEN_LIMITS.chat);
 
