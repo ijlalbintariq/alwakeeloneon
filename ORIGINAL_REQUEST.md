@@ -456,3 +456,78 @@ Integrity mode: development
 - [ ] No duplicate citation links are present in the database, and all transaction boundaries are closed cleanly.
 - [ ] A professional-grade Markdown report (`judgment_ingestion_walkthrough.md`) is generated in the workspace root showing counts and metadata coverage statistics.
 
+## Follow-up — 2026-05-30T12:05:38Z
+
+An automated testing, verification, and stress-testing project to identify hidden bugs, latency spikes, memory leaks, edge-case failures, or score imbalances inside the Alwakeelo RAG retrieval engine and MMR reranking pipeline.
+
+Working directory: `/Users/macbook/Downloads/Alwakeelo`
+Integrity mode: development
+
+## Requirements
+
+### R1. RAG Retrieve & MMR Rerank Comprehensive Stress Auditor
+- **PRIORITY FOCUS**: Case law (judgments) retrieval accuracy, semantic relevance, and zero safety guardrail false-positives (where valid database judgments are incorrectly scrubbed from prose) must be treated as the highest priority to verify.
+- Audit all RAG query routing, vector matching, hybrid scoring, and MMR reranking code for hidden edge cases, division-by-zero, SQL syntax edge cases, or potential memory OOM issues.
+- Build a stress-test suite that fires 50+ diverse legal queries (including empty inputs, extremely long legal inputs, complex Unicode characters, Urdu scripts, and duplicate names) against the local RAG engine.
+- Identify any residual threshold leakage or score imbalances where one source type (e.g. statutes or user documents) could still completely crowd out judgments or vice-versa under specific extreme inputs.
+
+### R2. Latency & Performance Scalability Benchmarker
+- Benchmark the vector similarity search latency across parallel global admin namespaces under concurrent simulated request loads (e.g. 5 concurrent chat sessions).
+- Identify and isolate any unindexed columns, slow SQL query plans, pgvector IVFFLAT/HNSW index degradations, or OpenRouter/OpenAI API timeout failures.
+- Measure memory heap usage before, during, and after large vector operations to assert that no memory leaks exist in the local embedding cache or database connection pool.
+
+### R3. Automated Regression Verification Suite
+- Write robust, automated unit and integration tests using **Vitest** (with direct local imports of `retrieveForQuery`) to permanently prevent regressions in RAG namespace isolation, pool separation, parent context expansion, and MMR source type representation.
+- Assert that any search with `userId` as a global admin user strictly isolates retrieval to that namespace, while standard users correctly interleave statutes, judgments, and user documents.
+
+## Acceptance Criteria
+
+### Verification & Regression Guardrails
+- [ ] Case law retrieval successfully yields semantically relevant, verified judgments for at least 90% of non-empty stress queries containing inheritance, criminal, tax, or property domains.
+- [ ] 100% of the 50+ diverse stress-test queries successfully execute without throwing unhandled exceptions, database deadlocks, or returning null values.
+- [ ] Automated regression tests inside Vitest successfully assert correct namespace isolation, MMR type-representation, and pool boundaries.
+- [ ] Latency for a local similarity search query against the 223k+ judgment dataset remains ≤ 2.5 seconds under standard execution conditions.
+- [ ] Memory footprint shows stable garbage collection with zero heap growth or unreleased database clients after running the 50+ query stress suite.
+- [ ] A comprehensive quality audit report saved to `/Users/macbook/Downloads/Alwakeelo/reports/rag_stress_test_audit_report.md` documenting findings, performance metrics, and any recommended micro-optimizations.
+
+## Follow-up — 2026-06-01T15:44:25+05:00
+
+Rebuild the core legal keyword search engine from scratch for the Al Wakeelo legal platform to provide fast, precise, and highly relevant search results.
+
+Working directory: /Users/macbook/Downloads/Alwakeelo
+Integrity mode: development
+
+## Requirements
+
+### R1. Clean-Slate Keyword Search
+Implement a lightweight, highly optimized keyword search system that parses search queries into clean tokens, filters out noise, and queries the database using database-native indexing.
+
+### R2. High-Precision Legal Matching
+Enforce strict legal word matching (like whole-word POSIX regular expressions or similar boundary operators) for key legal terms to prevent loose substring collisions.
+
+### R3. Performance
+Optimize database indexes and query paths to guarantee search execution times remain under 500ms even under heavy loads.
+
+### R4. Automated Search Verifier
+Create an automated test script (`scripts/verify_search.ts`) that runs sample search queries (e.g. "haq mehr", "divorce dower") and asserts that:
+1. Irrelevant corporate/criminal cases containing substring matches (such as "Mehran Oils" or "Mehrab") are completely filtered out.
+2. Actual relevant family law judgments are returned.
+
+## Acceptance Criteria
+
+### Search Relevance
+- [ ] Searches for complex terms like "haq mehr" return only highly relevant family/dower law cases, and filter out unrelated corporate or criminal cases.
+- [ ] Zero false-positive matches are returned due to loose substring collisions.
+
+### Verification Execution
+- [ ] The verifier script `npx tsx scripts/verify_search.ts` passes successfully with 0 failures.
+
+### Performance
+- [ ] Full-text search database query execution completes in under 500ms.
+
+## Follow-up — 2026-06-01T10:58:39Z
+
+Hi, I'm checking in on the status of the legal keyword search engine rebuild. We just ran `node --import tsx --env-file=.env scripts/verify_search.ts` and the verification failed with a query execution time of 9.1s for "searchCaseLaw". Could you please report your current progress, what changes you have already deployed, and if there are any remaining issues you are addressing?
+
+
+
