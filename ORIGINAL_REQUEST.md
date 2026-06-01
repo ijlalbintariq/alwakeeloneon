@@ -569,6 +569,30 @@ Configure the PDF.js worker in `client/src/components/statute-pdf-viewer.tsx` to
 ### PDF Rendering
 - [ ] Clicking a statute document in the search page, selecting **PDF View**, successfully loads and renders the PDF canvas perfectly without hanging or console MIME-type errors.
 
+## Follow-up — 2026-06-01T14:24:18Z
+
+Optimize the Alwakeelo AI legal assistant chat engine to behave as a natural, conversational chat interface and avoid overly verbose responses on simple or follow-up queries.
+
+Working directory: /Users/macbook/Downloads/Alwakeelo
+
+## Requirements
+
+### R1. Conversation History Integration for RAG
+Enable history-aware follow-up query rewriting in all non-streaming REST endpoints (`POST /api/threads` and `POST /api/threads/:threadId/messages`) by extracting prior conversation turns and passing them to the knowledge context pipeline.
+
+### R2. Query Complexity and Response Length Scaling
+Synchronize REST endpoints with the streaming chat endpoint by implementing query complexity detection ("simple", "moderate", "complex") and appending context/length-scaling instructions to restrict word counts (e.g. 80-250 words) for simple follow-up questions.
+
+### R3. System Prompt Exception Guardrails
+Refine the core system prompt instructions to explicitly except conversational follow-up questions from the mandatory multi-section legal brief mapping, preventing the AI from generating lengthy analytical reports for minor inquiries.
+
+## Acceptance Criteria
+
+### Behavioral Testing
+- [ ] Direct follow-up questions (e.g., "what about the punishment?") correctly resolve pronouns in RAG retrieval.
+- [ ] Simple queries or clarifying follow-ups generate natural, conversational responses within a 80-250 word target, without heavy multi-heading briefs.
+- [ ] Complex initial queries still receive the full, comprehensive legal mapping and condition-by-condition tests.
+
 
 
 
