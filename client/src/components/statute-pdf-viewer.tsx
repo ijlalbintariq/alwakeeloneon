@@ -16,8 +16,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure the PDF.js worker to use the CDN-hosted build
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// @ts-ignore
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+
+// Configure the PDF.js worker using Vite's native asset URL loader to prevent CORS and CDN fetch failures
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
+
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
