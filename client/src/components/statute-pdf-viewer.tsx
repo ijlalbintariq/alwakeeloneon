@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Document, Page, Outline, pdfjs } from "react-pdf";
-import { List as WindowedList } from "react-window";
 import {
   ChevronLeft,
   ChevronRight,
@@ -30,6 +29,9 @@ interface StatutePdfViewerProps {
 // Memoize the options object to prevent react-pdf Document from re-loading on every render
 const PDF_OPTIONS = { withCredentials: true };
 
+// How many pages to render above/below the current viewport
+const PAGE_BUFFER = 3;
+
 export function StatutePdfViewer({
   fileUrl,
   onNavigateToSection,
@@ -41,39 +43,28 @@ export function StatutePdfViewer({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showOutline, setShowOutline] = useState(false);
   const [hasOutline, setHasOutline] = useState(false);
-  const currentPageRef = useRef(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [displayPage, setDisplayPage] = useState("1");
   const [pageCount, setPageCount] = useState("—");
-  const containerRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<{
-    scrollToRow(config: {
-      align?: "auto" | "center" | "end" | "smart" | "start";
-      behavior?: "auto" | "instant" | "smooth";
-      index: number;
-    }): void;
-  }>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<any>(null);
-  const debounceTimerRef = useRef<any>(null);
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const isScrollingToPage = useRef(false);
 
-  // Track wrapper height with ResizeObserver, using a robust fallback
-  const [containerHeight, setContainerHeight] = useState(0);
+  // Track the height of the root component using ResizeObserver on the root div
+  // (which always exists, unlike the wrapper inside Document that conditionally mounts)
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [rootHeight, setRootHeight] = useState(0);
 
   useEffect(() => {
-    if (!wrapperRef.current) return;
-    const el = wrapperRef.current;
-
-    // Measure initial height immediately
-    const rect = el.getBoundingClientRect();
-    if (rect.height > 0) {
-      setContainerHeight(rect.height);
-    }
-
+    if (!rootRef.current) return;
+    const el = rootRef.current;
+    // Measure immediately
+    setRootHeight(el.getBoundingClientRect().height);
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const h = entry.contentRect.height;
-        if (h > 0) {
-          setContainerHeight(h);
+        if (entry.contentRect.height > 0) {
+          setRootHeight(entry.contentRect.height);
         }
       }
     });
@@ -81,54 +72,52 @@ export function StatutePdfViewer({
     return () => observer.disconnect();
   }, []);
 
-  // Re-measure when PDF loads (children mount changes the layout)
-  useEffect(() => {
-    if (!wrapperRef.current || numPages === 0) return;
-    // Give the DOM one frame to lay out after Document children mount
-    const raf = requestAnimationFrame(() => {
-      if (wrapperRef.current) {
-        const rect = wrapperRef.current.getBoundingClientRect();
-        if (rect.height > 0) {
-          setContainerHeight(rect.height);
-        }
-      }
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [numPages]);
+  // Toolbar is ~44px; content height = root height - toolbar
+  const contentHeight = rootHeight > 100 ? rootHeight - 44 : (typeof window !== "undefined" ? window.innerHeight - 160 : 600);
+
+  // Calculate page height for layout
+  const pageHeight = 792 * scale + 24;
+
+  // Determine which pages to render (current ± buffer)
+  const visibleRange = useMemo(() => {
+    const start = Math.max(1, currentPage - PAGE_BUFFER);
+    const end = Math.min(numPages, currentPage + PAGE_BUFFER + 2);
+    return { start, end };
+  }, [currentPage, numPages]);
 
   useEffect(() => {
     setLoading(true);
     setLoadError(null);
-    currentPageRef.current = 1;
+    setCurrentPage(1);
     setDisplayPage("1");
     setPageCount("—");
     setShowOutline(false);
     setHasOutline(false);
   }, [fileUrl]);
 
-  // Debounced page display update
-  const updatePageDisplay = useCallback((pageNum: number) => {
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => {
-      setDisplayPage(String(pageNum));
-    }, 150);
-  }, []);
+  // Track current page from scroll position
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || numPages === 0) return;
 
-  // react-window v2 onRowsRendered: (visibleRows, allRows) where each is { startIndex, stopIndex }
-  const onRowsRendered = useCallback((visibleRows: { startIndex: number; stopIndex: number }) => {
-    const pageNum = visibleRows.startIndex + 1;
-    if (pageNum !== currentPageRef.current) {
-      currentPageRef.current = pageNum;
-      updatePageDisplay(pageNum);
-    }
-  }, [updatePageDisplay]);
+    let ticking = false;
+    const handleScroll = () => {
+      if (ticking || isScrollingToPage.current) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const scrollTop = container.scrollTop;
+        const page = Math.max(1, Math.min(numPages, Math.floor(scrollTop / pageHeight) + 1));
+        if (page !== currentPage) {
+          setCurrentPage(page);
+          setDisplayPage(String(page));
+        }
+        ticking = false;
+      });
+    };
 
-  const getItemSize = useCallback(
-    (index: number) => {
-      return 792 * scale + 24;
-    },
-    [scale]
-  );
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [numPages, pageHeight, currentPage]);
 
   function onDocumentLoadSuccess(pdf: any) {
     const n = pdf.numPages;
@@ -153,47 +142,23 @@ export function StatutePdfViewer({
   }
 
   const scrollToPage = useCallback((pageNum: number) => {
-    if (listRef.current) {
-      listRef.current.scrollToRow({ index: pageNum - 1, align: "start" });
-      currentPageRef.current = pageNum;
-      setDisplayPage(String(pageNum));
-    }
-  }, []);
+    if (pageNum < 1 || pageNum > numPages) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
 
-  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const pageNum = index + 1;
-    return (
-      <div
-        style={style}
-        data-page-number={pageNum}
-        className="flex justify-center py-2"
-      >
-        <div className="shadow-lg bg-white border border-border/30">
-          <Page
-            pageNumber={pageNum}
-            scale={scale}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-            className="bg-white"
-            loading={
-              <div
-                className="bg-white animate-pulse flex items-center justify-center"
-                style={{
-                  width: `${612 * scale}px`,
-                  height: `${792 * scale}px`,
-                }}
-              >
-                <Loader2
-                  size={20}
-                  className="animate-spin text-muted-foreground/30"
-                />
-              </div>
-            }
-          />
-        </div>
-      </div>
-    );
-  }, [scale]);
+    isScrollingToPage.current = true;
+    setCurrentPage(pageNum);
+    setDisplayPage(String(pageNum));
+
+    // Scroll to the page position
+    const scrollTarget = (pageNum - 1) * pageHeight;
+    container.scrollTo({ top: scrollTarget, behavior: "smooth" });
+
+    // Release scroll lock after animation
+    setTimeout(() => {
+      isScrollingToPage.current = false;
+    }, 500);
+  }, [numPages, pageHeight]);
 
   function handlePageInputSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -201,7 +166,7 @@ export function StatutePdfViewer({
     if (!isNaN(num) && num >= 1 && num <= numPages) {
       scrollToPage(num);
     } else {
-      setDisplayPage(String(currentPageRef.current));
+      setDisplayPage(String(currentPage));
     }
   }
 
@@ -302,13 +267,68 @@ export function StatutePdfViewer({
     }
   }
 
-  // Use a safe height for the list — fallback to window height minus toolbar
-  const effectiveHeight = containerHeight > 50 ? containerHeight : (typeof window !== "undefined" ? window.innerHeight - 120 : 600);
+  // Build the list of pages to render
+  const renderedPages = useMemo(() => {
+    if (numPages === 0) return null;
+    const pages: React.ReactNode[] = [];
+    for (let i = 1; i <= numPages; i++) {
+      const inRange = i >= visibleRange.start && i <= visibleRange.end;
+      pages.push(
+        <div
+          key={i}
+          data-page-number={i}
+          className="flex justify-center py-3"
+          style={{ height: pageHeight }}
+          ref={(el) => {
+            if (el) pageRefs.current.set(i, el);
+            else pageRefs.current.delete(i);
+          }}
+        >
+          {inRange ? (
+            <div className="shadow-lg bg-white border border-border/30">
+              <Page
+                pageNumber={i}
+                scale={scale}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                className="bg-white"
+                loading={
+                  <div
+                    className="bg-white animate-pulse flex items-center justify-center"
+                    style={{
+                      width: `${612 * scale}px`,
+                      height: `${792 * scale}px`,
+                    }}
+                  >
+                    <Loader2
+                      size={20}
+                      className="animate-spin text-muted-foreground/30"
+                    />
+                  </div>
+                }
+              />
+            </div>
+          ) : (
+            <div
+              className="bg-muted/20 border border-border/10 rounded flex items-center justify-center"
+              style={{
+                width: `${612 * scale}px`,
+                height: `${792 * scale}px`,
+              }}
+            >
+              <span className="text-xs text-muted-foreground/40">Page {i}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+    return pages;
+  }, [numPages, scale, pageHeight, visibleRange]);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
+    <div ref={rootRef} className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
       {/* Toolbar — always on top, outside <Document> */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-card border-b border-border shadow-sm z-10 gap-2 flex-wrap">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-card border-b border-border shadow-sm z-10 gap-2 flex-wrap flex-shrink-0">
         <div className="flex items-center gap-1.5">
           <Button
             variant={showOutline ? "default" : "outline"}
@@ -324,8 +344,8 @@ export function StatutePdfViewer({
             variant="outline"
             size="icon"
             className="h-8 w-8"
-            onClick={() => scrollToPage(currentPageRef.current - 1)}
-            disabled={currentPageRef.current <= 1}
+            onClick={() => scrollToPage(currentPage - 1)}
+            disabled={currentPage <= 1}
           >
             <ChevronLeft size={15} />
           </Button>
@@ -337,7 +357,7 @@ export function StatutePdfViewer({
               type="text"
               value={displayPage}
               onChange={(e) => setDisplayPage(e.target.value)}
-              onBlur={() => setDisplayPage(String(currentPageRef.current))}
+              onBlur={() => setDisplayPage(String(currentPage))}
               className="w-10 h-7 text-center text-xs bg-background border border-border rounded-md text-foreground focus:outline-none focus:border-primary/50"
             />
             <span className="text-xs text-muted-foreground">/ {pageCount}</span>
@@ -346,8 +366,8 @@ export function StatutePdfViewer({
             variant="outline"
             size="icon"
             className="h-8 w-8"
-            onClick={() => scrollToPage(currentPageRef.current + 1)}
-            disabled={numPages === 0 || currentPageRef.current >= numPages}
+            onClick={() => scrollToPage(currentPage + 1)}
+            disabled={numPages === 0 || currentPage >= numPages}
           >
             <ChevronRight size={15} />
           </Button>
@@ -469,23 +489,14 @@ export function StatutePdfViewer({
           </div>
         </div>
 
+        {/* Scrollable page container — simple native scroll, no virtual list */}
         <div
-          ref={wrapperRef}
-          className="flex-1 overflow-hidden min-w-0 min-h-0"
-          style={{ height: "100%" }}
+          ref={scrollContainerRef}
+          className="flex-1 min-w-0"
+          style={{ height: contentHeight, overflowY: "auto" }}
           onClick={handleContainerClick}
         >
-          {numPages > 0 && (
-            <WindowedList
-              listRef={listRef as any}
-              style={{ height: effectiveHeight, overflowY: "auto" }}
-              rowCount={numPages}
-              rowHeight={getItemSize}
-              rowComponent={Row as any}
-              onRowsRendered={onRowsRendered}
-              rowProps={{}}
-            />
-          )}
+          {renderedPages}
         </div>
       </Document>
     </div>
