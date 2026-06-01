@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Send, Loader2, MessageSquare, Gavel, Sparkles, ShieldCheck, ShieldAlert, FileText, BookOpen, ChevronDown, ChevronUp, RefreshCw, Download, BookmarkPlus, BookmarkCheck } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -42,6 +42,38 @@ function getJudgmentFromStorage(): JudgmentData | null {
   } catch {
     return null;
   }
+}
+
+function cleanJudgmentBodyText(fullText: string): string {
+  if (!fullText) return "";
+  
+  let bodyText = fullText;
+  
+  // 1. Strip standard header fields if they exist at the very beginning of the text
+  bodyText = bodyText.replace(/^(?:Court Name|Court|Title|Citation|Petitioner|Respondent|Judge|Decided on|Date|Before|Bench|Source|Keywords)\s*:[^\n]*\r?\n/gim, "");
+  
+  // 2. Look for JUDGMENT or ORDER separator
+  const standAloneMatch = bodyText.match(/(?:^|\r?\n)\s*(JUDGMENT|ORDER)\s*(?:\r?\n)+([\s\S]*)$/i);
+  if (standAloneMatch) {
+    bodyText = standAloneMatch[2];
+    // Strip initial judge signature prefix
+    bodyText = bodyText.replace(/^[A-Z\s,.'’-]+,\s*(?:[J|C]\.?\s*){1,2}[:\-–—\s]+/i, "");
+  } else {
+    // Fallback: if no standalone tag is found, check if there's a Title: field and strip up to that line's end
+    const titleMatch = bodyText.match(/^[\s\S]*?\bTitle\s*:\s*[^\n]*\r?\n([\s\S]*)$/i);
+    if (titleMatch) {
+      bodyText = titleMatch[1];
+    }
+  }
+  
+  // 3. Clean up any remaining leading lines that look like "Key: Value" metadata at the very top
+  let prevText;
+  do {
+    prevText = bodyText;
+    bodyText = bodyText.replace(/^\s*(?:Court Name|Court|Title|Citation|Petitioner|Respondent|Judge|Decided on|Date|Before|Bench|Source|Keywords)\s*:[^\n]*\r?\n/gi, "");
+  } while (bodyText !== prevText);
+  
+  return bodyText.trim();
 }
 
 function stripMarkdown(text: string): string {
@@ -124,7 +156,7 @@ function generateJudgmentPDF(judgment: JudgmentData, summaryData: JudgmentSummar
       addLine();
       addText("FULL JUDGMENT TEXT", 11, "bold");
       y += 1;
-      addText(summaryData.fullText, 9);
+      addText(cleanJudgmentBodyText(summaryData.fullText), 9);
     }
   }
 
@@ -144,7 +176,6 @@ export default function JudgmentViewPage() {
   const [summaryData, setSummaryData] = useState<JudgmentSummaryData | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState(false);
-  const [showFullText, setShowFullText] = useState(false);
   const [chatMessages, setChatMessages] = useState<AiMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -164,6 +195,12 @@ export default function JudgmentViewPage() {
   const [isLoadingSourceContent, setIsLoadingSourceContent] = useState(false);
   const [showSourceDoc, setShowSourceDoc] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const fullTextParagraphs = useMemo(() => {
+    if (!summaryData?.fullText) return [];
+    const cleaned = cleanJudgmentBodyText(summaryData.fullText);
+    return cleaned.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  }, [summaryData?.fullText]);
 
   useEffect(() => {
     if (!judgment) {
@@ -296,7 +333,18 @@ export default function JudgmentViewPage() {
   return (
     <div className="h-full flex flex-col fade-in">
       <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-3 border-b border-border bg-background">
-        <Button size="icon" variant="ghost" onClick={() => setLocation("/judgments")} className="text-muted-foreground flex-shrink-0">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => {
+            if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              setLocation("/judgments");
+            }
+          }}
+          className="text-muted-foreground flex-shrink-0"
+        >
           <ArrowLeft size={18} />
         </Button>
         <div className="min-w-0 flex-1">
@@ -406,40 +454,7 @@ export default function JudgmentViewPage() {
               </div>
             )}
 
-            <div className="mb-8 p-6 bg-card/50 border border-border rounded-2xl">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Original Summary</h3>
-              <p className="text-sm text-foreground leading-relaxed">{judgment.summary}</p>
-            </div>
-
-            {isLoadingSummary && (
-              <div className="flex flex-col items-center justify-center py-16 gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <Sparkles size={24} className="text-primary animate-pulse" />
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                  Al Wakeelo is analyzing this judgment...
-                </p>
-              </div>
-            )}
-
-            {summaryError && !isLoadingSummary && (
-              <div className="flex flex-col items-center justify-center py-12 gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                  <ShieldAlert size={24} className="text-red-400" />
-                </div>
-                <p className="text-sm text-muted-foreground text-center max-w-md">
-                  AI analysis could not be loaded. This may be due to rate limits or a temporary issue.
-                </p>
-                <button
-                  onClick={loadSummary}
-                  className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl hover:bg-primary/20 transition-all"
-                >
-                  <RefreshCw size={14} /> Retry Analysis
-                </button>
-              </div>
-            )}
-
-            {summaryData && !isLoadingSummary && (
+            {summaryData && !isLoadingSummary ? (
               <div className="space-y-8">
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -464,33 +479,63 @@ export default function JudgmentViewPage() {
                 </div>
 
                 {summaryData.fullText && (
-                  <div className="mt-8">
-                    <button
-                      onClick={() => setShowFullText(!showFullText)}
-                      className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl hover:bg-primary/20 transition-all"
-                    >
-                      <BookOpen size={14} />
-                      {showFullText ? "Hide Full Judgment" : "View Full Judgment"}
-                      {showFullText ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-
-                    {summaryData.source && (
-                      <span className="ml-3 text-[9px] font-black uppercase tracking-widest text-emerald-500/60">
-                        <FileText size={10} className="inline mr-1" />
-                        Source: Knowledge Vault
-                      </span>
-                    )}
-
-                    {showFullText && (
-                      <div className="mt-6 p-6 md:p-8 bg-background/50 border border-border rounded-2xl max-h-[600px] overflow-y-auto">
-                        <pre className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground font-mono">
-                          {summaryData.fullText}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
+                  <section className="mt-8 space-y-4 border-t border-border/60 pt-8">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-bold text-foreground inline-flex items-center gap-2">
+                        <BookOpen size={16} className="text-primary" /> Full Judgment Text
+                      </h2>
+                      {summaryData.source && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500/60 inline-flex items-center gap-1">
+                          <FileText size={10} />
+                          Source: Knowledge Vault
+                        </span>
+                      )}
+                    </div>
+                    <div className="rounded-2xl border border-border bg-card/40 p-6 md:p-8 space-y-5">
+                      {fullTextParagraphs.map((paragraph, index) => (
+                        <p key={index} className="text-foreground leading-relaxed text-[13px] md:text-[14px]">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                  </section>
                 )}
               </div>
+            ) : (
+              <>
+                <div className="mb-8 p-6 bg-card/50 border border-border rounded-2xl">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Original Summary</h3>
+                  <p className="text-sm text-foreground leading-relaxed">{judgment.summary}</p>
+                </div>
+
+                {isLoadingSummary && (
+                  <div className="flex flex-col items-center justify-center py-16 gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                      <Sparkles size={24} className="text-primary animate-pulse" />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      Al Wakeelo is analyzing this judgment...
+                    </p>
+                  </div>
+                )}
+
+                {summaryError && !isLoadingSummary && (
+                  <div className="flex flex-col items-center justify-center py-12 gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                      <ShieldAlert size={24} className="text-red-400" />
+                    </div>
+                    <p className="text-sm text-muted-foreground text-center max-w-md">
+                      AI analysis could not be loaded. This may be due to rate limits or a temporary issue.
+                    </p>
+                    <button
+                      onClick={loadSummary}
+                      className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-widest py-3 px-5 rounded-xl hover:bg-primary/20 transition-all"
+                    >
+                      <RefreshCw size={14} /> Retry Analysis
+                    </button>
+                  </div>
+                )}
+              </>
             )}
 
             {showSourceDoc && sourceContent?.found && sourceContent.content && (

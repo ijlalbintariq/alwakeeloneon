@@ -1,6 +1,7 @@
 import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
+import { isMetadataOnlySummary, extractSubstantiveSummary } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
@@ -9988,24 +9989,57 @@ RAG POLICY (STRICT):
       }
 
       // Enrich results with judgment UUIDs so citation chips can link to /judgment/:uuid
+      // Also fetch headnotes and starting full text to fall back on if search result summary is metadata-only.
       const citations = results.map((r) => String(r.citation || "").trim()).filter(Boolean);
       const judgmentIdMap = new Map<string, string>();
+      const judgmentDetailsMap = new Map<string, { headnotes: string | null; fullTextHead: string }>();
+
       if (citations.length > 0) {
         try {
           const rows = await db
-            .select({ id: judgments.id, citationString: judgments.citationString })
+            .select({
+              id: judgments.id,
+              citationString: judgments.citationString,
+              headnotes: judgments.headnotes,
+              fullTextHead: sql<string>`LEFT(${judgments.fullText}, 2000)`
+            })
             .from(judgments)
             .where(inArray(judgments.citationString, citations));
           for (const row of rows) {
             judgmentIdMap.set(row.citationString, row.id);
+            judgmentDetailsMap.set(row.citationString, {
+              headnotes: row.headnotes,
+              fullTextHead: row.fullTextHead || ""
+            });
           }
-        } catch { /* non-fatal — chips just won't link */ }
+        } catch (e) {
+          console.error("Enrichment failed:", e);
+          /* non-fatal — chips just won't link */
+        }
       }
 
-      const enriched = results.map((r) => ({
-        ...r,
-        judgmentId: judgmentIdMap.get(String(r.citation || "").trim()) || null,
-      }));
+      const enriched = results.map((r) => {
+        const citationStr = String(r.citation || "").trim();
+        const judgmentId = judgmentIdMap.get(citationStr) || null;
+        let finalSummary = r.summary;
+
+        // Perform the headnote fallback if the current summary is metadata-only
+        if (isMetadataOnlySummary(finalSummary)) {
+          const details = judgmentDetailsMap.get(citationStr);
+          if (details) {
+            const extracted = extractSubstantiveSummary(details.fullTextHead);
+            if (extracted) {
+              finalSummary = extracted;
+            }
+          }
+        }
+
+        return {
+          ...r,
+          judgmentId,
+          summary: finalSummary,
+        };
+      });
       res.json(enriched);
     } catch (err) {
       console.error("Error searching case law:", err);
@@ -14596,28 +14630,55 @@ The user has attached the following documents for your reference. Analyze them c
       }).catch(() => [] as CaseLaw[]);
 
       let fullText = "";
-      try {
-        const normalizedTitleForMatch = normalizeTextForMatch(title || "");
-        let bestRow: CaseLaw | null = null;
-        let bestScore = -1;
-        for (const row of candidateRows) {
-          let score = scoreCaseLawTextMatch(row, searchTerm);
-          if (citation && caseCitationMatches(citation, row.citation)) score += 120;
-          if (normalizedTitleForMatch) {
-            const rowTitleNorm = normalizeTextForMatch(row.title || "");
-            if (rowTitleNorm === normalizedTitleForMatch) score += 80;
-            else if (rowTitleNorm.includes(normalizedTitleForMatch) || normalizedTitleForMatch.includes(rowTitleNorm)) score += 40;
+      let isVerified = false;
+
+      // 1. Direct lookup in the primary judgments table by citation string to base analysis on full text
+      if (citation) {
+        try {
+          const matchedJudgment = await db
+            .select({ fullText: judgments.fullText })
+            .from(judgments)
+            .where(eq(judgments.citationString, citation.trim()))
+            .limit(1)
+            .then((rows: any[]) => rows[0]);
+          
+          if (matchedJudgment?.fullText) {
+            fullText = matchedJudgment.fullText;
+            isVerified = true;
           }
-          if (score > bestScore) {
-            bestScore = score;
-            bestRow = row;
+        } catch (e) {
+          console.error("Direct judgments lookup failed:", e);
+        }
+      }
+
+      // 2. Fallback to case_law lookup if full text not found in judgments table
+      if (!fullText) {
+        try {
+          const normalizedTitleForMatch = normalizeTextForMatch(title || "");
+          let bestRow: CaseLaw | null = null;
+          let bestScore = -1;
+          for (const row of candidateRows) {
+            let score = scoreCaseLawTextMatch(row, searchTerm);
+            if (citation && caseCitationMatches(citation, row.citation)) score += 120;
+            if (normalizedTitleForMatch) {
+              const rowTitleNorm = normalizeTextForMatch(row.title || "");
+              if (rowTitleNorm === normalizedTitleForMatch) score += 80;
+              else if (rowTitleNorm.includes(normalizedTitleForMatch) || normalizedTitleForMatch.includes(rowTitleNorm)) score += 40;
+            }
+            if (score > bestScore) {
+              bestScore = score;
+              bestRow = row;
+            }
           }
-        }
-        const MIN_SOURCE_MATCH_SCORE = 30;
-        if (bestRow && bestScore >= MIN_SOURCE_MATCH_SCORE) {
-          fullText = await loadCaseLawSourceText(bestRow, userId, { includeMetadataFallback: false });
-        }
-      } catch {}
+          const MIN_SOURCE_MATCH_SCORE = 30;
+          if (bestRow && bestScore >= MIN_SOURCE_MATCH_SCORE) {
+            fullText = await loadCaseLawSourceText(bestRow, userId, { includeMetadataFallback: false });
+            if (fullText) {
+              isVerified = true;
+            }
+          }
+        } catch {}
+      }
 
       // Use headnote/summary from the best matching row as fallback context
       const knowledgeContext = "";

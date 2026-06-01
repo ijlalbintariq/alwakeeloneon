@@ -1527,11 +1527,11 @@ export class DatabaseStorage implements IStorage {
 
     const phraseTextExpr = hasTextQuery
       ? or(
-          ilike(caseLaw.citation, textPattern),
-          ilike(caseLaw.court, textPattern),
-          ilike(caseLaw.title, textPattern),
-          ilike(caseLaw.summary, textPattern),
-          sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${textPattern}`,
+          buildSearchTokenMatch(caseLaw.citation, safeQuery),
+          buildSearchTokenMatch(caseLaw.court, safeQuery),
+          buildSearchTokenMatch(caseLaw.title, safeQuery),
+          buildSearchTokenMatch(caseLaw.summary, safeQuery),
+          buildSearchTokenMatch(sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ')`, safeQuery),
           ...(sourcePhraseTextExpr ? [sourcePhraseTextExpr] : []),
         )
       : undefined;
@@ -1539,19 +1539,17 @@ export class DatabaseStorage implements IStorage {
     // Per-token AND: each query token must match at least ONE column.
     // Then AND all token groups together. This ensures "haq mehr" requires
     // BOTH words to appear (in any columns), not just one of them.
-    // Previously all token clauses were flat-ORed, so "haq" OR "mehr" matched
-    // any row with either word — returning irrelevant criminal cases.
+    // We enforce case-insensitive whole-word Postgres regex boundaries for short/critical tokens.
     const perTokenExprs = queryTokens.map((token) => {
-      const tokenPattern = `%${token}%`;
       const baseClauses = [
-        ilike(caseLaw.citation, tokenPattern),
-        ilike(caseLaw.court, tokenPattern),
-        ilike(caseLaw.title, tokenPattern),
-        ilike(caseLaw.summary, tokenPattern),
-        sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${tokenPattern}`,
+        buildSearchTokenMatch(caseLaw.citation, token),
+        buildSearchTokenMatch(caseLaw.court, token),
+        buildSearchTokenMatch(caseLaw.title, token),
+        buildSearchTokenMatch(caseLaw.summary, token),
+        buildSearchTokenMatch(sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ')`, token),
       ];
       if (includeSourceContentSearch) {
-        baseClauses.push(buildSourceContentMatchExpr(tokenPattern));
+        baseClauses.push(buildSourceContentMatchExpr(`%${token}%`));
       }
       return or(...baseClauses)!;
     });
@@ -1657,7 +1655,10 @@ export class DatabaseStorage implements IStorage {
       const key = buildCaseLawDedupKey(row);
       if (!key || seen.has(key)) continue;
       seen.add(key);
-      deduped.push(row);
+      deduped.push({
+        ...row,
+        title: cleanCaseTitle(row.title),
+      });
       if (deduped.length >= safeLimit) break;
     }
     return deduped;
@@ -1678,7 +1679,7 @@ export class DatabaseStorage implements IStorage {
       .limit(safeLimit)
       .offset(safeOffset);
     return {
-      items,
+      items: items.map((item: any) => ({ ...item, title: cleanCaseTitle(item.title) })),
       total,
       limit: safeLimit,
       offset: safeOffset,
@@ -1688,11 +1689,17 @@ export class DatabaseStorage implements IStorage {
 
   async getCaseLawById(id: number): Promise<CaseLaw | undefined> {
     const [row] = await db.select().from(caseLaw).where(eq(caseLaw.id, id));
+    if (row) {
+      row.title = cleanCaseTitle(row.title);
+    }
     return row;
   }
 
   async getCaseLawByCitation(citation: string): Promise<CaseLaw | undefined> {
     const [row] = await db.select().from(caseLaw).where(ilike(caseLaw.citation, `%${citation}%`)).limit(1);
+    if (row) {
+      row.title = cleanCaseTitle(row.title);
+    }
     return row;
   }
 
@@ -2074,18 +2081,14 @@ export class DatabaseStorage implements IStorage {
       (prioritizedTokens.length > 0 ? prioritizedTokens : tokens).slice(0, 6),
     )).slice(0, 3);
     const filterConditions = filterTokens.map((token) => {
-      const pat = `%${token}%`;
       // Search title, parties, citation AND bounded headnotes (first 500 chars).
-      // Full headnotes ILIKE was excluded for perf, but LEFT(headnotes, 500)
-      // is fast enough (~10ms on 223k rows) and catches the legal subject
-      // matter keywords (dower, mehr, nikahnama, bail, murder etc.) that
-      // appear in the headnote header but NOT in the title/parties columns.
+      // Enforces Postgres whole-word boundaries for short or critical legal tokens.
       return or(
-        ilike(judgments.citationString, pat),
-        ilike(judgments.title,          pat),
-        ilike(judgments.petitioner,     pat),
-        ilike(judgments.respondent,     pat),
-        sql`LEFT(COALESCE(${judgments.headnotes}, ''), 500) ILIKE ${pat}`,
+        buildSearchTokenMatch(judgments.citationString, token),
+        buildSearchTokenMatch(judgments.title,          token),
+        buildSearchTokenMatch(judgments.petitioner,     token),
+        buildSearchTokenMatch(judgments.respondent,     token),
+        buildSearchTokenMatch(sql`LEFT(COALESCE(${judgments.headnotes}, ''), 500)`, token),
       )!;
     });
 
@@ -2142,9 +2145,22 @@ export class DatabaseStorage implements IStorage {
     let rows = await fetchRows(strictSearchCondition);
 
     // Fallback: if strict AND returns 0, retry with OR across the same tokens.
-    // This prevents false zero-results for long narrative queries.
+    // However, do NOT drop critical legal signal tokens (like "mehr", "divorce", "bail" etc.).
+    // If a critical token is present in the query, it MUST be matched even in the fallback.
     if (rows.length === 0 && filterConditions.length > 1) {
-      const fallbackSearchCondition = or(...filterConditions)!;
+      const criticalFilterIndices = filterTokens
+        .map((t, idx) => ({ token: t, idx }))
+        .filter((x) => CRITICAL_LEGAL_TOKENS.has(x.token));
+      
+      let fallbackSearchCondition;
+      if (criticalFilterIndices.length > 0) {
+        // Enforce that at least ONE critical token is matched in the fallback (prevents name-only bypasses)
+        const criticalClauses = criticalFilterIndices.map((x) => filterConditions[x.idx]);
+        fallbackSearchCondition = or(...criticalClauses)!;
+      } else {
+        fallbackSearchCondition = or(...filterConditions)!;
+      }
+
       rows = await fetchRows(fallbackSearchCondition);
       console.log(
         `[JudgmentSearch:FallbackOR] query="${safeQuery.slice(0, 80)}" tokens=[${filterTokens.join(",")}] rows=${rows.length}`,
@@ -2224,14 +2240,16 @@ export class DatabaseStorage implements IStorage {
         `Case ${citation}`;
 
       // Headnotes are often a placeholder ("Case cited as 2005 PCRLJ 1008")
-      // for these legacy rows. Use the first chunk of full_text past the
+      // or metadata-only. Use the first chunk of full_text past the
       // header block as a substantive summary fallback.
       const headnotesRaw = String(row.headnotes || "").trim();
       const isPlaceholderHeadnotes =
-        !headnotesRaw || /^case\s+(?:cited\s+as|reported\s+at)\b/i.test(headnotesRaw);
-      const fullTextBody = fullTextStr.replace(/^[\s\S]*?\nTitle:\s*[^\n]*\n/i, "").trim();
+        !headnotesRaw || 
+        /^case\s+(?:cited\s+as|reported\s+at)\b/i.test(headnotesRaw) ||
+        isMetadataOnlySummary(headnotesRaw);
+      const fullTextBody = extractSubstantiveSummary(fullTextStr);
       const summaryStr = isPlaceholderHeadnotes && fullTextBody
-        ? fullTextBody.slice(0, 600).trim()
+        ? fullTextBody
         : headnotesRaw.slice(0, 600).trim();
 
       results.push({
@@ -2242,7 +2260,7 @@ export class DatabaseStorage implements IStorage {
         citationPage: Number.isInteger(row.page) && row.page > 0 ? row.page : null,
         citationRole: "primary" as const,
         court: courtStr,
-        title: titleStr,
+        title: cleanCaseTitle(titleStr),
         summary: summaryStr,
         keywords: [] as string[],
         sourceDocId: null,
@@ -2301,7 +2319,7 @@ export class DatabaseStorage implements IStorage {
         citationPage: Number.isInteger(row.page) && row.page > 0 ? row.page : null,
         citationRole: "primary" as const,
         court: courtStr,
-        title: titleStr,
+        title: cleanCaseTitle(titleStr),
         summary: String(row.headnotes || "").slice(0, 600).trim(),
         keywords: [] as string[],
         sourceDocId: null,
@@ -2416,7 +2434,7 @@ export class DatabaseStorage implements IStorage {
       journalCode: row.journalCode,
       journalName: row.journalName,
       citation: row.citation,
-      title: row.title,
+      title: cleanCaseTitle(row.title),
       petitioner: row.petitioner,
       respondent: row.respondent,
       court: row.courtName || row.courtSnapshot || "",
@@ -4525,4 +4543,100 @@ export async function ensureSearchIndexes(): Promise<void> {
   }
   await ensureCitationReferenceSeedData();
   console.log("Search indexes verification complete.");
+}
+
+// Critical legal signal tokens that MUST be strictly matched (never bypassed in OR fallbacks)
+export const CRITICAL_LEGAL_TOKENS = new Set([
+  "mehr", "dower", "nikahnama", "mahr", "mehar", "hiba",
+  "talaq", "nafaqa", "iddat", "divorce", "khula", "dissolution",
+  "marriage", "custody", "maintenance", "bail", "murder", "qatl",
+  "tax", "income", "sales", "fbr", "customs", "smuggling", "haq"
+]);
+
+/**
+ * Builds a case-insensitive whole-word Postgres regex match or standard ILIKE wildcard.
+ * For short tokens (under 5 characters, like "mehr" or "haq") or critical signal tokens,
+ * it enforces word boundaries using Postgres \\y marker to avoid substring collisions (e.g. matching "Mehran" or "Mehrab").
+ */
+export function buildSearchTokenMatch(column: any, token: string) {
+  const cleanToken = token.trim().toLowerCase();
+  if (cleanToken.length < 5 || CRITICAL_LEGAL_TOKENS.has(cleanToken)) {
+    // Postgres regular expression whole-word boundary match: \y matches word boundary
+    return sql`${column} ~* ${'\\\\y' + cleanToken + '\\\\y'}`;
+  }
+  return ilike(column, `%${token}%`);
+}
+
+export function isMetadataOnlySummary(text: string): boolean {
+  if (!text) return true;
+  const cleaned = text.trim();
+  const lower = cleaned.toLowerCase();
+  
+  // Under 250 characters is almost certainly metadata-only or truncated
+  if (cleaned.length < 250) return true;
+  
+  // Look for trailing bulletin marker e.g. "(a)" at the end
+  const endsWithBullet = /\([a-z]\)\s*$/.test(cleaned);
+  const hasNarrative = /\b(held|observed|dismissed|allowed|declared|illegal|lawful|entitled|refund|order|judgment|appeal|contended)\b/i.test(lower);
+  
+  if (endsWithBullet && !hasNarrative) {
+    return true;
+  }
+  
+  // Scan for metadata keywords (decided on, Versus, Constitution Petition) without legal narrative
+  const hasVersus = lower.includes("versus") || lower.includes(" vs ");
+  const hasDecidedOn = lower.includes("decided on");
+  const hasBefore = lower.includes("before");
+  
+  if (hasVersus && hasDecidedOn && hasBefore && !hasNarrative) {
+    return true;
+  }
+  
+  return false;
+}
+
+export function cleanCaseTitle(title: string): string {
+  if (!title) return "";
+  
+  // Find standard vs/versus separators (case-insensitive)
+  const match = title.match(/\s+\b(vs\.?|versus|v\.?)\b\s+/i);
+  if (!match) {
+    // Fallback: apply the regex only if it doesn't match the very start of the string
+    let cleaned = title;
+    const regex = /(?<!^)(?:\.|\b)(?:Honorable\s+)?Justice\b[\s\S]*|(?<!^)(?:\.|\b)Before\b[\s\S]*|(?<!^)(?:\.|\b)(?:Advocate|Barrister|Counsel)\b[\s\S]*/i;
+    cleaned = cleaned.replace(regex, "");
+    return cleaned.replace(/\s+/g, " ").replace(/[.,\s\-–—]+$/, "").trim();
+  }
+  
+  // Split the title into Petitioner and Respondent to completely protect Petitioner names
+  const sep = match[0];
+  const sepIndex = title.indexOf(sep);
+  const petitioner = title.substring(0, sepIndex).trim();
+  const respondent = title.substring(sepIndex + sep.length).trim();
+  
+  // Clean Respondent metadata leakage (Justice, Before, counsel, decided on, Respondents suffix)
+  const regex = /(?:\.|\b)(?:Honorable\s+)?Justice\b[\s\S]*|(?:\.|\b)Before\b[\s\S]*|(?:\.|\b)(?:Advocate|Barrister|Counsel)\b[\s\S]*|(?:\.|\b|---)(?:Respondents?|decided\s+on)\b[\s\S]*/i;
+  const cleanedRespondent = respondent.replace(regex, "");
+  
+  const joined = `${petitioner}${sep}${cleanedRespondent}`;
+  return joined.replace(/\s+/g, " ").replace(/[.,\s\-–—]+$/, "").trim();
+}
+
+export function extractSubstantiveSummary(fullTextStr: string): string {
+  if (!fullTextStr) return "";
+  
+  let bodyText = fullTextStr;
+  // Match stand-alone JUDGMENT or ORDER on its own line to strip metadata headers
+  const standAloneMatch = fullTextStr.match(/(?:^|\r?\n)\s*(JUDGMENT|ORDER)\s*(?:\r?\n)+([\s\S]*)$/i);
+  
+  if (standAloneMatch) {
+    bodyText = standAloneMatch[2];
+    // Strip initial judge signature patterns like "ADNAN IQBAL CHAUDHRY, J:—"
+    bodyText = bodyText.replace(/^[A-Z\s,.'’-]+,\s*(?:[J|C]\.?\s*){1,2}[:\-–—\s]+/i, "");
+  } else {
+    // Fallback: if no standalone JUDGMENT tag is found, strip standard header labels
+    bodyText = bodyText.replace(/^[\s\S]*?\bTitle\s*:\s*[^\n]*/i, "");
+  }
+  
+  return bodyText.replace(/\s+/g, " ").trim().slice(0, 600);
 }

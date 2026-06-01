@@ -222,7 +222,13 @@ export default function JudgmentDetailPage() {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => setLocation("/judgments")}
+          onClick={() => {
+            if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              setLocation("/judgments");
+            }
+          }}
           className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-card/50"
         >
           <ArrowLeft size={14} /> Back to Judgments
@@ -327,7 +333,13 @@ export default function JudgmentDetailPage() {
     <div className="flex flex-col xl:flex-row gap-7 fade-in" data-testid="judgment-detail-page">
       <div className="flex-1 space-y-7 min-w-0">
         <button
-          onClick={() => setLocation("/judgments")}
+          onClick={() => {
+            if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              setLocation("/judgments");
+            }
+          }}
           className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-card/50"
         >
           <ArrowLeft size={14} /> Back to Judgments
