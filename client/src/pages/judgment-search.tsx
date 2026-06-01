@@ -159,6 +159,9 @@ export default function JudgmentSearchPage() {
 
   const [query, setQuery] = useState("");
   const [autoSearchDone, setAutoSearchDone] = useState(false);
+  const [keywordLimit, setKeywordLimit] = useState(25);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreResults, setHasMoreResults] = useState(false);
   const [localResults, setLocalResults] = useState<CaseLawResult[]>([]);
   const [externalResults, setExternalResults] = useState<CaseLawResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -196,17 +199,28 @@ export default function JudgmentSearchPage() {
 
   const citationPreview = `${year} ${citationJournal || "ALL"} ${page || "PAGE"}`;
 
-  const runKeywordSearch = async (searchQuery: string) => {
+  const runKeywordSearch = async (searchQuery: string, limit?: number) => {
     if (!searchQuery.trim()) return;
+    const effectiveLimit = limit || keywordLimit;
 
-    setIsLoading(true);
-    setSearchError(null);
-    setSummaries({});
-    setExpandedSummary(null);
+    // Update URL so back-navigation re-triggers the search
+    const url = new URL(window.location.href);
+    url.searchParams.set("q", searchQuery.trim());
+    window.history.replaceState({}, "", url.toString());
+
+    if (!limit) {
+      // Fresh search (not load-more)
+      setIsLoading(true);
+      setSearchError(null);
+      setExpandedSummary(null);
+    } else {
+      setIsLoadingMore(true);
+    }
 
     const requestParams = new URLSearchParams({
       q: searchQuery.trim(),
       sort: keywordSort,
+      limit: String(effectiveLimit),
     });
     if (keywordCourt.trim()) requestParams.set("court", keywordCourt.trim());
 
@@ -216,10 +230,14 @@ export default function JudgmentSearchPage() {
       const local = await localRes.json();
       localItems = local.map((r: any) => ({ ...r, source: "internal" }));
       setLocalResults(localItems);
+      // If we got as many as we asked for, there may be more
+      setHasMoreResults(localItems.length >= effectiveLimit);
     } catch {
       setLocalResults([]);
+      setHasMoreResults(false);
     }
     setIsLoading(false);
+    setIsLoadingMore(false);
 
     if (localItems.length > 0) {
       setExternalResults([]);
@@ -285,7 +303,14 @@ export default function JudgmentSearchPage() {
   };
 
   const handleSearch = async () => {
-    await runKeywordSearch(query);
+    setKeywordLimit(25);
+    await runKeywordSearch(query, 25);
+  };
+
+  const handleLoadMore = async () => {
+    const newLimit = keywordLimit + 25;
+    setKeywordLimit(newLimit);
+    await runKeywordSearch(query, newLimit);
   };
 
   const handleCitationSearch = async (event: FormEvent) => {
@@ -380,9 +405,7 @@ export default function JudgmentSearchPage() {
       setQuery(q);
       setSearchMode("keyword");
       setAutoSearchDone(true);
-      setTimeout(() => {
-        void runKeywordSearch(q);
-      }, 100);
+      void runKeywordSearch(q, 25);
     }
 
     const citationValue = params.get("citation");
@@ -782,6 +805,27 @@ export default function JudgmentSearchPage() {
               ) : null}
             </article>
           ))}
+
+          {!isLoading && !isExternalLoading && allResults.length > 0 && hasMoreResults ? (
+            <div className="flex justify-center py-4">
+              <button
+                onClick={() => void handleLoadMore()}
+                disabled={isLoadingMore}
+                className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-6 py-3 text-sm font-bold text-primary hover:bg-primary/20 disabled:opacity-60"
+                data-testid="button-load-more"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Loading...
+                  </>
+                ) : (
+                  <>
+                    <Search size={14} /> Load More Results
+                  </>
+                )}
+              </button>
+            </div>
+          ) : null}
 
           <div className="pt-3 border-t border-border">
             <h4 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
