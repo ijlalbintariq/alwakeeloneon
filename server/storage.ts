@@ -2060,43 +2060,64 @@ export class DatabaseStorage implements IStorage {
     if (queryTokens.length === 0) return [];
 
     const tsQueryStr = queryTokens.join(' & ');
-    const tsvMatchExpr = queryTokens.length > 0
-      ? sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, '') || ' ' || coalesce(${judgments.fullText}, '')) @@ to_tsquery('simple', ${tsQueryStr})`
-      : undefined;
 
-    const fetchRows = async () => {
-      const whereParts = [
-        eq(judgments.isActive, true),
-        tsvMatchExpr,
-      ].filter(Boolean);
-      const whereClause = and(...whereParts);
-      return await db
+    const fetchRows = async (queryParam: string) => {
+      const tsvMatchExpr = sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, '') || ' ' || coalesce(${judgments.fullText}, '')) @@ to_tsquery('simple', ${queryParam})`;
+
+      const candidateIds = await db
         .select({
-          id:            judgments.id,
-          year:          judgments.year,
-          page:          judgments.page,
+          id: judgments.id,
           citationString: judgments.citationString,
-          title:         judgments.title,
-          petitioner:    judgments.petitioner,
-          respondent:    judgments.respondent,
-          headnotes:     judgments.headnotes,
-          // CRITICAL: only pull the first 1500 chars of full_text. The header
-          // (Title:, Court Name:) sits in the first ~500 chars; pulling the
-          // entire text column for 100 rows = ~5MB transfer = 14s timeout.
-          fullTextHead:  sql<string>`LEFT(${judgments.fullText}, 1500)`,
-          courtName:     courtsRef.name,
+        })
+        .from(judgments)
+        .where(and(eq(judgments.isActive, true), tsvMatchExpr))
+        .orderBy(desc(judgments.year))
+        .limit(safeLimit * 4);
+
+      if (candidateIds.length === 0) return [];
+
+      const seenCits = new Set<string>();
+      const ids: string[] = [];
+      for (const cand of candidateIds) {
+        const citation = String(cand.citationString || "").trim().toLowerCase();
+        if (!citation || seenCits.has(citation)) continue;
+        seenCits.add(citation);
+        ids.push(cand.id);
+        if (ids.length >= safeLimit) break;
+      }
+
+      if (ids.length === 0) return [];
+
+      const rows = await db
+        .select({
+          id: judgments.id,
+          year: judgments.year,
+          page: judgments.page,
+          citationString: judgments.citationString,
+          title: judgments.title,
+          petitioner: judgments.petitioner,
+          respondent: judgments.respondent,
+          headnotes: judgments.headnotes,
+          fullTextHead: sql<string>`LEFT(${judgments.fullText}, 1500)`,
+          courtName: courtsRef.name,
           courtSnapshot: judgments.courtNameSnapshot,
-          journalCode:   lawJournals.code,
+          journalCode: lawJournals.code,
         })
         .from(judgments)
         .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
         .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
-        .where(whereClause!)
-        .orderBy(desc(judgments.year))
-        .limit(safeLimit * 4);
+        .where(and(eq(judgments.isActive, true), inArray(judgments.id, ids)))
+        .orderBy(desc(judgments.year));
+
+      return rows;
     };
 
-    let rows = await fetchRows();
+    let rows = await fetchRows(tsQueryStr);
+
+    if (rows.length === 0 && queryTokens.length > 1) {
+      const tsQueryStrOr = queryTokens.join(' | ');
+      rows = await fetchRows(tsQueryStrOr);
+    }
 
     // Convert judgment rows to CaseLaw-compatible objects for the AI pipeline
     const seen = new Set<string>();
