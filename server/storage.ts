@@ -3294,6 +3294,8 @@ export class DatabaseStorage implements IStorage {
     const trimmed = query.trim();
     if (!trimmed) return [];
 
+    const pattern = `%${trimmed}%`;
+
     return await db.select({
       id: statuteDocuments.id,
       title: statuteDocuments.title,
@@ -3306,13 +3308,21 @@ export class DatabaseStorage implements IStorage {
       .from(statuteDocuments)
       .where(
         or(
-          ilike(statuteDocuments.title, `%${trimmed}%`),
-          ilike(statuteDocuments.content, `%${trimmed}%`),
-          ilike(statuteDocuments.filename, `%${trimmed}%`),
-          ilike(statuteDocuments.category, `%${trimmed}%`)
+          ilike(statuteDocuments.title, pattern),
+          ilike(statuteDocuments.content, pattern),
+          ilike(statuteDocuments.filename, pattern),
+          ilike(statuteDocuments.category, pattern)
         )
       )
-      .orderBy(statuteDocuments.title)
+      .orderBy(
+        sql`CASE 
+          WHEN ${statuteDocuments.title} ILIKE ${trimmed} THEN 1
+          WHEN ${statuteDocuments.title} ILIKE ${pattern} THEN 2
+          WHEN ${statuteDocuments.filename} ILIKE ${pattern} THEN 3
+          ELSE 4
+        END ASC`,
+        statuteDocuments.title
+      )
       .limit(limit);
   }
 
