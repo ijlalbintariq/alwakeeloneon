@@ -178,7 +178,7 @@ export default function JudgmentSearchPage() {
   const [keywordCourt, setKeywordCourt] = useState<string>("");
   const [citationCourt, setCitationCourt] = useState<string>("");
   const [searchMode, setSearchMode] = useState<"keyword" | "citation">("keyword");
-  const [keywordSort, setKeywordSort] = useState<"relevance" | "latest">("relevance");
+  const [keywordSort, setKeywordSort] = useState<"relevance" | "latest">("latest");
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [loadingJournals, setLoadingJournals] = useState<boolean>(true);
