@@ -16,11 +16,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-// @ts-ignore
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+// Configure the PDF.js worker using the locally hosted static asset in the public folder to bypass Vite pathing and CORS issues
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
-// Configure the PDF.js worker using Vite's native asset URL loader to prevent CORS and CDN fetch failures
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
