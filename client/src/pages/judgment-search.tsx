@@ -741,101 +741,43 @@ export default function JudgmentSearchPage() {
                   ) : null}
 
                   <button
-                    onClick={() => void handleGetSummary(item, idx)}
-                    disabled={summaryLoading[idx]}
+                    onClick={() => setExpandedSummary(expandedSummary === idx ? null : idx)}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/50 px-3 py-2 text-[11px] font-bold text-foreground hover:border-primary/40 hover:text-foreground"
-                    data-testid={`button-ai-summary-${idx}`}
+                    data-testid={`button-headnotes-${idx}`}
                   >
-                    {summaryLoading[idx] ? (
+                    {expandedSummary === idx ? (
                       <>
-                        <Loader2 size={13} className="animate-spin" /> Analyzing...
-                      </>
-                    ) : expandedSummary === idx && summaries[idx] ? (
-                      <>
-                        <ChevronUp size={13} /> Hide Analysis
-                      </>
-                    ) : summaries[idx] ? (
-                      <>
-                        <ChevronDown size={13} /> Show Analysis
+                        <ChevronUp size={13} /> Hide Notes
                       </>
                     ) : (
                       <>
-                        <Sparkles size={13} /> AI Analysis
+                        <FileText size={13} /> Head Notes
                       </>
                     )}
                   </button>
                 </div>
               </div>
 
-              {expandedSummary === idx && (summaryLoading[idx] || summaries[idx]) ? (
-                <div className="border-t border-border p-5 md:p-6" data-testid={`judgment-summary-panel-${idx}`}>
-                  {summaryLoading[idx] ? (
-                    <div className="flex items-center gap-2 text-sm text-foreground">
-                      <Loader2 size={14} className="animate-spin text-primary" />
-                      Al Wakeelo is analyzing this judgment...
+              {expandedSummary === idx && item.summary ? (
+                <div className="border-t border-border p-5 md:p-6" data-testid={`judgment-headnotes-panel-${idx}`}>
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                        <FileText size={11} /> Head Notes
+                      </span>
+                      <button
+                        onClick={() => setExpandedSummary(null)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground"
+                        data-testid={`button-close-headnotes-${idx}`}
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
-                  ) : summaries[idx] ? (
-                    <div className="space-y-5">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
-                            <Sparkles size={11} /> AI Judgment Analysis
-                          </span>
-                          {summaries[idx].verified ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300" data-testid={`badge-verified-${idx}`}>
-                              <ShieldCheck size={11} /> Verified Source
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-primary" data-testid={`badge-ai-only-${idx}`}>
-                              <ShieldAlert size={11} /> AI General Knowledge
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => setExpandedSummary(null)}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground"
-                          data-testid={`button-close-summary-${idx}`}
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
 
-                      <div className="prose prose-invert prose-sm max-w-none" data-testid={`text-judgment-summary-${idx}`}>
-                        <LegalMarkdown content={summaries[idx].summary} />
-                      </div>
-
-                      {summaries[idx].fullText ? (
-                        <div>
-                          <button
-                            onClick={() => setShowFullText((prev) => ({ ...prev, [idx]: !prev[idx] }))}
-                            data-testid={`button-full-text-${idx}`}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-[11px] font-bold text-primary hover:bg-primary/20"
-                          >
-                            <BookOpen size={13} />
-                            {showFullText[idx] ? "Hide Full Judgment" : "View Full Judgment"}
-                            {showFullText[idx] ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                          </button>
-
-                          {summaries[idx].source ? (
-                            <span className="ml-3 text-[10px] uppercase tracking-widest text-emerald-300/80">
-                              <FileText size={10} className="inline mr-1" /> Source: Knowledge Vault
-                            </span>
-                          ) : null}
-
-                          {showFullText[idx] ? (
-                            <div
-                              className="mt-4 max-h-[520px] overflow-y-auto rounded-xl border border-border bg-background/50 p-4"
-                              data-testid={`text-full-judgment-${idx}`}
-                            >
-                              <pre className="whitespace-pre-wrap text-xs leading-relaxed text-foreground font-mono">
-                                {summaries[idx].fullText}
-                              </pre>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
+                    <div className="prose prose-invert prose-sm max-w-none" data-testid={`text-judgment-headnotes-${idx}`}>
+                      <LegalMarkdown content={item.summary} />
                     </div>
-                  ) : null}
+                  </div>
                 </div>
               ) : null}
             </article>
