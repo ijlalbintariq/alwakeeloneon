@@ -15,6 +15,7 @@ export const CITATION_SEARCH_TOOL: ChatCompletionTool = {
       "For simple queries, call 2-3 times with different angles. " +
       "Example for property dispute: call 1 → 'Section 53A part performance', call 2 → 'bona fide purchaser Section 41', call 3 → 'specific performance readiness', call 4 → 'constructive notice possession', call 5 → 'agreement to sell vs sale deed', call 6 → 'mortgage priority equitable interest'. " +
       "Example for bail: call 1 → 'bail cancellation', call 2 → 'Section 497 misuse liberty', call 3 → 'supervening circumstances bail'. " +
+      "Example for dower/mehr: call 1 → 'mehr recovery', call 2 → 'dower nikahnama', call 3 → 'specific performance dower', call 4 → 'haq mehr property', call 5 → 'mahr waiver'. " +
       "Use all results from all calls to build your citation list.",
     parameters: {
       type: "object",
@@ -289,7 +290,9 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
         message: "No judgments found in the database for this query.",
         results: [],
       });
-      cacheSet(ck, empty);
+      // Do NOT cache found:0 results. A single DB timeout can poison the
+      // cache for 30 min, causing all subsequent calls for the same query
+      // to instantly return 0 without ever hitting the DB again.
       return empty;
     }
 

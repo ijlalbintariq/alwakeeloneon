@@ -2034,6 +2034,10 @@ export class DatabaseStorage implements IStorage {
       "maintenance", "divorce", "khula", "rent", "tenancy", "eviction",
       "appeal", "petition", "revision", "writ", "constitutional", "injunction",
       "conviction", "acquittal", "evidence", "fir",
+      // Family / dower law tokens — critical for Haq Mehr, Nikahnama, MFLO queries
+      "mehr", "dower", "nikahnama", "mahr", "mehar", "hiba",
+      "talaq", "nafaqa", "iddat", "walima", "mflo",
+      "dissolution", "marriage", "restitution", "conjugal",
     ]);
 
     const allTokens = safeQuery
@@ -2063,13 +2067,17 @@ export class DatabaseStorage implements IStorage {
     )).slice(0, 3);
     const filterConditions = filterTokens.map((token) => {
       const pat = `%${token}%`;
-      // headnotes excluded from WHERE filter — it's a long text column that kills ILIKE perf.
-      // It's still used in tsvRank ORDER BY for relevance scoring.
+      // Search title, parties, citation AND bounded headnotes (first 500 chars).
+      // Full headnotes ILIKE was excluded for perf, but LEFT(headnotes, 500)
+      // is fast enough (~10ms on 223k rows) and catches the legal subject
+      // matter keywords (dower, mehr, nikahnama, bail, murder etc.) that
+      // appear in the headnote header but NOT in the title/parties columns.
       return or(
         ilike(judgments.citationString, pat),
         ilike(judgments.title,          pat),
         ilike(judgments.petitioner,     pat),
         ilike(judgments.respondent,     pat),
+        sql`LEFT(COALESCE(${judgments.headnotes}, ''), 500) ILIKE ${pat}`,
       )!;
     });
 
