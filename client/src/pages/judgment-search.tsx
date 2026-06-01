@@ -717,29 +717,40 @@ export default function JudgmentSearchPage() {
               data-testid={`judgment-result-${idx}`}
             >
               <div className="p-5 md:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                  <div className="space-y-2">
-                    <span
-                      className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest ${
-                        item.source === "external"
-                          ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
-                          : "border-primary/30 bg-primary/10 text-primary"
-                      }`}
-                    >
-                      {item.court || "Court"}
-                    </span>
-                    <h4 className="text-xl font-bold text-foreground leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
-                      {item.title}
-                    </h4>
-                  </div>
+                {/* Header: Court + Citation */}
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest ${
+                      item.source === "external"
+                        ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
+                        : "border-primary/30 bg-primary/10 text-primary"
+                    }`}
+                  >
+                    <Gavel size={10} />
+                    {item.court || "Court"}
+                  </span>
                   <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-mono font-bold text-primary">
                     {item.citation}
                   </span>
                 </div>
 
-                <div className="text-sm text-muted-foreground leading-relaxed mb-4 prose prose-invert prose-sm max-w-none">
-                  <LegalMarkdown content={item.summary} />
-                </div>
+                {/* Title */}
+                <h4 className="text-lg font-bold text-foreground leading-snug mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  {item.title}
+                </h4>
+
+                {/* Head Notes — always visible */}
+                {item.summary ? (
+                  <div className="rounded-lg border border-border/60 bg-background/40 p-4 mb-4">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <FileText size={12} className="text-emerald-400" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Head Notes</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground leading-relaxed prose prose-invert prose-sm max-w-none">
+                      <LegalMarkdown content={item.summary} />
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
