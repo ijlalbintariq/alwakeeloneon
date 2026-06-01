@@ -1561,6 +1561,15 @@ export class DatabaseStorage implements IStorage {
       ? (phraseTextExpr && tokenTextExpr ? or(phraseTextExpr, tokenTextExpr) : (phraseTextExpr || tokenTextExpr))
       : undefined;
 
+    const tsQueryStr = queryTokens.map(t => `${t}:*`).join(' & ');
+    const tsvMatchExpr = queryTokens.length > 0
+      ? sql`to_tsvector('simple', coalesce(${caseLaw.citation}, '') || ' ' || coalesce(${caseLaw.title}, '') || ' ' || coalesce(${caseLaw.summary}, '') || ' ' || coalesce(${caseLaw.court}, '')) @@ to_tsquery('simple', ${tsQueryStr})`
+      : undefined;
+
+    const textMatchExprCombined = tsvMatchExpr && textMatchExpr
+      ? and(tsvMatchExpr, textMatchExpr)
+      : (tsvMatchExpr || textMatchExpr);
+
     const structuredClauses = [
       hasPage ? eq(caseLaw.citationPage, page) : undefined,
       hasYear ? eq(caseLaw.citationYear, year) : undefined,
@@ -1573,9 +1582,9 @@ export class DatabaseStorage implements IStorage {
 
     const whereParts = [
       courtRaw ? ilike(caseLaw.court, `%${courtRaw}%`) : undefined,
-      structuredMatch && textMatchExpr ? or(structuredMatch, textMatchExpr) : undefined,
-      structuredMatch && !textMatchExpr ? structuredMatch : undefined,
-      !structuredMatch && textMatchExpr ? textMatchExpr : undefined,
+      structuredMatch && textMatchExprCombined ? or(structuredMatch, textMatchExprCombined) : undefined,
+      structuredMatch && !textMatchExprCombined ? structuredMatch : undefined,
+      !structuredMatch && textMatchExprCombined ? textMatchExprCombined : undefined,
     ].filter((clause): clause is NonNullable<typeof clause> => Boolean(clause));
 
     if (whereParts.length === 0) return [];
@@ -1611,8 +1620,7 @@ export class DatabaseStorage implements IStorage {
               coalesce(${caseLaw.citation}, '') || ' ' ||
               coalesce(${caseLaw.title}, '') || ' ' ||
               coalesce(${caseLaw.summary}, '') || ' ' ||
-              coalesce(${caseLaw.court}, '') || ' ' ||
-              coalesce(array_to_string(${caseLaw.keywords}, ' '), '')
+              coalesce(${caseLaw.court}, '')
             ),
             plainto_tsquery('simple', ${queryTokens.join(" ")})
           ),
@@ -2037,7 +2045,7 @@ export class DatabaseStorage implements IStorage {
       "appeal", "petition", "revision", "writ", "constitutional", "injunction",
       "conviction", "acquittal", "evidence", "fir",
       // Family / dower law tokens — critical for Haq Mehr, Nikahnama, MFLO queries
-      "mehr", "dower", "nikahnama", "mahr", "mehar", "hiba",
+      "haq", "mehr", "dower", "nikahnama", "mahr", "mehar", "hiba",
       "talaq", "nafaqa", "iddat", "walima", "mflo",
       "dissolution", "marriage", "restitution", "conjugal",
     ]);
@@ -2047,6 +2055,18 @@ export class DatabaseStorage implements IStorage {
       .split(/\s+/)
       .map((t) => t.replace(/[^a-z0-9]/g, ""))
       .filter((t) => t.length >= 3);
+
+    const queryTokens = safeQuery
+      .toLowerCase()
+      .split(/\s+/g)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
+      .slice(0, 10);
+
+    const tsQueryStr = queryTokens.map(t => `${t}:*`).join(' & ');
+    const tsvMatchExpr = queryTokens.length > 0
+      ? sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, '') || ' ' || coalesce(${judgments.fullText}, '')) @@ to_tsquery('simple', ${tsQueryStr})`
+      : undefined;
 
     // Prefer specific tokens (not stop words) for WHERE filter.
     // Fallback: if all tokens are stop words, use any token of length >= 4.
@@ -2064,9 +2084,11 @@ export class DatabaseStorage implements IStorage {
     );
     const longTokens = tokens.filter((token) => token.length >= 6);
     const prioritizedTokens = legalSignalTokens.length > 0 ? legalSignalTokens : longTokens;
-    const filterTokens = Array.from(new Set(
-      (prioritizedTokens.length > 0 ? prioritizedTokens : tokens).slice(0, 6),
-    )).slice(0, 3);
+    const filterTokens = tokens.length <= 3
+      ? tokens
+      : Array.from(new Set(
+          (prioritizedTokens.length > 0 ? prioritizedTokens : tokens).slice(0, 6),
+        )).slice(0, 3);
     const filterConditions = filterTokens.map((token) => {
       // Search title, parties, citation AND bounded headnotes (first 500 chars).
       // Enforces Postgres whole-word boundaries for short or critical legal tokens.
@@ -2083,26 +2105,23 @@ export class DatabaseStorage implements IStorage {
       ? filterConditions[0]
       : and(...filterConditions)!;
 
-    // tsvRank only used in ORDER BY — computed on already-filtered rows, not all 204k.
     const tsvRank = tokenQuery
       ? sql<number>`COALESCE(ts_rank_cd(
           to_tsvector('simple',
-            COALESCE(${judgments.title}, '') || ' ' ||
-            COALESCE(${judgments.headnotes}, '') || ' ' ||
-            COALESCE(${judgments.petitioner}, '') || ' ' ||
-            COALESCE(${judgments.respondent}, '') || ' ' ||
-            COALESCE(${judgments.citationString}, '') || ' ' ||
-            LEFT(COALESCE(${judgments.fullText}, ''), 4000)
+            coalesce(${judgments.title}, '') || ' ' ||
+            coalesce(${judgments.headnotes}, '')
           ),
           plainto_tsquery('simple', ${tokenQuery})
         ), 0)`
       : sql<number>`0`;
 
     const fetchRows = async (searchCondition: ReturnType<typeof and> | ReturnType<typeof or>) => {
-      const whereClause = and(
+      const whereParts = [
         eq(judgments.isActive, true),
+        tsvMatchExpr,
         searchCondition,
-      );
+      ].filter(Boolean);
+      const whereClause = and(...whereParts);
       return await db
         .select({
           id:            judgments.id,
@@ -2125,7 +2144,7 @@ export class DatabaseStorage implements IStorage {
         .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
         .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
         .where(whereClause!)
-        .orderBy(desc(tsvRank), desc(judgments.year))
+        .orderBy(desc(judgments.year))
         .limit(safeLimit * 4);
     };
 
@@ -3849,6 +3868,36 @@ async function ensureCitationReferenceSeedData(): Promise<void> {
 }
 
 export async function ensureSearchIndexes(): Promise<void> {
+  console.log("[Indexes] Starting search indexes creation with dedicated migration connection...");
+  const { Pool } = await import("pg");
+  const { drizzle } = await import("drizzle-orm/node-postgres");
+  const migrationPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    connectionTimeoutMillis: 60000,
+    idle_in_transaction_session_timeout: 30000,
+    statement_timeout: 0, // NO STATEMENT TIMEOUT!
+  });
+  const migrationDb = drizzle(migrationPool);
+
+  try {
+    const res = await migrationDb.execute(sql`select indexdef from pg_indexes where indexname = 'idx_judgments_full_text_tsv'`);
+    if (res.rows.length > 0) {
+      const indexDef = String(res.rows[0].indexdef || "");
+      if (indexDef.includes("'english'")) {
+        console.log("[Indexes] Found legacy english GIN index on judgments. Dropping it...");
+        await migrationDb.execute(sql`DROP INDEX IF EXISTS idx_judgments_full_text_tsv`);
+      } else {
+        console.log("[Indexes] Found existing simple GIN index on judgments. Skipping drop.");
+      }
+    } else {
+      console.log("[Indexes] No GIN index on judgments exists yet. Executing initial DROP for safety...");
+      await migrationDb.execute(sql`DROP INDEX IF EXISTS idx_judgments_full_text_tsv`);
+    }
+  } catch (err) {
+    console.warn("[Indexes] Error checking/dropping legacy GIN index:", err);
+  }
+
+
   const indexStatements = [
     { label: "pgcrypto_extension", stmt: sql`CREATE EXTENSION IF NOT EXISTS pgcrypto` },
     { label: "pg_trgm_extension", stmt: sql`CREATE EXTENSION IF NOT EXISTS pg_trgm` },
@@ -4260,7 +4309,14 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_judgments_citation_parts", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_citation_parts ON judgments (year, journal_id, page)` },
     { label: "judgments_year_journal_page_unique", stmt: sql`CREATE UNIQUE INDEX IF NOT EXISTS judgments_year_journal_page_unique ON judgments (year, journal_id, page)` },
     { label: "idx_judgments_citation_string_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_citation_string_trgm ON judgments USING gin (citation_string gin_trgm_ops)` },
-    { label: "idx_judgments_full_text_tsv", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_full_text_tsv ON judgments USING gin (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(headnotes,'') || ' ' || coalesce(full_text,'')))` },
+    {
+      label: "idx_judgments_full_text_tsv",
+      stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_full_text_tsv ON judgments USING gin (to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(headnotes,'') || ' ' || coalesce(full_text,'')))`
+    },
+    {
+      label: "idx_case_law_full_text_tsv",
+      stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_full_text_tsv ON case_law USING gin (to_tsvector('simple', coalesce(citation,'') || ' ' || coalesce(title,'') || ' ' || coalesce(summary,'') || ' ' || coalesce(court,'')))`
+    },
     // GIN trigram indexes for fast ILIKE on judgments — makes headnotes/title/parties search <500ms
     { label: "idx_judgments_headnotes_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_headnotes_trgm ON judgments USING gin (headnotes gin_trgm_ops)` },
     { label: "idx_judgments_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_title_trgm ON judgments USING gin (title gin_trgm_ops)` },
@@ -4510,17 +4566,23 @@ export async function ensureSearchIndexes(): Promise<void> {
 
   for (const { label, stmt } of indexStatements) {
     try {
-      await db.execute(stmt);
+      await migrationDb.execute(stmt);
     } catch (err: any) {
-      console.warn(`[Indexes] Could not ensure ${label}:`, err?.message || err);
+      console.warn(`[Indexes] Could not ensure ${label}:`, err?.cause?.message || err?.message || err);
     }
   }
   try {
-    await db.execute(
+    await migrationDb.execute(
       sql`CREATE INDEX IF NOT EXISTS idx_style_memory_chunks_embedding_cosine ON style_memory_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)`,
     );
   } catch (err: any) {
-    console.warn("[Indexes] Could not ensure idx_style_memory_chunks_embedding_cosine:", err?.message || err);
+    console.warn("[Indexes] Could not ensure idx_style_memory_chunks_embedding_cosine:", err?.cause?.message || err?.message || err);
+  }
+  try {
+    await migrationPool.end();
+    console.log("[Indexes] Dedicated migration connection closed.");
+  } catch (err: any) {
+    console.warn("[Indexes] Error closing migration pool:", err?.message || err);
   }
   try {
     const { ensureRagSchema } = await import("./rag/vector-store");
@@ -4552,7 +4614,6 @@ export const STOP_WORDS = new Set([
   "therefore","whether","both","each","some","more","most","other","only","also",
   "very","even","still","well","back","way","first","last","long","little","own",
   "right","old","same","new","want","need","take","make","come","get","put","ask",
-  "haq",
 ]);
 
 /**
@@ -4562,11 +4623,8 @@ export const STOP_WORDS = new Set([
  */
 export function buildSearchTokenMatch(column: any, token: string) {
   const cleanToken = token.trim().toLowerCase();
-  if (cleanToken.length < 5 || CRITICAL_LEGAL_TOKENS.has(cleanToken)) {
-    // Postgres regular expression whole-word boundary match: \y matches word boundary
-    return sql`${column} ~* ${'\\y' + cleanToken + '\\y'}`;
-  }
-  return ilike(column, `%${token}%`);
+  // Postgres regular expression whole-word boundary match: \y matches word boundary
+  return sql`${column} ~* ${'\\y' + cleanToken + '\\y'}`;
 }
 
 export function isMetadataOnlySummary(text: string): boolean {
