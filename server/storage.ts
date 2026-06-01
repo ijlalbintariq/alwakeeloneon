@@ -2145,14 +2145,31 @@ export class DatabaseStorage implements IStorage {
       "prohibition", "liquor", "alcohol",
       "detention", "mpo", "externment",
       "search", "warrant", "seizure",
+      // Drug-specific terms
+      "hashish", "charas", "heroin", "opium", "cocaine", "marijuana", "methamphetamine",
+      "ice", "drug", "trafficking", "smuggling", "possession",
+      // Inheritance-specific terms
+      "share", "heir", "heirs", "quranic", "residuary", "agnatic",
+      "wirasat", "sharia", "islamic", "hanafi", "sunni", "shia",
+      // Rent-specific terms
+      "vacate", "occupant", "subletting", "premises",
+      // Section numbers commonly searched
+      "302", "497", "489", "420", "406", "376", "377", "295",
     ]);
 
-    const queryTokens = safeQuery
+    const allTokens = safeQuery
       .toLowerCase()
       .split(MULTIPLE_SPACES_REGEX)
       .map((token) => token.trim())
-      .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
-      .slice(0, 10);
+      .filter((token) => token.length >= 2 && !STOP_WORDS.has(token));
+
+    // Prioritize legal signal tokens so the SQL uses legally relevant terms
+    // instead of narrative filler words like "police", "recovered", "vehicle".
+    const signalTokens = allTokens.filter((t) => LEGAL_SIGNAL_TOKENS.has(t));
+    const otherTokens = allTokens.filter((t) => !LEGAL_SIGNAL_TOKENS.has(t));
+    // Signal tokens first, then remaining. Cap at 6 — fewer tokens = less strict
+    // AND queries, higher chance of matching relevant judgments.
+    const queryTokens = [...new Set([...signalTokens, ...otherTokens])].slice(0, 6);
 
     if (queryTokens.length === 0) return [];
 
@@ -2165,9 +2182,26 @@ export class DatabaseStorage implements IStorage {
         buildSearchTokenMatch(judgments.fullText, token),
       )!;
     });
+    // Use OR for the outer ILIKE filter when there are many tokens.
+    // AND with 4+ tokens drops valid judgments that match 3/4 terms.
+    // With ≤3 tokens, AND is precise enough. With more, OR casts a wider net
+    // and the relevance scorer in the retrieval engine handles ranking.
     const textMatchExpr = perTokenExprs.length > 0
-      ? (perTokenExprs.length === 1 ? perTokenExprs[0] : and(...perTokenExprs)!)
+      ? (perTokenExprs.length === 1
+          ? perTokenExprs[0]
+          : perTokenExprs.length <= 3
+            ? and(...perTokenExprs)!
+            : or(...perTokenExprs)!)
       : undefined;
+
+    // Build tsquery strings:
+    // Primary: AND of top 3 signal tokens (narrow, precise search)
+    // Fallback: OR of all tokens (broader search when AND returns 0)
+    const topCoreTokens = signalTokens.length > 0
+      ? [...new Set(signalTokens)].slice(0, 3)
+      : queryTokens.slice(0, 3);
+    const tsQueryStrNarrow = topCoreTokens.join(' & ');
+    const tsQueryStrBroad = queryTokens.join(' | ');
 
     const fetchRows = async (queryParam: string): Promise<any[]> => {
       const tsvMatchExpr = sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, '') || ' ' || coalesce(${judgments.fullText}, '')) @@ to_tsquery('simple', ${queryParam})`;
@@ -2184,8 +2218,12 @@ export class DatabaseStorage implements IStorage {
           buildSearchTokenMatch(outerJudgments.fullText, token),
         )!;
       });
+      // Use OR for outer filter — match any token, let relevance scorer rank.
+      // AND here was the root cause of 0-result retrievals for multi-topic queries.
       const outerTextMatchExpr = outerPerTokenExprs.length > 0
-        ? (outerPerTokenExprs.length === 1 ? outerPerTokenExprs[0] : and(...outerPerTokenExprs)!)
+        ? (outerPerTokenExprs.length === 1
+            ? outerPerTokenExprs[0]
+            : or(...outerPerTokenExprs)!)
         : undefined;
 
       const res = await db.execute(sql`
@@ -2210,11 +2248,11 @@ export class DatabaseStorage implements IStorage {
       return res.rows as any[];
     };
 
-    let rows = await fetchRows(tsQueryStr);
+    // Try narrow AND first (top 3 core tokens), then broad OR fallback
+    let rows = await fetchRows(tsQueryStrNarrow);
 
     if (rows.length === 0 && queryTokens.length > 1) {
-      const tsQueryStrOr = queryTokens.join(' | ');
-      rows = await fetchRows(tsQueryStrOr);
+      rows = await fetchRows(tsQueryStrBroad);
     }
 
     // Convert judgment rows to CaseLaw-compatible objects for the AI pipeline
