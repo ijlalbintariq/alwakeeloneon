@@ -111,7 +111,7 @@ const TOKEN_LIMITS = {
   "search-statutes": 2048,
   summarize: 3072,
   brief: 6144,
-  "judgment-summary": 8192,
+  "judgment-summary": 2048,
   draft: 16384,
   "contract-drafting": 4096,
 };
@@ -9957,17 +9957,35 @@ RAG POLICY (STRICT):
         return res.json([]);
       }
 
-      const results = await searchCaseLawWithFullText({
-        userId,
-        query,
-        limit,
-        year,
-        report,
-        page,
-        court: courtRaw || undefined,
-        sort,
-        parsedCitation,
-      });
+      // Use lightweight direct DB search — the judgment search page only needs
+      // metadata (citation, court, title, summary), NOT full text verification.
+      // searchCaseLawWithFullText() was loading source texts, doing RAG vector
+      // search, and running a second top-up query — adding 3-8 seconds latency
+      // for no user-visible benefit on this page.
+      const [caseLawResults, headnoteResults] = await Promise.all([
+        storage.searchCaseLaw(query, limit, {
+          year,
+          report,
+          page,
+          court: courtRaw || undefined,
+          sort,
+          parsedCitation,
+          includeSourceContentSearch: false,
+        }),
+        // Also search the judgments table via headnotes for broader recall
+        query ? storage.searchJudgmentsByKeywords(query, limit).catch(() => []) : Promise.resolve([]),
+      ]);
+
+      // Merge + dedup: caseLaw results first (richer metadata), headnotes fill gaps
+      const seen = new Set<string>();
+      const results: typeof caseLawResults = [];
+      for (const r of [...caseLawResults, ...headnoteResults]) {
+        const key = String(r.citation || "").toLowerCase().replace(/\s+/g, " ").trim();
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        results.push(r);
+        if (results.length >= limit) break;
+      }
 
       // Enrich results with judgment UUIDs so citation chips can link to /judgment/:uuid
       const citations = results.map((r) => String(r.citation || "").trim()).filter(Boolean);
@@ -14563,21 +14581,26 @@ The user has attached the following documents for your reference. Analyze them c
       }
 
       const searchTerm = citation || title;
-      const knowledgeContext = await gatherKnowledgeContextV2(searchTerm, userId);
 
-      let fullText = "";
-      try {
-        const parsedLookupCitation = parseCaseLawCitationQuery(citation || searchTerm);
-        const candidateRows = await searchCaseLawWithFullText({
-          userId,
-          query: searchTerm,
-          limit: 25,
+      // Run knowledge context + case lookup in parallel (not sequentially)
+      const parsedLookupCitation = parseCaseLawCitationQuery(citation || searchTerm);
+      const [knowledgeContext, candidateRows] = await Promise.all([
+        gatherKnowledgeContextV2(searchTerm, userId),
+        // Lightweight DB search — we just need to find the matching case_law row
+        // by citation. searchCaseLawWithFullText was doing RAG + source text + top-up
+        // adding 3-8s of unnecessary latency here.
+        storage.searchCaseLaw(searchTerm, 10, {
           year: parsedLookupCitation?.year,
           report: parsedLookupCitation?.report,
           page: parsedLookupCitation?.page,
           parsedCitation: parsedLookupCitation,
           sort: "relevance",
-        });
+          includeSourceContentSearch: false,
+        }).catch(() => [] as CaseLaw[]),
+      ]);
+
+      let fullText = "";
+      try {
         const normalizedTitleForMatch = normalizeTextForMatch(title || "");
         let bestRow: CaseLaw | null = null;
         let bestScore = -1;

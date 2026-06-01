@@ -1536,7 +1536,12 @@ export class DatabaseStorage implements IStorage {
         )
       : undefined;
 
-    const tokenClauses = queryTokens.flatMap((token) => {
+    // Per-token AND: each query token must match at least ONE column.
+    // Then AND all token groups together. This ensures "haq mehr" requires
+    // BOTH words to appear (in any columns), not just one of them.
+    // Previously all token clauses were flat-ORed, so "haq" OR "mehr" matched
+    // any row with either word — returning irrelevant criminal cases.
+    const perTokenExprs = queryTokens.map((token) => {
       const tokenPattern = `%${token}%`;
       const baseClauses = [
         ilike(caseLaw.citation, tokenPattern),
@@ -1548,9 +1553,12 @@ export class DatabaseStorage implements IStorage {
       if (includeSourceContentSearch) {
         baseClauses.push(buildSourceContentMatchExpr(tokenPattern));
       }
-      return baseClauses;
+      return or(...baseClauses)!;
     });
-    const tokenTextExpr = tokenClauses.length > 0 ? or(...tokenClauses)! : undefined;
+    // AND between tokens (each token must match some column)
+    const tokenTextExpr = perTokenExprs.length > 0
+      ? (perTokenExprs.length === 1 ? perTokenExprs[0] : and(...perTokenExprs)!)
+      : undefined;
     const textMatchExpr = hasTextQuery
       ? (phraseTextExpr && tokenTextExpr ? or(phraseTextExpr, tokenTextExpr) : (phraseTextExpr || tokenTextExpr))
       : undefined;
@@ -1632,7 +1640,7 @@ export class DatabaseStorage implements IStorage {
       LEAST(220, ${tokenRankExpr} * 140)
     )`;
 
-    const fetchLimit = Math.min(500, safeLimit * 8);
+    const fetchLimit = Math.min(200, safeLimit * 4);
     const queryBuilder = db.select().from(caseLaw).where(whereClause);
     const rows = sortMode === "latest"
       ? await queryBuilder
