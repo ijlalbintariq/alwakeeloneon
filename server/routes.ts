@@ -164,7 +164,7 @@ const CASELAW_PENDING_PROCESSING_STALE_MINUTES = Math.max(5, Number(process.env.
 const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
 const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
 const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_TOKEN_BUDGET || 900));
-const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 3800));
+const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 6000));
 const ATTACHMENT_PROMPT_TOKEN_BUDGET = Math.max(500, Number(process.env.ATTACHMENT_PROMPT_TOKEN_BUDGET || 2200));
 const ATTACHMENT_FILE_TOKEN_BUDGET = Math.max(150, Number(process.env.ATTACHMENT_FILE_TOKEN_BUDGET || 800));
 const CASELAW_RAG_INDEX_DOC_TIMEOUT_MS = Math.max(5000, Number(process.env.CASELAW_RAG_INDEX_DOC_TIMEOUT_MS || 45000));
@@ -13940,6 +13940,26 @@ The user has attached the following documents for your reference. Analyze them c
       // trusted-pool integrity check downstream will strip any citation that
       // isn't in this list, so writing case names instead of citations means
       // the user sees nothing in the references panel.
+      // -- Fallback citation mandate from pipeline (RAG) judgments --
+      // When tool-search returns 0 hits but the knowledge pipeline DID retrieve
+      // verified judgments (visible in knowledgeContext as "VERIFIED JUDGMENTS"),
+      // extract those citations and inject the same mandatory citation block.
+      // This ensures family/dower/niche queries still get citation discipline
+      // even when the tool-search query terms miss the DB.
+      const pipelineCitationLines: string[] = [];
+      if (toolSearchResult.foundCount === 0 && knowledgeContext) {
+        // Extract citation lines from the VERIFIED JUDGMENTS section of pipeline context
+        const jStart = knowledgeContext.indexOf("VERIFIED JUDGMENTS");
+        if (jStart !== -1) {
+          const jSection = knowledgeContext.slice(jStart, jStart + 8000);
+          // Each line starting with "- CITATION:" is a judgment entry
+          for (const line of jSection.split("\n")) {
+            const m = line.match(/citation[:\s]+([^|\n]{4,80})/i);
+            if (m) pipelineCitationLines.push(m[1].trim());
+          }
+        }
+      }
+
       const toolMandateBlock =
         toolSearchResult.foundCount > 0
           ? `\n\nCITATION MANDATE (REQUIRED — read carefully):\n` +
@@ -13961,7 +13981,16 @@ The user has attached the following documents for your reference. Analyze them c
             `- State the RATIO DECIDENDI (the court's key deciding reason).\n` +
             `- State the APPLICATION (why this case directly applies to the present query).\n` +
             `- NEVER cite a case with just "the court held that X" — explain WHY the court reached that conclusion.`
-          : "";
+          : pipelineCitationLines.length > 0
+            ? `\n\nCITATION MANDATE FROM INTERNAL DATABASE (REQUIRED):\n` +
+              `- The knowledge pipeline retrieved verified Pakistani judgments for this query (listed in the VERIFIED JUDGMENTS section above).\n` +
+              `- You MUST cite at least 2 of those judgments using their EXACT formal citation strings.\n` +
+              `- Always use the citation format: **[CITATION]** e.g. **[2021 MLD 456]** or **[PLD 2019 SC 1]**.\n` +
+              `- Do NOT invent or guess citations — only cite what appears in the VERIFIED JUDGMENTS context.\n` +
+              `- Each cited judgment must appear in your prose AND in the final references block.\n` +
+              `\nPIPELINE CITATION HINTS (use these exact strings):\n` +
+              pipelineCitationLines.slice(0, 15).map(c => `  - ${c}`).join("\n")
+            : "";
       // Tool-search context is now injected as a fake user/assistant turn
       // (see toolSearchTurns below) — NOT in the system prompt. LLMs weight
       // user/assistant content much higher than system content, so framing

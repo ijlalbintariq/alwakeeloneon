@@ -98,14 +98,16 @@ export async function runToolJudgmentSearchOR(
         "STRATEGY: For complex multi-issue queries, call this tool 5-6 times with DIFFERENT queries covering EACH legal sub-issue. " +
         "For simple queries, call 2-3 times with different angles. " +
         "Example for property dispute: call 1 → 'Section 53A part performance', call 2 → 'bona fide purchaser Section 41', call 3 → 'specific performance readiness', call 4 → 'constructive notice possession', call 5 → 'agreement to sell vs sale'. " +
-        "Example for bail cancellation: call 1 → query:'bail cancellation', call 2 → query:'Section 497 misuse liberty', call 3 → query:'supervening circumstances bail'. " +
-        "Use all results from all calls to build your citation list." +
+        "Example for bail cancellation: call 1 → 'bail cancellation', call 2 → 'Section 497 misuse liberty', call 3 → 'supervening circumstances bail'. " +
+        "Example for dower/mehr/nikahnama: call 1 → 'mehr recovery', call 2 → 'dower nikahnama', call 3 → 'specific performance dower', call 4 → 'haq mehr property', call 5 → 'mahr waiver', call 6 → 'nikahnama enforceable'. " +
+        "Example for inheritance/family: call 1 → 'khula dissolution', call 2 → 'maintenance wife', call 3 → 'custody minor', call 4 → 'Muslim Family Laws dower'. " +
+        "Use all results from all calls to build your citation list. " +
         "CRITICAL DOMAIN RULE: Stay STRICTLY within the same legal domain as the query. " +
-        "For PROPERTY queries: use terms like 'Section 53A part performance', 'agreement to sell TPA', 'mortgage priority', 'constructive notice transfer', 'specific performance property', 'ostensible owner Section 41'. " +
+        "For PROPERTY queries: use terms like 'Section 53A part performance', 'agreement to sell TPA', 'mortgage priority', 'constructive notice possession'. " +
         "For CRIMINAL queries: use terms like 'Section 302 qatl', 'bail cancellation', 'acquittal benefit doubt'. " +
-        "For FAMILY queries: use terms like 'khula dissolution', 'maintenance wife', 'custody minor'. " +
-        "NEVER mix domains — a property question must ONLY get property/civil case law queries, NEVER criminal/bail/PPC queries. " +
-        "Use specific Pakistani legal terms (PPC, CrPC, qatl, diyat, tazir, khula, TPA, CPC, etc.). " +
+        "For FAMILY/DOWER queries: use terms like 'mehr recovery', 'dower nikahnama', 'haq mehr property', 'specific performance dower', 'mahr waiver', 'nikahnama enforceable', 'Muslim Family Laws dower', 'deferred dower suit'. " +
+        "NEVER mix domains — a family/dower question must ONLY get family/dower/civil case law queries, NEVER criminal/bail/PPC queries. " +
+        "Use specific Pakistani legal terms (PPC, CrPC, qatl, diyat, tazir, khula, mehr, haq mehr, nikahnama, TPA, CPC, MFLO, etc.). " +
         "After issuing the tool calls, respond: DONE",
     },
     { role: "user", content: safeQuery },
