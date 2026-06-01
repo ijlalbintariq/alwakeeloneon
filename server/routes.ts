@@ -3305,6 +3305,12 @@ export function enforceProseCitationIntegrity(
   const citationPattern = /\*\*\[([^\]]{5,140})\]\*\*/g;
 
   proseBody = proseBody.replace(citationPattern, (fullMatch, citationInner: string) => {
+    // Skip statute/act references — these are NOT judgment citations.
+    // The AI often formats statute names as **[Transfer of Property Act, 1882]** or
+    // **[Muslim Family Laws Ordinance, 1961]** which the scrubber was stripping.
+    const STATUTE_KEYWORDS = /\b(act|ordinance|order|code|rules?|laws?|constitution|schedule|regulation|amendment)\b/i;
+    if (STATUTE_KEYWORDS.test(citationInner)) return fullMatch;
+
     const key = citationInner
       .toLowerCase()
       .replace(/[^a-z0-9]/g, " ")
@@ -3378,9 +3384,22 @@ export async function enforceStatuteSectionIntegrity(content: string): Promise<s
     if (tokens.length === 0) continue;
 
     let allVerified = true;
+    let actExistsInDb = false;
     for (const token of tokens) {
       const sectionLabel = `${prefix} ${token}`;
       const matched = await storage.searchStatutes(sectionLabel, 25).catch(() => []);
+
+      // Check if the Act itself has ANY entries in the DB (even if not this section)
+      if (!actExistsInDb) {
+        const nameNormCheck = normalizeTextForMatch(statuteName);
+        for (const row of matched) {
+          const rowNameNormCheck = normalizeTextForMatch(row.shortTitle);
+          if (nameNormCheck && rowNameNormCheck && (rowNameNormCheck.includes(nameNormCheck) || nameNormCheck.includes(rowNameNormCheck))) {
+            actExistsInDb = true;
+            break;
+          }
+        }
+      }
 
       let verified = false;
       const nameNorm = normalizeTextForMatch(statuteName);
@@ -3405,7 +3424,10 @@ export async function enforceStatuteSectionIntegrity(content: string): Promise<s
       }
     }
 
-    if (!allVerified) {
+    // Only replace if the Act IS in our DB but this specific section is NOT.
+    // If the Act has zero entries in the DB, our coverage is incomplete —
+    // assume the AI's reference is correct rather than stripping it.
+    if (!allVerified && actExistsInDb) {
       const isMultiple = tokens.length > 1;
       const replacementText = isMultiple
         ? `the relevant provisions of ${statuteNameRaw}`
@@ -3435,9 +3457,21 @@ export async function enforceStatuteSectionIntegrity(content: string): Promise<s
     if (tokens.length === 0) continue;
 
     let allVerified = true;
+    let actExistsInDb = false;
     for (const token of tokens) {
       const sectionLabel = `${prefix} ${token}`;
       const matched = await storage.searchStatutes(sectionLabel, 25).catch(() => []);
+
+      if (!actExistsInDb) {
+        const nameNormCheck = normalizeTextForMatch(statuteName);
+        for (const row of matched) {
+          const rowNameNormCheck = normalizeTextForMatch(row.shortTitle);
+          if (nameNormCheck && rowNameNormCheck && (rowNameNormCheck.includes(nameNormCheck) || nameNormCheck.includes(rowNameNormCheck))) {
+            actExistsInDb = true;
+            break;
+          }
+        }
+      }
 
       let verified = false;
       const nameNorm = normalizeTextForMatch(statuteName);
@@ -3462,7 +3496,7 @@ export async function enforceStatuteSectionIntegrity(content: string): Promise<s
       }
     }
 
-    if (!allVerified) {
+    if (!allVerified && actExistsInDb) {
       const isMultiple = tokens.length > 1;
       const replacementText = isMultiple
         ? `the relevant provisions of ${statuteNameRaw}`
