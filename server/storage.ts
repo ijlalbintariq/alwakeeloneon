@@ -1461,7 +1461,7 @@ export class DatabaseStorage implements IStorage {
           .toLowerCase()
           .split(/\s+/g)
           .map((token) => token.trim())
-          .filter((token) => token.length >= 2)
+          .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
           .slice(0, 10)
       : [];
 
@@ -2022,20 +2022,7 @@ export class DatabaseStorage implements IStorage {
     // DO NOT add to_tsvector() @@ plainto_tsquery() to WHERE — the stored index uses
     // 'english' but queries use 'simple', Postgres can't use it → full scan → 15s timeout.
 
-    // Common English stop words that appear in user queries but NOT in legal headnotes.
-    // Including them in the AND filter causes 0 results (e.g. "can", "the" vs legal terms).
-    const STOP_WORDS = new Set([
-      "can","the","and","for","are","was","has","have","had","been","that","this",
-      "with","from","his","her","its","they","them","will","may","not","out","any",
-      "all","who","what","when","how","why","but","yet","nor","too","also","she",
-      "him","our","your","their","give","seek","case","law","legal","does","would",
-      "could","should","being","against","about","into","than","then","just","like",
-      "which","there","where","here","such","after","before","under","over","upon",
-      "without","within","between","through","during","while","although","however",
-      "therefore","whether","both","each","some","more","most","other","only","also",
-      "very","even","still","well","back","way","first","last","long","little","own",
-      "right","old","same","new","want","need","take","make","come","get","put","ask",
-    ]);
+
 
     // Legal signal tokens to prioritize for WHERE filtering over narrative filler words.
     // Example:
@@ -4553,6 +4540,21 @@ export const CRITICAL_LEGAL_TOKENS = new Set([
   "tax", "income", "sales", "fbr", "customs", "smuggling", "haq"
 ]);
 
+// Shared stop words list to ignore in both searchCaseLaw and searchJudgmentsByKeywords
+export const STOP_WORDS = new Set([
+  "can","the","and","for","are","was","has","have","had","been","that","this",
+  "with","from","his","her","its","they","them","will","may","not","out","any",
+  "all","who","what","when","how","why","but","yet","nor","too","also","she",
+  "him","our","your","their","give","seek","case","law","legal","does","would",
+  "could","should","being","against","about","into","than","then","just","like",
+  "which","there","where","here","such","after","before","under","over","upon",
+  "without","within","between","through","during","while","although","however",
+  "therefore","whether","both","each","some","more","most","other","only","also",
+  "very","even","still","well","back","way","first","last","long","little","own",
+  "right","old","same","new","want","need","take","make","come","get","put","ask",
+  "haq",
+]);
+
 /**
  * Builds a case-insensitive whole-word Postgres regex match or standard ILIKE wildcard.
  * For short tokens (under 5 characters, like "mehr" or "haq") or critical signal tokens,
@@ -4562,7 +4564,7 @@ export function buildSearchTokenMatch(column: any, token: string) {
   const cleanToken = token.trim().toLowerCase();
   if (cleanToken.length < 5 || CRITICAL_LEGAL_TOKENS.has(cleanToken)) {
     // Postgres regular expression whole-word boundary match: \y matches word boundary
-    return sql`${column} ~* ${'\\\\y' + cleanToken + '\\\\y'}`;
+    return sql`${column} ~* ${'\\y' + cleanToken + '\\y'}`;
   }
   return ilike(column, `%${token}%`);
 }
