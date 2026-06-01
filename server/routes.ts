@@ -14812,9 +14812,18 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
           userInput = `Provide a general legal analysis around the TOPIC of this judgment. Remember: you do NOT have the actual judgment text, so do NOT fabricate case-specific details. Stay strictly within the relevant area of law.\n\nCitation: ${citation}${courtInfo}\nTitle: ${title}${contextInfo}`;
         }
 
-        const aiResult = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS["judgment-summary"], { timeoutProfile: "analysis", temperature: 0.3 });
-        await logUsageCost(userId, "summarize", aiResult.model, sysInstruction + userInput, aiResult.text);
-        return aiResult.text;
+        // Use DeepSeek-chat directly — fastest model, skips the multi-model
+        // fallback chain in callStandardAI which adds latency trying slower models.
+        const aiResult = await chatWithDeepSeek({
+          messages: [
+            { role: "system", content: sysInstruction },
+            { role: "user", content: userInput },
+          ],
+          maxTokens: TOKEN_LIMITS["judgment-summary"],
+          temperature: 0.3,
+        });
+        await logUsageCost(userId, "summarize", aiResult.model, sysInstruction + userInput, aiResult.content);
+        return aiResult.content;
       });
 
       res.json({
