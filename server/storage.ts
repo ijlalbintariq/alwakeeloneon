@@ -2050,12 +2050,6 @@ export class DatabaseStorage implements IStorage {
       "dissolution", "marriage", "restitution", "conjugal",
     ]);
 
-    const allTokens = safeQuery
-      .toLowerCase()
-      .split(/\s+/)
-      .map((t) => t.replace(/[^a-z0-9]/g, ""))
-      .filter((t) => t.length >= 3);
-
     const queryTokens = safeQuery
       .toLowerCase()
       .split(/\s+/g)
@@ -2063,63 +2057,17 @@ export class DatabaseStorage implements IStorage {
       .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
       .slice(0, 10);
 
-    const tsQueryStr = queryTokens.map(t => `${t}:*`).join(' & ');
+    if (queryTokens.length === 0) return [];
+
+    const tsQueryStr = queryTokens.join(' & ');
     const tsvMatchExpr = queryTokens.length > 0
       ? sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, '') || ' ' || coalesce(${judgments.fullText}, '')) @@ to_tsquery('simple', ${tsQueryStr})`
       : undefined;
 
-    // Prefer specific tokens (not stop words) for WHERE filter.
-    // Fallback: if all tokens are stop words, use any token of length >= 4.
-    const specificTokens = allTokens.filter((t) => !STOP_WORDS.has(t));
-    const tokens = specificTokens.length > 0
-      ? specificTokens.slice(0, 10)
-      : allTokens.filter((t) => t.length >= 4).slice(0, 10);
-
-    const tokenQuery = allTokens.slice(0, 10).join(" ");
-    if (tokens.length === 0) return [];
-
-    // Prioritize legal/domain tokens first. If none exist, fall back to longest specific tokens.
-    const legalSignalTokens = tokens.filter((token) =>
-      LEGAL_SIGNAL_TOKENS.has(token) || /^\d{3,4}[a-z]?$/.test(token),
-    );
-    const longTokens = tokens.filter((token) => token.length >= 6);
-    const prioritizedTokens = legalSignalTokens.length > 0 ? legalSignalTokens : longTokens;
-    const filterTokens = tokens.length <= 3
-      ? tokens
-      : Array.from(new Set(
-          (prioritizedTokens.length > 0 ? prioritizedTokens : tokens).slice(0, 6),
-        )).slice(0, 3);
-    const filterConditions = filterTokens.map((token) => {
-      // Search title, parties, citation AND bounded headnotes (first 500 chars).
-      // Enforces Postgres whole-word boundaries for short or critical legal tokens.
-      return or(
-        buildSearchTokenMatch(judgments.citationString, token),
-        buildSearchTokenMatch(judgments.title,          token),
-        buildSearchTokenMatch(judgments.petitioner,     token),
-        buildSearchTokenMatch(judgments.respondent,     token),
-        buildSearchTokenMatch(sql`LEFT(COALESCE(${judgments.headnotes}, ''), 500)`, token),
-      )!;
-    });
-
-    const strictSearchCondition = filterConditions.length === 1
-      ? filterConditions[0]
-      : and(...filterConditions)!;
-
-    const tsvRank = tokenQuery
-      ? sql<number>`COALESCE(ts_rank_cd(
-          to_tsvector('simple',
-            coalesce(${judgments.title}, '') || ' ' ||
-            coalesce(${judgments.headnotes}, '')
-          ),
-          plainto_tsquery('simple', ${tokenQuery})
-        ), 0)`
-      : sql<number>`0`;
-
-    const fetchRows = async (searchCondition: ReturnType<typeof and> | ReturnType<typeof or>) => {
+    const fetchRows = async () => {
       const whereParts = [
         eq(judgments.isActive, true),
         tsvMatchExpr,
-        searchCondition,
       ].filter(Boolean);
       const whereClause = and(...whereParts);
       return await db
@@ -2148,30 +2096,7 @@ export class DatabaseStorage implements IStorage {
         .limit(safeLimit * 4);
     };
 
-    let rows = await fetchRows(strictSearchCondition);
-
-    // Fallback: if strict AND returns 0, retry with OR across the same tokens.
-    // However, do NOT drop critical legal signal tokens (like "mehr", "divorce", "bail" etc.).
-    // If a critical token is present in the query, it MUST be matched even in the fallback.
-    if (rows.length === 0 && filterConditions.length > 1) {
-      const criticalFilterIndices = filterTokens
-        .map((t, idx) => ({ token: t, idx }))
-        .filter((x) => CRITICAL_LEGAL_TOKENS.has(x.token));
-      
-      let fallbackSearchCondition;
-      if (criticalFilterIndices.length > 0) {
-        // Enforce that at least ONE critical token is matched in the fallback (prevents name-only bypasses)
-        const criticalClauses = criticalFilterIndices.map((x) => filterConditions[x.idx]);
-        fallbackSearchCondition = or(...criticalClauses)!;
-      } else {
-        fallbackSearchCondition = or(...filterConditions)!;
-      }
-
-      rows = await fetchRows(fallbackSearchCondition);
-      console.log(
-        `[JudgmentSearch:FallbackOR] query="${safeQuery.slice(0, 80)}" tokens=[${filterTokens.join(",")}] rows=${rows.length}`,
-      );
-    }
+    let rows = await fetchRows();
 
     // Convert judgment rows to CaseLaw-compatible objects for the AI pipeline
     const seen = new Set<string>();
