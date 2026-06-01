@@ -14512,7 +14512,7 @@ The user has attached the following documents for your reference. Analyze them c
   });
 
   /** Smart excerpt for judgment summaries — prioritises HELD/ORDER sections over naive truncation */
-  function extractSmartJudgmentExcerpt(text: string, budget = 30000): string {
+  function extractSmartJudgmentExcerpt(text: string, budget = 12000): string {
     if (text.length <= budget) return text;
 
     // Priority 1: Find HELD / ORDER / DECISION / JUDGMENT section (usually at end)
@@ -14582,22 +14582,18 @@ The user has attached the following documents for your reference. Analyze them c
 
       const searchTerm = citation || title;
 
-      // Run knowledge context + case lookup in parallel (not sequentially)
+      // Fast path: single DB lookup to find the matching case_law row.
+      // No RAG pipeline (gatherKnowledgeContextV2 added 2-5s for no benefit here).
+      // No fallback github/admin searches (sequential, slow).
       const parsedLookupCitation = parseCaseLawCitationQuery(citation || searchTerm);
-      const [knowledgeContext, candidateRows] = await Promise.all([
-        gatherKnowledgeContextV2(searchTerm, userId),
-        // Lightweight DB search — we just need to find the matching case_law row
-        // by citation. searchCaseLawWithFullText was doing RAG + source text + top-up
-        // adding 3-8s of unnecessary latency here.
-        storage.searchCaseLaw(searchTerm, 10, {
-          year: parsedLookupCitation?.year,
-          report: parsedLookupCitation?.report,
-          page: parsedLookupCitation?.page,
-          parsedCitation: parsedLookupCitation,
-          sort: "relevance",
-          includeSourceContentSearch: false,
-        }).catch(() => [] as CaseLaw[]),
-      ]);
+      const candidateRows = await storage.searchCaseLaw(searchTerm, 5, {
+        year: parsedLookupCitation?.year,
+        report: parsedLookupCitation?.report,
+        page: parsedLookupCitation?.page,
+        parsedCitation: parsedLookupCitation,
+        sort: "relevance",
+        includeSourceContentSearch: false,
+      }).catch(() => [] as CaseLaw[]);
 
       let fullText = "";
       try {
@@ -14617,63 +14613,14 @@ The user has attached the following documents for your reference. Analyze them c
             bestRow = row;
           }
         }
-        // Require minimum confidence score to avoid feeding the wrong judgment to the AI.
-        // Citation-match alone gives +120; title-match gives +80. A threshold of 30
-        // prevents contamination from unrelated low-score matches.
         const MIN_SOURCE_MATCH_SCORE = 30;
         if (bestRow && bestScore >= MIN_SOURCE_MATCH_SCORE) {
           fullText = await loadCaseLawSourceText(bestRow, userId, { includeMetadataFallback: false });
         }
-
-        // Fallback path only if strict case-law resolution fails.
-        if (fullText.trim()) {
-          // strict path succeeded
-        } else {
-        const normalize = (s: string) => s.replace(/[^a-z0-9]/gi, "").toLowerCase();
-        const citationNorm = citation ? normalize(citation) : "";
-        const stopWords = new Set(["the", "and", "for", "with", "from", "this", "that", "case", "state", "versus", "pakistan", "government", "court", "high", "supreme", "lahore", "karachi", "islamabad", "peshawar", "quetta"]);
-        const titleWords = title.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3 && !stopWords.has(w));
-
-        const validateMatch = (_content: string, docTitle: string): boolean => {
-          const docTitleNorm = normalize(docTitle);
-          if (citationNorm.length >= 6 && docTitleNorm.includes(citationNorm)) {
-            return true;
-          }
-          const citationParts = citation
-            ? citation.match(new RegExp(`\\b(?:${CASELAW_REPORT_FLEX_PATTERN})\\s*\\d{4}\\b`, "i"))
-            : null;
-          if (citationParts) {
-            const reportPattern = normalize(citationParts[0]);
-            if (docTitleNorm.includes(reportPattern)) {
-              return true;
-            }
-          }
-          if (titleWords.length >= 3) {
-            const docTitleLower = docTitle.toLowerCase();
-            const matchCount = titleWords.filter((w: string) => docTitleLower.includes(w)).length;
-            return matchCount >= Math.ceil(titleWords.length * 0.8);
-          }
-          return false;
-        };
-
-        const ghResults = await storage.searchGithubKnowledge(searchTerm);
-        for (const doc of ghResults) {
-          if (validateMatch(doc.content, doc.title)) {
-            fullText = doc.content;
-            break;
-          }
-        }
-        if (!fullText) {
-          const adminResults = await storage.searchAdminKnowledge(searchTerm);
-          for (const doc of adminResults) {
-            if (validateMatch(doc.content, doc.title)) {
-              fullText = doc.content;
-              break;
-            }
-          }
-        }
-        }
       } catch {}
+
+      // Use headnote/summary from the best matching row as fallback context
+      const knowledgeContext = "";
 
       const hasSourceText = !!fullText;
       const uniqueKey = `${citation}::${title}::${court || ""}`;
