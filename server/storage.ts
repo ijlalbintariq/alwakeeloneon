@@ -1420,17 +1420,46 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchStatutes(query: string, limit: number = 10): Promise<Statute[]> {
-    const pattern = `%${query}%`;
+    const safeQuery = String(query || "").trim();
+    if (!safeQuery) return [];
+
+    const tokens = safeQuery
+      .toLowerCase()
+      .split(MULTIPLE_SPACES_REGEX)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
+      .slice(0, 10);
+
+    if (tokens.length === 0) {
+      // Fallback if all words are stop words or too short
+      const pattern = `%${safeQuery}%`;
+      return await db.select()
+        .from(statutes)
+        .where(
+          or(
+            ilike(statutes.shortTitle, pattern),
+            ilike(statutes.section, pattern),
+            ilike(statutes.description, pattern),
+            ilike(statutes.punishment, pattern)
+          )
+        )
+        .limit(limit);
+    }
+
+    // Construct AND across fields for each token
+    const conditions = tokens.map((token) => {
+      const pattern = `%${token}%`;
+      return or(
+        ilike(statutes.shortTitle, pattern),
+        ilike(statutes.section, pattern),
+        ilike(statutes.description, pattern),
+        ilike(statutes.punishment, pattern)
+      );
+    });
+
     return await db.select()
       .from(statutes)
-      .where(
-        or(
-          ilike(statutes.shortTitle, pattern),
-          ilike(statutes.section, pattern),
-          ilike(statutes.description, pattern),
-          ilike(statutes.punishment, pattern)
-        )
-      )
+      .where(and(...conditions))
       .limit(limit);
   }
 
@@ -2075,33 +2104,28 @@ export class DatabaseStorage implements IStorage {
     const fetchRows = async (queryParam: string): Promise<any[]> => {
       const tsvMatchExpr = sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, '') || ' ' || coalesce(${judgments.fullText}, '')) @@ to_tsquery('simple', ${queryParam})`;
 
-      // We define a nested textMatchExpr referencing "sub" to run regex checks on the limited GIN candidates
-      const subJudgments = {
-        title: sql`sub.title`,
-        headnotes: sql`sub.headnotes`,
-        fullText: sql`sub.full_text`,
+      const outerJudgments = {
+        title: sql`j.title`,
+        headnotes: sql`j.headnotes`,
+        fullText: sql`j.full_text`,
       };
-      const subPerTokenExprs = queryTokens.map((token) => {
+      const outerPerTokenExprs = queryTokens.map((token) => {
         return or(
-          buildSearchTokenMatch(subJudgments.title, token),
-          buildSearchTokenMatch(subJudgments.headnotes, token),
-          buildSearchTokenMatch(subJudgments.fullText, token),
+          buildSearchTokenMatch(outerJudgments.title, token),
+          buildSearchTokenMatch(outerJudgments.headnotes, token),
+          buildSearchTokenMatch(outerJudgments.fullText, token),
         )!;
       });
-      const subTextMatchExpr = subPerTokenExprs.length > 0
-        ? (subPerTokenExprs.length === 1 ? subPerTokenExprs[0] : and(...subPerTokenExprs)!)
+      const outerTextMatchExpr = outerPerTokenExprs.length > 0
+        ? (outerPerTokenExprs.length === 1 ? outerPerTokenExprs[0] : and(...outerPerTokenExprs)!)
         : undefined;
 
       const res = await db.execute(sql`
         WITH candidates AS (
-          SELECT id FROM (
-            SELECT id, title, headnotes, full_text, year FROM judgments
-            WHERE is_active = true AND ${tsvMatchExpr}
-            ORDER BY year DESC
-            LIMIT ${safeLimit * 8}
-          ) sub
-          ${subTextMatchExpr ? sql`WHERE ${subTextMatchExpr}` : sql``}
-          LIMIT ${safeLimit * 2}
+          SELECT id FROM judgments
+          WHERE is_active = true AND ${tsvMatchExpr}
+          ORDER BY year DESC
+          LIMIT ${safeLimit * 8}
         )
         SELECT
           j.id, j.year, j.page, j.citation_string as "citationString", j.title, j.petitioner, j.respondent, j.headnotes,
@@ -2111,7 +2135,9 @@ export class DatabaseStorage implements IStorage {
         INNER JOIN judgments j ON cand.id = j.id
         LEFT JOIN courts_ref c ON j.court_id = c.id
         INNER JOIN law_journals l ON j.journal_id = l.id
+        ${outerTextMatchExpr ? sql`WHERE ${outerTextMatchExpr}` : sql``}
         ORDER BY j.year DESC
+        LIMIT ${safeLimit * 2}
       `);
       return res.rows as any[];
     };
@@ -4235,6 +4261,8 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_documents_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_documents_content_trgm ON documents USING gin (content gin_trgm_ops)` },
     { label: "idx_statutes_short_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statutes_short_title_trgm ON statutes USING gin (short_title gin_trgm_ops)` },
     { label: "idx_statutes_description_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statutes_description_trgm ON statutes USING gin (description gin_trgm_ops)` },
+    { label: "idx_statutes_section_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statutes_section_trgm ON statutes USING gin (section gin_trgm_ops)` },
+    { label: "idx_statutes_punishment_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statutes_punishment_trgm ON statutes USING gin (punishment gin_trgm_ops)` },
     { label: "idx_statute_documents_title_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statute_documents_title_trgm ON statute_documents USING gin (title gin_trgm_ops)` },
     { label: "idx_statute_documents_content_trgm", stmt: sql`CREATE INDEX IF NOT EXISTS idx_statute_documents_content_trgm ON statute_documents USING gin (content gin_trgm_ops)` },
     { label: "idx_law_journals_code", stmt: sql`CREATE INDEX IF NOT EXISTS idx_law_journals_code ON law_journals (code)` },

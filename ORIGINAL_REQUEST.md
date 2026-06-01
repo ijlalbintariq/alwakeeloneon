@@ -530,4 +530,45 @@ Create an automated test script (`scripts/verify_search.ts`) that runs sample se
 Hi, I'm checking in on the status of the legal keyword search engine rebuild. We just ran `node --import tsx --env-file=.env scripts/verify_search.ts` and the verification failed with a query execution time of 9.1s for "searchCaseLaw". Could you please report your current progress, what changes you have already deployed, and if there are any remaining issues you are addressing?
 
 
+## Follow-up — 2026-06-01T18:25:00+05:00
+
+Fix the statute search, direct lookup retrieval, prompt context ordering, and PDF viewing experience for the Al Wakeelo legal platform to ensure statutes are fast, accurate, ordered first in the AI's context, and render perfectly in the PDF viewer.
+
+Working directory: /Users/macbook/Downloads/Alwakeelo
+Integrity mode: development
+
+## Requirements
+
+### R1. Fast, Tokenized Statute Keyword Search
+1. Update `storage.searchStatutes` in `server/storage.ts` to tokenize search queries, ignore stop words, and build a proper per-token `AND` search across `shortTitle`, `section`, `description`, and `punishment`.
+2. Add GIN trigram indexes on `section` and `punishment` in the `indexStatements` array in `storage.ts` so they are automatically checked and built on start. This ensures that every column in the statute search is indexed, speeding up query execution by 80%+.
+
+### R2. Precise Direct Section Lookup
+1. In `fetchStatutes` inside `server/pipeline/retrieval-engine.ts`, when handling an explicit `intent.statuteRef` (direct lookup), query the database using `${fullName} ${sectionOrArticle}` instead of just `${fullName}` so the database filters by the section number.
+2. Normalize section strings by stripping prefixes like `"Section "` or `"Article "` from both database values and the search pattern before running the in-memory matching filter to prevent correct matches from being discarded.
+3. For general search, query by the original normalized query (`intent.normalized`) instead of the expanded query (`intent.expandedQuery`) to prevent synonym conflicts in tokenized `AND` matching.
+
+### R3. Statute-First Prompt Ordering
+Update `buildContext` in `server/pipeline/context-builder.ts` to set `statuteFirst` to `true` whenever the intent type is `"statute"` or `"general-legal"`, ensuring that statutes are placed at the very top of the AI's context block so the model reads them first.
+
+### R4. Robust PDF Viewer Integration
+Configure the PDF.js worker in `client/src/components/statute-pdf-viewer.tsx` to use the matching CDN-hosted worker script from unpkg (`https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`) instead of the local file URL to resolve Vite pathing and MIME-type mismatch bugs.
+
+---
+
+## Acceptance Criteria
+
+### RAG Retrieval & Relevance
+- [ ] Searching for `"haq mehr"` in `storage.searchStatutes` successfully retrieves the relevant `"Muslim Family Laws Ordinance, 1961"` sections.
+- [ ] Searching for `"PPC 302"` or `"CrPC 497"` in the RAG retrieval pipeline successfully returns the exact intended section.
+- [ ] General legal queries have the Verified Statutes section placed *before* the Verified Judgments section in the built context prompt.
+
+### Performance
+- [ ] Database execution times for `storage.searchStatutes` remain under 350ms (representing sub-10ms raw database latency).
+
+### PDF Rendering
+- [ ] Clicking a statute document in the search page, selecting **PDF View**, successfully loads and renders the PDF canvas perfectly without hanging or console MIME-type errors.
+
+
+
 

@@ -400,22 +400,32 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
 // Statute retrieval
 // ---------------------------------------------------------------------------
 
+function cleanSection(secStr: string): string {
+  return secStr
+    .toLowerCase()
+    .replace(/\b(?:section|article|sec\.?|art\.?|s\.?)\b/g, "")
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+}
+
 async function fetchStatutes(intent: QueryIntent, limit: number): Promise<RetrievedStatute[]> {
   // Direct section lookup when user explicitly typed e.g. "PPC 392" or "Article 25 Constitution"
   if (intent.statuteRef) {
     const { fullName, sectionOrArticle } = intent.statuteRef;
-    // Search by full statute name + section number for exact match
+    // Search by full statute name + section number for precise token matching in database
     const directRows = await withTimeout(
-      storage.searchStatutes(`${fullName}`, limit * 3).catch(() => []),
+      storage.searchStatutes(`${fullName} ${sectionOrArticle}`, limit * 3).catch(() => []),
       STATUTE_TIMEOUT_MS,
       [],
     ) as any[];
-    // Filter to matching section
-    const sectionPattern = sectionOrArticle.toLowerCase();
+
+    // Filter to matching section by normalizing strings and stripping prefixes
+    const cleanUserSection = cleanSection(sectionOrArticle);
     const matched = directRows.filter((r: any) => {
-      const sec = String(r.section || "").toLowerCase();
-      return sec === sectionPattern || sec.startsWith(sectionPattern + " ") || sec.includes(`(${sectionPattern})`);
+      const dbSecClean = cleanSection(String(r.section || ""));
+      return dbSecClean === cleanUserSection || dbSecClean.startsWith(cleanUserSection) || dbSecClean.includes(cleanUserSection);
     });
+
     if (matched.length > 0) {
       return matched.slice(0, limit).map((s: any) => ({
         shortTitle: String(s.shortTitle || ""),
@@ -438,7 +448,8 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
     if (fallback.length > 0) return fallback;
   }
 
-  const query = intent.expandedQuery || intent.normalized;
+  // Use intent.normalized query for general statute search to avoid token AND failure on synonyms
+  const query = intent.normalized;
   const rawRows = await withTimeout(
     storage.searchStatutes(query, limit * 2).catch(() => []),
     STATUTE_TIMEOUT_MS,

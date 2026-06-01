@@ -197,7 +197,7 @@ export function buildContext(
 ): ContextOutput {
   const sections: ContextSection[] = [];
 
-  const statuteFirst = !!intent.statuteRef;
+  const statuteFirst = !!intent.statuteRef || intent.type === "statute" || intent.type === "general-legal";
 
   const judgeSection = buildVerifiedJudgmentsSection(retrieval.caseLaw);
   const statSection  = buildVerifiedStatutesSection(retrieval.statutes);
