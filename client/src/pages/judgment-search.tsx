@@ -737,7 +737,9 @@ export default function JudgmentSearchPage() {
                   </span>
                 </div>
 
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4 line-clamp-3">{item.summary}</p>
+                <div className="text-sm text-muted-foreground leading-relaxed mb-4 prose prose-invert prose-sm max-w-none">
+                  <LegalMarkdown content={item.summary} />
+                </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -764,43 +766,58 @@ export default function JudgmentSearchPage() {
                   ) : null}
 
                   <button
-                    onClick={() => setExpandedSummary(expandedSummary === idx ? null : idx)}
+                    onClick={() => void handleGetSummary(item, idx)}
+                    disabled={summaryLoading[idx]}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/50 px-3 py-2 text-[11px] font-bold text-foreground hover:border-primary/40 hover:text-foreground"
-                    data-testid={`button-headnotes-${idx}`}
+                    data-testid={`button-ai-summary-${idx}`}
                   >
-                    {expandedSummary === idx ? (
+                    {summaryLoading[idx] ? (
                       <>
-                        <ChevronUp size={13} /> Hide Notes
+                        <Loader2 size={13} className="animate-spin" /> Analyzing...
+                      </>
+                    ) : expandedSummary === idx && summaries[idx] ? (
+                      <>
+                        <ChevronUp size={13} /> Hide Summary
+                      </>
+                    ) : summaries[idx] ? (
+                      <>
+                        <ChevronDown size={13} /> Case Summary
                       </>
                     ) : (
                       <>
-                        <FileText size={13} /> Head Notes
+                        <Sparkles size={13} /> Case Summary
                       </>
                     )}
                   </button>
                 </div>
               </div>
 
-              {expandedSummary === idx && item.summary ? (
-                <div className="border-t border-border p-5 md:p-6" data-testid={`judgment-headnotes-panel-${idx}`}>
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300">
-                        <FileText size={11} /> Head Notes
-                      </span>
-                      <button
-                        onClick={() => setExpandedSummary(null)}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground"
-                        data-testid={`button-close-headnotes-${idx}`}
-                      >
-                        <X size={14} />
-                      </button>
+              {/* AI Case Summary panel */}
+              {expandedSummary === idx && (summaryLoading[idx] || summaries[idx]) ? (
+                <div className="border-t border-border p-5 md:p-6" data-testid={`judgment-summary-panel-${idx}`}>
+                  {summaryLoading[idx] ? (
+                    <div className="flex items-center gap-2 text-sm text-foreground">
+                      <Loader2 size={14} className="animate-spin text-primary" />
+                      Al Wakeelo is analyzing this case...
                     </div>
-
-                    <div className="prose prose-invert prose-sm max-w-none" data-testid={`text-judgment-headnotes-${idx}`}>
-                      <LegalMarkdown content={item.summary} />
+                  ) : summaries[idx] ? (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
+                          <Sparkles size={11} /> Case Summary
+                        </span>
+                        <button
+                          onClick={() => setExpandedSummary(null)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <div className="prose prose-invert prose-sm max-w-none">
+                        <LegalMarkdown content={summaries[idx].summary} />
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
               ) : null}
             </article>
