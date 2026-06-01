@@ -1909,20 +1909,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </details>
           </section>
 
-          <section className="xl:hidden border-b border-primary/10 bg-background/55 px-3 sm:px-6 py-2">
-            <details className="group">
-              <summary className="list-none cursor-pointer flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-primary">
-                <span className="inline-flex items-center gap-2">
-                  <FileText size={13} />
-                  Live Legal Insights
-                </span>
-                <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="pt-3 max-h-[42vh] overflow-y-auto pr-1 scrollbar-hide">
-                {renderInsightsCards(true)}
-              </div>
-            </details>
-          </section>
+
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-7 scrollbar-hide bg-background flex flex-col items-center">
             <div className="w-full max-w-2xl">
@@ -2395,29 +2382,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         </main>
 
-        <div className="hidden xl:flex absolute right-3 top-1/2 -translate-y-1/2 z-40">
-          <button
-            onClick={() => setRightRailOpen((prev) => !prev)}
-            className="h-16 w-6 border border-border rounded-l-lg bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
-            data-testid="divider-toggle-right-chat-rail"
-            title={rightRailVisible ? "Collapse insights panel" : "Expand insights panel"}
-            aria-label={rightRailVisible ? "Collapse insights panel" : "Expand insights panel"}
-          >
-            {rightRailVisible ? <ChevronRight size={15} className="drop-shadow" /> : <ChevronLeft size={15} className="drop-shadow" />}
-          </button>
-        </div>
 
-        <aside
-          className={`hidden xl:flex absolute right-3 top-20 bottom-44 z-30 transition-[width,opacity,transform] duration-300 ease-out overflow-hidden ${
-            rightRailVisible
-              ? "w-64 opacity-100 translate-x-0"
-              : "w-0 opacity-0 translate-x-3 pointer-events-none"
-          }`}
-        >
-          <div className="p-5 overflow-y-auto h-full space-y-8 scrollbar-hide w-64 rounded-2xl border border-primary/20 bg-background/85 backdrop-blur-xl shadow-[0_20px_45px_rgba(120,53,15,0.28)]">
-            {renderInsightsCards(false)}
-          </div>
-        </aside>
       </div>
     </div>
   );
