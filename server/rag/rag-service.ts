@@ -710,18 +710,20 @@ export async function retrieveForQuery(args: {
     ...globalSearches,
   ]);
   const globalMatches = globalMatchGroups.flat();
-  const matches = [...userMatches, ...globalMatches]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, Math.max(candidateTopK, requestedTopK));
+  // Do NOT truncate here — diversity splitting needs the full pool from all scopes.
+  // If we slice to candidateTopK first, high-scoring statutes crowd out all judgments.
+  const allMatches = [...userMatches, ...globalMatches]
+    .sort((a, b) => b.score - a.score);
 
   // Strict filter: only return results that meet the minimum relevance threshold.
   // No last-resort fallbacks — returning wrong documents is worse than returning nothing.
   // Also filter out internal workspace state documents (not real user content).
-  const filtered = matches
+  const filtered = allMatches
     .filter((m) => Number.isFinite(m.score) && m.score >= MIN_SCORE)
     .filter((m) => !m.title.startsWith("__"));
 
   // Ensure source diversity: separate statutes, judgments, and user documents.
+  // Then take top candidates from EACH category so one type can't crowd out the others.
   const statuteResults = filtered.filter((m) => {
     const srcType = String(m.metadata?.sourceType || "");
     return srcType === "statute" || srcType === "admin-statute";
@@ -735,8 +737,7 @@ export async function retrieveForQuery(args: {
     return srcType !== "statute" && srcType !== "admin-statute" && srcType !== "judgment" && srcType !== "admin-case-law";
   });
 
-  // Build diverseResults by including candidates from all three categories.
-  // Slice each category up to candidateTopK to ensure we pass a rich selection to reranking.
+  // Build diverseResults by including top candidates from all three categories.
   const diverseResults: RagMatch[] = [];
   const maxCategorySlice = Math.max(candidateTopK, 15);
   diverseResults.push(...statuteResults.slice(0, maxCategorySlice));
