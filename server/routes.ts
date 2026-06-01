@@ -3197,7 +3197,13 @@ export async function verifyReferencesBlock(
       if (k) trustedPoolKeys.add(k);
     }
   }
-  const poolMode = trustedPoolKeys.size > 0 && effectivePolicy.strict;
+  // Only activate pool-mode rejection when the pool is large enough to be
+  // authoritative (>= 5 hits). With fewer hits, the tool search likely had
+  // partial coverage — rejecting off-pool citations strips legitimate cases
+  // the AI found from training but that ARE in the DB. Fall through to
+  // per-citation DB verification instead.
+  const POOL_MODE_MIN_SIZE = 5;
+  const poolMode = trustedPoolKeys.size >= POOL_MODE_MIN_SIZE && effectivePolicy.strict;
 
   const judgmentRows = await Promise.all(
     inputJudgments.map(async (judgment) => {
@@ -3292,8 +3298,11 @@ export function enforceProseCitationIntegrity(
       .trim();
     if (key) trustedKeys.add(key);
   }
-  // If no trusted pool exists, skip (non-al-wakeelo modules, or tool search disabled)
-  if (trustedKeys.size === 0) return content;
+  // If no trusted pool exists OR pool is too small to be authoritative, skip.
+  // A small pool (< 5 hits) means tool search had partial coverage — stripping
+  // every other citation produces empty "Leading Case Law" sections.
+  const PROSE_SCRUB_MIN_POOL = 5;
+  if (trustedKeys.size < PROSE_SCRUB_MIN_POOL) return content;
 
   // Separate references block from prose — don't touch the block (already verified)
   const refsMatch = content.match(/(```references[\s\S]*?```)/);
