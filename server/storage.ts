@@ -2066,6 +2066,7 @@ export class DatabaseStorage implements IStorage {
     //   "A issues a post-dated cheque ..." should prioritize "cheque" (and related legal
     //   terms), not first-seen narrative tokens like "issues post dated".
     const LEGAL_SIGNAL_TOKENS = new Set([
+      // Core procedural / statutory tokens
       "section", "article", "ppc", "crpc", "qso", "cpc", "cnsa",
       "cheque", "dishonour", "dishonor", "bail", "murder", "qatl", "diyat",
       "contract", "agreement", "fraud", "forgery", "theft", "robbery",
@@ -2073,7 +2074,7 @@ export class DatabaseStorage implements IStorage {
       "maintenance", "divorce", "khula", "rent", "tenancy", "eviction",
       "appeal", "petition", "revision", "writ", "constitutional", "injunction",
       "conviction", "acquittal", "evidence", "fir",
-      // Family / dower law tokens — critical for Haq Mehr, Nikahnama, MFLO queries
+      // Family / dower law tokens
       "haq", "mehr", "dower", "nikahnama", "mahr", "mehar", "hiba",
       "talaq", "nafaqa", "iddat", "walima", "mflo",
       "dissolution", "marriage", "restitution", "conjugal",
@@ -2081,6 +2082,69 @@ export class DatabaseStorage implements IStorage {
       "bank", "banking", "financing", "loan", "mortgage", "markup",
       "recovery", "credit", "guarantee", "guarantor", "restructuring",
       "defaulter", "lien", "hypothecation", "overdraft", "set-off",
+      // Criminal law tokens (new)
+      "arms", "weapons", "firearms", "pistol", "explosives", "ammunition",
+      "terrorism", "terrorist", "ata", "blasphemy", "desecration",
+      "hurt", "injury", "grievous", "arsh", "daman",
+      "burglary", "housebreaking", "stealing",
+      "extortion", "bhatta", "blackmail", "intimidation",
+      "defamation", "defamatory", "libel", "slander",
+      "obscenity", "pornography",
+      "riot", "rioting", "unlawful", "affray",
+      "arson", "mischief", "vandalism",
+      "honor", "honour", "karo", "ghairat",
+      "acid", "disfigurement", "corrosive",
+      // Civil / commercial law tokens (new)
+      "tenant", "landlord", "ejectment", "lease",
+      "company", "corporate", "directors", "shareholders", "secp", "winding",
+      "insurance", "premium", "indemnity", "insurer",
+      "consumer", "warranty", "defective",
+      "copyright", "trademark", "patent", "piracy",
+      "partnership", "dissolution", "goodwill",
+      "arbitration", "mediation", "conciliation", "arbitral",
+      "limitation", "prescribed", "condonation",
+      "execution", "decree", "attachment", "auction",
+      "probate", "administrator", "executor",
+      "pre-emption", "shufa",
+      "promissory", "debt", "creditor", "debtor",
+      // Inheritance / Islamic succession tokens (new)
+      "miras", "wirasat", "faraid", "sharers", "residuaries",
+      "wasiyat", "bequest", "testamentary",
+      "widow", "daughter", "disinheritance", "exclusion",
+      "ancestral", "coparcenary", "intaqal",
+      // Civil procedure tokens (new)
+      "declaratory", "declaration", "partition",
+      "dispossession", "possession", "cancellation",
+      "negligence", "tortious", "compensation", "damages",
+      "easement", "prescriptive",
+      "adverse", "hostile", "squatter",
+      "res-judicata", "estoppel", "lis-pendens",
+      "compromise", "settlement", "consent",
+      "counterclaim", "replevin",
+      "mesne", "plaint", "replication",
+      // Specialized law tokens (new)
+      "cybercrime", "hacking", "peca", "phishing", "stalking",
+      "accident", "rash", "traffic", "challan",
+      "pollution", "epa", "environmental",
+      "election", "disqualification", "ecp", "tribunal",
+      "court-martial", "military", "army",
+      "immigration", "visa", "passport", "deportation", "fia",
+      "malpractice", "medical", "negligence", "surgery",
+      "domestic", "violence", "cruelty", "abuse",
+      "juvenile", "borstal", "minor",
+      "waqf", "trust", "endowment", "auqaf", "mutawalli",
+      // Administrative / regulatory tokens (new)
+      "contempt", "disobedience",
+      "laundering", "amla", "proceeds",
+      "pemra", "broadcast", "journalist",
+      "ombudsman", "mohtasib", "maladministration",
+      "pil", "suo-motu", "smuggling", "contraband", "confiscation",
+      "municipal", "patwari", "khasra", "girdawari", "revenue",
+      "seniority", "posting", "transfer",
+      "cooperative", "registrar",
+      "prohibition", "liquor", "alcohol",
+      "detention", "mpo", "externment",
+      "search", "warrant", "seizure",
     ]);
 
     const queryTokens = safeQuery
