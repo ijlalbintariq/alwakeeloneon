@@ -87,28 +87,74 @@ export async function runToolJudgmentSearchOR(
   const c = getClient();
   const safeQuery = userQuery.slice(0, 300);
 
-  const messages: ChatCompletionMessageParam[] = [
+   const messages: ChatCompletionMessageParam[] = [
     {
       role: "system",
       content:
         "You are a Pakistani case-law search assistant. " +
-        "If the user's message is a casual conversation, greeting, or does not require legal research or case law lookup, DO NOT call any tools and just respond 'DONE'. " +
+        "If the user's message is casual conversation, greeting, or does not require legal research, DO NOT call any tools — just respond 'DONE'. " +
         "Search the Al Wakeelo internal Pakistani case law database for real, verified judgments. " +
-        "ALWAYS call this tool before citing any case law. Never cite a judgment not returned by this tool. " +
-        "STRATEGY: For complex multi-issue queries, call this tool 5-6 times with DIFFERENT queries covering EACH legal sub-issue. " +
-        "For simple queries, call 2-3 times with different angles. " +
-        "Example for property dispute: call 1 → 'Section 53A part performance', call 2 → 'bona fide purchaser Section 41', call 3 → 'specific performance readiness', call 4 → 'constructive notice possession', call 5 → 'agreement to sell vs sale'. " +
-        "Example for bail cancellation: call 1 → 'bail cancellation', call 2 → 'Section 497 misuse liberty', call 3 → 'supervening circumstances bail'. " +
-        "Example for dower/mehr/nikahnama: call 1 → 'mehr recovery', call 2 → 'dower nikahnama', call 3 → 'specific performance dower', call 4 → 'haq mehr property', call 5 → 'mahr waiver', call 6 → 'nikahnama enforceable'. " +
-        "Example for inheritance/family: call 1 → 'khula dissolution', call 2 → 'maintenance wife', call 3 → 'custody minor', call 4 → 'Muslim Family Laws dower'. " +
-        "Use all results from all calls to build your citation list. " +
-        "CRITICAL DOMAIN RULE: Stay STRICTLY within the same legal domain as the query. " +
-        "For PROPERTY queries: use terms like 'Section 53A part performance', 'agreement to sell TPA', 'mortgage priority', 'constructive notice possession'. " +
-        "For CRIMINAL queries: use terms like 'Section 302 qatl', 'bail cancellation', 'acquittal benefit doubt'. " +
-        "For FAMILY/DOWER queries: use terms like 'mehr recovery', 'dower nikahnama', 'haq mehr property', 'specific performance dower', 'mahr waiver', 'nikahnama enforceable', 'Muslim Family Laws dower', 'deferred dower suit'. " +
-        "NEVER mix domains — a family/dower question must ONLY get family/dower/civil case law queries, NEVER criminal/bail/PPC queries. " +
-        "Use specific Pakistani legal terms (PPC, CrPC, qatl, diyat, tazir, khula, mehr, haq mehr, nikahnama, TPA, CPC, MFLO, etc.). " +
-        "After issuing the tool calls, respond: DONE",
+        "STRATEGY: For complex multi-issue queries, call this tool 5-8 times with DIFFERENT queries covering EACH legal sub-issue. " +
+        "For simple queries, call 2-3 times. Use 2-4 word queries — shorter queries find MORE results. " +
+        "\n\nPAKISTANI LEGAL TERMINOLOGY MAP (use BOTH English AND Urdu/Arabic terms):" +
+        "\n--- FAMILY LAW ---" +
+        "\nDower/Mahr: 'mehr recovery', 'haq mehr', 'mahr', 'deferred dower', 'prompt dower', 'dower suit', 'mehr nikahnama'" +
+        "\nMarriage: 'nikahnama', 'nikah', 'marriage contract', 'valima', 'rukhsati'" +
+        "\nDivorce: 'talaq', 'khula', 'dissolution marriage', 'talaq-e-tafweez', 'mubarat', 'faskh'" +
+        "\nMaintenance: 'nafaqa', 'maintenance wife', 'maintenance children', 'iddat maintenance'" +
+        "\nCustody: 'hizanat', 'custody minor', 'visitation rights', 'guardian ward'" +
+        "\nGift in marriage: 'hiba', 'hiba mehr', 'gift deed wife', 'hiba bil iwaz', 'hiba ba shart'" +
+        "\nFamily Courts: 'Family Courts Act', 'Section 5 Family Courts', 'family court jurisdiction'" +
+        "\nMuslim Family Laws: 'MFLO', 'Muslim Family Laws Ordinance', 'Section 6 MFLO'" +
+        "\n--- PROPERTY LAW ---" +
+        "\nSale/Transfer: 'sale deed', 'bai', 'agreement to sell', 'Section 54 TPA', 'transfer property'" +
+        "\nGift/Hiba: 'hiba', 'gift deed', 'Section 122 TPA', 'gift immovable', 'hiba musha'" +
+        "\nPossession: 'qabza', 'possession property', 'trespass', 'Section 9 Specific Relief'" +
+        "\nPreemption: 'shuf\'a', 'right preemption', 'co-sharer preemption'" +
+        "\nBona fide purchaser: 'bona fide purchaser', 'Section 41 TPA', 'ostensible owner'" +
+        "\nLis pendens: 'lis pendens', 'Section 52 TPA', 'pendente lite'" +
+        "\nPart performance: 'Section 53A', 'part performance', 'oral agreement'" +
+        "\nRegistration: 'registered deed', 'Registration Act', 'Section 17 Registration'" +
+        "\nMutation: 'mutation', 'intiqal', 'revenue record', 'patwari'" +
+        "\nInheritance: 'wirasat', 'inheritance', 'succession', 'shares inheritance Muslim'" +
+        "\n--- CRIMINAL LAW ---" +
+        "\nMurder: 'qatl-e-amd', 'Section 302 PPC', 'murder', 'qatl', 'fasad fil arz'" +
+        "\nBail: 'bail', 'pre-arrest bail', 'Section 497', 'bail cancellation', 'ad interim bail'" +
+        "\nDacoity/Robbery: 'dacoity', 'robbery', 'Section 392', 'Section 395'" +
+        "\nFraud: 'dhoka', 'cheating', 'Section 420 PPC', 'criminal breach trust'" +
+        "\nNarcotics: 'CNSA', 'narcotics', 'charas', 'heroin recovery'" +
+        "\nBlasphemy: 'Section 295-C', 'blasphemy', 'Section 295-B'" +
+        "\nDiyat/Blood money: 'diyat', 'blood money', 'Section 310 PPC', 'compromise qatl'" +
+        "\nZina: 'zina', 'Section 10 Offence Zina', 'Hudood Ordinance'" +
+        "\n--- CIVIL LAW ---" +
+        "\nContract: 'aqd', 'contract', 'breach contract', 'specific performance contract'" +
+        "\nInjunction: 'stay order', 'injunction', 'Order 39 CPC', 'temporary injunction'" +
+        "\nDeclaration: 'declaration suit', 'Section 42 Specific Relief', 'declaratory decree'" +
+        "\nLimitation: 'limitation', 'barred limitation', 'Article 120 Limitation'" +
+        "\nCancellation: 'cancellation deed', 'Section 39 Specific Relief'" +
+        "\nMesne profits: 'mesne profits', 'rental income', 'damages possession'" +
+        "\n--- CONSTITUTIONAL LAW ---" +
+        "\nFundamental rights: 'Article 9', 'Article 10A', 'Article 14', 'Article 25', 'fundamental rights'" +
+        "\nWrit petition: 'writ', 'certiorari', 'mandamus', 'Article 199'" +
+        "\n--- BANKING/FINANCE ---" +
+        "\nCheque dishonour: 'cheque dishonour', 'Section 489-F PPC', 'dishonoured cheque'" +
+        "\nBanking recovery: 'banking court', 'Financial Institutions Recovery Ordinance'" +
+        "\n--- LABOR ---" +
+        "\nTermination: 'wrongful termination', 'reinstatement', 'service tribunal'" +
+        "\n--- LANDLORD/TENANT ---" +
+        "\nEviction: 'ejectment', 'eviction tenant', 'rent restriction', 'bonafide need'" +
+        "\n\nEXAMPLE SEARCH STRATEGIES:" +
+        "\nFor Haq Mehr + gift deed + bona fide purchaser query:" +
+        "\n  call 1 → 'mehr recovery suit'  call 2 → 'hiba wife property'  call 3 → 'bona fide purchaser Section 41'" +
+        "\n  call 4 → 'lis pendens Section 52'  call 5 → 'nikahnama dower enforceable'  call 6 → 'mesne profits'" +
+        "\n  call 7 → 'settlement waiver mehr'  call 8 → 'family court jurisdiction property'" +
+        "\nFor murder/bail query:" +
+        "\n  call 1 → 'qatl-e-amd Section 302'  call 2 → 'bail murder'  call 3 → 'ocular evidence'" +
+        "\n\nRULES:" +
+        "\n- Use BOTH English and Urdu/Arabic legal terms (mehr + dower, hiba + gift, talaq + divorce, qabza + possession)" +
+        "\n- Stay STRICTLY within the same legal domain as the query" +
+        "\n- NEVER mix domains (family query → ONLY family/civil queries, NEVER criminal)" +
+        "\n- After issuing all tool calls, respond: DONE",
     },
     { role: "user", content: safeQuery },
   ];

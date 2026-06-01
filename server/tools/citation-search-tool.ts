@@ -137,6 +137,76 @@ function cacheSet(key: string, payload: string): void {
   TOOL_SEARCH_CACHE.set(key, { payload, expiresAt: Date.now() + TOOL_SEARCH_CACHE_TTL_MS });
 }
 
+// Pakistani legal synonym groups — bidirectional expansion ensures DB hits
+// regardless of whether the AI or user used English or Urdu/Arabic terms.
+const PAKISTANI_LEGAL_SYNONYMS: string[][] = [
+  // Family Law
+  ["mehr", "mahr", "dower", "haq mehr", "mahar"],
+  ["nikahnama", "nikah", "marriage contract", "marriage deed"],
+  ["talaq", "divorce", "dissolution marriage"],
+  ["khula", "khul", "dissolution suit wife"],
+  ["hizanat", "custody", "custody minor"],
+  ["nafaqa", "maintenance", "alimony"],
+  ["iddat", "waiting period", "iddat maintenance"],
+  ["walima", "valima", "marriage ceremony"],
+  ["rukhsati", "sending off bride"],
+  ["mubarat", "mutual divorce"],
+  ["faskh", "annulment", "judicial divorce"],
+  // Property Law
+  ["hiba", "gift", "gift deed", "hibba"],
+  ["hiba bil iwaz", "gift consideration", "hiba for consideration"],
+  ["qabza", "possession", "physical possession"],
+  ["intiqal", "mutation", "revenue mutation"],
+  ["bai", "sale", "sale deed"],
+  ["shuf'a", "shufa", "preemption", "right preemption"],
+  ["musha", "undivided share", "joint property"],
+  ["wirasat", "inheritance", "succession"],
+  ["waqf", "wakf", "endowment", "charitable trust"],
+  // Criminal Law
+  ["qatl", "murder", "homicide", "qatl-e-amd"],
+  ["diyat", "blood money", "compensation murder"],
+  ["tazir", "discretionary punishment"],
+  ["fasad fil arz", "mischief", "terrorism"],
+  ["zina", "fornication", "adultery"],
+  ["charas", "cannabis", "hashish", "narcotics"],
+  ["dhoka", "fraud", "cheating", "deception"],
+  // General
+  ["aqd", "contract", "agreement"],
+  ["adalat", "court", "tribunal"],
+  ["wukala", "lawyers", "advocates"],
+  ["lis pendens", "pendente lite", "pending suit transfer"],
+  ["bona fide purchaser", "innocent purchaser", "good faith purchaser"],
+  ["mesne profits", "rental income", "damages use occupation"],
+];
+
+function expandQueryWithSynonyms(query: string): string[] {
+  const lowerQuery = query.toLowerCase();
+  const expansions = new Set<string>();
+  
+  for (const group of PAKISTANI_LEGAL_SYNONYMS) {
+    const matched = group.some(term => {
+      const lowerTerm = term.toLowerCase();
+      // Check if the query contains the term or the term contains the query
+      return lowerQuery.includes(lowerTerm) || lowerTerm.includes(lowerQuery);
+    });
+    if (matched) {
+      for (const synonym of group) {
+        // Only add short synonyms (1-3 words) to avoid bloating the search
+        if (synonym.split(/\s+/).length <= 3) {
+          expansions.add(synonym.toLowerCase());
+        }
+      }
+    }
+  }
+  
+  // Return the original query + up to 3 most relevant expanded queries
+  const expanded = [...expansions]
+    .filter(s => !lowerQuery.includes(s) && !s.includes(lowerQuery))
+    .slice(0, 3);
+  
+  return [query, ...expanded.map(s => s)];
+}
+
 export async function executeCitationSearch(args: CitationSearchArgs): Promise<string> {
   const { query, court, limit = 20 } = args;
   // Raised cap 10 -> 25 to widen the trusted pool for the answer model.
@@ -152,10 +222,15 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
   }
 
   try {
+    // Expand query with Pakistani legal synonyms for broader DB coverage.
+    // When AI searches 'dower', also search 'mehr', 'mahr', 'haq mehr' etc.
+    const expandedQueries = expandQueryWithSynonyms(query);
+    
     // Search both tables in parallel alongside a high-performance Vector Similarity Search (RAG).
-    // Previously, pure keyword search only matched titles or metadata, missing rich context inside
-    // full text and headnotes. Hybrid RAG vector search fetches semantically relevant judgments.
-    const [caseLawResults, judgmentResults, vectorResultsRaw] = await Promise.all([
+    // Run expanded synonym queries in parallel with the original for maximum coverage.
+    const perQueryLimit = Math.max(5, Math.ceil(safeLimit / expandedQueries.length));
+    
+    const [caseLawResults, judgmentResults, vectorResultsRaw, ...synonymResults] = await Promise.all([
       storage.searchCaseLaw(query, safeLimit, { court: court || undefined }),
       storage.searchJudgmentsByKeywords(query, safeLimit),
       retrieveForQuery({
@@ -167,6 +242,11 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
         console.warn("[executeCitationSearch:Vector] Hybrid search failed, falling back to keywords:", err?.message || err);
         return { matches: [] };
       }),
+      // Synonym-expanded searches — run in parallel, lightweight DB calls
+      ...expandedQueries.slice(1).flatMap(synQuery => [
+        storage.searchCaseLaw(synQuery, perQueryLimit, { court: court || undefined }).catch(() => []),
+        storage.searchJudgmentsByKeywords(synQuery, perQueryLimit).catch(() => []),
+      ]),
     ]);
 
     // Map RAG vector matches to the unified CaseLaw structure.
@@ -208,10 +288,18 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
     });
 
     // Merge + dedupe by normalised citation string. Judgments table preferred,
-    // followed by Vector Similarity hits, and then keyword fallback matches.
+    // followed by Vector Similarity hits, synonym-expanded results, and then keyword fallback matches.
     const seen = new Set<string>();
     const dedup: typeof caseLawResults = [];
-    for (const r of [...judgmentResults, ...vectorResults, ...caseLawClean]) {
+    // Flatten synonym results (alternating caseLaw[], judgments[] pairs)
+    const flatSynonymResults = (synonymResults as (typeof caseLawResults)[]).flat().filter((r) => {
+      const courtStr = String(r.court || "").trim().toLowerCase();
+      const titleStr = String(r.title || "").trim().toLowerCase();
+      if (courtStr === "statute reference") return false;
+      if (titleStr.startsWith("statute reference")) return false;
+      return true;
+    });
+    for (const r of [...judgmentResults, ...vectorResults, ...caseLawClean, ...flatSynonymResults]) {
       const key = normalizeCitationKey(r.citation);
       if (!key || seen.has(key)) continue;
       seen.add(key);
