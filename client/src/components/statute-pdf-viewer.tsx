@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Document, Page, Outline, pdfjs } from "react-pdf";
 import { List as WindowedList } from "react-window";
 import {
@@ -19,8 +19,6 @@ import { useToast } from "@/hooks/use-toast";
 // Configure the PDF.js worker using the locally hosted static asset in the public folder to bypass Vite pathing and CORS issues
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
-
-
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
@@ -28,6 +26,9 @@ interface StatutePdfViewerProps {
   fileUrl: string;
   onNavigateToSection?: (sectionId: string) => void;
 }
+
+// Memoize the options object to prevent react-pdf Document from re-loading on every render
+const PDF_OPTIONS = { withCredentials: true };
 
 export function StatutePdfViewer({
   fileUrl,
@@ -55,18 +56,45 @@ export function StatutePdfViewer({
   const pdfDocRef = useRef<any>(null);
   const debounceTimerRef = useRef<any>(null);
 
-  const [containerHeight, setContainerHeight] = useState(600);
+  // Track wrapper height with ResizeObserver, using a robust fallback
+  const [containerHeight, setContainerHeight] = useState(0);
 
   useEffect(() => {
     if (!wrapperRef.current) return;
+    const el = wrapperRef.current;
+
+    // Measure initial height immediately
+    const rect = el.getBoundingClientRect();
+    if (rect.height > 0) {
+      setContainerHeight(rect.height);
+    }
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setContainerHeight(entry.contentRect.height);
+        const h = entry.contentRect.height;
+        if (h > 0) {
+          setContainerHeight(h);
+        }
       }
     });
-    observer.observe(wrapperRef.current);
+    observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // Re-measure when PDF loads (children mount changes the layout)
+  useEffect(() => {
+    if (!wrapperRef.current || numPages === 0) return;
+    // Give the DOM one frame to lay out after Document children mount
+    const raf = requestAnimationFrame(() => {
+      if (wrapperRef.current) {
+        const rect = wrapperRef.current.getBoundingClientRect();
+        if (rect.height > 0) {
+          setContainerHeight(rect.height);
+        }
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [numPages]);
 
   useEffect(() => {
     setLoading(true);
@@ -86,6 +114,7 @@ export function StatutePdfViewer({
     }, 150);
   }, []);
 
+  // react-window v2 onRowsRendered: (visibleRows, allRows) where each is { startIndex, stopIndex }
   const onRowsRendered = useCallback((visibleRows: { startIndex: number; stopIndex: number }) => {
     const pageNum = visibleRows.startIndex + 1;
     if (pageNum !== currentPageRef.current) {
@@ -186,8 +215,6 @@ export function StatutePdfViewer({
     setScale(1.0);
   }
 
-
-
   // Outline item click — prevent default, scroll to page
   function handleOutlineItemClick(item: any) {
     const destPage = item.pageNumber ?? item.pageIndex;
@@ -275,10 +302,8 @@ export function StatutePdfViewer({
     }
   }
 
-  const pageNumbers = React.useMemo(
-    () => Array.from({ length: numPages }, (_, i) => i + 1),
-    [numPages]
-  );
+  // Use a safe height for the list — fallback to window height minus toolbar
+  const effectiveHeight = containerHeight > 50 ? containerHeight : (typeof window !== "undefined" ? window.innerHeight - 120 : 600);
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
@@ -380,7 +405,7 @@ export function StatutePdfViewer({
           the <Outline> component can access the PDF document context */}
       <Document
         file={fileUrl}
-        options={{ withCredentials: true }}
+        options={PDF_OPTIONS}
         onLoadSuccess={onDocumentLoadSuccess}
         onLoadError={onDocumentLoadError}
         loading={
@@ -446,13 +471,14 @@ export function StatutePdfViewer({
 
         <div
           ref={wrapperRef}
-          className="flex-1 overflow-hidden min-w-0"
+          className="flex-1 overflow-hidden min-w-0 min-h-0"
+          style={{ height: "100%" }}
           onClick={handleContainerClick}
         >
           {numPages > 0 && (
             <WindowedList
               listRef={listRef as any}
-              style={{ height: containerHeight, overflowY: "auto" }}
+              style={{ height: effectiveHeight, overflowY: "auto" }}
               rowCount={numPages}
               rowHeight={getItemSize}
               rowComponent={Row as any}
