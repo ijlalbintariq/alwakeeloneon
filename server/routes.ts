@@ -3676,6 +3676,96 @@ function extractPipelineVerifiedHits(
   return hits;
 }
 
+/**
+ * Level 3 fallback: direct DB search using core legal terms from user query.
+ * Uses broader OR-based matching when both tool search and pipeline return 0 hits.
+ * Runs multiple single-term searches and deduplicates.
+ */
+async function directCaseLawFallbackSearch(
+  userQuery: string,
+): Promise<Array<{ citation: string; title: string; court: string; summary: string }>> {
+  const query = String(userQuery || "").toLowerCase().trim();
+  if (!query) return [];
+
+  // Extract legal signal terms from query
+  const LEGAL_TERMS_MAP: Record<string, string[]> = {
+    murder: ["murder", "qatl", "302", "qisas"],
+    bail: ["bail", "497", "498"],
+    kidnapping: ["kidnapping", "365", "abduction"],
+    narcotics: ["narcotics", "CNSA", "heroin", "hashish", "opium", "drug"],
+    theft: ["theft", "379", "380"],
+    robbery: ["robbery", "392", "dacoity", "395"],
+    eviction: ["eviction", "ejectment", "tenant", "rent"],
+    violence: ["violence", "domestic", "protection order", "cruelty"],
+    cybercrime: ["cybercrime", "PECA", "hacking", "online"],
+    fraud: ["fraud", "420", "forgery", "forged"],
+    cheque: ["cheque", "489", "dishonour", "bounce"],
+    inheritance: ["inheritance", "succession", "heir", "share"],
+    property: ["property", "sale deed", "transfer", "land"],
+    negligence: ["negligence", "malpractice", "compensation"],
+    employment: ["employment", "termination", "worker", "labor", "labour"],
+    waqf: ["waqf", "trust", "endowment"],
+    zina: ["zina", "adultery", "fornication"],
+    defamation: ["defamation", "libel", "slander"],
+    divorce: ["divorce", "khula", "talaq"],
+    dower: ["dower", "mehr", "haq mehr"],
+  };
+
+  // Find matching legal topics
+  const searchTerms: string[] = [];
+  for (const [topic, terms] of Object.entries(LEGAL_TERMS_MAP)) {
+    for (const term of terms) {
+      if (query.includes(term.toLowerCase())) {
+        // Add the core topic + the matched term as search queries
+        searchTerms.push(topic);
+        break;
+      }
+    }
+  }
+
+  // Also extract PPC/CrPC section numbers
+  const sectionMatch = query.match(/(?:section|ppc|crpc)\s*(\d+)/gi);
+  if (sectionMatch) {
+    for (const m of sectionMatch) {
+      const num = m.match(/\d+/);
+      if (num) searchTerms.push(num[0]);
+    }
+  }
+
+  if (searchTerms.length === 0) {
+    // Use first 3 non-stopword tokens
+    const tokens = query.split(/\s+/).filter(t => t.length > 3 && !["what", "with", "that", "this", "from", "been", "have", "case", "under", "against", "about"].includes(t));
+    searchTerms.push(...tokens.slice(0, 3));
+  }
+
+  if (searchTerms.length === 0) return [];
+
+  // Run individual searches with broad matching
+  const allHits: Array<{ citation: string; title: string; court: string; summary: string }> = [];
+  const seenCitations = new Set<string>();
+
+  for (const term of searchTerms.slice(0, 4)) {
+    try {
+      const results = await storage.searchCaseLaw(term, 5);
+      for (const row of results) {
+        const citation = String(row.citation || "").trim();
+        if (!citation || seenCitations.has(citation.toLowerCase())) continue;
+        seenCitations.add(citation.toLowerCase());
+        allHits.push({
+          citation,
+          title: String(row.title || "").trim(),
+          court: String(row.court || "").trim(),
+          summary: String(row.summary || "").slice(0, 300),
+        });
+      }
+    } catch {
+      // Individual search failure is OK
+    }
+  }
+
+  return allHits.slice(0, 8);
+}
+
 type CitationParts = { year: number; journalCode: string; page: number };
 type CaseLawCitationQueryParts = { year: number; report: string; page: number };
 type ExtractedCaseDraftRow = {
@@ -14420,17 +14510,30 @@ The user has attached the following documents for your reference. Analyze them c
         }
 
         // Safety net: inject verified case law if the AI failed to cite any
-        // Source priority: tool search hits > pipeline verified judgments
-        const fallbackHits = (toolSearchResult?.verifiedHits?.length > 0)
+        // Source priority: tool search hits > pipeline verified judgments > direct DB search
+        let fallbackHits = (toolSearchResult?.verifiedHits?.length > 0)
           ? toolSearchResult.verifiedHits
           : extractPipelineVerifiedHits(knowledgeContext);
+        // Level 3: direct DB search if both sources are empty
+        if (fallbackHits.length === 0 && moduleType === "al-wakeelo" && !directMode && latestUserPromptText) {
+          try {
+            const directHits = await directCaseLawFallbackSearch(latestUserPromptText);
+            if (directHits.length > 0) {
+              fallbackHits = directHits;
+              console.log(`[CaseLawFallback] Level 3: direct DB search found ${directHits.length} hits`);
+            }
+          } catch (e) {
+            console.warn("[CaseLawFallback] Direct DB search failed:", e);
+          }
+        }
         if (moduleType === "al-wakeelo" && !directMode && fallbackHits.length > 0) {
           const injected = injectVerifiedCaseLawFallback(fullContent, fallbackHits);
           if (injected !== fullContent) {
             fullContent = injected;
             res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
             res.write(`data: ${JSON.stringify({ text: fullContent })}\n\n`);
-            console.log(`[CaseLawFallback] Injected ${fallbackHits.length} verified judgments (source: ${toolSearchResult?.verifiedHits?.length > 0 ? 'tool-search' : 'pipeline'})`);
+            const source = toolSearchResult?.verifiedHits?.length > 0 ? 'tool-search' : (extractPipelineVerifiedHits(knowledgeContext).length > 0 ? 'pipeline' : 'direct-db');
+            console.log(`[CaseLawFallback] Injected ${fallbackHits.length} verified judgments (source: ${source})`);
           }
         }
 
@@ -14562,15 +14665,28 @@ The user has attached the following documents for your reference. Analyze them c
       completion = assertNonEmptyModelOutput("AI route", completion);
 
       // Safety net: inject verified case law if the AI failed to cite any
-      // Source priority: tool search hits > pipeline verified judgments
-      const fallbackHitsNS = (toolSearchResult?.verifiedHits?.length > 0)
+      // Source priority: tool search hits > pipeline verified judgments > direct DB search
+      let fallbackHitsNS = (toolSearchResult?.verifiedHits?.length > 0)
         ? toolSearchResult.verifiedHits
         : extractPipelineVerifiedHits(knowledgeContext);
+      // Level 3: direct DB search if both sources are empty
+      if (fallbackHitsNS.length === 0 && moduleType === "al-wakeelo" && !directMode && latestUserPromptText) {
+        try {
+          const directHits = await directCaseLawFallbackSearch(latestUserPromptText);
+          if (directHits.length > 0) {
+            fallbackHitsNS = directHits;
+            console.log(`[CaseLawFallback] Level 3 (non-streaming): direct DB search found ${directHits.length} hits`);
+          }
+        } catch (e) {
+          console.warn("[CaseLawFallback] Direct DB search failed:", e);
+        }
+      }
       if (moduleType === "al-wakeelo" && !directMode && fallbackHitsNS.length > 0) {
         const injected = injectVerifiedCaseLawFallback(completion, fallbackHitsNS);
         if (injected !== completion) {
           completion = injected;
-          console.log(`[CaseLawFallback] Injected ${fallbackHitsNS.length} verified judgments (non-streaming, source: ${toolSearchResult?.verifiedHits?.length > 0 ? 'tool-search' : 'pipeline'})`);
+          const source = toolSearchResult?.verifiedHits?.length > 0 ? 'tool-search' : (extractPipelineVerifiedHits(knowledgeContext).length > 0 ? 'pipeline' : 'direct-db');
+          console.log(`[CaseLawFallback] Injected ${fallbackHitsNS.length} verified judgments (non-streaming, source: ${source})`);
         }
       }
 
