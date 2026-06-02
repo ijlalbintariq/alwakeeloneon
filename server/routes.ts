@@ -3587,6 +3587,59 @@ export async function applyAlWakeeloSafetyGuardrails(
   return citationScrubbed;
 }
 
+/**
+ * Post-processing safety net: if the AI model failed to cite any verified judgments
+ * (references block has judgments:[]) but the tool search or pipeline DID find cases,
+ * inject them into the references block AND append a brief prose section.
+ * This guarantees case law reaches the user regardless of model compliance.
+ */
+function injectVerifiedCaseLawFallback(
+  content: string,
+  verifiedHits: Array<{ citation: string; title: string; court: string; summary: string }>,
+): string {
+  if (!verifiedHits || verifiedHits.length === 0) return content;
+
+  // Check if references block already has judgments
+  const refsMatch = content.match(/```references\s*([\s\S]*?)```/i);
+  if (refsMatch) {
+    try {
+      const payload = JSON.parse(refsMatch[1].trim());
+      if (payload.judgments && payload.judgments.length > 0) {
+        return content; // Already has judgments, no injection needed
+      }
+      // Inject verified judgments into the existing references block
+      const laws = payload.laws || [];
+      const judgments = verifiedHits.slice(0, 8).map(h => ({
+        citation: h.citation,
+        title: h.title,
+        court: h.court || "",
+        summary: (h.summary || "").slice(0, 300),
+      }));
+      const newPayload = JSON.stringify({ laws, judgments });
+      const newRefsBlock = "```references\n" + newPayload + "\n```";
+
+      // Build prose section with top 3 citations
+      const topHits = verifiedHits.slice(0, 3);
+      const proseLines = [
+        "\n\n### Relevant Case Law from Internal Database\n",
+        ...topHits.map(h => {
+          const briefSummary = (h.summary || "").slice(0, 200);
+          return `- **[${h.citation}]** — ${h.title}${briefSummary ? `: ${briefSummary}` : ""}`;
+        }),
+        "\n*For more comprehensive case law, search our [Judgment Search](/judgment-search) database.*\n",
+      ];
+      const proseSection = proseLines.join("\n");
+
+      // Replace the old references block and insert prose before it
+      const withProse = content.replace(/```references\s*[\s\S]*?```/i, proseSection + "\n" + newRefsBlock);
+      return withProse;
+    } catch {
+      // JSON parse failed, fall through
+    }
+  }
+  return content;
+}
+
 type CitationParts = { year: number; journalCode: string; page: number };
 type CaseLawCitationQueryParts = { year: number; report: string; page: number };
 type ExtractedCaseDraftRow = {
@@ -14330,6 +14383,17 @@ The user has attached the following documents for your reference. Analyze them c
           res.write(`data: ${JSON.stringify({ text: fullContent })}\n\n`);
         }
 
+        // Safety net: inject verified case law if the AI failed to cite any
+        if (moduleType === "al-wakeelo" && !directMode && toolSearchResult?.verifiedHits?.length > 0) {
+          const injected = injectVerifiedCaseLawFallback(fullContent, toolSearchResult.verifiedHits);
+          if (injected !== fullContent) {
+            fullContent = injected;
+            res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+            res.write(`data: ${JSON.stringify({ text: fullContent })}\n\n`);
+            console.log(`[CaseLawFallback] Injected ${toolSearchResult.verifiedHits.length} verified judgments (AI model failed to cite)`);
+          }
+        }
+
         routingPath.push(`model:${usedModel}`);
         res.write(
           `data: ${JSON.stringify({ done: true, model: usedModel, moduleProfile: moduleProfile.id, routingPath, styleMemory: styleMemoryMeta || undefined })}\n\n`,
@@ -14456,6 +14520,15 @@ The user has attached the following documents for your reference. Analyze them c
         trustedCitations: toolSearchResult?.verifiedCitations,
       })).content;
       completion = assertNonEmptyModelOutput("AI route", completion);
+
+      // Safety net: inject verified case law if the AI failed to cite any
+      if (moduleType === "al-wakeelo" && !directMode && toolSearchResult?.verifiedHits?.length > 0) {
+        const injected = injectVerifiedCaseLawFallback(completion, toolSearchResult.verifiedHits);
+        if (injected !== completion) {
+          completion = injected;
+          console.log(`[CaseLawFallback] Injected ${toolSearchResult.verifiedHits.length} verified judgments (non-streaming, AI model failed to cite)`);
+        }
+      }
 
       const inputText = systemPromptFull + userMessages.map(m => m.content).join(" ");
       try {
