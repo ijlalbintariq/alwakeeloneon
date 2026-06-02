@@ -196,13 +196,15 @@ export async function streamWithFallback(
 
   for (const provider of chain) {
     if (!providerAvailable(provider)) {
-      console.warn(`[AI Router] Provider ${provider} unavailable — skipping`);
+      console.log(`[AI Router] Provider ${provider} unavailable — skipping`);
       continue;
     }
 
     const { signal, release } = makeAbortable(perProviderTimeout);
     let tokensEmitted = 0;
     let fullText = "";
+    const providerStartMs = Date.now();
+    console.log(`[AI Router] Trying provider: ${provider} (timeout=${perProviderTimeout}ms)`);
     opts.onProviderStart?.(provider);
 
     try {
@@ -236,8 +238,8 @@ export async function streamWithFallback(
         (wrapped as any).partialText = fullText;
         throw wrapped;
       }
-      console.warn(
-        `[AI Router] Provider ${provider} failed pre-stream; falling back. ${err instanceof Error ? err.message : String(err)}`,
+      console.log(
+        `[AI Router] Provider ${provider} FAILED in ${Date.now() - providerStartMs}ms (pre-stream); falling back. ${err instanceof Error ? err.message : String(err)}`,
       );
       continue;
     }

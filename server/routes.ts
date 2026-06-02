@@ -14492,7 +14492,7 @@ The user has attached the following documents for your reference. Analyze them c
               temperature,
               onChunk: writeChunkToClient,
               onProviderError: (p, err) => {
-                console.warn(`[AI Router] Stream provider ${p} failed: ${err instanceof Error ? err.message : String(err)}`);
+                console.log(`[AI Router] Stream provider ${p} failed: ${err instanceof Error ? err.message : String(err)}`);
               },
             });
             usedModel = result.modelName;
