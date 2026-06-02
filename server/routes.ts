@@ -3634,10 +3634,46 @@ function injectVerifiedCaseLawFallback(
       const withProse = content.replace(/```references\s*[\s\S]*?```/i, proseSection + "\n" + newRefsBlock);
       return withProse;
     } catch {
-      // JSON parse failed, fall through
+      // JSON parse failed — still inject below
     }
   }
-  return content;
+
+  // Fallback: append case law section at the end regardless of references block state
+  const topHits = verifiedHits.slice(0, 5);
+  const proseLines = [
+    "\n\n### Relevant Case Law from Internal Database\n",
+    ...topHits.map(h => {
+      const briefSummary = (h.summary || "").slice(0, 200);
+      return `- **[${h.citation}]** — ${h.title}${briefSummary ? `: ${briefSummary}` : ""}`;
+    }),
+    "\n*For comprehensive case law research, explore our [Judgment Search](/judgment-search) database.*\n",
+  ];
+  const proseSection = proseLines.join("\n");
+
+  // Build judgments array for references block
+  const judgments = verifiedHits.slice(0, 8).map(h => ({
+    citation: h.citation,
+    title: h.title,
+    court: h.court || "",
+    description: (h.summary || "").slice(0, 300),
+  }));
+
+  // Try to replace existing empty references block
+  const refsReplaceMatch = content.match(/```references\s*[\s\S]*?```/i);
+  if (refsReplaceMatch) {
+    const existingLaws = (() => {
+      try {
+        const p = JSON.parse(refsReplaceMatch[0].replace(/```references\s*/i, "").replace(/```$/i, "").trim());
+        return p.laws || [];
+      } catch { return []; }
+    })();
+    const newRefsBlock = "```references\n" + JSON.stringify({ laws: existingLaws, judgments }) + "\n```";
+    return content.replace(/```references\s*[\s\S]*?```/i, proseSection + "\n" + newRefsBlock);
+  }
+
+  // No references block at all — append everything
+  const newRefsBlock = "```references\n" + JSON.stringify({ laws: [], judgments }) + "\n```";
+  return content + proseSection + "\n" + newRefsBlock;
 }
 
 /**
@@ -3711,14 +3747,21 @@ async function directCaseLawFallbackSearch(
     dower: ["dower", "mehr", "haq mehr"],
   };
 
-  // Find matching legal topics
+  // Find matching legal topics — push ALL matching terms for DB search
   const searchTerms: string[] = [];
-  for (const [topic, terms] of Object.entries(LEGAL_TERMS_MAP)) {
+  for (const [_topic, terms] of Object.entries(LEGAL_TERMS_MAP)) {
+    let matched = false;
     for (const term of terms) {
       if (query.includes(term.toLowerCase())) {
-        // Add the core topic + the matched term as search queries
-        searchTerms.push(topic);
-        break;
+        matched = true;
+      }
+    }
+    if (matched) {
+      // Push all terms from this topic (they're all good DB search terms)
+      for (const term of terms) {
+        if (term.length >= 2 && !searchTerms.includes(term)) {
+          searchTerms.push(term);
+        }
       }
     }
   }
