@@ -33,8 +33,14 @@ import {
   getDeepSeekProModelName,
   isDeepSeekAvailable,
 } from "./deepseek-ai";
+import {
+  chatWithOpenRouter,
+  streamWithOpenRouter,
+  getOpenRouterModelName,
+  isOpenRouterAvailable as isOpenRouterAvailableCheck,
+} from "./openrouter";
 
-export type ProviderId = "groq" | "deepseek" | "deepseek-pro";
+export type ProviderId = "groq" | "deepseek" | "deepseek-pro" | "openrouter";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -145,6 +151,9 @@ async function* streamFromProvider(
     case "deepseek-pro":
       yield* streamWithDeepSeek({ ...opts, model: getDeepSeekProModelName() });
       return;
+    case "openrouter":
+      yield* streamWithOpenRouter(opts);
+      return;
   }
 }
 
@@ -156,6 +165,8 @@ function providerModelName(provider: ProviderId): string {
       return getDeepSeekModelName();
     case "deepseek-pro":
       return getDeepSeekProModelName();
+    case "openrouter":
+      return getOpenRouterModelName();
   }
 }
 
@@ -166,6 +177,8 @@ function providerAvailable(provider: ProviderId): boolean {
     case "deepseek":
     case "deepseek-pro":
       return isDeepSeekAvailable();
+    case "openrouter":
+      return isOpenRouterAvailableCheck();
   }
 }
 
@@ -264,6 +277,10 @@ async function callProvider(
       const r = await chatWithDeepSeekPro(opts);
       return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
     }
+    case "openrouter": {
+      const r = await chatWithOpenRouter(opts);
+      return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
+    }
   }
 }
 
@@ -320,5 +337,5 @@ export async function callWithFallback(
 
 // ─── Default chains ──────────────────────────────────────────────────────
 
-export const DEFAULT_STANDARD_CHAIN: ProviderId[] = ["deepseek", "deepseek-pro"];
+export const DEFAULT_STANDARD_CHAIN: ProviderId[] = ["openrouter", "deepseek"];
 export const DEFAULT_TURBO_CHAIN: ProviderId[] = ["deepseek-pro", "deepseek"];

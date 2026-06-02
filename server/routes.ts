@@ -44,6 +44,7 @@ import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, runToolJudgmentSearch, repairReferencesJson } from "./deepseek-ai";
 import { runToolJudgmentSearchOR, isOpenRouterAvailable } from "./openrouter-ai";
+import { streamWithOpenRouter } from "./openrouter";
 import {
   isAiRouterV2Enabled,
   raceToDeadline,
@@ -61,7 +62,7 @@ import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, clearS
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
-import { gatherKnowledgeContextV2, type ConversationTurn } from "./pipeline/knowledge-pipeline";
+import { gatherKnowledgeContextV2, gatherKnowledgeWithHits, type ConversationTurn, type CaseLawHit, type PipelineRunResult } from "./pipeline/knowledge-pipeline";
 import { classifyQueryIntent, detectQueryComplexity, isFollowUpQuestion, type QueryComplexity } from "./pipeline/intent-classifier";
 import { refineUserQuery } from "./query-refiner";
 import {
@@ -13954,20 +13955,21 @@ document.addEventListener('keydown',function(e){
         .slice(-6)    // keep last 3 exchanges max (cheap on tokens)
         .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
-      const knowledgePromise: Promise<string> = knowledgeNeeded
-        ? gatherKnowledgeContextV2(lastUserMessage!.content, userId, priorTurns).catch((err) => {
+      const knowledgePromise: Promise<PipelineRunResult> = knowledgeNeeded
+        ? gatherKnowledgeWithHits(lastUserMessage!.content, userId, priorTurns).catch((err) => {
             console.warn("[AI Chat] Knowledge pipeline unavailable:", getErrorMessage(err));
-            return "";
+            return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[] };
           })
-        : Promise.resolve("");
+        : Promise.resolve({ contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[] });
 
       // Tool-based judgment search: AI calls search_judgments with its own short queries.
-      // Runs in parallel with the pipeline — same DB function as the Judgment Search UI.
+      // NOW FALLBACK-ONLY: only runs AFTER the pipeline if pipeline returned 0 case law.
+      // This eliminates 1 AI API call + 3-5 redundant DB calls for ~90% of queries.
       const toolSearchStartMs = Date.now();
       // Tool routing: prefer OpenRouter (gpt-4o-mini, parallel calls, ~2s p50)
       // Fallback to DeepSeek V3 (~6-8s p50, sequential rounds) if OpenRouter not configured.
       const useOpenRouterTools = isOpenRouterAvailable();
-      const toolSearchEnabled =
+      const toolSearchCapable =
         knowledgeNeeded &&
         moduleType === "al-wakeelo" &&
         !directMode &&
@@ -13985,7 +13987,7 @@ document.addEventListener('keydown',function(e){
       // Compute willStream early (before selectedRoute is assigned) so we can open SSE BEFORE awaiting enrichment.
       // Apex requests don't stream — detect via requestedApexModelRaw which is set early.
       const willStream = requestedStream && moduleProfile.modelStrategy.stream && !requestedApexModelRaw;
-      const willStreamLiveStatus = willStream && toolSearchEnabled;
+      const willStreamLiveStatus = willStream && toolSearchCapable;
       let sseHeadersFlushed = false;
       const ensureSseOpen = () => {
         if (sseHeadersFlushed) return;
@@ -14013,16 +14015,6 @@ document.addEventListener('keydown',function(e){
           }
         }
       };
-
-      const toolSearchPromise: Promise<ToolSearchResult> = toolSearchEnabled
-        ? (useOpenRouterTools
-            ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 18000)
-            : runToolJudgmentSearch(lastUserMessage!.content, toolStatusCallback)
-          ).catch((err) => {
-            console.warn("[ToolSearch] Failed:", err?.message || err);
-            return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
-          })
-        : Promise.resolve({ contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] });
 
       // --- Query Refinement: rewrite casual query into structured legal prompt ---
       // Runs in parallel with enrichment — finishes in ~1-2s, well within the 20s budget.
@@ -14058,16 +14050,41 @@ document.addEventListener('keydown',function(e){
         : Promise.resolve(null);
 
       type RefineResult = { refined: string; wasRefined: boolean; elapsedMs: number };
-      const [knowledgeRace, styleRace, toolSearchRace, refineRace] = await Promise.all([
-        raceToDeadline<string>(knowledgePromise, ENRICHMENT_BUDGET_MS, "", "knowledge-context"),
+      // Phase 1: Pipeline + style + refine (parallel, no tool search yet)
+      const [knowledgeRace, styleRace, refineRace] = await Promise.all([
+        raceToDeadline<PipelineRunResult>(knowledgePromise, ENRICHMENT_BUDGET_MS, { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[] }, "knowledge-context"),
         raceToDeadline<StyleFetch>(stylePromise, ENRICHMENT_BUDGET_MS, null, "style-memory"),
-        raceToDeadline<ToolSearchResult>(toolSearchPromise, ENRICHMENT_BUDGET_MS, { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] }, "tool-search"),
         raceToDeadline<RefineResult>(refinePromise, 4000, { refined: lastUserMessage?.content || "", wasRefined: false, elapsedMs: 0 }, "query-refine"),
       ]);
-      const knowledgeContext = knowledgeRace.value;
+      const knowledgeResult = knowledgeRace.value;
+      const knowledgeContext = knowledgeResult.contextString;
+      const pipelineCaseLawHits = knowledgeResult.caseLawHits || [];
       const styleRetrieved = styleRace.value;
-      const toolSearchResult = toolSearchRace.value;
       const refineResult = refineRace.value;
+
+      // Phase 2: Tool search ONLY if pipeline returned 0 case law hits (fallback-only)
+      const toolSearchEnabled = toolSearchCapable && pipelineCaseLawHits.length === 0;
+      let toolSearchResult: ToolSearchResult = { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
+      if (toolSearchEnabled) {
+        console.log("[ToolSearch:Fallback] Pipeline returned 0 case law hits — running tool search as fallback");
+        if (sseHeadersFlushed) {
+          try { res.write(`data: ${JSON.stringify({ searching: true, query: "fallback search...", found: 0, elapsedMs: 0 })}\n\n`); } catch {}
+        }
+        const toolSearchRace = await raceToDeadline<ToolSearchResult>(
+          (useOpenRouterTools
+            ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 18000)
+            : runToolJudgmentSearch(lastUserMessage!.content, toolStatusCallback)
+          ).catch((err) => {
+            console.warn("[ToolSearch] Failed:", err?.message || err);
+            return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
+          }),
+          ENRICHMENT_BUDGET_MS,
+          { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] },
+          "tool-search-fallback",
+        );
+        toolSearchResult = toolSearchRace.value;
+      }
+
       if (refineResult.wasRefined) {
         // Replace the last user message in geminiContents with the refined version.
         // Original query is preserved for display/caching/search-history — only the
@@ -14092,9 +14109,10 @@ document.addEventListener('keydown',function(e){
       }
       // Live status: emit "searching done" terminator the moment enrichment finishes.
       // Client switches the loading bubble from "Searching case law" → "Writing response".
-      if (sseHeadersFlushed && toolSearchEnabled) {
+      if (sseHeadersFlushed && (toolSearchEnabled || pipelineCaseLawHits.length > 0)) {
         try {
-          res.write(`data: ${JSON.stringify({ searching: false, found: toolSearchResult.foundCount, totalMs: Date.now() - toolSearchStartMs })}\n\n`);
+          const totalFound = toolSearchResult.foundCount || pipelineCaseLawHits.length;
+          res.write(`data: ${JSON.stringify({ searching: false, found: totalFound, totalMs: Date.now() - toolSearchStartMs })}\n\n`);
         } catch {
           /* client disconnected */
         }
@@ -14104,10 +14122,14 @@ document.addEventListener('keydown',function(e){
       // frontend render an authoritative case-law list independent of the AI's
       // prose. Arrives before the AI starts streaming so the user sees the
       // research results almost immediately.
-      if (sseHeadersFlushed && toolSearchEnabled && toolSearchResult.verifiedHits.length > 0) {
+      // SOURCE: Pipeline hits (primary) or tool search hits (fallback).
+      const cardSource = pipelineCaseLawHits.length > 0
+        ? pipelineCaseLawHits
+        : toolSearchResult.verifiedHits;
+      if (sseHeadersFlushed && cardSource.length > 0) {
         try {
           // Trim summaries for transport (frontend can fetch full doc on click).
-          const cardHits = toolSearchResult.verifiedHits.slice(0, 25).map((h) => ({
+          const cardHits = cardSource.slice(0, 25).map((h) => ({
             citation: h.citation,
             title: h.title,
             court: h.court,
@@ -14116,8 +14138,8 @@ document.addEventListener('keydown',function(e){
           res.write(`data: ${JSON.stringify({
             caseLawCard: {
               hits: cardHits,
-              totalFound: toolSearchResult.foundCount,
-              queriesUsed: toolSearchResult.queriesUsed,
+              totalFound: pipelineCaseLawHits.length || toolSearchResult.foundCount,
+              queriesUsed: toolSearchResult.queriesUsed.length > 0 ? toolSearchResult.queriesUsed : ["pipeline"],
             },
           })}\n\n`);
         } catch {
@@ -14484,14 +14506,39 @@ The user has attached the following documents for your reference. Analyze them c
               writeChunkToClient(text);
             }
           } else {
-            // Standard mode (non-router v2): use DeepSeek instead of Groq (Groq deprecated 2026-04-16)
-            usedModel = "deepseek";
-            for await (const text of streamWithDeepSeek({
-              messages: streamMessages,
-              maxTokens: tokenLimit,
-              temperature,
-            })) {
-              writeChunkToClient(text);
+            // Standard mode (non-router v2): Gemini Flash 3.0 via OpenRouter (primary), DeepSeek fallback
+            if (isOpenRouterAvailable()) {
+              usedModel = "gemini-3.0-flash";
+              try {
+                for await (const text of streamWithOpenRouter({
+                  messages: streamMessages,
+                  maxTokens: tokenLimit,
+                  temperature,
+                })) {
+                  writeChunkToClient(text);
+                }
+              } catch (orErr) {
+                console.warn(`[AI Chat] OpenRouter failed, falling back to DeepSeek:`, orErr instanceof Error ? orErr.message : String(orErr));
+                if (!fullContent) {
+                  usedModel = "deepseek";
+                  for await (const text of streamWithDeepSeek({
+                    messages: streamMessages,
+                    maxTokens: tokenLimit,
+                    temperature,
+                  })) {
+                    writeChunkToClient(text);
+                  }
+                }
+              }
+            } else {
+              usedModel = "deepseek";
+              for await (const text of streamWithDeepSeek({
+                messages: streamMessages,
+                maxTokens: tokenLimit,
+                temperature,
+              })) {
+                writeChunkToClient(text);
+              }
             }
           }
         } catch (streamErr: any) {

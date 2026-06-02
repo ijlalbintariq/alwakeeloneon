@@ -64,12 +64,20 @@ function normKey(q: string): string {
   return q.toLowerCase().replace(/\s+/g, " ").trim().slice(0, 280);
 }
 
+export interface CaseLawHit {
+  citation: string;
+  title: string;
+  court: string;
+  summary: string;
+}
+
 export interface PipelineRunResult {
   contextString: string;
   hasCaseLaw: boolean;
   hasStatutes: boolean;
   topics: string[];
   durationMs: number;
+  caseLawHits: CaseLawHit[];
 }
 
 export async function runKnowledgePipeline(
@@ -89,6 +97,7 @@ export async function runKnowledgePipeline(
       hasStatutes: cached.includes("VERIFIED STATUTES"),
       topics: [],
       durationMs: 0,
+      caseLawHits: [],
     };
   }
 
@@ -162,6 +171,7 @@ export async function runKnowledgePipeline(
         hasStatutes: false,
         topics: intent.topics.map((t) => t.label),
         durationMs: Date.now() - t0,
+        caseLawHits: [],
       };
     }
 
@@ -171,6 +181,7 @@ export async function runKnowledgePipeline(
       hasStatutes: ctx.hasStatutes,
       topics: intent.topics.map((t) => t.label),
       durationMs,
+      caseLawHits: retrieval.caseLaw.map(hit => ({ citation: hit.row.citation, title: hit.row.title, court: hit.row.court, summary: hit.row.summary })),
     };
   })();
 
@@ -188,7 +199,7 @@ export async function runKnowledgePipeline(
       "4. For specific case law, direct the user to search at /judgment-search.\n" +
       "5. For specific statutes, direct the user to the statute library.\n" +
       "6. Say: 'I recommend searching our judgment database and statute library for the specific provisions applicable to your case.'";
-    return { contextString: safetyGateContext, hasCaseLaw: false, hasStatutes: false, topics: [], durationMs };
+    return { contextString: safetyGateContext, hasCaseLaw: false, hasStatutes: false, topics: [], durationMs, caseLawHits: [] };
   }
   return result;
 }
@@ -210,6 +221,32 @@ export async function gatherKnowledgeContextV2(
     return "\n\n[SYSTEM SAFETY GATE — KNOWLEDGE PIPELINE ERROR]\n" +
       "CRITICAL: Do NOT cite ANY specific section numbers, article numbers, or case citations from memory. " +
       "Provide general legal guidance only. Direct users to /judgment-search for case law and the statute library for specific provisions.";
+  }
+}
+
+/**
+ * Same as gatherKnowledgeContextV2 but returns the full pipeline result
+ * including caseLawHits for the Case Law Card.
+ */
+export async function gatherKnowledgeWithHits(
+  query: string,
+  userId?: string,
+  conversationHistory?: ConversationTurn[],
+): Promise<PipelineRunResult> {
+  try {
+    return await runKnowledgePipeline(query, userId, conversationHistory);
+  } catch (err) {
+    console.error("[Pipeline:Error]", err instanceof Error ? err.message : String(err));
+    return {
+      contextString: "\n\n[SYSTEM SAFETY GATE — KNOWLEDGE PIPELINE ERROR]\n" +
+        "CRITICAL: Do NOT cite ANY specific section numbers, article numbers, or case citations from memory. " +
+        "Provide general legal guidance only. Direct users to /judgment-search for case law and the statute library for specific provisions.",
+      hasCaseLaw: false,
+      hasStatutes: false,
+      topics: [],
+      durationMs: 0,
+      caseLawHits: [],
+    };
   }
 }
 
