@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const DEFAULT_MODEL = "google/gemini-3.0-flash";
+const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 
 let openrouterClient: OpenAI | null = null;
 
