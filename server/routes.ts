@@ -3640,6 +3640,42 @@ function injectVerifiedCaseLawFallback(
   return content;
 }
 
+/**
+ * Extract verified judgment hit objects from the pipeline's knowledgeContext string.
+ * Used as a fallback data source when the tool search returns 0 hits.
+ * Parses lines like: - CITATION: 2024 SCMR 1419 | COURT: Supreme Court | TITLE: State vs XYZ
+ */
+function extractPipelineVerifiedHits(
+  knowledgeContext: string,
+): Array<{ citation: string; title: string; court: string; summary: string }> {
+  if (!knowledgeContext) return [];
+  const jStart = knowledgeContext.indexOf("VERIFIED JUDGMENTS FROM INTERNAL DATABASE");
+  if (jStart === -1) return [];
+  // Extract the section up to the next === or end
+  const sectionEnd = knowledgeContext.indexOf("===", jStart + 50);
+  const jSection = sectionEnd > 0
+    ? knowledgeContext.slice(jStart, sectionEnd)
+    : knowledgeContext.slice(jStart, jStart + 10000);
+  
+  const hits: Array<{ citation: string; title: string; court: string; summary: string }> = [];
+  for (const line of jSection.split("\n")) {
+    const citMatch = line.match(/CITATION:\s*([^|]+)/i);
+    if (!citMatch) continue;
+    const citation = citMatch[1].trim();
+    if (!citation || citation.length < 5) continue;
+    const courtMatch = line.match(/COURT:\s*([^|]+)/i);
+    const titleMatch = line.match(/TITLE:\s*([^|]+)/i);
+    const summaryMatch = line.match(/SUMMARY:\s*([^|]*)/i);
+    hits.push({
+      citation,
+      court: courtMatch ? courtMatch[1].trim() : "",
+      title: titleMatch ? titleMatch[1].trim() : citation,
+      summary: summaryMatch ? summaryMatch[1].trim().slice(0, 300) : "",
+    });
+  }
+  return hits;
+}
+
 type CitationParts = { year: number; journalCode: string; page: number };
 type CaseLawCitationQueryParts = { year: number; report: string; page: number };
 type ExtractedCaseDraftRow = {
@@ -14384,13 +14420,17 @@ The user has attached the following documents for your reference. Analyze them c
         }
 
         // Safety net: inject verified case law if the AI failed to cite any
-        if (moduleType === "al-wakeelo" && !directMode && toolSearchResult?.verifiedHits?.length > 0) {
-          const injected = injectVerifiedCaseLawFallback(fullContent, toolSearchResult.verifiedHits);
+        // Source priority: tool search hits > pipeline verified judgments
+        const fallbackHits = (toolSearchResult?.verifiedHits?.length > 0)
+          ? toolSearchResult.verifiedHits
+          : extractPipelineVerifiedHits(knowledgeContext);
+        if (moduleType === "al-wakeelo" && !directMode && fallbackHits.length > 0) {
+          const injected = injectVerifiedCaseLawFallback(fullContent, fallbackHits);
           if (injected !== fullContent) {
             fullContent = injected;
             res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
             res.write(`data: ${JSON.stringify({ text: fullContent })}\n\n`);
-            console.log(`[CaseLawFallback] Injected ${toolSearchResult.verifiedHits.length} verified judgments (AI model failed to cite)`);
+            console.log(`[CaseLawFallback] Injected ${fallbackHits.length} verified judgments (source: ${toolSearchResult?.verifiedHits?.length > 0 ? 'tool-search' : 'pipeline'})`);
           }
         }
 
@@ -14522,11 +14562,15 @@ The user has attached the following documents for your reference. Analyze them c
       completion = assertNonEmptyModelOutput("AI route", completion);
 
       // Safety net: inject verified case law if the AI failed to cite any
-      if (moduleType === "al-wakeelo" && !directMode && toolSearchResult?.verifiedHits?.length > 0) {
-        const injected = injectVerifiedCaseLawFallback(completion, toolSearchResult.verifiedHits);
+      // Source priority: tool search hits > pipeline verified judgments
+      const fallbackHitsNS = (toolSearchResult?.verifiedHits?.length > 0)
+        ? toolSearchResult.verifiedHits
+        : extractPipelineVerifiedHits(knowledgeContext);
+      if (moduleType === "al-wakeelo" && !directMode && fallbackHitsNS.length > 0) {
+        const injected = injectVerifiedCaseLawFallback(completion, fallbackHitsNS);
         if (injected !== completion) {
           completion = injected;
-          console.log(`[CaseLawFallback] Injected ${toolSearchResult.verifiedHits.length} verified judgments (non-streaming, AI model failed to cite)`);
+          console.log(`[CaseLawFallback] Injected ${fallbackHitsNS.length} verified judgments (non-streaming, source: ${toolSearchResult?.verifiedHits?.length > 0 ? 'tool-search' : 'pipeline'})`);
         }
       }
 
