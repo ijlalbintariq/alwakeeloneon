@@ -233,7 +233,7 @@ export function buildContext(
   parts.push("");
 
   if (hasCaseLawCitations) {
-    parts.push("CASE LAW RULE: Only cite judgments listed in the VERIFIED JUDGMENTS section. Copy CITATION strings verbatim. Never invent citations.");
+    parts.push("CASE LAW RULE (MANDATORY): You MUST cite at least 3 judgments from the VERIFIED JUDGMENTS section below in your response. Copy each CITATION string verbatim. Never invent or recall citations from training data. Failure to cite verified judgments is a critical violation — the user expects case law in every legal response. Integrate citations naturally into your legal analysis using the mandatory 3-part format: **[CITATION]** — Legal principle. Ratio decidendi. Application to this case.");
   } else if (intent.needsCaseLaw) {
     // No results — inject explicit instruction to prevent hallucination
     parts.push(buildNoCaseLawMessage(intent));
