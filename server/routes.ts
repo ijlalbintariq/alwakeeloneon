@@ -14508,7 +14508,7 @@ The user has attached the following documents for your reference. Analyze them c
           } else {
             // Standard mode (non-router v2): Gemini Flash 3.0 via OpenRouter (primary), DeepSeek fallback
             if (isOpenRouterAvailable()) {
-              usedModel = "gemini-3.0-flash";
+              usedModel = "google/gemini-3-flash-preview";
               try {
                 for await (const text of streamWithOpenRouter({
                   messages: streamMessages,
@@ -14517,8 +14517,11 @@ The user has attached the following documents for your reference. Analyze them c
                 })) {
                   writeChunkToClient(text);
                 }
-              } catch (orErr) {
-                console.warn(`[AI Chat] OpenRouter failed, falling back to DeepSeek:`, orErr instanceof Error ? orErr.message : String(orErr));
+              } catch (orErr: any) {
+                const errMsg = orErr instanceof Error ? orErr.message : String(orErr);
+                const errStatus = orErr?.status || orErr?.statusCode || "unknown";
+                const errCode = orErr?.error?.error?.code || orErr?.code || "unknown";
+                console.warn(`[AI Chat] OpenRouter FAILED (status=${errStatus} code=${errCode}): ${errMsg}`);
                 if (!fullContent) {
                   usedModel = "deepseek";
                   for await (const text of streamWithDeepSeek({
