@@ -1391,7 +1391,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 scrollbar-hide bg-muted px-3 sm:px-4 md:px-8 py-3 sm:py-4 md:py-6 flex flex-col">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-5 sm:space-y-6 scrollbar-hide bg-muted px-3 sm:px-4 md:px-8 py-3 sm:py-4 md:py-6 flex flex-col">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
               <Scale size={48} className="text-muted-foreground" />
@@ -1409,7 +1409,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             return (
               <div
                 key={m.id}
-                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} slide-in-from-bottom-2 gap-2 mb-3`}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} slide-in-from-bottom-2 gap-2 mb-1`}
                 style={OFFSCREEN_MESSAGE_STYLE}
               >
                 {m.role === "assistant" && (
