@@ -355,6 +355,19 @@ function LawDetailPopup({ law, onClose }: { law: LawReference; onClose: () => vo
               </div>
             )}
 
+            {/* Open in Statute Search link — always shown when we have a law name */}
+            {!isLoading && (
+              <div className="border-t border-border pt-4">
+                <a
+                  href={`/statute-search?q=${encodeURIComponent(law.section ? `${law.name} ${law.section}` : law.name)}`}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 border border-primary/30 rounded-xl text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
+                >
+                  <ExternalLink size={16} />
+                  Open in Statute Search
+                </a>
+              </div>
+            )}
+
             {!isLoading && !loadError && lookupData && !lookupData.found && (
               <div className="border-t border-border pt-4">
                 <p className="text-xs text-muted-foreground italic">No additional details found in the Knowledge Vault for this provision. The AI summary above is based on the response context.</p>
