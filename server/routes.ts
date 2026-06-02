@@ -13941,8 +13941,8 @@ document.addEventListener('keydown',function(e){
 
       // Run knowledge gather and style retrieval in parallel with a shared enrichment deadline.
       // Both are optional enrichment — the chat request must proceed even if one or both time out.
-      // OR tool search: ~2s API + up to 3x8s DB queries (each guarded) = ~26s worst case.
-      // 20s outer budget gives DB searches enough runway without hanging chat indefinitely.
+      // Pipeline now completes in <2s (RAG vector search removed from critical path).
+      // 20s budget is more than enough for tsvector searches + statutes + style memory.
       const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 20000));
       const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
       // V2 pipeline: intent classify → topic-validated retrieval → structured context

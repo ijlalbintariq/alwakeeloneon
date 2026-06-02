@@ -313,6 +313,10 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
   }).catch(() => [] as CaseLaw[]);
 
   // Path 3 (TERTIARY): RAG vector search — admin-uploaded case law documents
+  // Short timeout (3s): RAG calls OpenAI embedding + cosine similarity which can take 5-15s.
+  // If it finishes in 3s, results are merged. If not, pipeline proceeds with Paths 1+2 only.
+  // This prevents RAG from dragging the entire pipeline into the 20s timeout zone.
+  const RAG_TIMEOUT_MS = 3000;
   const ragPromise = userId
     ? retrieveForQuery({ userId, query: expandedQuery, topK: limit * 4 })
         .then(async (retrieval) => {
@@ -341,7 +345,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
   const [judgmentRaw, keywordRaw, ragRaw] = await Promise.all([
     judgmentKeywordPromise,
     withTimeout(keywordPromise, CASELAW_TIMEOUT_MS, [] as CaseLaw[]),
-    withTimeout(ragPromise, CASELAW_TIMEOUT_MS, [] as CaseLaw[]),
+    withTimeout(ragPromise, RAG_TIMEOUT_MS, [] as CaseLaw[]),
   ]);
 
   console.log(`[Retrieval:Paths] judgment=${judgmentRaw.length} caseLaw=${keywordRaw.length} rag=${ragRaw.length}`);
