@@ -14486,6 +14486,8 @@ The user has attached the following documents for your reference. Analyze them c
           if (isAiRouterV2Enabled()) {
             // V2 router: used for all non-al-wakeelo modules (draft, contract, etc.)
             const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
+            console.log(`[AI Stream] V2 route=${selectedRoute} chain=${JSON.stringify(chain)} msgCount=${streamMessages.length} systemLen=${streamMessages[0]?.content?.length || 0}`);
+            const streamStartMs = Date.now();
             const result = await streamWithFallback(chain, {
               messages: streamMessages,
               maxTokens: tokenLimit,
@@ -14495,6 +14497,7 @@ The user has attached the following documents for your reference. Analyze them c
                 console.log(`[AI Router] Stream provider ${p} failed: ${err instanceof Error ? err.message : String(err)}`);
               },
             });
+            console.log(`[AI Stream] Done in ${Date.now() - streamStartMs}ms provider=${result.provider} model=${result.modelName}`);
             usedModel = result.modelName;
             routingPath.push(`router:v2:${result.provider}`);
           } else if (selectedRoute === "turbo") {
