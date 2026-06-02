@@ -7492,7 +7492,7 @@ export async function registerRoutes(
       });
 
       const knowledgeContext = await gatherKnowledgeContextV2(firstMessage, userId);
-      const systemPromptFull = getLegalSystemPrompt() + VERIFIED_JUDGMENTS_CITATION_ADDON + knowledgeContext;
+      const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       let usedModel = "";
       const { content: aiResponse, fromCache } = await getCachedOrCall("chat", firstMessage, async () => {
@@ -7714,7 +7714,7 @@ export async function registerRoutes(
       }));
 
       const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
-      const systemPromptFull = getLegalSystemPrompt() + VERIFIED_JUDGMENTS_CITATION_ADDON + knowledgeContext;
+      const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       const result = await callStandardAI(systemPromptFull, geminiContents, TOKEN_LIMITS.chat);
 
