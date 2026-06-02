@@ -14483,8 +14483,10 @@ The user has attached the following documents for your reference. Analyze them c
             ? [...baseMessages.slice(0, lastUserIdx), ...toolSearchTurns, ...statuteInjectionTurns, ...baseMessages.slice(lastUserIdx)]
             : baseMessages;
           // Al Wakeelo: tool-searched judgments + pipeline statutes injected via systemPromptFull.
-          if (isAiRouterV2Enabled()) {
-            // V2 router: used for all non-al-wakeelo modules (draft, contract, etc.)
+          // V2 router (Gemini via OpenRouter) only for al-wakeelo chat.
+          // Draft, contract-drafting, brief → DeepSeek streaming directly (faster for long-form generation).
+          const useV2Router = isAiRouterV2Enabled() && moduleType === "al-wakeelo";
+          if (useV2Router) {
             const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
             console.log(`[AI Stream] V2 route=${selectedRoute} chain=${JSON.stringify(chain)} msgCount=${streamMessages.length} systemLen=${streamMessages[0]?.content?.length || 0}`);
             const streamStartMs = Date.now();
@@ -14500,6 +14502,20 @@ The user has attached the following documents for your reference. Analyze them c
             console.log(`[AI Stream] Done in ${Date.now() - streamStartMs}ms provider=${result.provider} model=${result.modelName}`);
             usedModel = result.modelName;
             routingPath.push(`router:v2:${result.provider}`);
+          } else if (!useV2Router && isAiRouterV2Enabled() && (moduleType === "draft" || moduleType === "contract-drafting" || moduleType === "brief")) {
+            // Draft/contract/brief: DeepSeek streaming (skip OpenRouter for faster long-form output)
+            console.log(`[AI Stream] DeepSeek direct for module=${moduleType} msgCount=${streamMessages.length} maxTokens=${tokenLimit}`);
+            const streamStartMs = Date.now();
+            usedModel = "deepseek";
+            for await (const text of streamWithDeepSeek({
+              messages: streamMessages,
+              maxTokens: tokenLimit,
+              temperature,
+            })) {
+              writeChunkToClient(text);
+            }
+            console.log(`[AI Stream] DeepSeek done in ${Date.now() - streamStartMs}ms module=${moduleType}`);
+            routingPath.push("deepseek:direct");
           } else if (selectedRoute === "turbo") {
             usedModel = getDeepSeekProModelName();
             for await (const text of streamWithDeepSeek({
