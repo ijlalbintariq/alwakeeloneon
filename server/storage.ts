@@ -1484,16 +1484,16 @@ export class DatabaseStorage implements IStorage {
     const safeQuery = String(query || "").trim();
     const safeLimit = Math.max(1, Math.min(100, Number(limit) || 10));
     const hasTextQuery = safeQuery.length > 0;
-    const textPattern = `%${safeQuery}%`;
     const queryTokens = hasTextQuery
       ? safeQuery
           .toLowerCase()
           .split(MULTIPLE_SPACES_REGEX)
-          .map((token) => token.trim())
-          .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
+          .map((t) => t.trim())
+          .filter((t) => t.length >= 2 && !STOP_WORDS.has(t))
           .slice(0, 10)
       : [];
 
+    // Parse structured citation parts (year / report / page)
     const parsedFromQuery = options.parsedCitation === undefined
       ? parseCaseLawCitationParts(safeQuery)
       : (options.parsedCitation || null);
@@ -1511,191 +1511,121 @@ export class DatabaseStorage implements IStorage {
     const hasPage = page !== null;
     const hasReport = reportRaw.length > 0;
 
-    const buildSourceContentMatchExpr = (pattern: string) => sql`(
-      (
-        coalesce(${caseLaw.sourceType}, '') = 'admin'
-        and exists (
-          select 1
-          from ${adminKnowledge} ak
-          where ak.id = ${caseLaw.sourceDocId}
-            and coalesce(ak.content, '') ILIKE ${pattern}
-        )
-      )
-      or (
-        coalesce(${caseLaw.sourceType}, '') = 'github'
-        and exists (
-          select 1
-          from ${githubKnowledge} gk
-          where gk.id = ${caseLaw.sourceDocId}
-            and coalesce(gk.content, '') ILIKE ${pattern}
-        )
-      )
-      or (
-        coalesce(${caseLaw.sourceType}, '') = 'statute'
-        and exists (
-          select 1
-          from ${statuteDocuments} sd
-          where sd.id = ${caseLaw.sourceDocId}
-            and coalesce(sd.content, '') ILIKE ${pattern}
-        )
-      )
-      or (
-        coalesce(${caseLaw.sourceType}, '') = 'user'
-        and exists (
-          select 1
-          from ${documents} d
-          where d.id = ${caseLaw.sourceDocId}
-            and coalesce(d.content, '') ILIKE ${pattern}
-        )
-      )
-    )`;
+    // ── Build WHERE clause ──────────────────────────────────────────────
+    // Strategy: OR everything. Any match = candidate row. Relevance scoring
+    // handles ranking. This is the opposite of the old AND-everything approach.
 
-    const sourcePhraseTextExpr = includeSourceContentSearch && hasTextQuery
-      ? buildSourceContentMatchExpr(textPattern)
-      : undefined;
+    const whereClauses: ReturnType<typeof sql>[] = [];
 
-    const phraseTextExpr = hasTextQuery
-      ? or(
-          buildSearchTokenMatch(caseLaw.citation, safeQuery),
-          buildSearchTokenMatch(caseLaw.court, safeQuery),
-          buildSearchTokenMatch(caseLaw.title, safeQuery),
-          buildSearchTokenMatch(caseLaw.summary, safeQuery),
-          buildSearchTokenMatch(sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ')`, safeQuery),
-          ...(sourcePhraseTextExpr ? [sourcePhraseTextExpr] : []),
-        )
-      : undefined;
+    // 1) Structured citation match (year + report + page)
+    if (hasYear && hasReport && hasPage) {
+      whereClauses.push(sql`(${caseLaw.citationYear} = ${year} AND upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationPage} = ${page})`);
+    } else if (hasReport && hasPage) {
+      whereClauses.push(sql`(upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationPage} = ${page})`);
+    } else if (hasYear && hasReport) {
+      whereClauses.push(sql`(upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationYear} = ${year})`);
+    } else {
+      if (hasYear) whereClauses.push(sql`${caseLaw.citationYear} = ${year}`);
+      if (hasPage) whereClauses.push(sql`${caseLaw.citationPage} = ${page}`);
+      if (hasReport) whereClauses.push(sql`upper(${caseLaw.citationReport}) = ${reportRaw}`);
+    }
 
-    // Per-token AND: each query token must match at least ONE column.
-    // Then AND all token groups together. This ensures "haq mehr" requires
-    // BOTH words to appear (in any columns), not just one of them.
-    // We enforce case-insensitive whole-word Postgres regex boundaries for short/critical tokens.
-    const perTokenExprs = queryTokens.map((token) => {
-      const baseClauses = [
-        buildSearchTokenMatch(caseLaw.citation, token),
-        buildSearchTokenMatch(caseLaw.court, token),
-        buildSearchTokenMatch(caseLaw.title, token),
-        buildSearchTokenMatch(caseLaw.summary, token),
-        buildSearchTokenMatch(sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ')`, token),
-      ];
-      if (includeSourceContentSearch) {
-        baseClauses.push(buildSourceContentMatchExpr(`%${token}%`));
-      }
-      return or(...baseClauses)!;
+    // 2) Full phrase ILIKE (catches exact multi-word matches)
+    if (hasTextQuery) {
+      const phrasePattern = `%${safeQuery}%`;
+      whereClauses.push(ilike(caseLaw.citation, phrasePattern));
+      whereClauses.push(ilike(caseLaw.title, phrasePattern));
+      whereClauses.push(ilike(caseLaw.summary, phrasePattern));
+      whereClauses.push(ilike(caseLaw.court, phrasePattern));
+      whereClauses.push(sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${phrasePattern}`);
+    }
+
+    // 3) Per-token OR: each token matches ANY column → row is a candidate
+    for (const token of queryTokens) {
+      const pat = `%${token}%`;
+      whereClauses.push(ilike(caseLaw.citation, pat));
+      whereClauses.push(ilike(caseLaw.title, pat));
+      whereClauses.push(ilike(caseLaw.summary, pat));
+      whereClauses.push(ilike(caseLaw.court, pat));
+      whereClauses.push(sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${pat}`);
+    }
+
+    // 4) Source content search (optional — searches linked documents)
+    if (includeSourceContentSearch && hasTextQuery) {
+      const srcPattern = `%${safeQuery}%`;
+      whereClauses.push(sql`(
+        (coalesce(${caseLaw.sourceType}, '') = 'admin' AND exists (select 1 from ${adminKnowledge} ak where ak.id = ${caseLaw.sourceDocId} and coalesce(ak.content, '') ILIKE ${srcPattern}))
+        OR (coalesce(${caseLaw.sourceType}, '') = 'github' AND exists (select 1 from ${githubKnowledge} gk where gk.id = ${caseLaw.sourceDocId} and coalesce(gk.content, '') ILIKE ${srcPattern}))
+        OR (coalesce(${caseLaw.sourceType}, '') = 'statute' AND exists (select 1 from ${statuteDocuments} sd where sd.id = ${caseLaw.sourceDocId} and coalesce(sd.content, '') ILIKE ${srcPattern}))
+        OR (coalesce(${caseLaw.sourceType}, '') = 'user' AND exists (select 1 from ${documents} d where d.id = ${caseLaw.sourceDocId} and coalesce(d.content, '') ILIKE ${srcPattern}))
+      )`);
+    }
+
+    // 5) Court filter (AND — narrows results, not expands)
+    const courtFilter = courtRaw ? ilike(caseLaw.court, `%${courtRaw}%`) : undefined;
+
+    if (whereClauses.length === 0) return [];
+
+    const whereExpr = courtFilter
+      ? and(or(...whereClauses)!, courtFilter)!
+      : or(...whereClauses)!;
+
+    // ── Relevance scoring ───────────────────────────────────────────────
+    const exactTriplet = hasReport && hasYear && hasPage
+      ? sql`CASE WHEN upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationYear} = ${year} AND ${caseLaw.citationPage} = ${page} THEN 1000 ELSE 0 END`
+      : sql`0`;
+    const reportMatch = hasReport
+      ? sql`CASE WHEN upper(${caseLaw.citationReport}) = ${reportRaw} THEN 200 ELSE 0 END`
+      : sql`0`;
+    const yearMatch = hasYear
+      ? sql`CASE WHEN ${caseLaw.citationYear} = ${year} THEN 100 ELSE 0 END`
+      : sql`0`;
+    const pageMatch = hasPage
+      ? sql`CASE WHEN ${caseLaw.citationPage} = ${page} THEN 300 ELSE 0 END`
+      : sql`0`;
+    const primaryBoost = sql`CASE WHEN ${caseLaw.citationRole} = 'primary' THEN 150 ELSE 0 END`;
+
+    // Per-token hit count: +50 per token that appears in any searchable field
+    const tokenScoreParts = queryTokens.map((token) => {
+      const pat = `%${token}%`;
+      return sql`(
+        CASE WHEN ${caseLaw.citation} ILIKE ${pat} THEN 30 ELSE 0 END +
+        CASE WHEN ${caseLaw.title} ILIKE ${pat} THEN 50 ELSE 0 END +
+        CASE WHEN ${caseLaw.summary} ILIKE ${pat} THEN 40 ELSE 0 END +
+        CASE WHEN ${caseLaw.court} ILIKE ${pat} THEN 20 ELSE 0 END +
+        CASE WHEN array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${pat} THEN 60 ELSE 0 END
+      )`;
     });
-    // AND between tokens (each token must match some column)
-    const tokenTextExpr = perTokenExprs.length > 0
-      ? (perTokenExprs.length === 1 ? perTokenExprs[0] : and(...perTokenExprs)!)
-      : undefined;
-    const textMatchExpr = hasTextQuery
-      ? (phraseTextExpr && tokenTextExpr ? or(phraseTextExpr, tokenTextExpr) : (phraseTextExpr || tokenTextExpr))
-      : undefined;
+    const tokenScore = tokenScoreParts.length > 0
+      ? sql.join(tokenScoreParts, sql` + `)
+      : sql`0`;
 
-    const tsQueryStr = queryTokens.map(t => `${t}:*`).join(' & ');
-    const tsvMatchExpr = queryTokens.length > 0
-      ? sql`to_tsvector('simple', coalesce(${caseLaw.citation}, '') || ' ' || coalesce(${caseLaw.title}, '') || ' ' || coalesce(${caseLaw.summary}, '') || ' ' || coalesce(${caseLaw.court}, '')) @@ to_tsquery('simple', ${tsQueryStr})`
-      : undefined;
-
-    const textMatchExprCombined = tsvMatchExpr && textMatchExpr
-      ? and(tsvMatchExpr, textMatchExpr)
-      : (tsvMatchExpr || textMatchExpr);
-
-    const structuredClauses = [
-      hasPage ? eq(caseLaw.citationPage, page) : undefined,
-      hasYear ? eq(caseLaw.citationYear, year) : undefined,
-      hasReport ? sql`upper(${caseLaw.citationReport}) = ${reportRaw}` : undefined,
-    ].filter((clause): clause is NonNullable<typeof clause> => Boolean(clause));
-
-    const structuredMatch = structuredClauses.length > 0
-      ? (structuredClauses.length === 1 ? structuredClauses[0] : and(...structuredClauses)!)
-      : undefined;
-
-    const whereParts = [
-      courtRaw ? ilike(caseLaw.court, `%${courtRaw}%`) : undefined,
-      structuredMatch && textMatchExprCombined ? or(structuredMatch, textMatchExprCombined) : undefined,
-      structuredMatch && !textMatchExprCombined ? structuredMatch : undefined,
-      !structuredMatch && textMatchExprCombined ? textMatchExprCombined : undefined,
-    ].filter((clause): clause is NonNullable<typeof clause> => Boolean(clause));
-
-    if (whereParts.length === 0) return [];
-
-    const whereClause = whereParts.length === 1 ? whereParts[0] : and(...whereParts)!;
-
-    const exactTripletExpr = hasReport && hasYear && hasPage
-      ? sql`upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationYear} = ${year} AND ${caseLaw.citationPage} = ${page}`
-      : sql`false`;
-    const reportPageExpr = hasReport && hasPage
-      ? sql`upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationPage} = ${page}`
-      : sql`false`;
-    const reportYearExpr = hasReport && hasYear
-      ? sql`upper(${caseLaw.citationReport}) = ${reportRaw} AND ${caseLaw.citationYear} = ${year}`
-      : sql`false`;
-    const pageExpr = hasPage ? sql`${caseLaw.citationPage} = ${page}` : sql`false`;
-    const reportExpr = hasReport ? sql`upper(${caseLaw.citationReport}) = ${reportRaw}` : sql`false`;
-    const yearExpr = hasYear ? sql`${caseLaw.citationYear} = ${year}` : sql`false`;
-    const citationTextExpr = hasTextQuery ? ilike(caseLaw.citation, textPattern) : sql`false`;
-    const titleTextExpr = hasTextQuery ? ilike(caseLaw.title, textPattern) : sql`false`;
-    const summaryTextExpr = hasTextQuery ? ilike(caseLaw.summary, textPattern) : sql`false`;
-    const courtTextExpr = hasTextQuery ? ilike(caseLaw.court, textPattern) : sql`false`;
-    const keywordTextExpr = hasTextQuery
-      ? sql`array_to_string(coalesce(${caseLaw.keywords}, ARRAY[]::text[]), ' ') ILIKE ${textPattern}`
-      : sql`false`;
-    const sourcePhraseMatchExpr = includeSourceContentSearch && hasTextQuery && sourcePhraseTextExpr ? sourcePhraseTextExpr : sql`false`;
-    const sourceTokenMatchExpr = includeSourceContentSearch && hasTextQuery && tokenTextExpr ? tokenTextExpr : sql`false`;
-    const tokenRankExpr = queryTokens.length > 0
-      ? sql<number>`COALESCE(
-          ts_rank_cd(
-            to_tsvector(
-              'simple',
-              coalesce(${caseLaw.citation}, '') || ' ' ||
-              coalesce(${caseLaw.title}, '') || ' ' ||
-              coalesce(${caseLaw.summary}, '') || ' ' ||
-              coalesce(${caseLaw.court}, '')
-            ),
-            plainto_tsquery('simple', ${queryTokens.join(" ")})
-          ),
-          0
+    // Full phrase bonus
+    const phraseScore = hasTextQuery
+      ? sql`(
+          CASE WHEN ${caseLaw.citation} ILIKE ${'%' + safeQuery + '%'} THEN 120 ELSE 0 END +
+          CASE WHEN ${caseLaw.title} ILIKE ${'%' + safeQuery + '%'} THEN 80 ELSE 0 END +
+          CASE WHEN ${caseLaw.summary} ILIKE ${'%' + safeQuery + '%'} THEN 60 ELSE 0 END
         )`
-      : sql<number>`0`;
+      : sql`0`;
 
-    const relevanceScore = sql<number>`(
-      CASE WHEN ${caseLaw.citationRole} = 'primary' THEN 140 ELSE 0 END +
-      CASE WHEN ${exactTripletExpr} THEN 1000 ELSE 0 END +
-      CASE WHEN ${reportPageExpr} THEN 700 ELSE 0 END +
-      CASE WHEN ${reportYearExpr} THEN 550 ELSE 0 END +
-      CASE WHEN ${pageExpr} THEN 420 ELSE 0 END +
-      CASE WHEN ${reportExpr} THEN 260 ELSE 0 END +
-      CASE WHEN ${yearExpr} THEN 180 ELSE 0 END +
-      CASE WHEN ${citationTextExpr} THEN 110 ELSE 0 END +
-      CASE WHEN ${titleTextExpr} THEN 80 ELSE 0 END +
-      CASE WHEN ${summaryTextExpr} THEN 65 ELSE 0 END +
-      CASE WHEN ${courtTextExpr} THEN 45 ELSE 0 END +
-      CASE WHEN ${keywordTextExpr} THEN 60 ELSE 0 END +
-      CASE WHEN ${sourcePhraseMatchExpr} THEN 175 ELSE 0 END +
-      CASE WHEN ${sourceTokenMatchExpr} THEN 95 ELSE 0 END +
-      LEAST(220, ${tokenRankExpr} * 140)
-    )`;
+    const relevanceScore = sql<number>`(${exactTriplet} + ${reportMatch} + ${yearMatch} + ${pageMatch} + ${primaryBoost} + ${tokenScore} + ${phraseScore})`;
 
+    // ── Query + dedup ───────────────────────────────────────────────────
     const fetchLimit = Math.min(200, safeLimit * 4);
-    const queryBuilder = db.select().from(caseLaw).where(whereClause);
+    const queryBuilder = db.select().from(caseLaw).where(whereExpr);
     const rows = sortMode === "latest"
-      ? await queryBuilder
-          .orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id))
-          .limit(fetchLimit)
-      : await queryBuilder
-          .orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id))
-          .limit(fetchLimit);
+      ? await queryBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(fetchLimit)
+      : await queryBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(fetchLimit);
 
-    // Keep the highest-ranked row for each citation key to avoid duplicate judgments in search results.
+    // Deduplicate by citation key
     const deduped: CaseLaw[] = [];
     const seen = new Set<string>();
     for (const row of rows) {
       const key = buildCaseLawDedupKey(row);
       if (!key || seen.has(key)) continue;
       seen.add(key);
-      deduped.push({
-        ...row,
-        title: cleanCaseTitle(row.title),
-      });
+      deduped.push({ ...row, title: cleanCaseTitle(row.title) });
       if (deduped.length >= safeLimit) break;
     }
     return deduped;
