@@ -1522,19 +1522,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     </>
                   )}
                   {m.role === "assistant" && (
-                    <div className={`absolute top-3 right-3 transition-opacity ${bookmarkedIds.has(m.id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30">
                       <button
                         onClick={() => !bookmarkedIds.has(m.id) && !bookmarkMutation.isPending && bookmarkMutation.mutate(m)}
                         disabled={bookmarkMutation.isPending}
-                        className={`p-2 rounded-xl border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wide transition-all duration-150 border disabled:opacity-50 disabled:cursor-not-allowed ${
                           bookmarkedIds.has(m.id)
                             ? "border-primary/50 text-primary bg-primary/10"
-                            : "border-border text-muted-foreground hover:text-primary"
+                            : "border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5"
                         }`}
                         data-testid="button-bookmark"
                         title={bookmarkedIds.has(m.id) ? "Bookmarked" : "Save to Bookmarks"}
                       >
-                        {bookmarkedIds.has(m.id) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+                        {bookmarkedIds.has(m.id) ? <BookmarkCheck size={13} /> : <Bookmark size={13} />}
+                        {bookmarkedIds.has(m.id) ? "Saved" : "Save"}
                       </button>
                     </div>
                   )}
@@ -2095,15 +2096,22 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         </>
                       )}
                       {m.role === "assistant" && (
-                        <button
-                          onClick={() => !bookmarkedIds.has(m.id) && !bookmarkMutation.isPending && bookmarkMutation.mutate(m)}
-                          disabled={bookmarkMutation.isPending}
-                          className={`absolute top-3 right-3 p-1.5 rounded-lg border transition-opacity disabled:opacity-50 disabled:cursor-not-allowed ${bookmarkedIds.has(m.id) ? "opacity-100 border-primary/50 text-primary bg-primary/10" : "opacity-0 group-hover:opacity-100 border-primary/20 text-muted-foreground hover:text-primary"}`}
-                          data-testid="button-bookmark"
-                          title={bookmarkedIds.has(m.id) ? "Bookmarked" : "Save to bookmarks"}
-                        >
-                          {bookmarkedIds.has(m.id) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-                        </button>
+                        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30">
+                          <button
+                            onClick={() => !bookmarkedIds.has(m.id) && !bookmarkMutation.isPending && bookmarkMutation.mutate(m)}
+                            disabled={bookmarkMutation.isPending}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wide transition-all duration-150 border disabled:opacity-50 disabled:cursor-not-allowed ${
+                              bookmarkedIds.has(m.id)
+                                ? "border-primary/50 text-primary bg-primary/10"
+                                : "border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5"
+                            }`}
+                            data-testid="button-bookmark"
+                            title={bookmarkedIds.has(m.id) ? "Bookmarked" : "Save to bookmarks"}
+                          >
+                            {bookmarkedIds.has(m.id) ? <BookmarkCheck size={13} /> : <Bookmark size={13} />}
+                            {bookmarkedIds.has(m.id) ? "Saved" : "Save"}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
