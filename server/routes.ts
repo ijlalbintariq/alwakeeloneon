@@ -3748,6 +3748,14 @@ async function directCaseLawFallbackSearch(
     defamation: ["defamation", "libel", "slander"],
     divorce: ["divorce", "khula", "talaq"],
     dower: ["dower", "mehr", "haq mehr"],
+    fir: ["fir", "154", "first information report", "registration", "cognizable", "police"],
+    crpc_procedure: ["22-a", "22-b", "justice of peace", "sessions judge", "direction to police"],
+    intimidation: ["intimidation", "506", "threatening", "blackmail", "extortion", "criminal intimidation"],
+    arms: ["arms", "weapon", "pistol", "firearm", "kalashnikov", "unlicensed"],
+    terrorism: ["terrorism", "anti-terrorism", "ata", "scheduled offence"],
+    blasphemy: ["blasphemy", "295", "295-c", "religious", "quran"],
+    hurt: ["hurt", "grievous", "337", "arsh", "daman"],
+    contempt: ["contempt", "disobedience", "court order"],
   };
 
   // Find matching legal topics — push ALL matching terms for DB search
@@ -14319,7 +14327,9 @@ The user has attached the following documents for your reference. Analyze them c
       const toolMandateBlock =
         toolSearchResult.foundCount > 0
           ? `\n\nCITATION MANDATE (REQUIRED — read carefully):\n` +
-            `- You MUST cite at least 3 judgments from the AI-SEARCHED JUDGMENTS list above.\n` +
+            `- Cite ONLY judgments from the AI-SEARCHED JUDGMENTS list above that are DIRECTLY relevant to the user's legal question.\n` +
+            `- Quality over quantity — citing 1-2 highly relevant cases is ALWAYS better than citing 3+ mixed-domain cases.\n` +
+            `- If NONE of the cases in the list are relevant to the specific legal topic, do NOT cite any of them. Instead, acknowledge that no relevant case law was found in the database and recommend searching the Judgment Search database.\n` +
             `- Always use the FORMAL CITATION string, never the case name alone.\n` +
             `  WRONG: "Sohail Iqbal vs State held that..."\n` +
             `  RIGHT: "**[2024 SCMR 1419]** held that..."\n` +
@@ -14332,6 +14342,7 @@ The user has attached the following documents for your reference. Analyze them c
             `- SKIP any case that belongs to a different legal domain (e.g. criminal case in a property dispute, prisoner rights case in a contract matter).\n` +
             `- PCRLJ/Criminal citations in a civil/property/family query = SKIP IT.\n` +
             `- A topically irrelevant citation DESTROYS credibility — citing 2 relevant cases is ALWAYS better than 3 mixed-domain cases.\n` +
+            `- If a case is about a completely different legal topic (e.g., landlord-tenant in a CrPC FIR query), DO NOT CITE IT.\n` +
             `\nCITATION DEPTH (MANDATORY for each case cited):\n` +
             `- State the LEGAL PRINCIPLE the case established.\n` +
             `- State the RATIO DECIDENDI (the court's key deciding reason).\n` +
@@ -14624,29 +14635,22 @@ The user has attached the following documents for your reference. Analyze them c
         }
 
         // Safety net: inject verified case law if the AI failed to cite any
-        // Source priority: tool search hits > pipeline verified judgments > direct DB search
-        let fallbackHits = (toolSearchResult?.verifiedHits?.length > 0)
+        // Source priority: tool search hits > pipeline verified judgments ONLY
+        // Level 3 (direct DB search) DISABLED — it returns random, topic-blind results
+        // that contaminate the response with irrelevant citations.
+        const fallbackHits = (toolSearchResult?.verifiedHits?.length > 0)
           ? toolSearchResult.verifiedHits
           : extractPipelineVerifiedHits(knowledgeContext);
-        // Level 3: direct DB search if both sources are empty
-        if (fallbackHits.length === 0 && moduleType === "al-wakeelo" && !directMode && latestUserPromptText) {
-          try {
-            const directHits = await directCaseLawFallbackSearch(latestUserPromptText);
-            if (directHits.length > 0) {
-              fallbackHits = directHits;
-              console.log(`[CaseLawFallback] Level 3: direct DB search found ${directHits.length} hits`);
-            }
-          } catch (e) {
-            console.warn("[CaseLawFallback] Direct DB search failed:", e);
-          }
-        }
-        if (moduleType === "al-wakeelo" && !directMode && fallbackHits.length > 0) {
+        // Only inject if we have hits from trusted sources (tool search or pipeline)
+        // and the AI didn't explicitly say "no relevant judgments found"
+        const aiSaidNoResults = /no relevant judgments? found/i.test(fullContent);
+        if (moduleType === "al-wakeelo" && !directMode && fallbackHits.length > 0 && !aiSaidNoResults) {
           const injected = injectVerifiedCaseLawFallback(fullContent, fallbackHits);
           if (injected !== fullContent) {
             fullContent = injected;
             res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
             res.write(`data: ${JSON.stringify({ text: fullContent })}\n\n`);
-            const source = toolSearchResult?.verifiedHits?.length > 0 ? 'tool-search' : (extractPipelineVerifiedHits(knowledgeContext).length > 0 ? 'pipeline' : 'direct-db');
+            const source = toolSearchResult?.verifiedHits?.length > 0 ? 'tool-search' : 'pipeline';
             console.log(`[CaseLawFallback] Injected ${fallbackHits.length} verified judgments (source: ${source})`);
           }
         }
@@ -14779,27 +14783,17 @@ The user has attached the following documents for your reference. Analyze them c
       completion = assertNonEmptyModelOutput("AI route", completion);
 
       // Safety net: inject verified case law if the AI failed to cite any
-      // Source priority: tool search hits > pipeline verified judgments > direct DB search
-      let fallbackHitsNS = (toolSearchResult?.verifiedHits?.length > 0)
+      // Source priority: tool search hits > pipeline verified judgments ONLY
+      // Level 3 (direct DB search) DISABLED — returns random topic-blind results
+      const fallbackHitsNS = (toolSearchResult?.verifiedHits?.length > 0)
         ? toolSearchResult.verifiedHits
         : extractPipelineVerifiedHits(knowledgeContext);
-      // Level 3: direct DB search if both sources are empty
-      if (fallbackHitsNS.length === 0 && moduleType === "al-wakeelo" && !directMode && latestUserPromptText) {
-        try {
-          const directHits = await directCaseLawFallbackSearch(latestUserPromptText);
-          if (directHits.length > 0) {
-            fallbackHitsNS = directHits;
-            console.log(`[CaseLawFallback] Level 3 (non-streaming): direct DB search found ${directHits.length} hits`);
-          }
-        } catch (e) {
-          console.warn("[CaseLawFallback] Direct DB search failed:", e);
-        }
-      }
-      if (moduleType === "al-wakeelo" && !directMode && fallbackHitsNS.length > 0) {
+      const aiSaidNoResultsNS = /no relevant judgments? found/i.test(completion);
+      if (moduleType === "al-wakeelo" && !directMode && fallbackHitsNS.length > 0 && !aiSaidNoResultsNS) {
         const injected = injectVerifiedCaseLawFallback(completion, fallbackHitsNS);
         if (injected !== completion) {
           completion = injected;
-          const source = toolSearchResult?.verifiedHits?.length > 0 ? 'tool-search' : (extractPipelineVerifiedHits(knowledgeContext).length > 0 ? 'pipeline' : 'direct-db');
+          const source = toolSearchResult?.verifiedHits?.length > 0 ? 'tool-search' : 'pipeline';
           console.log(`[CaseLawFallback] Injected ${fallbackHitsNS.length} verified judgments (non-streaming, source: ${source})`);
         }
       }
