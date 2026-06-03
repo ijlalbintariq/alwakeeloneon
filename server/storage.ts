@@ -2156,8 +2156,11 @@ export class DatabaseStorage implements IStorage {
       .filter((token) => token.length >= 2 && !STOP_WORDS.has(token));
 
     // Prioritize legal signal tokens so the SQL uses legally relevant terms
-    const signalTokens = allTokens.filter((t) => LEGAL_SIGNAL_TOKENS.has(t));
-    const otherTokens = allTokens.filter((t) => !LEGAL_SIGNAL_TOKENS.has(t));
+    // Auto-promote: any token that looks like a section number (digits, or digits-letter like 22-a, 489-f)
+    // is ALWAYS a signal token — no need to hardcode every section number
+    const SECTION_NUMBER_RE = /^\d+[a-z]?(-[a-z0-9]+)?$/;
+    const signalTokens = allTokens.filter((t) => LEGAL_SIGNAL_TOKENS.has(t) || SECTION_NUMBER_RE.test(t));
+    const otherTokens = allTokens.filter((t) => !LEGAL_SIGNAL_TOKENS.has(t) && !SECTION_NUMBER_RE.test(t));
     const queryTokens = [...new Set([...signalTokens, ...otherTokens])].slice(0, 6);
 
     if (queryTokens.length === 0) return [];
