@@ -2160,7 +2160,42 @@ export class DatabaseStorage implements IStorage {
       "visitation", "nuisance", "perjury", "foreign", "exchange", "hundi",
       "havala", "nirc", "union",
       "agency", "principal", "agent", "sub-agent", "subagent", "ratification", "broker",
-      "telecom", "telecommunication", "pta", "sim", "cellular", "broadband", "spectrum", "frequency", "competition", "ccp", "anti-trust", "monopoly", "cartel", "merger", "procurement", "ppra", "tender", "bidding", "blacklisting", "pfa", "adulteration", "spurious", "unhygienic", "halal", "maritime", "admiralty", "ship", "vessel", "shipping", "demurrage", "cargo", "aviation", "caa", "airline", "aircraft", "flight", "pilot", "mining", "mineral", "mine", "quarry", "excavation", "royalty", "forest", "wildlife", "timber", "hunting", "poaching", "endangered", "income", "tax", "fbr", "assessment", "evasion", "withholding", "sales", "vat", "gst", "pra", "srb", "kpra", "bra", "invoice", "refund", "extradition", "interpol", "asylum", "privacy", "breach", "encounter", "extrajudicial", "custodial", "brutality", "transgender", "khawaja", "sira", "gender", "mental", "health", "lunatic", "insane", "unsound", "psychiatric", "sez", "boi", "fdi", "epz", "zakat", "ushr", "evacuee", "etpb", "cda", "lda", "kda", "dha", "zoning", "bylaws", "cruelty", "stray", "veterinary", "livestock", "12(2)", "xxxvii", "144", "145", "164", "167", "remand", "confessional"
+      "telecom", "telecommunication", "pta", "sim", "cellular", "broadband", "spectrum", "frequency",
+      "competition", "ccp", "anti-trust", "monopoly", "cartel", "merger",
+      "procurement", "ppra", "tender", "bidding", "blacklisting",
+      "pfa", "adulteration", "unhygienic", "halal",
+      "maritime", "admiralty", "ship", "vessel", "shipping", "demurrage", "cargo",
+      "aviation", "caa", "airline", "aircraft", "flight", "pilot",
+      "mining", "mineral", "mine", "quarry", "excavation", "royalty",
+      "forest", "wildlife", "timber", "hunting", "poaching", "endangered",
+      "income", "fbr", "evasion", "withholding",
+      "sales", "vat", "gst", "srb", "kpra", "bra", "invoice", "refund",
+      "extradition", "interpol", "asylum",
+      "privacy",
+      "encounter", "extrajudicial", "custodial", "brutality",
+      "transgender", "khawaja", "sira", "gender",
+      "mental", "lunatic", "insane", "unsound", "psychiatric",
+      "sez", "boi", "fdi", "epz",
+      "zakat", "ushr",
+      "evacuee", "etpb",
+      "cda", "lda", "kda", "dha", "zoning", "bylaws",
+      "stray", "veterinary", "livestock",
+      "12(2)", "xxxvii", "confessional",
+      // ── DATA-BACKED tokens (extracted from 223,165 real judgments via ts_stat) ──
+      // These terms appear in 10+ actual judgment headnotes in the database.
+      // High-frequency procedural terms (100+ judgments)
+      "service", "land", "property", "sale", "deed", "customs", "excise",
+      "university", "education", "employment", "allotment", "witness",
+      "termination", "reinstatement", "gift", "hospital", "child",
+      "guardian", "society", "promotion", "mutation", "examination",
+      // Medium-frequency legal terms (10-99 judgments)
+      "hadd", "tazir", "nikah", "surety", "confession", "drugs",
+      "testimony", "attempt", "civil", "criminal",
+      // High-frequency institutional/role terms from titles (1000+ judgments)
+      "commissioner", "collector", "federation", "police",
+      "income-tax", "customs", "tribunal", "civil",
+      // Journal report codes (used in citation matching, 5000+ judgments each)
+      "scmr", "pcrlj", "pld", "mld", "clc", "ylr", "ptd", "plj", "cld",
     ]);
 
     const allTokens = safeQuery
