@@ -14513,7 +14513,7 @@ The user has attached the following documents for your reference. Analyze them c
             console.log(`[AI Stream] Done in ${Date.now() - streamStartMs}ms provider=${result.provider} model=${result.modelName}`);
             usedModel = result.modelName;
             routingPath.push(`router:v2:${result.provider}`);
-          } else if (!useV2Router && isAiRouterV2Enabled() && (moduleType === "draft" || moduleType === "contract-drafting" || moduleType === "brief")) {
+          } else if (!useV2Router && isAiRouterV2Enabled() && (moduleType === "draft" || moduleType === "contract-drafting" || (moduleType as string) === "brief")) {
             // Draft/contract/brief: DeepSeek streaming (skip OpenRouter for faster long-form output)
             console.log(`[AI Stream] DeepSeek direct for module=${moduleType} msgCount=${streamMessages.length} maxTokens=${tokenLimit}`);
             const streamStartMs = Date.now();

@@ -2159,6 +2159,8 @@ export class DatabaseStorage implements IStorage {
       "mandamus", "certiorari", "jactitation", "conjugal", "dowry", "jahez",
       "visitation", "nuisance", "perjury", "foreign", "exchange", "hundi",
       "havala", "nirc", "union",
+      "agency", "principal", "agent", "sub-agent", "subagent", "ratification", "broker",
+      "telecom", "telecommunication", "pta", "sim", "cellular", "broadband", "spectrum", "frequency", "competition", "ccp", "anti-trust", "monopoly", "cartel", "merger", "procurement", "ppra", "tender", "bidding", "blacklisting", "pfa", "adulteration", "spurious", "unhygienic", "halal", "maritime", "admiralty", "ship", "vessel", "shipping", "demurrage", "cargo", "aviation", "caa", "airline", "aircraft", "flight", "pilot", "mining", "mineral", "mine", "quarry", "excavation", "royalty", "forest", "wildlife", "timber", "hunting", "poaching", "endangered", "income", "tax", "fbr", "assessment", "evasion", "withholding", "sales", "vat", "gst", "pra", "srb", "kpra", "bra", "invoice", "refund", "extradition", "interpol", "asylum", "privacy", "breach", "encounter", "extrajudicial", "custodial", "brutality", "transgender", "khawaja", "sira", "gender", "mental", "health", "lunatic", "insane", "unsound", "psychiatric", "sez", "boi", "fdi", "epz", "zakat", "ushr", "evacuee", "etpb", "cda", "lda", "kda", "dha", "zoning", "bylaws", "cruelty", "stray", "veterinary", "livestock", "12(2)", "xxxvii", "144", "145", "164", "167", "remand", "confessional"
     ]);
 
     const allTokens = safeQuery

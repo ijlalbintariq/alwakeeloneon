@@ -1034,8 +1034,8 @@ export const LEGAL_TOPICS: LegalTopic[] = [
   {
     id: "agency-principal",
     label: "Agency / Principal-Agent / Authority",
-    primary: ["agency", "principal", "agent", "authority of agent"],
-    synonyms: ["contract act chapter x", "implied authority", "ostensible authority", "ratification", "sub-agent", "agent liability", "undisclosed principal", "termination of agency", "commission agent", "del credere agent", "factor", "broker"],
+    primary: ["agency", "principal", "agent", "authority of agent", "sub-agent", "subagent"],
+    synonyms: ["contract act chapter x", "implied authority", "ostensible authority", "ratification", "agent liability", "undisclosed principal", "termination of agency", "commission agent", "del credere agent", "factor", "broker"],
     minRelevanceScore: 24,
   },
   {
