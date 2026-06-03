@@ -2136,6 +2136,17 @@ export class DatabaseStorage implements IStorage {
       "vacate", "occupant", "subletting", "premises",
       // Section numbers commonly searched
       "302", "497", "489", "420", "406", "376", "377", "295",
+      // More section numbers commonly searched
+      "154", "155", "156", "161", "164", "173", "174", "175",
+      "196", "249", "265", "324", "337", "342", "365", "379",
+      "380", "392", "395", "411", "419", "468", "471", "496",
+      "498", "500", "506", "507", "509", "511",
+      // CrPC procedural sections
+      "22-a", "22-b", "249-a", "265-k", "345", "426", "439",
+      "497", "498", "561-a",
+      // Key procedural terms missing
+      "cognizable", "non-cognizable", "registration", "complainant",
+      "informant", "challan", "investigation", "remand",
     ]);
 
     const allTokens = safeQuery
@@ -2163,24 +2174,31 @@ export class DatabaseStorage implements IStorage {
 
     const tsvExpr = sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, '') || ' ' || coalesce(${judgments.fullText}, ''))`;
 
+    // Build a relevance scoring expression using ts_rank_cd for both narrow and broad queries
+    // This ensures results are ranked by how well they match, not just by recency
+    const allTsTerms = queryTokens.join(' | ');
+
     const fetchRows = async (tsqStr: string): Promise<any[]> => {
       const res = await db.execute(sql`
         WITH candidates AS (
-          SELECT id FROM judgments
+          SELECT id,
+            ts_rank_cd(${tsvExpr}, to_tsquery('simple', ${allTsTerms})) as relevance
+          FROM judgments
           WHERE is_active = true
             AND ${tsvExpr} @@ to_tsquery('simple', ${tsqStr})
-          ORDER BY year DESC
+          ORDER BY relevance DESC, year DESC
           LIMIT ${safeLimit * 8}
         )
         SELECT
           j.id, j.year, j.page, j.citation_string as "citationString", j.title, j.petitioner, j.respondent, j.headnotes,
           LEFT(j.full_text, 1500) as "fullTextHead",
-          c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode"
+          c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode",
+          cand.relevance
         FROM candidates cand
         INNER JOIN judgments j ON cand.id = j.id
         LEFT JOIN courts_ref c ON j.court_id = c.id
         INNER JOIN law_journals l ON j.journal_id = l.id
-        ORDER BY j.year DESC
+        ORDER BY cand.relevance DESC, j.year DESC
         LIMIT ${safeLimit * 2}
       `);
       return res.rows as any[];
@@ -2202,15 +2220,17 @@ export class DatabaseStorage implements IStorage {
           buildSearchTokenMatch(judgments.headnotes, token),
         )!;
       });
+      // Use AND logic for ILIKE fallback to get more relevant results
       const ilikeExpr = perTokenExprs.length === 1
         ? perTokenExprs[0]
-        : or(...perTokenExprs)!;
+        : and(...perTokenExprs)!;
 
       const res = await db.execute(sql`
         SELECT
           j.id, j.year, j.page, j.citation_string as "citationString", j.title, j.petitioner, j.respondent, j.headnotes,
           LEFT(j.full_text, 1500) as "fullTextHead",
-          c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode"
+          c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode",
+          0.0 as relevance
         FROM judgments j
         LEFT JOIN courts_ref c ON j.court_id = c.id
         INNER JOIN law_journals l ON j.journal_id = l.id
@@ -2219,6 +2239,24 @@ export class DatabaseStorage implements IStorage {
         LIMIT ${safeLimit * 2}
       `);
       rows = res.rows as any[];
+      // If AND ILIKE returns 0, try OR ILIKE as last resort
+      if (rows.length === 0 && perTokenExprs.length > 1) {
+        const ilikeOrExpr = or(...perTokenExprs)!;
+        const resOr = await db.execute(sql`
+          SELECT
+            j.id, j.year, j.page, j.citation_string as "citationString", j.title, j.petitioner, j.respondent, j.headnotes,
+            LEFT(j.full_text, 1500) as "fullTextHead",
+            c.name as "courtName", j.court_name_snapshot as "courtSnapshot", l.code as "journalCode",
+            0.0 as relevance
+          FROM judgments j
+          LEFT JOIN courts_ref c ON j.court_id = c.id
+          INNER JOIN law_journals l ON j.journal_id = l.id
+          WHERE j.is_active = true AND ${ilikeOrExpr}
+          ORDER BY j.year DESC
+          LIMIT ${safeLimit * 2}
+        `);
+        rows = resOr.rows as any[];
+      }
     }
 
     // ── Convert judgment rows to CaseLaw-compatible objects ──────────────
