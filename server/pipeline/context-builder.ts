@@ -233,7 +233,17 @@ export function buildContext(
   parts.push("");
 
   if (hasCaseLawCitations) {
-    parts.push("CASE LAW RULE (MANDATORY): Cite ONLY judgments from the VERIFIED JUDGMENTS section below that are DIRECTLY relevant to the user's legal question. Copy each CITATION string verbatim. Never invent or recall citations from training data. Quality over quantity — citing 2-4 highly relevant cases is better than 5+ mixed-domain cases. If NONE of the cases below are relevant to the specific legal topic, say so and recommend /judgment-search. For EACH cited case, provide a FULL SHORT SUMMARY using this format:\\n\\n**[CITATION STRING]** — *Court Name*\\n**Facts:** Brief facts of the case (who, what happened, what was the dispute).\\n**Issue:** The legal question the court addressed.\\n**Held:** What the court decided and the legal principle established (ratio decidendi).\\n**Relevance:** How this case applies to the user's specific question.\\n\\nDo NOT just list citations with one-line descriptions. The user needs to understand WHAT each case was about and WHY it matters to their question.");
+    parts.push(`CASE LAW RULE (MANDATORY): Cite ONLY judgments from the VERIFIED JUDGMENTS section below that are DIRECTLY relevant to the user's legal question. Copy each CITATION string verbatim. Never invent or recall citations from training data. Quality over quantity — citing 2-4 highly relevant cases is better than 5+ mixed-domain cases. If NONE of the cases below are relevant to the specific legal topic, say so and recommend /judgment-search.
+
+For EACH cited case, provide a FULL SHORT SUMMARY using this EXACT format:
+
+**[CITATION STRING]** — *Court Name*
+**Facts:** Brief facts of the case (who, what happened, what was the dispute).
+**Issue:** The legal question the court addressed.
+**Held:** What the court decided and the legal principle established (ratio decidendi).
+**Relevance:** How this case applies to the user's specific question.
+
+Do NOT just list citations with one-line descriptions. The user needs to understand WHAT each case was about and WHY it matters to their question. Each case summary should be 3-5 sentences total.`);
   } else if (intent.needsCaseLaw) {
     // No results — inject explicit instruction to prevent hallucination
     parts.push(buildNoCaseLawMessage(intent));
