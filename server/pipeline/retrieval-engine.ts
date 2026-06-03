@@ -296,10 +296,14 @@ function scoreCaseLawRowForCitationLookup(row: CaseLaw, intent: QueryIntent): nu
 async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number): Promise<RetrievedCaseLaw[]> {
   const expandedQuery = intent.expandedQuery || intent.normalized;
 
-  // Path 1 (PRIMARY): Direct judgment table search — 204k verified, structured records.
-  // This is now the main source. Gets the largest limit.
+  // Path 1 (PRIMARY): Direct judgment table search — 223k verified, structured records.
+  // CRITICAL: Use intent.normalized (raw user query), NOT the expanded query.
+  // The judgment search page does the same — raw query → searchJudgmentsByKeywords.
+  // The expanded query adds synonym terms (e.g. "criminal", "procedure", "section")
+  // that pollute tsvector tokenization: wrong AND combos return 0, broad OR matches
+  // 200k+ rows and times out. The raw query produces precise, fast results.
   const judgmentKeywordPromise = withTimeout(
-    storage.searchJudgmentsByKeywords(expandedQuery, limit * 5).catch(() => [] as CaseLaw[]),
+    storage.searchJudgmentsByKeywords(intent.normalized, limit * 5).catch(() => [] as CaseLaw[]),
     CASELAW_TIMEOUT_MS,
     [] as CaseLaw[],
   );

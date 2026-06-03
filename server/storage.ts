@@ -2189,11 +2189,13 @@ export class DatabaseStorage implements IStorage {
       "termination", "reinstatement", "gift", "hospital", "child",
       "guardian", "society", "promotion", "mutation", "examination",
       // Medium-frequency legal terms (10-99 judgments)
+      // NOTE: "civil" and "criminal" are deliberately EXCLUDED — they appear in 200k+ judgments
+      // and cause the tsvector OR fallback to scan the entire table (105s+). Too generic.
       "hadd", "tazir", "nikah", "surety", "confession", "drugs",
-      "testimony", "attempt", "civil", "criminal",
+      "testimony", "attempt",
       // High-frequency institutional/role terms from titles (1000+ judgments)
       "commissioner", "collector", "federation", "police",
-      "income-tax", "customs", "tribunal", "civil",
+      "income-tax", "customs", "tribunal",
       // Journal report codes (used in citation matching, 5000+ judgments each)
       "scmr", "pcrlj", "pld", "mld", "clc", "ylr", "ptd", "plj", "cld",
     ]);
