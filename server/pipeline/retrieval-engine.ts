@@ -247,6 +247,56 @@ function scoreCaseLawRow(row: CaseLaw, intent: QueryIntent): number {
     if (court.includes(word))    score += 4;
   }
 
+  // ── Statute-aware scoring ──────────────────────────────────────────
+  // When user queries a specific statute + section (e.g. "CrPC 22-B"),
+  // boost cases that actually mention that statute and penalize cases
+  // that match only generic terms ("section", "22") from unrelated statutes.
+  const STATUTE_ALIASES: Record<string, string[]> = {
+    "crpc": ["cr.p.c", "crpc", "criminal procedure", "code of criminal procedure"],
+    "cpc":  ["c.p.c", "cpc", "civil procedure", "code of civil procedure"],
+    "ppc":  ["ppc", "p.p.c", "pakistan penal code", "penal code"],
+    "cnsa": ["cnsa", "control of narcotic", "narcotics"],
+    "ata":  ["ata", "anti-terrorism", "anti terrorism"],
+    "nab":  ["nab", "national accountability"],
+    "qso":  ["qso", "qanun-e-shahadat", "qanun e shahadat"],
+  };
+
+  // Detect which statute the user is asking about
+  const queryLower = intent.normalized.toLowerCase();
+  let queriedStatute: string | null = null;
+  let statuteTerms: string[] = [];
+  for (const [key, aliases] of Object.entries(STATUTE_ALIASES)) {
+    for (const alias of aliases) {
+      if (queryLower.includes(alias)) {
+        queriedStatute = key;
+        statuteTerms = aliases;
+        break;
+      }
+    }
+    if (queriedStatute) break;
+  }
+
+  if (queriedStatute) {
+    // Check if this case actually mentions the queried statute
+    const caseText = `${title} ${summary}`;
+    const mentionsStatute = statuteTerms.some((t) => caseText.includes(t));
+    if (mentionsStatute) {
+      score += 30; // Strong boost: case is about the right statute
+    } else {
+      // Case matched on generic terms (e.g. "section 22" from a different act)
+      // Penalize to push it below genuinely relevant results
+      score = Math.max(0, score - 15);
+    }
+  }
+
+  // Also check if intent has a parsed statute reference (e.g. intent.statuteRef)
+  if (intent.statuteRef) {
+    const refName = norm(intent.statuteRef.fullName || "");
+    const refSection = norm(intent.statuteRef.sectionOrArticle || "");
+    if (refName && combined.includes(refName))     score += 25;
+    if (refSection && combined.includes(refSection)) score += 15;
+  }
+
   // Boost if citation year matches query year
   const queryYear = intent.normalized.match(/\b(19|20)\d{2}\b/)?.[0];
   if (queryYear && citation.includes(queryYear)) score += 12;
