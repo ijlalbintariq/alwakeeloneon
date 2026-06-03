@@ -2147,6 +2147,18 @@ export class DatabaseStorage implements IStorage {
       // Key procedural terms missing
       "cognizable", "non-cognizable", "registration", "complainant",
       "informant", "challan", "investigation", "remand",
+      // New legal signal tokens from expanded topics (32 additional topics)
+      "rejection", "plaint", "stay", "ex-parte", "pleadings", "impleadment",
+      "superdari", "supardari", "private", "defense", "common", "intention",
+      "absconder", "proclaimed", "offender", "abscondence", "grabbing", "qabza",
+      "dispossession", "parade", "dying", "declaration", "approver", "accomplice",
+      "pension", "gratuity", "retirement", "seniority", "supersession", "electricity",
+      "utility", "nepra", "wapda", "k-electric", "kelectric", "gas", "sngpl",
+      "ssgc", "ogra", "billing", "spurious", "substandard", "cantonment", "encroachment",
+      "demolition", "ostensible", "benami", "benamidar", "quo", "warranto",
+      "mandamus", "certiorari", "jactitation", "conjugal", "dowry", "jahez",
+      "visitation", "nuisance", "perjury", "foreign", "exchange", "hundi",
+      "havala", "nirc", "union",
     ]);
 
     const allTokens = safeQuery
