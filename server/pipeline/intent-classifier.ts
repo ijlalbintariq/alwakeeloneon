@@ -1011,13 +1011,14 @@ export function classifyQueryIntent(rawQuery: string): QueryIntent {
     topics: topTopics,
     expandedQuery,
     expandedTerms,
-    // If any legal topics were detected, ALWAYS fetch case law — the classifier's
-    // statute/case-law split is imperfect. Queries like "what PPC sections apply to murder"
-    // score higher on statute indicators but the user wants relevant judgments too.
-    needsCaseLaw: type !== "statute" || topTopics.length > 0,
-    // Similarly, always fetch statutes when topics are present — most legal questions
-    // benefit from seeing both the law text and the case law applying it.
-    needsStatutes: type !== "case-law" || topTopics.length > 0,
+    // ALWAYS search for case law — the user can ask about ANY legal topic.
+    // Even if no predefined topic matched, the raw query tokens will still
+    // find relevant judgments via tsvector full-text search on 174k records.
+    // Previously this was conditional, causing "no case law" errors on
+    // uncommon topics not covered by LEGAL_TOPICS.
+    needsCaseLaw: true,
+    // Same for statutes — always search, never skip.
+    needsStatutes: true,
     needsAdminDocs: true,
   };
 }
