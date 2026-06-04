@@ -9900,9 +9900,28 @@ export async function registerRoutes(
       }
 
       const strictContext = String(process.env.RAG_FORCE_CONTEXT || "true").toLowerCase() !== "false";
-      if (retrieval.matches.length === 0) {
+
+      const ragContext = retrieval.matches.length > 0 ? buildRagContext(retrieval.matches) : "";
+
+      // ── Also search the 223k judgment DB for real case law ──────────────
+      // The RAG vector search only finds chunks from uploaded docs and admin-indexed
+      // sources. The judgment DB (searchJudgmentsByKeywords) has the full 223k verified
+      // judgments — this is the SAME pipeline the main chat uses.
+      // Run in parallel with prompt building to minimize added latency.
+      let judgmentContext = "";
+      try {
+        judgmentContext = await Promise.race([
+          gatherKnowledgeContextV2(parsed.query, userId),
+          new Promise<string>((resolve) => setTimeout(() => resolve(""), 15000)), // 15s timeout
+        ]);
+      } catch (e) {
+        console.error("[RAG:ask] judgment pipeline error (non-fatal):", e);
+      }
+
+      // If BOTH RAG and judgment DB returned nothing, return a helpful fallback
+      if (!ragContext && !judgmentContext) {
         return res.json({
-          answer: "I cannot answer reliably from the uploaded materials. Please upload a more relevant document or refine your question.",
+          answer: "No relevant results found from uploaded documents or the judgment database. Try searching with different keywords, or use the Judgment Search (/judgment-search) to find specific cases.",
           confidence: "low",
           citations: [],
           retrieval: {
@@ -9917,15 +9936,15 @@ export async function registerRoutes(
         });
       }
 
-      const ragContext = buildRagContext(retrieval.matches);
       const systemPrompt = `${getLegalSystemPrompt()}
 
 RAG POLICY (STRICT):
-- Answer only using the provided retrieved context.
-- If context is insufficient, explicitly state what is missing.
+- Answer using BOTH the retrieved document context AND the verified judgments below.
+- For case law citations, use ONLY judgments from the VERIFIED JUDGMENTS section.
+- If document context is insufficient, use the judgment DB results.
 - Do not invent facts, citations, statutes, or case holdings.
 - Keep answer concise, legally structured, and practical for Pakistani legal practice.
-- Provide supportable claims only.`;
+- Provide supportable claims only.${judgmentContext}`;
 
       // Build conversation context if history was provided
       let conversationContext = "";
@@ -9938,7 +9957,8 @@ RAG POLICY (STRICT):
           "\n\n---\n";
       }
 
-      const userPrompt = `${conversationContext}User question:\n${parsed.query}\n\nRetrieved context:\n${ragContext}\n\nReturn a clear answer grounded only in the retrieved context. If the user refers to something from the conversation history, use that to understand their intent but still answer using the retrieved documents.`;
+      const docContextPart = ragContext ? `\n\nRetrieved document context:\n${ragContext}` : "";
+      const userPrompt = `${conversationContext}User question:\n${parsed.query}${docContextPart}\n\nReturn a clear answer grounded in the retrieved context and verified judgments. If the user refers to something from the conversation history, use that to understand their intent but still answer using the retrieved documents and judgment database.`;
       const result = await callStandardAISimple(systemPrompt, userPrompt, TOKEN_LIMITS.chat, { timeoutProfile: "search", temperature: 0.2 });
       await logUsageCost(userId, "chat", result.model, systemPrompt + userPrompt, result.text);
       const lowConfidenceContext = strictContext && retrieval.confidence === "low";
