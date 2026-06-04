@@ -62,7 +62,7 @@ const MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.15);
 const TOP_K = Number(process.env.RAG_TOP_K || 5);
 const VECTOR_WEIGHT_RAW = Number(process.env.RAG_VECTOR_WEIGHT || 0.72);
 const KEYWORD_WEIGHT_RAW = Number(process.env.RAG_KEYWORD_WEIGHT || 0.28);
-const INDEX_BATCH_SIZE = Math.max(1, Number(process.env.RAG_INDEX_BATCH_SIZE || (process.env.NODE_ENV === "production" ? 8 : 16)));
+const INDEX_BATCH_SIZE = Math.max(1, Number(process.env.RAG_INDEX_BATCH_SIZE || 32));
 const MAX_CHUNKS_PER_DOC = Math.max(10, Number(process.env.RAG_MAX_CHUNKS_PER_DOC || 600));
 const RERANK_POOL_CAP = Math.max(6, Number(process.env.RAG_RERANK_POOL_CAP || 24));
 const RERANK_DOC_PENALTY = clamp(Number(process.env.RAG_RERANK_DOC_PENALTY || 0.045), 0.01, 0.15);
@@ -657,6 +657,26 @@ export async function indexJudgmentDocument(judgmentId: string): Promise<RAGInde
   };
 }
 
+// ── Query embedding cache ─────────────────────────────────────────────────
+// Same query text produces the same embedding — cache for 5 minutes to avoid
+// redundant OpenAI API calls on repeated or follow-up questions.
+const _queryEmbedCache = new Map<string, { vector: number[]; ts: number }>();
+const QUERY_EMBED_CACHE_TTL = 300_000; // 5 minutes
+
+async function getCachedQueryEmbedding(text: string): Promise<number[]> {
+  const key = text.trim().toLowerCase().slice(0, 300);
+  const cached = _queryEmbedCache.get(key);
+  if (cached && Date.now() - cached.ts < QUERY_EMBED_CACHE_TTL) return cached.vector;
+  const vector = await embedTextLocal(text);
+  _queryEmbedCache.set(key, { vector, ts: Date.now() });
+  // Evict if cache grows too large
+  if (_queryEmbedCache.size > 500) {
+    const oldest = [..._queryEmbedCache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0];
+    if (oldest) _queryEmbedCache.delete(oldest[0]);
+  }
+  return vector;
+}
+
 export async function retrieveForQuery(args: {
   userId: string;
   query: string;
@@ -678,7 +698,7 @@ export async function retrieveForQuery(args: {
     : queryText;
 
   const requestedTopK = Math.max(1, args.topK || TOP_K);
-  const queryEmbedding = await embedTextLocal(queryText);
+  const queryEmbedding = await getCachedQueryEmbedding(queryText);
   const { vectorWeight, keywordWeight } = resolveHybridWeights();
   const candidateTopK = Math.min(RERANK_POOL_CAP, Math.max(requestedTopK, requestedTopK * 4));
   const isGlobalAdminUser = GLOBAL_ADMIN_RAG_USER_IDS.includes(args.userId as any);

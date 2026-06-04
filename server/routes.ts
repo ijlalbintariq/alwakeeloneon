@@ -9836,87 +9836,53 @@ export async function registerRoutes(
       const intent = classifyQueryIntent(parsed.query);
       const expandedQuery = intent.expandedQuery || parsed.query;
 
-      let retrieval = await retrieveForQuery({
-        userId,
-        query: parsed.query,
-        documentIds: effectiveDocumentIds,
-        topK: Number(process.env.RAG_TOP_K || 5),
-        expandedQueryText: expandedQuery,
-      });
-      let lazyIndexSummary: {
-        candidates: number;
-        alreadyIndexed: number;
-        attempted: number;
-        indexedNow: number;
-        failed: number;
-      } | null = null;
-      let lazyGlobalAdminSummary: {
-        caseLaw: {
-          candidates: number;
-          alreadyIndexed: number;
-          attempted: number;
-          indexedNow: number;
-          failed: number;
-        };
-        statutes: {
-          candidates: number;
-          alreadyIndexed: number;
-          attempted: number;
-          indexedNow: number;
-          failed: number;
-        };
-        adminKnowledge: {
-          candidates: number;
-          alreadyIndexed: number;
-          attempted: number;
-          indexedNow: number;
-          failed: number;
-        };
-        indexedNow: number;
-      } | null = null;
-
-      if (retrieval.matches.length === 0) {
-        lazyIndexSummary = await ensureIndexedForUserDocuments({
-          userId,
-          sourceDocumentIds: parsed.documentIds,
-          maxToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_DOCS || 3),
-        });
-        if (!parsed.documentIds || parsed.documentIds.length === 0) {
-          lazyGlobalAdminSummary = await ensureIndexedForGlobalAdminSources({
-            maxCaseLawToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_CASELAW || 5),
-            maxStatuteToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_STATUTES || 3),
-            maxKnowledgeToIndex: Number(process.env.RAG_LAZY_INDEX_MAX_ADMIN_KNOWLEDGE || 3),
-          });
-        }
-        if (lazyIndexSummary.indexedNow > 0 || (lazyGlobalAdminSummary?.indexedNow || 0) > 0) {
-          retrieval = await retrieveForQuery({
+      // ── Run RAG retrieval AND judgment DB search in PARALLEL ──────────
+      // Instead of sequential (RAG 3s + judgment 3s = 6s), run both at once = 3s
+      const [retrieval, judgmentContext] = await Promise.all([
+        (async () => {
+          let result = await retrieveForQuery({
             userId,
             query: parsed.query,
-            documentIds: parsed.documentIds,
+            documentIds: effectiveDocumentIds,
             topK: Number(process.env.RAG_TOP_K || 5),
             expandedQueryText: expandedQuery,
           });
-        }
-      }
+
+          // Lazy indexing fallback: only for user docs that aren't indexed yet
+          // Skip global admin re-indexing (saves 0-20s) — those are indexed separately
+          if (result.matches.length === 0 && parsed.documentIds?.length) {
+            const lazyResult = await ensureIndexedForUserDocuments({
+              userId,
+              sourceDocumentIds: parsed.documentIds,
+              maxToIndex: 3,
+            });
+            if (lazyResult.indexedNow > 0) {
+              result = await retrieveForQuery({
+                userId,
+                query: parsed.query,
+                documentIds: parsed.documentIds,
+                topK: Number(process.env.RAG_TOP_K || 5),
+                expandedQueryText: expandedQuery,
+              });
+            }
+          }
+          return result;
+        })(),
+        // Judgment DB pipeline — 8s timeout (usually returns in 3s)
+        gatherKnowledgeContextV2(parsed.query, userId)
+          .catch((e) => {
+            console.error("[RAG:ask] judgment pipeline error (non-fatal):", e);
+            return "";
+          })
+          .then((ctx) => Promise.race([
+            Promise.resolve(ctx),
+            new Promise<string>((resolve) => setTimeout(() => resolve(""), 8000)),
+          ])),
+      ]);
 
       const strictContext = String(process.env.RAG_FORCE_CONTEXT || "true").toLowerCase() !== "false";
 
       const ragContext = retrieval.matches.length > 0 ? buildRagContext(retrieval.matches) : "";
-
-      // ── Also search the 223k judgment DB for real case law ──────────────
-      // The RAG vector search only finds chunks from uploaded docs and admin-indexed
-      // sources. The judgment DB (searchJudgmentsByKeywords) has the full 223k verified
-      // judgments — this is the SAME pipeline the main chat uses.
-      // Run in parallel with prompt building to minimize added latency.
-      let judgmentContext = "";
-      try {
-        judgmentContext = await Promise.race([
-          gatherKnowledgeContextV2(parsed.query, userId),
-          new Promise<string>((resolve) => setTimeout(() => resolve(""), 15000)), // 15s timeout
-        ]);
-      } catch (e) {
-        console.error("[RAG:ask] judgment pipeline error (non-fatal):", e);
-      }
 
       // If BOTH RAG and judgment DB returned nothing, return a helpful fallback
       if (!ragContext && !judgmentContext) {
@@ -9926,11 +9892,8 @@ export async function registerRoutes(
           citations: [],
           retrieval: {
             topK: Number(process.env.RAG_TOP_K || 5),
-            matched: retrieval.matches.length,
+            matched: 0,
             threshold: Number(process.env.RAG_MIN_SCORE || 0.5),
-            lazyIndex: lazyIndexSummary,
-            lazyGlobalCaseLaw: lazyGlobalAdminSummary?.caseLaw || null,
-            lazyGlobalAdmin: lazyGlobalAdminSummary,
           },
           model: { provider: "none", name: "none" },
         });
@@ -10005,9 +9968,6 @@ RAG POLICY (STRICT):
           topK: Number(process.env.RAG_TOP_K || 5),
           matched: retrieval.matches.length,
           threshold: Number(process.env.RAG_MIN_SCORE || 0.5),
-          lazyIndex: lazyIndexSummary,
-          lazyGlobalCaseLaw: lazyGlobalAdminSummary?.caseLaw || null,
-          lazyGlobalAdmin: lazyGlobalAdminSummary,
         },
         model: { provider, name: result.model },
       });
