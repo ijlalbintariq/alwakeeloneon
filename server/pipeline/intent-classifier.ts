@@ -1337,7 +1337,11 @@ function norm(s: string): string {
 
 export function classifyQueryIntent(rawQuery: string): QueryIntent {
   const raw = rawQuery.trim();
-  const normalized = norm(raw);
+  // Truncate very long queries (e.g. pasted petitions) to first ~200 chars
+  // for topic detection and DB search. Legal intent is always in the first sentence.
+  // The full text is still available in raw for the LLM prompt.
+  const normalizedFull = norm(raw);
+  const normalized = normalizedFull.length > 200 ? normalizedFull.slice(0, 200).trim() : normalizedFull;
   const words = normalized.split(/\s+/);
 
   // --- Citation lookup? ---

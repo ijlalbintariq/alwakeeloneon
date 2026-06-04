@@ -2208,10 +2208,17 @@ export class DatabaseStorage implements IStorage {
 
     // Prioritize legal signal tokens so the SQL uses legally relevant terms
     // Auto-promote: any token that looks like a section number (digits, or digits-letter like 22-a, 489-f)
-    // is ALWAYS a signal token — no need to hardcode every section number
+    // is ALWAYS a signal token — no need to hardcode every section number.
+    // IMPORTANT: Exclude 4-digit years (1800-2099) — they match thousands of judgments
+    // and create terrible queries like "1898 & 22-a & 22-b" or slow OR scans.
     const SECTION_NUMBER_RE = /^\d+[a-z]?(-[a-z0-9]+)?$/;
-    const signalTokens = allTokens.filter((t) => LEGAL_SIGNAL_TOKENS.has(t) || SECTION_NUMBER_RE.test(t));
-    const otherTokens = allTokens.filter((t) => !LEGAL_SIGNAL_TOKENS.has(t) && !SECTION_NUMBER_RE.test(t));
+    const YEAR_RE = /^(18|19|20)\d{2}$/;
+    const isSignalToken = (t: string): boolean => {
+      if (YEAR_RE.test(t)) return false; // Never treat years as section numbers
+      return LEGAL_SIGNAL_TOKENS.has(t) || SECTION_NUMBER_RE.test(t);
+    };
+    const signalTokens = allTokens.filter(isSignalToken);
+    const otherTokens = allTokens.filter((t) => !isSignalToken(t));
     const queryTokens = [...new Set([...signalTokens, ...otherTokens])].slice(0, 6);
 
     if (queryTokens.length === 0) return [];
