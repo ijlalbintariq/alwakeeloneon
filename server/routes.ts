@@ -13708,9 +13708,11 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
               }
             }
 
-            // Post-processing
-            if (draftedText) draftedText = ensureAnnexuresSection(draftedText);
-            if (draftedText) draftedText = ensurePetitionerBlock(draftedText);
+            // Post-processing — skip court-specific blocks for non-court doc types
+            const NON_COURT_TYPES_POST = new Set(["application-to-police", "legal-notice", "affidavit", "power-of-attorney", "authority-letter", "nikah-nama-divorce"]);
+            const isCourtFiling = !selectedDocType || !NON_COURT_TYPES_POST.has(selectedDocType);
+            if (draftedText && isCourtFiling) draftedText = ensureAnnexuresSection(draftedText);
+            if (draftedText && isCourtFiling) draftedText = ensurePetitionerBlock(draftedText);
 
             if (!draftedText) {
               res.write(`data: ${JSON.stringify({ error: 'AI draft failed post-processing' })}\n\n`);
@@ -13768,13 +13770,15 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
           }
         }
 
-        // --- Post-generation: ensure Annexures section ---
-        if (draftedText) {
+        // --- Post-generation: ensure Annexures section (court filings only) ---
+        const NON_COURT_TYPES_POST2 = new Set(["application-to-police", "legal-notice", "affidavit", "power-of-attorney", "authority-letter", "nikah-nama-divorce"]);
+        const isCourtFiling2 = !selectedDocType || !NON_COURT_TYPES_POST2.has(selectedDocType);
+        if (draftedText && isCourtFiling2) {
           draftedText = ensureAnnexuresSection(draftedText);
         }
 
-        // --- Post-generation: ensure Petitioner/Through block after Prayer ---
-        if (draftedText) {
+        // --- Post-generation: ensure Petitioner/Through block after Prayer (court filings only) ---
+        if (draftedText && isCourtFiling2) {
           draftedText = ensurePetitionerBlock(draftedText);
         }
 
