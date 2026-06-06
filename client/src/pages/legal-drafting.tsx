@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CourtFeeCalculator } from "@/components/court-fee-calculator";
+import { CaseFileImportModal } from "@/components/case-file-import-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -161,8 +162,12 @@ type DraftChatMessage = {
   role: "user" | "assistant";
   content: string;
   attachments?: string[];
-  kind?: "guidance" | "typing" | "error";
+  kind?: "guidance" | "typing" | "error" | "clarification";
   createdAt: number;
+  /** R2: Clarification suggested document types */
+  suggestedTypes?: Array<{ key: string; label: string }>;
+  /** R2: Original prompt that triggered clarification */
+  originalPrompt?: string;
 };
 
 type ChatSnippetPopover = {
@@ -274,7 +279,15 @@ function normalizeDraftChatMessage(input: unknown): DraftChatMessage | null {
     .filter((entry: string) => entry.length > 0)
     .slice(0, 8);
   const kind: DraftChatMessage["kind"] | undefined =
-    kindRaw === "guidance" || kindRaw === "typing" || kindRaw === "error" ? kindRaw : undefined;
+    kindRaw === "guidance" || kindRaw === "typing" || kindRaw === "error" || kindRaw === "clarification" ? kindRaw : undefined;
+  const suggestedTypesRaw = Array.isArray((input as any)?.suggestedTypes) ? (input as any).suggestedTypes : undefined;
+  const suggestedTypes = suggestedTypesRaw
+    ? suggestedTypesRaw
+        .filter((t: any) => t && typeof t === "object" && t.key && t.label)
+        .map((t: any) => ({ key: String(t.key), label: String(t.label) }))
+        .slice(0, 5)
+    : undefined;
+  const originalPrompt = (input as any)?.originalPrompt ? String((input as any).originalPrompt).slice(0, 2000) : undefined;
   return {
     id: idRaw || `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     role,
@@ -282,6 +295,8 @@ function normalizeDraftChatMessage(input: unknown): DraftChatMessage | null {
     attachments: attachments.length > 0 ? attachments : undefined,
     kind,
     createdAt: Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? createdAtRaw : Date.now(),
+    suggestedTypes: suggestedTypes && suggestedTypes.length > 0 ? suggestedTypes : undefined,
+    originalPrompt,
   };
 }
 
@@ -1574,6 +1589,7 @@ function LegalDraftingPageInner() {
   const [hasDraftInSession, setHasDraftInSession] = useState(false);
   const [workspaceStateHydrated, setWorkspaceStateHydrated] = useState(false);
   const [feeCalcOpen, setFeeCalcOpen] = useState(false);
+  const [caseFileImportOpen, setCaseFileImportOpen] = useState(false);
   const [chatExpanded, setChatExpanded] = useState(false);
   const voice = useVoiceRecorder();
   const draftHistory = useDraftHistory(selectedDraftId ? `draft-${selectedDraftId}` : "workspace");
@@ -2505,7 +2521,7 @@ function LegalDraftingPageInner() {
     }
   };
 
-  const generateClause = async (promptOverride?: string) => {
+  const generateClause = async (promptOverride?: string, documentTypeOverride?: string) => {
     const prompt = (promptOverride ?? aiPrompt).trim();
     if (!prompt) return;
     setChatSnippetPopover(null);
@@ -2574,6 +2590,7 @@ function LegalDraftingPageInner() {
       const liveDraftText = editorRef.current?.getText() || docText || "";
       const draftTextForAi = liveDraftText.slice(0, 12000);
       let response: Response;
+      const useStreaming = aiContextFiles.length === 0; // SSE streaming only for non-attachment requests
       if (aiContextFiles.length > 0) {
         const form = new FormData();
         form.append("prompt", prompt);
@@ -2588,6 +2605,7 @@ function LegalDraftingPageInner() {
           form.append("forceTargetedEdit", "true");
         }
         aiContextFiles.forEach((file) => form.append("attachments", file));
+        if (documentTypeOverride) form.append("documentTypeOverride", documentTypeOverride);
         response = await fetch("/api/retrieval/clauses/generate", {
           method: "POST",
           credentials: "include",
@@ -2604,6 +2622,8 @@ function LegalDraftingPageInner() {
           jurisdiction: "Lahore",
           module: "legal-drafting",
           assistantMode,
+          stream: true, // Enable SSE streaming
+          documentTypeOverride: documentTypeOverride || undefined,
         };
         response = await fetch("/api/retrieval/clauses/generate", {
           method: "POST",
@@ -2618,56 +2638,209 @@ function LegalDraftingPageInner() {
         throw new Error(t || "AI generation failed");
       }
 
-      const data = await response.json();
-      const clause = (data?.clause || "").trim();
-      if (!clause) throw new Error("No clause generated");
-      setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
-      setDraftReferences(normalizeLegalDraftReferences(data?.references));
-      if (Array.isArray(data?.recommendations) && data.recommendations.length > 0) {
-        setRecommendations((prev) => {
-          const next = [...prev];
-          data.recommendations.forEach((rec: any) => {
-            if (!next.some((r) => r.id === rec.id)) {
-              next.push({
-                id: rec.id || `rec-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                title: rec.title || "Alternative Case Law",
-                reason: rec.reason || "Case law suggestion",
-                originalSnippet: rec.originalSnippet || "",
-                suggestedText: rec.suggestedText || "",
-                impact: rec.impact || "medium",
-              });
-            }
-          });
-          return next;
-        });
+      // R2: Check for clarification response
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json") && !contentType.includes("text/event-stream")) {
+        const jsonBody = await response.json();
+        if (jsonBody?.clarification === true) {
+          // Replace typing indicator with clarification message
+          setDraftChatMessages((prev) => [
+            ...prev.filter((msg) => msg.id !== typingMessageId && !(msg.role === "assistant" && msg.kind === "typing")),
+            {
+              id: `assistant-clarify-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              role: "assistant",
+              kind: "clarification",
+              content: String(jsonBody.message || "Could you clarify which document type you'd like me to draft?"),
+              suggestedTypes: Array.isArray(jsonBody.suggestedTypes) ? jsonBody.suggestedTypes : [],
+              originalPrompt: prompt,
+              createdAt: Date.now(),
+            },
+          ]);
+          setIsGenerating(false);
+          setGenerationStartTime(null);
+          if (generationTimerRef.current) {
+            clearInterval(generationTimerRef.current);
+            generationTimerRef.current = null;
+          }
+          return;
+        }
       }
 
       const assistantMessageId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      setDraftChatMessages((prev) => [
-        ...prev.filter((message) => message.id !== typingMessageId),
-        {
-          id: assistantMessageId,
-          role: "assistant",
-          kind: "typing",
-          content: "Drafting...",
-          createdAt: Date.now(),
-        },
-      ]);
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
-      await streamAssistantDraftMessage(assistantMessageId, clause);
-      addMemoryItem("instruction", prompt);
-      if (assistantMode === "draft") {
-        setEditorContent(clause);
-        setHasDraftInSession(!!clause.trim());
-        addMemoryItem("clause", clause);
+      let streamedClause = ""; // Track final clause text across both paths
+
+      if (useStreaming && contentType.includes("text/event-stream")) {
+        // ── SSE Streaming Path ──
+        // Replace typing indicator with streaming message
+        setDraftChatMessages((prev) => [
+          ...prev.filter((message) => message.id !== typingMessageId),
+          {
+            id: assistantMessageId,
+            role: "assistant",
+            kind: "typing",
+            content: "",
+            createdAt: Date.now(),
+          },
+        ]);
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = "";
+        let buffer = "";
+        let doneData: any = null;
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr) continue;
+
+              try {
+                const parsed = JSON.parse(jsonStr);
+
+                if (parsed.error) {
+                  throw new Error(parsed.error);
+                }
+
+                if (parsed.reset) {
+                  // Post-processing changed the text — clear accumulated
+                  accumulated = "";
+                }
+
+                if (parsed.text) {
+                  accumulated += parsed.text;
+                  // Update chat message AND editor in real-time
+                  const currentText = accumulated;
+                  setDraftChatMessages((prev) =>
+                    prev.map((message) =>
+                      message.id === assistantMessageId
+                        ? { ...message, content: currentText, kind: "typing" as const }
+                        : message,
+                    ),
+                  );
+                  // Update editor content live for draft mode
+                  if (assistantMode === "draft") {
+                    setEditorContent(currentText);
+                  }
+                }
+
+                if (parsed.done) {
+                  doneData = parsed;
+                }
+              } catch (parseErr: any) {
+                if (parseErr.message && !parseErr.message.includes("JSON")) {
+                  throw parseErr; // Re-throw non-parse errors (like error events)
+                }
+                // Skip malformed JSON lines
+              }
+            }
+          }
+        }
+
+        // Use final data from done event
+        const clause = doneData?.clause || accumulated;
+        if (!clause.trim()) throw new Error("No draft generated");
+        streamedClause = clause;
+
+        // Apply metadata from done event
+        if (doneData) {
+          setStyleMemoryMeta((doneData.styleMemory || null) as StyleMemoryMeta | null);
+          setDraftReferences(normalizeLegalDraftReferences(doneData.references));
+          if (Array.isArray(doneData.recommendations) && doneData.recommendations.length > 0) {
+            setRecommendations((prev) => {
+              const next = [...prev];
+              doneData.recommendations.forEach((rec: any) => {
+                if (!next.some((r) => r.id === rec.id)) {
+                  next.push({
+                    id: rec.id || `rec-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    title: rec.title || "Alternative Case Law",
+                    reason: rec.reason || "Case law suggestion",
+                    originalSnippet: rec.originalSnippet || "",
+                    suggestedText: rec.suggestedText || "",
+                    impact: rec.impact || "medium",
+                  });
+                }
+              });
+              return next;
+            });
+          }
+        }
+
+        // Finalize chat message
+        setDraftChatMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantMessageId
+              ? { ...message, content: clause, kind: undefined }
+              : message,
+          ),
+        );
+        addMemoryItem("instruction", prompt);
+        if (assistantMode === "draft") {
+          setEditorContent(clause);
+          setHasDraftInSession(!!clause.trim());
+          addMemoryItem("clause", clause);
+        }
+      } else {
+        // ── Original JSON Path (file attachments or server doesn't support streaming) ──
+        const data = await response.json();
+        const clause = (data?.clause || "").trim();
+        if (!clause) throw new Error("No clause generated");
+        streamedClause = clause;
+        setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
+        setDraftReferences(normalizeLegalDraftReferences(data?.references));
+        if (Array.isArray(data?.recommendations) && data.recommendations.length > 0) {
+          setRecommendations((prev) => {
+            const next = [...prev];
+            data.recommendations.forEach((rec: any) => {
+              if (!next.some((r) => r.id === rec.id)) {
+                next.push({
+                  id: rec.id || `rec-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  title: rec.title || "Alternative Case Law",
+                  reason: rec.reason || "Case law suggestion",
+                  originalSnippet: rec.originalSnippet || "",
+                  suggestedText: rec.suggestedText || "",
+                  impact: rec.impact || "medium",
+                });
+              }
+            });
+            return next;
+          });
+        }
+
+        setDraftChatMessages((prev) => [
+          ...prev.filter((message) => message.id !== typingMessageId),
+          {
+            id: assistantMessageId,
+            role: "assistant",
+            kind: "typing" as const,
+            content: "Drafting...",
+            createdAt: Date.now(),
+          },
+        ]);
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+        await streamAssistantDraftMessage(assistantMessageId, clause);
+        addMemoryItem("instruction", prompt);
+        if (assistantMode === "draft") {
+          setEditorContent(clause);
+          setHasDraftInSession(!!clause.trim());
+          addMemoryItem("clause", clause);
+        }
+        setDraftChatMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantMessageId
+              ? { ...message, content: clause, kind: undefined }
+              : message,
+          ),
+        );
       }
-      setDraftChatMessages((prev) => [
-        ...prev.map((message) =>
-          message.id === assistantMessageId
-            ? { ...message, content: clause, kind: undefined }
-            : message,
-        ),
-      ]);
+
       setAiContextFiles([]);
       if (aiContextInputRef.current) aiContextInputRef.current.value = "";
       toast({ title: assistantMode === "draft" ? "Legal draft updated" : "Legal analysis ready" });
@@ -2678,7 +2851,7 @@ function LegalDraftingPageInner() {
       }).catch(() => {});
 
       if (assistantMode === "draft") {
-        runDraftReview(clause);
+        runDraftReview(streamedClause);
       }
     } catch (err: any) {
       setDraftChatMessages((prev) => [
@@ -3259,7 +3432,9 @@ function LegalDraftingPageInner() {
                             ? "You"
                             : message.kind === "typing"
                               ? `AI Drafting Assistant · Writing${isGenerating && generationElapsed > 0 ? ` ${Math.floor(generationElapsed / 60)}:${String(generationElapsed % 60).padStart(2, "0")}` : ""}`
-                              : "AI Drafting Assistant"}
+                              : message.kind === "clarification"
+                                ? "AI Drafting Assistant · Clarification"
+                                : "AI Drafting Assistant"}
                         </span>
                         <span className="text-[10px] text-muted-foreground">{new Date(message.createdAt).toLocaleTimeString()}</span>
                       </div>
@@ -3275,6 +3450,25 @@ function LegalDraftingPageInner() {
                             <span key={`${message.id}-file-${idx}`} className="inline-flex items-center rounded-md border border-primary/35 bg-primary/10 px-1.5 py-0.5 text-[10px] text-foreground">
                               {name}
                             </span>
+                          ))}
+                        </div>
+                      )}
+                      {/* R2: Clarification buttons */}
+                      {message.kind === "clarification" && message.suggestedTypes && message.suggestedTypes.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {message.suggestedTypes.map((st) => (
+                            <button
+                              key={`${message.id}-type-${st.key}`}
+                              type="button"
+                              disabled={isGenerating}
+                              onClick={() => {
+                                generateClause(message.originalPrompt || "", st.key);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-foreground hover:bg-primary/20 hover:border-primary/60 transition-colors disabled:opacity-50"
+                            >
+                              <Gavel size={11} />
+                              {st.label}
+                            </button>
                           ))}
                         </div>
                       )}
@@ -3315,6 +3509,14 @@ function LegalDraftingPageInner() {
                       >
                         <Paperclip size={12} />
                         Attach Context Files
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCaseFileImportOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-card/40 text-[11px] text-foreground hover:border-primary/40 hover:text-foreground"
+                      >
+                        <FolderOpen size={12} />
+                        Import from Case
                       </button>
                       {voice.isSupported && (
                         voice.isRecording ? (
@@ -3727,6 +3929,19 @@ function LegalDraftingPageInner() {
           const feeHtml = plainTextToTiptapHTML(text);
           editorRef.current?.insertContent(feeHtml);
           toast({ title: "Court fee inserted", description: "Paragraph appended to the draft." });
+        }}
+      />
+
+      <CaseFileImportModal
+        open={caseFileImportOpen}
+        onClose={() => setCaseFileImportOpen(false)}
+        onImport={(files) => {
+          setAiContextFiles(prev => {
+            const combined = [...prev, ...files];
+            return combined.slice(0, 5);
+          });
+          setCaseFileImportOpen(false);
+          toast({ title: `${files.length} case document${files.length > 1 ? 's' : ''} imported` });
         }}
       />
     </div>

@@ -42,6 +42,8 @@ export function StyleMemoryPanel({
   const [updating, setUpdating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   const scopeQuery = useMemo(() => `module=${encodeURIComponent(module)}&scope=${scope}`, [module, scope]);
 
@@ -186,6 +188,33 @@ export function StyleMemoryPanel({
     }
   };
 
+  const deleteAllSamples = async () => {
+    setDeletingAll(true);
+    try {
+      const res = await fetch(`/api/style-memory/samples?${scopeQuery}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setSamples([]);
+      setShowDeleteAllConfirm(false);
+      await loadSettings();
+      toast({
+        title: "All samples deleted",
+        description: `${data?.deleted || 0} sample(s) removed.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Delete all failed",
+        description: err?.message || "Could not delete all samples.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   return (
     <section className={`rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-slate-900/30 to-slate-800/30 p-3 ${className}`}>
       <div className="flex items-center justify-between gap-2">
@@ -248,11 +277,11 @@ export function StyleMemoryPanel({
         </label>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button
           size="sm"
           variant="outline"
-          className="h-7 border-primary/30 text-foreground bg-primary/10 hover:bg-primary/20"
+          className="h-7 border-primary/30 text-foreground bg-primary/10 hover:bg-primary/20 text-[10px]"
           onClick={onUploadClick}
           disabled={uploading}
           data-testid="button-style-upload"
@@ -263,7 +292,7 @@ export function StyleMemoryPanel({
         <Button
           size="sm"
           variant="outline"
-          className="h-7 border-primary/30 text-foreground bg-primary/10 hover:bg-primary/20"
+          className="h-7 border-primary/30 text-foreground bg-primary/10 hover:bg-primary/20 text-[10px]"
           onClick={onBackfill}
           disabled={backfilling || loading}
           data-testid="button-style-backfill"
@@ -271,6 +300,43 @@ export function StyleMemoryPanel({
           <RefreshCcw size={12} className="mr-1" />
           {backfilling ? "Backfilling..." : "Backfill"}
         </Button>
+        {samples.length > 0 && !showDeleteAllConfirm && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 border-red-500/30 text-red-300 bg-red-500/10 hover:bg-red-500/20 text-[10px]"
+            onClick={() => setShowDeleteAllConfirm(true)}
+            disabled={deletingAll || loading}
+            data-testid="button-style-delete-all"
+          >
+            <Trash2 size={12} className="mr-1" />
+            Delete All
+          </Button>
+        )}
+        {showDeleteAllConfirm && (
+          <div className="flex items-center gap-1.5 basis-full">
+            <span className="text-[10px] text-red-300 font-bold">Delete all?</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 border-red-500/40 text-red-200 bg-red-600 hover:bg-red-700 text-[10px]"
+              onClick={() => void deleteAllSamples()}
+              disabled={deletingAll}
+              data-testid="button-style-delete-all-confirm"
+            >
+              {deletingAll ? "Deleting..." : "Confirm"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 border-border text-foreground text-[10px]"
+              onClick={() => setShowDeleteAllConfirm(false)}
+              disabled={deletingAll}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
       </div>
       <input
         ref={fileInputRef}

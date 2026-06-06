@@ -469,6 +469,7 @@ export interface IStorage {
     orgId?: number | null,
   ): Promise<PagedResult<StyleMemorySampleView>>;
   deleteStyleMemorySample(id: number, userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<number>;
+  deleteAllStyleMemorySamples(userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<number>;
   deleteStyleMemoryChunksBySample(sampleId: number, userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<number>;
   addStyleMemoryChunk(args: {
     sampleId: number;
@@ -547,7 +548,7 @@ export interface IStorage {
   getMonthlyUsageCount(userId: string): Promise<number>;
   getMonthlyUsageCountByFeature(userId: string, feature: string): Promise<number>;
   getMonthlyDocumentUploadCount(userId: string): Promise<number>;
-  getDailyOcrPageCount(userId: string): Promise<number>;
+  getMonthlyOcrPageCount(userId: string): Promise<number>;
   logOcrPages(userId: string, pageCount: number): Promise<void>;
   resetMonthlyUsageCount(userId: string): Promise<{ before: number; deleted: number; after: number; windowStart: Date }>;
   getUserTier(userId: string): Promise<string>;
@@ -1247,6 +1248,20 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(styleMemorySamples.id, id),
+          eq(styleMemorySamples.userId, userId),
+          eq(styleMemorySamples.module, module),
+          orgId == null ? sql`${styleMemorySamples.orgId} IS NULL` : eq(styleMemorySamples.orgId, orgId),
+        ),
+      )
+      .returning({ id: styleMemorySamples.id });
+    return removed.length;
+  }
+
+  async deleteAllStyleMemorySamples(userId: string, module: StyleMemoryModule, orgId?: number | null): Promise<number> {
+    const removed = await db
+      .delete(styleMemorySamples)
+      .where(
+        and(
           eq(styleMemorySamples.userId, userId),
           eq(styleMemorySamples.module, module),
           orgId == null ? sql`${styleMemorySamples.orgId} IS NULL` : eq(styleMemorySamples.orgId, orgId),
@@ -2764,15 +2779,15 @@ export class DatabaseStorage implements IStorage {
     return Number(result?.total || 0);
   }
 
-  async getDailyOcrPageCount(userId: string): Promise<number> {
+  async getMonthlyOcrPageCount(userId: string): Promise<number> {
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const [result] = await db.select({ total: sql<number>`COALESCE(SUM(${usageTracking.inputTokens}), 0)` })
       .from(usageTracking)
       .where(and(
         eq(usageTracking.userId, userId),
         eq(usageTracking.feature, "ocr-pages" as any),
-        gte(usageTracking.createdAt, startOfDay)
+        gte(usageTracking.createdAt, startOfMonth)
       ));
     return Number(result?.total || 0);
   }
@@ -4651,6 +4666,7 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "diary_entries_userid_to_text", stmt: sql`ALTER TABLE diary_entries ALTER COLUMN user_id TYPE text USING user_id::text` },
     { label: "diary_entries_outcome_col", stmt: sql`ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS outcome text` },
     { label: "diary_entries_next_date_col", stmt: sql`ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS next_date text` },
+    { label: "alter_judgments_ai_summary", stmt: sql`ALTER TABLE judgments ADD COLUMN IF NOT EXISTS ai_summary jsonb` },
     { label: "idx_diary_entries_user_date", stmt: sql`CREATE INDEX IF NOT EXISTS idx_diary_entries_user_date ON diary_entries (user_id, date)` },
     {
       label: "notification_preferences_table",

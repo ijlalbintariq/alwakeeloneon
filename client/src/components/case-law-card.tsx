@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ScrollText, ExternalLink, ChevronDown, ChevronUp, Star, Database } from "lucide-react";
+import { ScrollText, ExternalLink, ChevronDown, ChevronUp, Star, Database, Loader2 } from "lucide-react";
 
 export interface CaseLawHit {
   citation: string;
@@ -22,6 +22,13 @@ interface CaseLawCardProps {
   onCitationClick: (citation: string) => void;
 }
 
+interface AiSummary {
+  result: string;
+  legalPrinciples: string[];
+  keyFindings: string[];
+  significance: string;
+}
+
 const DEFAULT_VISIBLE = 5;
 
 /**
@@ -35,6 +42,10 @@ const DEFAULT_VISIBLE = 5;
 export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLawCardProps) {
   const [sectionExpanded, setSectionExpanded] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [expandedHitIdx, setExpandedHitIdx] = useState<number | null>(null);
+  const [summaryData, setSummaryData] = useState<Record<number, AiSummary | null>>({});
+  const [summaryLoading, setSummaryLoading] = useState<Record<number, boolean>>({});
+  const [resolvedJudgmentIds, setResolvedJudgmentIds] = useState<Record<number, string | null>>({});
 
   const normalizedCited = useMemo(() => {
     if (!aiCitedCitations) return new Set<string>();
@@ -48,6 +59,63 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
   const wasAiCited = (citation: string): boolean => {
     const k = String(citation || "").toLowerCase().replace(/\s+/g, " ").trim();
     return normalizedCited.has(k);
+  };
+
+  const handleHitClick = async (hit: CaseLawHit, idx: number) => {
+    // Toggle off if already expanded
+    if (expandedHitIdx === idx) {
+      setExpandedHitIdx(null);
+      return;
+    }
+
+    setExpandedHitIdx(idx);
+
+    // If we already have summary data (or already attempted and got null), don't re-fetch
+    if (idx in summaryData) return;
+
+    setSummaryLoading(prev => ({ ...prev, [idx]: true }));
+    try {
+      // Step 1: Resolve judgmentId via /api/caseLaw/lookup
+      let jId = resolvedJudgmentIds[idx];
+      if (jId === undefined) {
+        const lookupRes = await fetch(`/api/caseLaw/lookup?q=${encodeURIComponent(hit.citation)}`, {
+          credentials: "include",
+        });
+        if (lookupRes.ok) {
+          const lookupData = await lookupRes.json();
+          if (lookupData.found && lookupData.id) {
+            jId = String(lookupData.id);
+          } else {
+            jId = null;
+          }
+        } else {
+          jId = null;
+        }
+        setResolvedJudgmentIds(prev => ({ ...prev, [idx]: jId }));
+      }
+
+      if (!jId) {
+        // No judgment in DB — can't generate summary
+        setSummaryData(prev => ({ ...prev, [idx]: null }));
+        return;
+      }
+
+      // Step 2: Fetch AI summary
+      const res = await fetch(`/api/judgments/${jId}/summary`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSummaryData(prev => ({ ...prev, [idx]: data }));
+      } else {
+        setSummaryData(prev => ({ ...prev, [idx]: null }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch AI summary:", err);
+      setSummaryData(prev => ({ ...prev, [idx]: null }));
+    } finally {
+      setSummaryLoading(prev => ({ ...prev, [idx]: false }));
+    }
   };
 
   if (!data.hits || data.hits.length === 0) return null;
@@ -101,57 +169,137 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
         <div className="p-2 space-y-1.5">
           {visible.map((hit, idx) => {
             const cited = wasAiCited(hit.citation);
+            const isExpanded = expandedHitIdx === idx;
+            const summary = summaryData[idx];
+            const loading = summaryLoading[idx];
+            const jId = resolvedJudgmentIds[idx];
             return (
-              <button
-                key={`${hit.citation}-${idx}`}
-                type="button"
-                onClick={() => onCitationClick(hit.citation)}
-                className="w-full text-left rounded-lg bg-background/40 border border-border/50 dark:border-cyan-500/15 hover:border-primary/40 dark:hover:border-cyan-400/50 hover:bg-background/60 transition-all p-2.5 group"
-                data-testid={`case-law-card-hit-${idx}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 min-w-0 flex-1">
-                    <ScrollText size={13} className="text-foreground dark:text-cyan-400 mt-0.5 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[12px] font-bold text-foreground dark:text-cyan-100 font-mono">
-                          {hit.citation}
-                        </span>
-                        {cited && (
-                          <span
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/15 border border-primary/30"
-                            title="AI also cited this case in its analysis"
-                          >
-                            <Star size={9} className="text-primary fill-amber-400" />
-                            <span className="text-[8px] font-bold uppercase tracking-wider text-primary">
-                              AI cited
-                            </span>
+              <div key={`${hit.citation}-${idx}`}>
+                <button
+                  type="button"
+                  onClick={() => handleHitClick(hit, idx)}
+                  className="w-full text-left rounded-lg bg-background/40 border border-border/50 dark:border-cyan-500/15 hover:border-primary/40 dark:hover:border-cyan-400/50 hover:bg-background/60 transition-all p-2.5 group"
+                  data-testid={`case-law-card-hit-${idx}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                      <ScrollText size={13} className="text-foreground dark:text-cyan-400 mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[12px] font-bold text-foreground dark:text-cyan-100 font-mono">
+                            {hit.citation}
                           </span>
+                          {cited && (
+                            <span
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/15 border border-primary/30"
+                              title="AI also cited this case in its analysis"
+                            >
+                              <Star size={9} className="text-primary fill-amber-400" />
+                              <span className="text-[8px] font-bold uppercase tracking-wider text-primary">
+                                AI cited
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                        {hit.title && (
+                          <div className="text-[11px] text-foreground mt-0.5 line-clamp-1">
+                            {hit.title}
+                          </div>
+                        )}
+                        {hit.court && (
+                          <div className="text-[10px] text-muted-foreground dark:text-cyan-400/70 mt-0.5">
+                            {hit.court}
+                          </div>
+                        )}
+                        {hit.snippet && (
+                          <div className="text-[10.5px] text-foreground/80 mt-1.5 line-clamp-2 leading-relaxed">
+                            {hit.snippet}
+                          </div>
                         )}
                       </div>
-                      {hit.title && (
-                        <div className="text-[11px] text-foreground mt-0.5 line-clamp-1">
-                          {hit.title}
+                    </div>
+                    {isExpanded ? (
+                      <ChevronUp
+                        size={11}
+                        className="text-primary mt-1 flex-shrink-0"
+                      />
+                    ) : (
+                      <ExternalLink
+                        size={11}
+                        className="text-muted-foreground dark:text-cyan-400/50 group-hover:text-foreground dark:group-hover:text-cyan-300 mt-1 flex-shrink-0"
+                      />
+                    )}
+                  </div>
+                </button>
+
+                {/* Expandable AI Summary Panel */}
+                <div
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                    isExpanded ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
+                  }`}
+                >
+                  {isExpanded && (
+                    <div className="mt-1 rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                      {loading ? (
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground py-2">
+                          <Loader2 size={12} className="animate-spin" /> Generating AI summary…
                         </div>
-                      )}
-                      {hit.court && (
-                        <div className="text-[10px] text-muted-foreground dark:text-cyan-400/70 mt-0.5">
-                          {hit.court}
-                        </div>
-                      )}
-                      {hit.snippet && (
-                        <div className="text-[10.5px] text-foreground/80 mt-1.5 line-clamp-2 leading-relaxed">
-                          {hit.snippet}
+                      ) : summary ? (
+                        <>
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Result</span>
+                            <p className="text-[11px] text-foreground mt-0.5">{summary.result}</p>
+                          </div>
+                          {summary.legalPrinciples.length > 0 && (
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Legal Principles</span>
+                              <ul className="text-[11px] text-foreground mt-0.5 space-y-0.5">
+                                {summary.legalPrinciples.map((p: string, i: number) => <li key={i}>• {p}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                          {summary.keyFindings.length > 0 && (
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Key Findings</span>
+                              <ul className="text-[11px] text-foreground mt-0.5 space-y-0.5">
+                                {summary.keyFindings.map((f: string, i: number) => <li key={i}>• {f}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Significance</span>
+                            <p className="text-[11px] text-foreground mt-0.5">{summary.significance}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCitationClick(hit.citation);
+                            }}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline mt-1"
+                          >
+                            View Full Judgment → <ExternalLink size={10} />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] text-muted-foreground">Summary not available for this judgment.</p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCitationClick(hit.citation);
+                            }}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
+                          >
+                            View Full Judgment → <ExternalLink size={10} />
+                          </button>
                         </div>
                       )}
                     </div>
-                  </div>
-                  <ExternalLink
-                    size={11}
-                    className="text-muted-foreground dark:text-cyan-400/50 group-hover:text-foreground dark:group-hover:text-cyan-300 mt-1 flex-shrink-0"
-                  />
+                  )}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>

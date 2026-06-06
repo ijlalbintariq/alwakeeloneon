@@ -689,7 +689,7 @@ export type TierPlanConfig = {
   };
   apexMonthlyCap: number;
   uploadLimitPerMonth: number | "custom";
-  ocrPagesPerDay: number | "custom";
+  ocrPagesPerMonth: number | "custom";
   maxFileSizeMb: number;
 };
 
@@ -704,8 +704,8 @@ export const TIER_LIMITS: Record<string, TierPlanConfig> = {
     modeAccess: { standard: true, turbo: false, apex: false },
     maxOutputTokens: { standard: 8192, turbo: 0, apex: 0 },
     apexMonthlyCap: 0,
-    uploadLimitPerMonth: 100,
-    ocrPagesPerDay: 50,
+    uploadLimitPerMonth: 10,
+    ocrPagesPerMonth: 100,
     maxFileSizeMb: 75,
   },
   standard: {
@@ -718,8 +718,8 @@ export const TIER_LIMITS: Record<string, TierPlanConfig> = {
     modeAccess: { standard: true, turbo: false, apex: false },
     maxOutputTokens: { standard: 8192, turbo: 0, apex: 0 },
     apexMonthlyCap: 0,
-    uploadLimitPerMonth: 100,
-    ocrPagesPerDay: 50,
+    uploadLimitPerMonth: 30,
+    ocrPagesPerMonth: 250,
     maxFileSizeMb: 75,
   },
   pro: {
@@ -732,8 +732,8 @@ export const TIER_LIMITS: Record<string, TierPlanConfig> = {
     modeAccess: { standard: true, turbo: true, apex: false },
     maxOutputTokens: { standard: 8192, turbo: 8192, apex: 0 },
     apexMonthlyCap: 0,
-    uploadLimitPerMonth: 300,
-    ocrPagesPerDay: 150,
+    uploadLimitPerMonth: 100,
+    ocrPagesPerMonth: 500,
     maxFileSizeMb: 75,
   },
   chamber: {
@@ -746,8 +746,8 @@ export const TIER_LIMITS: Record<string, TierPlanConfig> = {
     modeAccess: { standard: true, turbo: true, apex: true },
     maxOutputTokens: { standard: 8192, turbo: 8192, apex: 8192 },
     apexMonthlyCap: 180,
-    uploadLimitPerMonth: 1200,
-    ocrPagesPerDay: 600,
+    uploadLimitPerMonth: 300,
+    ocrPagesPerMonth: 1500,
     maxFileSizeMb: 75,
   },
   enterprise: {
@@ -761,7 +761,7 @@ export const TIER_LIMITS: Record<string, TierPlanConfig> = {
     maxOutputTokens: { standard: 8192, turbo: 8192, apex: 8192 },
     apexMonthlyCap: 4500,
     uploadLimitPerMonth: "custom",
-    ocrPagesPerDay: "custom",
+    ocrPagesPerMonth: "custom",
     maxFileSizeMb: 75,
   },
 };

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { Briefcase, Plus, ChevronLeft, Users, FileText, Calendar, StickyNote, Trash2, Loader2, Scale, AlertCircle, Upload, ShieldCheck, CheckCircle2, Gavel } from "lucide-react";
+import { Briefcase, Plus, ChevronLeft, Users, FileText, Calendar, StickyNote, Trash2, Loader2, Scale, AlertCircle, Upload, ShieldCheck, CheckCircle2, Gavel, Eye, Download, X, Link2 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -73,11 +73,82 @@ function CaseDetail({ id }: { id: number }) {
   const [eventTitle, setEventTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
 
+  // Document tab state
+  const [viewDoc, setViewDoc] = useState<{ id: number; documentId: number; title: string; sourceType?: string | null } | null>(null);
+  const [viewDocContent, setViewDocContent] = useState<string | null>(null);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const uploadRef = useRef<HTMLInputElement | null>(null);
+  const [linkSearch, setLinkSearch] = useState("");
+
   const addNote = useMutation({ mutationFn: async () => { await apiRequest("POST", `/api/case-files/${id}/notes`, { content: noteText }); }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }); setNoteText(""); } });
   const addClient = useMutation({ mutationFn: async () => { await apiRequest("POST", `/api/case-files/${id}/clients`, { name: clientName, role: clientRole }); }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }); setClientName(""); } });
   const addComp = useMutation({ mutationFn: async () => { await apiRequest("POST", `/api/case-files/${id}/compliance`, { title: compTitle, dueDate: compDate, type: compType }); }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }); setCompTitle(""); setCompDate(""); } });
   const delNote = useMutation({ mutationFn: async (nid: number) => { await apiRequest("DELETE", `/api/case-files/${id}/notes/${nid}`); }, onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }) });
   const delClient = useMutation({ mutationFn: async (cid: number) => { await apiRequest("DELETE", `/api/case-files/${id}/clients/${cid}`); }, onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] }) });
+
+  // Document mutations
+  const uploadAndLink = useMutation({
+    mutationFn: async (files: File[]) => {
+      const uploaded: number[] = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("files", file);
+        const res = await fetch("/api/documents/upload", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.message || "Upload failed");
+        }
+        const payload = await res.json();
+        const docs = payload?.documents || [];
+        for (const doc of docs) uploaded.push(doc.id);
+      }
+      for (const docId of uploaded) {
+        await apiRequest("POST", `/api/case-files/${id}/documents`, { documentId: docId });
+      }
+      return uploaded.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      toast({ title: `${count} document${count > 1 ? "s" : ""} uploaded & linked` });
+    },
+    onError: (e: any) => toast({ title: "Upload failed", description: e?.message, variant: "destructive" }),
+  });
+
+  const linkDoc = useMutation({
+    mutationFn: async (documentId: number) => {
+      await apiRequest("POST", `/api/case-files/${id}/documents`, { documentId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] });
+      setShowLinkModal(false);
+      toast({ title: "Document linked" });
+    },
+    onError: (e: any) => {
+      const msg = e?.message || "";
+      toast({ title: msg.includes("already") ? "Already linked" : "Link failed", description: msg, variant: msg.includes("already") ? "default" : "destructive" });
+    },
+  });
+
+  const unlinkDoc = useMutation({
+    mutationFn: async (docId: number) => {
+      await apiRequest("DELETE", `/api/case-files/${id}/documents/${docId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/case-files/${id}`] });
+      toast({ title: "Document unlinked" });
+    },
+    onError: (e: any) => toast({ title: "Unlink failed", description: e?.message, variant: "destructive" }),
+  });
+
+  const { data: allDocs = [] } = useQuery<{ id: number; title: string; createdAt: string }[]>({
+    queryKey: ["/api/documents"],
+    enabled: showLinkModal,
+  });
 
   const setNextHearing = useMutation({
     mutationFn: async () => {
@@ -240,14 +311,141 @@ function CaseDetail({ id }: { id: number }) {
 
       {tab === "documents" && (
         <div className="space-y-3">
+          {/* Action bar */}
+          <div className="flex gap-2">
+            <button onClick={() => uploadRef.current?.click()} disabled={uploadAndLink.isPending} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50">
+              {uploadAndLink.isPending ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+              Upload Document
+            </button>
+            <button onClick={() => setShowLinkModal(true)} className="flex items-center gap-1.5 px-4 py-2 border border-border bg-background rounded-lg text-xs font-bold text-foreground hover:border-primary/40">
+              <Link2 size={12} /> Link Existing
+            </button>
+          </div>
+          <input
+            ref={uploadRef}
+            type="file"
+            multiple
+            accept=".pdf,.doc,.docx,.txt"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) {
+                uploadAndLink.mutate(Array.from(e.target.files));
+                e.target.value = "";
+              }
+            }}
+          />
+          {/* Document list */}
           {(cf.documents || []).map((d: any) => (
             <div key={d.id} className="flex items-center justify-between bg-card/50 border border-border rounded-xl p-3">
-              <div><p className="text-sm font-bold text-foreground">{d.docTitle || d.label || "Document"}</p>{d.label && <p className="text-[10px] text-primary/70">{d.label}</p>}</div>
+              <div className="flex-1 cursor-pointer min-w-0" onClick={() => {
+                setViewDoc({ id: d.id, documentId: d.documentId, title: d.docTitle || d.label || "Document", sourceType: d.docSourceType });
+                setViewDocContent(null);
+                if (d.docSourceType !== "pdf") {
+                  fetch(`/api/documents/${d.documentId}`, { credentials: "include" })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(doc => { if (doc?.content) setViewDocContent(doc.content); })
+                    .catch(() => {});
+                }
+              }}>
+                <p className="text-sm font-bold text-foreground truncate">{d.docTitle || d.label || "Document"}</p>
+                {d.label && <p className="text-[10px] text-primary/70">{d.label}</p>}
+                {d.docSourceType && <p className="text-[10px] text-muted-foreground">{d.docSourceType}</p>}
+              </div>
+              <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                <button onClick={() => {
+                  setViewDoc({ id: d.id, documentId: d.documentId, title: d.docTitle || d.label || "Document", sourceType: d.docSourceType });
+                  setViewDocContent(null);
+                  if (d.docSourceType !== "pdf") {
+                    fetch(`/api/documents/${d.documentId}`, { credentials: "include" })
+                      .then(r => r.ok ? r.json() : null)
+                      .then(doc => { if (doc?.content) setViewDocContent(doc.content); })
+                      .catch(() => {});
+                  }
+                }} className="p-1.5 text-muted-foreground hover:text-primary rounded-lg hover:bg-muted" title="View"><Eye size={14} /></button>
+                <a href={`/api/documents/${d.documentId}/file`} target="_blank" rel="noopener noreferrer" className="p-1.5 text-muted-foreground hover:text-primary rounded-lg hover:bg-muted" title="Download" onClick={e => e.stopPropagation()}><Download size={14} /></a>
+                <button onClick={() => unlinkDoc.mutate(d.documentId)} className="p-1.5 text-muted-foreground hover:text-red-400 rounded-lg hover:bg-muted" title="Unlink"><Trash2 size={14} /></button>
+              </div>
             </div>
           ))}
-          {(cf.documents || []).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No documents linked. Upload documents in Knowledge Vault first, then link them here.</p>}
+          {(cf.documents || []).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No documents linked yet. Upload a document or link one from Knowledge Vault.</p>}
         </div>
       )}
+
+      {/* Document Viewer Modal */}
+      {viewDoc && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={() => setViewDoc(null)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText size={16} className="text-primary shrink-0" />
+                <h2 className="text-sm font-bold text-foreground truncate">{viewDoc.title}</h2>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <a href={`/api/documents/${viewDoc.documentId}/file`} target="_blank" rel="noopener noreferrer" className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" title="Download"><Download size={14} /></a>
+                <button onClick={() => setViewDoc(null)} className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" title="Close"><X size={14} /></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {viewDoc.sourceType === "pdf" ? (
+                <iframe
+                  src={`/api/documents/${viewDoc.documentId}/file`}
+                  className="w-full h-full border-0"
+                  title={viewDoc.title}
+                />
+              ) : viewDocContent ? (
+                <div className="h-full overflow-y-auto p-6">
+                  <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed">{viewDocContent}</pre>
+                </div>
+              ) : (
+                <iframe
+                  src={`/api/documents/${viewDoc.documentId}/file`}
+                  className="w-full h-full border-0"
+                  title={viewDoc.title}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Link Existing Document Modal */}
+      {showLinkModal && (() => {
+        const linkedDocIds = new Set((cf.documents || []).map((d: any) => d.documentId));
+        const filtered = allDocs.filter(doc => !linkedDocIds.has(doc.id) && (!linkSearch || doc.title.toLowerCase().includes(linkSearch.toLowerCase())));
+        return (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={() => { setShowLinkModal(false); setLinkSearch(""); }}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
+              <h2 className="text-lg font-bold text-foreground flex items-center gap-2"><Link2 size={18} className="text-primary" /> Link Document</h2>
+              <p className="text-sm text-muted-foreground">Select a document from your Knowledge Vault:</p>
+              <input
+                placeholder="Search documents..."
+                value={linkSearch}
+                onChange={e => setLinkSearch(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+              />
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No documents available to link.</p>}
+                {filtered.map(doc => (
+                  <button
+                    key={doc.id}
+                    onClick={() => linkDoc.mutate(doc.id)}
+                    disabled={linkDoc.isPending}
+                    className="w-full text-left px-4 py-3 rounded-xl border border-border bg-background hover:border-primary/40 transition disabled:opacity-50"
+                  >
+                    <p className="text-sm font-bold text-foreground">{doc.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatDate(doc.createdAt)}</p>
+                  </button>
+                ))}
+              </div>
+              <div className="flex justify-end">
+                <button onClick={() => { setShowLinkModal(false); setLinkSearch(""); }} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground">Cancel</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {tab === "dates" && (() => {
         const EVENT_TYPES = ["hearing", "filing_deadline", "limitation"] as const;

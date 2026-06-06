@@ -2172,7 +2172,7 @@ const MODEL_TIMEOUT_PROFILES: Record<TimeoutProfile, TimeoutConfig> = {
     turboPrimary: 30000,
   },
   analysis: {
-    standardPrimary: 90000, // Legal drafting with DeepSeek R1 reasoning can take 45-80s for 1000+ word pleadings
+    standardPrimary: 90000, // DeepSeek R1 can take 60-80s for complex drafts with attachments
     turboPrimary: 45000,
   },
 };
@@ -2320,33 +2320,34 @@ async function callLegalDraftingAI(
   const messages = buildMessages(systemPrompt, [{ role: "user", parts: [{ text: userText }] }]);
   const startedAt = Date.now();
   if (!isDeepSeekAvailable()) {
-    throw new Error("Legal drafting requires DeepSeek R1. Configure DEEPSEEK_API_KEY.");
+    throw new Error("Legal drafting requires DeepSeek. Configure DEEPSEEK_API_KEY.");
   }
 
+  // Use deepseek-chat as primary (fast, consistent with streaming path)
   try {
-    const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () =>
-      chatWithDeepSeekPro({ messages, maxTokens, temperature }),
+    const result = await withTimeout("DeepSeek-Chat", timeoutConfig.turboPrimary, () =>
+      chatWithDeepSeek({ messages, maxTokens, temperature }),
     );
-    const safeText = assertNonEmptyModelOutput("DeepSeek R1", result.content);
-    console.log(`[AI Routing][legal-drafting] DeepSeek R1 succeeded in ${Date.now() - startedAt}ms (model=${result.model}, output=${result.content.length} chars)`);
+    const safeText = assertNonEmptyModelOutput("DeepSeek Chat", result.content);
+    console.log(`[AI Routing][legal-drafting] DeepSeek Chat succeeded in ${Date.now() - startedAt}ms (model=${result.model}, output=${result.content.length} chars)`);
     return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
   } catch (primaryErr: any) {
-    // If R1 reasoner times out or fails, retry once with faster deepseek-chat model
+    // If deepseek-chat times out or fails, retry once with DeepSeek R1 as fallback
     const errCode = primaryErr?.code || "";
     const isTimeout = errCode === "MODEL_TIMEOUT" || primaryErr?.message?.includes("timed out");
     const isEmpty = errCode === "EMPTY_MODEL_OUTPUT";
     if (isTimeout || isEmpty) {
-      console.warn(`[AI Routing][legal-drafting] DeepSeek R1 ${isTimeout ? "timed out" : "empty output"} after ${Date.now() - startedAt}ms — retrying with deepseek-chat`);
+      console.warn(`[AI Routing][legal-drafting] DeepSeek Chat ${isTimeout ? "timed out" : "empty output"} after ${Date.now() - startedAt}ms — retrying with DeepSeek R1`);
       const retryStarted = Date.now();
       try {
-        const fallbackResult = await withTimeout("DeepSeek-Chat-Fallback", 60000, () =>
-          chatWithDeepSeek({ messages, maxTokens, temperature: Math.min(temperature + 0.05, 0.7) }),
+        const fallbackResult = await withTimeout("DeepSeek-R1-Fallback", timeoutConfig.standardPrimary, () =>
+          chatWithDeepSeekPro({ messages, maxTokens, temperature }),
         );
-        const fallbackText = assertNonEmptyModelOutput("DeepSeek Chat", fallbackResult.content);
-        console.log(`[AI Routing][legal-drafting] DeepSeek Chat fallback succeeded in ${Date.now() - retryStarted}ms`);
+        const fallbackText = assertNonEmptyModelOutput("DeepSeek R1", fallbackResult.content);
+        console.log(`[AI Routing][legal-drafting] DeepSeek R1 fallback succeeded in ${Date.now() - retryStarted}ms`);
         return { text: enforcePakistanLawOnlyOutput(fallbackText), model: fallbackResult.model };
       } catch (fallbackErr) {
-        console.error(`[AI Routing][legal-drafting] DeepSeek Chat fallback also failed:`, getErrorMessage(fallbackErr));
+        console.error(`[AI Routing][legal-drafting] DeepSeek R1 fallback also failed:`, getErrorMessage(fallbackErr));
         throw primaryErr; // Re-throw the original error for better error messages
       }
     }
@@ -6468,8 +6469,14 @@ async function resolveLegalDraftReferences(
   const verifiedCaseRefs: LegalDraftCaseReference[] = [];
   const seenCaseIds = new Set<number>();
   const unresolvedCaseCitations: string[] = [];
-  for (const citation of caseCandidates) {
-    const resolved = await resolveCaseCitationFromKnowledgeBase(citation);
+  // Parallelize case citation resolution for speed (was sequential)
+  const caseResolutions = await Promise.all(
+    caseCandidates.map((citation) =>
+      resolveCaseCitationFromKnowledgeBase(citation).catch(() => null),
+    ),
+  );
+  for (let i = 0; i < caseCandidates.length; i++) {
+    const resolved = caseResolutions[i];
     if (resolved) {
       if (!seenCaseIds.has(resolved.id)) {
         seenCaseIds.add(resolved.id);
@@ -6477,7 +6484,10 @@ async function resolveLegalDraftReferences(
       }
       continue;
     }
-    unresolvedCaseCitations.push(citation);
+    unresolvedCaseCitations.push(caseCandidates[i]);
+  }
+  if (caseCandidates.length > 0) {
+    console.log(`[LegalDrafting:CitationResolve] Resolved ${caseCandidates.length} case citations in parallel (verified=${verifiedCaseRefs.length}, unresolved=${unresolvedCaseCitations.length})`);
   }
 
   if (stripUnverifiedCaseCitations && unresolvedCaseCitations.length > 0) {
@@ -8278,6 +8288,33 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/style-memory/samples", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      if (!STYLE_MEMORY_ENABLED) {
+        return res.status(503).json({ message: "Style memory is disabled" });
+      }
+      const moduleRaw = String(req.query.module || "");
+      if (!isStyleMemoryModule(moduleRaw)) {
+        return res.status(400).json({ message: "Invalid module. Use legal-drafting or contract-drafting." });
+      }
+      const scopeRaw = String(req.query.scope || "user").toLowerCase();
+      const useOrgScope = scopeRaw === "org";
+      let orgId: number | null = null;
+      if (useOrgScope) {
+        const org = await storage.getUserOrganization(userId);
+        if (!org) return res.status(400).json({ message: "Organization scope requested but user has no organization." });
+        orgId = org.id;
+      }
+      const deleted = await storage.deleteAllStyleMemorySamples(userId, moduleRaw, orgId);
+      res.json({ deleted });
+    } catch (err: any) {
+      console.error("Error deleting all style-memory samples:", err);
+      res.status(500).json({ message: err?.message || "Failed to delete all style-memory samples" });
+    }
+  });
+
   app.delete("/api/style-memory/samples/:id", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -8524,13 +8561,13 @@ export async function registerRoutes(
             content = "";
           }
           if (!content) {
-            // Check daily OCR page limit before attempting OCR
+            // Check monthly OCR page limit before attempting OCR
             if (ocrPageTracker) {
-              const ocrLimit = typeof uploadTierPlan.ocrPagesPerDay === "number" ? uploadTierPlan.ocrPagesPerDay : Infinity;
+              const ocrLimit = typeof uploadTierPlan.ocrPagesPerMonth === "number" ? uploadTierPlan.ocrPagesPerMonth : Infinity;
               if (ocrLimit !== Infinity) {
-                const dailyOcrPages = await storage.getDailyOcrPageCount(userId);
-                if (dailyOcrPages + ocrPageTracker.pagesUsed >= ocrLimit) {
-                  errors.push(`${original}: daily OCR page limit reached (${ocrLimit} pages/day on ${uploadTierPlan.label} plan)`);
+                const monthlyOcrPages = await storage.getMonthlyOcrPageCount(userId);
+                if (monthlyOcrPages + ocrPageTracker.pagesUsed >= ocrLimit) {
+                  errors.push(`${original}: monthly OCR page limit reached (${ocrLimit} pages/month on ${uploadTierPlan.label} plan)`);
                   continue;
                 }
               }
@@ -10618,6 +10655,102 @@ RAG POLICY (STRICT):
     }
   });
 
+  // ── AI-Powered Judgment Summary ─────────────────────────────────────────────
+  // Returns a structured AI summary for a given judgment UUID. Caches the result
+  // in the judgments.ai_summary JSONB column so subsequent requests are instant.
+  app.get("/api/judgments/:id/summary", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ message: "Judgment id is required" });
+
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      if (!isUUID) return res.status(400).json({ message: "Invalid judgment ID format" });
+
+      // Check for cached summary and fetch judgment text in one query
+      const rows = await db.execute(
+        sql`SELECT ai_summary, headnotes, LEFT(full_text, 3000) AS full_text_head FROM judgments WHERE id = ${id}`
+      );
+      const row = (rows as any).rows?.[0] ?? (rows as any)[0] ?? null;
+      if (!row) return res.status(404).json({ message: "Judgment not found" });
+
+      // If we already have a cached summary, return it immediately
+      if (row.ai_summary) {
+        const cached = typeof row.ai_summary === "string" ? JSON.parse(row.ai_summary) : row.ai_summary;
+        return res.json(cached);
+      }
+
+      // Check if OpenRouter is configured
+      if (!process.env.OPENROUTER_API_KEY) {
+        return res.status(503).json({ message: "AI summary service is not configured" });
+      }
+
+      // Build the prompt from headnotes + first 3000 chars of full text
+      const headnotes = row.headnotes || "";
+      const fullTextHead = row.full_text_head || "";
+      const contextText = headnotes
+        ? `Headnotes:\n${headnotes}\n\nJudgment Text (first 3000 chars):\n${fullTextHead}`
+        : `Judgment Text (first 3000 chars):\n${fullTextHead}`;
+
+      const systemPrompt = `You are a Pakistani legal research assistant. Analyze the following judgment and return a JSON object with exactly these four fields:
+{
+  "result": "Brief outcome of the case (1-2 sentences)",
+  "legalPrinciples": ["Principle 1", "Principle 2"],
+  "keyFindings": ["Finding 1", "Finding 2"],
+  "significance": "Why this judgment matters (1-2 sentences)"
+}
+Return ONLY the JSON object, no markdown fences or extra text.`;
+
+      const { chatWithOpenRouter } = await import("./openrouter");
+      const aiResult = await chatWithOpenRouter({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: contextText },
+        ],
+        model: "openai/gpt-4o-mini",
+        maxTokens: 1024,
+        temperature: 0.2,
+      });
+
+      // Extract JSON from the response — handle markdown code blocks if present
+      let summaryJson: { result: string; legalPrinciples: string[]; keyFindings: string[]; significance: string };
+      try {
+        const jsonMatch = aiResult.content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("No JSON object found in AI response");
+        summaryJson = JSON.parse(jsonMatch[0]);
+
+        // Validate structure
+        if (typeof summaryJson.result !== "string") summaryJson.result = "";
+        if (!Array.isArray(summaryJson.legalPrinciples)) summaryJson.legalPrinciples = [];
+        if (!Array.isArray(summaryJson.keyFindings)) summaryJson.keyFindings = [];
+        if (typeof summaryJson.significance !== "string") summaryJson.significance = "";
+      } catch (parseErr) {
+        console.error("Failed to parse AI summary JSON:", parseErr, "Raw:", aiResult.content);
+        return res.status(502).json({ message: "AI returned invalid response format" });
+      }
+
+      // Cache the result in the ai_summary column
+      try {
+        await db.execute(
+          sql`UPDATE judgments SET ai_summary = ${JSON.stringify(summaryJson)}::jsonb WHERE id = ${id}`
+        );
+      } catch (cacheErr) {
+        // Non-fatal — summary was generated, just couldn't cache it
+        console.warn("Failed to cache AI summary:", cacheErr);
+      }
+
+      return res.json(summaryJson);
+    } catch (err: any) {
+      console.error("Error generating judgment AI summary:", err);
+      // If the error is from OpenRouter, return 503
+      if (err?.message?.includes("OpenRouter") || err?.message?.includes("OPENROUTER")) {
+        return res.status(503).json({ message: "AI summary service unavailable" });
+      }
+      return res.status(500).json({ message: "Failed to generate AI summary" });
+    }
+  });
+
   // Public, unauthenticated judgment preview for crawlers + anonymous visitors.
   // Returns title/citation/court/headnotes plus the first ~500 words of the
   // full text, so the page can render real content for Googlebot, Bing, and AI
@@ -11359,7 +11492,16 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
     | "high-court-criminal-revision"
     | "high-court-bail-before-arrest"
     | "supreme-court-cpla"
-    | "supreme-court-criminal-petition";
+    | "supreme-court-criminal-petition"
+    | "application-to-police"
+    | "legal-notice"
+    | "affidavit"
+    | "power-of-attorney"
+    | "authority-letter"
+    | "written-statement"
+    | "rent-petition"
+    | "recovery-suit"
+    | "nikah-nama-divorce";
 
   const LEGAL_DRAFTING_DOC_TYPES: Record<
     LegalDraftingDocType,
@@ -11483,6 +11625,69 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         "- Impugned High Court order/judgment details\n- Questions of law/public importance in criminal context\n- Concise grounds for leave\n- Prayer for grant of leave and interim relief (if needed)",
       skeleton:
         "IN THE SUPREME COURT OF PAKISTAN\nCriminal Petition for Leave to Appeal No. ____ of ____\n\nPetitioner: ____\nVersus\nRespondent: ____\n\nCRIMINAL PETITION FOR LEAVE TO APPEAL\n\nImpugned judgment/order:\n...\n\nQuestions of law:\n1. ...\n2. ...\n\nGrounds:\n...\n\nPrayer:\n...",
+    },
+    "application-to-police": {
+      label: "Application to SHO / Police Station",
+      checklist:
+        "- Addressee (SHO with police station name and district)\n- Subject line (complaint / request for action)\n- Applicant introduction (name, parentage, CNIC, address, contact)\n- Chronological facts with dates, places, offence details (numbered 1, 2, 3)\n- PPC/PECA sections invoked (if known)\n- Specific prayer (registration of FIR / investigation / action)\n- Applicant signature block with CNIC and contact\n\nIMPORTANT — THIS IS NOT A COURT PETITION:\n- Do NOT include a GROUNDS section — police applications do not have formal grounds\n- Do NOT cite constitutional articles (Article 4, 9, 14, 199) — those are for court petitions\n- Do NOT use 'RESPECTFULLY SHEWETH', 'VERSUS', cause title, or court heading\n- Do NOT add an index table or table of documents\n- Do NOT use 'petitioner/respondent' terminology — use 'applicant' and 'accused/suspect'\n- Keep tone respectful but simple and direct — this is addressed to a police officer, not a judge\n- End with 'I shall be highly obliged' and applicant signature — no verification/affidavit needed\n- Do NOT include duplicate advocate/counsel blocks at the end",
+      skeleton:
+        "TO,\nThe Station House Officer (SHO),\nPolice Station ______,\nDistrict ______.\n\nSUBJECT: APPLICATION FOR ______\n\nRespected Sir,\n\nI, ______, s/o d/o w/o ______, resident of ______, CNIC No. ______, Contact No. ______, respectfully submit as follows:\n\n1. That ______\n2. That ______\n3. That ______\n\nIn view of the above facts, it is humbly requested that:\na) ______\nb) ______\n\nI shall be highly obliged.\n\nApplicant:\nName: ______\nCNIC: ______\nContact: ______\nSignature: ______\nDate: ______\nPlace: ______",
+    },
+    "legal-notice": {
+      label: "Legal Notice",
+      checklist:
+        "- Sender details (through advocate/counsel)\n- Addressee (noticee) details with address\n- Subject line referencing relevant statute (S. 80 CPC, etc.)\n- Facts giving rise to the notice\n- Demand / warning of legal consequences\n- Time limit for compliance\n- Copies/endorsement clause",
+      skeleton:
+        "LEGAL NOTICE\n\nFrom:\n______, Advocate\nOn behalf of: ______\n\nTo:\n______\nAddress: ______\n\nDated: ______\n\nSUBJECT: LEGAL NOTICE UNDER SECTION ______\n\nDear Sir/Madam,\n\nUnder instructions from and on behalf of my client, ______, I hereby serve upon you the following legal notice:\n\n1. That ______\n2. That ______\n3. That ______\n\nYou are hereby called upon to ______ within ______ days of receipt of this notice, failing which my client shall be constrained to initiate legal proceedings against you at your risk, cost, and consequences.\n\nA copy of this notice is retained for record and legal proceedings.\n\n______\nAdvocate High Court\nOn behalf of: ______",
+    },
+    "affidavit": {
+      label: "Affidavit / Sworn Statement",
+      checklist:
+        "- Deponent name, parentage, CNIC, address\n- Title (Affidavit for [purpose])\n- Numbered sworn statements prefixed with 'That'\n- Oath clause (solemnly affirm / swear)\n- Deponent signature with date and place\n- Notary / Oath Commissioner attestation block",
+      skeleton:
+        "AFFIDAVIT\n\nI, ______, s/o d/o w/o ______, CNIC No. ______, resident of ______, do hereby solemnly affirm and state on oath as under:\n\n1. That I am the deponent of the above-titled affidavit and competent to swear the same.\n2. That ______\n3. That ______\n4. That ______\n\nI solemnly affirm that the contents of this affidavit are true and correct to the best of my knowledge and belief and nothing has been concealed therefrom.\n\nDEPONENT\n\nVerified on oath at ______ on this ___ day of ______ 20__.\n\nDEPONENT\n\nBEFORE ME:\nOath Commissioner / Notary Public\n______, District ______",
+    },
+    "power-of-attorney": {
+      label: "Power of Attorney (General / Special)",
+      checklist:
+        "- Principal (executant) full details with CNIC\n- Attorney (agent) full details with CNIC\n- Scope of authority (general or specific acts)\n- Duration / validity period\n- Revocation clause\n- Witnesses (at least two)\n- Notarization / attestation clause",
+      skeleton:
+        "POWER OF ATTORNEY\n\nKNOW ALL MEN BY THESE PRESENTS:\n\nI, ______, s/o d/o w/o ______, CNIC No. ______, resident of ______, hereinafter referred to as the PRINCIPAL/EXECUTANT,\n\nDo hereby appoint and authorize ______, s/o d/o w/o ______, CNIC No. ______, resident of ______, hereinafter referred to as the ATTORNEY/AGENT,\n\nTo do and execute the following acts, deeds, and things on my behalf:\n\n1. ______\n2. ______\n3. ______\n\nThis Power of Attorney shall remain valid from ______ until ______ unless revoked earlier in writing.\n\nIN WITNESS WHEREOF, I have executed this Power of Attorney on this ___ day of ______ 20__ at ______.\n\nPRINCIPAL/EXECUTANT\nSignature: ______\nCNIC: ______\n\nWITNESSES:\n1. Name: ______ CNIC: ______\n2. Name: ______ CNIC: ______\n\nATTESTATION:\nNotary Public / Oath Commissioner\nDistrict: ______",
+    },
+    "authority-letter": {
+      label: "Authority Letter",
+      checklist:
+        "- Authorizer full details with CNIC\n- Authorized person full details with CNIC\n- Purpose / scope of authorization\n- Duration or single-use indication\n- Authorizer signature with date",
+      skeleton:
+        "AUTHORITY LETTER\n\nDate: ______\n\nI, ______, s/o d/o w/o ______, CNIC No. ______, resident of ______, hereby authorize ______, s/o d/o w/o ______, CNIC No. ______, to:\n\n1. ______\n2. ______\n\nThis authorization is valid for ______ / until ______.\n\nAuthorizer:\nName: ______\nSignature: ______\nCNIC: ______\nContact: ______\nDate: ______\nPlace: ______",
+    },
+    "written-statement": {
+      label: "Written Statement / Reply to Suit",
+      checklist:
+        "- Court name and case reference\n- Defendant details (replying party)\n- Preliminary objections (jurisdiction, limitation, maintainability)\n- Para-wise reply to plaint allegations\n- Additional plea / counter-claim (if any)\n- Prayer\n- Verification",
+      skeleton:
+        "IN THE COURT OF ______\nCivil Suit No. ____ of ____\n\nPlaintiff: ____\nVersus\nDefendant: ____\n\nWRITTEN STATEMENT ON BEHALF OF DEFENDANT\n\nRESPECTFULLY SHEWETH:\n\nPRELIMINARY OBJECTIONS:\n1. That ______\n2. That ______\n\nPARA-WISE REPLY:\n1. That the contents of para 1 of the plaint are ______\n2. That the contents of para 2 of the plaint are ______\n\nADDITIONAL PLEA:\n1. That ______\n\nPRAYER:\nIt is, therefore, most respectfully prayed that this Honourable Court may be pleased to dismiss the suit of the plaintiff with costs.\n\nVERIFICATION:\nVerified on oath at ______ on this ___ day of ______ 20__ that the contents of the above written statement are true and correct to the best of my knowledge and belief.\n\nDEFENDANT\nTHROUGH COUNSEL",
+    },
+    "rent-petition": {
+      label: "Rent Petition / Ejectment Application",
+      checklist:
+        "- Rent Controller / Rent Tribunal heading\n- Landlord and tenant details\n- Property description with address\n- Tenancy details (rent amount, term, arrears)\n- Grounds for ejectment (default, personal need, etc.)\n- Prayer for ejectment / recovery\n- Verification",
+      skeleton:
+        "IN THE COURT OF THE RENT CONTROLLER / RENT TRIBUNAL, ______\nRent Petition No. ____ of ____\n\nPetitioner/Landlord: ____\nVersus\nRespondent/Tenant: ____\n\nPETITION FOR EJECTMENT UNDER SECTION ____ OF THE PUNJAB/SINDH/KP RENTED PREMISES ACT\n\nRESPECTFULLY SHEWETH:\n\nProperty Details:\n______\n\nFacts:\n1. That ______\n2. That ______\n\nGrounds for Ejectment:\nA. That ______\nB. That ______\n\nPRAYER:\n______\n\nVERIFICATION:\n______",
+    },
+    "recovery-suit": {
+      label: "Recovery Suit (Money / Property)",
+      checklist:
+        "- Court heading and suit number\n- Plaintiff and defendant details\n- Subject (recovery of amount / property)\n- Material facts with amounts, dates, agreements\n- Cause of action\n- Jurisdiction and valuation\n- Prayer with specific amount / relief\n- Verification",
+      skeleton:
+        "IN THE COURT OF ______\nCivil Suit No. ____ of ____\n\nPlaintiff: ____\nVersus\nDefendant: ____\n\nSUIT FOR RECOVERY OF RS. ______ / RECOVERY OF POSSESSION OF PROPERTY\n\nRESPECTFULLY SHEWETH:\n\nFacts:\n1. That ______\n2. That ______\n3. That ______\n\nCause of Action:\n______\n\nJurisdiction and Valuation:\n______\n\nPRAYER:\na) ______\nb) ______\n\nVERIFICATION:\n______",
+    },
+    "nikah-nama-divorce": {
+      label: "Divorce Deed / Talaq Nama",
+      checklist:
+        "- Husband details (name, parentage, CNIC, address)\n- Wife details (name, parentage, CNIC, address)\n- Nikah details (date, place, Nikah Registrar)\n- Pronouncement of Talaq with date\n- Statement on Iddat period\n- Settlement of Mehr / Haq Mehr\n- Custody arrangement (if applicable)\n- Witnesses\n- Notice to Union Council clause (under MFLO 1961)",
+      skeleton:
+        "DIVORCE DEED / TALAQ NAMA\n\nThis deed is executed on this ___ day of ______ 20__ at ______.\n\nHusband: ______, s/o ______, CNIC No. ______, resident of ______\nWife: ______, d/o ______, CNIC No. ______, resident of ______\n\nNikah Details:\nDate of Nikah: ______\nPlace: ______\nNikah Registrar: ______\n\nTalaq Pronouncement:\n______\n\nIddat Period: ______\n\nMehr Settlement: ______\n\nNotice to Union Council:\nIn compliance with Section 7 of the Muslim Family Laws Ordinance 1961, notice of this divorce is being sent to the Chairman, Union Council ______.\n\nWITNESSES:\n1. ______\n2. ______\n\nHUSBAND\nSignature: ______",
     },
   };
 
@@ -11645,6 +11850,96 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
       "Verification/Affidavit Placeholder",
       "Annexures/List of Filed Documents",
     ],
+    "application-to-police": [
+      "Addressee (SHO, Police Station, District)",
+      "Subject Line",
+      "Applicant Introduction",
+      "Chronological Facts (numbered)",
+      "Prayer / Relief Sought",
+      "Applicant Signature Block with CNIC and Contact",
+    ],
+    "legal-notice": [
+      "Sender (Advocate) and Client Details",
+      "Addressee (Noticee) Details",
+      "Date and Subject Line",
+      "Facts Giving Rise to Notice (numbered)",
+      "Demand / Call Upon with Time Limit",
+      "Warning of Legal Consequences",
+      "Copy Retention Clause",
+      "Advocate Signature Block",
+    ],
+    "affidavit": [
+      "Title (Affidavit)",
+      "Deponent Introduction (name, parentage, CNIC, address)",
+      "Numbered Sworn Statements",
+      "Solemn Affirmation Clause",
+      "Deponent Signature",
+      "Verification on Oath",
+      "Oath Commissioner / Notary Attestation Block",
+    ],
+    "power-of-attorney": [
+      "Title (Power of Attorney)",
+      "Principal/Executant Details",
+      "Attorney/Agent Details",
+      "Scope of Authority (numbered)",
+      "Duration and Validity",
+      "Revocation Clause",
+      "Execution Clause with Date and Place",
+      "Principal Signature",
+      "Witnesses Block",
+      "Notary Attestation",
+    ],
+    "authority-letter": [
+      "Title (Authority Letter)",
+      "Authorizer Details",
+      "Authorized Person Details",
+      "Scope of Authorization (numbered)",
+      "Duration / Validity",
+      "Authorizer Signature Block",
+    ],
+    "written-statement": [
+      "Cause Title (Court, Parties, Case Reference)",
+      "Written Statement Title",
+      "RESPECTFULLY SHEWETH",
+      "Preliminary Objections (numbered)",
+      "Para-Wise Reply (numbered, corresponding to plaint paragraphs)",
+      "Additional Plea / Counter-Claim (if any)",
+      "Prayer",
+      "Verification",
+    ],
+    "rent-petition": [
+      "Cause Title (Rent Controller/Tribunal, Parties)",
+      "Petition Title with Statutory Reference",
+      "RESPECTFULLY SHEWETH",
+      "Property Description",
+      "Chronological Facts (numbered)",
+      "Grounds for Ejectment (lettered)",
+      "Prayer",
+      "Verification",
+    ],
+    "recovery-suit": [
+      "Cause Title (Court, Parties, Suit Title)",
+      "RESPECTFULLY SHEWETH",
+      "Material Facts (numbered, with amounts/dates)",
+      "Cause of Action",
+      "Jurisdiction and Valuation",
+      "Prayer (with specific recovery amount)",
+      "Verification",
+    ],
+    "nikah-nama-divorce": [
+      "Title (Divorce Deed / Talaq Nama)",
+      "Execution Date and Place",
+      "Husband Details",
+      "Wife Details",
+      "Nikah Details",
+      "Talaq Pronouncement",
+      "Iddat Period",
+      "Mehr / Haq Mehr Settlement",
+      "Custody Arrangement (if applicable)",
+      "Notice to Union Council (MFLO 1961)",
+      "Witnesses Block",
+      "Husband Signature",
+    ],
   };
 
   type LegalDraftTypeRule = {
@@ -11794,6 +12089,74 @@ ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         { regex: /CRIMINAL PETITION FOR LEAVE TO APPEAL/i, label: "Criminal Petition caption" },
       ],
     },
+    "application-to-police": {
+      forumHeading: "TO, THE STATION HOUSE OFFICER (SHO), POLICE STATION [NAME], DISTRICT [NAME]",
+      filingCaption: "APPLICATION FOR [REGISTRATION OF FIR / INVESTIGATION / ACTION]",
+      requiredInHeader: [
+        { regex: /(SHO|STATION HOUSE OFFICER|POLICE STATION)/i, label: "Police Station addressee" },
+        { regex: /(APPLICATION|SUBJECT|COMPLAINT)/i, label: "Application/Subject heading" },
+      ],
+    },
+    "legal-notice": {
+      forumHeading: "LEGAL NOTICE",
+      filingCaption: "LEGAL NOTICE UNDER SECTION [80 CPC / RELEVANT STATUTE]",
+      requiredInHeader: [
+        { regex: /LEGAL NOTICE/i, label: "Legal Notice heading" },
+      ],
+    },
+    "affidavit": {
+      forumHeading: "AFFIDAVIT",
+      filingCaption: "AFFIDAVIT FOR [PURPOSE]",
+      requiredInHeader: [
+        { regex: /AFFIDAVIT/i, label: "Affidavit heading" },
+        { regex: /(SOLEMNLY AFFIRM|SWORN|OATH)/i, label: "Oath/affirmation clause" },
+      ],
+    },
+    "power-of-attorney": {
+      forumHeading: "POWER OF ATTORNEY",
+      filingCaption: "GENERAL / SPECIAL POWER OF ATTORNEY",
+      requiredInHeader: [
+        { regex: /POWER OF ATTORNEY/i, label: "Power of Attorney heading" },
+      ],
+    },
+    "authority-letter": {
+      forumHeading: "AUTHORITY LETTER",
+      filingCaption: "AUTHORITY LETTER FOR [PURPOSE]",
+      requiredInHeader: [
+        { regex: /AUTHORITY LETTER/i, label: "Authority Letter heading" },
+      ],
+    },
+    "written-statement": {
+      forumHeading: "IN THE COURT OF [CIVIL COURT/JUDGE] AT [CITY]",
+      filingCaption: "WRITTEN STATEMENT ON BEHALF OF DEFENDANT",
+      requiredInHeader: [
+        { regex: /IN THE COURT OF/i, label: "Court heading" },
+        { regex: /WRITTEN STATEMENT/i, label: "Written Statement caption" },
+      ],
+    },
+    "rent-petition": {
+      forumHeading: "IN THE COURT OF THE RENT CONTROLLER / RENT TRIBUNAL AT [CITY]",
+      filingCaption: "PETITION FOR EJECTMENT UNDER THE RENTED PREMISES ACT",
+      requiredInHeader: [
+        { regex: /(RENT CONTROLLER|RENT TRIBUNAL)/i, label: "Rent Court heading" },
+        { regex: /(EJECTMENT|RENT PETITION|RENTED PREMISES)/i, label: "Rent/Ejectment caption" },
+      ],
+    },
+    "recovery-suit": {
+      forumHeading: "IN THE COURT OF [CIVIL COURT/JUDGE] AT [CITY]",
+      filingCaption: "SUIT FOR RECOVERY OF [AMOUNT / POSSESSION]",
+      requiredInHeader: [
+        { regex: /IN THE COURT OF/i, label: "Court heading" },
+        { regex: /(RECOVERY|SUIT FOR RECOVERY)/i, label: "Recovery caption" },
+      ],
+    },
+    "nikah-nama-divorce": {
+      forumHeading: "DIVORCE DEED / TALAQ NAMA",
+      filingCaption: "DIVORCE DEED UNDER MUSLIM FAMILY LAWS ORDINANCE 1961",
+      requiredInHeader: [
+        { regex: /(DIVORCE DEED|TALAQ NAMA|TALAQ)/i, label: "Divorce deed heading" },
+      ],
+    },
   };
 
   function buildStrictTypeLockInstruction(docType: LegalDraftingDocType, label: string): string {
@@ -11823,11 +12186,18 @@ ${headingOrder}`;
       if (!check.regex.test(headerBlock)) issues.push(`Missing or incorrect ${check.label}.`);
     }
 
-    if (!/^\s*RESPECTFULLY SHEWETH:\s*$/im.test(text)) issues.push("Missing heading: RESPECTFULLY SHEWETH:");
-    if (!/^\s*PRAYER\s*$/im.test(text)) issues.push("Missing heading: PRAYER");
-    if (!/^\s*VERIFICATION\s*$/im.test(text) && !/^\s*AFFIDAVIT\s*$/im.test(text)) issues.push("Missing heading: VERIFICATION or AFFIDAVIT");
-    if (!/^\s*VERSUS\s*$/im.test(text) && !/^\s*IN RE:\s*$/im.test(text)) {
-      issues.push("Missing party separator line: VERSUS (or IN RE where appropriate).");
+    // Court-specific heading checks — skip for non-court doc types
+    const NON_COURT_DOC_TYPES = new Set([
+      "application-to-police", "legal-notice", "affidavit", "power-of-attorney",
+      "authority-letter", "nikah-nama-divorce",
+    ]);
+    if (!NON_COURT_DOC_TYPES.has(docType)) {
+      if (!/^\s*RESPECTFULLY SHEWETH:\s*$/im.test(text)) issues.push("Missing heading: RESPECTFULLY SHEWETH:");
+      if (!/^\s*PRAYER\s*$/im.test(text)) issues.push("Missing heading: PRAYER");
+      if (!/^\s*VERIFICATION\s*$/im.test(text) && !/^\s*AFFIDAVIT\s*$/im.test(text)) issues.push("Missing heading: VERIFICATION or AFFIDAVIT");
+      if (!/^\s*VERSUS\s*$/im.test(text) && !/^\s*IN RE:\s*$/im.test(text)) {
+        issues.push("Missing party separator line: VERSUS (or IN RE where appropriate).");
+      }
     }
     if (!/(^|\n)\s*1\.\s+/m.test(text)) issues.push("Facts/grounds are not in numbered court format.");
 
@@ -12330,35 +12700,226 @@ Rules:
 6. If the current draft is about narcotics, do not produce an injunction suit. If it is about bail, do not produce a writ petition. The subject matter is locked to whatever is already in the active draft.
 7. Context may change ONLY when the user gives an explicit new drafting command with entirely new facts, parties, and case type — not when they say "refresh" or "rewrite".`;
 
+  // ─── Fuzzy matching utilities ───
+  function levenshtein(a: string, b: string): number {
+    const la = a.length, lb = b.length;
+    if (la === 0) return lb;
+    if (lb === 0) return la;
+    const dp: number[][] = Array.from({ length: la + 1 }, (_, i) =>
+      Array.from({ length: lb + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+    );
+    for (let i = 1; i <= la; i++) {
+      for (let j = 1; j <= lb; j++) {
+        dp[i][j] = a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+    return dp[la][lb];
+  }
+
+  /** Returns true if `word` fuzzy-matches `target` (max edit distance scales with word length) */
+  function fuzzyMatch(word: string, target: string): boolean {
+    if (word === target) return true;
+    if (word.length < 3 || target.length < 3) return word === target;
+    const maxDist = target.length <= 5 ? 1 : target.length <= 8 ? 2 : 3;
+    return levenshtein(word, target) <= maxDist;
+  }
+
+  /** Check if any word in `words` fuzzy-matches `target` */
+  function hasFuzzy(words: string[], target: string): boolean {
+    return words.some((w) => fuzzyMatch(w, target));
+  }
+
+  /** Check if the text contains a fuzzy match for a multi-word phrase */
+  function hasFuzzyPhrase(text: string, phrase: string): boolean {
+    const phraseWords = phrase.split(/\s+/);
+    if (phraseWords.length === 1) return hasFuzzy(text.split(/\s+/), phraseWords[0]);
+    const textWords = text.split(/\s+/);
+    for (let i = 0; i <= textWords.length - phraseWords.length; i++) {
+      let allMatch = true;
+      for (let j = 0; j < phraseWords.length; j++) {
+        if (!fuzzyMatch(textWords[i + j], phraseWords[j])) { allMatch = false; break; }
+      }
+      if (allMatch) return true;
+    }
+    return false;
+  }
+
+  // ─── Conversion intent detector ───
+  const CONVERSION_VERBS = ["convert", "change", "turn", "transform", "make", "rewrite", "redo"];
+  const CONVERSION_PREPS = ["into", "to", "in", "as"];
+
+  /**
+   * Detect conversion intent and extract the target type keyword.
+   * "convert this into application" → "application"
+   * "change to legal notice" → "legal notice"
+   * "make it an affidavit" → "affidavit"
+   */
+  function extractConversionTarget(prompt: string): string | null {
+    const words = prompt.toLowerCase().split(/\s+/);
+    let verbIdx = -1;
+    for (let i = 0; i < words.length; i++) {
+      if (CONVERSION_VERBS.some((v) => fuzzyMatch(words[i], v))) { verbIdx = i; break; }
+    }
+    if (verbIdx < 0) return null;
+    const fillers = new Set(["this", "it", "the", "an", "a", "that", "my", "our", "above", "draft", "document"]);
+    let cursor = verbIdx + 1;
+    while (cursor < words.length && fillers.has(words[cursor])) cursor++;
+    if (cursor < words.length && CONVERSION_PREPS.some((p) => fuzzyMatch(words[cursor], p))) cursor++;
+    while (cursor < words.length && fillers.has(words[cursor])) cursor++;
+    const target = words.slice(cursor).join(" ").trim();
+    return target || null;
+  }
+
+  // ─── Keyword-to-doctype scoring table ───
+  type DocTypeSignal = { keywords: string[]; phrases: string[]; weight: number };
+
+  const DOC_TYPE_SIGNALS: Record<LegalDraftingDocType, DocTypeSignal[]> = {
+    "application-to-police": [
+      { keywords: ["application", "darkhast"], phrases: ["application to sho", "application to police", "complaint to sho", "complaint to police", "application to thana"], weight: 10 },
+      { keywords: ["sho", "thana"], phrases: ["police station"], weight: 5 },
+      { keywords: [], phrases: ["darkhast ba naam sho", "darkhast baraye police"], weight: 10 },
+    ],
+    "legal-notice": [
+      { keywords: [], phrases: ["legal notice", "qanuni notice", "notice under section 80"], weight: 10 },
+      { keywords: ["notice"], phrases: [], weight: 3 },
+    ],
+    "affidavit": [
+      { keywords: ["affidavit"], phrases: ["halaf nama", "sworn statement"], weight: 10 },
+    ],
+    "power-of-attorney": [
+      { keywords: ["wakalatnama", "vakalatnama"], phrases: ["power of attorney", "mukhtar nama"], weight: 10 },
+    ],
+    "authority-letter": [
+      { keywords: [], phrases: ["authority letter", "authorization letter", "letter of authority"], weight: 10 },
+    ],
+    "written-statement": [
+      { keywords: [], phrases: ["written statement", "reply to suit", "reply to plaint", "jawab dawa", "para wise reply", "parawise reply"], weight: 10 },
+    ],
+    "nikah-nama-divorce": [
+      { keywords: [], phrases: ["divorce deed", "talaq nama", "talaq deed"], weight: 10 },
+    ],
+    "rent-petition": [
+      { keywords: ["ejectment"], phrases: ["rent petition", "rent controller", "rent tribunal", "rented premises"], weight: 10 },
+    ],
+    "recovery-suit": [
+      { keywords: [], phrases: ["recovery suit", "suit for recovery", "recovery of money", "recovery of amount", "recovery of possession", "recovery of property"], weight: 10 },
+    ],
+    "supreme-court-criminal-petition": [
+      { keywords: [], phrases: ["criminal petition", "criminal leave to appeal", "supreme court criminal"], weight: 10 },
+    ],
+    "supreme-court-cpla": [
+      { keywords: ["cpla"], phrases: ["civil petition for leave to appeal", "supreme court civil"], weight: 10 },
+    ],
+    "high-court-bail-before-arrest": [
+      { keywords: [], phrases: ["bail before arrest", "pre arrest bail high court", "high court 498"], weight: 10 },
+    ],
+    "high-court-criminal-revision": [
+      { keywords: [], phrases: ["high court criminal revision", "criminal revision high court"], weight: 10 },
+    ],
+    "high-court-criminal-appeal": [
+      { keywords: [], phrases: ["high court criminal appeal", "criminal appeal high court"], weight: 10 },
+    ],
+    "high-court-writ-petition": [
+      { keywords: ["writ"], phrases: ["article 199", "constitutional petition", "high court writ"], weight: 10 },
+    ],
+    "high-court-civil-appeal": [
+      { keywords: [], phrases: ["high court appeal", "civil appeal high court", "high court civil appeal"], weight: 10 },
+    ],
+    "family-suit-petition": [
+      { keywords: ["khula", "hizanat"], phrases: ["family suit", "family petition", "child custody", "custody of minor", "custody of child", "dissolution of marriage", "family court", "maintenance"], weight: 10 },
+    ],
+    "criminal-misc-application": [
+      { keywords: [], phrases: ["criminal misc", "criminal miscellaneous", "crl misc", "crm misc"], weight: 10 },
+    ],
+    "sessions-criminal-revision": [
+      { keywords: [], phrases: ["criminal revision", "revision petition"], weight: 8 },
+    ],
+    "sessions-criminal-appeal": [
+      { keywords: [], phrases: ["criminal appeal", "appeal against conviction"], weight: 8 },
+    ],
+    "sessions-pre-arrest-bail": [
+      { keywords: [], phrases: ["pre arrest bail", "before arrest bail", "498 crpc"], weight: 10 },
+    ],
+    "sessions-bail-application": [
+      { keywords: ["bail", "497"], phrases: ["sessions court", "criminal bail"], weight: 8 },
+    ],
+    "execution-application": [
+      { keywords: ["execution"], phrases: ["decree holder", "order xxi"], weight: 8 },
+    ],
+    "temporary-injunction-application": [
+      { keywords: [], phrases: ["temporary injunction", "ad interim", "order xxxix"], weight: 10 },
+    ],
+    "civil-misc-application": [
+      { keywords: ["cma"], phrases: ["civil misc", "interim relief", "151 cpc"], weight: 8 },
+    ],
+    "civil-suit-plaint": [
+      { keywords: ["plaint"], phrases: ["civil suit", "declaration suit", "injunction suit"], weight: 8 },
+    ],
+  };
+
+  // Negative signals that suppress certain doc types
+  const NEGATIVE_SIGNALS: Partial<Record<LegalDraftingDocType, RegExp>> = {
+    "family-suit-petition": /(bail|497|498|fir|arrested|judicial custody|in custody|criminal|accused|challan)/,
+    "nikah-nama-divorce": /(bail|fir|arrested|criminal|accused)/,
+  };
+
   function inferLegalDraftingDocTypeFromPrompt(prompt: string): LegalDraftingDocType | null {
-    const text = String(prompt || "").toLowerCase();
-    if (!text.trim()) return null;
-    if (/(criminal petition|criminal leave to appeal|supreme court.*criminal)/.test(text)) return "supreme-court-criminal-petition";
-    if (/(cpla|civil petition for leave to appeal|supreme court.*civil)/.test(text)) return "supreme-court-cpla";
-    if (/(bail before arrest|pre[-\s]?arrest.*high court|high court.*498)/.test(text)) return "high-court-bail-before-arrest";
-    if (/(high court.*criminal revision|criminal revision.*high court)/.test(text)) return "high-court-criminal-revision";
-    if (/(high court.*criminal appeal|criminal appeal.*high court)/.test(text)) return "high-court-criminal-appeal";
-    if (/(writ|article\s*199|constitutional petition|high court writ)/.test(text)) return "high-court-writ-petition";
-    if (/(high court.*appeal|civil appeal.*high court|high court civil appeal)/.test(text)) return "high-court-civil-appeal";
-    if (/(family suit|family petition|child\s*custody|custody\s*of\s*(minor|child)|guardian.*custody|hizanat|khula|dissolution of marriage|family court)/.test(text)) {
-      // Guard: do not classify as family if bail/criminal context is dominant
-      if (/(bail|497|498|fir|arrested|judicial custody|in custody|criminal|accused|challan)/.test(text)) return null;
-      return "family-suit-petition";
+    const text = String(prompt || "").toLowerCase().trim();
+    if (!text) return null;
+    const words = text.split(/\s+/);
+
+    // ─── Phase 1: Conversion intent — "convert this into application" ───
+    const conversionTarget = extractConversionTarget(text);
+    if (conversionTarget) {
+      const targetWords = conversionTarget.split(/\s+/);
+      let bestType: LegalDraftingDocType | null = null;
+      let bestScore = 0;
+      for (const [docType, signals] of Object.entries(DOC_TYPE_SIGNALS)) {
+        let score = 0;
+        for (const signal of signals) {
+          for (const kw of signal.keywords) {
+            if (hasFuzzy(targetWords, kw)) score += signal.weight;
+          }
+          for (const phrase of signal.phrases) {
+            if (hasFuzzyPhrase(conversionTarget, phrase)) score += signal.weight;
+          }
+        }
+        if (score > bestScore) { bestScore = score; bestType = docType as LegalDraftingDocType; }
+      }
+      // "application" alone with conversion intent → police application (most common use case)
+      if (!bestType && hasFuzzy(targetWords, "application")) return "application-to-police";
+      if (bestType && bestScore >= 5) {
+        console.log(`[DocType:Infer] Conversion detected: target="${conversionTarget}" → ${bestType} (score=${bestScore})`);
+        return bestType;
+      }
     }
-    if (/(maintenance)/.test(text)) {
-      if (/(bail|497|498|fir|arrested|judicial custody|in custody|criminal|accused|challan)/.test(text)) return null;
-      return "family-suit-petition";
+
+    // ─── Phase 2: Score all doc types against the full prompt text ───
+    const scored: Array<{ type: LegalDraftingDocType; score: number }> = [];
+    for (const [docType, signals] of Object.entries(DOC_TYPE_SIGNALS)) {
+      const dt = docType as LegalDraftingDocType;
+      const negRegex = NEGATIVE_SIGNALS[dt];
+      if (negRegex && negRegex.test(text)) continue;
+
+      let score = 0;
+      for (const signal of signals) {
+        for (const kw of signal.keywords) {
+          if (hasFuzzy(words, kw)) score += signal.weight;
+        }
+        for (const phrase of signal.phrases) {
+          if (text.includes(phrase) || hasFuzzyPhrase(text, phrase)) score += signal.weight;
+        }
+      }
+      if (score > 0) scored.push({ type: dt, score });
     }
-    if (/(criminal\s*(misc|misc\.?|miscellaneous)|crl\.?\s*misc|crm\.?\s*misc)/.test(text)) return "criminal-misc-application";
-    if (/(criminal revision|revision petition)/.test(text)) return "sessions-criminal-revision";
-    if (/(criminal appeal|appeal against conviction)/.test(text)) return "sessions-criminal-appeal";
-    if (/(pre[-\s]?arrest bail|before arrest bail|498\s*cr\.?p\.?c)/.test(text)) return "sessions-pre-arrest-bail";
-    if (/(bail|497|498|sessions court|criminal bail)/.test(text)) return "sessions-bail-application";
-    if (/(execution|decree holder|order\s*xxi)/.test(text)) return "execution-application";
-    if (/(temporary injunction|ad[-\s]?interim|order\s*xxxix|39\s*rules?\s*1\s*&?\s*2)/.test(text)) return "temporary-injunction-application";
-    if (/(civil misc|cma|interim relief|151\s*cpc)/.test(text)) return "civil-misc-application";
-    if (/(civil suit|plaint|declaration suit|injunction suit)/.test(text)) return "civil-suit-plaint";
-    return null;
+
+    if (scored.length === 0) return null;
+    scored.sort((a, b) => b.score - a.score);
+    const best = scored[0];
+    console.log(`[DocType:Infer] Scored: ${scored.slice(0, 3).map((s) => `${s.type}=${s.score}`).join(", ")} → ${best.type}`);
+    return best.type;
   }
 
   function shouldPromptHierarchyOverrideType(prompt: string, inferredType: LegalDraftingDocType): boolean {
@@ -12421,6 +12982,77 @@ Rules:
 
   function isGroundsExpansionRequest(prompt: string): boolean {
     return GROUNDS_EXPANSION_PROMPT_PATTERN.test(String(prompt || ""));
+  }
+
+  const MODIFICATION_PROMPT_PATTERN =
+    /\b(refresh|improve|rewrite|redraft|polish|enhance|update|edit|revise|amend|modify|fix|correct|redo|regenerate)\b/i;
+
+  function isModificationRequest(prompt: string): boolean {
+    return MODIFICATION_PROMPT_PATTERN.test(String(prompt || ""));
+  }
+
+  /**
+   * R2: Detect ambiguous prompts that would benefit from clarification.
+   * A prompt is ambiguous when:
+   * 1. No document type could be inferred from the prompt
+   * 2. No existing draft text is present (so no Phase 2 inference possible)
+   * 3. The prompt is not a modification request (refresh/improve/etc.)
+   * 4. The prompt is short/vague (under 30 chars or just a few words)
+   */
+  function isAmbiguousLegalPrompt(
+    prompt: string,
+    inferredDocType: LegalDraftingDocType | null,
+    hasDraftText: boolean,
+  ): boolean {
+    if (inferredDocType) return false; // Already classified
+    if (hasDraftText) return false; // Phase 2 inference possible from draft
+    if (isModificationRequest(prompt)) return false; // Modification intent is clear
+    if (isFullLegalRewriteRequested(prompt)) return false;
+    const trimmed = String(prompt || "").trim();
+    if (!trimmed || trimmed.length < 6) return false; // Too short to even ask about
+    // Ambiguous: short prompt with no clear doc type and no draft
+    if (trimmed.length <= 100 && trimmed.split(/\s+/).length <= 15) return true;
+    return false;
+  }
+
+  /**
+   * R2: Build clarification response with top-3 likely document type suggestions.
+   */
+  function buildClarificationResponse(prompt: string): {
+    message: string;
+    suggestedTypes: Array<{ key: LegalDraftingDocType; label: string }>;
+  } {
+    const text = String(prompt || "").toLowerCase();
+    const scored: Array<{ key: LegalDraftingDocType; label: string; score: number }> = [];
+    for (const [key, val] of Object.entries(LEGAL_DRAFTING_DOC_TYPES)) {
+      let score = 0;
+      const labelLower = val.label.toLowerCase();
+      // Score based on word overlap between prompt and label
+      for (const word of text.split(/\s+/)) {
+        if (word.length > 2 && labelLower.includes(word)) score += 2;
+      }
+      // Boost court-related types slightly for general prompts
+      if (/(bail|fir|police|arrest|criminal|civil|court|suit|petition|writ|appeal)/.test(text)) {
+        if (labelLower.includes("bail")) score += 3;
+        if (labelLower.includes("petition")) score += 2;
+        if (labelLower.includes("suit")) score += 2;
+      }
+      if (score > 0) scored.push({ key: key as LegalDraftingDocType, label: val.label, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    // Take top 3, or provide default suggestions if no matches
+    let suggestedTypes = scored.slice(0, 3).map(({ key, label }) => ({ key, label }));
+    if (suggestedTypes.length === 0) {
+      suggestedTypes = [
+        { key: "civil-suit-plaint" as LegalDraftingDocType, label: LEGAL_DRAFTING_DOC_TYPES["civil-suit-plaint"].label },
+        { key: "sessions-bail-application" as LegalDraftingDocType, label: LEGAL_DRAFTING_DOC_TYPES["sessions-bail-application"].label },
+        { key: "high-court-writ-petition" as LegalDraftingDocType, label: LEGAL_DRAFTING_DOC_TYPES["high-court-writ-petition"].label },
+      ];
+    }
+    return {
+      message: `I wasn't sure which document type to draft for your request. Could you please clarify? Here are some suggestions based on your prompt:`,
+      suggestedTypes,
+    };
   }
 
   function extractGroundsSectionFromDraft(draftText: string): { start: number; end: number; text: string } | null {
@@ -12526,6 +13158,7 @@ Rules:
         assistantMode?: "draft" | "analysis" | string;
       };
       const safePrompt = (prompt || "").trim();
+      const wantStream = req.body?.stream === true || req.body?.stream === "true";
       if (!safePrompt) {
         return res.status(400).json({ message: "Prompt is required" });
       }
@@ -12631,7 +13264,22 @@ Rules:
         }
       }
 
-      const baseDraftText = trimTextToTokenBudget((draftText || "").trim(), 12000);
+      // Strip HTML tags, index tables, and comment blocks from draft text before AI processing
+      const rawDraftText = (draftText || "").trim();
+      const cleanedDraftText = rawDraftText
+        .replace(/<!--\s*INDEX_TABLE_START\s*-->[\s\S]*?<!--\s*INDEX_TABLE_END\s*-->/gi, "") // Remove index tables
+        .replace(/<table[\s\S]*?<\/table>/gi, "") // Remove HTML tables
+        .replace(/<style[\s\S]*?<\/style>/gi, "") // Remove style blocks
+        .replace(/<script[\s\S]*?<\/script>/gi, "") // Remove scripts
+        .replace(/<[^>]+>/g, " ") // Strip remaining HTML tags
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, '"')
+        .replace(/\s{3,}/g, "\n\n") // Collapse excessive whitespace
+        .trim();
+      const baseDraftText = trimTextToTokenBudget(cleanedDraftText, 12000);
       const draftContextForGeneration = trimTextToTokenBudget(`${baseDraftText}${attachmentContext}`, 12000);
 
       let styleMemoryMeta: {
@@ -12675,14 +13323,36 @@ Rules:
 
         const rawDocType = String(documentType || "").trim().toLowerCase();
         const customDocType = String((req.body as any)?.customDocumentType || "").trim();
+        const documentTypeOverride = String((req.body as any)?.documentTypeOverride || "").trim().toLowerCase();
         const useCustomDocType = rawDocType === "custom-input" && customDocType.length > 0;
-        const inferencePrompt = !rawDocType && baseDraftText.trim().length > 0
+
+        // R2: If client sends a documentTypeOverride (from clarification button), use it
+        const effectiveDocTypeRaw = documentTypeOverride && documentTypeOverride in LEGAL_DRAFTING_DOC_TYPES
+          ? documentTypeOverride
+          : documentType;
+
+        // When user explicitly says "convert to/into X", only infer from their prompt
+        // to prevent existing draft keywords (e.g. "HIGH COURT", "constitutional petition")
+        // from overriding the user's conversion intent.
+        const isConversionRequest = /(convert|change|turn|transform|make)\s+(this\s+|it\s+)?(in\s*t?\s*o|to|in)\s/i.test(safePrompt);
+        const inferencePrompt = !rawDocType && baseDraftText.trim().length > 0 && !isConversionRequest
           ? `${safePrompt}\n\nExisting Draft Context:\n${baseDraftText.slice(0, 2600)}`
           : safePrompt;
 
         const selectedDocType = useCustomDocType
           ? null
-          : normalizeLegalDraftingDocType(documentType, inferencePrompt);
+          : normalizeLegalDraftingDocType(effectiveDocTypeRaw, inferencePrompt);
+
+        // R2: Ambiguity check — if no doc type inferred and prompt is vague, return clarification
+        if (!useCustomDocType && !selectedDocType && isAmbiguousLegalPrompt(safePrompt, selectedDocType, baseDraftText.trim().length > 0)) {
+          const clarification = buildClarificationResponse(safePrompt);
+          console.log(`[AI Routing][legal-drafting] Ambiguous prompt detected, returning clarification. prompt="${safePrompt.slice(0, 60)}"`);
+          return res.json({
+            clarification: true,
+            message: clarification.message,
+            suggestedTypes: clarification.suggestedTypes,
+          });
+        }
 
         const profile = useCustomDocType
           ? {
@@ -12704,20 +13374,21 @@ Rules:
               };
 
         console.log(`[AI Routing][legal-drafting] docType=${selectedDocType || "PRESERVE-EXISTING"} label="${profile.label}" draftLen=${baseDraftText.length} prompt="${safePrompt.slice(0, 60)}"`);
-        // --- Query Refinement for drafts ---
-        // Refine the user's prompt into structured legal language for better
-        // knowledge retrieval (statute detection, case law matching).
-        const draftRefineResult = await refineUserQuery(safePrompt, [], 3000).catch(() => ({
-          refined: safePrompt, wasRefined: false, elapsedMs: 0,
-        }));
-        const refinedDraftPrompt = draftRefineResult.refined;
-        if (draftRefineResult.wasRefined) {
-          console.log(`[LegalDrafting:QueryRefine] Refined in ${draftRefineResult.elapsedMs}ms`);
+        // --- Query Refinement for drafts (Optimization 1: skip for clear prompts) ---
+        // Skip refinement when the prompt is short and already contains legal terminology.
+        // When not skipped, run refinement in parallel with knowledge gathering.
+        const LEGAL_KEYWORDS_PATTERN = /\b(bail|writ|petition|plaint|suit|injunction|appeal|revision|criminal|civil|crpc|cpc|ppc|family|custody|khula|nikah|fir|challan|section\s*\d|article\s*\d|order\s+[ivxl\d]+|decree|court|tribunal|high\s+court|supreme\s+court|sessions|magistrate|affidavit|habeas\s+corpus|mandamus|certiorari|cpla|crl|cma|quashment|acquittal|conviction|maintenance|dissolution|guardian|hizanat|execution|restitution|specific\s+relief|limitation|mflo|qanun|hudood|zina|anti[-\s]?terrorism|nab|nacta|ehtesab|talaq|iddat|dower|mehr|remand|prayer|grounds|pleading|draft|accused|complainant|petitioner|respondent|appellant|impugned|aggrieved)\b/i;
+        function shouldSkipRefinement(prompt: string): boolean {
+          if (prompt.length > 200) return false; // Long prompts may benefit from restructuring
+          return LEGAL_KEYWORDS_PATTERN.test(prompt);
         }
 
+        const skipRefine = shouldSkipRefinement(safePrompt);
+
+        // Build knowledge query using safePrompt (allows parallel refinement)
         const legalKnowledgeQuery = trimTextToTokenBudget(
           [
-            refinedDraftPrompt,
+            safePrompt,
             profile.label,
             jurisdiction || "",
             baseDraftText.slice(0, 2200),
@@ -12728,22 +13399,38 @@ Rules:
           2600,
         );
 
+        // Start refinement promise (non-blocking when not skipped)
+        const draftRefinePromise = skipRefine
+          ? Promise.resolve({ refined: safePrompt, wasRefined: false, elapsedMs: 0 })
+          : refineUserQuery(safePrompt, [], 3000).catch(() => ({
+              refined: safePrompt, wasRefined: false, elapsedMs: 0,
+            }));
+
         // --- Tool Judgment Search for drafts ---
         // Same as chat module: AI picks 2-3 search queries, finds 10-25 verified
         // judgments from the DB. Critical for the "cite 3 case law" requirement.
+        // Uses safePrompt to enable parallel execution with refinement.
         const draftToolSearchPromise = isDeepSeekAvailable()
-          ? runToolJudgmentSearch(refinedDraftPrompt, (q, n) => {
+          ? runToolJudgmentSearch(safePrompt, (q, n) => {
               console.log(`[LegalDrafting:ToolSearch] query="${q}" found=${n}`);
-            }, undefined, 14000).catch((err) => {
+            }, undefined, 8000).catch((err) => {
               console.warn("[LegalDrafting:ToolSearch] Failed:", err?.message || err);
               return { contextString: "", foundCount: 0, queriesUsed: [] as string[], verifiedCitations: [] as string[], verifiedTitles: [] as Array<{title:string;citation:string}>, verifiedHits: [] as Array<{citation:string;title:string;court:string;summary:string}> };
             })
           : Promise.resolve({ contextString: "", foundCount: 0, queriesUsed: [] as string[], verifiedCitations: [] as string[], verifiedTitles: [] as Array<{title:string;citation:string}>, verifiedHits: [] as Array<{citation:string;title:string;court:string;summary:string}> });
 
-        const [legalKnowledgeContextRaw, draftToolSearchResult] = await Promise.all([
+        // Run refinement, knowledge gathering, and tool search ALL in parallel
+        const [draftRefineResult, legalKnowledgeContextRaw, draftToolSearchResult] = await Promise.all([
+          draftRefinePromise,
           gatherKnowledgeContextV2(legalKnowledgeQuery, userId),
           draftToolSearchPromise,
         ]);
+        const refinedDraftPrompt = draftRefineResult.refined;
+        if (draftRefineResult.wasRefined) {
+          console.log(`[LegalDrafting:QueryRefine] Refined in ${draftRefineResult.elapsedMs}ms`);
+        } else if (skipRefine) {
+          console.log(`[LegalDrafting:QueryRefine] Skipped — prompt already clear (${safePrompt.length} chars)`);
+        }
         const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 8000);
 
         // Merge tool-searched judgments into the knowledge context block
@@ -12908,9 +13595,21 @@ ${legalKnowledgeContextBlock}${styleContext ? `\n\nPersonal Style Memory:\n${sty
           }
           draftedText = normalizeCourtReadyDraftingText(patched.text);
         } else {
+          // When conversion is requested, add explicit override instruction
+          const conversionOverride = isConversionRequest && selectedDocType
+            ? `\nDOCUMENT TYPE CONVERSION (HIGHEST PRIORITY):
+The user is requesting a COMPLETE FORMAT CHANGE. You MUST:
+- COMPLETELY DISCARD the existing document format (petition, writ, suit, etc.)
+- REWRITE the document as: ${profile.label}
+- Use the SKELETON/TEMPLATE for "${profile.label}" — NOT the old format
+- Keep the same FACTS, PARTIES, and DATES from the existing draft
+- But RESTRUCTURE everything into the new format: ${profile.label}
+- DO NOT preserve the old court heading, cause title, or filing caption
+- Use the correct heading/structure for: ${profile.label}
+` : "";
           const userInput = `User instruction:
 ${safePrompt}
-
+${conversionOverride}
 Target filing:
 ${profile.label}
 
@@ -12959,46 +13658,112 @@ ${legalKnowledgeContextBlock}
 Reference skeleton (adapt to facts):
 ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
 
-          const aiResult = await callLegalDraftingAI(sysInstruction, userInput, TOKEN_LIMITS.draft, {
-            timeoutProfile: "analysis",
-            temperature: 0.25,
-          });
-          await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
-          extractedRecs = extractCaseLawRecommendations(aiResult.text);
-          draftedText = normalizeCourtReadyDraftingText(aiResult.text);
-          if (selectedDocType) {
-            const validation = validateDraftForSelectedType(draftedText, selectedDocType);
-            if (!validation.ok) {
-              const repairInput = `You must repair and reformat the following legal draft so it STRICTLY follows this selected filing type:
-${profile.label}
+          if (wantStream) {
+            // ── SSE streaming path ──
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.flushHeaders();
 
-Type lock rules:
-${typeLockInstruction}
+            let fullContent = '';
+            const streamMessages = [
+              { role: 'system' as const, content: sysInstruction },
+              { role: 'user' as const, content: userInput },
+            ];
 
-Validation issues detected:
-${validation.issues.map((item, idx) => `${idx + 1}. ${item}`).join("\n")}
+            try {
+              for await (const chunk of streamWithDeepSeek({
+                messages: streamMessages,
+                maxTokens: TOKEN_LIMITS.draft,
+                temperature: 0.25,
+                model: 'deepseek-chat',
+              })) {
+                fullContent += chunk;
+                res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+              }
+            } catch (streamErr: any) {
+              console.error('[LegalDrafting:Stream] Streaming failed:', streamErr?.message);
+              res.write(`data: ${JSON.stringify({ error: 'Streaming failed: ' + (streamErr?.message || 'Unknown error') })}\n\n`);
+              res.end();
+              return;
+            }
 
-Repair instructions:
-- Rewrite the full pleading in proper Pakistani court-ready format.
-- Keep the same legal objective and facts; do not invent new facts.
-- Keep clean spacing and section breaks; no markdown symbols.
-- Keep citations restricted to INTERNAL DATABASE REFERENCES only; if unavailable omit citation.
-- Return plain pleading text only.
+            if (!fullContent.trim()) {
+              res.write(`data: ${JSON.stringify({ error: 'AI returned empty legal draft text' })}\n\n`);
+              res.end();
+              return;
+            }
 
-INTERNAL DATABASE REFERENCES (AUTO-LOADED):
-${legalKnowledgeContextBlock}
+            await logUsageCost(userId, 'draft', 'deepseek-chat', sysInstruction + userInput, fullContent);
+            extractedRecs = extractCaseLawRecommendations(fullContent);
+            draftedText = normalizeCourtReadyDraftingText(fullContent);
 
-Original draft:
-${draftedText}`;
+            // Validation (only for recognized template types, skip for custom-input and full rewrite)
+            // R3 optimization: log issues only, skip expensive repair AI call
+            const shouldValidateStream = selectedDocType && !useCustomDocType && !isFullLegalRewriteRequested(safePrompt);
+            if (shouldValidateStream) {
+              const validation = validateDraftForSelectedType(draftedText, selectedDocType);
+              if (!validation.ok) {
+                console.warn(`[LegalDrafting:Stream:Validate] type=${selectedDocType} issues=${JSON.stringify(validation.issues)}`);
+              }
+            }
 
-              const repaired = await callLegalDraftingAI(sysInstruction, repairInput, TOKEN_LIMITS.draft, {
-                timeoutProfile: "analysis",
-                temperature: 0.15,
-              });
-              await logUsageCost(userId, "draft", repaired.model, sysInstruction + repairInput, repaired.text);
-              const repairedRecs = extractCaseLawRecommendations(repaired.text);
-              if (repairedRecs.length > 0) extractedRecs = repairedRecs;
-              draftedText = normalizeCourtReadyDraftingText(repaired.text);
+            // Post-processing
+            if (draftedText) draftedText = ensureAnnexuresSection(draftedText);
+            if (draftedText) draftedText = ensurePetitionerBlock(draftedText);
+
+            if (!draftedText) {
+              res.write(`data: ${JSON.stringify({ error: 'AI draft failed post-processing' })}\n\n`);
+              res.end();
+              return;
+            }
+
+            // Citation resolution
+            const streamRefResolution = await resolveLegalDraftReferences(draftedText, {
+              stripUnverifiedCaseCitations: true,
+              unresolvedCaseCitationPlaceholder: '',
+            });
+            draftedText = streamRefResolution.cleanedText || draftedText;
+
+            // Send reset + final text if post-processing changed the output
+            if (draftedText !== fullContent) {
+              res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+              res.write(`data: ${JSON.stringify({ text: draftedText })}\n\n`);
+            }
+
+            // Send done event with all metadata
+            res.write(`data: ${JSON.stringify({
+              done: true,
+              clause: draftedText,
+              sourceId: `legal-${selectedDocType || 'custom-input'}`,
+              confidence: 0.86,
+              method: 'ai-legal-drafting',
+              assistantMode: 'draft',
+              documentType: selectedDocType || 'custom-input',
+              customDocumentType: useCustomDocType ? customDocType : undefined,
+              attachmentsUsed: files?.length || 0,
+              references: streamRefResolution.references,
+              styleMemory: styleMemoryMeta || undefined,
+              recommendations: extractedRecs || [],
+            })}\n\n`);
+            res.end();
+            return;
+          } else {
+            // ── Original non-streaming path ──
+            const aiResult = await callLegalDraftingAI(sysInstruction, userInput, TOKEN_LIMITS.draft, {
+              timeoutProfile: "analysis",
+              temperature: 0.25,
+            });
+            await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
+            extractedRecs = extractCaseLawRecommendations(aiResult.text);
+            draftedText = normalizeCourtReadyDraftingText(aiResult.text);
+            // R3 optimization: log validation issues only, skip expensive repair AI call
+            const shouldValidate = selectedDocType && !useCustomDocType && !isFullLegalRewriteRequested(safePrompt);
+            if (shouldValidate) {
+              const validation = validateDraftForSelectedType(draftedText, selectedDocType);
+              if (!validation.ok) {
+                console.warn(`[LegalDrafting:Validate] type=${selectedDocType} issues=${JSON.stringify(validation.issues)}`);
+              }
             }
           }
         }
@@ -13091,6 +13856,14 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
     } catch (err: any) {
       const errMsg = getErrorMessage(err);
       console.error("Error generating retrieval clause:", errMsg, err);
+      if (res.headersSent) {
+        // SSE streaming was in progress — cannot use res.status().json()
+        try {
+          res.write(`data: ${JSON.stringify({ error: errMsg || 'Internal error during drafting' })}\n\n`);
+          res.end();
+        } catch { /* response already closed */ }
+        return;
+      }
       const isTimeout = err?.code === "MODEL_TIMEOUT" || errMsg.includes("timed out");
       const isEmpty = err?.code === "EMPTY_MODEL_OUTPUT";
       const userMessage = isTimeout

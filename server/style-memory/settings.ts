@@ -13,7 +13,7 @@ export async function getOrCreateStyleMemorySettings(
       userId,
       orgId,
       module,
-      enabled: true,
+      enabled: false,
       ownershipMode: "user-org",
       strictness: "balanced",
     });

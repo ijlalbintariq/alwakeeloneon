@@ -624,8 +624,8 @@ function LegalEditorInner(
   // ── Toolbar ───────────────────────────────────────────────────────
 
   return (
-    <div className={className}>
-      {/* Formatting toolbar — MS Word–style (fixed header) */}
+    <div className={`${className} overflow-y-auto`}>
+      {/* Formatting toolbar — MS Word–style (sticky while scrolling) */}
       <div className="sticky top-0 flex items-center gap-1 flex-wrap px-3 py-2 border-b border-[hsl(var(--preview-border))] bg-background/95 backdrop-blur-xl z-50 shrink-0">
         {/* Undo / Redo */}
         <ToolbarBtn
@@ -848,8 +848,8 @@ function LegalEditorInner(
         </div>
       </div>
 
-      {/* Editor content — flex-1 ensures it fills remaining space below fixed toolbar */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* Editor content — flows below the sticky toolbar */}
+      <div className="flex-1">
         <EditorContent editor={editor} />
       </div>
     </div>
