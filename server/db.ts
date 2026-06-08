@@ -19,6 +19,9 @@ if (!dbAvailable) {
 export const pool = (canInitPool && validatedDatabaseUrl.value
   ? new Pool({
       connectionString: validatedDatabaseUrl.value,
+      max: 8,
+      min: 1,
+      idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
       idle_in_transaction_session_timeout: 30_000,
       statement_timeout: 60_000,

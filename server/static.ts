@@ -65,6 +65,11 @@ export function serveStatic(app: Express) {
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
   // Returns { meta, preRenderBlock } tuple — null when judgment not found.
+  // Concurrency limiter for SEO DB lookups — prevents crawlers from exhausting the pool
+  let seoActiveQueries = 0;
+  const SEO_MAX_CONCURRENT = 3;
+  const SEO_QUERY_TIMEOUT_MS = 3_000;
+
   async function getJudgmentSeoData(id: string): Promise<{ meta: SeoMeta; preRenderBlock: string } | undefined> {
     const now = Date.now();
     const cached = seoCache.get(id);
@@ -72,11 +77,17 @@ export function serveStatic(app: Express) {
       return { meta: cached.meta, preRenderBlock: cached.preRenderBlock };
     }
 
+    // Drop if too many concurrent SEO queries — serve without custom meta instead of queueing
+    if (seoActiveQueries >= SEO_MAX_CONCURRENT) {
+      return undefined;
+    }
+
     try {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
       if (!isUuid) return undefined;
 
-      const [row] = await db
+      seoActiveQueries++;
+      const queryPromise = db
         .select({
           title: judgments.title,
           citationString: judgments.citationString,
@@ -87,6 +98,14 @@ export function serveStatic(app: Express) {
         .where(eq(judgments.id, id))
         .limit(1);
 
+      // Race against a timeout — don't let SEO lookups stall forever
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("SEO query timeout")), SEO_QUERY_TIMEOUT_MS)
+      );
+
+      const [row] = await Promise.race([queryPromise, timeoutPromise]) as any[];
+      seoActiveQueries = Math.max(0, seoActiveQueries - 1);
+
       if (row) {
         const title = row.title ? String(row.title).trim() : "";
         const citation = row.citationString ? String(row.citationString).trim() : "";
@@ -94,7 +113,6 @@ export function serveStatic(app: Express) {
         const decisionDateStr = row.decisionDate ? new Date(row.decisionDate).toISOString().slice(0, 10) : "";
         const yearStr = decisionDateStr ? decisionDateStr.slice(0, 4) : "";
 
-        // Dynamically compile CourtCase JSON-LD schema markup for Google Search rich snippets
         const schema = {
           "@context": "https://schema.org",
           "@type": "CourtCase",
@@ -116,12 +134,6 @@ export function serveStatic(app: Express) {
           schemaMarkup,
         };
 
-        // Pre-rendered body block: real visible HTML text that Google can index
-        // without executing JavaScript. Positioned off-screen via inline style so
-        // it doesn't affect the visual UI but is fully readable by crawlers.
-        // This is the direct fix for citations ("2017 YLR 1300") not ranking even
-        // though party names do — citations need to appear in the page BODY, not
-        // only in <head> meta tags, for Google to associate the citation with the URL.
         const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         const preRenderBlock = `<div id="seo-prerender" aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">
   <h1>${esc(title)}${citation ? ` — ${esc(citation)}` : ""}</h1>
@@ -135,8 +147,12 @@ export function serveStatic(app: Express) {
         seoCache.set(id, { meta, preRenderBlock, expiresAt: now + CACHE_TTL_MS });
         return { meta, preRenderBlock };
       }
-    } catch (err) {
-      console.error(`[SEO Meta] Failed dynamic lookup for judgment ${id}:`, err);
+    } catch (err: any) {
+      seoActiveQueries = Math.max(0, seoActiveQueries - 1);
+      // Silently swallow timeouts — page still loads, just without custom SEO meta
+      if (err?.message !== "SEO query timeout") {
+        console.error(`[SEO Meta] Failed dynamic lookup for judgment ${id}:`, err);
+      }
     }
     return undefined;
   }
