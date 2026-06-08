@@ -3048,7 +3048,8 @@ export async function verifyReferencesBlock(
     const seen = new Set<string>();
     for (const m of extractStatuteMentions(proseBody)) {
       const name = m.statuteName || "";
-      const section = m.sectionLabel || (m.section ? `Section ${m.section}` : "");
+      const sectionPrefix = statuteUsesArticle(name) ? "Article" : "Section";
+      const section = m.sectionLabel || (m.section ? `${sectionPrefix} ${m.section}` : "");
       const key = `${name.toLowerCase()}::${section.toLowerCase()}`;
       if (!name || seen.has(key)) continue;
       seen.add(key);
@@ -5974,6 +5975,17 @@ const STATUTE_ALIAS_MAP: Array<{ regex: RegExp; canonical: string }> = [
   { regex: /\blimitation act\b/i, canonical: "Limitation Act, 1908" },
 ];
 
+// Pakistani statutes that use "Article" instead of "Section"
+const ARTICLE_STATUTE_PATTERNS: RegExp[] = [
+  /qanun[-\s]?e[-\s]?shahadat/i,
+  /QSO/,
+  /constitution/i,
+];
+
+function statuteUsesArticle(statuteName: string): boolean {
+  return ARTICLE_STATUTE_PATTERNS.some((p) => p.test(statuteName));
+}
+
 function canonicalizeStatuteName(value: string): string {
   const clean = normalizeSpaces(value);
   if (!clean) return "";
@@ -6029,7 +6041,6 @@ function extractStatuteMentions(text: string): DraftStatuteMention[] {
     /\b(section|sec\.?|s\.|article|art\.?)\s*([0-9A-Za-z-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z-]+)*)\s+of\s+(?:the\s+)?([A-Z][A-Za-z0-9(),.'\-\/\s]{3,140}?)(?=[\n,.;:]|$)/gi;
   for (const match of text.matchAll(explicitPattern)) {
     const head = (match[1] || "").toLowerCase();
-    const prefix: "Section" | "Article" = head.startsWith("art") ? "Article" : "Section";
     let statuteNameRaw = match[3] || "";
     const matchEndIndex = (match.index ?? 0) + match[0].length;
     const remainingText = text.slice(matchEndIndex);
@@ -6037,6 +6048,8 @@ function extractStatuteMentions(text: string): DraftStatuteMention[] {
     if (yearExtensionMatch) {
       statuteNameRaw += yearExtensionMatch[1];
     }
+    // Force "Article" for statutes that use articles (QSO, Constitution)
+    const prefix: "Section" | "Article" = statuteUsesArticle(statuteNameRaw) ? "Article" : (head.startsWith("art") ? "Article" : "Section");
     pushMention(statuteNameRaw, match[2] || "", prefix);
   }
 
@@ -6044,8 +6057,10 @@ function extractStatuteMentions(text: string): DraftStatuteMention[] {
     /\b(section|sec\.?|s\.|article|art\.?)\s*([0-9A-Za-z-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z-]+)*)\s*(?:of\s+)?(Cr\.?\s*P\.?\s*C\.?|C\.?\s*P\.?\s*C\.?|P\.?\s*P\.?\s*C\.?|Constitution(?:\s+of\s+Pakistan)?|Qanun[-\s]?e[-\s]?Shahadat(?:\s+Order)?|Family Courts?\s*Act|Specific Relief Act|Limitation Act|Negotiable Instruments Act)\b/gi;
   for (const match of text.matchAll(shorthandPattern)) {
     const head = (match[1] || "").toLowerCase();
-    const prefix: "Section" | "Article" = head.startsWith("art") ? "Article" : "Section";
-    pushMention(match[3] || "", match[2] || "", prefix);
+    const statuteNameShort = match[3] || "";
+    // Force "Article" for statutes that use articles (QSO, Constitution)
+    const prefix: "Section" | "Article" = statuteUsesArticle(statuteNameShort) ? "Article" : (head.startsWith("art") ? "Article" : "Section");
+    pushMention(statuteNameShort, match[2] || "", prefix);
   }
 
   const cpcOrderPattern =
@@ -6692,6 +6707,12 @@ MANDATORY RESPONSE STRUCTURE (FOR LEGAL QUERIES):
 Use markdown sections (### headings) for legal analysis, legal advice, legal drafting, case strategy, statute interpretation, and citation-backed answers.
 
 If the user message is only greeting/small talk/no legal request (e.g., "hi", "hello", "how are you"), do NOT use legal headings; reply conversationally in 3-6 lines and ask one clarifying legal question.
+
+STATUTE TERMINOLOGY (STRICT):
+- Qanun-e-Shahadat Order, 1984 (QSO) uses "Article" NOT "Section" (e.g. "Article 17 of QSO", never "Section 17 QSO").
+- Constitution of Pakistan uses "Article" (e.g. "Article 199", "Article 10-A").
+- PPC, CrPC, CPC, and other Acts use "Section" (e.g. "Section 302 PPC").
+- Never write "Section" when referring to QSO or Constitution provisions.
 
 At the start of legal responses, include one short opening line that naturally reflects:
 - Tagline: "Knowledge of Law is Power — and I'm Your Power Source."
@@ -12374,6 +12395,12 @@ The petitioner has no other adequate remedy except to approach this Honourable C
 
 Avoid casual or conversational language.
 
+STATUTE TERMINOLOGY (MANDATORY)
+- The Qanun-e-Shahadat Order, 1984 (QSO) uses "Article" NOT "Section" (e.g. "Article 17", "Article 164", never "Section 17 QSO").
+- The Constitution of Pakistan, 1973 uses "Article" (e.g. "Article 199", "Article 10-A").
+- PPC, CrPC, CPC, and other Acts use "Section" (e.g. "Section 302 PPC", "Section 497 Cr.P.C.").
+- Never write "Section" when referring to QSO provisions — always write "Article".
+
 LEGAL SYSTEM HIERARCHY (MANDATORY)
 
 You must follow Pakistani judicial forum hierarchy and select the correct forum for the filing type.
@@ -13633,6 +13660,7 @@ Court-ready formatting requirements (mandatory):
 - Do not invent facts, dates, orders, or citations; use placeholders like [______] where details are missing.
 - Case law citation rule (strict): include only citations that are real and verifiable from Al Wakeelo internal Knowledge Base; if unavailable, omit citation.
 - Statute citation rule (strict): cite only authentic Pakistani statute provisions; do not invent section/article numbers.
+- Statute terminology rule (strict): The Qanun-e-Shahadat Order, 1984 (QSO) uses "Article" NOT "Section" (e.g. "Article 10 of the Qanun-e-Shahadat Order, 1984", never "Section 10"). Similarly, the Constitution uses "Article" (e.g. "Article 199"). PPC, CrPC, and CPC use "Section".
 - Use only citations available in the INTERNAL DATABASE REFERENCES block below. Do not cite any authority outside that block.
 - End with signature block (party/counsel) and place/date.
 - Keep spacing court-ready: no trailing spaces, no markdown bullets, and exactly clean paragraph breaks between sections.
