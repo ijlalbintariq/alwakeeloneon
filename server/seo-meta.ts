@@ -212,6 +212,7 @@ const ROUTE_RULES: RouteRule[] = [
   },
   // Authenticated app routes — set noindex so Google doesn't try to crawl them.
   { match: /^\/dashboard$/,        meta: { title: "Dashboard | Al Wakeelo",        description: "Your Al Wakeelo workspace.",        index: false } },
+  { match: /^\/judgment-view$/,    meta: { title: "View Judgment | Al Wakeelo",     description: "Judgment viewer.",                  index: false } },
   { match: /^\/bookmarks$/,        meta: { title: "Bookmarks | Al Wakeelo",         description: "Your saved Al Wakeelo judgments and statutes.", index: false } },
   { match: /^\/history$/,          meta: { title: "History | Al Wakeelo",           description: "Your Al Wakeelo search and chat history.", index: false } },
   { match: /^\/case-documents$/,   meta: { title: "Case Documents | Al Wakeelo",    description: "Your uploaded case documents.",     index: false } },
@@ -220,6 +221,7 @@ const ROUTE_RULES: RouteRule[] = [
   { match: /^\/admin$/,            meta: { title: "Admin Panel | Al Wakeelo",       description: "Al Wakeelo admin panel.",          index: false } },
   { match: /^\/admin-setup$/,      meta: { title: "Admin Setup | Al Wakeelo",       description: "One-time Al Wakeelo admin setup.", index: false } },
   { match: /^\/settings$/,         meta: { title: "Settings | Al Wakeelo",          description: "Al Wakeelo account settings.",     index: false } },
+  { match: /^\/checkout/,          meta: { title: "Checkout | Al Wakeelo",          description: "Al Wakeelo subscription checkout.", index: false } },
 ];
 
 export function lookupSeoMeta(pathname: string): SeoMeta {

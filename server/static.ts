@@ -67,8 +67,8 @@ export function serveStatic(app: Express) {
   // Returns { meta, preRenderBlock } tuple — null when judgment not found.
   // Concurrency limiter for SEO DB lookups — prevents crawlers from exhausting the pool
   let seoActiveQueries = 0;
-  const SEO_MAX_CONCURRENT = 3;
-  const SEO_QUERY_TIMEOUT_MS = 3_000;
+  const SEO_MAX_CONCURRENT = 50;
+  const SEO_QUERY_TIMEOUT_MS = 8_000;
 
   async function getJudgmentSeoData(id: string): Promise<{ meta: SeoMeta; preRenderBlock: string } | undefined> {
     const now = Date.now();
@@ -92,7 +92,11 @@ export function serveStatic(app: Express) {
           title: judgments.title,
           citationString: judgments.citationString,
           courtNameSnapshot: judgments.courtNameSnapshot,
-          decisionDate: judgments.decisionDate
+          decisionDate: judgments.decisionDate,
+          petitioner: judgments.petitioner,
+          respondent: judgments.respondent,
+          headnotes: judgments.headnotes,
+          fullText: judgments.fullText,
         })
         .from(judgments)
         .where(eq(judgments.id, id))
@@ -134,14 +138,39 @@ export function serveStatic(app: Express) {
           schemaMarkup,
         };
 
-        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        const preRenderBlock = `<div id="seo-prerender" aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">
+        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        const petitioner = row.petitioner ? String(row.petitioner).trim() : "";
+        const respondent = row.respondent ? String(row.respondent).trim() : "";
+        const headnotes = row.headnotes ? String(row.headnotes).trim() : "";
+        const rawFullText = row.fullText ? String(row.fullText).trim() : "";
+        // Take first ~1500 chars of judgment text for the prerender block
+        const fullTextExcerpt = rawFullText.length > 1500
+          ? rawFullText.slice(0, 1500).replace(/\s+\S*$/, "") + "…"
+          : rawFullText;
+        const partiesLine = petitioner && respondent
+          ? `<p><strong>Parties:</strong> ${esc(petitioner)} vs ${esc(respondent)}</p>`
+          : petitioner
+            ? `<p><strong>Petitioner:</strong> ${esc(petitioner)}</p>`
+            : "";
+        const headnotesBlock = headnotes
+          ? `<div><h2>Headnotes</h2><p>${esc(headnotes.slice(0, 2000))}</p></div>`
+          : "";
+        const textBlock = fullTextExcerpt
+          ? `<div><h2>Judgment Text</h2><p>${esc(fullTextExcerpt)}</p></div>`
+          : "";
+
+        // Visible prerender block — Google can see and index this content.
+        // React will replace it when the SPA mounts via #root.
+        const preRenderBlock = `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>${esc(title)}${citation ? ` — ${esc(citation)}` : ""}</h1>
-  ${citation ? `<p>Citation: ${esc(citation)}</p>` : ""}
-  <p>Court: ${esc(courtName)}</p>
-  ${yearStr ? `<p>Year: ${esc(yearStr)}</p>` : ""}
-  ${decisionDateStr ? `<p>Decision Date: ${esc(decisionDateStr)}</p>` : ""}
-  <p>This judgment is available in full text on Al Wakeelo — Pakistan&#39;s AI legal assistant. Search Pakistani case law by citation, party name, court, and year.</p>
+  ${citation ? `<p><strong>Citation:</strong> ${esc(citation)}</p>` : ""}
+  <p><strong>Court:</strong> ${esc(courtName)}</p>
+  ${yearStr ? `<p><strong>Year:</strong> ${esc(yearStr)}</p>` : ""}
+  ${decisionDateStr ? `<p><strong>Decision Date:</strong> ${esc(decisionDateStr)}</p>` : ""}
+  ${partiesLine}
+  ${headnotesBlock}
+  ${textBlock}
+  <p><em>Read the full judgment on <a href="https://www.alwakeelo.com/judgment/${id}">Al Wakeelo</a> — Pakistan's AI-powered legal research platform.</em></p>
 </div>`;
 
         seoCache.set(id, { meta, preRenderBlock, expiresAt: now + CACHE_TTL_MS });
@@ -167,13 +196,24 @@ export function serveStatic(app: Express) {
 
     let customMeta: SeoMeta | undefined;
     let preRenderBlock: string | undefined;
+    let judgmentNotFound = false;
     const judgmentMatch = pathname.match(/^\/judgment\/([^/]+)$/);
     if (judgmentMatch) {
       const judgmentId = judgmentMatch[1];
-      const seoData = await getJudgmentSeoData(judgmentId);
-      if (seoData) {
-        customMeta = seoData.meta;
-        preRenderBlock = seoData.preRenderBlock;
+      // Only attempt lookup for valid UUIDs
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(judgmentId);
+      if (!isUuid) {
+        judgmentNotFound = true;
+      } else {
+        const seoData = await getJudgmentSeoData(judgmentId);
+        if (seoData) {
+          customMeta = seoData.meta;
+          preRenderBlock = seoData.preRenderBlock;
+        } else {
+          // Judgment doesn't exist or concurrency limit hit — if UUID format
+          // was valid but no data, treat as not found to avoid soft 404
+          judgmentNotFound = true;
+        }
       }
     }
 
@@ -185,9 +225,13 @@ export function serveStatic(app: Express) {
       html = html.replace("</body>", `${preRenderBlock}\n</body>`);
     }
 
+    // Return 404 for judgment pages that don't exist — prevents Google's
+    // "Soft 404" classification where pages return 200 but have no content.
+    const finalStatus = judgmentNotFound ? 404 : statusCode;
+
     res.setHeader("Cache-Control", HTML_CACHE_HEADER);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.status(statusCode).send(html);
+    res.status(finalStatus).send(html);
   }
 
   app.use(express.static(distPath, {
@@ -243,6 +287,8 @@ export function serveStatic(app: Express) {
       : "/";
 
     if (isKnownSpaRoute(normalizedPath)) {
+      // For judgment pages, use the judgmentNotFound flag from sendIndexWithSeo
+      // to return 404 instead of 200 for non-existent judgments
       await sendIndexWithSeo(req, res, 200);
       return;
     }

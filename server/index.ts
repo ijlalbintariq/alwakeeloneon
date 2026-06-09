@@ -47,6 +47,20 @@ app.use((req, res, next) => {
   return res.redirect(308, `https://${host}${req.originalUrl}`);
 });
 
+// Redirect non-www to www in production — fixes Google's
+// "Duplicate, Google chose different canonical than user" warning.
+// Canonical is www.alwakeelo.com (matches sitemap, canonical tags, OG tags).
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV !== "production") return next();
+
+  const host = req.get("host") || "";
+  // Only redirect the apex domain to www — skip if already www or other subdomain
+  if (host === "alwakeelo.com") {
+    return res.redirect(301, `https://www.alwakeelo.com${req.originalUrl}`);
+  }
+  return next();
+});
+
 const SAFE_HTTP_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 function isSameOriginRequest(req: Request): boolean {
@@ -103,8 +117,8 @@ function buildContentSecurityPolicy(isProduction: boolean): string {
   ];
 
   if (isProduction) {
-    directives.push("script-src 'self' https://accounts.google.com");
-    directives.push("connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com");
+    directives.push("script-src 'self' https://accounts.google.com https://pagead2.googlesyndication.com");
+    directives.push("connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://pagead2.googlesyndication.com");
     directives.push("upgrade-insecure-requests");
   } else {
     directives.push("script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com");
