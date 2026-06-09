@@ -7384,6 +7384,17 @@ export async function registerRoutes(
   // /sitemap-statutes-{n}.xml handler intentionally not wired up — statute
   // detail pages are still auth-gated. See server/sitemap.ts note.
 
+  // IndexNow key verification — Bing/Yandex fetch /{key}.txt to verify ownership
+  app.get("/:key.txt", (req, res, next) => {
+    const { getIndexNowKey } = require("./indexnow");
+    const indexNowKey = getIndexNowKey();
+    if (req.params.key === indexNowKey) {
+      res.type("text/plain").send(indexNowKey);
+    } else {
+      next();
+    }
+  });
+
   app.use("/api", (req, res, next) => {
     if (
       !dbAvailable &&
