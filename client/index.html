@@ -42,10 +42,12 @@
     <meta property="og:site_name" content="Al Wakeelo" />
     <meta id="og-url-meta" property="og:url" content="https://www.alwakeelo.com/" />
     <meta property="og:image" content="/icon-512.png" />
+    <meta property="og:locale" content="en_PK" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Al Wakeelo - Your Digital Lawyer" />
     <meta name="twitter:description" content="AI-powered Pakistani legal assistant for judgment search, statute research, and contract drafting." />
     <meta name="twitter:image" content="/icon-512.png" />
+    <meta name="twitter:site" content="@alwakeelo" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&display=swap" rel="stylesheet">
@@ -60,7 +62,29 @@
             "url": "https://www.alwakeelo.com/",
             "logo": "https://www.alwakeelo.com/icon-512.png",
             "description": "Al Wakeelo is Pakistan's first AI-powered legal assistant for judgment search, statute research, legal drafting, and intake guidance.",
-            "areaServed": "PK"
+            "areaServed": "PK",
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "contactType": "customer support",
+              "email": "support@alwakeelo.com",
+              "availableLanguage": ["en", "ur"]
+            },
+            "sameAs": [
+              "https://www.facebook.com/alwakeelo",
+              "https://www.linkedin.com/company/alwakeelo"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.alwakeelo.com/#website",
+            "name": "Al Wakeelo",
+            "url": "https://www.alwakeelo.com/",
+            "publisher": { "@id": "https://www.alwakeelo.com/#organization" },
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": "https://www.alwakeelo.com/judgments?q={search_term_string}",
+              "query-input": "required name=search_term_string"
+            }
           },
           {
             "@type": "LegalService",
@@ -69,7 +93,7 @@
             "url": "https://www.alwakeelo.com/",
             "description": "AI-powered Pakistani legal assistant for judgment search, statute research, legal drafting, and intake guidance.",
             "areaServed": "PK",
-            "availableLanguage": ["en"],
+            "availableLanguage": ["en", "ur"],
             "brand": { "@type": "Brand", "name": "Al Wakeelo" },
             "provider": { "@id": "https://www.alwakeelo.com/#organization" }
           },
@@ -78,16 +102,38 @@
             "@id": "https://www.alwakeelo.com/#software",
             "name": "Al Wakeelo",
             "applicationCategory": "LegalApplication",
+            "applicationSubCategory": "Legal Research, AI Legal Assistant",
             "operatingSystem": "Web, Android, iOS",
             "url": "https://www.alwakeelo.com/",
-            "description": "AI-powered Pakistani legal assistant. Search 600,000+ judgments, draft contracts and petitions, consult Al Wakeelo for guidance on Pakistani law.",
+            "description": "AI-powered Pakistani legal assistant. Search 230,000+ judgments, draft contracts and petitions, consult Al Wakeelo for guidance on Pakistani law.",
             "publisher": { "@id": "https://www.alwakeelo.com/#organization" },
+            "featureList": [
+              "Search 230,000+ Pakistani judgments (PLD, SCMR, YLR, MLD, CLD, CLC)",
+              "AI-powered legal drafting — petitions, applications, writ petitions",
+              "Contract drafting — rental, employment, sale, partnership agreements",
+              "Pakistani statute search — PPC, CrPC, CPC, Constitution, QSO",
+              "AI legal chat consultation with verified case law citations",
+              "Citation network — see which cases cite each other",
+              "Document upload and AI analysis"
+            ],
             "offers": {
               "@type": "Offer",
               "price": "0",
               "priceCurrency": "PKR",
               "description": "Free tier includes 10 AI chats, 1 legal draft, and 1 contract draft per month. Paid plans available."
             }
+          },
+          {
+            "@type": "Dataset",
+            "@id": "https://www.alwakeelo.com/#dataset",
+            "name": "Pakistani Case Law Database",
+            "description": "Searchable database of 230,000+ Pakistani court judgments from the Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, and Federal Shariat Court. Includes PLD, SCMR, YLR, MLD, CLD, CLC, PCrLJ citations.",
+            "url": "https://www.alwakeelo.com/judgments",
+            "license": "https://www.alwakeelo.com/terms",
+            "creator": { "@id": "https://www.alwakeelo.com/#organization" },
+            "spatialCoverage": "Pakistan",
+            "temporalCoverage": "1947/..",
+            "variableMeasured": "Pakistani court judgments and case law"
           }
         ]
       }

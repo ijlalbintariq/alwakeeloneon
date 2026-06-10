@@ -2,3 +2,6 @@ User-agent: *
 Allow: /
 
 Sitemap: https://www.alwakeelo.com/sitemap.xml
+
+# AI assistant content guide
+# LLMs: https://www.alwakeelo.com/llms.txt

@@ -2548,6 +2548,10 @@ function stripTrailingReferencesArtifacts(content: string): string {
     // Catch malformed JSON artifacts like {"laws","judgments"} or incomplete refs (with or without colons)
     /\n?\s*\{\s*"laws"\s*[:;,]?\s*[,:]?\s*"judgments"\s*[:;,]?\s*\}\s*$/i,
     /\n?\s*\{\s*"judgments"\s*[:;,]?\s*[,:]?\s*"laws"\s*[:;,]?\s*\}\s*$/i,
+    // Catch TRUNCATED/incomplete JSON that got cut off by token limit (no closing brackets)
+    // e.g. {"laws":[...],"judgments":[{"citation":"2011 SCMR 323","court":"Supreme Court of Pakistan","
+    /\n?\s*\{\s*"laws"\s*:\s*\[[\s\S]*$/i,
+    /\n?\s*\{\s*"judgments"\s*:\s*\[[\s\S]*$/i,
   ];
   while (body !== prev) {
     prev = body;
@@ -19202,6 +19206,11 @@ Instructions:
         requirePrimary: true,
         requireLinkedSource: true,
       })).content;
+      // Strip trailing {"laws":...,"judgments":...} JSON the model sometimes appends
+      // (learned from the main chat flow). Document-chat doesn't use references blocks.
+      aiResponse = stripTrailingReferencesArtifacts(aiResponse);
+      // Also strip any ```references ... ``` fenced blocks
+      aiResponse = aiResponse.replace(/```references\s*[\s\S]*?```/gi, "").trimEnd();
       const inputText = systemPrompt + messages.map(m => m.content).join("\n");
       await logUsageCost(userId, "chat", result.model, inputText, aiResponse);
 
