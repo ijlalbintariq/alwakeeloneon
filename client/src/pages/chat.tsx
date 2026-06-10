@@ -228,7 +228,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
-  const { data: threads = [] } = useQuery<ThreadSummary[]>({ queryKey: ["/api/threads"] });
+  const { data: threads = [] } = useQuery<ThreadSummary[]>({
+    queryKey: ["/api/threads"],
+    staleTime: 30_000, // 30s — allow refresh when returning from background
+    refetchOnWindowFocus: true, // Mobile: refresh when user returns to app
+  });
   const { data: userDocuments = [] } = useQuery<UserDocument[]>({
     queryKey: ["/api/documents"],
     enabled: isAlWakeelo,
@@ -464,29 +468,36 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       .filter(Boolean);
   }, []);
 
+  // Use a ref to always have the latest sharedThreadId inside async callbacks,
+  // avoiding stale closures that cause duplicate thread creation on mobile.
+  const sharedThreadIdRef = useRef(sharedThreadId);
+  useEffect(() => { sharedThreadIdRef.current = sharedThreadId; }, [sharedThreadId]);
+
   const persistConsultationTurn = useCallback(async (userMessage: ChatMessage, assistantMessage: ChatMessage) => {
     try {
+      const currentThreadId = sharedThreadIdRef.current;
       const titleSource = String(userMessage.content || "")
         .replace(/\s*\[Attached:[^\]]+\]\s*/gi, " ")
         .trim();
       const title = (titleSource || "Al Wakeelo Consultation").slice(0, 80);
       const res = await apiRequest("POST", "/api/threads/upsert-turn", {
-        threadId: sharedThreadId || undefined,
+        threadId: currentThreadId || undefined,
         title,
         userMessage: userMessage.content,
         assistantMessage: assistantMessage.content,
       });
       const data = await res.json().catch(() => null);
       const nextThreadId = Number(data?.thread?.id || data?.threadId || 0);
-      if (nextThreadId > 0 && nextThreadId !== sharedThreadId) {
+      if (nextThreadId > 0 && nextThreadId !== currentThreadId) {
         setSharedThreadId(nextThreadId);
+        sharedThreadIdRef.current = nextThreadId;
       }
       queryClient.invalidateQueries({ queryKey: ["/api/threads"] });
       queryClient.invalidateQueries({ queryKey: ["/api/activity/summary"] });
     } catch (err) {
       console.warn("Failed to persist consultation turn:", err);
     }
-  }, [sharedThreadId]);
+  }, []); // No deps — uses ref for sharedThreadId
 
   const formatRagAnswer = (answer: string, _citations: RAGCitation[]): string => {
     // Sources are rendered as rich citation cards below the message — no raw text appending.
