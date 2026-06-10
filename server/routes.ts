@@ -14752,8 +14752,8 @@ document.addEventListener('keydown',function(e){
       // Run knowledge gather and style retrieval in parallel with a shared enrichment deadline.
       // Both are optional enrichment — the chat request must proceed even if one or both time out.
       // Pipeline now completes in <2s (RAG vector search removed from critical path).
-      // 20s budget is more than enough for tsvector searches + statutes + style memory.
-      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 20000));
+      // 30s budget for tsvector searches + statutes + style memory.
+      const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 30000));
       const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
       // V2 pipeline: intent classify → topic-validated retrieval → structured context
       // For al-wakeelo: pipeline handles statutes + admin docs; tool search handles case law.
@@ -14873,8 +14873,8 @@ document.addEventListener('keydown',function(e){
       const refineResult = refineRace.value;
 
       // Phase 2: Tool search ONLY if pipeline returned 0 case law hits (fallback-only)
-      // Budget is capped at 10s — pipeline already consumed the main 20s enrichment budget.
-      const TOOL_SEARCH_FALLBACK_MS = 10_000;
+      // Budget is capped at 20s for the fallback tool search.
+      const TOOL_SEARCH_FALLBACK_MS = 20_000;
       const toolSearchEnabled = toolSearchCapable && pipelineCaseLawHits.length === 0;
       let toolSearchResult: ToolSearchResult = { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
       if (toolSearchEnabled) {
@@ -14884,7 +14884,7 @@ document.addEventListener('keydown',function(e){
         }
         const toolSearchRace = await raceToDeadline<ToolSearchResult>(
           (useOpenRouterTools
-            ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 9000)
+            ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 18000)
             : runToolJudgmentSearch(lastUserMessage!.content, toolStatusCallback)
           ).catch((err) => {
             console.warn("[ToolSearch] Failed:", err?.message || err);
