@@ -2510,10 +2510,21 @@ function normalizeReferencesPayload(payload: unknown): { laws: unknown[]; judgme
     return { laws: [], judgments: [] };
   }
   const obj = payload as { laws?: unknown; judgments?: unknown };
-  return {
-    laws: Array.isArray(obj.laws) ? obj.laws : [],
-    judgments: Array.isArray(obj.judgments) ? obj.judgments : [],
-  };
+  // Normalize law entries: accept both {name,...} (AI format) and {statuteName,...} (repair format)
+  const rawLaws = Array.isArray(obj.laws) ? obj.laws : [];
+  const laws = rawLaws.map((l: any) => ({
+    name: String(l?.name || l?.statuteName || "").trim(),
+    section: String(l?.section || "").trim(),
+    description: String(l?.description || "").trim(),
+  })).filter((l: any) => l.name || l.section);
+  // Normalize judgment entries: accept {citation,...} (AI) and {citationString,...} (repair)
+  const rawJudgments = Array.isArray(obj.judgments) ? obj.judgments : [];
+  const judgments = rawJudgments.map((j: any) => ({
+    citation: String(j?.citation || j?.citationString || "").trim(),
+    court: String(j?.court || "").trim(),
+    description: String(j?.description || j?.summary || "").trim(),
+  })).filter((j: any) => j.citation);
+  return { laws, judgments };
 }
 
 function parseLooseReferencesJsonAtEnd(content: string): { laws: unknown[]; judgments: unknown[] } | null {
@@ -2582,61 +2593,110 @@ function repairOrExtractReferences(text: string): { laws: any[], judgments: any[
   const seenLaws = new Set<string>();
   const seenJudgments = new Set<string>();
 
-  // Regex patterns to match statutes and sections
-  const sMatches1 = text.matchAll(/\b(section|sec\.?|article|art\.?)\s*([0-9A-Za-z-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z-]+)*)\s+of\s+(?:the\s+)?([A-Z][A-Za-z0-9(),.'\/\s-]{3,60}?)(?=[\n,.;:]|$)/gi);
+  const addLaw = (name: string, section: string) => {
+    const key = `${name}::${section}`.toLowerCase();
+    if (!seenLaws.has(key)) {
+      seenLaws.add(key);
+      laws.push({ statuteName: name, section });
+    }
+  };
+  const addJudgment = (citation: string) => {
+    const key = citation.toLowerCase().replace(/\s+/g, " ").trim();
+    if (key && !seenJudgments.has(key)) {
+      seenJudgments.add(key);
+      judgments.push({ citationString: citation });
+    }
+  };
+
+  // ── Statute extraction ───────────────────────────────────────────────
+
+  // Pattern 1: "Section/Article/Rule X(a) of [Act Name]"
+  const sMatches1 = text.matchAll(/\b(section|sec\.?|article|art\.?|rule|regulation|reg\.?)\s*([0-9A-Za-z()/-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z()/-]+)*)\s+of\s+(?:the\s+)?([A-Z][A-Za-z0-9(),.'\/ \s-]{3,80}?)(?=[\n,.;:]|$)/gi);
   for (const m of sMatches1) {
     const secGroup = m[2] || "";
     const name = (m[3] || "").trim();
     if (secGroup && name) {
       for (const rawSec of secGroup.split(/\s*(?:,|and|&|\/)\s*/)) {
         const sec = rawSec.trim();
-        if (!sec) continue;
-        const key = `${name}::${sec}`.toLowerCase();
-        if (!seenLaws.has(key)) {
-          seenLaws.add(key);
-          laws.push({ statuteName: name, section: sec });
-        }
+        if (sec) addLaw(name, sec);
       }
     }
   }
 
-  const sMatches2 = text.matchAll(/\b(section|sec\.?|article|art\.?)\s*([0-9A-Za-z-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z-]+)*)\s*(?:of\s+)?(Cr\.?\s*P\.?\s*C\.?|C\.?\s*P\.?\s*C\.?|P\.?\s*P\.?\s*C\.?|Constitution|Qanun[-\s]?e[-\s]?Shahadat|Family Courts?\s*Act|Specific Relief Act|Limitation Act|Contract Act|Transfer of Property Act)/gi);
+  // Pattern 2: "Section/Article/Rule X [known act abbreviation]"
+  const sMatches2 = text.matchAll(/\b(section|sec\.?|article|art\.?|rule|regulation|reg\.?)\s*([0-9A-Za-z()/-]+(?:\s*(?:,|and|&|\/)\s*[0-9A-Za-z()/-]+)*)\s*(?:of\s+)?(?:the\s+)?(Cr\.?\s*P\.?\s*C\.?|C\.?\s*P\.?\s*C\.?|P\.?\s*P\.?\s*C\.?|Constitution|Qanun[-\s]?e[-\s]?Shahadat|Family Courts?\s*Act|Specific Relief Act|Limitation Act|Contract Act|Transfer of Property Act|Legal Practitioners.*?Act|Bar Councils?.*?(?:Act|Rules)|Pakistan Penal Code|CNSA|Anti[- ]?Terrorism Act|Arms Act|PECA|Companies Act|Income Tax Ordinance|Stamp Act|Registration Act|Pre[- ]?emption Act|Rent.*?Act|Muslim Family Laws Ordinance|Guardian.*?Wards Act|Succession Act|Evidence Act|West Pakistan.*?Rules)/gi);
   for (const m of sMatches2) {
     const secGroup = m[2] || "";
     const name = (m[3] || "").trim();
     if (secGroup && name) {
       for (const rawSec of secGroup.split(/\s*(?:,|and|&|\/)\s*/)) {
         const sec = rawSec.trim();
-        if (!sec) continue;
-        const key = `${name}::${sec}`.toLowerCase();
-        if (!seenLaws.has(key)) {
-          seenLaws.add(key);
-          laws.push({ statuteName: name, section: sec });
-        }
+        if (sec) addLaw(name, sec);
       }
     }
   }
 
+  // Pattern 3: "Order X Rule Y CPC"
   const sMatches3 = text.matchAll(/\b(Order\s+[IVXLCDM0-9]+(?:\s+Rules?\s+[0-9A-Za-z]+)?)\s*(?:of\s+)?(?:the\s+)?(C\.?\s*P\.?\s*C\.?|Code of Civil Procedure)/gi);
   for (const m of sMatches3) {
     const section = m[1]?.trim();
     const name = m[2]?.trim() || "CPC";
-    if (section) {
-      const key = `${name}::${section}`.toLowerCase();
-      if (!seenLaws.has(key)) {
-        seenLaws.add(key);
-        laws.push({ statuteName: name, section });
-      }
+    if (section) addLaw(name, section);
+  }
+
+  // Pattern 4: Standalone "Rule 108" / "Rule 175" with nearby act context
+  const ruleMatches = text.matchAll(/\b(Rule|Regulation)\s+(\d+[A-Za-z]?(?:\s*(?:,|and|&)\s*\d+[A-Za-z]?)*)/gi);
+  for (const m of ruleMatches) {
+    const prefix = m[1] || "Rule";
+    const nums = m[2] || "";
+    const afterIdx = (m.index || 0) + m[0].length;
+    const nearby = text.slice(afterIdx, afterIdx + 120);
+    const actMatch = nearby.match(/(?:of\s+(?:the\s+)?)?([A-Z][A-Za-z0-9(),.'\/\s-]{5,60}(?:Act|Rules|Ordinance|Code|Regulation))/i);
+    const actName = actMatch ? actMatch[1].trim() : "";
+    for (const rawNum of nums.split(/\s*(?:,|and|&)\s*/)) {
+      const num = rawNum.trim();
+      if (num) addLaw(actName || `${prefix}s`, `${prefix} ${num}`);
     }
   }
 
-  // Regex patterns to match case law / judgments
-  const cMatches1 = text.matchAll(/\[?\b((?:19|20)\d{2})\s+(SCMR|PLD|CLC|CrLJ|PCRLJ|PCrLJ|MLD|YLR|PLC|CLJ|NLR|PLJ|PSC|ALD|KLR|SLR)\s+(\d+)\]?/gi);
+  // ── Case law / judgment extraction ───────────────────────────────────
+
+  // Pattern 1: Standard year-first citations "2005 SCMR 1472"
+  const cMatches1 = text.matchAll(/\[?\b((?:19|20)\d{2})\s+(SCMR|PLD|CLC|CrLJ|PCRLJ|PCrLJ|MLD|YLR|PLC|CLJ|NLR|PLJ|PSC|ALD|KLR|SLR|CLD|PTD|LHC|IHC|SHC|PHC|BHC|AJKHC)\s+(\d+)\]?/gi);
   for (const m of cMatches1) {
-    const citation = `${m[1]} ${m[2]?.toUpperCase()} ${m[3]}`;
-    if (!seenJudgments.has(citation.toLowerCase())) {
-      seenJudgments.add(citation.toLowerCase());
-      judgments.push({ citationString: citation });
+    addJudgment(`${m[1]} ${m[2]?.toUpperCase()} ${m[3]}`);
+  }
+
+  // Pattern 2: Dotted abbreviation citations "P.L.D 1998 Karachi 245"
+  const cMatches2 = text.matchAll(/\b(P\.?\s*L\.?\s*D|S\.?\s*C\.?\s*M\.?\s*R|P\.?\s*Cr\.?\s*L\.?\s*J|C\.?\s*L\.?\s*C|M\.?\s*L\.?\s*D|Y\.?\s*L\.?\s*R|P\.?\s*L\.?\s*J|N\.?\s*L\.?\s*R|C\.?\s*L\.?\s*D|P\.?\s*T\.?\s*D|P\.?\s*L\.?\s*C)\s*((?:19|20)\d{2})\s+(?:[A-Za-z]+\s+)?(\d+)/gi);
+  for (const m of cMatches2) {
+    const reporter = m[1].replace(/[\s.]+/g, "").toUpperCase();
+    addJudgment(`${m[2]} ${reporter} ${m[3]}`);
+  }
+
+  // Pattern 3: Reporter-first citations "PLD 1998 Karachi 245"
+  const cMatches3 = text.matchAll(/\b(PLD|SCMR|CLC|MLD|YLR|PLJ|NLR|CLD|PTD|PLC|PCrLJ|PCRLJ)\s+((?:19|20)\d{2})\s+(?:[A-Za-z.]+\s+)?(\d+)/gi);
+  for (const m of cMatches3) {
+    addJudgment(`${m[2]} ${m[1]?.toUpperCase()} ${m[3]}`);
+  }
+
+  // Pattern 4: Case names — "Party v/vs/versus Party" format
+  const caseNameMatches = text.matchAll(/\b([A-Z][A-Za-z.']+(?:\s+[A-Z][A-Za-z.']+){0,5})\s+(?:v\.?s?\.?|versus)\s+([A-Z][A-Za-z.']+(?:\s+(?:of\s+)?[A-Za-z.']+){0,6})/g);
+  for (const m of caseNameMatches) {
+    const petitioner = (m[1] || "").trim();
+    const respondent = (m[2] || "").trim();
+    if (petitioner.length < 3 || respondent.length < 3) continue;
+    if (/^(The|This|That|And|But|For|With)\b/i.test(petitioner)) continue;
+    const caseName = `${petitioner} v ${respondent}`;
+    const afterIdx = (m.index || 0) + m[0].length;
+    const nearbyText = text.slice(afterIdx, afterIdx + 80);
+    const nearbyCitation = nearbyText.match(/\(?\s*((?:PLD|SCMR|CLC|MLD|YLR|PLJ|NLR|CLD|PTD|PLC|PCrLJ|PCRLJ)\s+(?:19|20)\d{2}|(?:19|20)\d{2}\s+(?:PLD|SCMR|CLC|MLD|YLR|PLJ|NLR|CLD|PTD|PLC|PCrLJ|PCRLJ))\s+(?:[A-Za-z.]+\s+)?(\d+)/i);
+    if (nearbyCitation) {
+      const citParts = nearbyCitation[1].trim();
+      const citNum = nearbyCitation[2];
+      addJudgment(`${citParts} ${citNum}`.replace(/\s+/g, " "));
+    } else {
+      addJudgment(caseName);
     }
   }
 
