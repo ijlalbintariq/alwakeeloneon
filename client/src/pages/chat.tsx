@@ -875,12 +875,30 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       const restored: ChatMessage[] = data.messages.map((m: any, idx: number) => {
         const content = String(m.content || "");
         const attachments = parseAttachmentNames(content);
-        return {
+        const base: ChatMessage = {
           ...(attachments.length > 0 ? { attachments } : {}),
           id: String(m.id ?? `${threadId}-${idx}`),
           role: m.role === "assistant" ? "assistant" : "user",
           content,
         };
+        // Reconstruct caseLawCard from the saved references block so the
+        // "Case Law from Database" card re-appears when loading history.
+        if (base.role === "assistant") {
+          const parsed = parseReferences(content);
+          if (parsed?.references?.judgments && parsed.references.judgments.length > 0) {
+            base.caseLawCard = {
+              hits: parsed.references.judgments.map((j) => ({
+                citation: j.citation,
+                title: "", // title not saved in references block
+                court: j.court || "",
+                snippet: j.description || "",
+              })),
+              totalFound: parsed.references.judgments.length,
+              queriesUsed: [],
+            };
+          }
+        }
+        return base;
       });
       setMessages(restored);
       setSharedThreadId(threadId);
