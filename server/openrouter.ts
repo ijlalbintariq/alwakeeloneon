@@ -27,7 +27,7 @@ export function isOpenRouterAvailable(): boolean {
 }
 
 interface OpenRouterChatOptions {
-  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>;
   maxTokens?: number;
   model?: string;
   temperature?: number;
@@ -47,7 +47,7 @@ export async function chatWithOpenRouter(options: OpenRouterChatOptions): Promis
 
   const response = await client.chat.completions.create({
     model,
-    messages: options.messages,
+    messages: options.messages as any,
     max_tokens: options.maxTokens || 8192,
     temperature,
   });
@@ -70,7 +70,7 @@ export async function* streamWithOpenRouter(options: OpenRouterChatOptions): Asy
 
   const stream = await client.chat.completions.create({
     model,
-    messages: options.messages,
+    messages: options.messages as any,
     max_tokens: options.maxTokens || 8192,
     temperature,
     stream: true,

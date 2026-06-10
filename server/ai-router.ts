@@ -44,7 +44,7 @@ export type ProviderId = "groq" | "deepseek" | "deepseek-pro" | "openrouter";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
-  content: string;
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
 export interface ProviderCallOptions {
@@ -143,13 +143,13 @@ async function* streamFromProvider(
 ): AsyncGenerator<string> {
   switch (provider) {
     case "groq":
-      yield* streamWithGroq(opts);
+      yield* streamWithGroq(opts as any);
       return;
     case "deepseek":
-      yield* streamWithDeepSeek(opts);
+      yield* streamWithDeepSeek(opts as any);
       return;
     case "deepseek-pro":
-      yield* streamWithDeepSeek({ ...opts, model: getDeepSeekProModelName() });
+      yield* streamWithDeepSeek({ ...opts, model: getDeepSeekProModelName() } as any);
       return;
     case "openrouter":
       yield* streamWithOpenRouter(opts);
@@ -268,15 +268,15 @@ async function callProvider(
 ): Promise<{ content: string; modelName: string; inputTokens?: number; outputTokens?: number }> {
   switch (provider) {
     case "groq": {
-      const r = await chatWithGroq(opts);
+      const r = await chatWithGroq(opts as any);
       return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
     }
     case "deepseek": {
-      const r = await chatWithDeepSeek(opts);
+      const r = await chatWithDeepSeek(opts as any);
       return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
     }
     case "deepseek-pro": {
-      const r = await chatWithDeepSeekPro(opts);
+      const r = await chatWithDeepSeekPro(opts as any);
       return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
     }
     case "openrouter": {

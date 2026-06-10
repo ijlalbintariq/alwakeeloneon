@@ -2139,14 +2139,27 @@ function maybeIndexStatuteDocumentInBackground(args: { statuteDocumentId: number
   });
 }
 
-function buildMessages(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>): Array<{ role: "system" | "user" | "assistant"; content: string }> {
+function buildMessages(systemPrompt: string, contents: Array<{ role: string; parts: Array<{ text: string }> }>): any[] {
   const scopedSystemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
   return [
     { role: "system", content: scopedSystemPrompt },
-    ...contents.map(c => ({
-      role: (c.role === "model" ? "assistant" : "user") as "user" | "assistant",
-      content: c.parts.map(p => p.text).join("\n"),
-    })),
+    ...contents.map(c => {
+      const role = (c.role === "model" ? "assistant" : "user") as "user" | "assistant";
+      const textContent = c.parts.map(p => p.text).join("\n");
+      const imageAttachments = (c as any)._imageAttachments as Array<{ mimeType: string; base64: string; filename: string }> | undefined;
+      // If this message has image attachments, use multimodal content array format
+      if (imageAttachments && imageAttachments.length > 0 && role === "user") {
+        const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+          { type: "text", text: textContent },
+          ...imageAttachments.map(img => ({
+            type: "image_url" as const,
+            image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
+          })),
+        ];
+        return { role, content: contentParts };
+      }
+      return { role, content: textContent };
+    }),
   ];
 }
 
@@ -2226,7 +2239,7 @@ async function callStandardAI(
   const messages = buildMessages(systemPrompt, contents);
   const startedAt = Date.now();
   // UPDATED: Using DeepSeek instead of Groq (Groq deprecated 2026-04-16)
-  const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () => chatWithDeepSeek({ messages, maxTokens, temperature }));
+  const result = await withTimeout("DeepSeek", timeoutConfig.standardPrimary, () => chatWithDeepSeek({ messages: messages as any, maxTokens, temperature }));
   const safeText = assertNonEmptyModelOutput("DeepSeek", result.content);
   console.log(`[AI Routing][standard] Primary DeepSeek succeeded in ${Date.now() - startedAt}ms`);
   return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
@@ -14588,8 +14601,12 @@ document.addEventListener('keydown',function(e){
       let extractedAttachmentCount = 0;
       const failedAttachments: string[] = [];
       const failedAttachmentReasons: string[] = [];
-      const allowedExts = [".txt", ".pdf", ".doc", ...DOCX_COMPAT_EXTS];
-      const allowedMimes = ["text/plain", "application/pdf", ...DOCX_COMPAT_MIMES];
+      const IMAGE_EXTS = [".jpg", ".jpeg", ".png"];
+      const IMAGE_MIMES = ["image/jpeg", "image/png"];
+      const allowedExts = [".txt", ".pdf", ".doc", ...DOCX_COMPAT_EXTS, ...IMAGE_EXTS];
+      const allowedMimes = ["text/plain", "application/pdf", ...DOCX_COMPAT_MIMES, ...IMAGE_MIMES];
+      // Collect image attachments for multimodal/vision AI processing
+      const imageAttachments: Array<{ mimeType: string; base64: string; filename: string }> = [];
       if (files && files.length > 0) {
         const invalidFiles = files.filter((f) => {
           const ext = f.originalname.includes(".")
@@ -14600,7 +14617,7 @@ document.addEventListener('keydown',function(e){
           return !allowedExts.includes(normalizedExt) && !allowedMimes.includes(mime);
         });
         if (invalidFiles.length > 0) {
-          return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, DOC/DOCX/DOCM/DOTX files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
+          return res.status(400).json({ message: `Unsupported file type. Only TXT, PDF, DOC/DOCX, JPG, PNG files are allowed. Rejected: ${invalidFiles.map(f => f.originalname).join(", ")}` });
         }
         type AttachOk = { kind: "ok"; label: string; filename: string; text: string };
         type AttachTerminal = { kind: "terminal"; status: number; message: string; securityEvent?: "signature" | "malware"; securityMeta?: Record<string, any> };
@@ -14615,6 +14632,20 @@ document.addEventListener('keydown',function(e){
             : "";
           const normalizedExt = normalizeAttachmentExt(ext);
           const mime = (file.mimetype || "").toLowerCase();
+
+          // ── Image attachments → vision/multimodal path (no text extraction) ──
+          if (IMAGE_EXTS.includes(ext) || IMAGE_MIMES.includes(mime)) {
+            const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
+            if (stableFile.buffer.length > MAX_IMAGE_SIZE) {
+              return { kind: "failed", filename: file.originalname, reason: `${file.originalname}: image too large (max 10 MB).` };
+            }
+            const imageMime = mime.startsWith("image/") ? mime : (ext === ".png" ? "image/png" : "image/jpeg");
+            const base64 = stableFile.buffer.toString("base64");
+            imageAttachments.push({ mimeType: imageMime, base64, filename: file.originalname });
+            console.log(`[Vision] Image attachment collected: ${file.originalname} (${imageMime}, ${Math.round(stableFile.buffer.length / 1024)}KB)`);
+            return { kind: "ok", label: "Attached Image", filename: file.originalname, text: `[Image: ${file.originalname}]` };
+          }
+
           const signatureExt = resolveAttachmentSignatureExt(normalizedExt, mime);
           if (!signatureExt) {
             return { kind: "terminal", status: 400, message: `Unsupported file type. Rejected: ${file.originalname}` };
@@ -14805,6 +14836,20 @@ document.addEventListener('keydown',function(e){
           role: m.role === "assistant" ? "model" : "user",
           parts: [{ text: m.content }],
         }));
+
+      // ── Vision: inject image attachments into the last user message ──
+      if (imageAttachments.length > 0 && geminiContents.length > 0) {
+        const lastUserIdx = geminiContents.map(c => c.role).lastIndexOf("user");
+        if (lastUserIdx >= 0) {
+          const imageParts = imageAttachments.map(img => ({
+            text: `[Attached Image: ${img.filename}]`,
+            _image: { mimeType: img.mimeType, base64: img.base64 },
+          }));
+          // Store image data on the message for buildMessages to pick up
+          (geminiContents[lastUserIdx] as any)._imageAttachments = imageAttachments;
+          console.log(`[Vision] ${imageAttachments.length} image(s) attached to user message for multimodal processing`);
+        }
+      }
 
       const styleModule = mapModuleTypeToStyleModule(moduleType);
       const styleEligible = STYLE_MEMORY_ENABLED && !directMode && !!lastUserMessage && !!styleModule && shouldApplyStyleForChat(moduleType, moduleIntent);
@@ -15031,6 +15076,16 @@ The user has attached the following documents for your reference. Analyze them c
         if (failedAttachments.length > 0) {
           systemPrompt += `\n\nAttachment processing note: Some files could not be read and were excluded: ${failedAttachments.join(", ")}.`;
         }
+      }
+      // Vision: add instructions for image attachments
+      if (imageAttachments.length > 0) {
+        systemPrompt += `\n\nIMAGE ATTACHMENT MODE (VISION):
+- The user has attached ${imageAttachments.length} image(s): ${imageAttachments.map(i => i.filename).join(", ")}
+- Carefully read and extract ALL text visible in the attached image(s).
+- If the image contains a legal document (FIR, court order, legal notice, judgment, petition, affidavit, etc.), identify the document type and analyze its contents.
+- If the image contains handwritten text (Urdu or English), do your best to read and transcribe it.
+- Provide your legal analysis based on the document content.
+- If the image is unclear or unreadable, tell the user which parts you could not read.`;
       }
       let styleContext = "";
       let styleMemoryMeta: {

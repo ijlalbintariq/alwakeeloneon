@@ -410,8 +410,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    const allowed = [".txt", ".pdf", ".docx"];
-    const allowedMimes = ["text/plain", "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    const allowed = [".txt", ".pdf", ".docx", ".jpg", ".jpeg", ".png"];
+    const allowedMimes = ["text/plain", "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/jpeg", "image/png"];
     const newFiles: File[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -1758,7 +1758,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               type="file"
               ref={fileInputRef}
               onChange={handleFileSelect}
-              accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".txt,.pdf,.docx,.jpg,.jpeg,.png,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
               multiple
               className="hidden"
             />
@@ -2348,7 +2348,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
               {/* Input Row */}
               <div className="flex items-end gap-3 p-3 sm:p-4">
-                <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple className="hidden" />
+                <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".txt,.pdf,.docx,.jpg,.jpeg,.png,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" multiple className="hidden" />
                 <input type="file" ref={audioInputRef} onChange={handleAudioSelect} accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" className="hidden" />
 
                 <button onClick={() => fileInputRef.current?.click()} disabled={isLoading || attachedFiles.length >= 5} className="p-2 text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg">
