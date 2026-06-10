@@ -87,10 +87,20 @@ function isSameOriginRequest(req: Request): boolean {
 }
 
 function shouldLogResponseBody(path: string): boolean {
+  // Never log response bodies for sensitive or high-volume endpoints
   if (path.startsWith("/api/auth")) return false;
   if (path.startsWith("/api/ai")) return false;
-  if (path.startsWith("/api/apex/chat")) return false;
-  if (path.startsWith("/api/documents/upload")) return false;
+  if (path.startsWith("/api/apex")) return false;
+  if (path.startsWith("/api/documents")) return false;
+  if (path.startsWith("/api/bookmarks")) return false;
+  if (path.startsWith("/api/threads")) return false;
+  if (path.startsWith("/api/public/judgments")) return false;
+  if (path.startsWith("/api/search-history")) return false;
+  if (path.startsWith("/api/activity")) return false;
+  if (path.startsWith("/api/usage")) return false;
+  if (path.startsWith("/api/diary")) return false;
+  if (path.startsWith("/api/rag")) return false;
+  // Only log bodies for admin, health, and error-level responses
   return true;
 }
 

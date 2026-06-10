@@ -14873,6 +14873,8 @@ document.addEventListener('keydown',function(e){
       const refineResult = refineRace.value;
 
       // Phase 2: Tool search ONLY if pipeline returned 0 case law hits (fallback-only)
+      // Budget is capped at 10s — pipeline already consumed the main 20s enrichment budget.
+      const TOOL_SEARCH_FALLBACK_MS = 10_000;
       const toolSearchEnabled = toolSearchCapable && pipelineCaseLawHits.length === 0;
       let toolSearchResult: ToolSearchResult = { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
       if (toolSearchEnabled) {
@@ -14882,13 +14884,13 @@ document.addEventListener('keydown',function(e){
         }
         const toolSearchRace = await raceToDeadline<ToolSearchResult>(
           (useOpenRouterTools
-            ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 18000)
+            ? runToolJudgmentSearchOR(lastUserMessage!.content, toolStatusCallback, undefined, 9000)
             : runToolJudgmentSearch(lastUserMessage!.content, toolStatusCallback)
           ).catch((err) => {
             console.warn("[ToolSearch] Failed:", err?.message || err);
             return { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
           }),
-          ENRICHMENT_BUDGET_MS,
+          TOOL_SEARCH_FALLBACK_MS,
           { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] },
           "tool-search-fallback",
         );
