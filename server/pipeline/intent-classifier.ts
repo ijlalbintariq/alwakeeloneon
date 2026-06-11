@@ -1489,12 +1489,25 @@ export function detectQueryComplexity(rawQuery: string): QueryComplexity {
   const wordCount = q.split(/\s+/).length;
 
   // Complex signals — explicit drafting/comparison/long-form work
+  // BUT: short queries with comparison words (e.g., "what is the difference between
+  // khula and talaq?") should be MODERATE, not complex. Only long comparison
+  // queries (full scenarios) truly need 1200-2200 word treatment.
   if (len > 200 || wordCount > 35) return "complex";
-  if (COMPLEX_QUERY_INDICATORS.test(q)) return "complex";
+  if (COMPLEX_QUERY_INDICATORS.test(q)) {
+    // Short comparison/difference questions are moderate follow-ups, not complex
+    if ((len < 150 && wordCount < 20) && /\b(difference|compare|comparison|vs\.?|versus)\b/i.test(q)) {
+      return "moderate";
+    }
+    return "complex";
+  }
 
   // Simple signals — short, yes/no or definition style
-  if (len < 100 && SIMPLE_QUERY_STARTERS.test(q)) return "simple";
-  if (len < 60 && wordCount <= 8) return "simple";
+  // BUT: don't classify as "simple" if it contains statute references — those
+  // need at least moderate treatment even if short (e.g., "what about S.302 for juveniles")
+  const hasLegalSubstance = /\b(?:section|article|rule|order)\s+\d+/i.test(q) ||
+    /\b(?:ppc|crpc|cpc|tpa|qso|cnsa|peca|ata|fio)\b/i.test(q);
+  if (len < 100 && SIMPLE_QUERY_STARTERS.test(q) && !hasLegalSubstance) return "simple";
+  if (len < 60 && wordCount <= 8 && !hasLegalSubstance) return "simple";
 
   return "moderate";
 }
