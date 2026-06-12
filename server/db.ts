@@ -27,6 +27,23 @@ export const pool = (canInitPool && validatedDatabaseUrl.value
       statement_timeout: 60_000,
     })
   : undefined) as any;
+
+// ── Pool error handler ──
+// Neon (PgBouncer) silently kills idle/long-lived connections. Without this
+// handler, the 'error' event on the pool is unhandled and crashes Node.js.
+// The pool automatically removes the dead client and creates a new one on the
+// next query — we just need to prevent the crash.
+if (pool) {
+  pool.on("error", (err: Error, client: any) => {
+    const useCount = client?._poolUseCount ?? "?";
+    console.error(
+      `[Pool] Unexpected client error (poolUseCount=${useCount}):`,
+      err.message || err,
+    );
+    // No process.exit — let the pool self-heal by discarding this client.
+  });
+}
+
 export const db = (canInitPool && validatedDatabaseUrl.value
   ? drizzle(pool, { schema })
   : undefined) as any;
