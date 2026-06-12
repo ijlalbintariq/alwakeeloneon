@@ -547,6 +547,7 @@ export interface IStorage {
   logUsageCost(userId: string, feature: string, inputTokens: number, outputTokens: number, estimatedCost: number): Promise<void>;
   getMonthlyUsageCount(userId: string): Promise<number>;
   getMonthlyUsageCountByFeature(userId: string, feature: string): Promise<number>;
+  getTotalUsageCountByFeature(userId: string, feature: string): Promise<number>;
   getMonthlyDocumentUploadCount(userId: string): Promise<number>;
   getMonthlyOcrPageCount(userId: string): Promise<number>;
   logOcrPages(userId: string, pageCount: number): Promise<void>;
@@ -2763,6 +2764,16 @@ export class DatabaseStorage implements IStorage {
         eq(usageTracking.userId, userId),
         eq(usageTracking.feature, feature as any),
         gte(usageTracking.createdAt, startOfMonth)
+      ));
+    return result?.total || 0;
+  }
+
+  async getTotalUsageCountByFeature(userId: string, feature: string): Promise<number> {
+    const [result] = await db.select({ total: count() })
+      .from(usageTracking)
+      .where(and(
+        eq(usageTracking.userId, userId),
+        eq(usageTracking.feature, feature as any),
       ));
     return result?.total || 0;
   }

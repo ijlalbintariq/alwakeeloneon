@@ -697,7 +697,7 @@ export const TIER_LIMITS: Record<string, TierPlanConfig> = {
   free: {
     monthlyQueries: 12,
     label: "Free",
-    description: "10 AI chats + 1 legal draft + 1 contract draft/month",
+    description: "10 AI chats + 1 legal draft + 1 contract draft (one-time, does not renew)",
     pricePkr: 0,
     includedUsers: 1,
     pooled: false,

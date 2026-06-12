@@ -6954,15 +6954,16 @@ async function checkUsageLimit(userId: string, feature: string, res: any): Promi
 
     if (isFreeTier) {
       const freeTierLimit = resolveFreeTierLimit(feature);
-      let usedThisMonth = 0;
+      // Free tier: lifetime limit (does NOT reset monthly)
+      let usedTotal = 0;
       for (const usageFeature of freeTierLimit.features) {
-        usedThisMonth += await storage.getMonthlyUsageCountByFeature(userId, usageFeature);
+        usedTotal += await storage.getTotalUsageCountByFeature(userId, usageFeature);
       }
-      if (usedThisMonth >= freeTierLimit.monthlyLimit) {
+      if (usedTotal >= freeTierLimit.monthlyLimit) {
         res.status(429).json({
-          message: `Your free-tier ${freeTierLimit.label} limit has ended (${freeTierLimit.monthlyLimit}/month). Please subscribe to continue using Al Wakeelo.`,
+          message: `Your free-tier ${freeTierLimit.label} limit of ${freeTierLimit.monthlyLimit} has been used. Please subscribe to continue using Al Wakeelo.`,
           limit: freeTierLimit.monthlyLimit,
-          used: usedThisMonth,
+          used: usedTotal,
           tier,
           action: "subscribe",
           freeLimitKey: freeTierLimit.limitKey,
@@ -11258,9 +11259,23 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       const tier = normalizeTier(profile.subscriptionTier);
       const subscriptionCycle = normalizeBillingCycle(profile.subscriptionCycle);
       const limits = getTierPlan(tier);
-      const used = await storage.getMonthlyUsageCount(userId);
-      const remaining = Math.max(0, limits.monthlyQueries - used);
-      const percentage = Math.min(100, Math.round((used / limits.monthlyQueries) * 100));
+      // Free tier: lifetime limit (never resets). Paid tiers: monthly.
+      const isFreeTier = tier === "free";
+      const used = isFreeTier
+        ? await storage.getMonthlyUsageCount(userId)  // reuse existing fn but we count total below for free display
+        : await storage.getMonthlyUsageCount(userId);
+      // For the free tier display, count total lifetime usage
+      const freeUsedTotal = isFreeTier
+        ? (await storage.getTotalUsageCountByFeature(userId, "chat"))
+          + (await storage.getTotalUsageCountByFeature(userId, "chat-apex"))
+          + (await storage.getTotalUsageCountByFeature(userId, "search-judgments"))
+          + (await storage.getTotalUsageCountByFeature(userId, "search-statutes"))
+          + (await storage.getTotalUsageCountByFeature(userId, "summarize"))
+          + (await storage.getTotalUsageCountByFeature(userId, "brief"))
+        : used;
+      const displayUsed = isFreeTier ? freeUsedTotal : used;
+      const remaining = Math.max(0, limits.monthlyQueries - displayUsed);
+      const percentage = Math.min(100, Math.round((displayUsed / limits.monthlyQueries) * 100));
 
       res.json({
         tier,
@@ -11271,7 +11286,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         subscriptionEndAt: profile.subscriptionEndAt ? profile.subscriptionEndAt.toISOString() : null,
         autoRenew: Boolean(profile.autoRenew),
         monthlyLimit: limits.monthlyQueries,
-        used,
+        used: displayUsed,
         remaining,
         percentage,
       });
