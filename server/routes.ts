@@ -2774,6 +2774,32 @@ If the user asks for a strict output format (e.g., "Reply YES only"), output exa
 Do not add disclaimers, headings, references, or extra explanation unless explicitly requested.`;
 }
 
+// ── Strip ingestion metadata from case_law summary text ─────────────────
+// Data extraction left lines like "Statute Reference: PPC, nab, CNSA" and
+// "Document containing references to: ..." in the summary field. These are
+// not real legal headnotes and should not be shown to users.
+const SUMMARY_METADATA_PATTERNS = [
+  /^Statute\s*Referenc(?:e|es)\s*[:：]\s*.*/gim,
+  /^Document\s+containing\s+references?\s+to\s*[:：]\s*.*/gim,
+  /^References?\s*[:：]\s*(?:PPC|CPC|CrPC|CNSA|NAB|IPC|ATA|QSO|TPA|SRA|HO|FA|FCA)[\s,].*/gim,
+  /^Statute\s*[:：]\s*.*/gim,
+  /^Keywords?\s*[:：]\s*.*/gim,
+  /^Tags?\s*[:：]\s*.*/gim,
+  /^Classification\s*[:：]\s*.*/gim,
+  /^Document\s*Type\s*[:：]\s*.*/gim,
+];
+
+function cleanSummaryMetadata(text: string): string {
+  if (!text) return "";
+  let cleaned = text;
+  for (const pattern of SUMMARY_METADATA_PATTERNS) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  // Collapse leftover blank lines
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n").trim();
+  return cleaned;
+}
+
 function extractKeywords(text: string, limit: number = 6): string[] {
   const tokens = (text || "")
     .toLowerCase()
@@ -10253,6 +10279,9 @@ RAG POLICY (STRICT):
             }
           }
         }
+
+        // Strip ingestion metadata junk from summary text
+        finalSummary = cleanSummaryMetadata(finalSummary);
 
         // Return only the fields the frontend needs — exclude DB-internal columns
         // like statute_references, document_classification, source_doc_id, etc.
