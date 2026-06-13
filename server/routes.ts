@@ -10223,10 +10223,14 @@ RAG POLICY (STRICT):
         query ? storage.searchJudgmentsByKeywords(query, limit).catch(() => []) : Promise.resolve([]),
       ]);
 
-      // Merge + dedup: caseLaw results first (richer metadata), headnotes fill gaps
+      // Filter to primary citations only — users want the actual judgment,
+      // not cases that are merely cited within other judgments.
+      const primaryCaseLaw = filterToPrimaryCaseLawRows(caseLawResults);
+
+      // Merge + dedup: primary caseLaw results first, headnotes fill gaps
       const seen = new Set<string>();
       const results: typeof caseLawResults = [];
-      for (const r of [...caseLawResults, ...headnoteResults]) {
+      for (const r of [...primaryCaseLaw, ...headnoteResults]) {
         const key = String(r.citation || "").toLowerCase().replace(/\s+/g, " ").trim();
         if (!key || seen.has(key)) continue;
         seen.add(key);
