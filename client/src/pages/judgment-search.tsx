@@ -759,7 +759,7 @@ export default function JudgmentSearchPage() {
                   <button
                     onClick={() => {
                       setJudgmentForView(item);
-                      setLocation("/judgment-view");
+                      window.open("/judgment-view", "_blank", "noopener");
                     }}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-[11px] font-bold text-primary hover:bg-primary/20"
                     data-testid={`button-open-judgment-${idx}`}
@@ -895,13 +895,15 @@ export default function JudgmentSearchPage() {
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={() => setLocation(`/judgment/${item.id}`)}
+                      <a
+                        href={`/judgment/${item.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="rounded-lg bg-primary/15 border border-primary/30 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20"
                         data-testid={`button-view-judgment-${item.id}`}
                       >
                         View Full Judgment →
-                      </button>
+                      </a>
                       {item.pdfUrl ? (
                         <a
                           href={item.pdfUrl}
@@ -957,7 +959,7 @@ export default function JudgmentSearchPage() {
                           uri: saved.uri || undefined,
                           source: saved.source || undefined,
                         });
-                        setLocation("/judgment-view");
+                        window.open("/judgment-view", "_blank", "noopener");
                       }}
                       className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:text-foreground"
                     >
