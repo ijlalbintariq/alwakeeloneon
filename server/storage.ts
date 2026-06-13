@@ -1586,6 +1586,12 @@ export class DatabaseStorage implements IStorage {
 
     const fetchLimit = Math.min(200, safeLimit * 4);
 
+    // For single common-word queries (like "murder"), reduce fetch limit to avoid
+    // expensive ILIKE scoring on thousands of GIN-matched rows that causes timeouts.
+    const effectiveFetchLimit = (queryTokens.length <= 1 && !hasYear && !hasReport && !hasPage)
+      ? Math.min(fetchLimit, safeLimit * 2)
+      : fetchLimit;
+
     // ── Tier 1: tsvector full-text search (GIN indexed) ─────────────────
     let rows: CaseLaw[] = [];
 
@@ -1615,8 +1621,8 @@ export class DatabaseStorage implements IStorage {
 
       const narrowBuilder = db.select().from(caseLaw).where(narrowWhereWithCourt);
       rows = sortMode === "latest"
-        ? await narrowBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(fetchLimit)
-        : await narrowBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(fetchLimit);
+        ? await narrowBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
+        : await narrowBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
 
       // If narrow returned too few, try broad (OR) tsvector
       if (rows.length < safeLimit && queryTokens.length > 1) {
@@ -1627,8 +1633,8 @@ export class DatabaseStorage implements IStorage {
 
         const broadBuilder = db.select().from(caseLaw).where(broadWhereWithCourt);
         rows = sortMode === "latest"
-          ? await broadBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(fetchLimit)
-          : await broadBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(fetchLimit);
+          ? await broadBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
+          : await broadBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
       }
 
       // ── Tier 2 FALLBACK: pg_trgm ILIKE if tsvector returned 0 ─────────
@@ -1647,8 +1653,8 @@ export class DatabaseStorage implements IStorage {
             : or(...ilikeClauses)!;
           const ilikeBuilder = db.select().from(caseLaw).where(ilikeWhere);
           rows = sortMode === "latest"
-            ? await ilikeBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(fetchLimit)
-            : await ilikeBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(fetchLimit);
+            ? await ilikeBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
+            : await ilikeBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
         }
       }
     } else {
@@ -1667,8 +1673,8 @@ export class DatabaseStorage implements IStorage {
         : or(...structuredClauses)!;
       const builder = db.select().from(caseLaw).where(structuredWhere);
       rows = sortMode === "latest"
-        ? await builder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(fetchLimit)
-        : await builder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(fetchLimit);
+        ? await builder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
+        : await builder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
     }
 
     // ── Source content search (append additional results) ───────────────

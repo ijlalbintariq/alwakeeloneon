@@ -15676,7 +15676,10 @@ The user has attached the following documents for your reference. Analyze them c
         return res.status(400).json({ message: "Query or citation fields are required" });
       }
 
-      const results = await searchCaseLawWithFullText({
+      // 15s timeout — prevents Neon cold-start or broad keyword queries from
+      // holding the connection pool for 30+ seconds and returning 500.
+      const SEARCH_TIMEOUT_MS = 15_000;
+      const searchPromise = searchCaseLawWithFullText({
         userId,
         query: safeQuery,
         limit: 20,
@@ -15687,6 +15690,10 @@ The user has attached the following documents for your reference. Analyze them c
         sort,
         parsedCitation,
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Search timed out")), SEARCH_TIMEOUT_MS),
+      );
+      const results = await Promise.race([searchPromise, timeoutPromise]);
       const verified = results.map((j) => ({
         citation: j.citation,
         court: j.court,
@@ -15701,8 +15708,15 @@ The user has attached the following documents for your reference. Analyze them c
       await storage.logUsage(userId, "search-judgments").catch(() => {});
       res.json(verified);
     } catch (err: any) {
-      console.error("Error searching judgments:", err?.message || err, err?.stack);
-      res.status(500).json({ message: "Failed to search judgments", error: err?.message || "Unknown error" });
+      const msg = err?.message || String(err);
+      console.error("Error searching judgments:", msg, err?.stack);
+      if (/timed?\s*out|timeout/i.test(msg)) {
+        return res.status(504).json({
+          message: "Search is taking longer than expected. Please try a more specific query or add filters (year, court, journal).",
+          retryable: true,
+        });
+      }
+      res.status(500).json({ message: "Failed to search judgments", error: msg });
     }
   });
 
