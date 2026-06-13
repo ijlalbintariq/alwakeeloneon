@@ -196,7 +196,6 @@ export default function JudgmentSearchPage() {
       // Fresh search (not load-more)
       setIsLoading(true);
       setSearchError(null);
-      setExpandedSummary(null);
     } else {
       setIsLoadingMore(true);
     }
