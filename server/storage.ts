@@ -2062,7 +2062,7 @@ export class DatabaseStorage implements IStorage {
 
     // ── Hybrid Search Strategy ──────────────────────────────────────────
     // Tier 1 (PRIMARY, <200ms): tsvector @@ tsquery using GIN index
-    //   → Uses idx_judgments_full_text_tsv (expression-based GIN on title||headnotes||full_text)
+    //   → Uses idx_judgments_title_headnotes_tsv (expression-based GIN on title||headnotes only)
     //   → Config: 'simple' (matches the index exactly — no config mismatch)
     // Tier 2 (FALLBACK, <1s): pg_trgm ILIKE only if tsvector returns 0
     //   → Uses idx_judgments_title_trgm, idx_judgments_headnotes_trgm
@@ -2260,7 +2260,11 @@ export class DatabaseStorage implements IStorage {
     const tsQueryNarrow = topCoreTokens.join(' & ');
     const tsQueryBroad = queryTokens.join(' | ');
 
-    const tsvExpr = sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, '') || ' ' || coalesce(${judgments.fullText}, ''))`;
+    // Search title + headnotes ONLY — NOT full_text.
+    // Full judgment text mentions hundreds of cited cases and legal terms in passing,
+    // causing irrelevant results (e.g. a property fraud case citing a narcotics bail case
+    // would match "bail in narcotics" even though the case has nothing to do with narcotics).
+    const tsvExpr = sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, ''))`;
 
     // Build a relevance scoring expression using ts_rank_cd for both narrow and broad queries
     // This ensures results are ranked by how well they match, not just by recency
@@ -4493,6 +4497,10 @@ export async function ensureSearchIndexes(): Promise<void> {
     {
       label: "idx_judgments_full_text_tsv",
       stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_full_text_tsv ON judgments USING gin (to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(headnotes,'') || ' ' || coalesce(full_text,'')))`
+    },
+    {
+      label: "idx_judgments_title_headnotes_tsv",
+      stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_title_headnotes_tsv ON judgments USING gin (to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(headnotes,'')))`
     },
     {
       label: "idx_case_law_full_text_tsv",
