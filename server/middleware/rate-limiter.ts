@@ -86,12 +86,27 @@ export function createRateLimiter(options: RateLimiterOptions) {
   };
 }
 
-// 1. Auth routes rate limiter: 15 attempts per 15 minutes
+// 1. Auth routes rate limiter: 60 per 15 minutes
+//    Session-check endpoints (/api/auth/user, /api/auth/google/status) fire on
+//    every page load, so they must be excluded — otherwise normal browsing
+//    triggers 429 after ~15 pages.
 export const authRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: 60,
   message: "Too many authentication attempts. Please try again in 15 minutes.",
   keyPrefix: "auth-limit",
+  skip: (req: Request) => {
+    const url = req.originalUrl;
+    // These are lightweight session checks, not login attempts
+    if (
+      url === "/api/auth/user" ||
+      url === "/api/auth/google/status" ||
+      url.startsWith("/api/auth/session")
+    ) {
+      return true;
+    }
+    return false;
+  },
 });
 
 // 2. AI chat/queries rate limiter: 30 attempts per 15 minutes
