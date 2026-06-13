@@ -15811,6 +15811,66 @@ The user has attached the following documents for your reference. Analyze them c
     return combined.slice(0, budget);
   }
 
+  // ── Fast full-text fetch (no AI, no usage limit) ──────────────────────
+  // Returns the raw judgment text from the DB so the frontend can show it instantly.
+  app.get("/api/judgment-text", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const citation = String(req.query.citation || "").trim();
+      if (!citation) return res.status(400).json({ message: "Citation is required" });
+
+      let fullText = "";
+      let source: string | null = null;
+
+      // 1. Direct lookup in judgments table
+      try {
+        const matchedJudgment = await db
+          .select({ fullText: judgments.fullText })
+          .from(judgments)
+          .where(eq(judgments.citationString, citation))
+          .limit(1)
+          .then((rows: any[]) => rows[0]);
+
+        if (matchedJudgment?.fullText) {
+          fullText = matchedJudgment.fullText;
+          source = "knowledge_vault";
+        }
+      } catch {}
+
+      // 2. Fallback: case_law source text
+      if (!fullText) {
+        try {
+          const parsedCitation = parseCaseLawCitationQuery(citation);
+          const candidates = await storage.searchCaseLaw(citation, 3, {
+            year: parsedCitation?.year,
+            report: parsedCitation?.report,
+            page: parsedCitation?.page,
+            parsedCitation,
+            sort: "relevance",
+            includeSourceContentSearch: false,
+          }).catch(() => [] as CaseLaw[]);
+
+          for (const row of candidates) {
+            if (caseCitationMatches(citation, row.citation)) {
+              const text = await loadCaseLawSourceText(row, userId, { includeMetadataFallback: false });
+              if (text) {
+                fullText = text;
+                source = "knowledge_vault";
+                break;
+              }
+            }
+          }
+        } catch {}
+      }
+
+      res.json({ fullText: fullText || null, source });
+    } catch (err) {
+      console.error("Error fetching judgment text:", err);
+      res.status(500).json({ message: "Failed to fetch judgment text" });
+    }
+  });
+
   app.post(api.ai.judgmentSummary.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
