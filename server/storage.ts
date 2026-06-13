@@ -1627,8 +1627,10 @@ export class DatabaseStorage implements IStorage {
         ? await narrowBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
         : await narrowBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
 
-      // If narrow returned too few, try broad (OR) tsvector
-      if (rows.length < safeLimit && queryTokens.length > 1) {
+      // Only fall back to broad (OR) when narrow (AND) returns ZERO results.
+      // Previously this triggered when rows < limit, which diluted precision —
+      // e.g. "bail in narcotics" finding 5 exact matches would flood with any "bail" case.
+      if (rows.length === 0 && queryTokens.length > 1) {
         const broadWhere = structuredClauses.length > 0
           ? or(sql`${tsvExpr} @@ to_tsquery('simple', ${tsQueryBroad})`, ...structuredClauses)!
           : sql`${tsvExpr} @@ to_tsquery('simple', ${tsQueryBroad})`;
