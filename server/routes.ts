@@ -113,7 +113,7 @@ const TOKEN_LIMITS = {
   "search-statutes": 2048,
   summarize: 3072,
   brief: 6144,
-  "judgment-summary": 2048,
+  "judgment-summary": 4096,
   draft: 16384,
   "contract-drafting": 4096,
 };
@@ -7013,7 +7013,7 @@ function scoreOutputQuality(feature: string, inputText: string, outputText: stri
   let score = 4; // base score
 
   const outLen = (outputText || "").length;
-  const isDraft = feature === "draft" || feature === "contract" || feature === "contract-drafting" || feature === "brief";
+  const isDraft = feature === "draft" || feature === "contract" || feature === "contract-drafting" || feature === "brief" || feature === "summarize";
   const isChat = feature === "chat" || feature === "chat-apex";
 
   // 1. Too short
