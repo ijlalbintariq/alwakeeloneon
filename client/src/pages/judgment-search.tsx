@@ -2,22 +2,15 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
   AlertCircle,
-  BookOpen,
   BookmarkPlus,
   CalendarDays,
-  ChevronDown,
-  ChevronUp,
   Eye,
   ExternalLink,
   FileText,
   Gavel,
   Loader2,
   Search,
-  ShieldAlert,
-  ShieldCheck,
-  Sparkles,
   Trash2,
-  X,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
@@ -35,12 +28,6 @@ interface CaseLawResult {
   source?: string;
 }
 
-interface JudgmentSummaryData {
-  summary: string;
-  fullText: string | null;
-  source: string | null;
-  verified: boolean;
-}
 
 interface SavedJudgment {
   id: number;
@@ -167,9 +154,6 @@ export default function JudgmentSearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isExternalLoading, setIsExternalLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState<Record<number, boolean>>({});
-  const [summaries, setSummaries] = useState<Record<number, JudgmentSummaryData>>({});
-  const [expandedSummary, setExpandedSummary] = useState<number | null>(null);
   const [showFullText, setShowFullText] = useState<Record<number, boolean>>({});
 
   const [year, setYear] = useState<number>(currentYear);
@@ -333,42 +317,7 @@ export default function JudgmentSearchPage() {
     });
   };
 
-  const handleGetSummary = async (item: CaseLawResult, idx: number) => {
-    if (summaries[idx]) {
-      setExpandedSummary(expandedSummary === idx ? null : idx);
-      return;
-    }
 
-    setSummaryLoading((prev) => ({ ...prev, [idx]: true }));
-    setExpandedSummary(idx);
-
-    try {
-      const res = await apiRequest("POST", "/api/ai/judgment-summary", {
-        citation: item.citation,
-        title: item.title,
-        court: item.court,
-        summary: item.summary,
-      });
-      const data = await res.json();
-      setSummaries((prev) => ({ ...prev, [idx]: data }));
-    } catch (e: any) {
-      const isLimit = e?.message?.includes("429");
-      setSummaries((prev) => ({
-        ...prev,
-        [idx]: {
-          summary: isLimit
-            ? "Monthly AI action limit reached. Please upgrade your plan for more AI analyses."
-            : "Failed to generate summary. Please try again.",
-          fullText: null,
-          source: null,
-          verified: false,
-        },
-      }));
-      if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
-    }
-
-    setSummaryLoading((prev) => ({ ...prev, [idx]: false }));
-  };
 
   const handleDeleteSaved = async (id: number) => {
     try {
@@ -779,61 +728,8 @@ export default function JudgmentSearchPage() {
                     </a>
                   ) : null}
 
-                  <button
-                    onClick={() => void handleGetSummary(item, idx)}
-                    disabled={summaryLoading[idx]}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/50 px-3 py-2 text-[11px] font-bold text-foreground hover:border-primary/40 hover:text-foreground"
-                    data-testid={`button-ai-summary-${idx}`}
-                  >
-                    {summaryLoading[idx] ? (
-                      <>
-                        <Loader2 size={13} className="animate-spin" /> Analyzing...
-                      </>
-                    ) : expandedSummary === idx && summaries[idx] ? (
-                      <>
-                        <ChevronUp size={13} /> Hide Summary
-                      </>
-                    ) : summaries[idx] ? (
-                      <>
-                        <ChevronDown size={13} /> Case Summary
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={13} /> Case Summary
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
-
-              {/* AI Case Summary panel */}
-              {expandedSummary === idx && (summaryLoading[idx] || summaries[idx]) ? (
-                <div className="border-t border-border p-5 md:p-6" data-testid={`judgment-summary-panel-${idx}`}>
-                  {summaryLoading[idx] ? (
-                    <div className="flex items-center gap-2 text-sm text-foreground">
-                      <Loader2 size={14} className="animate-spin text-primary" />
-                      Al Wakeelo is analyzing this case...
-                    </div>
-                  ) : summaries[idx] ? (
-                    <div className="space-y-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
-                          <Sparkles size={11} /> Case Summary
-                        </span>
-                        <button
-                          onClick={() => setExpandedSummary(null)}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                      <div className="prose prose-invert prose-sm max-w-none">
-                        <LegalMarkdown content={summaries[idx].summary} />
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
             </article>
           ))}
 
