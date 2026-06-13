@@ -31,13 +31,15 @@ interface JudgmentSummaryData {
 
 export function setJudgmentForView(j: JudgmentData) {
   try {
-    sessionStorage.setItem("judgmentViewData", JSON.stringify(j));
+    // Use localStorage (shared across tabs) so new-tab opens work.
+    // sessionStorage is per-tab and breaks with window.open + noopener.
+    localStorage.setItem("judgmentViewData", JSON.stringify(j));
   } catch {}
 }
 
 function getJudgmentFromStorage(): JudgmentData | null {
   try {
-    const data = sessionStorage.getItem("judgmentViewData");
+    const data = localStorage.getItem("judgmentViewData");
     return data ? JSON.parse(data) : null;
   } catch {
     return null;
