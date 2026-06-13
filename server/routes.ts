@@ -58,7 +58,7 @@ import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAudi
 import { scanUploadedBuffer } from "./file-scan";
 import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
-import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, clearSitemapCache } from "./sitemap";
+import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, handleSitemapStatutes, clearSitemapCache } from "./sitemap";
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
@@ -7305,8 +7305,7 @@ export async function registerRoutes(
   app.get("/sitemap.xml", handleSitemapIndex);
   app.get("/sitemap-static.xml", handleSitemapStatic);
   app.get("/sitemap-judgments-:n.xml", handleSitemapJudgments);
-  // /sitemap-statutes-{n}.xml handler intentionally not wired up — statute
-  // detail pages are still auth-gated. See server/sitemap.ts note.
+  app.get("/sitemap-statutes-:n.xml", handleSitemapStatutes);
 
   // IndexNow key verification — Bing/Yandex fetch /{key}.txt to verify ownership
   app.get("/:key.txt", (req, res, next) => {

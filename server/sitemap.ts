@@ -19,7 +19,7 @@
 import type { Request, Response } from "express";
 import { eq, asc } from "drizzle-orm";
 import { db } from "./db";
-import { judgments, statutes } from "@shared/schema";
+import { judgments, statuteDocuments } from "@shared/schema";
 
 const PAGE_SIZE = 10_000;
 const COUNT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -54,9 +54,9 @@ async function countActiveJudgments(): Promise<number> {
   });
 }
 
-async function countStatutes(): Promise<number> {
-  return cachedCount("statutes", async () => {
-    const [row] = await db.select({ count: sqlCountStar() }).from(statutes);
+async function countStatuteDocuments(): Promise<number> {
+  return cachedCount("statute_documents", async () => {
+    const [row] = await db.select({ count: sqlCountStar() }).from(statuteDocuments);
     return Number(row?.count || 0);
   });
 }
@@ -116,15 +116,16 @@ export async function handleSitemapIndex(req: Request, res: Response): Promise<v
     const judgmentTotal = await countActiveJudgments().catch(() => 0);
     const judgmentPages = Math.max(0, Math.ceil(judgmentTotal / PAGE_SIZE));
 
-    // Statutes intentionally omitted from the sitemap: the `statutes` table is
-    // a small lookup of section references (~14 rows), while the actual
-    // public statute page (/statute-view/:id) reads from `statute_documents`,
-    // which is currently auth-gated. When statute pages get a public preview
-    // similar to judgments, re-introduce a /sitemap-statutes-{n}.xml chunk.
+    const statuteTotal = await countStatuteDocuments().catch(() => 0);
+    const statutePages = Math.max(0, Math.ceil(statuteTotal / PAGE_SIZE));
+
     const entries: string[] = [];
     entries.push(sitemapIndexEntry(`${origin}/sitemap-static.xml`, today));
     for (let n = 1; n <= judgmentPages; n += 1) {
       entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-${n}.xml`, today));
+    }
+    for (let n = 1; n <= statutePages; n += 1) {
+      entries.push(sitemapIndexEntry(`${origin}/sitemap-statutes-${n}.xml`, today));
     }
 
     const body =
@@ -219,17 +220,17 @@ export async function handleSitemapStatutes(req: Request, res: Response): Promis
   try {
     const offset = (n - 1) * PAGE_SIZE;
     const rows = await db
-      .select({ id: statutes.id })
-      .from(statutes)
-      .orderBy(asc(statutes.id))
+      .select({ id: statuteDocuments.id, createdAt: statuteDocuments.createdAt })
+      .from(statuteDocuments)
+      .orderBy(asc(statuteDocuments.id))
       .limit(PAGE_SIZE)
       .offset(offset);
 
     if (rows.length === 0) return void res.status(404).type("text/plain").send("Sitemap page out of range");
 
     const origin = siteOrigin(req);
-    const blocks = rows.map((row: { id: number }) =>
-      urlBlock(`${origin}/statute-view/${row.id}`, null, "yearly", "0.6"),
+    const blocks = rows.map((row: { id: number; createdAt: Date | null }) =>
+      urlBlock(`${origin}/statute-view/${row.id}`, isoDate(row.createdAt), "yearly", "0.6"),
     );
     const body =
       `<?xml version="1.0" encoding="UTF-8"?>\n` +
