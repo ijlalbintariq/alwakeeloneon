@@ -262,9 +262,12 @@ export default function JudgmentSearchPage() {
     } catch (e: any) {
       console.error("[Judgment Search] AI search error:", e?.message || e);
       const isLimit = e?.message?.includes("429");
+      const isTimeout = e?.message?.includes("504") || e?.message?.includes("timed out") || e?.message?.includes("timeout");
       setSearchError(
         isLimit
           ? "Monthly AI action limit reached. Upgrade your plan for more searches."
+          : isTimeout
+          ? "Search took too long. Try a more specific query or add filters (year, court, journal)."
           : "AI research feed temporarily unavailable. Please try again.",
       );
       if (isLimit) queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
