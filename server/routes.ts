@@ -10254,10 +10254,17 @@ RAG POLICY (STRICT):
           }
         }
 
+        // Return only the fields the frontend needs — exclude DB-internal columns
+        // like statute_references, document_classification, source_doc_id, etc.
         return {
-          ...r,
-          judgmentId,
+          id: r.id,
+          citation: r.citation,
+          court: r.court,
+          title: r.title,
           summary: finalSummary,
+          keywords: r.keywords,
+          judgmentId,
+          uri: (r as any).uri || "",
         };
       });
       res.json(enriched);
