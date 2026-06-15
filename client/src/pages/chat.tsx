@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
-import { Scale, Send, Square, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2, History, ShieldCheck, AlertTriangle, CircleDot, Database } from "lucide-react";
+import { Scale, Send, Square, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2, History, ShieldCheck, AlertTriangle, CircleDot, Database, Lightbulb } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -222,6 +222,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   // Map<citation_text, judgment_id> — only citations verified to exist in DB
   const [verifiedJudgmentIds, setVerifiedJudgmentIds] = useState<Map<string, string>>(new Map());
   const [rightRailOpen, setRightRailOpen] = useState(true);
+  const [tipDismissed, setTipDismissed] = useState(() => localStorage.getItem("alwakeelo-tip-dismissed") === "1");
+  const dismissTip = useCallback(() => { setTipDismissed(true); localStorage.setItem("alwakeelo-tip-dismissed", "1"); }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -1950,12 +1952,39 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-7 scrollbar-hide bg-background flex flex-col items-center">
             <div className="w-full max-w-2xl">
             {messages.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
+              <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
                 <Scale size={44} className="text-primary/60" />
                 <p className="text-foreground italic text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
                   "Main hoon Al Wakeelo -- not just your lawyer, your strategy partner in justice."
                 </p>
                 <p className="text-[10px] text-foreground/70 uppercase tracking-widest font-black">Ask anything about Pakistan law</p>
+
+                {/* First-time user tip */}
+                {!tipDismissed && (
+                  <div className="relative max-w-lg w-full mt-4 rounded-2xl border border-amber-500/25 bg-amber-500/5 backdrop-blur-sm px-5 py-4 text-left animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <button
+                      onClick={dismissTip}
+                      className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-card/50"
+                      aria-label="Dismiss tip"
+                    >
+                      <X size={14} />
+                    </button>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+                        <Lightbulb size={16} className="text-amber-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground mb-1.5">Get Better Answers with Detailed Questions</p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          AlWakeelo works best when you clearly explain your legal issue. Instead of asking a short question like <span className="italic text-foreground/70">"Can I file a case?"</span>, try describing the situation in detail, including relevant facts, dates, documents, and legal concerns.
+                        </p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed mt-2">
+                          The more information you provide, the more accurate and helpful the analysis, case law, and legal guidance will be.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
