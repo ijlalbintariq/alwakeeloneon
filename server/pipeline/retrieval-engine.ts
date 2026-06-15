@@ -347,13 +347,19 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
   const expandedQuery = intent.expandedQuery || intent.normalized;
 
   // Path 1 (PRIMARY): Direct judgment table search — 223k verified, structured records.
-  // CRITICAL: Use intent.normalized (raw user query), NOT the expanded query.
-  // The judgment search page does the same — raw query → searchJudgmentsByKeywords.
-  // The expanded query adds synonym terms (e.g. "criminal", "procedure", "section")
-  // that pollute tsvector tokenization: wrong AND combos return 0, broad OR matches
-  // 200k+ rows and times out. The raw query produces precise, fast results.
+  // When a statute reference is detected (e.g. "354 ppc" → PPC § 354), construct a
+  // targeted search query. Without this, "ppc" matches every criminal case generically.
+  // The statute-aware query searches for "section 354" + "PPC" as co-occurring terms,
+  // which is far more precise than loose "354 & ppc" tokenization.
+  let judgmentSearchQuery = intent.normalized;
+  if (intent.statuteRef) {
+    const { abbr, sectionOrArticle } = intent.statuteRef;
+    // Build targeted query: "section 354 PPC" or "354 PPC" — keeps section+abbr together
+    judgmentSearchQuery = `section ${sectionOrArticle} ${abbr}`;
+  }
+
   const judgmentKeywordPromise = withTimeout(
-    storage.searchJudgmentsByKeywords(intent.normalized, limit * 5).catch(() => [] as CaseLaw[]),
+    storage.searchJudgmentsByKeywords(judgmentSearchQuery, limit * 5).catch(() => [] as CaseLaw[]),
     CASELAW_TIMEOUT_MS,
     [] as CaseLaw[],
   );
