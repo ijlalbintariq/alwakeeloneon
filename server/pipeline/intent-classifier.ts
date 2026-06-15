@@ -119,7 +119,7 @@ export const STATUTE_ABBREVIATION_MAP: Record<string, string> = {
 export function detectStatuteRef(query: string): StatuteRef | null {
   const q = query.toLowerCase().replace(/[^a-z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
 
-  // Pattern: ABBR <section> — e.g. "ppc 392", "crpc 497", "peca 20"
+  // Pattern 1: ABBR <section> — e.g. "ppc 392", "crpc 497", "peca 20"
   const abbrFirst = /\b(ppc|crpc|cpc|qso|qe|mflo|gwa|fca|ata|nao|poca|cnsa|peca|fia|tpa|ra|ito|sta|ira|ca|aa|mvoa|pa)\s+(\d[\d\-a-z]*)\b/i.exec(q);
   if (abbrFirst) {
     const abbr = abbrFirst[1].toLowerCase();
@@ -127,7 +127,16 @@ export function detectStatuteRef(query: string): StatuteRef | null {
     if (fullName) return { abbr: abbrFirst[1].toUpperCase(), fullName, sectionOrArticle: abbrFirst[2] };
   }
 
-  // Pattern: section/article <num> ABBR — e.g. "section 302 ppc", "article 25 constitution"
+  // Pattern 2: <section> ABBR — e.g. "354 ppc", "497 crpc", "302 ppc", "489-f ppc"
+  // Very common in Pakistani legal queries where users type the section number first.
+  const numFirst = /\b(\d[\d\-a-z]*)\s+(ppc|crpc|cpc|qso|qe|mflo|gwa|fca|ata|nao|poca|cnsa|peca|fia|tpa|ra|ito|sta|ira|ca|aa|mvoa|pa)\b/i.exec(q);
+  if (numFirst) {
+    const abbr = numFirst[2].toLowerCase();
+    const fullName = STATUTE_ABBREVIATION_MAP[abbr];
+    if (fullName) return { abbr: numFirst[2].toUpperCase(), fullName, sectionOrArticle: numFirst[1] };
+  }
+
+  // Pattern 3: section/article <num> ABBR — e.g. "section 302 ppc", "article 25 constitution"
   const sectionFirst = /\b(?:section|s\.|art(?:icle)?\.?)\s+(\d[\d\-a-z]*)\s+(?:of\s+)?([a-z\s]+)/i.exec(q);
   if (sectionFirst) {
     const sectionNum = sectionFirst[1];
@@ -143,7 +152,7 @@ export function detectStatuteRef(query: string): StatuteRef | null {
     if (fullName) return { abbr: tail, fullName, sectionOrArticle: sectionNum };
   }
 
-  // Pattern: "Article 25 Constitution" (article first)
+  // Pattern 4: "Article 25 Constitution" (article first)
   const articleFirst = /\barticle\s+(\d[\d\-a-z]*)\s+(?:of\s+)?(?:the\s+)?([a-z\s]+)/i.exec(q);
   if (articleFirst) {
     const sectionNum = articleFirst[1];
