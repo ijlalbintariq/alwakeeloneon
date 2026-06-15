@@ -334,8 +334,15 @@ export async function retrieveLegalCaseLaw(opts: LegalRetrievalOptions): Promise
     merged.push(row);
   }
 
-  // ---- D. Filter: must have valid citation ----
-  const withCitation = merged.filter((row) => hasCitationTrust(row));
+  // ---- D. Filter: must have valid citation, and filter out "Statute Reference" junk entries ----
+  const withCitation = merged.filter((row) => {
+    if (!hasCitationTrust(row)) return false;
+    const court = String(row.court || "").toLowerCase().trim();
+    const title = String(row.title || "").toLowerCase().trim();
+    if (court === "statute reference") return false;
+    if (title.startsWith("statute reference")) return false;
+    return true;
+  });
 
   // ---- E. Semantic topic validation ----
   // For citation lookups, skip topic filter

@@ -3926,6 +3926,10 @@ async function directCaseLawFallbackSearch(
       for (const row of results) {
         const citation = String(row.citation || "").trim();
         if (!citation || seenCitations.has(citation.toLowerCase())) continue;
+        const court = String(row.court || "").toLowerCase().trim();
+        const title = String(row.title || "").toLowerCase().trim();
+        if (court === "statute reference") continue;
+        if (title.startsWith("statute reference")) continue;
         seenCitations.add(citation.toLowerCase());
         allHits.push({
           citation,
@@ -10292,7 +10296,15 @@ RAG POLICY (STRICT):
 
       // Filter to primary citations only — users want the actual judgment,
       // not cases that are merely cited within other judgments.
-      const primaryCaseLaw = filterToPrimaryCaseLawRows(caseLawResults);
+      const primaryCaseLaw = filterToPrimaryCaseLawRows(filterToTrustedCaseLawRows(caseLawResults))
+        .filter((r) => {
+          // Remove "Statute Reference" junk entries — auto-extracted entries with no real judgment content
+          const court = String(r.court || "").toLowerCase().trim();
+          const title = String(r.title || "").toLowerCase().trim();
+          if (court === "statute reference") return false;
+          if (title.startsWith("statute reference")) return false;
+          return true;
+        });
 
       // Merge + dedup: primary caseLaw results first, headnotes fill gaps, then vector results
       const seen = new Set<string>();

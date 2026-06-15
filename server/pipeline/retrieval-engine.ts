@@ -470,8 +470,15 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
     merged.push(row);
   }
 
-  // Discard records with no valid citation
-  const withCitation = merged.filter(hasTrustedCitation);
+  // Discard records with no valid citation, and filter out "Statute Reference" junk fallback entries
+  const withCitation = merged.filter((row) => {
+    if (!hasTrustedCitation(row)) return false;
+    const court = String(row.court || "").toLowerCase().trim();
+    const title = String(row.title || "").toLowerCase().trim();
+    if (court === "statute reference") return false;
+    if (title.startsWith("statute reference")) return false;
+    return true;
+  });
   // Diagnostic: log how many were dropped by hasTrustedCitation
   if (merged.length > 0 && withCitation.length < merged.length) {
     console.log(`[Retrieval:CitationFilter] merged=${merged.length} trusted=${withCitation.length} dropped=${merged.length - withCitation.length}`);
