@@ -10231,7 +10231,43 @@ RAG POLICY (STRICT):
       // searchCaseLawWithFullText() was loading source texts, doing RAG vector
       // search, and running a second top-up query — adding 3-8 seconds latency
       // for no user-visible benefit on this page.
-      const [caseLawResults, headnoteResults] = await Promise.all([
+      //
+      // Path 3 (SEMANTIC): RAG vector search — finds judgments by meaning, not just keywords.
+      // Short timeout (5s): non-blocking, results merged if ready.
+      const ragVectorPromise = query
+        ? retrieveForQuery({ userId, query, topK: Math.min(limit, 15) })
+            .then((retrieval) => {
+              const vectorCaseLaw: CaseLaw[] = [];
+              for (const match of retrieval.matches) {
+                const sType = String((match.metadata || {}).sourceType || "");
+                if (sType !== "judgment") continue;
+                const citStr = String((match.metadata || {}).citationString || "");
+                if (!citStr) continue;
+                vectorCaseLaw.push({
+                  id: 0,
+                  title: String((match.metadata || {}).title || match.title || ""),
+                  citation: citStr,
+                  summary: match.chunkText?.slice(0, 600) || "",
+                  source: null,
+                  sourceType: "judgment",
+                  sourceDocumentId: null,
+                  citationYear: null,
+                  citationReport: null,
+                  citationPage: null,
+                  court: String((match.metadata || {}).court || ""),
+                  judges: null,
+                  keywords: [],
+                  fullText: null,
+                  createdAt: null,
+                } as any);
+              }
+              return vectorCaseLaw;
+            })
+            .catch(() => [] as CaseLaw[])
+        : Promise.resolve([] as CaseLaw[]);
+
+      const RAG_SEARCH_TIMEOUT = 5000;
+      const [caseLawResults, headnoteResults, vectorResults] = await Promise.all([
         storage.searchCaseLaw(query, limit, {
           year,
           report,
@@ -10243,16 +10279,25 @@ RAG POLICY (STRICT):
         }),
         // Also search the judgments table via headnotes for broader recall
         query ? storage.searchJudgmentsByKeywords(query, limit).catch(() => []) : Promise.resolve([]),
+        // Semantic vector search — finds by meaning, not just keywords
+        Promise.race([
+          ragVectorPromise,
+          new Promise<CaseLaw[]>((resolve) => setTimeout(() => resolve([]), RAG_SEARCH_TIMEOUT)),
+        ]),
       ]);
+
+      if (vectorResults.length > 0) {
+        console.log(`[JudgmentSearch] Vector results: ${vectorResults.length} (keyword: ${caseLawResults.length}+${headnoteResults.length})`);
+      }
 
       // Filter to primary citations only — users want the actual judgment,
       // not cases that are merely cited within other judgments.
       const primaryCaseLaw = filterToPrimaryCaseLawRows(caseLawResults);
 
-      // Merge + dedup: primary caseLaw results first, headnotes fill gaps
+      // Merge + dedup: primary caseLaw results first, headnotes fill gaps, then vector results
       const seen = new Set<string>();
       const results: typeof caseLawResults = [];
-      for (const r of [...primaryCaseLaw, ...headnoteResults]) {
+      for (const r of [...primaryCaseLaw, ...headnoteResults, ...vectorResults]) {
         const key = String(r.citation || "").toLowerCase().replace(/\s+/g, " ").trim();
         if (!key || seen.has(key)) continue;
         seen.add(key);
