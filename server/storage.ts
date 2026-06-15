@@ -2919,9 +2919,10 @@ export class DatabaseStorage implements IStorage {
     responseTimeMs?: number;
   }): Promise<void> {
     try {
+      const pgFlags = `{${entry.qualityFlags.map(f => `"${f.replace(/"/g, '\\"')}"`).join(',')}}`;
       await db.execute(sql`
         INSERT INTO ai_output_log (user_id, feature, model, input_snippet, output_snippet, output_length, quality_score, quality_flags, user_query, response_time_ms)
-        VALUES (${entry.userId}, ${entry.feature}, ${entry.model}, ${entry.inputSnippet}, ${entry.outputSnippet}, ${entry.outputLength}, ${entry.qualityScore}, ${JSON.stringify(entry.qualityFlags)}, ${entry.userQuery || ''}, ${entry.responseTimeMs || 0})
+        VALUES (${entry.userId}, ${entry.feature}, ${entry.model}, ${entry.inputSnippet}, ${entry.outputSnippet}, ${entry.outputLength}, ${entry.qualityScore}, ${pgFlags}::text[], ${entry.userQuery || ''}, ${entry.responseTimeMs || 0})
       `);
     } catch (err) {
       console.error("[QualityLog] Error logging output quality:", err);
