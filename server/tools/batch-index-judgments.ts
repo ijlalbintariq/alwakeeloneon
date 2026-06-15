@@ -1,3 +1,6 @@
+// MUST be first import — populates process.env before db.ts reads DATABASE_URL
+import "./load-env";
+
 import { db } from "../db";
 import { judgments } from "@shared/schema";
 import { asc, sql } from "drizzle-orm";
