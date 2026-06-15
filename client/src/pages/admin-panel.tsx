@@ -1661,6 +1661,8 @@ type QualityLogItem = {
   createdAt: string;
   userEmail: string | null;
   userFirstName: string | null;
+  userQuery: string | null;
+  responseTimeMs: number | null;
 };
 
 const SCORE_COLORS: Record<number, string> = {
@@ -1961,9 +1963,14 @@ function OutputQualitySection() {
                           {log.qualityScore}/5
                         </Badge>
                         <span className="text-[10px] font-bold text-foreground">{FEATURE_LABELS[log.feature] || log.feature}</span>
-                        <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{log.inputSnippet.slice(0, 80)}</span>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[300px]">{(log.userQuery || log.inputSnippet || "").slice(0, 100)}</span>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
+                        {log.responseTimeMs != null && log.responseTimeMs > 0 && (
+                          <Badge className={`text-[8px] ${log.responseTimeMs > 10000 ? 'bg-red-500/20 text-red-400 border-red-500/30' : log.responseTimeMs > 5000 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>
+                            ⚡ {log.responseTimeMs >= 1000 ? `${(log.responseTimeMs / 1000).toFixed(1)}s` : `${log.responseTimeMs}ms`}
+                          </Badge>
+                        )}
                         {(log.qualityFlags || []).slice(0, 3).map((f) => {
                           const info = FLAG_LABELS[f] || { label: f, color: "text-muted-foreground" };
                           return <span key={f} className={`text-[8px] font-bold ${info.color}`}>{info.label}</span>;
@@ -1991,6 +1998,11 @@ function OutputQualitySection() {
                         <Badge className="bg-card border-border text-[8px] text-muted-foreground">
                           📝 {(log.outputLength || 0).toLocaleString()} chars · ~{Math.round((log.outputLength || 0) / 5).toLocaleString()} words
                         </Badge>
+                        {log.responseTimeMs != null && log.responseTimeMs > 0 && (
+                          <Badge className={`text-[8px] ${log.responseTimeMs > 10000 ? 'bg-red-500/20 text-red-400 border-red-500/30' : log.responseTimeMs > 5000 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>
+                            ⚡ Response: {log.responseTimeMs >= 1000 ? `${(log.responseTimeMs / 1000).toFixed(1)}s` : `${log.responseTimeMs}ms`}
+                          </Badge>
+                        )}
                         <Badge className="bg-card border-border text-[8px] text-muted-foreground">
                           👤 {log.userFirstName || ""} {log.userEmail ? `(${log.userEmail})` : "Unknown"}
                         </Badge>
@@ -2002,8 +2014,16 @@ function OutputQualitySection() {
                         </Badge>
                       </div>
 
+                      {/* User Query (prominent) */}
+                      {log.userQuery && log.userQuery.length > 0 && (
+                        <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-2">
+                          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[8px] mb-1.5">💬 USER QUERY</Badge>
+                          <p className="text-[11px] text-foreground whitespace-pre-wrap break-words">{log.userQuery}</p>
+                        </div>
+                      )}
+
                       <div className="rounded-lg bg-primary/10 border border-primary/20 px-3 py-2">
-                        <Badge className="bg-primary/20 text-primary border-primary/30 text-[8px] mb-1.5">USER INPUT</Badge>
+                        <Badge className="bg-primary/20 text-primary border-primary/30 text-[8px] mb-1.5">USER INPUT (System Context)</Badge>
                         <p className="text-[11px] text-foreground whitespace-pre-wrap break-words">{log.inputSnippet}</p>
                       </div>
                       <div className="rounded-lg bg-muted border border-border px-3 py-2">
@@ -2012,6 +2032,9 @@ function OutputQualitySection() {
                           <span className="text-[9px] text-muted-foreground">{(log.outputLength || 0).toLocaleString()} chars</span>
                           <span className="text-[9px] text-muted-foreground">·</span>
                           <span className="text-[9px] text-muted-foreground">~{Math.round((log.outputLength || 0) / 4)} tokens (est.)</span>
+                          {log.outputSnippet && log.outputSnippet.length >= 2900 && (
+                            <span className="text-[8px] text-yellow-400 font-bold">TRUNCATED</span>
+                          )}
                         </div>
                         <p className="text-[11px] text-foreground whitespace-pre-wrap break-words leading-relaxed">
                           {log.outputSnippet}

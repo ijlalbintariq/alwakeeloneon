@@ -2915,9 +2915,14 @@ export class DatabaseStorage implements IStorage {
     outputLength: number;
     qualityScore: number;
     qualityFlags: string[];
+    userQuery?: string;
+    responseTimeMs?: number;
   }): Promise<void> {
     try {
-      await db.insert(aiOutputLog).values(entry as any);
+      await db.execute(sql`
+        INSERT INTO ai_output_log (user_id, feature, model, input_snippet, output_snippet, output_length, quality_score, quality_flags, user_query, response_time_ms)
+        VALUES (${entry.userId}, ${entry.feature}, ${entry.model}, ${entry.inputSnippet}, ${entry.outputSnippet}, ${entry.outputLength}, ${entry.qualityScore}, ${JSON.stringify(entry.qualityFlags)}, ${entry.userQuery || ''}, ${entry.responseTimeMs || 0})
+      `);
     } catch (err) {
       console.error("[QualityLog] Error logging output quality:", err);
     }
@@ -2955,6 +2960,8 @@ export class DatabaseStorage implements IStorage {
         qualityScore: aiOutputLog.qualityScore,
         qualityFlags: aiOutputLog.qualityFlags,
         createdAt: aiOutputLog.createdAt,
+        userQuery: sql<string>`ai_output_log.user_query`,
+        responseTimeMs: sql<number>`ai_output_log.response_time_ms`,
         userEmail: users.email,
         userFirstName: users.firstName,
       })
@@ -4752,6 +4759,9 @@ export async function ensureSearchIndexes(): Promise<void> {
     { label: "idx_payment_records_tracker", stmt: sql`CREATE INDEX IF NOT EXISTS idx_payment_records_tracker ON payment_records (safepay_tracker)` },
     { label: "idx_payment_records_user_id", stmt: sql`CREATE INDEX IF NOT EXISTS idx_payment_records_user_id ON payment_records (user_id)` },
     { label: "idx_payment_records_status", stmt: sql`CREATE INDEX IF NOT EXISTS idx_payment_records_status ON payment_records (status)` },
+    // ── AI Output Quality enhancements ─────────────────────────────────
+    { label: "alter_ai_output_log_user_query", stmt: sql`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS user_query text DEFAULT ''` },
+    { label: "alter_ai_output_log_response_time_ms", stmt: sql`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS response_time_ms integer DEFAULT 0` },
   ];
 
   for (const { label, stmt } of indexStatements) {
