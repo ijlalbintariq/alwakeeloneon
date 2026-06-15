@@ -2621,6 +2621,14 @@ export class DatabaseStorage implements IStorage {
     triggerGoogleIndexing(created.id, "URL_UPDATED").catch((err) => {
       console.warn("[Google Indexing] Background notification failed:", err?.message || err);
     });
+    // Auto-index into RAG vector store for semantic search (fire-and-forget)
+    import("./rag/rag-service").then(({ indexJudgmentDocument }) => {
+      indexJudgmentDocument(created.id).then((result) => {
+        console.log(`[RAG] Auto-indexed judgment ${created.citationString} (${result.chunks} chunks)`);
+      }).catch((err) => {
+        console.warn(`[RAG] Auto-index failed for judgment ${created.id}:`, err?.message || err);
+      });
+    }).catch(() => { /* rag-service not available yet */ });
     return created;
   }
 

@@ -366,43 +366,84 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
     includeSourceContentSearch: false,
   }).catch(() => [] as CaseLaw[]);
 
-  // Path 3 (TERTIARY): RAG vector search — admin-uploaded case law documents
-  // Short timeout (3s): RAG calls OpenAI embedding + cosine similarity which can take 5-15s.
-  // If it finishes in 3s, results are merged. If not, pipeline proceeds with Paths 1+2 only.
-  // This prevents RAG from dragging the entire pipeline into the 20s timeout zone.
-  const RAG_TIMEOUT_MS = 3000;
+  // Path 3 (HYBRID PARTNER): RAG vector search — semantic search across admin case-law
+  // AND the 600k+ indexed judgments table. RAG is the primary semantic path; give it
+  // enough time (8s) to return meaningful results while still staying under the 20s budget.
+  const RAG_TIMEOUT_MS = 8000;
   const ragPromise = userId
     ? retrieveForQuery({ userId, query: expandedQuery, topK: limit * 4 })
         .then(async (retrieval) => {
+          // ── Separate RAG matches into admin-case-law vs judgment groups ──
           const adminDocIds: number[] = [];
           const seenAdmin = new Set<number>();
+          const judgmentCaseLaw: CaseLaw[] = [];
+          const seenJudgmentIds = new Set<string>();
 
           for (const match of retrieval.matches) {
             const sType = String((match.metadata || {}).sourceType || "").toLowerCase();
-            if (sType !== "admin-case-law") continue;
-            const docId = Number(match.sourceDocumentId);
-            if (!Number.isInteger(docId) || docId <= 0 || seenAdmin.has(docId)) continue;
-            seenAdmin.add(docId);
-            adminDocIds.push(docId);
-            if (adminDocIds.length >= limit * 2) break;
+
+            if (sType === "admin-case-law") {
+              const docId = Number(match.sourceDocumentId);
+              if (!Number.isInteger(docId) || docId <= 0 || seenAdmin.has(docId)) continue;
+              seenAdmin.add(docId);
+              adminDocIds.push(docId);
+              if (adminDocIds.length >= limit * 2) continue; // keep iterating for judgments
+            } else if (sType === "judgment") {
+              const judgmentId = String((match.metadata || {}).judgmentId || "");
+              if (!judgmentId || seenJudgmentIds.has(judgmentId)) continue;
+              seenJudgmentIds.add(judgmentId);
+
+              // Derive a stable numeric id from UUID for dedup compatibility
+              const numericId = Math.abs(parseInt(judgmentId.replace(/-/g, "").slice(0, 8), 16)) || 0;
+              const citationStr = String((match.metadata || {}).citationString || "");
+              const titleStr = String((match.metadata || {}).title || match.title || "");
+              const courtStr = String((match.metadata || {}).court || "");
+
+              // Extract year from citation string (e.g. "2005 PCRLJ 1008" → 2005)
+              const yearMatch = citationStr.match(/\b(19|20)\d{2}\b/);
+              const citYear = yearMatch ? parseInt(yearMatch[0], 10) : null;
+
+              judgmentCaseLaw.push({
+                id: numericId,
+                citation: citationStr,
+                citationYear: citYear,
+                citationReport: null,
+                citationPage: null,
+                citationRole: "primary" as const,
+                court: courtStr,
+                title: titleStr,
+                summary: match.chunkText?.slice(0, 600) || "",
+                keywords: [] as string[],
+                sourceDocId: null,
+                sourceType: "judgment",
+                sourceFilename: null,
+                documentClassification: null,
+                fallbackExtraction: false,
+                statuteReferences: [] as string[],
+              } as unknown as CaseLaw);
+            }
           }
 
+          // Fetch admin-case-law rows from DB (existing flow)
           const adminCaseLaw = adminDocIds.length > 0
             ? await storage.getCaseLawBySourceDocuments(adminDocIds, "admin").catch(() => [] as CaseLaw[])
             : [] as CaseLaw[];
 
-          return adminCaseLaw;
+          return { adminCaseLaw, judgmentCaseLaw };
         })
-        .catch(() => [] as CaseLaw[])
-    : Promise.resolve([] as CaseLaw[]);
+        .catch(() => ({ adminCaseLaw: [] as CaseLaw[], judgmentCaseLaw: [] as CaseLaw[] }))
+    : Promise.resolve({ adminCaseLaw: [] as CaseLaw[], judgmentCaseLaw: [] as CaseLaw[] });
 
-  const [judgmentRaw, keywordRaw, ragRaw] = await Promise.all([
+  const [judgmentRaw, keywordRaw, ragResult] = await Promise.all([
     judgmentKeywordPromise,
     withTimeout(keywordPromise, CASELAW_TIMEOUT_MS, [] as CaseLaw[]),
-    withTimeout(ragPromise, RAG_TIMEOUT_MS, [] as CaseLaw[]),
+    withTimeout(ragPromise, RAG_TIMEOUT_MS, { adminCaseLaw: [] as CaseLaw[], judgmentCaseLaw: [] as CaseLaw[] }),
   ]);
+  const ragAdminRaw = ragResult.adminCaseLaw;
+  const ragJudgmentRaw = ragResult.judgmentCaseLaw;
+  const ragRaw = [...ragAdminRaw, ...ragJudgmentRaw];
 
-  console.log(`[Retrieval:Paths] judgment=${judgmentRaw.length} caseLaw=${keywordRaw.length} rag=${ragRaw.length}`);
+  console.log(`[Retrieval:Paths] judgment=${judgmentRaw.length} caseLaw=${keywordRaw.length} ragAdmin=${ragAdminRaw.length} ragJudgment=${ragJudgmentRaw.length}`);
 
   // Tag DB-sourced rows so hasTrustedCitation doesn't discard them.
   // These rows came from the structured case_law table and are real records,
