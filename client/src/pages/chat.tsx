@@ -400,10 +400,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       const rawTitle = userMsg 
         ? userMsg.content.replace(/\[Attached:.*?\]/g, "").trim()
         : msg.content;
-      const truncatedTitle = rawTitle.substring(0, 80).trim();
 
       await apiRequest("POST", "/api/bookmarks", {
-        title: truncatedTitle || "Untitled Response",
+        title: rawTitle.trim() || "Untitled Response",
         content: msg.content,
         type: type === "al-wakeelo" ? "al-wakeelo" : type === "contract-drafting" ? "contract" : "draft",
         category: title || type,
