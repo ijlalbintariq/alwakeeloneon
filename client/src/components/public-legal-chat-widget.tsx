@@ -310,7 +310,7 @@ export function PublicLegalChatWidget() {
                     <div
                       className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center ${
                         msg.role === "assistant"
-                          ? "bg-primary text-foreground"
+                          ? "bg-primary text-primary-foreground"
                           : "bg-card border border-primary/30 text-primary"
                       }`}
                     >
@@ -483,7 +483,7 @@ export function PublicLegalChatWidget() {
                   <Button
                     type="submit"
                     disabled={isSubmittingLead || !leadForm.consentToContact}
-                    className="flex-1 h-9 bg-primary text-foreground hover:bg-primary text-xs font-black"
+                    className="flex-1 h-9 bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-black"
                   >
                     {isSubmittingLead ? <Loader2 size={14} className="animate-spin mr-1" /> : null}
                     Submit Case

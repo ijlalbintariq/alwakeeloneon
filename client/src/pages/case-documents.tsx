@@ -396,7 +396,7 @@ export default function CaseDocumentsPage() {
                     <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2">
                       <button
                         onClick={() => openPreview(doc)}
-                        className="flex-1 py-2 rounded-lg bg-[hsl(var(--preview-surface)/0.65)] hover:bg-primary hover:text-foreground text-sm font-bold transition-all"
+                        className="flex-1 py-2 rounded-lg bg-[hsl(var(--preview-surface)/0.65)] hover:bg-primary hover:text-primary-foreground text-sm font-bold transition-all"
                         data-testid={`button-view-doc-${doc.id}`}
                       >
                         View

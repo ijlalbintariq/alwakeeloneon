@@ -19,7 +19,7 @@ export function ChatDock() {
       <button
         onClick={() => setOpen(v => !v)}
         aria-label="Toggle Chat"
-        className="fixed bottom-6 right-6 z-40 w-12 h-12 rounded-2xl bg-primary text-foreground shadow-xl flex items-center justify-center hover:bg-primary transition-colors"
+        className="fixed bottom-6 right-6 z-40 w-12 h-12 rounded-2xl bg-primary text-primary-foreground shadow-xl flex items-center justify-center hover:bg-primary/90 transition-colors"
         data-testid="button-chat-dock-toggle"
       >
         <MessageSquare size={18} />
@@ -41,7 +41,7 @@ export function ChatDock() {
             )}
             {messages.map(m => (
               <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs ${m.role === "user" ? "bg-primary text-foreground" : "bg-background border border-border text-foreground"}`}>
+                <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-background border border-border text-foreground"}`}>
                   {m.role === "assistant" && (m.modeName || m.modelName) && (
                     <div className="mb-1.5 pb-1 border-b border-border/40">
                       {m.modeName && (
@@ -94,7 +94,7 @@ export function ChatDock() {
               <button
                 onClick={() => send()}
                 disabled={isLoading}
-                className="px-3 bg-primary text-foreground rounded-xl hover:bg-primary shadow-xl transition-all active:scale-95 disabled:opacity-50"
+                className="px-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 shadow-xl transition-all active:scale-95 disabled:opacity-50"
                 data-testid="button-chat-dock-send"
               >
                 <Send size={16} />

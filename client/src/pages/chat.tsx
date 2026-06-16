@@ -395,8 +395,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
   const bookmarkMutation = useMutation({
     mutationFn: async (msg: ChatMessage) => {
+      const idx = messages.findIndex(m => m.id === msg.id);
+      const userMsg = idx > 0 ? messages.slice(0, idx).reverse().find(m => m.role === "user") : null;
+      const rawTitle = userMsg 
+        ? userMsg.content.replace(/\[Attached:.*?\]/g, "").trim()
+        : msg.content;
+      const truncatedTitle = rawTitle.substring(0, 80).trim();
+
       await apiRequest("POST", "/api/bookmarks", {
-        title: msg.content.substring(0, 50),
+        title: truncatedTitle || "Untitled Response",
         content: msg.content,
         type: type === "al-wakeelo" ? "al-wakeelo" : type === "contract-drafting" ? "contract" : "draft",
         category: title || type,

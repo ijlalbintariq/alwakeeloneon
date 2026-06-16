@@ -262,7 +262,7 @@ export default function UserPanelPage() {
               <label className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground">Email</label>
               <Input value={profile?.email || ""} readOnly className="bg-background border-[hsl(var(--preview-border))] rounded-lg text-xs h-8 text-muted-foreground cursor-not-allowed" data-testid="input-email-readonly" />
             </div>
-            <Button onClick={() => updateProfileMutation.mutate()} disabled={updateProfileMutation.isPending} className="w-full h-8 bg-primary text-foreground rounded-lg font-black text-[9px] uppercase tracking-widest" data-testid="button-save-profile">
+            <Button onClick={() => updateProfileMutation.mutate()} disabled={updateProfileMutation.isPending} className="w-full h-8 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-black text-[9px] uppercase tracking-widest" data-testid="button-save-profile">
               {updateProfileMutation.isPending ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />}
               <span>Save</span>
             </Button>

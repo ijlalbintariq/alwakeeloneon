@@ -336,7 +336,7 @@ export default function BookmarksPage() {
                         <div className="mt-4 flex items-center gap-3 border-t border-border/50 pt-4">
                           <button
                             onClick={() => openPreview(bookmark)}
-                            className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-foreground transition-colors hover:bg-primary"
+                            className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
                             data-testid={`button-view-bookmark-${bookmark.id}`}
                           >
                             <span className="inline-flex items-center justify-center gap-2">
@@ -375,7 +375,7 @@ export default function BookmarksPage() {
                         onClick={() => setPage(n)}
                         className={`rounded-lg px-4 py-2 text-sm ${
                           page === n
-                            ? "bg-primary font-bold text-foreground"
+                            ? "bg-primary font-bold text-primary-foreground hover:bg-primary/90"
                             : "border border-border text-foreground hover:bg-card"
                         }`}
                         data-testid={`button-bookmarks-page-${n}`}
