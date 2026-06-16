@@ -487,7 +487,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       const titleSource = String(userMessage.content || "")
         .replace(/\s*\[Attached:[^\]]+\]\s*/gi, " ")
         .trim();
-      const title = (titleSource || "Al Wakeelo Consultation").slice(0, 80);
+      const title = (titleSource || "Al Wakeelo Consultation").slice(0, 240);
       const res = await apiRequest("POST", "/api/threads/upsert-turn", {
         threadId: currentThreadId || undefined,
         title,
@@ -953,7 +953,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         const firstUserMsg = messages.find(m => m.role === "user");
         if (!firstUserMsg) throw new Error("No user message found");
         const threadRes = await apiRequest("POST", "/api/threads/save-for-share", {
-          title: firstUserMsg.content.substring(0, 80) || "Al Wakeelo Conversation",
+          title: firstUserMsg.content || "Al Wakeelo Conversation",
           messages: messages.map(m => ({ role: m.role, content: m.content })),
         });
         const thread = await threadRes.json();

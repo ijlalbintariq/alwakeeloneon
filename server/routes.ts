@@ -7729,7 +7729,7 @@ export async function registerRoutes(
 
       const thread = await storage.createThread({
         userId,
-        title: title || firstMessage.slice(0, 50) + (firstMessage.length > 50 ? "..." : ""),
+        title: title || (firstMessage.length > 240 ? firstMessage.slice(0, 237) + "..." : firstMessage),
       });
 
       await storage.createMessage({
@@ -7803,7 +7803,7 @@ export async function registerRoutes(
       }
 
       if (!thread) {
-        const fallbackTitle = payload.userMessage.slice(0, 80) || "Al Wakeelo Consultation";
+        const fallbackTitle = payload.userMessage.slice(0, 240) || "Al Wakeelo Consultation";
         thread = await storage.createThread({
           userId,
           title: payload.title || fallbackTitle,
@@ -7865,7 +7865,7 @@ export async function registerRoutes(
       }
       const thread = await storage.createThread({
         userId,
-        title: title || msgs[0]?.content?.slice(0, 80) || "Al Wakeelo Conversation",
+        title: title || msgs[0]?.content?.slice(0, 240) || "Al Wakeelo Conversation",
       });
       for (const m of validMsgs) {
         await storage.createMessage({
