@@ -6,7 +6,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { dbAvailable, dbUnavailableReason, pool } from "./db";
 import { recordSecurityEvent } from "./security-monitoring";
-import { authRateLimiter, aiRateLimiter, globalApiRateLimiter } from "./middleware/rate-limiter";
+import { authRateLimiter, aiRateLimiter, globalApiRateLimiter, crawlerVerificationMiddleware } from "./middleware/rate-limiter";
 
 const app = express();
 const httpServer = createServer(app);
@@ -29,6 +29,8 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));
+
+app.use(crawlerVerificationMiddleware);
 
 app.use((req, res, next) => {
   if (process.env.NODE_ENV !== "production") return next();

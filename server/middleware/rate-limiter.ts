@@ -2,10 +2,95 @@ import type { Request, Response, NextFunction } from "express";
 import { recordSecurityEvent } from "../security-monitoring";
 import { resolveRequestIp } from "../replit_integrations/auth/ip";
 
-export function isSearchCrawler(req: Request): boolean {
-  const ua = req.get("User-Agent");
-  if (!ua) return false;
+import dns from "dns";
+import { promisify } from "util";
+
+const reverseDns = promisify(dns.reverse);
+const resolveDns = promisify(dns.resolve);
+
+const verifiedCrawlerCache = new Map<string, { verified: boolean; expiresAt: number }>();
+const VERIFICATION_TTL = 12 * 60 * 60 * 1000; // 12 hours
+
+export function isSearchCrawlerHeader(ua: string): boolean {
   return /googlebot|bingbot|yandexbot|applebot|duckduckbot|slurp|baiduspider/i.test(ua);
+}
+
+export async function checkIsRealCrawler(ip: string, ua: string): Promise<boolean> {
+  if (!ua || !isSearchCrawlerHeader(ua)) return false;
+
+  const isGoogle = /googlebot/i.test(ua);
+  const isBing = /bingbot|slurp/i.test(ua);
+  const isApple = /applebot/i.test(ua);
+  const isYandex = /yandexbot/i.test(ua);
+  const isDuckDuckGo = /duckduckbot/i.test(ua);
+
+  // Check cache first
+  const cached = verifiedCrawlerCache.get(ip);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.verified;
+  }
+
+  try {
+    const hostnames = await reverseDns(ip);
+    for (const hostname of hostnames) {
+      let matchesDomain = false;
+      if (isGoogle && (hostname.endsWith(".googlebot.com") || hostname.endsWith(".google.com"))) {
+        matchesDomain = true;
+      } else if (isBing && (hostname.endsWith(".search.msn.com") || hostname.endsWith(".msn.com"))) {
+        matchesDomain = true;
+      } else if (isApple && hostname.endsWith(".apple.com")) {
+        matchesDomain = true;
+      } else if (isYandex && (hostname.endsWith(".yandex.ru") || hostname.endsWith(".yandex.net") || hostname.endsWith(".yandex.com"))) {
+        matchesDomain = true;
+      } else if (isDuckDuckGo && hostname.endsWith(".duckduckgo.com")) {
+        matchesDomain = true;
+      }
+
+      if (matchesDomain) {
+        const ips = await resolveDns(hostname);
+        if (ips.includes(ip)) {
+          verifiedCrawlerCache.set(ip, { verified: true, expiresAt: Date.now() + VERIFICATION_TTL });
+          return true;
+        }
+      }
+    }
+  } catch (err) {
+    // DNS verification errors (host not found, timeout, etc.)
+  }
+
+  // Cache failure for 15 minutes to avoid spamming DNS queries
+  verifiedCrawlerCache.set(ip, { verified: false, expiresAt: Date.now() + 15 * 60 * 1000 });
+  return false;
+}
+
+export async function crawlerVerificationMiddleware(req: Request, res: Response, next: NextFunction) {
+  const ua = req.get("User-Agent") || "";
+  if (!isSearchCrawlerHeader(ua)) {
+    (req as any).isRealCrawler = false;
+    return next();
+  }
+
+  const ip = resolveRequestIp(req);
+  const isReal = await checkIsRealCrawler(ip, ua);
+  (req as any).isRealCrawler = isReal;
+
+  if (isReal) {
+    console.log(`[Crawler] Verified legitimate search crawler: IP=${ip}, User-Agent=${ua}`);
+  } else {
+    // Log User-Agent spoofing attempt
+    console.warn(`[Security Alert] Crawler User-Agent spoof detected from IP=${ip}, UA="${ua}"`);
+  }
+
+  next();
+}
+
+export function isSearchCrawler(req: Request): boolean {
+  if ((req as any).isRealCrawler !== undefined) {
+    return (req as any).isRealCrawler === true;
+  }
+  // Fallback for mock requests in unit tests that lack middleware runs
+  const ua = req.get("User-Agent") || "";
+  return isSearchCrawlerHeader(ua);
 }
 
 interface RateLimitRecord {
