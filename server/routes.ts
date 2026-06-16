@@ -14842,7 +14842,7 @@ document.addEventListener('keydown',function(e){
       // Pipeline now completes in <2s (RAG vector search removed from critical path).
       // 30s budget for tsvector searches + statutes + style memory.
       const ENRICHMENT_BUDGET_MS = Math.max(500, Number(process.env.AI_CHAT_ENRICHMENT_BUDGET_MS || 30000));
-      const knowledgeNeeded = !directMode && !!lastUserMessage && extractedAttachmentCount === 0;
+      const knowledgeNeeded = !directMode && !!lastUserMessage;
       // V2 pipeline: intent classify → topic-validated retrieval → structured context
       // For al-wakeelo: pipeline handles statutes + admin docs; tool search handles case law.
       // Build conversation history for the query rewriter (prior turns only, no system msgs).
