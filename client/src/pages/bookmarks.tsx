@@ -11,6 +11,8 @@ import {
   Search,
   Trash2,
   X,
+  Share2,
+  Loader2,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -123,6 +125,10 @@ export default function BookmarksPage() {
   const [page, setPage] = useState(1);
   const [preview, setPreview] = useState<BookmarkItem | null>(null);
   const [copied, setCopied] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [copiedShare, setCopiedShare] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -175,6 +181,9 @@ export default function BookmarksPage() {
 
   const openPreview = (b: BookmarkItem) => {
     setCopied(false);
+    setShareUrl(null);
+    setShareError(null);
+    setCopiedShare(false);
     setPreview(b);
   };
 
@@ -183,6 +192,40 @@ export default function BookmarksPage() {
     await navigator.clipboard.writeText(preview.content || "");
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const handleShareBookmark = async () => {
+    if (!preview) return;
+    setIsSharing(true);
+    setShareError(null);
+    try {
+      const msgs = [
+        { role: "user", content: preview.title || "User Query" },
+        { role: "assistant", content: preview.content }
+      ];
+      const saveRes = await apiRequest("POST", "/api/threads/save-for-share", {
+        title: preview.title || "Al Wakeelo Conversation",
+        messages: msgs,
+      });
+      const thread = await saveRes.json();
+
+      const shareRes = await apiRequest("POST", `/api/threads/${thread.id}/share`);
+      const shareData = await shareRes.json();
+      const fullUrl = `${window.location.origin}${shareData.shareUrl}`;
+      setShareUrl(fullUrl);
+      try {
+        await navigator.clipboard.writeText(fullUrl);
+        setCopiedShare(true);
+        setTimeout(() => setCopiedShare(false), 3000);
+      } catch (err) {
+        console.error("Failed to copy share URL:", err);
+      }
+    } catch (err) {
+      console.error("Share bookmark error:", err);
+      setShareError("Failed to create share link. Please try again.");
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   const setFilterAndResetPage = (next: TypeFilter) => {
@@ -447,6 +490,15 @@ export default function BookmarksPage() {
                   <Bookmark size={17} />
                 </button>
                 <button
+                  onClick={handleShareBookmark}
+                  disabled={isSharing}
+                  className="rounded-lg p-2 text-foreground transition-colors hover:bg-card hover:text-foreground disabled:opacity-50"
+                  title="Share response as public link"
+                  data-testid="button-bookmark-share"
+                >
+                  {isSharing ? <Loader2 size={17} className="animate-spin" /> : <Share2 size={17} />}
+                </button>
+                <button
                   onClick={() => setPreview(null)}
                   className="rounded-lg p-2 text-foreground transition-colors hover:bg-card hover:text-foreground"
                   title="Close"
@@ -459,6 +511,27 @@ export default function BookmarksPage() {
 
             {copied && (
               <div className="border-b border-border bg-emerald-500/10 px-6 py-2 text-xs text-emerald-300">Copied to clipboard.</div>
+            )}
+            {copiedShare && (
+              <div className="border-b border-border bg-emerald-500/10 px-6 py-2 text-xs text-emerald-300">Share link copied to clipboard!</div>
+            )}
+            {shareError && (
+              <div className="border-b border-border bg-red-500/10 px-6 py-2 text-xs text-red-300">{shareError}</div>
+            )}
+            {shareUrl && (
+              <div className="border-b border-border bg-primary/10 px-6 py-2 flex items-center justify-between gap-4 text-xs">
+                <span className="text-foreground truncate font-mono">Link: {shareUrl}</span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl);
+                    setCopiedShare(true);
+                    setTimeout(() => setCopiedShare(false), 3000);
+                  }}
+                  className="text-primary hover:underline font-bold shrink-0"
+                >
+                  Copy Link
+                </button>
+              </div>
             )}
 
             <div className="min-h-0 flex-1 overflow-y-auto bg-muted p-5 font-serif text-foreground sm:p-8">
