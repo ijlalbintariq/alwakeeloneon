@@ -397,32 +397,32 @@ const CLAUSE_LIBRARY: ClauseLibraryItem[] = [
   },
 ];
 
-const MANDATORY_CLAUSES_BY_TYPE: Record<string, Array<{ id: string; label: string; keywords: string[] }>> = {
+const MANDATORY_CLAUSES_BY_TYPE: Record<string, Array<{ id: string; label: string; keywords: string[]; prompt: string }>> = {
   "Service Agreement": [
-    { id: "scope", label: "Scope of Services", keywords: ["scope of services", "services"] },
-    { id: "payment", label: "Payment / Consideration", keywords: ["payment", "consideration", "fees"] },
-    { id: "term", label: "Term", keywords: ["term", "duration"] },
-    { id: "termination", label: "Termination", keywords: ["termination", "terminate"] },
-    { id: "confidentiality", label: "Confidentiality", keywords: ["confidentiality", "confidential information"] },
-    { id: "disputes", label: "Dispute Resolution", keywords: ["arbitration", "dispute resolution"] },
-    { id: "law", label: "Governing Law", keywords: ["governing law", "jurisdiction"] },
+    { id: "scope", label: "Scope of Services", keywords: ["scope of services", "services"], prompt: "Draft a comprehensive Scope of Services clause detailing service deliverables, timelines, and milestones." },
+    { id: "payment", label: "Payment / Consideration", keywords: ["payment", "consideration", "fees"], prompt: "Draft a detailed Payment Terms clause specifying fee structure, invoicing schedule, late payment interest, and applicable taxes." },
+    { id: "term", label: "Term", keywords: ["term", "duration"], prompt: "Draft a Term and Duration clause defining the start date and renewal options." },
+    { id: "termination", label: "Termination", keywords: ["termination", "terminate"], prompt: "Draft a Termination clause outlining termination for cause, notice periods for convenience, and post-termination obligations." },
+    { id: "confidentiality", label: "Confidentiality", keywords: ["confidentiality", "confidential information"], prompt: "Draft a strict Mutual Confidentiality clause defining confidential information, non-disclosure obligations, and exclusions." },
+    { id: "disputes", label: "Dispute Resolution", keywords: ["arbitration", "dispute resolution"], prompt: "Draft a Dispute Resolution clause providing for mediation followed by binding arbitration seated in Pakistan under the Arbitration Act, 1940." },
+    { id: "law", label: "Governing Law", keywords: ["governing law", "jurisdiction"], prompt: "Draft a Governing Law and Jurisdiction clause locking the agreement to the laws of Pakistan and exclusive jurisdiction of Pakistani courts." },
   ],
   "Employment Agreement": [
-    { id: "role", label: "Role and Duties", keywords: ["duties", "position", "job title"] },
-    { id: "compensation", label: "Compensation", keywords: ["salary", "compensation", "wages"] },
-    { id: "term", label: "Term and Probation", keywords: ["probation", "term"] },
-    { id: "leave", label: "Leave and Benefits", keywords: ["leave", "benefits"] },
-    { id: "termination", label: "Termination", keywords: ["termination", "dismissal"] },
-    { id: "confidentiality", label: "Confidentiality", keywords: ["confidential"] },
-    { id: "law", label: "Governing Law", keywords: ["governing law", "jurisdiction"] },
+    { id: "role", label: "Role and Duties", keywords: ["duties", "position", "job title"], prompt: "Draft a Job Description, Duties and Reporting Structure clause outlining employee responsibilities." },
+    { id: "compensation", label: "Compensation", keywords: ["salary", "compensation", "wages"], prompt: "Draft a Compensation and Benefits clause defining salary, payroll schedule, and mandatory tax withholdings." },
+    { id: "term", label: "Term and Probation", keywords: ["probation", "term"], prompt: "Draft a Term and Probationary Period clause specifying probation duration and evaluation criteria." },
+    { id: "leave", label: "Leave and Benefits", keywords: ["leave", "benefits"], prompt: "Draft a Leave Entitlement clause covering annual, sick, and maternity leaves in compliance with Pakistani labor laws." },
+    { id: "termination", label: "Termination", keywords: ["termination", "dismissal"], prompt: "Draft an Employment Termination clause detailing notice periods, severance pay, and grounds for dismissal." },
+    { id: "confidentiality", label: "Confidentiality", keywords: ["confidential"], prompt: "Draft an Employee Non-Disclosure and Confidentiality clause protecting proprietary corporate assets." },
+    { id: "law", label: "Governing Law", keywords: ["governing law", "jurisdiction"], prompt: "Draft a Governing Law and Jurisdiction clause locking the employment agreement to the provincial labor laws of Pakistan." },
   ],
   "NDA (Non-Disclosure)": [
-    { id: "definition", label: "Confidential Information Definition", keywords: ["confidential information"] },
-    { id: "obligation", label: "Use and Non-Disclosure Obligations", keywords: ["non-disclosure", "use of confidential"] },
-    { id: "exceptions", label: "Exclusions", keywords: ["exclusions", "public domain"] },
-    { id: "term", label: "Term and Survival", keywords: ["term", "survive", "survival"] },
-    { id: "remedies", label: "Remedies", keywords: ["injunctive relief", "remedies"] },
-    { id: "law", label: "Governing Law", keywords: ["governing law", "jurisdiction"] },
+    { id: "definition", label: "Confidential Information Definition", keywords: ["confidential information"], prompt: "Draft a broad Definition of Confidential Information including technical, commercial, and financial data." },
+    { id: "obligation", label: "Use and Non-Disclosure Obligations", keywords: ["non-disclosure", "use of confidential"], prompt: "Draft strict Non-Disclosure and Non-Use Obligations for the receiving party." },
+    { id: "exceptions", label: "Exclusions", keywords: ["exclusions", "public domain"], prompt: "Draft standard Exclusions from Confidentiality (e.g., public domain, prior knowledge, independent development)." },
+    { id: "term", label: "Term and Survival", keywords: ["term", "survive", "survival"], prompt: "Draft a Term of Agreement and Survival of Confidentiality Obligations clause (e.g., surviving for 3 years post-termination)." },
+    { id: "remedies", label: "Remedies", keywords: ["injunctive relief", "remedies"], prompt: "Draft a Remedies clause specifying entitlement to injunctive relief and specific performance in case of breach." },
+    { id: "law", label: "Governing Law", keywords: ["governing law", "jurisdiction"], prompt: "Draft a Governing Law and Dispute Resolution clause providing for arbitration under the laws of Pakistan." },
   ],
 };
 
@@ -564,6 +564,7 @@ export default function ContractDraftingPage() {
   const [rightRailOpen, setRightRailOpen] = useState(true);
   const [focusWritingMode, setFocusWritingMode] = useState(false);
   const [styleMemoryMeta, setStyleMemoryMeta] = useState<StyleMemoryMeta | null>(null);
+  const [generatingClauseId, setGeneratingClauseId] = useState<string | null>(null);
   const autoRiskScanSignatureRef = useRef<string>("");
   const leftRailVisible = leftRailOpen && !focusWritingMode;
   const rightRailVisible = rightRailOpen && !focusWritingMode;
@@ -823,8 +824,12 @@ export default function ContractDraftingPage() {
     return () => clearTimeout(timeout);
   }, [contractText, form.title, form.contractType]);
 
-  const applySuggestedClause = async (prompt: string) => {
-    setIsGenerating(true);
+  const applySuggestedClause = async (prompt: string, clauseId?: string) => {
+    if (clauseId) {
+      setGeneratingClauseId(clauseId);
+    } else {
+      setIsGenerating(true);
+    }
     try {
       const response = await fetch("/api/retrieval/clauses/generate", {
         method: "POST",
@@ -845,7 +850,10 @@ export default function ContractDraftingPage() {
       const clause = (data?.clause || "").trim();
       if (!clause) throw new Error("Clause retrieval returned empty result");
       setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
-      setContractText((prev) => `${prev.trim()}\n\n${clause}\n`);
+      setContractText((prev) => {
+        const trimmed = prev.trim();
+        return trimmed ? `${trimmed}\n\n${clause}\n` : `${clause}\n`;
+      });
       toast({ title: "Clause inserted" });
     } catch (err: any) {
       toast({
@@ -854,7 +862,11 @@ export default function ContractDraftingPage() {
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
+      if (clauseId) {
+        setGeneratingClauseId(null);
+      } else {
+        setIsGenerating(false);
+      }
     }
   };
 
@@ -1407,15 +1419,50 @@ export default function ContractDraftingPage() {
                 </div>
                 <span className="text-[9px] text-emerald-600 dark:text-emerald-300 font-semibold">{mandatoryCoverage}%</span>
               </div>
-              <div className="space-y-0.5">
-                {mandatoryChecks.map((check) => (
-                  <div key={check.id} className="flex items-center justify-between text-[10px]">
-                    <span className="text-foreground">{check.label}</span>
-                    <span className={check.present ? "text-emerald-600 dark:text-emerald-300" : "text-red-500 dark:text-red-300"}>
-                      {check.present ? "✓" : "✗"}
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-1.5 mt-2">
+                {mandatoryChecks.map((check) => {
+                  const isGeneratingThis = generatingClauseId === check.id;
+                  const anyLoading = isGenerating || isRunningCompliance || isRunningRedline || !!generatingClauseId;
+                  return (
+                    <div
+                      key={check.id}
+                      className={`p-1.5 rounded-lg border transition-all flex items-center justify-between gap-2 ${
+                        check.present
+                          ? "bg-emerald-500/5 border-emerald-500/20"
+                          : "bg-amber-500/5 border-amber-500/20"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-foreground truncate">{check.label}</p>
+                        <p className="text-[8px] text-muted-foreground truncate">
+                          {check.present ? "Clause detected" : "Missing clause"}
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        {check.present ? (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded-full border border-emerald-500/25">
+                            <CheckCircle2 size={10} />
+                            Covered
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => applySuggestedClause(check.prompt, check.id)}
+                            disabled={anyLoading}
+                            className="inline-flex items-center gap-0.5 text-[9px] font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 disabled:opacity-50 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                            title="Draft this clause"
+                          >
+                            {isGeneratingThis ? (
+                              <Loader2 size={10} className="animate-spin text-primary" />
+                            ) : (
+                              <Sparkles size={10} className="text-primary" />
+                            )}
+                            Auto-Draft
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
             </div>
