@@ -204,7 +204,7 @@ async function main() {
 
   try {
     const response = await (client.chat.completions.create as any)({
-      model: "kimi-k2-thinking",
+      model: "kimi-k2.6",
       messages: [
         {
           role: "system",

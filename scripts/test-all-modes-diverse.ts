@@ -62,78 +62,69 @@ async function main() {
     { role: "user" as const, content: FAMILY_CUSTODY_QUERY }
   ];
 
-  console.log("🚀 Launching concurrent test runs across all 5 active modes...\n");
+  console.log("🚀 Launching sequential test runs across all 5 active modes...\n");
 
-  // Run all 5 modes concurrently in parallel!
-  const resultsPromise = Promise.all([
-    // Mode 1: Standard Mode (deepseek-chat via OpenRouter)
-    runMode("1. Standard Mode (deepseek-chat)", async () => {
-      const response = await orClient.chat.completions.create({
-        model: "deepseek/deepseek-chat",
-        messages,
-        max_tokens: 3000,
-        temperature: 0.5
-      });
-      return {
-        content: response.choices[0]?.message?.content || "",
-        model: "deepseek/deepseek-chat"
-      };
-    }),
+  // Run all 5 modes sequentially to avoid API concurrency limits
+  const mode1 = await runMode("1. Standard Mode (deepseek-chat)", async () => {
+    const response = await orClient.chat.completions.create({
+      model: "deepseek/deepseek-chat",
+      messages,
+      max_tokens: 3000,
+      temperature: 0.5
+    });
+    return {
+      content: response.choices[0]?.message?.content || "",
+      model: "deepseek/deepseek-chat"
+    };
+  });
 
-    // Mode 2: Turbo Mode (deepseek-r1 via OpenRouter)
-    runMode("2. Turbo Mode (deepseek-r1)", async () => {
-      const response = await orClient.chat.completions.create({
-        model: "deepseek/deepseek-r1",
-        messages,
-        max_tokens: 3500,
-        temperature: 0.5
-      });
-      return {
-        content: response.choices[0]?.message?.content || "",
-        reasoning: (response.choices[0]?.message as any)?.reasoning || (response.choices[0]?.message as any)?.reasoning_content || null,
-        model: "deepseek/deepseek-r1"
-      };
-    }),
+  const mode2 = await runMode("2. Turbo Mode (deepseek-r1)", async () => {
+    const response = await orClient.chat.completions.create({
+      model: "deepseek/deepseek-r1",
+      messages,
+      max_tokens: 3500,
+      temperature: 0.5
+    });
+    return {
+      content: response.choices[0]?.message?.content || "",
+      reasoning: (response.choices[0]?.message as any)?.reasoning || (response.choices[0]?.message as any)?.reasoning_content || null,
+      model: "deepseek/deepseek-r1"
+    };
+  });
 
-    // Mode 3: Apex Mode (kimi-k2.6 direct, thinking false)
-    runMode("3. Apex Mode (kimi-k2.6)", async () => {
-      return chatWithApex({
-        model: "apex-pro",
-        messages,
-        maxTokens: 3000
-      });
-    }),
+  const mode3 = await runMode("3. Apex Mode (kimi-k2.6)", async () => {
+    return chatWithApex({
+      model: "apex-pro",
+      messages,
+      maxTokens: 3000
+    });
+  });
 
-    // Mode 4: Apex Pro Mode (kimi-k2-thinking)
-    runMode("4. Apex Pro Mode (kimi-k2-thinking)", async () => {
-      return chatWithApex({
-        model: "apex-agent",
-        messages,
-        maxTokens: 3500
-      });
-    }),
+  const mode4 = await runMode("4. Apex Pro Mode (kimi-k2.6 thinking)", async () => {
+    return chatWithApex({
+      model: "apex-agent",
+      messages,
+      maxTokens: 3500
+    });
+  });
 
-    // Mode 5: Web Search Mode (Kimi K2.6 Web Agent)
-    runMode("5. Web Search Mode (kimi-k2.6 Web)", async () => {
-      return chatWithApexAgent({
-        messages: [
-          { role: "system", content: "You are Al Wakeelo, a Pakistani family law AI assistant. Use the web search tool to find recent Supreme Court judgments on mother's custody rights after contracting second marriage." },
-          { role: "user", content: FAMILY_CUSTODY_QUERY }
-        ],
-        maxTokens: 3000,
-        maxIterations: 4
-      });
-    })
-  ]);
-
-  const rawResults = await resultsPromise;
+  const mode5 = await runMode("5. Web Search Mode (kimi-k2.6 Web)", async () => {
+    return chatWithApexAgent({
+      messages: [
+        { role: "system", content: "You are Al Wakeelo, a Pakistani family law AI assistant. Use the web search tool to find recent Supreme Court judgments on mother's custody rights after contracting second marriage." },
+        { role: "user", content: FAMILY_CUSTODY_QUERY }
+      ],
+      maxTokens: 3000,
+      maxIterations: 4
+    });
+  });
 
   const results = {
-    standard: rawResults[0],
-    turbo: rawResults[1],
-    apex: rawResults[2],
-    apexPro: rawResults[3],
-    webSearch: rawResults[4]
+    standard: mode1,
+    turbo: mode2,
+    apex: mode3,
+    apexPro: mode4,
+    webSearch: mode5
   };
 
   const resultsPath = resolve(import.meta.dirname || __dirname, "../all_modes_diverse_results.json");

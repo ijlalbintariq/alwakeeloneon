@@ -78,7 +78,7 @@ function getModelConfig(model: ApexModel) {
       };
     case "apex-agent":
       return {
-        modelId: "kimi-k2-thinking",
+        modelId: "kimi-k2.6",
         temperature: 1,
         thinking: true,
         displayName: "Apex Pro",
