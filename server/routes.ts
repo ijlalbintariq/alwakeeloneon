@@ -7063,6 +7063,15 @@ function scoreOutputQuality(feature: string, inputText: string, outputText: stri
   const isDraft = feature === "draft" || feature === "contract" || feature === "contract-drafting" || feature === "brief" || feature === "summarize";
   const isChat = feature === "chat" || feature === "chat-apex";
 
+  let isJson = false;
+  try {
+    const trimmed = (outputText || "").trim();
+    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+      JSON.parse(trimmed);
+      isJson = true;
+    }
+  } catch {}
+
   // 1. Too short
   if (outLen < 30) {
     flags.push("too_short");
@@ -7092,7 +7101,7 @@ function scoreOutputQuality(feature: string, inputText: string, outputText: stri
   }
 
   // 3. Legal citations presence (for chat & draft features)
-  if (isChat || isDraft) {
+  if ((isChat || isDraft) && !isJson) {
     const hasCitations = /\b\d{4}\s+(PLD|SCMR|CLC|MLD|PCrLJ|PLC|YLR|PLJ|NLR|PCRLJ)\b/i.test(outputText)
       || /\b(section|s\.)\s+\d+/i.test(outputText)
       || /\b(Article|clause)\s+\d+/i.test(outputText);
@@ -7107,7 +7116,7 @@ function scoreOutputQuality(feature: string, inputText: string, outputText: stri
   }
 
   // 4. Formatting quality (for drafts)
-  if (isDraft && outLen > 300) {
+  if (isDraft && outLen > 300 && !isJson) {
     const hasHeaders = /^#{1,3}\s/m.test(outputText) || /\*\*[A-Z]/.test(outputText);
     const hasLists = /^[\-\*\d]\./m.test(outputText) || /\n\d+\.\s/m.test(outputText);
     if (!hasHeaders && !hasLists) {
