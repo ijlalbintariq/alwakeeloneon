@@ -2,7 +2,7 @@ import { useRoute, useLocation, Link } from "wouter";
 import { useDocumentHead } from "@/hooks/use-document-head";
 import { BLOG_ARTICLES } from "../../../shared/blog-data";
 import { LegalMarkdown } from "@/components/legal-markdown";
-import { ArrowLeft, Clock, Calendar, User, ChevronRight } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, ChevronRight } from "lucide-react";
 
 export default function BlogDetailPage() {
   const [, navigate] = useLocation();
@@ -54,7 +54,7 @@ export default function BlogDetailPage() {
             {article.title}
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground border-y border-border/60 py-3">
-            <span className="inline-flex items-center gap-1.5"><User size={13} /> {article.author}</span>
+
             <span className="inline-flex items-center gap-1.5"><Calendar size={13} /> {article.publishedAt}</span>
             <span className="inline-flex items-center gap-1.5"><Clock size={13} /> {article.readTime}</span>
           </div>

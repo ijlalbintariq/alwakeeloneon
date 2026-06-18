@@ -534,7 +534,6 @@ export function serveStatic(app: Express) {
   <h1>${esc(article.title)}</h1>
   <p><strong>Category:</strong> ${esc(article.category)}</p>
   <p><strong>Published:</strong> ${esc(article.publishedAt)}</p>
-  <p><strong>Author:</strong> ${esc(article.author)}</p>
   <p><strong>Read Time:</strong> ${esc(article.readTime)}</p>
   <div>${esc(article.content)}</div>
 </div>`;

@@ -115,7 +115,7 @@ export default function BlogPage() {
               </div>
               
               <div className="flex items-center justify-between border-t border-border/40 pt-4 mt-5">
-                <span className="text-[10px] text-muted-foreground">By {article.author.split(",")[0]}</span>
+                <span className="text-[10px] text-muted-foreground">{article.publishedAt}</span>
                 <Link href={`/blog/${article.slug}`} className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">
                   Read Article <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                 </Link>
