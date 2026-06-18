@@ -524,10 +524,28 @@ export function serveStatic(app: Express) {
       const slug = blogMatch[1];
       const article = BLOG_ARTICLES.find((a) => a.slug === slug);
       if (article) {
+        const schema = {
+          "@context": "https://schema.org",
+          "@type": "BlogPosting",
+          "headline": article.title,
+          "description": article.summary,
+          "datePublished": article.publishedAt,
+          "genre": article.category,
+          "publisher": {
+            "@type": "Organization",
+            "name": "Al Wakeelo",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://www.alwakeelo.com/assets/logo.png"
+            }
+          }
+        };
+        const schemaMarkup = `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n</script>`;
         customMeta = {
           title: `${article.title} | Al Wakeelo Legal Guides`,
           description: article.summary,
           index: true,
+          schemaMarkup,
         };
         const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         preRenderBlock = `<div id="seo-prerender" style="display:none" aria-hidden="true">
