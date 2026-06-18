@@ -10894,7 +10894,8 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       const id = String(req.params.id || "").trim();
       if (!id) return res.status(400).json({ message: "Judgment id is required" });
 
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ||
+                     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
       if (!isUUID) {
         return res.status(404).json({ message: "Judgment not found" });
       }
@@ -10920,10 +10921,61 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         totalWordCount: totalWords,
         isPreview: true,
         isTruncated: truncated,
+        citations: judgment.citations || { made: [], received: [] },
       });
     } catch (err) {
       console.error("Error fetching public judgment preview:", err);
       res.status(500).json({ message: "Failed to fetch judgment" });
+    }
+  });
+
+  app.get("/api/public/statutes/:id", async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id || "").trim(), 10);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid statute ID" });
+
+      const doc = await storage.getStatuteDocument(id);
+      if (!doc) return res.status(404).json({ message: "Statute not found" });
+
+      const fileMeta = await storage.getStatuteDocumentFile(id);
+      const fullContent = fileMeta?.extractedTextKey ? await getR2ObjectText(fileMeta.extractedTextKey) : null;
+      const content = fullContent || doc.content || "";
+
+      // Word count limit for preview
+      const maxWords = 1000;
+      const { preview, truncated, totalWords } = trimWords(content, maxWords);
+
+      res.setHeader("Cache-Control", "public, max-age=300, s-maxage=21600");
+      res.json({
+        id: doc.id,
+        title: doc.title,
+        filename: doc.filename,
+        category: doc.category,
+        createdAt: doc.createdAt,
+        content: preview,
+        previewWordCount: Math.min(totalWords, maxWords),
+        totalWordCount: totalWords,
+        isPreview: true,
+        isTruncated: truncated,
+        file: fileMeta
+          ? {
+              available: true,
+              mimeType: fileMeta.mimeType || null,
+              originalFilename: fileMeta.originalFilename || null,
+              isPdf: (fileMeta.mimeType || "").toLowerCase().includes("pdf") || (fileMeta.originalFilename || "").toLowerCase().endsWith(".pdf"),
+              viewUrl: null,
+            }
+          : {
+              available: false,
+              mimeType: null,
+              originalFilename: null,
+              isPdf: false,
+              viewUrl: null,
+            },
+      });
+    } catch (err) {
+      console.error("Error fetching public statute preview:", err);
+      res.status(500).json({ message: "Failed to fetch statute" });
     }
   });
 

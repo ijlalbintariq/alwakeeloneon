@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, Send, Loader2, MessageSquare, Book, List, ChevronRight, ChevronDown, X, FileText } from "lucide-react";
+import { useLocation, useRoute, Link } from "wouter";
+import { ArrowLeft, Send, Loader2, MessageSquare, Book, List, ChevronRight, ChevronDown, X, FileText, Lock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { Button } from "@/components/ui/button";
 import { StatutePdfViewer } from "@/components/statute-pdf-viewer";
+import { useAuth } from "@/hooks/use-auth";
 
 type AiMessage = {
   role: "user" | "assistant";
@@ -18,6 +19,8 @@ type StatuteDocFull = {
   content: string;
   category: string;
   createdAt: string;
+  isPreview?: boolean;
+  isTruncated?: boolean;
   file?: {
     available: boolean;
     mimeType: string | null;
@@ -65,6 +68,8 @@ function TocSidebarItem({ item, depth = 0, onScrollTo }: { item: TocItem; depth?
 }
 
 export default function StatuteViewPage() {
+  const { user } = useAuth();
+  const isAuthed = !!user;
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/statute-view/:id");
   const docId = params?.id ? parseInt(params.id, 10) : null;
@@ -88,7 +93,7 @@ export default function StatuteViewPage() {
       return;
     }
     loadDocument(docId);
-  }, [docId]);
+  }, [docId, isAuthed]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -119,12 +124,17 @@ export default function StatuteViewPage() {
   async function loadDocument(id: number) {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/statute-documents/${id}`);
+      const endpoint = isAuthed
+        ? `/api/statute-documents/${id}`
+        : `/api/public/statutes/${id}`;
+      const res = await fetch(endpoint);
       if (res.ok) {
         const data: StatuteDocFull = await res.json();
         setDoc(data);
         setViewMode(data.file?.isPdf && data.file?.viewUrl ? "pdf" : "text");
-        fetchToc(id);
+        if (isAuthed) {
+          fetchToc(id);
+        }
       } else {
         setLocation("/statute-search");
       }
@@ -400,6 +410,33 @@ export default function StatuteViewPage() {
                 {renderDocContent(doc.content)}
               </div>
 
+              {doc.isTruncated ? (
+                <div className="mt-10 rounded-3xl border border-primary/30 bg-primary/10 p-5 md:p-7 space-y-3">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Lock size={16} />
+                    <h2 className="text-base font-bold uppercase tracking-wide">Sign up to read the full statute</h2>
+                  </div>
+                  <p className="text-sm text-foreground">
+                    Free Al Wakeelo account unlocks the complete statute sections, schedules,
+                    cross-references, and the ability to ask AI questions about it.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Link
+                      href="/auth?mode=register"
+                      className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90"
+                    >
+                      Sign up free
+                    </Link>
+                    <Link
+                      href="/auth?mode=login"
+                      className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-card/70"
+                    >
+                      Sign in
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="mt-12 pt-6 border-t border-border flex items-center justify-between flex-wrap gap-2">
                 <p className="text-[8px] font-black uppercase tracking-[0.3em] text-muted-foreground">
                   Al Wakeelo Digital Chambers
@@ -422,79 +459,105 @@ export default function StatuteViewPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
-            {chatMessages.length === 0 && (
-              <div className="text-center py-12">
-                <Book size={32} className="text-foreground mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground font-medium">Ask any question about this statute</p>
-                <p className="text-xs text-muted-foreground mt-1">AI will answer based on the document</p>
-                <div className="mt-6 space-y-2">
-                  {[
-                    "Summarize this statute",
-                    "What are the key provisions?",
-                    "Explain the penalties under this law",
-                  ].map((suggestion, i) => (
-                    <button
-                      key={i}
-                      onClick={() => { setChatInput(suggestion); }}
-                      className="w-full text-left px-4 py-3 bg-card border border-border rounded-xl text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {chatMessages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[90%] px-4 py-3 rounded-xl text-sm ${
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card text-foreground border border-border"
-                  }`}
+          {!isAuthed ? (
+            <div className="flex-grow p-6 flex flex-col items-center justify-center text-center space-y-4">
+              <Lock size={36} className="text-primary animate-pulse" />
+              <h3 className="font-bold text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>AI Chat is Locked</h3>
+              <p className="text-xs text-muted-foreground max-w-[260px] leading-relaxed">
+                Sign in or register a free account to ask questions, summarize provisions, and explain penalties for this statute.
+              </p>
+              <div className="flex flex-col gap-2 w-full pt-2">
+                <Link
+                  href="/auth?mode=register"
+                  className="rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/95 transition-all text-center"
                 >
-                  {msg.role === "assistant" ? (
-                    <div className="prose prose-invert prose-sm max-w-none">
-                      <LegalMarkdown content={msg.content} />
-                    </div>
-                  ) : (
-                    <div className="whitespace-pre-wrap text-[13px]">{msg.content}</div>
-                  )}
-                </div>
+                  Sign up free
+                </Link>
+                <Link
+                  href="/auth?mode=login"
+                  className="rounded-xl border border-border bg-card py-2.5 text-xs font-semibold text-foreground hover:bg-card/75 transition-all text-center"
+                >
+                  Sign in
+                </Link>
               </div>
-            ))}
-
-            {isChatLoading && (
-              <div className="flex justify-start">
-                <div className="bg-card border border-border rounded-xl px-4 py-3">
-                  <Loader2 size={16} className="animate-spin text-primary" />
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          <div className="p-3 border-t border-border">
-            <div className="flex gap-2">
-              <input
-                className="flex-1 bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                placeholder="Ask about this statute..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleChatSend()}
-              />
-              <Button
-                size="icon"
-                onClick={handleChatSend}
-                disabled={!chatInput.trim() || isChatLoading}
-                className="bg-primary text-primary-foreground rounded-xl h-10 w-10"
-              >
-                <Send size={16} />
-              </Button>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
+                {chatMessages.length === 0 && (
+                  <div className="text-center py-12">
+                    <Book size={32} className="text-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground font-medium">Ask any question about this statute</p>
+                    <p className="text-xs text-muted-foreground mt-1">AI will answer based on the document</p>
+                    <div className="mt-6 space-y-2">
+                      {[
+                        "Summarize this statute",
+                        "What are the key provisions?",
+                        "Explain the penalties under this law",
+                      ].map((suggestion, i) => (
+                        <button
+                          key={i}
+                          onClick={() => { setChatInput(suggestion); }}
+                          className="w-full text-left px-4 py-3 bg-card border border-border rounded-xl text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {chatMessages.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[90%] px-4 py-3 rounded-xl text-sm ${
+                        msg.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-card text-foreground border border-border"
+                      }`}
+                    >
+                      {msg.role === "assistant" ? (
+                        <div className="prose prose-invert prose-sm max-w-none">
+                          <LegalMarkdown content={msg.content} />
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap text-[13px]">{msg.content}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {isChatLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-card border border-border rounded-xl px-4 py-3">
+                      <Loader2 size={16} className="animate-spin text-primary" />
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              <div className="p-3 border-t border-border">
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    placeholder="Ask about this statute..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleChatSend()}
+                  />
+                  <Button
+                    size="icon"
+                    onClick={handleChatSend}
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="bg-primary text-primary-foreground rounded-xl h-10 w-10"
+                  >
+                    <Send size={16} />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

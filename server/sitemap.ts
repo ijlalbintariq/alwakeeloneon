@@ -144,6 +144,15 @@ export async function handleSitemapIndex(req: Request, res: Response): Promise<v
 
 const STATIC_URLS: Array<{ path: string; changefreq: string; priority: string }> = [
   { path: "/",                                  changefreq: "weekly",  priority: "1.0" },
+  { path: "/about",                             changefreq: "monthly", priority: "0.8" },
+  { path: "/contact",                            changefreq: "monthly", priority: "0.8" },
+  { path: "/faq",                               changefreq: "monthly", priority: "0.8" },
+  { path: "/blog",                              changefreq: "daily",   priority: "0.8" },
+  { path: "/blog/muslim-family-laws-pakistan-nikah-talaq-khula", changefreq: "weekly", priority: "0.7" },
+  { path: "/blog/understanding-bail-criminal-procedure-pakistan", changefreq: "weekly", priority: "0.7" },
+  { path: "/blog/contract-act-1872-pakistan-business-agreements", changefreq: "weekly", priority: "0.7" },
+  { path: "/blog/cybercrime-laws-peca-pakistan-digital-rights", changefreq: "weekly", priority: "0.7" },
+  { path: "/blog/demystifying-pakistani-land-revenue-records-fard-mutation", changefreq: "weekly", priority: "0.7" },
   { path: "/judgments",                         changefreq: "daily",   priority: "0.9" },
   { path: "/judgments/browse",                  changefreq: "daily",   priority: "0.9" },
   { path: "/statute-search",                    changefreq: "weekly",  priority: "0.9" },

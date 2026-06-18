@@ -43,7 +43,11 @@ export function PublicPageShell({ children }: { children: ReactNode }) {
       <footer className="border-t border-border text-xs text-muted-foreground">
         <div className="mx-auto max-w-5xl px-4 py-5 flex flex-wrap items-center justify-between gap-3">
           <span>© Al Wakeelo — Pakistan's AI Legal Assistant</span>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <Link href="/about" className="hover:text-foreground">About Us</Link>
+            <Link href="/contact" className="hover:text-foreground">Contact Us</Link>
+            <Link href="/faq" className="hover:text-foreground">FAQ</Link>
+            <Link href="/blog" className="hover:text-foreground">Legal Blog</Link>
             <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
             <Link href="/terms" className="hover:text-foreground">Terms</Link>
             <Link href="/judgments/browse" className="hover:text-foreground">Browse Judgments</Link>

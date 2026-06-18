@@ -53,6 +53,10 @@ type PublicJudgmentPreview = {
   totalWordCount: number;
   isPreview: true;
   isTruncated: boolean;
+  citations?: {
+    made: CitationLinkItem[];
+    received: CitationLinkItem[];
+  };
 };
 
 function formatDate(value: string | null): string {
@@ -314,6 +318,8 @@ export default function JudgmentDetailPage() {
     const previewParagraphs = preview.previewText
       ? preview.previewText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
       : [];
+    const hasOverruled = preview.citations?.received?.some((item) => item.citationType === "overruled") || false;
+
     return (
       <div className="space-y-7 fade-in" data-testid="judgment-detail-page-public">
         <section className="rounded-3xl border border-border bg-card/75 p-5 md:p-7 space-y-4">
@@ -363,6 +369,66 @@ export default function JudgmentDetailPage() {
               Showing {preview.previewWordCount.toLocaleString()} of {preview.totalWordCount.toLocaleString()} words.
             </p>
           ) : null}
+        </section>
+
+        {preview.citations?.made && preview.citations.made.length > 0 ? (
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-foreground inline-flex items-center gap-2"><Link2 size={16} /> Cases Cited ({preview.citations.made.length})</h2>
+            <div className="space-y-3">
+              {preview.citations.made.map((item) => (
+                <CitationCard key={`made-${item.id}`} item={item} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {preview.citations?.received && preview.citations.received.length > 0 ? (
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-foreground inline-flex items-center gap-2"><ArrowRight size={16} /> Cited In ({preview.citations.received.length}) cases</h2>
+
+            {hasOverruled ? (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 inline-flex items-center gap-2">
+                <AlertTriangle size={15} /> This judgment has overruled treatment in citing cases.
+              </div>
+            ) : null}
+
+            <div className="space-y-3">
+              {preview.citations.received.map((item) => (
+                <CitationCard key={`received-${item.id}`} item={item} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="rounded-3xl border border-border bg-card/60 p-5 md:p-7 space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">Search Related Judgments</h2>
+          <p className="text-xs text-muted-foreground">
+            Search our index of 600,000+ judgments by citation, party names, or keyword.
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const q = formData.get("q") as string;
+              if (q?.trim()) {
+                setLocation(`/auth?mode=register&next=${encodeURIComponent(`/judgments?q=${encodeURIComponent(q.trim())}`)}`);
+              }
+            }}
+            className="flex gap-2"
+          >
+            <input
+              name="q"
+              className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+              placeholder="Search other judgments..."
+              required
+            />
+            <button
+              type="submit"
+              className="bg-primary text-primary-foreground rounded-xl h-[42px] px-4 flex items-center justify-center font-bold text-sm hover:bg-primary/90 transition-colors"
+            >
+              Search
+            </button>
+          </form>
         </section>
 
         {preview.isTruncated ? (

@@ -38,6 +38,11 @@ const PrivacyPolicyPage = lazy(() => import("@/pages/privacy"));
 const TermsOfServicePage = lazy(() => import("@/pages/terms"));
 const CancellationReturnRefundPolicyPage = lazy(() => import("@/pages/cancellation-return-refund-policy"));
 const OwnershipStatementPage = lazy(() => import("@/pages/ownership-statement"));
+const AboutPage = lazy(() => import("@/pages/about"));
+const ContactPage = lazy(() => import("@/pages/contact"));
+const FaqPage = lazy(() => import("@/pages/faq"));
+const BlogPage = lazy(() => import("@/pages/blog"));
+const BlogDetailPage = lazy(() => import("@/pages/blog-detail"));
 const OrganizationPage = lazy(() => import("@/pages/organization"));
 const CaseFilesPage = lazy(() => import("@/pages/case-files"));
 const DailyDiaryPage = lazy(() => import("@/pages/daily-diary"));
@@ -155,6 +160,46 @@ function Router({ onReady }: { onReady?: () => void }) {
     return <CheckoutPage />;
   }
 
+  if (location === "/about") {
+    return (
+      <PublicPageShell>
+        <AboutPage />
+      </PublicPageShell>
+    );
+  }
+
+  if (location === "/contact") {
+    return (
+      <PublicPageShell>
+        <ContactPage />
+      </PublicPageShell>
+    );
+  }
+
+  if (location === "/faq") {
+    return (
+      <PublicPageShell>
+        <FaqPage />
+      </PublicPageShell>
+    );
+  }
+
+  if (location === "/blog") {
+    return (
+      <PublicPageShell>
+        <BlogPage />
+      </PublicPageShell>
+    );
+  }
+
+  if (location.startsWith("/blog/")) {
+    return (
+      <PublicPageShell>
+        <BlogDetailPage />
+      </PublicPageShell>
+    );
+  }
+
   // Public judgment detail — anonymous visitors and search crawlers must reach
   // the page without redirecting to /auth. JudgmentDetailPage detects the
   // unauthenticated case and renders a preview view via /api/public/judgments.
@@ -184,6 +229,21 @@ function Router({ onReady }: { onReady?: () => void }) {
     return (
       <PublicPageShell>
         <JudgmentDirectoryPage />
+      </PublicPageShell>
+    );
+  }
+
+  if (location.startsWith("/statute-view/")) {
+    if (user) {
+      return (
+        <AppShell>
+          <StatuteViewPage />
+        </AppShell>
+      );
+    }
+    return (
+      <PublicPageShell>
+        <StatuteViewPage />
       </PublicPageShell>
     );
   }

@@ -138,8 +138,10 @@ export default function LandingPage() {
             <a href="/" className="text-sm text-foreground hover:text-foreground transition-colors">Home</a>
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <a href="#about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</a>
-            <a href="#contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</a>
+            <a href="/about" onClick={(e) => { e.preventDefault(); navigate("/about"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</a>
+            <a href="/contact" onClick={(e) => { e.preventDefault(); navigate("/contact"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</a>
+            <a href="/faq" onClick={(e) => { e.preventDefault(); navigate("/faq"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
+            <a href="/blog" onClick={(e) => { e.preventDefault(); navigate("/blog"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Blog</a>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -173,8 +175,10 @@ export default function LandingPage() {
               <a href="/" onClick={() => setMobileNavOpen(false)} className="text-sm text-foreground hover:text-foreground transition-colors">Home</a>
               <a href="#features" onClick={() => setMobileNavOpen(false)} className="text-sm text-foreground hover:text-foreground transition-colors">Features</a>
               <a href="#pricing" onClick={() => setMobileNavOpen(false)} className="text-sm text-foreground hover:text-foreground transition-colors">Pricing</a>
-              <a href="#about" onClick={() => setMobileNavOpen(false)} className="text-sm text-foreground hover:text-foreground transition-colors">About</a>
-              <a href="#contact" onClick={() => setMobileNavOpen(false)} className="text-sm text-foreground hover:text-foreground transition-colors">Contact</a>
+              <a href="/about" onClick={(e) => { e.preventDefault(); setMobileNavOpen(false); navigate("/about"); }} className="text-sm text-foreground hover:text-foreground transition-colors">About</a>
+              <a href="/contact" onClick={(e) => { e.preventDefault(); setMobileNavOpen(false); navigate("/contact"); }} className="text-sm text-foreground hover:text-foreground transition-colors">Contact</a>
+              <a href="/faq" onClick={(e) => { e.preventDefault(); setMobileNavOpen(false); navigate("/faq"); }} className="text-sm text-foreground hover:text-foreground transition-colors">FAQ</a>
+              <a href="/blog" onClick={(e) => { e.preventDefault(); setMobileNavOpen(false); navigate("/blog"); }} className="text-sm text-foreground hover:text-foreground transition-colors">Blog</a>
               <div className="pt-2 border-t border-border/80 flex flex-col gap-2">
                 <a href="mailto:support@alwakeelo.com" className="inline-flex items-center gap-2 text-sm text-primary hover:text-foreground transition-colors">
                   <Mail size={14} /> support@alwakeelo.com
@@ -610,7 +614,11 @@ export default function LandingPage() {
               </div>
               <span className="text-sm font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <a href="/about" onClick={(e) => { e.preventDefault(); navigate("/about"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">About Us</a>
+              <a href="/contact" onClick={(e) => { e.preventDefault(); navigate("/contact"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact Us</a>
+              <a href="/faq" onClick={(e) => { e.preventDefault(); navigate("/faq"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
+              <a href="/blog" onClick={(e) => { e.preventDefault(); navigate("/blog"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Legal Blog</a>
               <a href="/privacy" onClick={(e) => { e.preventDefault(); navigate("/privacy"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
               <a href="/terms" onClick={(e) => { e.preventDefault(); navigate("/terms"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms and Conditions</a>
               <a href="/cancellation-return-refund-policy" onClick={(e) => { e.preventDefault(); navigate("/cancellation-return-refund-policy"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Cancellation/Return/Refund Policy</a>

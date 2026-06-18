@@ -5,9 +5,15 @@ import { injectSeoMeta, type SeoMeta } from "./seo-meta";
 import { db } from "./db";
 import { judgments, statuteDocuments } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { BLOG_ARTICLES } from "../shared/blog-data";
 
 const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/$/,
+  /^\/about$/,
+  /^\/contact$/,
+  /^\/faq$/,
+  /^\/blog$/,
+  /^\/blog\/[^/]+$/,
   /^\/auth$/,
   /^\/forgot-password$/,
   /^\/reset-password$/,
@@ -341,6 +347,55 @@ export function serveStatic(app: Express) {
   <h1>Ownership Statement — Al Wakeelo</h1>
   <p>Al Wakeelo ownership and operator information. Company details, registration, and the team behind Pakistan's AI legal assistant. Al Wakeelo is a product focused on making Pakistani legal research accessible through artificial intelligence.</p>
 </div>`,
+
+    "/about": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+  <h1>About Al Wakeelo</h1>
+  <p>Al Wakeelo is Pakistan's premier AI legal assistant workspace. Our mission is to make justice and legal knowledge accessible to all citizens, advocates, and chambers in Pakistan using advanced artificial intelligence.</p>
+  <p>Operated by Majnoon Studio, Al Wakeelo brings together a database of over 600,000 court judgments, federal and provincial statutes, and case-intake logs in a single secure platform.</p>
+  <h2>Our Core Values</h2>
+  <ul>
+    <li>Accuracy and Grounding — We verify citations against real judgments to eliminate hallucinations.</li>
+    <li>Privacy First — Your queries and files are secure with us.</li>
+    <li>Empowering Advocates — We build tools to accelerate research and drafting for legal professionals.</li>
+  </ul>
+</div>`,
+
+    "/contact": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+  <h1>Contact Al Wakeelo</h1>
+  <p>Have questions, need support, or want to schedule a legal consultation? Reach out to Al Wakeelo and the team at Majnoon Studio.</p>
+  <h2>Contact Channels</h2>
+  <ul>
+    <li>Email Support: support@alwakeelo.com</li>
+    <li>Phone / WhatsApp: 00923358341897</li>
+    <li>Business Hours: Monday - Friday, 9:00 AM - 5:00 PM (PKT)</li>
+  </ul>
+  <p>Submit your messages directly using the contact form on our web application.</p>
+</div>`,
+
+    "/faq": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+  <h1>Frequently Asked Questions (FAQ)</h1>
+  <p>Answers to common questions about Al Wakeelo, Pakistan's AI legal assistant.</p>
+  <h2>General FAQ</h2>
+  <h3>What is Al Wakeelo?</h3>
+  <p>Al Wakeelo is an AI-powered legal assistant designed to search Pakistani judgments, statutes, and help draft petitions, contracts, and legal documents.</p>
+  <h3>Can Al Wakeelo give binding legal advice?</h3>
+  <p>No, Al Wakeelo provides research assistance. All official representation and binding advice must be obtained from a licensed advocate.</p>
+  <h3>How many judgments are in the database?</h3>
+  <p>We index over 600,000 Pakistani judgments from 1947 to present day, including Supreme Court, High Courts, and Federal Shariat Court decisions.</p>
+</div>`,
+
+    "/blog": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+  <h1>Al Wakeelo Legal Guides &amp; Blog</h1>
+  <p>Read comprehensive legal guides and articles written by advocates and legal experts on Pakistani law. Learn about your rights, legal procedures, and contract requirements under Pakistani legislation.</p>
+  <h2>Available Guides</h2>
+  <ul>
+    <li>Guide to Muslim Family Laws in Pakistan: Nikah, Talaq, and Khula</li>
+    <li>Understanding Bail and Criminal Procedure under Pakistani CrPC</li>
+    <li>The Contract Act 1872: Essentials of Business Agreements in Pakistan</li>
+    <li>Cybercrime and Digital Media Laws in Pakistan: A Practical Guide to PECA 2016</li>
+    <li>Demystifying Pakistani Land Revenue Records: Fard, Khasra, and Mutation (Intaqal)</li>
+  </ul>
+</div>`,
   };
 
   // ── Statute pre-rendering (DB lookup, same pattern as judgments) ────────
@@ -460,6 +515,31 @@ export function serveStatic(app: Express) {
       if (seoData) {
         customMeta = seoData.meta;
         preRenderBlock = seoData.preRenderBlock;
+      }
+    }
+
+    // Dynamic blog articles — SEO pre-rendering from shared blog data
+    const blogMatch = pathname.match(/^\/blog\/([^/]+)$/);
+    if (blogMatch && !preRenderBlock) {
+      const slug = blogMatch[1];
+      const article = BLOG_ARTICLES.find((a) => a.slug === slug);
+      if (article) {
+        customMeta = {
+          title: `${article.title} | Al Wakeelo Legal Guides`,
+          description: article.summary,
+          index: true,
+        };
+        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        preRenderBlock = `<div id="seo-prerender" style="display:none" aria-hidden="true">
+  <h1>${esc(article.title)}</h1>
+  <p><strong>Category:</strong> ${esc(article.category)}</p>
+  <p><strong>Published:</strong> ${esc(article.publishedAt)}</p>
+  <p><strong>Author:</strong> ${esc(article.author)}</p>
+  <p><strong>Read Time:</strong> ${esc(article.readTime)}</p>
+  <div>${esc(article.content)}</div>
+</div>`;
+      } else {
+        notFound = true;
       }
     }
 

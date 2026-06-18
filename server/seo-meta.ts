@@ -105,6 +105,46 @@ const ROUTE_RULES: RouteRule[] = [
     },
   },
   {
+    match: /^\/about$/,
+    meta: {
+      title: "About Us | Al Wakeelo — Pakistan's AI Legal Assistant",
+      description: "Learn about Al Wakeelo, Pakistan's premier AI legal assistant operated by Majnoon Studio. Discover our mission, values, and technology.",
+      index: true,
+    },
+  },
+  {
+    match: /^\/contact$/,
+    meta: {
+      title: "Contact Us | Al Wakeelo — Legal Support & Consultation",
+      description: "Contact Al Wakeelo and the Majnoon Studio team. Get platform support, ask billing questions, or schedule a professional chamber consultation.",
+      index: true,
+    },
+  },
+  {
+    match: /^\/faq$/,
+    meta: {
+      title: "Frequently Asked Questions (FAQ) | Al Wakeelo",
+      description: "Got questions about Al Wakeelo? Read our comprehensive FAQ covering features, AI grounding, database statistics, and subscriptions.",
+      index: true,
+    },
+  },
+  {
+    match: /^\/blog$/,
+    meta: {
+      title: "Legal Guides & Resources | Al Wakeelo",
+      description: "Browse comprehensive legal guides, articles, and tutorials on Pakistani law. Written by legal experts and advocates.",
+      index: true,
+    },
+  },
+  {
+    match: /^\/blog\/[^/]+$/,
+    meta: {
+      title: "Legal Guide | Al Wakeelo",
+      description: "Read this comprehensive Pakistani legal guide on Al Wakeelo.",
+      index: true,
+    },
+  },
+  {
     match: /^\/install$/,
     meta: {
       title: "Install Al Wakeelo on iPhone, Android, or Desktop | Al Wakeelo",
