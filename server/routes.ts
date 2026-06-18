@@ -165,7 +165,7 @@ const CASELAW_PENDING_MAX_ATTEMPTS = Math.max(1, Number(process.env.CASELAW_PEND
 const CASELAW_PENDING_PROCESSING_STALE_MINUTES = Math.max(5, Number(process.env.CASELAW_PENDING_PROCESSING_STALE_MINUTES || 60));
 const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
 // Diagnostic: log which AI model path will be used for standard chat
-console.log(`[AI Config] AI_ROUTER_V2=${process.env.AI_ROUTER_V2 || "(unset)"} isV2=${isAiRouterV2Enabled()} | OPENROUTER_API_KEY=${process.env.OPENROUTER_API_KEY ? "SET(" + process.env.OPENROUTER_API_KEY.slice(0, 8) + "...)" : "NOT SET"} | Standard chain: ${isAiRouterV2Enabled() ? JSON.stringify(DEFAULT_STANDARD_CHAIN) : "legacy(openrouter→deepseek)"}`);
+console.log(`[AI Config] AI_ROUTER_V2=${process.env.AI_ROUTER_V2 || "(unset)"} isV2=${isAiRouterV2Enabled()} | OPENROUTER_API_KEY=${process.env.OPENROUTER_API_KEY ? "SET" : "NOT SET"} | Standard chain: ${isAiRouterV2Enabled() ? JSON.stringify(DEFAULT_STANDARD_CHAIN) : "legacy(openrouter→deepseek)"}`);
 const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
 const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_TOKEN_BUDGET || 900));
 const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 6000));
