@@ -141,8 +141,9 @@ function buildContentSecurityPolicy(isProduction: boolean): string {
 }
 
 function getClientIdentifier(req: Request): string {
-  const forwarded = req.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || req.ip || req.socket.remoteAddress || "unknown";
+  // Use req.ip which respects Express's `trust proxy` setting.
+  // DO NOT read x-forwarded-for directly — it is client-spoofable.
+  return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
 function isRequestAbortedError(err: any): boolean {

@@ -12,11 +12,10 @@ function envEnabled(name: string, defaultValue: boolean = false): boolean {
 }
 
 function getClientIp(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  const value = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  const first = typeof value === "string" ? value.split(",")[0]?.trim() : "";
-  const socketIp = (req.socket?.remoteAddress || "").trim();
-  const raw = first || socketIp || "unknown";
+  // Use req.ip which respects Express's `trust proxy` setting from index.ts.
+  // DO NOT read req.headers["x-forwarded-for"] directly — it is client-controlled
+  // and trivially spoofable, which would let attackers bypass captcha IP checks.
+  const raw = req.ip || req.socket?.remoteAddress || "unknown";
   return raw.startsWith("::ffff:") ? raw.slice(7) : raw;
 }
 

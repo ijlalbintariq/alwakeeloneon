@@ -9,10 +9,11 @@ function normalizeIp(raw: string | undefined | null): string {
 }
 
 export function resolveRequestIp(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  const firstForwarded = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  const forwardedIp = firstForwarded?.split(",")[0]?.trim();
-  return normalizeIp(forwardedIp || req.ip || req.socket.remoteAddress || "unknown");
+  // Use req.ip which respects Express's `trust proxy` setting (set to 1 in index.ts).
+  // This prevents X-Forwarded-For spoofing: the header is sanitized by Express based
+  // on the configured trust depth before it reaches req.ip.
+  // DO NOT read req.headers["x-forwarded-for"] directly — it is client-controlled.
+  return normalizeIp(req.ip || req.socket?.remoteAddress || "unknown");
 }
 
 export function isSingleIpEnforced(): boolean {

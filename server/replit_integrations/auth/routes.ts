@@ -39,6 +39,34 @@ const loginSchema = z.object({
 
 const authAttemptHistory = new Map<string, number[]>();
 
+// Per-email rate limiter for forgot-password to prevent email bombing.
+// Keyed on normalized email so IP spoofing cannot bypass this limit.
+const forgotPasswordEmailHistory = new Map<string, number[]>();
+const FORGOT_PASSWORD_EMAIL_MAX = 3;       // max resets per email
+const FORGOT_PASSWORD_EMAIL_WINDOW_MS = 60 * 60 * 1000; // per hour
+
+function applyForgotPasswordEmailRateLimit(email: string, res: any): boolean {
+  const key = `forgot-password-email:${email.toLowerCase().trim()}`;
+  const now = Date.now();
+  const windowStart = now - FORGOT_PASSWORD_EMAIL_WINDOW_MS;
+  const existing = forgotPasswordEmailHistory.get(key) || [];
+  const recent = existing.filter((ts) => ts >= windowStart);
+
+  if (recent.length >= FORGOT_PASSWORD_EMAIL_MAX) {
+    // Return the same generic message to avoid user-enumeration sidechannels.
+    // The attacker already knows the target email so 429 is fine here.
+    res.setHeader("Retry-After", Math.ceil(FORGOT_PASSWORD_EMAIL_WINDOW_MS / 1000));
+    res.status(429).json({
+      message: "Too many password reset requests for this email. Please try again in an hour.",
+    });
+    return false;
+  }
+
+  recent.push(now);
+  forgotPasswordEmailHistory.set(key, recent);
+  return true;
+}
+
 function applyAuthRateLimit(
   req: Request,
   res: any,
@@ -741,6 +769,10 @@ export function registerAuthRoutes(app: Express): void {
       if (!parsed.success) {
         return res.status(400).json({ message: "Please provide a valid email address" });
       }
+
+      // [SECURITY FIX] Per-email rate limit — prevents email bombing regardless of IP.
+      // Applied after email validation but before DB lookup to minimise timing leaks.
+      if (!applyForgotPasswordEmailRateLimit(parsed.data.email, res)) return;
 
       const user = await authStorage.getUserByEmail(parsed.data.email);
 

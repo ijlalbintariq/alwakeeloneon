@@ -236,11 +236,10 @@ let adminUploadIndexDisabledLogged = false;
 let caseLawAutoSyncDisabledLogged = false;
 
 function getVisitorIpAddress(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  const forwardedValue = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  const firstForwarded = typeof forwardedValue === "string" ? forwardedValue.split(",")[0]?.trim() : "";
-  const socketIp = (req.socket?.remoteAddress || "").trim();
-  const raw = firstForwarded || socketIp || "unknown";
+  // Use req.ip which respects Express's `trust proxy: 1` setting from index.ts.
+  // DO NOT read req.headers["x-forwarded-for"] directly — it is client-controlled
+  // and allows rate-limit bypass by cycling spoofed IP values.
+  const raw = req.ip || req.socket?.remoteAddress || "unknown";
   return raw.startsWith("::ffff:") ? raw.slice(7) : raw;
 }
 
@@ -10845,8 +10844,8 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
   const PUBLIC_JUDGMENT_REFILL_PER_SEC = 60 / 3600;
 
   function clientIp(req: Request): string {
-    const forwarded = req.get("x-forwarded-for")?.split(",")[0]?.trim();
-    return forwarded || req.ip || req.socket?.remoteAddress || "unknown";
+    // Use req.ip (respects Express trust proxy) — do NOT read x-forwarded-for directly.
+    return req.ip || req.socket?.remoteAddress || "unknown";
   }
 
   function takePublicJudgmentToken(req: Request): boolean {
