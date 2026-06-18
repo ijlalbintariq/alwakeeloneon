@@ -1,4 +1,5 @@
 import type { Request } from "express";
+import { resolveRequestIp } from "./replit_integrations/auth/ip";
 
 export type CaptchaVerificationResult = {
   ok: boolean;
@@ -12,11 +13,7 @@ function envEnabled(name: string, defaultValue: boolean = false): boolean {
 }
 
 function getClientIp(req: Request): string {
-  // Use req.ip which respects Express's `trust proxy` setting from index.ts.
-  // DO NOT read req.headers["x-forwarded-for"] directly — it is client-controlled
-  // and trivially spoofable, which would let attackers bypass captcha IP checks.
-  const raw = req.ip || req.socket?.remoteAddress || "unknown";
-  return raw.startsWith("::ffff:") ? raw.slice(7) : raw;
+  return resolveRequestIp(req);
 }
 
 export function isCaptchaEnforced(): boolean {

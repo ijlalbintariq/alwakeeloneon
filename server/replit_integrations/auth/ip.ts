@@ -9,10 +9,13 @@ function normalizeIp(raw: string | undefined | null): string {
 }
 
 export function resolveRequestIp(req: Request): string {
-  // Use req.ip which respects Express's `trust proxy` setting (set to 1 in index.ts).
-  // This prevents X-Forwarded-For spoofing: the header is sanitized by Express based
-  // on the configured trust depth before it reaches req.ip.
+  // If behind Cloudflare, the real client IP is passed in the cf-connecting-ip header.
+  // Express's `trust proxy` setting (set to 1 in index.ts) is respected for fallback.
   // DO NOT read req.headers["x-forwarded-for"] directly — it is client-controlled.
+  const cfIp = req.headers["cf-connecting-ip"];
+  if (typeof cfIp === "string" && cfIp.trim()) {
+    return normalizeIp(cfIp);
+  }
   return normalizeIp(req.ip || req.socket?.remoteAddress || "unknown");
 }
 

@@ -7,6 +7,7 @@ import { createServer } from "http";
 import { dbAvailable, dbUnavailableReason, pool } from "./db";
 import { recordSecurityEvent } from "./security-monitoring";
 import { authRateLimiter, aiRateLimiter, globalApiRateLimiter, crawlerVerificationMiddleware } from "./middleware/rate-limiter";
+import { resolveRequestIp } from "./replit_integrations/auth/ip";
 
 const app = express();
 const httpServer = createServer(app);
@@ -141,9 +142,7 @@ function buildContentSecurityPolicy(isProduction: boolean): string {
 }
 
 function getClientIdentifier(req: Request): string {
-  // Use req.ip which respects Express's `trust proxy` setting.
-  // DO NOT read x-forwarded-for directly — it is client-spoofable.
-  return req.ip || req.socket?.remoteAddress || "unknown";
+  return resolveRequestIp(req);
 }
 
 function isRequestAbortedError(err: any): boolean {

@@ -105,6 +105,7 @@ import {
   isExtractionQueueFullError,
 } from "./extraction-guard";
 import { isSearchCrawler } from "./middleware/rate-limiter";
+import { resolveRequestIp } from "./replit_integrations/auth/ip";
 
 
 const TOKEN_LIMITS = {
@@ -236,11 +237,7 @@ let adminUploadIndexDisabledLogged = false;
 let caseLawAutoSyncDisabledLogged = false;
 
 function getVisitorIpAddress(req: Request): string {
-  // Use req.ip which respects Express's `trust proxy: 1` setting from index.ts.
-  // DO NOT read req.headers["x-forwarded-for"] directly — it is client-controlled
-  // and allows rate-limit bypass by cycling spoofed IP values.
-  const raw = req.ip || req.socket?.remoteAddress || "unknown";
-  return raw.startsWith("::ffff:") ? raw.slice(7) : raw;
+  return resolveRequestIp(req);
 }
 
 function sanitizeInputText(value: unknown, maxLen: number): string {
@@ -10844,8 +10841,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
   const PUBLIC_JUDGMENT_REFILL_PER_SEC = 60 / 3600;
 
   function clientIp(req: Request): string {
-    // Use req.ip (respects Express trust proxy) — do NOT read x-forwarded-for directly.
-    return req.ip || req.socket?.remoteAddress || "unknown";
+    return resolveRequestIp(req);
   }
 
   function takePublicJudgmentToken(req: Request): boolean {
@@ -11265,7 +11261,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
   app.get("/api/caseLaw/lookup", async (req, res) => {
     try {
       // --- Rate limit: 30 req/min per IP ---
-      const ip = req.ip || req.socket.remoteAddress || "unknown";
+      const ip = resolveRequestIp(req);
       const now = Date.now();
       let bucket = caseLawLookupRateMap.get(ip);
       if (!bucket || now > bucket.resetAt) {
