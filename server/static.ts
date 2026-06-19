@@ -394,6 +394,20 @@ export function serveStatic(app: Express) {
     <li>The Contract Act 1872: Essentials of Business Agreements in Pakistan</li>
     <li>Cybercrime and Digital Media Laws in Pakistan: A Practical Guide to PECA 2016</li>
     <li>Demystifying Pakistani Land Revenue Records: Fard, Khasra, and Mutation (Intaqal)</li>
+    <li>How to File a Civil Suit in Pakistan: A Step-by-Step Guide</li>
+    <li>Section 489-F PPC: The Law on Dishonoured Cheques in Pakistan</li>
+    <li>Inheritance Rights and Islamic Succession Law in Pakistan</li>
+    <li>Consumer Protection Laws in Pakistan: Filing Complaints and Claiming Compensation</li>
+    <li>How to Register a Trademark in Pakistan</li>
+    <li>Writ Petitions and Article 199 of the Constitution of Pakistan</li>
+    <li>Rent and Tenancy Laws in Pakistan: Tenant Rights and Eviction Procedures</li>
+    <li>Labor and Employment Rights in Pakistan: A Comprehensive Legal Guide</li>
+    <li>Power of Attorney in Pakistan: Types, Registration, and Legal Requirements</li>
+    <li>Understanding Property Transfer as Gift (Hiba) under Pakistani Law</li>
+    <li>Defamation Laws in Pakistan: Civil vs. Criminal Remedies and Defenses</li>
+    <li>A Complete Guide to FIR in Pakistan: Registration, Remedies, and Quashment</li>
+    <li>Company Registration in Pakistan: Step-by-Step SECP Guide</li>
+    <li>Understanding ADR and Arbitration under Pakistan's Arbitration Act 1940</li>
   </ul>
 </div>`,
   };
