@@ -7098,9 +7098,22 @@ function scoreOutputQuality(feature: string, inputText: string, outputText: stri
 
   // 3. Legal citations presence (for chat & draft features)
   if ((isChat || isDraft) && !isJson) {
-    const hasCitations = /\b\d{4}\s+(PLD|SCMR|CLC|MLD|PCrLJ|PLC|YLR|PLJ|NLR|PCRLJ)\b/i.test(outputText)
-      || /\b(section|s\.)\s+\d+/i.test(outputText)
-      || /\b(Article|clause)\s+\d+/i.test(outputText);
+    const JOURNALS = "PLD|SCMR|CLC|MLD|PCrLJ|PLC|YLR|PLJ|NLR|PCRLJ|PTD|PSC|KLR|BLJ";
+    const hasCitations =
+      // Journal-first (standard Pakistani): PLD 2024 SC 123, SCMR 2023 1450
+      new RegExp(`\\b(${JOURNALS})\\s+\\d{4}\\b`, "i").test(outputText)
+      // Year-first (alternate): 2024 PLD, 2023 SCMR 1450
+      || new RegExp(`\\b\\d{4}\\s+(${JOURNALS})\\b`, "i").test(outputText)
+      // Section/S. references: Section 302, S. 9, s.54
+      || /\b(section|s\.)\s*\d+/i.test(outputText)
+      // Article/Clause references: Article 199, clause 5
+      || /\b(Article|clause)\s+\d+/i.test(outputText)
+      // Common statute abbreviations: PPC, CPC, CrPC, TPA, QSO, MFLO, SRA
+      || /\b(PPC|CPC|CrPC|Cr\.P\.C|TPA|QSO|MFLO|SRA|FCA|NIA)\b/.test(outputText)
+      // Named statutes: "Contract Act", "Penal Code", "Transfer of Property Act" etc.
+      || /\b(Penal Code|Contract Act|Transfer of Property|Specific Relief|Limitation Act|Evidence Act|Criminal Procedure|Civil Procedure|Family Courts? Act|Succession Act|Registration Act|Dissolution of Muslim Marriages|Muslim Family Laws|Guardians and Wards|Constitution of Pakistan)\b/i.test(outputText)
+      // Order/Rule references (CPC): Order IX Rule 13, O.XXXVII
+      || /\b(Order|O\.)\s*[IVXLCDM]+/i.test(outputText);
     if (!hasCitations && outLen > 200) {
       flags.push("no_citations");
       score -= 1;
@@ -7113,13 +7126,17 @@ function scoreOutputQuality(feature: string, inputText: string, outputText: stri
 
   // 4. Formatting quality (for drafts)
   if (isDraft && outLen > 300 && !isJson) {
-    const hasHeaders = /^#{1,3}\s/m.test(outputText) || /\*\*[A-Z]/.test(outputText);
+    const hasMarkdownHeaders = /^#{1,3}\s/m.test(outputText) || /\*\*[A-Z]/.test(outputText);
     const hasLists = /^[\-\*\d]\./m.test(outputText) || /\n\d+\.\s/m.test(outputText);
-    if (!hasHeaders && !hasLists) {
+    // Court-ready drafts don't use markdown — check for legal document structure instead
+    const hasCourtHeadings = /\b(PRAYER|VERIFICATION|BRIEF FACTS|GROUNDS|INTERIM RELIEF|ANNEXURES|RESPECTFULLY SHEWETH|IN THE .*(COURT|TRIBUNAL))\b/i.test(outputText);
+    const hasNumberedParas = /\b(That the|That\s)/.test(outputText) || /^\(?\d+[.)]/m.test(outputText);
+    const hasStructure = hasMarkdownHeaders || hasLists || hasCourtHeadings || hasNumberedParas;
+    if (!hasStructure) {
       flags.push("poor_formatting");
       score -= 1;
     }
-    if (hasHeaders && hasLists) {
+    if ((hasMarkdownHeaders || hasCourtHeadings) && (hasLists || hasNumberedParas)) {
       flags.push("well_structured");
     }
   }
@@ -7143,7 +7160,20 @@ function scoreOutputQuality(feature: string, inputText: string, outputText: stri
 async function logOutputQuality(userId: string, feature: string, model: string, inputText: string, outputText: string, extra?: { userQuery?: string; responseTimeMs?: number }) {
   try {
     // Extract user's actual question from input (skip system prompt)
-    const userInput = inputText.length > 500 ? inputText.slice(-500) : inputText;
+    // The inputText is typically "systemPrompt + userInput" — extract the tail
+    // but prefer splitting on known prompt boundaries for better snippets
+    let userInput = inputText;
+    const promptBoundaries = ["\nUser legal query:", "\nQuery:", "\nInstruction:", "\nDraft Title:", "\nDraft Content:"];
+    for (const boundary of promptBoundaries) {
+      const idx = inputText.lastIndexOf(boundary);
+      if (idx > 0) {
+        userInput = inputText.slice(idx).slice(0, 500);
+        break;
+      }
+    }
+    if (userInput === inputText) {
+      userInput = inputText.length > 500 ? inputText.slice(-500) : inputText;
+    }
     const outputSnippet = (outputText || "").slice(0, 3000);
     const { score, flags } = scoreOutputQuality(feature, inputText, outputText);
 
@@ -11589,7 +11619,7 @@ Draft Excerpt:
 ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         try {
           const aiResult = await callStandardAISimple(sysInstruction, userInput, 1200, { timeoutProfile: "analysis", temperature: 0.3 });
-          await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
+          await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: query || "" });
           const aiSuggestions = parseClauseSuggestionsFromAi(aiResult.text, safeLimit);
           if (aiSuggestions.length > 0) {
             return res.json({
@@ -13639,7 +13669,7 @@ Response format:
             timeoutProfile: "analysis",
             temperature: 0.2,
           });
-          await logUsageCost(userId, "draft", analysisResult.model, analysisSystemInstruction + analysisInput, analysisResult.text);
+          await logUsageCost(userId, "draft", analysisResult.model, analysisSystemInstruction + analysisInput, analysisResult.text, { userQuery: safePrompt });
           let analysisText = normalizeDraftingText(analysisResult.text || "");
           if (!analysisText) {
             return res.status(502).json({ message: "AI returned empty legal analysis text" });
@@ -13729,7 +13759,7 @@ ${legalKnowledgeContextBlock}${styleContext ? `\n\nPersonal Style Memory:\n${sty
             timeoutProfile: "analysis",
             temperature: 0.2,
           });
-          await logUsageCost(userId, "draft", targetedResult.model, sysInstruction + targetedInput, targetedResult.text);
+          await logUsageCost(userId, "draft", targetedResult.model, sysInstruction + targetedInput, targetedResult.text, { userQuery: safePrompt });
           const replacementText = normalizeCourtReadyDraftingText(targetedResult.text);
           const patched = applyTargetedLegalDraftEdit({
             draftText: baseDraftText,
@@ -13845,7 +13875,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
               return;
             }
 
-            await logUsageCost(userId, 'draft', 'deepseek-chat', sysInstruction + userInput, fullContent);
+            await logUsageCost(userId, 'draft', 'deepseek-chat', sysInstruction + userInput, fullContent, { userQuery: safePrompt });
             extractedRecs = extractCaseLawRecommendations(fullContent);
             draftedText = normalizeCourtReadyDraftingText(fullContent);
 
@@ -13907,7 +13937,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
               timeoutProfile: "analysis",
               temperature: 0.25,
             });
-            await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
+            await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: safePrompt });
             extractedRecs = extractCaseLawRecommendations(aiResult.text);
             draftedText = normalizeCourtReadyDraftingText(aiResult.text);
             // R3 optimization: log validation issues only, skip expensive repair AI call
@@ -13989,7 +14019,7 @@ Current Draft Excerpt:
 ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
         try {
           const aiResult = await callStandardAISimple(sysInstruction, userInput, 1400, { timeoutProfile: "analysis", temperature: 0.3 });
-          await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text);
+          await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: safePrompt });
           const clauseText = normalizeDraftingText(aiResult.text);
           if (clauseText) {
             return res.json({
@@ -16247,7 +16277,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
           maxTokens: TOKEN_LIMITS["judgment-summary"],
           temperature: 0.3,
         });
-        await logUsageCost(userId, "summarize", aiResult.model, sysInstruction + userInput, aiResult.content);
+        await logUsageCost(userId, "summarize", aiResult.model, sysInstruction + userInput, aiResult.content, { userQuery: title || citation || "" });
         return aiResult.content;
       });
 
@@ -16324,7 +16354,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         const sysInstruction = `${getLegalSystemPrompt()}\n\nYou are summarizing legal findings for the user. Provide a concise, authoritative summary of the findings in relation to their query. Be precise and cite relevant provisions.${knowledgeContext}`;
         const userInput = `Query: ${query}\n\nFindings:\n${JSON.stringify(findings, null, 2)}\n\nPlease provide a comprehensive summary of these findings.`;
         const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.summarize, { timeoutProfile: "analysis", temperature: 0.3 });
-        await logUsageCost(userId, "summarize", result.model, sysInstruction + userInput, result.text);
+        await logUsageCost(userId, "summarize", result.model, sysInstruction + userInput, result.text, { userQuery: query || "" });
         return result.text;
       });
 
@@ -16352,7 +16382,7 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
         const userInput = `Generate a detailed legal brief for:\nTitle: ${shortTitle}\nSection: ${section}\nDescription: ${description}`;
         const result = await callStandardAISimple(sysInstruction, userInput, TOKEN_LIMITS.brief, { timeoutProfile: "analysis", temperature: 0.3 });
         briefModel = result.model;
-        await logUsageCost(userId, "brief", briefModel, sysInstruction + userInput, result.text);
+        await logUsageCost(userId, "brief", briefModel, sysInstruction + userInput, result.text, { userQuery: `${shortTitle} - ${section}` });
         return result.text;
       });
 
@@ -16418,7 +16448,7 @@ ${knowledgeContext ? `\n<LEGAL_CONTEXT>\n${knowledgeContext}\n</LEGAL_CONTEXT>` 
           timeoutProfile: "analysis",
           temperature: 0.25,
         });
-        await logUsageCost(userId, "draft", result.model, sysInstruction + userInput, result.text);
+        await logUsageCost(userId, "draft", result.model, sysInstruction + userInput, result.text, { userQuery: draftTitle || "" });
         return result.text;
       });
 
@@ -16543,7 +16573,7 @@ RULES:
 
         const userInput = `Draft Title: ${draftTitle}\n\nDraft Content:\n${draftText.slice(0, 16000)}`;
         const result = await callLegalDraftingAI(sysInstruction, userInput, TOKEN_LIMITS.draft, { timeoutProfile: "analysis", temperature: 0.2 });
-        await logUsageCost(userId, "draft", result.model, sysInstruction + userInput, result.text);
+        await logUsageCost(userId, "draft", result.model, sysInstruction + userInput, result.text, { userQuery: draftTitle || "" });
         return result.text;
       });
 

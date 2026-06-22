@@ -269,9 +269,14 @@ app.use((req, res, next) => {
             output_length INTEGER NOT NULL DEFAULT 0,
             quality_score INTEGER NOT NULL DEFAULT 4,
             quality_flags TEXT[] NOT NULL DEFAULT '{}',
+            user_query TEXT NOT NULL DEFAULT '',
+            response_time_ms INTEGER NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT NOW()
           )
         `);
+        // Ensure columns exist for tables created before user_query/response_time_ms were added
+        await pool.query(`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS user_query TEXT NOT NULL DEFAULT ''`).catch(() => {});
+        await pool.query(`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS response_time_ms INTEGER NOT NULL DEFAULT 0`).catch(() => {});
         console.log("[Startup] ai_output_log table ready.");
       } catch (err: any) {
         console.warn("[Startup] Could not ensure ai_output_log table:", err?.message);
