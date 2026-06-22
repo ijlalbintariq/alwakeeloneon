@@ -39,6 +39,7 @@ import {
   MicOff,
   Square,
   Maximize2,
+  CircleHelp,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { CourtFeeCalculator } from "@/components/court-fee-calculator";
@@ -60,6 +61,7 @@ import { useDraftHistory } from "@/hooks/use-draft-history";
 import { DraftHistoryPanel } from "@/components/draft-history-panel";
 import { DraftTabsProvider, useDraftTabs } from "@/contexts/draft-tabs-context";
 import { useDocumentHead } from "@/hooks/use-document-head";
+import { TutorialCards } from "@/components/tutorial-cards";
 
 type DraftRecommendation = {
   id: string;
@@ -1555,6 +1557,14 @@ function LegalDraftingPageInner() {
   const chatListRef = useRef<HTMLDivElement | null>(null);
 
   const editorRef = useRef<LegalEditorHandle | null>(null);
+
+  const [showTutorial, setShowTutorial] = useState(false);
+  useEffect(() => {
+    if (!localStorage.getItem("hasSeenDraftingTutorial")) {
+      setShowTutorial(true);
+      localStorage.setItem("hasSeenDraftingTutorial", "true");
+    }
+  }, []);
 
   const [docText, setDocText] = useState(DEFAULT_DOC);
   const [editorHtml, setEditorHtml] = useState("");
@@ -3125,6 +3135,14 @@ function LegalDraftingPageInner() {
 
         {/* Right: panel toggles + export buttons */}
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/40 text-amber-400 hover:from-amber-500/30 hover:to-amber-600/20 hover:border-amber-400/60 hover:text-amber-300 text-xs font-semibold transition-all duration-200 shadow-[0_0_8px_rgba(245,158,11,0.15)] hover:shadow-[0_0_14px_rgba(245,158,11,0.25)]"
+            onClick={() => setShowTutorial(true)}
+            title="How to use Legal Drafting"
+          >
+            <CircleHelp size={14} />
+            <span>Tutorial</span>
+          </button>
           <div className="hidden md:flex items-center gap-0.5">
             <button
               className="h-6 w-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center"
@@ -3178,7 +3196,7 @@ function LegalDraftingPageInner() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside
+        <aside data-tutorial="workspace"
           className={`hidden md:flex transition-[width] duration-300 ease-out overflow-hidden ${
             leftRailVisible
               ? "w-48 border-r border-[hsl(var(--preview-border))] bg-background/45 backdrop-blur-xl"
@@ -3380,7 +3398,7 @@ function LegalDraftingPageInner() {
 
           <div className="flex-1 min-h-0 flex flex-col">
             {/* ── Tiptap Legal Editor ── */}
-            <div className={`${chatExpanded ? "h-0 overflow-hidden" : "flex-1 min-h-0 overflow-hidden border-b border-[hsl(var(--preview-border))]"} flex flex-col transition-all duration-300`}>
+            <div data-tutorial="editor" className={`${chatExpanded ? "h-0 overflow-hidden" : "flex-1 min-h-0 overflow-hidden border-b border-[hsl(var(--preview-border))]"} flex flex-col transition-all duration-300`}>
               <LegalEditor
                 ref={editorRef}
                 initialContent={editorHtml}
@@ -3391,7 +3409,7 @@ function LegalDraftingPageInner() {
             </div>
 
             {/* ── Chat section (below editor) ── */}
-            <div className={`${chatExpanded ? "flex-1 min-h-0" : "h-[260px] lg:h-[300px]"} shrink-0 flex flex-col overflow-hidden transition-all duration-300`}>
+            <div data-tutorial="ai-engine" className={`${chatExpanded ? "flex-1 min-h-0" : "h-[260px] lg:h-[300px]"} shrink-0 flex flex-col overflow-hidden transition-all duration-300`}>
             <div className="h-full w-full rounded-xl border border-border bg-background/72 backdrop-blur-xl flex flex-col overflow-hidden">
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="px-3 py-1.5 border-b border-border bg-background/25 flex items-center justify-between">
@@ -3648,6 +3666,7 @@ function LegalDraftingPageInner() {
         </div>
 
         <aside
+          data-tutorial="ai-panel"
           className={`hidden lg:flex transition-[width] duration-300 ease-out overflow-hidden ${
             rightRailVisible
               ? "w-[260px] xl:w-[280px] border-l border-[hsl(var(--preview-border))] bg-background/45 backdrop-blur-xl"
@@ -3711,7 +3730,7 @@ function LegalDraftingPageInner() {
               )}
             </section>
 
-            <StyleMemoryPanel module="legal-drafting" />
+            <div data-tutorial="style-memory"><StyleMemoryPanel module="legal-drafting" /></div>
 
             {showDraftReviewPanel && (
               <section>
@@ -3803,7 +3822,7 @@ function LegalDraftingPageInner() {
               </section>
             )}
 
-            <section>
+            <section data-tutorial="references">
               <div className="mb-3 flex items-center justify-between">
                 <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Verified References</label>
                 {isResolvingReferences && <Loader2 size={12} className="animate-spin text-primary" />}
@@ -3944,6 +3963,7 @@ function LegalDraftingPageInner() {
           toast({ title: `${files.length} case document${files.length > 1 ? 's' : ''} imported` });
         }}
       />
+      <TutorialCards open={showTutorial} onOpenChange={setShowTutorial} moduleName="Legal Drafting" />
     </div>
   );
 }

@@ -300,7 +300,7 @@ export function StyleMemoryPanel({
           <RefreshCcw size={12} className="mr-1" />
           {backfilling ? "Backfilling..." : "Backfill"}
         </Button>
-        {samples.length > 0 && !showDeleteAllConfirm && (
+        {((settings?.sampleCounts?.total || 0) > 0 || samples.length > 0) && !showDeleteAllConfirm && (
           <Button
             size="sm"
             variant="outline"

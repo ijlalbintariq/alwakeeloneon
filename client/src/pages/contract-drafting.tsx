@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -27,9 +27,11 @@ import {
   Sparkles,
   ZoomIn,
   ZoomOut,
+  CircleHelp,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { LegalEditor, type LegalEditorHandle } from "@/components/legal-editor";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
@@ -37,6 +39,7 @@ import type { Document as StoredDocument } from "@shared/schema";
 import { StyleMemoryPanel } from "@/components/style-memory-panel";
 import { generateLegalPDF } from "@/lib/generate-legal-pdf";
 import { useDocumentHead } from "@/hooks/use-document-head";
+import { TutorialCards } from "@/components/tutorial-cards";
 
 type ComplianceRisk = {
   id: string;
@@ -59,6 +62,7 @@ type ContractFormState = {
   terminationNotice: string;
   jurisdiction: string;
   obligations: string;
+  customContractType?: string;
 };
 
 type ClauseLibraryItem = {
@@ -109,6 +113,7 @@ const CONTRACT_TYPES = [
   "Franchise Agreement",
   "Loan Agreement",
   "Mortgage Deed",
+  "Other",
 ];
 
 const JURISDICTIONS = ["Lahore", "Karachi", "Islamabad", "Rawalpindi"];
@@ -233,6 +238,55 @@ const CLAUSE_LIBRARY: ClauseLibraryItem[] = [
     category: "Employment & HR Clauses",
     subtitle: "Internal complaint and escalation procedure.",
     prompt: "Draft a grievance handling clause with reporting channels, timelines, confidentiality, and escalation stages.",
+  },
+  {
+    id: "contractual-limitation-liability",
+    title: "Limitation of Liability",
+    category: "Contractual Clauses",
+    subtitle: "Cap damages and exclude indirect losses.",
+    prompt: "Draft a limitation of liability clause capping direct damages and expressly excluding indirect, consequential, and punitive damages.",
+  },
+  {
+    id: "contractual-warranties-reps",
+    title: "Warranties and Representations",
+    category: "Contractual Clauses",
+    subtitle: "Assurances of authority and compliance.",
+    prompt: "Draft mutual representations and warranties regarding corporate authority, non-infringement, and compliance with laws.",
+  },
+  {
+    id: "contractual-intellectual-property",
+    title: "Intellectual Property Rights",
+    category: "Contractual Clauses",
+    subtitle: "Ownership, licensing, and work product.",
+    prompt: "Draft an intellectual property rights clause defining ownership of pre-existing IP and assigning rights to newly developed work product.",
+  },
+  {
+    id: "contractual-non-solicitation",
+    title: "Non-Solicitation Clause",
+    category: "Contractual Clauses",
+    subtitle: "Prohibit poaching employees or clients.",
+    prompt: "Draft a non-solicitation clause preventing the poaching of employees, contractors, and existing clients for a defined period.",
+  },
+  {
+    id: "contractual-liquidated-damages",
+    title: "Liquidated Damages",
+    category: "Contractual Clauses",
+    subtitle: "Pre-agreed compensation for specific breaches.",
+    prompt: "Draft a liquidated damages clause specifying a genuine pre-estimate of loss for specific delays or breaches, explicitly stating it is not a penalty.",
+  },
+  {
+    id: "contractual-subcontracting",
+    title: "Subcontracting Clause",
+    category: "Contractual Clauses",
+    subtitle: "Rules for delegating obligations.",
+    prompt: "Draft a subcontracting clause requiring prior written consent before delegating duties and holding the main contractor liable for subcontractor acts.",
+  },
+  {
+    id: "contractual-data-privacy",
+    title: "Data Privacy & Protection",
+    category: "Contractual Clauses",
+    subtitle: "Compliance with data protection laws.",
+    prompt: "Draft a data privacy clause requiring compliance with applicable data protection regulations, ensuring secure processing and breach notification.",
   },
   {
     id: "hr-code-conduct",
@@ -444,13 +498,15 @@ function makeDefaultState(): ContractFormState {
     terminationNotice: NOTICE_PERIODS[0],
     jurisdiction: JURISDICTIONS[0],
     obligations: "",
+    customContractType: "",
   };
 }
 
 function buildGenerationPrompt(form: ContractFormState): string {
+  const actualType = form.contractType === "Other" && form.customContractType ? form.customContractType : form.contractType;
   return `You are drafting a formal Pakistani legal contract.
 
-Contract Type: ${form.contractType}
+Contract Type: ${actualType}
 Document Title: ${form.title}
 First Party: ${form.firstParty || "[Not provided]"}
 Second Party: ${form.secondParty || "[Not provided]"}
@@ -541,8 +597,27 @@ export default function ContractDraftingPage() {
   const queryClient = useQueryClient();
   const printRef = useRef<HTMLDivElement | null>(null);
 
-  const [form, setForm] = useState<ContractFormState>(makeDefaultState);
+  const [form, setForm] = useState<ContractFormState>(makeDefaultState());
   const [contractText, setContractText] = useState("");
+  const [editorHtml, setEditorHtml] = useState("");
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem("hasSeenDraftingTutorial")) {
+      setShowTutorial(true);
+      localStorage.setItem("hasSeenDraftingTutorial", "true");
+    }
+  }, []);
+  const editorRef = useRef<LegalEditorHandle | null>(null);
+
+  const setEditorContent = useCallback((content: string) => {
+    setEditorHtml(content);
+    editorRef.current?.setContent(content);
+    setTimeout(() => {
+      const text = editorRef.current?.getText() || "";
+      setContractText(text);
+    }, 0);
+  }, []);
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -553,6 +628,7 @@ export default function ContractDraftingPage() {
   const [riskFromCache, setRiskFromCache] = useState(false);
   const [zoom, setZoom] = useState(100);
   const [clauseSearch, setClauseSearch] = useState("");
+  const [customClausePrompt, setCustomClausePrompt] = useState("");
   const [clauseCategory, setClauseCategory] = useState("All");
   const [redlineItems, setRedlineItems] = useState<RedlineItem[]>([]);
   const [isRunningRedline, setIsRunningRedline] = useState(false);
@@ -580,7 +656,10 @@ export default function ContractDraftingPage() {
         lastSavedAt?: string;
       };
       if (parsed.form) setForm({ ...makeDefaultState(), ...parsed.form });
-      if (typeof parsed.contractText === "string") setContractText(parsed.contractText);
+      if (typeof parsed.contractText === "string") {
+        setContractText(parsed.contractText);
+        setEditorContent(parsed.contractText);
+      }
       if (typeof parsed.selectedDocId === "number") setSelectedDocId(parsed.selectedDocId);
       if (parsed.lastSavedAt) setLastSavedAt(new Date(parsed.lastSavedAt));
       setSaveStatus("saved");
@@ -741,7 +820,7 @@ export default function ContractDraftingPage() {
       if (!generated) throw new Error("AI returned empty draft.");
       setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
 
-      setContractText(generated);
+      setEditorContent(generated);
       await apiRequest("POST", "/api/search-history", {
         type: "contract",
         query: `${form.contractType} ${form.title}`.slice(0, 120),
@@ -850,10 +929,10 @@ export default function ContractDraftingPage() {
       const clause = (data?.clause || "").trim();
       if (!clause) throw new Error("Clause retrieval returned empty result");
       setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
-      setContractText((prev) => {
-        const trimmed = prev.trim();
-        return trimmed ? `${trimmed}\n\n${clause}\n` : `${clause}\n`;
-      });
+      const current = editorRef.current?.getHTML() || contractText;
+      const trimmed = current.trim();
+      const nextContent = trimmed ? `${trimmed}<br/><br/>${clause}` : clause;
+      setEditorContent(nextContent);
       toast({ title: "Clause inserted" });
     } catch (err: any) {
       toast({
@@ -953,12 +1032,15 @@ export default function ContractDraftingPage() {
   };
 
   const acceptRedline = (item: RedlineItem) => {
-    setContractText((prev) => {
-      if (item.originalSnippet && prev.includes(item.originalSnippet)) {
-        return prev.replace(item.originalSnippet, item.suggestedText);
-      }
-      return `${prev.trim()}\n\n${item.suggestedText}\n`;
-    });
+    const currentHtml = editorRef.current?.getHTML() || contractText;
+    let newHtml = currentHtml;
+    if (item.originalSnippet && currentHtml.includes(item.originalSnippet)) {
+      newHtml = currentHtml.replace(item.originalSnippet, item.suggestedText);
+    } else {
+      newHtml = `${currentHtml.trim()}<br/><br/>${item.suggestedText}`;
+    }
+    setEditorContent(newHtml);
+    
     setRedlineItems((prev) => prev.map((r) => (r.id === item.id ? { ...r, status: "accepted" } : r)));
     void fetch("/api/style-memory/events/accepted-redline", {
       method: "POST",
@@ -1080,7 +1162,7 @@ export default function ContractDraftingPage() {
         </div>
       </div>
 
-      <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-primary/20">
+      <div data-tutorial="redlines" className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-primary/20">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
             <GitCompareArrows size={16} className="text-primary" />
@@ -1138,7 +1220,7 @@ export default function ContractDraftingPage() {
         </div>
       </div>
 
-      <StyleMemoryPanel module="contract-drafting" />
+      <div data-tutorial="style-memory"><StyleMemoryPanel module="contract-drafting" /></div>
     </>
   );
 
@@ -1165,6 +1247,13 @@ export default function ContractDraftingPage() {
         </div>
 
         <div className="flex items-center gap-3 md:gap-5">
+          <button 
+            onClick={() => setShowTutorial(true)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground bg-card/50 hover:bg-card px-2.5 py-1.5 rounded-lg border border-[hsl(var(--preview-border))] transition-colors"
+          >
+            <CircleHelp size={14} />
+            <span className="hidden md:inline">Tutorial</span>
+          </button>
           <div className="hidden md:flex items-center gap-3 bg-card/50 px-3 py-1.5 rounded-lg border border-[hsl(var(--preview-border))]">
             <div className="flex flex-col items-start gap-0.5">
               <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground font-bold">Contract Health</span>
@@ -1242,6 +1331,7 @@ export default function ContractDraftingPage() {
 
       <main className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         <section
+          data-tutorial="ai-engine"
           className={`w-full lg:shrink-0 glass-surface border-b lg:border-b-0 border-[hsl(var(--preview-border))] transition-[width] duration-300 ease-out overflow-hidden ${
             leftRailVisible ? "lg:w-[300px] lg:border-r" : "lg:w-0 lg:border-r-0"
           } ${focusWritingMode ? "hidden" : ""}`}
@@ -1268,17 +1358,27 @@ export default function ContractDraftingPage() {
               </div>
               <div>
                 <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Contract Type</label>
-                <select
-                  value={form.contractType}
-                  onChange={(e) => onFieldChange("contractType", e.target.value)}
-                  className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none"
-                >
-                  {CONTRACT_TYPES.map((type) => (
-                    <option key={type} value={type} className="bg-background">
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={form.contractType}
+                    onChange={(e) => onFieldChange("contractType", e.target.value)}
+                    className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none"
+                  >
+                    {CONTRACT_TYPES.map((type) => (
+                      <option key={type} value={type} className="bg-background">
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                  {form.contractType === "Other" && (
+                    <Input
+                      value={form.customContractType || ""}
+                      onChange={(e) => onFieldChange("customContractType", e.target.value)}
+                      className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
+                      placeholder="e.g. Licensing Agreement"
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1366,7 +1466,7 @@ export default function ContractDraftingPage() {
               />
             </div>
 
-            <div className="space-y-2 rounded-lg border border-border p-2">
+            <div data-tutorial="clause-library" className="space-y-2 rounded-lg border border-border p-2">
               <div className="flex items-center gap-1.5">
                 <Library size={12} className="text-primary" />
                 <p className="text-[10px] font-semibold text-primary uppercase tracking-widest">Clause Library</p>
@@ -1403,6 +1503,27 @@ export default function ContractDraftingPage() {
                 {!filteredClauseLibrary.length && (
                   <p className="text-[10px] text-muted-foreground text-center py-2">No clauses match.</p>
                 )}
+              </div>
+
+              <div className="pt-2 border-t border-border/50 mt-2 space-y-2">
+                <p className="text-[9px] text-muted-foreground">Can't find what you need?</p>
+                <Textarea
+                  value={customClausePrompt}
+                  onChange={(e) => setCustomClausePrompt(e.target.value)}
+                  placeholder="e.g. Add a clause that imposes a 5% late delivery penalty fee."
+                  className="w-full text-[10px] min-h-[40px] resize-none px-2 py-1 bg-card/30 border border-border focus:border-primary focus-visible:ring-primary/30"
+                />
+                <button
+                  onClick={() => {
+                    applySuggestedClause(customClausePrompt);
+                    setCustomClausePrompt("");
+                  }}
+                  disabled={!customClausePrompt.trim() || isGenerating}
+                  className="w-full h-7 bg-primary text-primary-foreground rounded-md text-[10px] font-semibold flex items-center justify-center gap-1 hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                  Generate Custom Clause
+                </button>
               </div>
             </div>
 
@@ -1515,7 +1636,7 @@ export default function ContractDraftingPage() {
           <div className="mx-auto w-full max-w-none">
             <div>
               <div className="mb-5">
-                <div className="p-4 rounded-xl border border-primary/25 glass-surface backdrop-blur-md">
+                <div data-tutorial="compliance" className="p-4 rounded-xl border border-primary/25 glass-surface backdrop-blur-md">
                   <div className="flex items-center gap-2 mb-2">
                     <ShieldCheck size={14} className="text-primary" />
                     <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Risk Score Breakdown</p>
@@ -1653,16 +1774,20 @@ export default function ContractDraftingPage() {
               )}
 
               <div
+                data-tutorial="editor"
                 className="rounded-2xl border border-[hsl(var(--preview-border))] bg-background/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl p-3 md:p-5 lg:p-7 min-h-[560px] md:min-h-[760px] print:bg-white print:text-black"
                 style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
                 ref={printRef}
               >
-                <Textarea
-                  value={contractText}
-                  onChange={(e) => setContractText(e.target.value)}
-                  className="w-full min-h-[520px] md:min-h-[700px] resize-none border-0 p-0 focus-visible:ring-0 bg-transparent text-[15px] leading-relaxed text-foreground print:text-black"
+                <LegalEditor
+                  ref={editorRef}
+                  initialContent={editorHtml || contractText}
+                  onUpdate={(html, text) => {
+                    setEditorHtml(html);
+                    setContractText(text);
+                  }}
+                  className="w-full min-h-[520px] md:min-h-[700px] border-0 p-0 text-[15px] leading-relaxed text-foreground print:text-black"
                   placeholder="Your generated contract draft will appear here..."
-                  data-testid="textarea-contract-draft"
                 />
               </div>
               <div className="mt-6 text-center text-muted-foreground text-xs">Contract Workspace</div>
@@ -1755,6 +1880,7 @@ export default function ContractDraftingPage() {
           </button>
         </div>
       </footer>
+      <TutorialCards open={showTutorial} onOpenChange={setShowTutorial} moduleName="Contract Drafting" />
     </div>
   );
 }
