@@ -1,9 +1,11 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
   AlertCircle,
   BookmarkPlus,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   Eye,
   ExternalLink,
   FileText,
@@ -163,6 +165,10 @@ export default function JudgmentSearchPage() {
   const [citationCourt, setCitationCourt] = useState<string>("");
   const [searchMode, setSearchMode] = useState<"keyword" | "citation">("keyword");
   const [keywordSort, setKeywordSort] = useState<"relevance" | "latest">("latest");
+  const [searchCollapsed, setSearchCollapsed] = useState(false);
+
+  // Detect if we're on mobile (<=768px)
+  const isMobile = useCallback(() => window.innerWidth <= 768, []);
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [loadingJournals, setLoadingJournals] = useState<boolean>(true);
@@ -221,6 +227,8 @@ export default function JudgmentSearchPage() {
     }
     setIsLoading(false);
     setIsLoadingMore(false);
+    // Auto-collapse search panel on mobile after search completes
+    if (isMobile()) setSearchCollapsed(true);
 
     if (localItems.length > 0) {
       setExternalResults([]);
@@ -285,6 +293,8 @@ export default function JudgmentSearchPage() {
       setCitationError(err?.message || "Failed to search citation");
     } finally {
       setCitationSearching(false);
+      // Auto-collapse search panel on mobile after citation search completes
+      if (isMobile()) setSearchCollapsed(true);
     }
   };
 
@@ -433,7 +443,23 @@ export default function JudgmentSearchPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border/80 bg-background/90 p-3 shadow-2xl">
+      <section className="rounded-2xl border border-border/80 bg-background/90 shadow-2xl">
+        {/* Mobile toggle header — always visible */}
+        <button
+          type="button"
+          onClick={() => setSearchCollapsed((prev) => !prev)}
+          className="w-full flex items-center justify-between px-3 py-2.5 md:hidden"
+          data-testid="button-toggle-search-panel"
+        >
+          <span className="text-xs font-bold text-foreground flex items-center gap-2">
+            <Search size={14} className="text-primary" />
+            {searchCollapsed ? "Show Search Filters" : "Hide Search Filters"}
+          </span>
+          {searchCollapsed ? <ChevronDown size={16} className="text-muted-foreground" /> : <ChevronUp size={16} className="text-muted-foreground" />}
+        </button>
+
+        {/* Collapsible search body */}
+        <div className={`${searchCollapsed ? "hidden md:block" : "block"} p-3 pt-0 md:pt-3`}>
         <div className="mb-3 flex justify-center">
           <div className="inline-flex rounded-xl border border-border/90 bg-muted/40 p-1">
             <button
@@ -625,10 +651,11 @@ export default function JudgmentSearchPage() {
             ) : null}
           </form>
         )}
+        </div>
       </section>
 
       <section className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-2 min-h-0 space-y-4 overflow-y-auto pr-1">
+        <div className="xl:col-span-2 min-h-0 space-y-4 overflow-y-auto pr-1 pb-8">
           <div className="flex items-center justify-between border-b border-border pb-3">
             <h3 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
               Recent Judgments
@@ -817,7 +844,7 @@ export default function JudgmentSearchPage() {
           ) : null}
         </div>
 
-        <aside className="min-h-0 space-y-4 overflow-y-auto pr-1">
+        <aside className="hidden xl:block min-h-0 space-y-4 overflow-y-auto pr-1">
           <section className="overflow-hidden rounded-xl border border-primary/25 bg-card/70">
             <div className="bg-primary px-4 py-3">
               <h4 className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-wider" style={{ color: 'white' }}>
