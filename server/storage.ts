@@ -1576,10 +1576,7 @@ export class DatabaseStorage implements IStorage {
 
     // tsvector rank score (0-1 range, multiply by 500 to be comparable with ILIKE bonuses)
     const tsRankScore = hasTextQuery && queryTokens.length > 0
-      ? sql`(ts_rank_cd(
-          to_tsvector('simple', coalesce(${caseLaw.citation}, '') || ' ' || coalesce(${caseLaw.title}, '') || ' ' || coalesce(${caseLaw.summary}, '') || ' ' || coalesce(${caseLaw.court}, '')),
-          to_tsquery('simple', ${queryTokens.join(' | ')})
-        ) * 500)::int`
+      ? sql`(ts_rank_cd(tsv_citation_title_summary_court, to_tsquery('simple', ${queryTokens.join(' | ')})) * 500)::int`
       : sql`0`;
 
     const relevanceScore = sql<number>`(${exactTriplet} + ${reportMatch} + ${yearMatch} + ${pageMatch} + ${primaryBoost} + ${tokenScore} + ${phraseScore} + ${tsRankScore})`;
@@ -1604,7 +1601,7 @@ export class DatabaseStorage implements IStorage {
       // Build tsquery: AND of top 3 tokens for precise matching
       const tsQueryNarrow = queryTokens.slice(0, 3).join(' & ');
 
-      const tsvExpr = sql`to_tsvector('simple', coalesce(${caseLaw.citation}, '') || ' ' || coalesce(${caseLaw.title}, '') || ' ' || coalesce(${caseLaw.summary}, '') || ' ' || coalesce(${caseLaw.court}, ''))`;
+      const tsvExpr = sql`tsv_citation_title_summary_court`;
 
       // Structured citation clauses to OR with tsvector (B-tree, instant)
       const structuredClauses: ReturnType<typeof sql>[] = [];
@@ -2264,7 +2261,7 @@ export class DatabaseStorage implements IStorage {
     // Full judgment text mentions hundreds of cited cases and legal terms in passing,
     // causing irrelevant results (e.g. a property fraud case citing a narcotics bail case
     // would match "bail in narcotics" even though the case has nothing to do with narcotics).
-    const tsvExpr = sql`to_tsvector('simple', coalesce(${judgments.title}, '') || ' ' || coalesce(${judgments.headnotes}, ''))`;
+    const tsvExpr = sql`tsv_title_headnotes`;
 
     // Build a relevance scoring expression using ts_rank_cd for both narrow and broad queries
     // This ensures results are ranked by how well they match, not just by recency
@@ -4066,6 +4063,37 @@ async function ensureCitationReferenceSeedData(): Promise<void> {
   }
 }
 
+async function backfillTsvColumn(): Promise<void> {
+  if (!db) {
+    console.warn("[Indexes] Database not initialized, skipping backfill.");
+    return;
+  }
+  console.log("[Indexes] Starting background backfill of judgments.tsv_title_headnotes...");
+  let rowsUpdated = 0;
+  while (true) {
+    try {
+      const res = await db.execute(sql`
+        WITH batch AS (
+          SELECT id FROM judgments WHERE tsv_title_headnotes IS NULL LIMIT 2000
+        )
+        UPDATE judgments
+        SET tsv_title_headnotes = to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(headnotes, ''))
+        WHERE id IN (SELECT id FROM batch)
+      `);
+      const count = res.rowCount || 0;
+      rowsUpdated += count;
+      if (count === 0) break;
+      console.log(`[Indexes] Backfilled ${count} judgments (total: ${rowsUpdated})`);
+      // Sleep for 100ms to allow other queries to execute and prevent CPU exhaustion
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (err: any) {
+      console.warn("[Indexes] Error during backfill batch:", err?.message || err);
+      break;
+    }
+  }
+  console.log(`[Indexes] Finished background backfill. Total rows updated: ${rowsUpdated}`);
+}
+
 export async function ensureSearchIndexes(): Promise<void> {
   console.log("[Indexes] Starting search indexes creation with dedicated migration connection...");
   const { Pool } = await import("pg");
@@ -4771,6 +4799,46 @@ export async function ensureSearchIndexes(): Promise<void> {
     // ── AI Output Quality enhancements ─────────────────────────────────
     { label: "alter_ai_output_log_user_query", stmt: sql`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS user_query text DEFAULT ''` },
     { label: "alter_ai_output_log_response_time_ms", stmt: sql`ALTER TABLE ai_output_log ADD COLUMN IF NOT EXISTS response_time_ms integer DEFAULT 0` },
+    // ── Precomputed tsvector columns for keyword search optimization ────
+    // ── Precomputed tsvector columns for keyword search optimization ────
+    {
+      label: "alter_judgments_tsv_title_headnotes_nullable",
+      stmt: sql`ALTER TABLE judgments ADD COLUMN IF NOT EXISTS tsv_title_headnotes tsvector`,
+    },
+    {
+      label: "idx_judgments_tsv_title_headnotes",
+      stmt: sql`CREATE INDEX IF NOT EXISTS idx_judgments_tsv_title_headnotes ON judgments USING gin (tsv_title_headnotes)`,
+    },
+    {
+      label: "create_judgments_tsv_trigger_fn",
+      stmt: sql`
+        CREATE OR REPLACE FUNCTION judgments_tsv_trigger() RETURNS trigger AS $$
+        BEGIN
+          new.tsv_title_headnotes := to_tsvector('simple', coalesce(new.title, '') || ' ' || coalesce(new.headnotes, ''));
+          return new;
+        END;
+        $$ LANGUAGE plpgsql
+      `,
+    },
+    {
+      label: "drop_judgments_tsv_trigger_old",
+      stmt: sql`DROP TRIGGER IF EXISTS tsvectorupdate_judgments ON judgments`,
+    },
+    {
+      label: "create_judgments_tsv_trigger",
+      stmt: sql`
+        CREATE TRIGGER tsvectorupdate_judgments BEFORE INSERT OR UPDATE ON judgments
+        FOR EACH ROW EXECUTE FUNCTION judgments_tsv_trigger()
+      `,
+    },
+    {
+      label: "alter_case_law_tsv_citation_title_summary_court",
+      stmt: sql`ALTER TABLE case_law ADD COLUMN IF NOT EXISTS tsv_citation_title_summary_court tsvector GENERATED ALWAYS AS (to_tsvector('simple', coalesce(citation, '') || ' ' || coalesce(title, '') || ' ' || coalesce(summary, '') || ' ' || coalesce(court, ''))) STORED`,
+    },
+    {
+      label: "idx_case_law_tsv_full_text",
+      stmt: sql`CREATE INDEX IF NOT EXISTS idx_case_law_tsv_full_text ON case_law USING gin (tsv_citation_title_summary_court)`,
+    },
   ];
 
   for (const { label, stmt } of indexStatements) {
@@ -4800,6 +4868,10 @@ export async function ensureSearchIndexes(): Promise<void> {
     console.warn("[RAG] Could not ensure RAG schema:", err?.message || err);
   }
   await ensureCitationReferenceSeedData();
+  // Start background backfilling of judgments.tsv_title_headnotes
+  backfillTsvColumn().catch((err) => {
+    console.error("[Indexes] Background backfill failed:", err?.message || err);
+  });
   console.log("Search indexes verification complete.");
 }
 

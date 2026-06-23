@@ -271,6 +271,7 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
         documentClassification: "case_law" as const,
         fallbackExtraction: false,
         statuteReferences: [],
+        tsvCitationTitleSummaryCourt: null,
       };
     });
 

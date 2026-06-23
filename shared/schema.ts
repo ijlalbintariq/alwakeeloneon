@@ -1,9 +1,16 @@
 
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex, jsonb, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
 import { sql } from "drizzle-orm";
+
+export const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
+
 
 export * from "./models/auth";
 
@@ -147,6 +154,9 @@ export const caseLaw = pgTable("case_law", {
   documentClassification: text("document_classification", { enum: ["case_law", "statute_document", "legal_analysis", "contract", "procedure_guide", "other"] }).default("case_law").notNull(),
   fallbackExtraction: boolean("fallback_extraction").default(false).notNull(),
   statuteReferences: text("statute_references").array().default([]).notNull(),
+  tsvCitationTitleSummaryCourt: tsvector("tsv_citation_title_summary_court").generatedAlwaysAs(
+    () => sql`to_tsvector('simple', coalesce(citation, '') || ' ' || coalesce(title, '') || ' ' || coalesce(summary, '') || ' ' || coalesce(court, ''))`
+  ),
 });
 
 export const lawJournals = pgTable(
@@ -198,6 +208,9 @@ export const judgments = pgTable(
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+    tsvTitleHeadnotes: tsvector("tsv_title_headnotes").generatedAlwaysAs(
+      () => sql`to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(headnotes, ''))`
+    ),
   },
   (table) => ({
     uniqueCitationParts: uniqueIndex("judgments_year_journal_page_unique").on(table.year, table.journalId, table.page),
