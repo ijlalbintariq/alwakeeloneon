@@ -198,8 +198,8 @@ export function serveStatic(app: Express) {
   // display:none — React's #root takes over visually.
   const STATIC_PRERENDER: Record<string, string> = {
     "/": `<div id="seo-prerender" style="display:none" aria-hidden="true">
-  <h1>Al Wakeelo — Pakistan's AI-Powered Legal Assistant</h1>
-  <p>Al Wakeelo is Pakistan's first AI legal assistant, built for lawyers, law students, and anyone navigating Pakistani law. Search over 600,000 judgments from the Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, and Federal Shariat Court.</p>
+  <h1>Alwakeelo AI — Pakistan's AI-Powered Legal Assistant</h1>
+  <p>Alwakeelo AI is Pakistan's first AI legal assistant, built for lawyers, law students, and anyone navigating Pakistani law. Search over 600,000 judgments from the Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, and Federal Shariat Court.</p>
   <h2>Features</h2>
   <ul>
     <li><strong>Judgment Search</strong> — Search 600,000+ Pakistani judgments by citation, party name, court, year, and keyword. Includes PLD, SCMR, YLR, MLD, CLD, CLC, PCrLJ law reports.</li>

@@ -69,9 +69,9 @@ const FAQ_ITEMS = [
 
 export default function LandingPage() {
   useDocumentHead({
-    title: "Al Wakeelo — Your Digital Lawyer | AI Legal Assistant for Pakistan",
+    title: "Alwakeelo AI — Your Digital Lawyer | AI Legal Assistant for Pakistan",
     description:
-      "Pakistan's AI-powered legal assistant. Search 600,000+ judgments, draft contracts and petitions, and get guidance grounded in Pakistani statutes and case law.",
+      "Alwakeelo AI is Pakistan's premier AI-powered legal assistant. Search 600,000+ judgments, draft contracts and petitions, and get guidance grounded in Pakistani statutes.",
     path: "/",
   });
   const [, navigate] = useLocation();
@@ -130,9 +130,9 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl overflow-hidden border border-amber-400/30 shadow-lg shadow-amber-500/20">
-              <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
+              <img src="/logo.svg" alt="Alwakeelo logo" className="w-full h-full object-cover" />
             </div>
-            <span className="text-xl font-bold italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>
+            <span className="text-xl font-bold italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Alwakeelo</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             <a href="/" className="text-sm text-foreground hover:text-foreground transition-colors">Home</a>
@@ -203,14 +203,14 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
-            <span className="italic">Pakistan Legal AI Workspace</span>
+            <span className="italic">Alwakeelo AI Workspace</span>
             <br />
             <span className="text-primary italic">for Advocates & Chambers</span>
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
             Research case law, draft petitions and contracts, and generate client-ready legal documents in minutes
-            with AI fine-tuned for Pakistani legal practice.
+            with Alwakeelo AI, fine-tuned for Pakistani legal practice.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -610,9 +610,9 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg overflow-hidden border border-amber-400/30">
-                <img src="/logo.svg" alt="Al Wakeelo logo" className="w-full h-full object-cover" />
+                <img src="/logo.svg" alt="Alwakeelo logo" className="w-full h-full object-cover" />
               </div>
-              <span className="text-sm font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Al Wakeelo</span>
+              <span className="text-sm font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Alwakeelo</span>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <a href="/about" onClick={(e) => { e.preventDefault(); navigate("/about"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">About Us</a>
@@ -625,12 +625,12 @@ export default function LandingPage() {
               <a href="/ownership-statement" onClick={(e) => { e.preventDefault(); navigate("/ownership-statement"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Ownership Statement</a>
             </div>
             <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} Al Wakeelo. All rights reserved.
+              &copy; {new Date().getFullYear()} Alwakeelo. All rights reserved.
             </p>
           </div>
           <div className="mt-6 text-center">
             <p className="text-xs text-muted-foreground">
-              Al Wakeelo by <span className="text-muted-foreground font-semibold">Majnun Studio</span>
+              Alwakeelo by <span className="text-muted-foreground font-semibold">Majnun Studio</span>
             </p>
           </div>
         </div>
