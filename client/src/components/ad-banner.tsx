@@ -1,131 +1,103 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
-
-interface AdsterraNativeProps {
-  type: "native";
-  scriptSrc: string;
-  containerId: string;
-  className?: string;
-}
-
-interface AdsterraBannerProps {
-  type: "banner";
-  atKey: string;
-  width: number;
-  height: number;
-  className?: string;
-}
-
-type AdBannerProps = AdsterraNativeProps | AdsterraBannerProps;
 
 /**
  * Adsterra ad component for Alwakeelo.
- * - Automatically hidden for paid subscribers (standard, pro, chamber, enterprise).
- * - Supports two Adsterra formats: Native Banner and Banner (iframe).
  *
- * Native Banner: Adsterra invoke.js uses getElementById to find the container div
- * and writes ad HTML into it. The script must be injected AFTER the container
- * div is in the DOM.
- *
- * Banner 300x250: Uses atOptions global + invoke.js which creates an iframe.
+ * Strategy: React only renders the container div. The Adsterra script
+ * is injected into document.head (outside React's DOM tree) so React's
+ * reconciliation cannot interfere with it. Adsterra's invoke.js finds
+ * the container via getElementById and writes ad content into it.
  */
-export function AdBanner(props: AdBannerProps) {
+
+/* ═══════════════════════════════════════════════════════════
+ * Native Banner Ad (ID: 29987573)
+ * ═══════════════════════════════════════════════════════════ */
+export function NativeBannerAd({ className = "" }: { className?: string }) {
   const { user, isLoading } = useAuth();
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const [injected, setInjected] = useState(false);
+  const scriptInjected = useRef(false);
 
   const tier = user?.subscriptionTier?.toLowerCase() || "free";
   const isPaid = tier !== "free";
 
   useEffect(() => {
-    if (isLoading || isPaid || injected) return;
-    if (!wrapperRef.current) return;
+    if (isLoading || isPaid || scriptInjected.current) return;
 
-    // Small delay to ensure the container div (rendered by React) is fully
-    // committed to the DOM before Adsterra's script tries to getElementById.
+    // Wait for the container div to be committed to DOM
     const timer = setTimeout(() => {
-      if (!wrapperRef.current || injected) return;
+      const container = document.getElementById("container-10f18ae62d62276718a63c20d2a9c9b1");
+      if (!container) return;
 
-      if (props.type === "native") {
-        // Native Banner: script MUST come after the container div
-        // Adsterra's invoke.js calls getElementById("container-xxxx")
-        const script = document.createElement("script");
-        script.async = true;
-        script.setAttribute("data-cfasync", "false");
-        script.src = props.scriptSrc;
-        // Append script AFTER the container div (as a sibling, not inside it)
-        wrapperRef.current.appendChild(script);
-      } else {
-        // Banner 300x250: set atOptions global, then load invoke.js
-        // @ts-ignore
-        window.atOptions = {
-          key: props.atKey,
-          format: "iframe",
-          height: props.height,
-          width: props.width,
-          params: {},
-        };
-
-        const invokeScript = document.createElement("script");
-        invokeScript.async = true;
-        invokeScript.setAttribute("data-cfasync", "false");
-        invokeScript.src = `https://www.topcpmcreativeformat.com/${props.atKey}/invoke.js`;
-        wrapperRef.current.appendChild(invokeScript);
-      }
-
-      setInjected(true);
-    }, 100);
+      // Inject script into document.head — outside React's DOM tree
+      const script = document.createElement("script");
+      script.async = true;
+      script.setAttribute("data-cfasync", "false");
+      script.src = "https://pl30088072.effectivecpmnetwork.com/10f18ae62d62276718a63c20d2a9c9b1/invoke.js";
+      script.id = "adsterra-native-script";
+      document.head.appendChild(script);
+      scriptInjected.current = true;
+    }, 150);
 
     return () => clearTimeout(timer);
-  }, [isLoading, isPaid, injected]);
+  }, [isLoading, isPaid]);
 
-  // Hide for paid users (after auth loads)
   if (!isLoading && isPaid) return null;
 
-  const className = props.className || "";
+  return (
+    <div className={`ad-wrapper ${className}`} data-testid="ad-native-banner">
+      <div id="container-10f18ae62d62276718a63c20d2a9c9b1" />
+    </div>
+  );
+}
 
-  if (props.type === "native") {
-    return (
-      <div className={`ad-wrapper ${className}`} data-testid="ad-native-banner" ref={wrapperRef}>
-        {/* Container div that Adsterra's invoke.js finds via getElementById */}
-        <div id={props.containerId} />
-        {/* Script will be appended here by useEffect as a sibling after the container */}
-      </div>
-    );
-  }
+/* ═══════════════════════════════════════════════════════════
+ * Banner 300x250 Ad (ID: 29987574)
+ * ═══════════════════════════════════════════════════════════ */
+export function Banner300x250Ad({ className = "" }: { className?: string }) {
+  const { user, isLoading } = useAuth();
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const scriptInjected = useRef(false);
+
+  const tier = user?.subscriptionTier?.toLowerCase() || "free";
+  const isPaid = tier !== "free";
+
+  useEffect(() => {
+    if (isLoading || isPaid || scriptInjected.current) return;
+    if (!bannerRef.current) return;
+
+    const timer = setTimeout(() => {
+      if (!bannerRef.current || scriptInjected.current) return;
+
+      // Set atOptions on window (global, as Adsterra expects)
+      // @ts-ignore
+      window.atOptions = {
+        key: "3f2c86fbf54bda7bdd48d319bc36c89",
+        format: "iframe",
+        height: 250,
+        width: 300,
+        params: {},
+      };
+
+      // Inject invoke.js into the banner div directly
+      // (Adsterra's banner script writes an iframe next to itself)
+      const script = document.createElement("script");
+      script.async = true;
+      script.setAttribute("data-cfasync", "false");
+      script.src = "https://www.topcpmcreativeformat.com/3f2c86fbf54bda7bdd48d319bc36c89/invoke.js";
+      bannerRef.current.appendChild(script);
+      scriptInjected.current = true;
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [isLoading, isPaid]);
+
+  if (!isLoading && isPaid) return null;
 
   return (
     <div
       className={`ad-wrapper flex justify-center ${className}`}
       data-testid="ad-banner-300x250"
-      ref={wrapperRef}
-    >
-      {/* invoke.js will create an iframe here */}
-    </div>
-  );
-}
-
-/* ─── Pre-configured ad units for easy use ─── */
-
-export function NativeBannerAd({ className = "" }: { className?: string }) {
-  return (
-    <AdBanner
-      type="native"
-      scriptSrc="https://pl30088072.effectivecpmnetwork.com/10f18ae62d62276718a63c20d2a9c9b1/invoke.js"
-      containerId="container-10f18ae62d62276718a63c20d2a9c9b1"
-      className={className}
-    />
-  );
-}
-
-export function Banner300x250Ad({ className = "" }: { className?: string }) {
-  return (
-    <AdBanner
-      type="banner"
-      atKey="3f2c86fbf54bda7bdd48d319bc36c89"
-      width={300}
-      height={250}
-      className={className}
+      ref={bannerRef}
     />
   );
 }
