@@ -22,68 +22,74 @@ type AdBannerProps = AdsterraNativeProps | AdsterraBannerProps;
  * Adsterra ad component for Alwakeelo.
  * - Automatically hidden for paid subscribers (standard, pro, chamber, enterprise).
  * - Supports two Adsterra formats: Native Banner and Banner (iframe).
+ *
+ * Native Banner: Adsterra invoke.js uses getElementById to find the container div
+ * and writes ad HTML into it. The script must be injected AFTER the container
+ * div is in the DOM.
+ *
+ * Banner 300x250: Uses atOptions global + invoke.js which creates an iframe.
  */
 export function AdBanner(props: AdBannerProps) {
   const { user, isLoading } = useAuth();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [injected, setInjected] = useState(false);
 
-  // Wait for auth to finish loading before deciding
   const tier = user?.subscriptionTier?.toLowerCase() || "free";
   const isPaid = tier !== "free";
 
   useEffect(() => {
-    // Don't inject until auth has finished loading
-    if (isLoading) return;
-    // Don't inject for paid users
-    if (isPaid) return;
-    // Don't inject twice
-    if (injected) return;
-    // Need a container
-    if (!containerRef.current) return;
+    if (isLoading || isPaid || injected) return;
+    if (!wrapperRef.current) return;
 
-    if (props.type === "native") {
-      const script = document.createElement("script");
-      script.async = true;
-      script.setAttribute("data-cfasync", "false");
-      script.src = props.scriptSrc;
-      containerRef.current.appendChild(script);
-    } else {
-      // Banner (iframe): inject atOptions then invoke script
-      const optionsScript = document.createElement("script");
-      optionsScript.textContent = `
-        atOptions = {
-          'key' : '${props.atKey}',
-          'format' : 'iframe',
-          'height' : ${props.height},
-          'width' : ${props.width},
-          'params' : {}
+    // Small delay to ensure the container div (rendered by React) is fully
+    // committed to the DOM before Adsterra's script tries to getElementById.
+    const timer = setTimeout(() => {
+      if (!wrapperRef.current || injected) return;
+
+      if (props.type === "native") {
+        // Native Banner: script MUST come after the container div
+        // Adsterra's invoke.js calls getElementById("container-xxxx")
+        const script = document.createElement("script");
+        script.async = true;
+        script.setAttribute("data-cfasync", "false");
+        script.src = props.scriptSrc;
+        // Append script AFTER the container div (as a sibling, not inside it)
+        wrapperRef.current.appendChild(script);
+      } else {
+        // Banner 300x250: set atOptions global, then load invoke.js
+        // @ts-ignore
+        window.atOptions = {
+          key: props.atKey,
+          format: "iframe",
+          height: props.height,
+          width: props.width,
+          params: {},
         };
-      `;
-      containerRef.current.appendChild(optionsScript);
 
-      const invokeScript = document.createElement("script");
-      invokeScript.async = true;
-      invokeScript.setAttribute("data-cfasync", "false");
-      invokeScript.src = `//www.topcpmcreativeformat.com/${props.atKey}/invoke.js`;
-      containerRef.current.appendChild(invokeScript);
-    }
+        const invokeScript = document.createElement("script");
+        invokeScript.async = true;
+        invokeScript.setAttribute("data-cfasync", "false");
+        invokeScript.src = `https://www.topcpmcreativeformat.com/${props.atKey}/invoke.js`;
+        wrapperRef.current.appendChild(invokeScript);
+      }
 
-    setInjected(true);
+      setInjected(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [isLoading, isPaid, injected]);
 
-  // While auth is loading, render the container placeholder (don't return null)
-  // After auth loads, hide for paid users
+  // Hide for paid users (after auth loads)
   if (!isLoading && isPaid) return null;
 
   const className = props.className || "";
 
   if (props.type === "native") {
     return (
-      <div className={`ad-wrapper ${className}`} data-testid="ad-native-banner">
-        <div ref={containerRef}>
-          <div id={props.containerId} />
-        </div>
+      <div className={`ad-wrapper ${className}`} data-testid="ad-native-banner" ref={wrapperRef}>
+        {/* Container div that Adsterra's invoke.js finds via getElementById */}
+        <div id={props.containerId} />
+        {/* Script will be appended here by useEffect as a sibling after the container */}
       </div>
     );
   }
@@ -92,8 +98,9 @@ export function AdBanner(props: AdBannerProps) {
     <div
       className={`ad-wrapper flex justify-center ${className}`}
       data-testid="ad-banner-300x250"
+      ref={wrapperRef}
     >
-      <div ref={containerRef} />
+      {/* invoke.js will create an iframe here */}
     </div>
   );
 }
