@@ -125,7 +125,6 @@ function buildContentSecurityPolicy(isProduction: boolean): string {
     "font-src 'self' data: https://fonts.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
     "worker-src 'self' blob:",
-    "frame-src 'self' https://accounts.google.com",
     "form-action 'self'",
   ];
 
@@ -137,6 +136,7 @@ function buildContentSecurityPolicy(isProduction: boolean): string {
   } else {
     directives.push("script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com");
     directives.push("connect-src 'self' ws: wss: http: https:");
+    directives.push("frame-src 'self' https://accounts.google.com");
   }
 
   return directives.join("; ");

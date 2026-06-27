@@ -561,6 +561,8 @@ export default function JudgmentDetailPage() {
         </section>
       ) : null}
 
+      <NativeBannerAd className="my-6" />
+
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-foreground">Full Judgment</h2>
         <div className="rounded-xl border border-border bg-card/60 p-4 md:p-5 space-y-4 max-h-[60vh] overflow-y-auto">
