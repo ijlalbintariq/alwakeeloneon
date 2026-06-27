@@ -3,6 +3,7 @@ import { useDocumentHead } from "@/hooks/use-document-head";
 import { BLOG_ARTICLES } from "../../../shared/blog-data";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { ArrowLeft, Clock, Calendar, ChevronRight } from "lucide-react";
+import { NativeBannerAd } from "@/components/ad-banner";
 
 export default function BlogDetailPage() {
   const [, navigate] = useLocation();
@@ -64,6 +65,8 @@ export default function BlogDetailPage() {
           <LegalMarkdown content={article.content} />
         </section>
       </article>
+
+      <NativeBannerAd className="my-2" />
 
       {/* Suggested Articles */}
       <section className="border-t border-border pt-10 space-y-4">
