@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 
 interface AdsterraNativeProps {
@@ -24,27 +24,32 @@ type AdBannerProps = AdsterraNativeProps | AdsterraBannerProps;
  * - Supports two Adsterra formats: Native Banner and Banner (iframe).
  */
 export function AdBanner(props: AdBannerProps) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
-  const scriptLoadedRef = useRef(false);
+  const [injected, setInjected] = useState(false);
 
-  // Hide ads for paid users
+  // Wait for auth to finish loading before deciding
   const tier = user?.subscriptionTier?.toLowerCase() || "free";
   const isPaid = tier !== "free";
 
   useEffect(() => {
-    if (isPaid || scriptLoadedRef.current || !containerRef.current) return;
-    scriptLoadedRef.current = true;
+    // Don't inject until auth has finished loading
+    if (isLoading) return;
+    // Don't inject for paid users
+    if (isPaid) return;
+    // Don't inject twice
+    if (injected) return;
+    // Need a container
+    if (!containerRef.current) return;
 
     if (props.type === "native") {
-      // Native Banner: inject the invoke.js script
       const script = document.createElement("script");
       script.async = true;
       script.setAttribute("data-cfasync", "false");
       script.src = props.scriptSrc;
       containerRef.current.appendChild(script);
     } else {
-      // Banner (iframe): inject atOptions + invoke script
+      // Banner (iframe): inject atOptions then invoke script
       const optionsScript = document.createElement("script");
       optionsScript.textContent = `
         atOptions = {
@@ -64,16 +69,12 @@ export function AdBanner(props: AdBannerProps) {
       containerRef.current.appendChild(invokeScript);
     }
 
-    return () => {
-      // Cleanup on unmount
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
-      }
-      scriptLoadedRef.current = false;
-    };
-  }, [isPaid]);
+    setInjected(true);
+  }, [isLoading, isPaid, injected]);
 
-  if (isPaid) return null;
+  // While auth is loading, render the container placeholder (don't return null)
+  // After auth loads, hide for paid users
+  if (!isLoading && isPaid) return null;
 
   const className = props.className || "";
 
@@ -87,7 +88,6 @@ export function AdBanner(props: AdBannerProps) {
     );
   }
 
-  // Banner type
   return (
     <div
       className={`ad-wrapper flex justify-center ${className}`}
