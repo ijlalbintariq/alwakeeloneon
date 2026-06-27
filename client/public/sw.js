@@ -57,6 +57,9 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname.startsWith("/api/")) return;
 
+  // Let all third-party/cross-origin requests bypass the Service Worker completely
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
     fetch(request)
       .then((response) => {
