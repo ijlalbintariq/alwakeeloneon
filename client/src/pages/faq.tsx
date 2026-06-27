@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useDocumentHead } from "@/hooks/use-document-head";
 import { ChevronDown, ChevronRight, HelpCircle } from "lucide-react";
+import { Banner300x250Ad } from "@/components/ad-banner";
 
 type FaqItem = {
   q: string;
@@ -123,17 +124,22 @@ export default function FaqPage() {
       </section>
 
       <section className="space-y-10 pt-6 border-t border-border">
-        {FAQ_SECTIONS.map((section) => (
-          <div key={section.title} className="space-y-4">
-            <h2 className="text-lg font-bold italic text-primary flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-              <HelpCircle size={16} /> {section.title}
-            </h2>
-            <div className="space-y-3">
-              {section.items.map((item, idx) => (
-                <AccordionItem key={idx} q={item.q} a={item.a} />
-              ))}
+        {FAQ_SECTIONS.map((section, sIdx) => (
+          <Fragment key={section.title}>
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold italic text-primary flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <HelpCircle size={16} /> {section.title}
+              </h2>
+              <div className="space-y-3">
+                {section.items.map((item, idx) => (
+                  <AccordionItem key={idx} q={item.q} a={item.a} />
+                ))}
+              </div>
             </div>
-          </div>
+            {sIdx === 1 && (
+              <Banner300x250Ad className="my-6" />
+            )}
+          </Fragment>
         ))}
       </section>
     </div>

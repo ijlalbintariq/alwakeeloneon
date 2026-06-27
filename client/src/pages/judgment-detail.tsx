@@ -6,6 +6,7 @@ import { useDocumentHead } from "@/hooks/use-document-head";
 import { apiRequest } from "@/lib/queryClient";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import jsPDF from "jspdf";
+import { NativeBannerAd } from "@/components/ad-banner";
 
 type AiMessage = {
   role: "user" | "assistant";
@@ -350,6 +351,8 @@ export default function JudgmentDetailPage() {
             </div>
           </section>
         ) : null}
+
+        <NativeBannerAd className="my-6" />
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Judgment Excerpt</h2>
