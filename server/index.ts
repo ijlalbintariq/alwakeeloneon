@@ -129,9 +129,9 @@ function buildContentSecurityPolicy(isProduction: boolean): string {
   ];
 
   if (isProduction) {
-    directives.push("script-src 'self' 'unsafe-inline' https://accounts.google.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.effectivecpmnetwork.com https://*.topcpmcreativeformat.com https://*.google.com");
-    directives.push("connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://fonts.googleapis.com https://*.effectivecpmnetwork.com https://*.topcpmcreativeformat.com");
-    directives.push("frame-src 'self' https://accounts.google.com https://*.doubleclick.net https://*.googlesyndication.com https://*.google.com https://*.effectivecpmnetwork.com https://*.topcpmcreativeformat.com");
+    directives.push("script-src 'self' 'unsafe-inline' https:");
+    directives.push("connect-src 'self' https:");
+    directives.push("frame-src 'self' https:");
     directives.push("upgrade-insecure-requests");
   } else {
     directives.push("script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com");
