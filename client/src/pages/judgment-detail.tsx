@@ -585,11 +585,11 @@ export default function JudgmentDetailPage() {
       <div className="w-full xl:w-[380px] xl:min-w-[340px] flex-shrink-0">
         <div className={`sticky top-6 rounded-2xl border border-border bg-card/60 flex flex-col transition-all duration-300 ${
           isChatMinimized 
-            ? "h-[45px] max-h-[45px] xl:h-[calc(100vh-120px)] xl:max-h-none overflow-hidden xl:overflow-visible" 
+            ? "h-[58px] max-h-[58px] xl:h-[calc(100vh-120px)] xl:max-h-none overflow-hidden xl:overflow-visible" 
             : "h-[52vh] xl:h-[calc(100vh-120px)]"
         }`}>
           <div 
-            className="p-4 border-b border-border bg-background/50 flex items-center justify-between cursor-pointer xl:cursor-default select-none"
+            className="p-4 border-b border-border bg-background/50 flex items-center justify-between cursor-pointer xl:cursor-default select-none hover:bg-card/30 transition-colors"
             onClick={() => {
               if (window.innerWidth < 1280) {
                 setIsChatMinimized(!isChatMinimized);
@@ -607,7 +607,13 @@ export default function JudgmentDetailPage() {
                 Ask for summaries, ratio decidendi, cited precedents, or key legal issues.
               </p>
             </div>
-            <button className="xl:hidden text-muted-foreground hover:text-foreground flex-shrink-0">
+            <button 
+              className="xl:hidden flex items-center justify-center w-7 h-7 rounded-lg border border-border bg-card/85 text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-sm flex-shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsChatMinimized(!isChatMinimized);
+              }}
+            >
               {isChatMinimized ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
           </div>

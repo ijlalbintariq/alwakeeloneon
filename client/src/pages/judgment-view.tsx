@@ -630,11 +630,11 @@ export default function JudgmentViewPage() {
 
         <div className={`w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-border bg-background flex flex-col transition-all duration-300 ${
           isChatMinimized 
-            ? "h-[45px] max-h-[45px] xl:h-auto xl:max-h-none overflow-hidden xl:overflow-visible" 
+            ? "h-[52px] max-h-[52px] xl:h-auto xl:max-h-none overflow-hidden xl:overflow-visible" 
             : "max-h-[52vh] xl:max-h-none"
         }`}>
           <div 
-            className="p-3 md:p-4 border-b border-border flex items-center justify-between cursor-pointer xl:cursor-default select-none"
+            className="p-3 md:p-4 border-b border-border flex items-center justify-between cursor-pointer xl:cursor-default select-none hover:bg-card/30 transition-colors"
             onClick={() => {
               if (window.innerWidth < 1280) {
                 setIsChatMinimized(!isChatMinimized);
@@ -647,7 +647,13 @@ export default function JudgmentViewPage() {
                 Ask about this judgment
               </span>
             </div>
-            <button className="xl:hidden text-muted-foreground hover:text-foreground">
+            <button 
+              className="xl:hidden flex items-center justify-center w-7 h-7 rounded-lg border border-border bg-card/85 text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsChatMinimized(!isChatMinimized);
+              }}
+            >
               {isChatMinimized ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
           </div>
