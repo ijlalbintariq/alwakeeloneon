@@ -580,42 +580,103 @@ export default function JudgmentDetailPage() {
         </div>
       </section>
     </div>
+      {/* Mobile: Floating AI Button (minimized) */}
+      {isChatMinimized && window.innerWidth < 1280 && (
+        <button
+          className="xl:hidden fixed bottom-6 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 text-xs font-bold uppercase tracking-wider hover:bg-primary/90 active:scale-95 transition-all"
+          onClick={() => setIsChatMinimized(false)}
+        >
+          <MessageSquare size={16} />
+          Ask AI
+        </button>
+      )}
 
-      <div className="w-full xl:w-[380px] xl:min-w-[340px] flex-shrink-0">
-        <div className={`w-full h-[50vh] fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background flex flex-col shadow-[0_-8px_30px_rgb(0,0,0,0.12)] transition-transform duration-300 ${
-          isChatMinimized 
-            ? "translate-y-[calc(100%_-_44px)]" 
-            : "translate-y-0"
-        } xl:sticky xl:top-6 xl:bottom-auto xl:left-auto xl:right-auto xl:z-0 xl:w-[380px] xl:min-w-[340px] xl:h-[calc(100vh-120px)] xl:max-h-none xl:border-t-0 xl:shadow-none xl:translate-y-0 xl:transition-none`}>
-          {/* Mobile Pull Handle — always visible */}
-          <div 
-            className="xl:hidden flex flex-col items-center gap-0.5 py-2 cursor-pointer select-none active:bg-card/20 transition-colors"
-            onClick={() => setIsChatMinimized(!isChatMinimized)}
-          >
-            <div className="w-10 h-1 bg-border rounded-full" />
-            <button 
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-primary/20 active:scale-95 transition-all mt-0.5"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsChatMinimized(!isChatMinimized);
-              }}
+      {/* Mobile: Full Chat Panel (expanded) */}
+      {!isChatMinimized && window.innerWidth < 1280 && (
+        <div className="xl:hidden fixed bottom-0 left-0 right-0 z-50 h-[55vh] bg-background border-t border-border shadow-[0_-8px_30px_rgb(0,0,0,0.15)] flex flex-col rounded-t-2xl">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={14} className="text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground">Ask about this judgment</span>
+            </div>
+            <button
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-border bg-card text-muted-foreground text-[10px] font-bold uppercase tracking-wider hover:bg-accent hover:text-foreground active:scale-95 transition-all"
+              onClick={() => setIsChatMinimized(true)}
             >
-              {isChatMinimized ? (
-                <>
-                  <ChevronUp size={13} className="animate-bounce" />
-                  <span>Ask AI about judgment</span>
-                </>
-              ) : (
-                <>
-                  <ChevronDown size={13} />
-                  <span>Close Chat</span>
-                </>
-              )}
+              <ChevronDown size={13} />
+              Close
             </button>
           </div>
 
-          {/* Desktop-Only Title */}
-          <div className="hidden xl:flex flex-col w-full p-4 border-b border-border bg-background/50">
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {chatMessages.length === 0 && (
+              <div className="text-center py-8">
+                <Gavel size={28} className="text-foreground/20 mx-auto mb-3" />
+                <div className="space-y-2">
+                  {[
+                    "Summarize this judgment",
+                    "What is the ratio decidendi?",
+                    "What are the main legal issues?",
+                    "List the cited precedents"
+                  ].map((suggestion, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleChatSend(suggestion)}
+                      disabled={isChatLoading}
+                      className="w-full text-left px-4 py-2.5 bg-background border border-border rounded-xl text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all disabled:opacity-50"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[90%] px-4 py-3 rounded-2xl text-sm ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-background text-foreground border border-border shadow-sm"}`}>
+                  {msg.role === "assistant" ? (
+                    <div className="prose prose-invert prose-sm max-w-none"><LegalMarkdown content={msg.content} /></div>
+                  ) : (
+                    <div className="whitespace-pre-wrap text-[13px]">{msg.content}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {isChatLoading && (
+              <div className="flex justify-start">
+                <div className="bg-background border border-border shadow-sm rounded-2xl px-4 py-3">
+                  <Loader2 size={16} className="animate-spin text-primary" />
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div className="p-3 border-t border-border">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                placeholder="Ask about this judgment..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleChatSend()}
+              />
+              <button
+                onClick={() => handleChatSend()}
+                disabled={!chatInput.trim() || isChatLoading}
+                className="bg-primary text-primary-foreground rounded-xl h-[42px] w-[42px] flex items-center justify-center disabled:opacity-50 transition-opacity"
+              >
+                <Send size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop: Sidebar Chat */}
+      <div className="hidden xl:flex xl:flex-col w-full xl:w-[380px] xl:min-w-[340px] flex-shrink-0">
+        <div className="xl:sticky xl:top-6 xl:h-[calc(100vh-120px)] flex flex-col border-l border-border">
+          <div className="p-4 border-b border-border bg-background/50">
             <div className="flex items-center gap-2">
               <MessageSquare size={16} className="text-primary" />
               <span className="text-xs font-black uppercase tracking-[0.2em] text-foreground">
