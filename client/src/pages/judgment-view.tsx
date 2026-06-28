@@ -630,32 +630,48 @@ export default function JudgmentViewPage() {
 
         <div className={`w-full transition-all duration-300 ${
           isChatMinimized 
-            ? "h-[52px] max-h-[52px] overflow-hidden" 
+            ? "h-[54px] max-h-[54px] overflow-hidden" 
             : "h-[50vh] max-h-[50vh]"
         } fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background flex flex-col shadow-[0_-8px_30px_rgb(0,0,0,0.12)] xl:relative xl:bottom-auto xl:left-auto xl:right-auto xl:z-0 xl:w-[380px] xl:min-w-[340px] xl:h-auto xl:max-h-none xl:border-t-0 xl:border-l xl:shadow-none xl:transition-none`}>
           <div 
-            className="p-3 md:p-4 border-b border-border flex items-center justify-between cursor-pointer xl:cursor-default select-none hover:bg-card/30 transition-colors"
+            className="p-1.5 md:p-3 border-b border-border flex flex-col items-center justify-center cursor-pointer xl:cursor-default select-none hover:bg-card/10 transition-colors"
             onClick={() => {
               if (window.innerWidth < 1280) {
                 setIsChatMinimized(!isChatMinimized);
               }
             }}
           >
-            <div className="flex items-center gap-2">
+            {/* Centered Mobile Pull-up Handle & Button */}
+            <div className="xl:hidden flex flex-col items-center gap-1 w-full">
+              <div className="w-10 h-1 bg-border rounded-full" />
+              <button 
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-primary/20 active:scale-95 transition-all"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsChatMinimized(!isChatMinimized);
+                }}
+              >
+                {isChatMinimized ? (
+                  <>
+                    <ChevronUp size={13} className="animate-bounce" />
+                    <span>Ask AI about judgment</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown size={13} />
+                    <span>Close Chat</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Desktop-Only Title */}
+            <div className="xl:flex hidden items-center gap-2 w-full">
               <MessageSquare size={14} className="text-primary" />
               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground">
                 Ask about this judgment
               </span>
             </div>
-            <button 
-              className="xl:hidden flex items-center justify-center w-7 h-7 rounded-lg border border-border bg-card/85 text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsChatMinimized(!isChatMinimized);
-              }}
-            >
-              {isChatMinimized ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">

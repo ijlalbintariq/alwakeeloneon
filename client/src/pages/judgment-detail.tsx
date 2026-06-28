@@ -585,37 +585,53 @@ export default function JudgmentDetailPage() {
       <div className="w-full xl:w-[380px] xl:min-w-[340px] flex-shrink-0">
         <div className={`w-full transition-all duration-300 ${
           isChatMinimized 
-            ? "h-[58px] max-h-[58px] overflow-hidden" 
+            ? "h-[54px] max-h-[54px] overflow-hidden" 
             : "h-[50vh] max-h-[50vh]"
         } fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background flex flex-col shadow-[0_-8px_30px_rgb(0,0,0,0.12)] xl:sticky xl:top-6 xl:bottom-auto xl:left-auto xl:right-auto xl:z-0 xl:w-[380px] xl:min-w-[340px] xl:h-[calc(100vh-120px)] xl:max-h-none xl:border-t-0 xl:shadow-none xl:transition-none`}>
           <div 
-            className="p-4 border-b border-border bg-background/50 flex items-center justify-between cursor-pointer xl:cursor-default select-none hover:bg-card/30 transition-colors"
+            className="p-1.5 md:p-3 border-b border-border bg-background/50 flex flex-col items-center justify-center cursor-pointer xl:cursor-default select-none hover:bg-card/10 transition-colors"
             onClick={() => {
               if (window.innerWidth < 1280) {
                 setIsChatMinimized(!isChatMinimized);
               }
             }}
           >
-            <div>
+            {/* Centered Mobile Pull-up Handle & Button */}
+            <div className="xl:hidden flex flex-col items-center gap-1 w-full">
+              <div className="w-10 h-1 bg-border rounded-full" />
+              <button 
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-primary/20 active:scale-95 transition-all"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsChatMinimized(!isChatMinimized);
+                }}
+              >
+                {isChatMinimized ? (
+                  <>
+                    <ChevronUp size={13} className="animate-bounce" />
+                    <span>Ask AI about judgment</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown size={13} />
+                    <span>Close Chat</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Desktop-Only Title */}
+            <div className="xl:flex hidden flex-col w-full">
               <div className="flex items-center gap-2">
                 <MessageSquare size={16} className="text-primary" />
                 <span className="text-xs font-black uppercase tracking-[0.2em] text-foreground">
                   Talk with AI about this Judgment
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1 xl:block hidden">
+              <p className="text-xs text-muted-foreground mt-1">
                 Ask for summaries, ratio decidendi, cited precedents, or key legal issues.
               </p>
             </div>
-            <button 
-              className="xl:hidden flex items-center justify-center w-7 h-7 rounded-lg border border-border bg-card/85 text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-sm flex-shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsChatMinimized(!isChatMinimized);
-              }}
-            >
-              {isChatMinimized ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
