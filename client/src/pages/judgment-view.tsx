@@ -628,50 +628,46 @@ export default function JudgmentViewPage() {
           </div>
         </div>
 
-        <div className={`w-full transition-all duration-300 ${
+        <div className={`w-full h-[50vh] fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background flex flex-col shadow-[0_-8px_30px_rgb(0,0,0,0.12)] transition-transform duration-300 ${
           isChatMinimized 
-            ? "h-[54px] max-h-[54px] overflow-hidden" 
-            : "h-[50vh] max-h-[50vh]"
-        } fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background flex flex-col shadow-[0_-8px_30px_rgb(0,0,0,0.12)] xl:relative xl:bottom-auto xl:left-auto xl:right-auto xl:z-0 xl:w-[380px] xl:min-w-[340px] xl:h-auto xl:max-h-none xl:border-t-0 xl:border-l xl:shadow-none xl:transition-none`}>
+            ? "translate-y-[calc(100%-44px)]" 
+            : "translate-y-0"
+        } xl:relative xl:bottom-auto xl:left-auto xl:right-auto xl:z-0 xl:w-[380px] xl:min-w-[340px] xl:h-auto xl:max-h-none xl:border-t-0 xl:border-l xl:shadow-none xl:translate-y-0 xl:transition-none`}>
+          {/* Mobile Pull Handle — always visible */}
           <div 
-            className="p-1.5 md:p-3 border-b border-border flex flex-col items-center justify-center cursor-pointer xl:cursor-default select-none hover:bg-card/10 transition-colors"
-            onClick={() => {
-              if (window.innerWidth < 1280) {
-                setIsChatMinimized(!isChatMinimized);
-              }
-            }}
+            className="xl:hidden flex flex-col items-center gap-0.5 py-2 cursor-pointer select-none active:bg-card/20 transition-colors"
+            onClick={() => setIsChatMinimized(!isChatMinimized)}
           >
-            {/* Centered Mobile Pull-up Handle & Button */}
-            <div className="xl:hidden flex flex-col items-center gap-1 w-full">
-              <div className="w-10 h-1 bg-border rounded-full" />
-              <button 
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-primary/20 active:scale-95 transition-all"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsChatMinimized(!isChatMinimized);
-                }}
-              >
-                {isChatMinimized ? (
-                  <>
-                    <ChevronUp size={13} className="animate-bounce" />
-                    <span>Ask AI about judgment</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown size={13} />
-                    <span>Close Chat</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <div className="w-10 h-1 bg-border rounded-full" />
+            <button 
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-primary/20 active:scale-95 transition-all mt-0.5"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsChatMinimized(!isChatMinimized);
+              }}
+            >
+              {isChatMinimized ? (
+                <>
+                  <ChevronUp size={13} className="animate-bounce" />
+                  <span>Ask AI about judgment</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown size={13} />
+                  <span>Close Chat</span>
+                </>
+              )}
+            </button>
+          </div>
 
-            {/* Desktop-Only Title */}
-            <div className="xl:flex hidden items-center gap-2 w-full">
-              <MessageSquare size={14} className="text-primary" />
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground">
-                Ask about this judgment
-              </span>
-            </div>
+          {/* Desktop-Only Title */}
+          <div 
+            className="hidden xl:flex p-3 border-b border-border items-center gap-2 w-full"
+          >
+            <MessageSquare size={14} className="text-primary" />
+            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground">
+              Ask about this judgment
+            </span>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
