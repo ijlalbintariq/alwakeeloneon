@@ -584,7 +584,7 @@ export default function JudgmentDetailPage() {
       <div className="w-full xl:w-[380px] xl:min-w-[340px] flex-shrink-0">
         <div className={`w-full h-[50vh] fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background flex flex-col shadow-[0_-8px_30px_rgb(0,0,0,0.12)] transition-transform duration-300 ${
           isChatMinimized 
-            ? "translate-y-[calc(100%-44px)]" 
+            ? "translate-y-[calc(100%_-_44px)]" 
             : "translate-y-0"
         } xl:sticky xl:top-6 xl:bottom-auto xl:left-auto xl:right-auto xl:z-0 xl:w-[380px] xl:min-w-[340px] xl:h-[calc(100vh-120px)] xl:max-h-none xl:border-t-0 xl:shadow-none xl:translate-y-0 xl:transition-none`}>
           {/* Mobile Pull Handle — always visible */}
