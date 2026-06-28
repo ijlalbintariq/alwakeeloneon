@@ -1,0 +1,43 @@
+======================================================================
+SEARCH OPTIMIZATION BENCHMARK RESULTS (AFTER FULL TSVECTOR BACKFILL)
+======================================================================
+
+Database Provider: Neon Serverless Postgres
+Table Size: 223,737 rows (judgments table)
+Compute Level during tests: Autoscaled (Active)
+
+--- 1. Keyword Search on Judgments Table (`judgments`) ---
+Optimized using nullable column `tsv_title_headnotes` + GIN index.
+
+| Query Term                  | Before (Partial Data / Raw) | After (Full 223k Rows Index) | Speedup / Notes |
+|-----------------------------|-----------------------------|------------------------------|-----------------|
+| "2024 SCMR 115"             | 12,744 ms                   | 3,832 ms                     | 3.3x faster     |
+| "dishonoured cheque"        | 6,002 ms                    | 729 ms                       | 8.2x faster     |
+| "Section 489-F PPC"         | 838 ms                      | 347 ms                       | 2.4x faster     |
+| "bail"                      | 4,863 ms                    | 2,199 ms                     | 2.2x faster (High-frequency term) |
+| "bail in narcotics CNSA"    | 3,112 ms                    | 3,707 ms                     | Searches 100% of rows (vs ~75% before) |
+| "defamation ordinance 2002" | 528 ms                      | 778 ms                       | Searches 100% of rows (vs ~75% before) |
+
+--- 2. Keyword Search on Case Law Table (`case_law`) ---
+Optimized using generated column `tsv_citation_title_summary_court` + GIN index.
+
+| Query Term                  | Before                      | After                        | Speedup / Notes |
+|-----------------------------|-----------------------------|------------------------------|-----------------|
+| "2024 SCMR 115"             | 3,173 ms                    | 2,208 ms                     | 1.4x faster     |
+| "dishonoured cheque"        | 334 ms                      | 635 ms                       | Transient load  |
+| "Section 489-F PPC"         | 1,315 ms                    | 736 ms                       | 1.8x faster     |
+| "bail"                      | 1,106 ms                    | 1,071 ms                     | 1.03x faster    |
+| "bail in narcotics CNSA"    | 856 ms                      | 276 ms                       | 3.1x faster     |
+| "defamation ordinance 2002" | 3,545 ms                    | 299 ms                       | 11.8x faster!   |
+
+--- 3. Unique Topic Search Test ---
+Query: "khula" (Family Law / divorce initiated by wife)
+Table: `judgments`
+Execution Time: 4,266 ms
+Results Found: 5
+Top Case Laws:
+1. [1988 CLC 1688] - Lahore High Court: Return of benefits as condition precedent for grant of Khula.
+2. [2024 SCMR 1642] - Sindh High Court: Muhammad Shamim Ali vs Mst. Asma Begum.
+3. [2010 CLC 58] - Sindh High Court: Strained relations, irretrievable breakdown and grant of Khula.
+4. [2010 YLR 3246] - Lahore High Court: Restitution of conjugal rights vs Wife's claim of maintenance.
+5. [1996 MLD 1527] - Sindh High Court: Mst. Kiran Sabah vs IInd Additional District Judge.
