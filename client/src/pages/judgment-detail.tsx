@@ -473,7 +473,7 @@ export default function JudgmentDetailPage() {
 
   return (
     <div className="flex flex-col xl:flex-row gap-7 fade-in" data-testid="judgment-detail-page">
-      <div className="flex-1 space-y-7 min-w-0">
+      <div className="flex-1 space-y-7 min-w-0 pb-24 xl:pb-0">
         <button
           onClick={() => {
             if (window.history.length > 1) {
@@ -583,11 +583,11 @@ export default function JudgmentDetailPage() {
 
       {/* AI Chat Sidebar */}
       <div className="w-full xl:w-[380px] xl:min-w-[340px] flex-shrink-0">
-        <div className={`sticky top-6 rounded-2xl border border-border bg-card/60 flex flex-col transition-all duration-300 ${
+        <div className={`w-full transition-all duration-300 ${
           isChatMinimized 
-            ? "h-[58px] max-h-[58px] xl:h-[calc(100vh-120px)] xl:max-h-none overflow-hidden xl:overflow-visible" 
-            : "h-[52vh] xl:h-[calc(100vh-120px)]"
-        }`}>
+            ? "h-[58px] max-h-[58px] overflow-hidden" 
+            : "h-[50vh] max-h-[50vh]"
+        } fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background flex flex-col shadow-[0_-8px_30px_rgb(0,0,0,0.12)] xl:sticky xl:top-6 xl:bottom-auto xl:left-auto xl:right-auto xl:z-0 xl:w-[380px] xl:min-w-[340px] xl:h-[calc(100vh-120px)] xl:max-h-none xl:border-t-0 xl:shadow-none xl:transition-none`}>
           <div 
             className="p-4 border-b border-border bg-background/50 flex items-center justify-between cursor-pointer xl:cursor-default select-none hover:bg-card/30 transition-colors"
             onClick={() => {

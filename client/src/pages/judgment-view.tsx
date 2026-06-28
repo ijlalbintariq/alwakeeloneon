@@ -455,7 +455,7 @@ export default function JudgmentViewPage() {
 
       <div className="flex-1 flex flex-col xl:flex-row overflow-y-auto xl:overflow-hidden">
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-3 sm:px-6 md:px-12 py-6 md:py-10">
+          <div className="max-w-4xl mx-auto px-3 sm:px-6 md:px-12 py-6 md:py-10 pb-24 xl:pb-10">
             <div className="flex items-center gap-4 mb-8">
               <div className="p-3 bg-primary/10 text-primary rounded-2xl">
                 <Gavel size={24} />
@@ -628,11 +628,11 @@ export default function JudgmentViewPage() {
           </div>
         </div>
 
-        <div className={`w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-border bg-background flex flex-col transition-all duration-300 ${
+        <div className={`w-full transition-all duration-300 ${
           isChatMinimized 
-            ? "h-[52px] max-h-[52px] xl:h-auto xl:max-h-none overflow-hidden xl:overflow-visible" 
-            : "max-h-[52vh] xl:max-h-none"
-        }`}>
+            ? "h-[52px] max-h-[52px] overflow-hidden" 
+            : "h-[50vh] max-h-[50vh]"
+        } fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background flex flex-col shadow-[0_-8px_30px_rgb(0,0,0,0.12)] xl:relative xl:bottom-auto xl:left-auto xl:right-auto xl:z-0 xl:w-[380px] xl:min-w-[340px] xl:h-auto xl:max-h-none xl:border-t-0 xl:border-l xl:shadow-none xl:transition-none`}>
           <div 
             className="p-3 md:p-4 border-b border-border flex items-center justify-between cursor-pointer xl:cursor-default select-none hover:bg-card/30 transition-colors"
             onClick={() => {
