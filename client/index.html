@@ -16,6 +16,11 @@
           if (isLight) {
             document.documentElement.classList.add("light");
             document.documentElement.classList.remove("dark");
+            
+            // Dynamic light splash styles
+            var style = document.createElement("style");
+            style.textContent = "\n              #splash-screen {\n                background: #f8fafc !important;\n              }\n              .splash-title {\n                color: #0f172a !important;\n              }\n              .splash-tagline {\n                color: #64748b !important;\n              }\n              .splash-secure {\n                color: #94a3b8 !important;\n              }\n              .splash-dot {\n                background: #d97706 !important;\n              }\n            ";
+            document.head.appendChild(style);
           }
           // else: leave class="dark" (golden theme) applied
         } catch (_) {
