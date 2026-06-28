@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { ArrowLeft, Send, Loader2, MessageSquare, Gavel, Sparkles, ShieldCheck, ShieldAlert, FileText, BookOpen, ChevronDown, ChevronUp, RefreshCw, Download, BookmarkPlus, BookmarkCheck } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -628,20 +629,21 @@ export default function JudgmentViewPage() {
           </div>
         </div>
 
-        {/* Mobile: Floating AI Button (minimized) or Chat Panel (expanded) */}
-        {isChatMinimized && window.innerWidth < 1280 && (
+        {/* Mobile: Floating AI Button (minimized) — rendered via portal to escape scroll containers */}
+        {isChatMinimized && window.innerWidth < 1280 && createPortal(
           <button
-            className="xl:hidden fixed bottom-6 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 text-xs font-bold uppercase tracking-wider hover:bg-primary/90 active:scale-95 transition-all animate-bounce-slow"
+            className="xl:hidden fixed bottom-6 right-4 z-[9999] flex items-center gap-2 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 text-xs font-bold uppercase tracking-wider hover:bg-primary/90 active:scale-95 transition-all"
             onClick={() => setIsChatMinimized(false)}
           >
             <MessageSquare size={16} />
             Ask AI
-          </button>
+          </button>,
+          document.body
         )}
 
-        {/* Mobile: Full Chat Panel (expanded) */}
-        {!isChatMinimized && window.innerWidth < 1280 && (
-          <div className="xl:hidden fixed bottom-0 left-0 right-0 z-50 h-[55vh] bg-background border-t border-border shadow-[0_-8px_30px_rgb(0,0,0,0.15)] flex flex-col rounded-t-2xl">
+        {/* Mobile: Full Chat Panel (expanded) — rendered via portal */}
+        {!isChatMinimized && window.innerWidth < 1280 && createPortal(
+          <div className="xl:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[55vh] bg-background border-t border-border shadow-[0_-8px_30px_rgb(0,0,0,0.15)] flex flex-col rounded-t-2xl">
             {/* Header with close */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <div className="flex items-center gap-2">
@@ -717,7 +719,8 @@ export default function JudgmentViewPage() {
                 </Button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Desktop: Sidebar Chat */}

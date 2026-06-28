@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation, useRoute } from "wouter";
 import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, Download, ExternalLink, Gavel, Link2, Loader2, Lock, MessageSquare, Send } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -580,20 +581,21 @@ export default function JudgmentDetailPage() {
         </div>
       </section>
     </div>
-      {/* Mobile: Floating AI Button (minimized) */}
-      {isChatMinimized && window.innerWidth < 1280 && (
+      {/* Mobile: Floating AI Button (minimized) — rendered via portal */}
+      {isChatMinimized && window.innerWidth < 1280 && createPortal(
         <button
-          className="xl:hidden fixed bottom-6 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 text-xs font-bold uppercase tracking-wider hover:bg-primary/90 active:scale-95 transition-all"
+          className="xl:hidden fixed bottom-6 right-4 z-[9999] flex items-center gap-2 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 text-xs font-bold uppercase tracking-wider hover:bg-primary/90 active:scale-95 transition-all"
           onClick={() => setIsChatMinimized(false)}
         >
           <MessageSquare size={16} />
           Ask AI
-        </button>
+        </button>,
+        document.body
       )}
 
-      {/* Mobile: Full Chat Panel (expanded) */}
-      {!isChatMinimized && window.innerWidth < 1280 && (
-        <div className="xl:hidden fixed bottom-0 left-0 right-0 z-50 h-[55vh] bg-background border-t border-border shadow-[0_-8px_30px_rgb(0,0,0,0.15)] flex flex-col rounded-t-2xl">
+      {/* Mobile: Full Chat Panel (expanded) — rendered via portal */}
+      {!isChatMinimized && window.innerWidth < 1280 && createPortal(
+        <div className="xl:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[55vh] bg-background border-t border-border shadow-[0_-8px_30px_rgb(0,0,0,0.15)] flex flex-col rounded-t-2xl">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
               <MessageSquare size={14} className="text-primary" />
@@ -670,7 +672,8 @@ export default function JudgmentDetailPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Desktop: Sidebar Chat */}
