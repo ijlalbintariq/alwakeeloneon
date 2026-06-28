@@ -187,6 +187,13 @@ export default function JudgmentViewPage() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isChatMinimized, setIsChatMinimized] = useState(() => {
+    try {
+      return window.innerWidth < 1280;
+    } catch {
+      return false;
+    }
+  });
   const [sourceDocData, setSourceDocData] = useState<{ found: boolean; id?: number; hasSource?: boolean; sourceType?: string; sourceFilename?: string } | null>(null);
   const [sourceContent, setSourceContent] = useState<{
     found: boolean;
@@ -621,14 +628,28 @@ export default function JudgmentViewPage() {
           </div>
         </div>
 
-        <div className="w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-border bg-background flex flex-col max-h-[52vh] xl:max-h-none">
-          <div className="p-3 md:p-4 border-b border-border">
+        <div className={`w-full xl:w-[380px] xl:min-w-[340px] border-t xl:border-t-0 xl:border-l border-border bg-background flex flex-col transition-all duration-300 ${
+          isChatMinimized 
+            ? "h-[45px] max-h-[45px] xl:h-auto xl:max-h-none overflow-hidden xl:overflow-visible" 
+            : "max-h-[52vh] xl:max-h-none"
+        }`}>
+          <div 
+            className="p-3 md:p-4 border-b border-border flex items-center justify-between cursor-pointer xl:cursor-default select-none"
+            onClick={() => {
+              if (window.innerWidth < 1280) {
+                setIsChatMinimized(!isChatMinimized);
+              }
+            }}
+          >
             <div className="flex items-center gap-2">
               <MessageSquare size={14} className="text-primary" />
               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground">
                 Ask about this judgment
               </span>
             </div>
+            <button className="xl:hidden text-muted-foreground hover:text-foreground">
+              {isChatMinimized ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">

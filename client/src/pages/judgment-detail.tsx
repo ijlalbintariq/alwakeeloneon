@@ -183,6 +183,13 @@ export default function JudgmentDetailPage() {
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [isChatMinimized, setIsChatMinimized] = useState(() => {
+    try {
+      return window.innerWidth < 1280;
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -576,17 +583,33 @@ export default function JudgmentDetailPage() {
 
       {/* AI Chat Sidebar */}
       <div className="w-full xl:w-[380px] xl:min-w-[340px] flex-shrink-0">
-        <div className="sticky top-6 rounded-2xl border border-border bg-card/60 flex flex-col h-[calc(100vh-120px)] overflow-hidden">
-          <div className="p-4 border-b border-border bg-background/50">
-            <div className="flex items-center gap-2">
-              <MessageSquare size={16} className="text-primary" />
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-foreground">
-                Talk with AI about this Judgment
-              </span>
+        <div className={`sticky top-6 rounded-2xl border border-border bg-card/60 flex flex-col transition-all duration-300 ${
+          isChatMinimized 
+            ? "h-[45px] max-h-[45px] xl:h-[calc(100vh-120px)] xl:max-h-none overflow-hidden xl:overflow-visible" 
+            : "h-[52vh] xl:h-[calc(100vh-120px)]"
+        }`}>
+          <div 
+            className="p-4 border-b border-border bg-background/50 flex items-center justify-between cursor-pointer xl:cursor-default select-none"
+            onClick={() => {
+              if (window.innerWidth < 1280) {
+                setIsChatMinimized(!isChatMinimized);
+              }
+            }}
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <MessageSquare size={16} className="text-primary" />
+                <span className="text-xs font-black uppercase tracking-[0.2em] text-foreground">
+                  Talk with AI about this Judgment
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 xl:block hidden">
+                Ask for summaries, ratio decidendi, cited precedents, or key legal issues.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Ask for summaries, ratio decidendi, cited precedents, or key legal issues.
-            </p>
+            <button className="xl:hidden text-muted-foreground hover:text-foreground flex-shrink-0">
+              {isChatMinimized ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
