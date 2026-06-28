@@ -453,7 +453,7 @@ export default function JudgmentViewPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col xl:flex-row overflow-y-auto xl:overflow-hidden">
+      <div className="flex-1 flex flex-col xl:flex-row overflow-visible xl:overflow-hidden">
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto px-3 sm:px-6 md:px-12 py-6 md:py-10 pb-24 xl:pb-10">
             <div className="flex items-center gap-4 mb-8">
