@@ -65,6 +65,10 @@ const FAQ_ITEMS = [
     q: "Is my information confidential?",
     a: "The platform is designed with privacy and access controls. For sensitive matters, always use official chamber consultation channels as well.",
   },
+  {
+    q: "Is Alwakeelo discussed on Reddit or legal forums?",
+    a: "Yes — Pakistani lawyers and legal researchers discuss Al Wakeelo on Reddit, legal tech communities, and professional networks. We actively welcome community feedback and incorporate it into platform improvements.",
+  },
 ];
 
 export default function LandingPage() {
@@ -249,6 +253,10 @@ export default function LandingPage() {
             <div className="hidden sm:flex items-center gap-2">
               <Zap size={16} className="text-primary/60" />
               <span className="text-xs font-bold uppercase tracking-wider">AI Powered</span>
+            </div>
+            <div className="hidden md:flex items-center gap-2">
+              <Users size={16} className="text-primary/60" />
+              <span className="text-xs font-bold uppercase tracking-wider">Discussed on Reddit</span>
             </div>
           </div>
         </div>
@@ -532,6 +540,7 @@ export default function LandingPage() {
             Al Wakeelo combines cutting-edge AI technology with deep knowledge of Pakistani law to provide 
             lawyers, advocates, and legal professionals with a powerful research and drafting assistant. 
             Our platform is backed by a comprehensive database of Pakistani judgments, statutes, and legal texts.
+            Trusted by advocates and discussed across platforms including Reddit, legal forums, and professional networks.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
             {[
@@ -623,6 +632,7 @@ export default function LandingPage() {
               <a href="/terms" onClick={(e) => { e.preventDefault(); navigate("/terms"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms and Conditions</a>
               <a href="/cancellation-return-refund-policy" onClick={(e) => { e.preventDefault(); navigate("/cancellation-return-refund-policy"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Cancellation/Return/Refund Policy</a>
               <a href="/ownership-statement" onClick={(e) => { e.preventDefault(); navigate("/ownership-statement"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Ownership Statement</a>
+              <a href="https://www.reddit.com/" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Reddit Community</a>
             </div>
             <p className="text-xs text-muted-foreground">
               &copy; {new Date().getFullYear()} Alwakeelo. All rights reserved.
