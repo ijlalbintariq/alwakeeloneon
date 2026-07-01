@@ -2,6 +2,16 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
+// Remove SEO pre-render block once the JavaScript bundle executes to prevent double rendering for sighted users
+try {
+  const seoPrerender = document.getElementById("seo-prerender");
+  if (seoPrerender) {
+    seoPrerender.remove();
+  }
+} catch (e) {
+  console.error("Failed to remove SEO pre-render block:", e);
+}
+
 let splashHidden = false;
 
 function hideSplash() {

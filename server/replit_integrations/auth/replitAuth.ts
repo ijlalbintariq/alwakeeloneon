@@ -71,7 +71,13 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   if (req.session && (req.session as any).userId) {
     const userId = (req.session as any).userId as string;
-    const user = await authStorage.getUser(userId).catch(() => undefined);
+    let user;
+    try {
+      user = await authStorage.getUser(userId);
+    } catch (err: any) {
+      console.error("[Auth] Database error fetching user in isAuthenticated:", err?.message || err);
+      return res.status(500).json({ message: "Database connection busy. Please reload." });
+    }
     if (!user) {
       req.session.destroy(() => {});
       return res.status(401).json({ message: "Unauthorized" });

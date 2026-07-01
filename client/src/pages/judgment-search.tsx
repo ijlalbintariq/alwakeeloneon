@@ -665,6 +665,73 @@ export default function JudgmentSearchPage() {
             </span>
           </div>
 
+          {(citationSearching || hasCitationSearched) && (
+            <div className="space-y-4 pb-4 border-b border-border">
+              <div className="pt-1">
+                <h4 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  Citation Matches
+                </h4>
+                <p className="text-xs text-muted-foreground mt-1">Exact journal/year/page lookup results.</p>
+              </div>
+
+              {citationSearching ? (
+                <div className="rounded-2xl border border-border bg-card/40 px-5 py-6 text-muted-foreground flex items-center gap-3">
+                  <Loader2 size={16} className="animate-spin text-primary" />
+                  Looking up citation...
+                </div>
+              ) : null}
+
+              {!citationSearching && !citationError && citationResults.length === 0 ? (
+                <div className="rounded-2xl border border-border bg-card/40 px-5 py-6 text-muted-foreground" data-testid="citation-search-empty">
+                  No matching judgments found for this citation.
+                </div>
+              ) : null}
+
+              {!citationSearching && citationResults.length > 0 ? (
+                <div className="space-y-3" data-testid="citation-search-results">
+                  {citationResults.map((item) => (
+                    <article key={item.id} className="rounded-xl border border-border bg-card/55 p-4 md:p-5 shadow-lg">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div className="space-y-2 min-w-0">
+                          <span className="inline-flex rounded-lg bg-blue-500/15 border border-blue-500/30 px-2.5 py-1 text-[11px] text-blue-200 font-mono">
+                            {item.citation}
+                          </span>
+                          <h5 className="text-base font-semibold text-foreground leading-snug">{item.title}</h5>
+                          <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
+                            <CalendarDays size={12} />
+                            {item.court || "Court not available"} • {formatDecisionDate(item.decisionDate)}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <a
+                            href={`/judgment/${item.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg bg-primary/15 border border-primary/30 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20"
+                            data-testid={`button-view-judgment-${item.id}`}
+                          >
+                            View Full Judgment →
+                          </a>
+                          {item.pdfUrl ? (
+                            <a
+                              href={item.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20"
+                            >
+                              <ExternalLink size={13} /> PDF
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
+
           {isLoading || isExternalLoading ? (
             <div className="rounded-2xl border border-border bg-card/40 px-5 py-8 text-muted-foreground flex items-center gap-3">
               <Loader2 size={16} className="animate-spin text-primary" />
@@ -777,69 +844,6 @@ export default function JudgmentSearchPage() {
                   </>
                 )}
               </button>
-            </div>
-          ) : null}
-
-          <div className="pt-3 border-t border-border">
-            <h4 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Citation Matches
-            </h4>
-            <p className="text-xs text-muted-foreground mt-1">Exact journal/year/page lookup results.</p>
-          </div>
-
-          {citationSearching ? (
-            <div className="rounded-2xl border border-border bg-card/40 px-5 py-6 text-muted-foreground flex items-center gap-3">
-              <Loader2 size={16} className="animate-spin text-primary" />
-              Looking up citation...
-            </div>
-          ) : null}
-
-          {!citationSearching && !citationError && hasCitationSearched && citationResults.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-card/40 px-5 py-6 text-muted-foreground" data-testid="citation-search-empty">
-              No matching judgments found for this citation.
-            </div>
-          ) : null}
-
-          {citationResults.length > 0 ? (
-            <div className="space-y-3" data-testid="citation-search-results">
-              {citationResults.map((item) => (
-                <article key={item.id} className="rounded-xl border border-border bg-card/55 p-4 md:p-5 shadow-lg">
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div className="space-y-2 min-w-0">
-                      <span className="inline-flex rounded-lg bg-blue-500/15 border border-blue-500/30 px-2.5 py-1 text-[11px] text-blue-200 font-mono">
-                        {item.citation}
-                      </span>
-                      <h5 className="text-base font-semibold text-foreground leading-snug">{item.title}</h5>
-                      <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
-                        <CalendarDays size={12} />
-                        {item.court || "Court not available"} • {formatDecisionDate(item.decisionDate)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <a
-                        href={`/judgment/${item.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg bg-primary/15 border border-primary/30 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20"
-                        data-testid={`button-view-judgment-${item.id}`}
-                      >
-                        View Full Judgment →
-                      </a>
-                      {item.pdfUrl ? (
-                        <a
-                          href={item.pdfUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20"
-                        >
-                          <ExternalLink size={13} /> PDF
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
-                </article>
-              ))}
             </div>
           ) : null}
         </div>

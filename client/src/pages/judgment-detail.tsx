@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useRoute } from "wouter";
-import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, Download, ExternalLink, Gavel, Link2, Loader2, Lock, MessageSquare, Send } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, ChevronDown, Download, ExternalLink, Gavel, Link2, Loader2, Lock, MessageSquare, Send } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useDocumentHead } from "@/hooks/use-document-head";
 import { apiRequest } from "@/lib/queryClient";
 import { LegalMarkdown } from "@/components/legal-markdown";
+import { FormattedJudgmentText } from "@/components/formatted-judgment-text";
 import jsPDF from "jspdf";
 
 type AiMessage = {
@@ -109,11 +110,25 @@ function generateDetailPDF(detail: JudgmentDetailPayload) {
   const addText = (text: string, fontSize: number, style: "normal" | "bold" | "italic" = "normal", maxWidth = contentWidth) => {
     doc.setFontSize(fontSize);
     doc.setFont("helvetica", style);
-    const lines = doc.splitTextToSize(text, maxWidth);
-    for (const line of lines) {
-      if (y > 272) { doc.addPage(); y = 18; }
-      doc.text(line, margin, y);
-      y += fontSize * 0.45;
+    const paragraphs = text.split(/\r?\n/);
+    for (const paragraph of paragraphs) {
+      if (paragraph.trim() === "") {
+        y += fontSize * 0.45;
+        if (y > 272) {
+          doc.addPage();
+          y = 18;
+        }
+        continue;
+      }
+      const lines = doc.splitTextToSize(paragraph, maxWidth);
+      for (const line of lines) {
+        if (y > 272) {
+          doc.addPage();
+          y = 18;
+        }
+        doc.text(line, margin, y);
+        y += fontSize * 0.45;
+      }
     }
     y += 2;
   };
@@ -361,16 +376,8 @@ export default function JudgmentDetailPage() {
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Judgment Excerpt</h2>
-          <div className="rounded-xl border border-border bg-card/60 p-4 md:p-5 space-y-4">
-            {previewParagraphs.length === 0 ? (
-              <p className="text-muted-foreground">Excerpt is not available.</p>
-            ) : (
-              previewParagraphs.map((paragraph, index) => (
-                <p key={index} className="text-foreground leading-relaxed text-sm">
-                  {paragraph}
-                </p>
-              ))
-            )}
+          <div className="rounded-xl border border-border bg-card/60 p-4 md:p-5">
+            <FormattedJudgmentText text={preview.previewText} />
           </div>
           {preview.isTruncated ? (
             <p className="text-xs text-muted-foreground">
@@ -568,16 +575,8 @@ export default function JudgmentDetailPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-foreground">Full Judgment</h2>
-        <div className="rounded-xl border border-border bg-card/60 p-4 md:p-5 space-y-4 max-h-[60vh] overflow-y-auto">
-          {fullTextParagraphs.length === 0 ? (
-            <p className="text-muted-foreground">Full text is not available.</p>
-          ) : (
-            fullTextParagraphs.map((paragraph, index) => (
-              <p key={index} className="text-foreground leading-relaxed text-sm">
-                {paragraph}
-              </p>
-            ))
-          )}
+        <div className="rounded-xl border border-border bg-card/60 p-4 md:p-5 max-h-[60vh] overflow-y-auto">
+          <FormattedJudgmentText text={detail.fullText} />
         </div>
       </section>
     </div>

@@ -22,7 +22,7 @@ export const pool = (canInitPool && validatedDatabaseUrl.value
       max: 8,
       min: 1,
       idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 30_000,
       idle_in_transaction_session_timeout: 30_000,
       statement_timeout: 60_000,
     })

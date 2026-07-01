@@ -12,6 +12,11 @@ const OPENAI_EMBED_MODEL    = process.env.RAG_OPENAI_EMBED_MODEL || "openai/text
 const OPENAI_EMBED_BASE_URL = process.env.RAG_OPENAI_BASE_URL    || "https://openrouter.ai/api/v1";
 const OPENAI_EMBED_API_KEY  = process.env.OPENROUTER_API_KEY     || process.env.OPENAI_API_KEY || "";
 
+// Voyage AI settings (used when EMBEDDING_PROVIDER=voyage)
+const VOYAGE_API_KEY   = process.env.VOYAGE_API_KEY || "";
+const VOYAGE_MODEL     = process.env.VOYAGE_EMBED_MODEL || "voyage-law-2";
+const VOYAGE_BASE_URL  = "https://api.voyageai.com/v1/embeddings";
+
 type SemanticEmbedder = (text: string) => Promise<number[]>;
 const importDynamically = new Function("modulePath", "return import(modulePath);") as (modulePath: string) => Promise<any>;
 
@@ -107,6 +112,72 @@ async function embedTextOpenAI(text: string, dim: number = DEFAULT_DIM): Promise
   }
 }
 
+// ─── Voyage AI Embedder ──────────────────────────────────────────────────────
+// Used when RAG_EMBEDDING_PROVIDER=voyage.
+// Voyage-law-2: legal-specific embeddings, 1024 dimensions, 16K token context.
+// Uses input_type="query" for search queries and "document" for indexing.
+
+async function embedTextVoyage(text: string, dim: number = DEFAULT_DIM, inputType: "query" | "document" = "query"): Promise<number[]> {
+  if (!VOYAGE_API_KEY) {
+    console.warn("[RAG] VOYAGE_API_KEY not set — falling back to hashing");
+    return embedTextHashing(text, dim);
+  }
+  try {
+    const resp = await fetch(VOYAGE_BASE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${VOYAGE_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: VOYAGE_MODEL,
+        input: [text.slice(0, 32000)],
+        input_type: inputType,
+      }),
+    });
+    if (!resp.ok) {
+      const err = await resp.text();
+      console.warn(`[RAG] Voyage embed API error ${resp.status}: ${err.slice(0, 200)}`);
+      return embedTextHashing(text, dim);
+    }
+    const json = await resp.json() as any;
+    const embedding = json?.data?.[0]?.embedding as number[] | undefined;
+    if (!embedding || embedding.length === 0) return embedTextHashing(text, dim);
+    return fitToDimension(embedding, dim);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[RAG] Voyage embed fetch failed (${message}) — falling back to hashing`);
+    return embedTextHashing(text, dim);
+  }
+}
+
+async function embedTextsVoyage(texts: string[], dim: number = DEFAULT_DIM, inputType: "query" | "document" = "query"): Promise<number[][]> {
+  if (!VOYAGE_API_KEY) return texts.map((t) => embedTextHashing(t, dim));
+  try {
+    const resp = await fetch(VOYAGE_BASE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${VOYAGE_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: VOYAGE_MODEL,
+        input: texts.map((t) => t.slice(0, 32000)),
+        input_type: inputType,
+      }),
+    });
+    if (!resp.ok) return texts.map((t) => embedTextHashing(t, dim));
+    const json = await resp.json() as any;
+    const items = json?.data as Array<{ index: number; embedding: number[] }> | undefined;
+    if (!items) return texts.map((t) => embedTextHashing(t, dim));
+    return items
+      .sort((a, b) => a.index - b.index)
+      .map((item) => fitToDimension(item.embedding, dim));
+  } catch {
+    return texts.map((t) => embedTextHashing(t, dim));
+  }
+}
+
 async function embedTextsOpenAI(texts: string[], dim: number = DEFAULT_DIM): Promise<number[][]> {
   if (!OPENAI_EMBED_API_KEY) return texts.map((t) => embedTextHashing(t, dim));
   try {
@@ -195,6 +266,10 @@ async function resolveSemanticEmbedder(): Promise<SemanticEmbedder | null> {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function embedTextLocal(text: string, dim: number = DEFAULT_DIM): Promise<number[]> {
+  // Voyage AI — legal-specific embedding model
+  if (EMBEDDING_PROVIDER === "voyage") {
+    return embedTextVoyage(text, dim, "query");
+  }
   // OpenAI/OpenRouter — same model as stored judgment vectors (text-embedding-3-small)
   if (EMBEDDING_PROVIDER === "openai") {
     return embedTextOpenAI(text, dim);
@@ -215,6 +290,10 @@ export async function embedTextLocal(text: string, dim: number = DEFAULT_DIM): P
 }
 
 export async function embedTextsLocal(texts: string[], dim: number = DEFAULT_DIM): Promise<number[][]> {
+  // Voyage AI — legal-specific embedding model
+  if (EMBEDDING_PROVIDER === "voyage") {
+    return embedTextsVoyage(texts, dim, "query");
+  }
   // OpenAI/OpenRouter — same model as stored judgment vectors
   if (EMBEDDING_PROVIDER === "openai") {
     return embedTextsOpenAI(texts, dim);

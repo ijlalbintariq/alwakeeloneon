@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { DocumentViewer } from "@/components/document-viewer";
 import { Button } from "@/components/ui/button";
+import { FormattedJudgmentText } from "@/components/formatted-judgment-text";
 import jsPDF from "jspdf";
 
 type AiMessage = {
@@ -47,37 +48,6 @@ function getJudgmentFromStorage(): JudgmentData | null {
   }
 }
 
-function cleanJudgmentBodyText(fullText: string): string {
-  if (!fullText) return "";
-  
-  let bodyText = fullText;
-  
-  // 1. Strip standard header fields if they exist at the very beginning of the text
-  bodyText = bodyText.replace(/^(?:Court Name|Court|Title|Citation|Petitioner|Respondent|Judge|Decided on|Date|Before|Bench|Source|Keywords)\s*:[^\n]*\r?\n/gim, "");
-  
-  // 2. Look for JUDGMENT or ORDER separator
-  const standAloneMatch = bodyText.match(/(?:^|\r?\n)\s*(JUDGMENT|ORDER)\s*(?:\r?\n)+([\s\S]*)$/i);
-  if (standAloneMatch) {
-    bodyText = standAloneMatch[2];
-    // Strip initial judge signature prefix
-    bodyText = bodyText.replace(/^[A-Z\s,.''-]+,\s*(?:[J|C]\.?\s*){1,2}[:\-–—\s]+/i, "");
-  } else {
-    // Fallback: if no standalone tag is found, check if there's a Title: field and strip up to that line's end
-    const titleMatch = bodyText.match(/^[\s\S]*?\bTitle\s*:\s*[^\n]*\r?\n([\s\S]*)$/i);
-    if (titleMatch) {
-      bodyText = titleMatch[1];
-    }
-  }
-  
-  // 3. Clean up any remaining leading lines that look like "Key: Value" metadata at the very top
-  let prevText;
-  do {
-    prevText = bodyText;
-    bodyText = bodyText.replace(/^\s*(?:Court Name|Court|Title|Citation|Petitioner|Respondent|Judge|Decided on|Date|Before|Bench|Source|Keywords)\s*:[^\n]*\r?\n/gi, "");
-  } while (bodyText !== prevText);
-  
-  return bodyText.trim();
-}
 
 function stripMarkdown(text: string): string {
   return text
@@ -102,14 +72,25 @@ function generateJudgmentPDF(judgment: JudgmentData, summaryData: JudgmentSummar
   const addText = (text: string, fontSize: number, style: "normal" | "bold" | "italic" = "normal", maxWidth = contentWidth) => {
     doc.setFontSize(fontSize);
     doc.setFont("helvetica", style);
-    const lines = doc.splitTextToSize(text, maxWidth);
-    for (const line of lines) {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
+    const paragraphs = text.split(/\r?\n/);
+    for (const paragraph of paragraphs) {
+      if (paragraph.trim() === "") {
+        y += fontSize * 0.45;
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
+        continue;
       }
-      doc.text(line, margin, y);
-      y += fontSize * 0.45;
+      const lines = doc.splitTextToSize(paragraph, maxWidth);
+      for (const line of lines) {
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.text(line, margin, y);
+        y += fontSize * 0.45;
+      }
     }
     y += 2;
   };
@@ -146,7 +127,7 @@ function generateJudgmentPDF(judgment: JudgmentData, summaryData: JudgmentSummar
   if (fullText) {
     addText("FULL JUDGMENT TEXT", 11, "bold");
     y += 1;
-    addText(cleanJudgmentBodyText(fullText), 9);
+    addText(fullText, 9);
     y += 3;
     addLine();
   }
@@ -209,13 +190,6 @@ export default function JudgmentViewPage() {
   const [isLoadingSourceContent, setIsLoadingSourceContent] = useState(false);
   const [showSourceDoc, setShowSourceDoc] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  const fullTextParagraphs = useMemo(() => {
-    const text = fullText || summaryData?.fullText;
-    if (!text) return [];
-    const cleaned = cleanJudgmentBodyText(text);
-    return cleaned.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-  }, [fullText, summaryData?.fullText]);
 
   useEffect(() => {
     if (!judgment) {
@@ -415,41 +389,43 @@ export default function JudgmentViewPage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0 flex-wrap justify-end">
-          <button
+          <Button
             onClick={() => generateJudgmentPDF(judgment, summaryData, effectiveFullText || null)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/10 text-blue-400 text-[9px] font-bold uppercase tracking-widest rounded-lg hover:bg-blue-600/20 transition-all"
+            className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white hover:shadow-lg hover:shadow-blue-500/20 active:scale-[0.98] text-[10px] font-black uppercase tracking-wider transition-all border-none"
             title="Download as PDF"
           >
-            <Download size={12} /> PDF
-          </button>
-          <button
+            <Download size={14} className="mr-1.5" /> PDF
+          </Button>
+          <Button
+            variant="outline"
             onClick={handleSaveJudgment}
             disabled={isSaving || isSaved}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${
+            className={`h-9 px-4 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all ${
               isSaved
-                ? "bg-primary/20 text-primary border border-primary/30"
-                : "bg-primary/10 text-primary hover:bg-primary/20"
+                ? "border-emerald-500/30 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                : "border-primary/20 text-primary hover:text-primary hover:bg-primary/10"
             }`}
             title={isSaved ? "Judgment saved" : "Save to account"}
           >
             {isSaving ? (
-              <Loader2 size={12} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin mr-1.5" />
             ) : isSaved ? (
-              <BookmarkCheck size={12} />
+              <BookmarkCheck size={14} className="mr-1.5" />
             ) : (
-              <BookmarkPlus size={12} />
+              <BookmarkPlus size={14} className="mr-1.5" />
             )}
             {isSaved ? "Saved" : "Save"}
-          </button>
+          </Button>
           {judgment.uri && (
-            <a
-              href={judgment.uri}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/10 text-emerald-400 text-[9px] font-bold uppercase tracking-widest rounded-lg hover:bg-emerald-600/20 transition-all"
+            <Button
+              variant="outline"
+              asChild
+              className="h-9 px-4 rounded-xl border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 text-[10px] font-black uppercase tracking-wider transition-all"
             >
-              <FileText size={12} /> Source
-            </a>
+              <a href={judgment.uri} target="_blank" rel="noopener noreferrer">
+                <FileText size={14} className="mr-1.5" /> Source
+              </a>
+            </Button>
           )}
         </div>
       </div>
@@ -514,13 +490,9 @@ export default function JudgmentViewPage() {
                   <Loader2 size={16} className="animate-spin text-primary" />
                   <span className="text-sm">Loading judgment text...</span>
                 </div>
-              ) : fullTextParagraphs.length > 0 ? (
-                <div className="rounded-2xl border border-border bg-card/40 p-6 md:p-8 space-y-5">
-                  {fullTextParagraphs.map((paragraph, index) => (
-                    <p key={index} className="text-foreground leading-relaxed text-[13px] md:text-[14px]">
-                      {paragraph}
-                    </p>
-                  ))}
+              ) : effectiveFullText ? (
+                <div className="rounded-2xl border border-border bg-card/40 p-6 md:p-8">
+                  <FormattedJudgmentText text={effectiveFullText} />
                 </div>
               ) : (
                 <div className="rounded-2xl border border-border bg-card/40 p-6 text-muted-foreground">

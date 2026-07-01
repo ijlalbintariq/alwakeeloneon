@@ -2057,6 +2057,117 @@ export class DatabaseStorage implements IStorage {
     if (!safeQuery) return [];
     const safeLimit = Math.max(1, Math.min(200, Number(limit) || 20));
 
+    const seen = new Set<string>();
+    const results: CaseLaw[] = [];
+
+    // Prioritize direct citation lookup in case the user search query is an exact citation (e.g. "2026 CLC 424")
+    const parsedCitation = parseCaseLawCitationParts(safeQuery);
+    if (parsedCitation) {
+      try {
+        const [journal] = await db
+          .select({ id: lawJournals.id })
+          .from(lawJournals)
+          .where(eq(sql`lower(${lawJournals.code})`, parsedCitation.report.toLowerCase()))
+          .limit(1);
+
+        if (journal) {
+          const matchingJudgments = await db
+            .select({
+              id: judgments.id,
+              year: judgments.year,
+              page: judgments.page,
+              citationString: judgments.citationString,
+              title: judgments.title,
+              petitioner: judgments.petitioner,
+              respondent: judgments.respondent,
+              headnotes: judgments.headnotes,
+              fullTextHead: sql<string>`LEFT(${judgments.fullText}, 1500)`,
+              courtName: courtsRef.name,
+              courtSnapshot: judgments.courtNameSnapshot,
+              journalCode: lawJournals.code,
+            })
+            .from(judgments)
+            .innerJoin(lawJournals, eq(judgments.journalId, lawJournals.id))
+            .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
+            .where(
+              and(
+                eq(judgments.year, parsedCitation.year),
+                eq(judgments.journalId, journal.id),
+                eq(judgments.page, parsedCitation.page),
+                eq(judgments.isActive, true)
+              )
+            )
+            .limit(1);
+
+          for (const row of matchingJudgments) {
+            const citation = String(row.citationString || "").trim();
+            if (citation) {
+              seen.add(citation.toLowerCase());
+              const numericId = Math.abs(parseInt(String(row.id || "").replace(/-/g, "").slice(0, 8), 16)) || 0;
+
+              const fullTextStr = String(row.fullTextHead || "");
+              const fullTextTitleMatch = fullTextStr.match(TITLE_HEADER_REGEX);
+              const fullTextTitle = fullTextTitleMatch ? fullTextTitleMatch[1].replace(MULTIPLE_SPACES_REGEX, " ").trim() : "";
+
+              const fullTextCourtNameMatch = fullTextStr.match(COURT_NAME_HEADER_REGEX);
+              const fullTextCourtMatch = fullTextStr.match(COURT_HEADER_REGEX);
+              const fullTextCourt = (fullTextCourtNameMatch ? fullTextCourtNameMatch[1].replace(MULTIPLE_SPACES_REGEX, " ").trim() : "") ||
+                                    (fullTextCourtMatch ? fullTextCourtMatch[1].replace(MULTIPLE_SPACES_REGEX, " ").trim() : "");
+
+              const courtRaw = String(row.courtName || row.courtSnapshot || "").trim();
+              const courtStr = courtRaw || fullTextCourt;
+
+              const parties = [row.petitioner, row.respondent].filter(Boolean).join(" vs ");
+              const dbTitleRaw = String(row.title || "").trim();
+              const isPlaceholderTitle =
+                !dbTitleRaw ||
+                PLACEHOLDER_TITLE_REGEX.test(dbTitleRaw) ||
+                dbTitleRaw === `Case ${citation}` ||
+                !looksLikeRealCaseTitle(dbTitleRaw);
+
+              const titleStr =
+                (!isPlaceholderTitle && dbTitleRaw) ||
+                (looksLikeRealCaseTitle(fullTextTitle) ? fullTextTitle : "") ||
+                parties ||
+                fullTextTitle ||
+                `Case ${citation}`;
+
+              const headnotesRaw = String(row.headnotes || "").trim();
+              const isPlaceholderHeadnotes =
+                !headnotesRaw || 
+                PLACEHOLDER_HEADNOTES_REGEX.test(headnotesRaw) ||
+                isMetadataOnlySummary(headnotesRaw);
+              const fullTextBody = extractSubstantiveSummary(fullTextStr);
+              const summaryStr = isPlaceholderHeadnotes && fullTextBody
+                ? fullTextBody
+                : headnotesRaw.slice(0, 600).trim();
+
+              results.push({
+                id: numericId,
+                citation,
+                citationYear: Number.isInteger(row.year) ? row.year : null,
+                citationReport: row.journalCode || null,
+                citationPage: Number.isInteger(row.page) && row.page > 0 ? row.page : null,
+                citationRole: "primary" as const,
+                court: courtStr,
+                title: cleanCaseTitle(titleStr),
+                summary: summaryStr,
+                keywords: [] as string[],
+                sourceDocId: null,
+                sourceType: "judgment",
+                sourceFilename: null,
+                documentClassification: null,
+                fallbackExtraction: false,
+                statuteReferences: [] as string[],
+              } as unknown as CaseLaw);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Direct citation lookup in searchJudgmentsByKeywords failed:", err);
+      }
+    }
+
     // ── Hybrid Search Strategy ──────────────────────────────────────────
     // Tier 1 (PRIMARY, <200ms): tsvector @@ tsquery using GIN index
     //   → Uses idx_judgments_title_headnotes_tsv (expression-based GIN on title||headnotes only)
@@ -2349,8 +2460,6 @@ export class DatabaseStorage implements IStorage {
     }
 
     // ── Convert judgment rows to CaseLaw-compatible objects ──────────────
-    const seen = new Set<string>();
-    const results: CaseLaw[] = [];
     for (const row of rows) {
       const citation = String(row.citationString || "").trim();
       if (!citation || seen.has(citation.toLowerCase())) continue;
