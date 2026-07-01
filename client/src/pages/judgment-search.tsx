@@ -189,7 +189,7 @@ export default function JudgmentSearchPage() {
 
   const citationPreview = `${year} ${citationJournal || "ALL"} ${page || "PAGE"}`;
 
-  const runKeywordSearch = async (searchQuery: string, limit?: number) => {
+  const runKeywordSearch = async (searchQuery: string, limit?: number, isLoadMore: boolean = false) => {
     if (!searchQuery.trim()) return;
     const effectiveLimit = limit || keywordLimit;
 
@@ -198,7 +198,7 @@ export default function JudgmentSearchPage() {
     url.searchParams.set("q", searchQuery.trim());
     window.history.replaceState({}, "", url.toString());
 
-    if (!limit) {
+    if (!isLoadMore) {
       // Fresh search (not load-more)
       setIsLoading(true);
       setSearchError(null);
@@ -300,13 +300,13 @@ export default function JudgmentSearchPage() {
 
   const handleSearch = async () => {
     setKeywordLimit(25);
-    await runKeywordSearch(query, 25);
+    await runKeywordSearch(query, 25, false);
   };
 
   const handleLoadMore = async () => {
     const newLimit = keywordLimit + 25;
     setKeywordLimit(newLimit);
-    await runKeywordSearch(query, newLimit);
+    await runKeywordSearch(query, newLimit, true);
   };
 
   const handleCitationSearch = async (event: FormEvent) => {
@@ -366,7 +366,7 @@ export default function JudgmentSearchPage() {
       setQuery(q);
       setSearchMode("keyword");
       setAutoSearchDone(true);
-      void runKeywordSearch(q, 25);
+      void runKeywordSearch(q, 25, false);
     }
 
     const citationValue = params.get("citation");
@@ -493,7 +493,7 @@ export default function JudgmentSearchPage() {
               <div className="relative">
                 <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
-                  className="w-full rounded-xl border border-border bg-muted/50 pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl border border-border bg-muted/50 pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 focus:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all duration-200"
                   placeholder="Search with Keywords, Booleans or Sentences"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -504,7 +504,7 @@ export default function JudgmentSearchPage() {
               <button
                 onClick={() => void handleSearch()}
                 disabled={isLoading || isExternalLoading}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-muted px-6 text-base font-bold text-foreground hover:bg-white disabled:opacity-60"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 text-base font-bold shadow-md shadow-primary/10 hover:shadow-primary/20 hover:brightness-110 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-60 transition-all duration-200"
                 data-testid="button-judgment-search"
               >
                 {isLoading || isExternalLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={17} />}
@@ -629,7 +629,7 @@ export default function JudgmentSearchPage() {
               <button
                 type="submit"
                 disabled={citationSearching || loadingJournals}
-                className="h-11 self-end inline-flex items-center justify-center gap-2 rounded-xl bg-muted px-6 text-base font-bold text-foreground hover:bg-white disabled:opacity-60"
+                className="h-11 self-end inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 text-base font-bold shadow-md shadow-primary/10 hover:shadow-primary/20 hover:brightness-110 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-60 transition-all duration-200"
                 data-testid="button-citation-search"
               >
                 {citationSearching ? <Loader2 size={16} className="animate-spin" /> : <Search size={17} />}
@@ -733,9 +733,9 @@ export default function JudgmentSearchPage() {
           )}
 
           {isLoading || isExternalLoading ? (
-            <div className="rounded-2xl border border-border bg-card/40 px-5 py-8 text-muted-foreground flex items-center gap-3">
-              <Loader2 size={16} className="animate-spin text-primary" />
-              Searching judgments...
+            <div className="rounded-2xl border border-primary/20 bg-card/30 backdrop-blur-md px-6 py-10 text-foreground flex items-center justify-center gap-3 shadow-lg shadow-black/5 animate-pulse">
+              <Loader2 size={20} className="animate-spin text-primary" />
+              <span className="text-sm font-semibold tracking-wide">Searching judgments...</span>
             </div>
           ) : null}
 
