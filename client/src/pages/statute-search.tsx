@@ -125,30 +125,30 @@ export default function StatuteSearchPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-2.5 fade-in" data-testid="statute-search-page">
-      <section className="relative rounded-2xl border border-primary/20 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.20),rgba(15,23,42,0.85)_45%,rgba(2,6,23,0.95)_100%)] px-4 py-4 sm:px-5 sm:py-5 shadow-[0_24px_40px_-28px_rgba(2,6,23,0.95)]">
-        <div className="pointer-events-none absolute -left-8 -top-10 h-36 w-36 rounded-full bg-primary/15 blur-2xl" />
-        <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-blue-400/10 blur-2xl" />
+      <section className="relative rounded-2xl border border-slate-200 dark:border-primary/20 bg-white dark:bg-[radial-gradient(120%_120%_at_0%_0%,rgba(245,158,11,0.20),rgba(15,23,42,0.85)_45%,rgba(2,6,23,0.95)_100%)] px-4 py-4 sm:px-5 sm:py-5 shadow-sm dark:shadow-[0_24px_40px_-28px_rgba(2,6,23,0.95)]">
+        <div className="pointer-events-none absolute -left-8 -top-10 h-36 w-36 rounded-full bg-transparent dark:bg-primary/15 blur-2xl" />
+        <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-transparent dark:bg-blue-400/10 blur-2xl" />
         <div className="relative z-10 flex flex-col gap-3">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-[0.22em] font-black text-foreground/80">Pakistani Statute Library</p>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-none tracking-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <p className="text-[10px] uppercase tracking-[0.22em] font-black text-slate-400 dark:text-foreground/80">Pakistani Statute Library</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-none tracking-tight text-slate-900 dark:text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Statute Search
               </h2>
-              <p className="text-xs sm:text-sm text-foreground/85">Search, open, and navigate Acts, Codes, Ordinances, and Rules.</p>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-foreground/85">Search, open, and navigate Acts, Codes, Ordinances, and Rules.</p>
             </div>
-            <div className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary/25 bg-card/70 text-primary shadow-[0_16px_30px_-22px_rgba(251,191,36,0.9)]">
+            <div className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 dark:border-primary/25 bg-slate-50 dark:bg-card/70 text-slate-800 dark:text-primary shadow-sm dark:shadow-[0_16px_30px_-22px_rgba(251,191,36,0.9)]">
               <Book size={18} />
             </div>
           </div>
 
           <div className="relative" ref={searchRef}>
-            <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/75 p-2 shadow-[0_24px_42px_-28px_rgba(2,6,23,1)] backdrop-blur-md">
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-primary/20 bg-slate-50 dark:bg-background/75 p-2 shadow-sm dark:shadow-[0_24px_42px_-28px_rgba(2,6,23,1)] backdrop-blur-md">
               <div className="flex items-center px-2">
-                <Search size={17} className="text-primary/80" />
+                <Search size={17} className="text-slate-400 dark:text-primary/80" />
               </div>
               <input
-                className="flex-1 bg-transparent border-none py-2 text-sm text-foreground focus:ring-0 focus:outline-none placeholder:text-muted-foreground"
+                className="flex-1 bg-transparent border-none py-2 text-sm text-slate-900 dark:text-foreground focus:ring-0 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-muted-foreground"
                 placeholder="Search statutes, acts, ordinances..."
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
