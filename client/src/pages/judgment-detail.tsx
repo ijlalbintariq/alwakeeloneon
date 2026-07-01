@@ -109,7 +109,7 @@ function generateDetailPDF(detail: JudgmentDetailPayload) {
 
   const addText = (text: string, fontSize: number, style: "normal" | "bold" | "italic" = "normal", maxWidth = contentWidth) => {
     doc.setFontSize(fontSize);
-    doc.setFont("helvetica", style);
+    doc.setFont("times", style);
     const paragraphs = text.split(/\r?\n/);
     for (const paragraph of paragraphs) {
       if (paragraph.trim() === "") {
