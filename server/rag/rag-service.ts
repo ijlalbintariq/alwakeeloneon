@@ -210,15 +210,30 @@ function tokenize(text: string, maxTokens: number = 120): string[] {
   return tokens.slice(0, maxTokens);
 }
 
-function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: number): RagMatch[] {
+async function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: number): Promise<RagMatch[]> {
   if (matches.length <= 1) return matches.slice(0, limit);
+
+  // Call Voyage Reranker API if active and configured
+  const voyageRerankScores = new Map<number, number>();
+  if (process.env.RAG_EMBEDDING_PROVIDER?.toLowerCase() === "voyage") {
+    const docsToRerank = matches.map((m) => `${m.title}\n\n${m.chunkText}`);
+    try {
+      const { rerankVoyage } = await import("./embedding-local");
+      const rerankResult = await rerankVoyage(queryText, docsToRerank);
+      for (const item of rerankResult) {
+        voyageRerankScores.set(item.index, item.score);
+      }
+    } catch (err: any) {
+      console.warn(`[RAG] Voyage rerank call failed: ${err.message}`);
+    }
+  }
 
   const queryTokens = tokenize(queryText, 28);
   const queryTokenSet = new Set(queryTokens);
   const normalizedQuery = cleanLegalDocumentText(queryText || "").toLowerCase();
   const citationToken = normalizeCitationToken(queryText);
 
-  const rescored = matches.map((m) => {
+  const rescored = matches.map((m, idx) => {
     const chunkTokens = tokenize(`${m.title} ${m.chunkText}`, 180);
     const chunkSet = new Set(chunkTokens);
     let overlap = 0;
@@ -245,14 +260,13 @@ function rerankAndDiversify(matches: RagMatch[], queryText: string, limit: numbe
       return hit / queryTokenSet.size;
     })();
 
+    const hasVoyageScore = voyageRerankScores.size > 0;
+    const voyageRerankScore = voyageRerankScores.get(idx) ?? 0;
+
     const rerankedScore = clamp(
-      (m.score * 0.50) +
-      (m.vectorScore * 0.10) +
-      (Math.min(1, m.keywordScore) * 0.10) +
-      (tokenCoverage * 0.15) +
-      (titleCoverage * 0.05) +
-      (phraseMatch * 0.05) +
-      (citationMatch * 0.05),
+      hasVoyageScore
+        ? (voyageRerankScore * 0.60) + (tokenCoverage * 0.20) + (titleCoverage * 0.10) + (citationMatch * 0.10)
+        : (m.score * 0.50) + (m.vectorScore * 0.10) + (Math.min(1, m.keywordScore) * 0.10) + (tokenCoverage * 0.15) + (titleCoverage * 0.05) + (phraseMatch * 0.05) + (citationMatch * 0.05),
       0,
       1,
     );
@@ -703,19 +717,35 @@ export async function retrieveForQuery(args: {
   const candidateTopK = Math.min(RERANK_POOL_CAP, Math.max(requestedTopK, requestedTopK * 4));
   const isGlobalAdminUser = GLOBAL_ADMIN_RAG_USER_IDS.includes(args.userId as any);
   const includeGlobalAdminSources = !isGlobalAdminUser && (!args.documentIds || args.documentIds.length === 0);
-  const globalSearches = includeGlobalAdminSources
-    ? GLOBAL_ADMIN_RAG_USER_IDS.map((globalUserId) =>
-      similaritySearch({
-        userId: globalUserId,
-        queryEmbedding,
-        queryText: keywordQueryText,
-        metadataFilters: args.metadataFilters,
-        topK: candidateTopK,
-        vectorWeight,
-        keywordWeight,
-      }),
-    )
-    : [];
+
+  // Check which global admin sources actually have documents to bypass empty tenants
+  const activeGlobalUserIds: string[] = [];
+  if (includeGlobalAdminSources) {
+    try {
+      const activeRes = await pool.query(
+        "SELECT DISTINCT user_id FROM rag_documents WHERE status = 'indexed' AND user_id = ANY($1::text[])",
+        [[...GLOBAL_ADMIN_RAG_USER_IDS]]
+      );
+      for (const row of activeRes.rows as any[]) {
+        activeGlobalUserIds.push(row.user_id);
+      }
+    } catch (err: any) {
+      console.warn(`[RAG] Failed to retrieve active global sources: ${err.message}`);
+      activeGlobalUserIds.push(...GLOBAL_ADMIN_RAG_USER_IDS);
+    }
+  }
+
+  const globalSearches = activeGlobalUserIds.map((globalUserId) =>
+    similaritySearch({
+      userId: globalUserId,
+      queryEmbedding,
+      queryText: keywordQueryText,
+      metadataFilters: args.metadataFilters,
+      topK: candidateTopK,
+      vectorWeight,
+      keywordWeight,
+    }),
+  );
   const [userMatches, ...globalMatchGroups] = await Promise.all([
     similaritySearch({
       userId: args.userId,
@@ -764,7 +794,7 @@ export async function retrieveForQuery(args: {
   diverseResults.push(...judgmentResults.slice(0, maxCategorySlice));
   diverseResults.push(...userResults.slice(0, maxCategorySlice));
 
-  const reranked = rerankAndDiversify(diverseResults, queryText, requestedTopK);
+  const reranked = await rerankAndDiversify(diverseResults, queryText, requestedTopK);
   const confidence = resolveConfidence(reranked.map((m) => m.score));
   return { matches: reranked, confidence };
 }

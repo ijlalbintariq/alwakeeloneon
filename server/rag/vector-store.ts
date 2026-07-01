@@ -37,9 +37,13 @@ function vectorLiteral(values: number[]): string {
   return `[${safe.join(",")}]`;
 }
 
+let schemaEnsured = false;
+
 export async function ensureRagSchema(): Promise<void> {
   if (!dbAvailable || !pool) return;
+  if (schemaEnsured) return;
 
+  schemaEnsured = true;
   await pool.query("CREATE EXTENSION IF NOT EXISTS vector");
 
   await pool.query(`
@@ -291,45 +295,79 @@ export async function similaritySearch(args: {
     }
   }
 
+  const GLOBAL_ADMIN_RAG_USER_IDS = [
+    "global-admin-case-law",
+    "global-admin-statute",
+    "global-admin-knowledge",
+    "global-admin-judgments"
+  ];
+  const isGlobalId = GLOBAL_ADMIN_RAG_USER_IDS.includes(args.userId);
+  const userIdClause = isGlobalId ? `c.user_id = '${args.userId}' AND $1 = $1` : "c.user_id = $1";
+
   const sql = `
     WITH vector_hits AS (
       SELECT
-        c.id,
-        c.rag_document_id,
-        c.source_document_id,
+        r.id,
+        r.rag_document_id,
+        r.source_document_id,
         d.title,
-        c.chunk_index,
-        COALESCE(p.token_count, c.token_count) as token_count,
-        COALESCE(p.chunk_text, c.chunk_text) as chunk_text,
-        c.metadata,
-        GREATEST(0, 1 - (c.embedding <=> $2::vector)) AS vector_score,
-        COALESCE(ts_rank_cd(to_tsvector('simple', COALESCE(p.chunk_text, c.chunk_text)), plainto_tsquery('simple', $3)), 0) AS keyword_score
-      FROM rag_chunks c
-      JOIN rag_documents d ON d.id = c.rag_document_id
-      LEFT JOIN rag_chunks p ON p.id = c.parent_chunk_id
-      WHERE c.user_id = $1${sourceFilter}${filterSql}
-      ORDER BY c.embedding <=> $2::vector ASC
-      LIMIT $5
+        r.chunk_index,
+        COALESCE(p.token_count, r.token_count) as token_count,
+        COALESCE(p.chunk_text, r.chunk_text) as chunk_text,
+        r.metadata,
+        r.vector_score,
+        0::float8 AS keyword_score
+      FROM (
+        SELECT
+          c.id,
+          c.rag_document_id,
+          c.source_document_id,
+          c.chunk_index,
+          c.token_count,
+          c.chunk_text,
+          c.metadata,
+          c.parent_chunk_id,
+          GREATEST(0, 1 - (c.embedding <=> $2::vector)) AS vector_score
+        FROM rag_chunks c
+        WHERE ${userIdClause}${sourceFilter}${filterSql}
+        ORDER BY c.embedding <=> $2::vector ASC
+        LIMIT $5
+      ) r
+      JOIN rag_documents d ON d.id = r.rag_document_id
+      LEFT JOIN rag_chunks p ON p.id = r.parent_chunk_id
     ),
     keyword_hits AS (
       SELECT
-        c.id,
-        c.rag_document_id,
-        c.source_document_id,
+        r.id,
+        r.rag_document_id,
+        r.source_document_id,
         d.title,
-        c.chunk_index,
-        COALESCE(p.token_count, c.token_count) as token_count,
-        COALESCE(p.chunk_text, c.chunk_text) as chunk_text,
-        c.metadata,
-        GREATEST(0, 1 - (c.embedding <=> $2::vector)) AS vector_score,
-        COALESCE(ts_rank_cd(to_tsvector('simple', COALESCE(p.chunk_text, c.chunk_text)), plainto_tsquery('simple', $3)), 0) AS keyword_score
-      FROM rag_chunks c
-      JOIN rag_documents d ON d.id = c.rag_document_id
-      LEFT JOIN rag_chunks p ON p.id = c.parent_chunk_id
-      WHERE c.user_id = $1${sourceFilter}${filterSql}
-        AND to_tsvector('simple', COALESCE(p.chunk_text, c.chunk_text)) @@ plainto_tsquery('simple', $3)
-      ORDER BY keyword_score DESC
-      LIMIT $5
+        r.chunk_index,
+        COALESCE(p.token_count, r.token_count) as token_count,
+        COALESCE(p.chunk_text, r.chunk_text) as chunk_text,
+        r.metadata,
+        r.vector_score,
+        r.keyword_score
+      FROM (
+        SELECT
+          c.id,
+          c.rag_document_id,
+          c.source_document_id,
+          c.chunk_index,
+          c.token_count,
+          c.chunk_text,
+          c.metadata,
+          c.parent_chunk_id,
+          GREATEST(0, 1 - (c.embedding <=> $2::vector)) AS vector_score,
+          COALESCE(ts_rank_cd(to_tsvector('simple', c.chunk_text), plainto_tsquery('simple', $3)), 0) AS keyword_score
+        FROM rag_chunks c
+        WHERE ${userIdClause}${sourceFilter}${filterSql}
+          AND to_tsvector('simple', c.chunk_text) @@ plainto_tsquery('simple', $3)
+        ORDER BY keyword_score DESC
+        LIMIT $5
+      ) r
+      JOIN rag_documents d ON d.id = r.rag_document_id
+      LEFT JOIN rag_chunks p ON p.id = r.parent_chunk_id
     ),
     merged AS (
       SELECT * FROM vector_hits

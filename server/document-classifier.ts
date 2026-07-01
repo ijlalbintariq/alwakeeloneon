@@ -1,16 +1,16 @@
 import { classifyDocumentDomainWithML } from "./ml/ml-client";
 
 export const DOMAIN_TAXONOMY = [
-  { key: "civil-litigation", label: "Civil Litigation", keywords: ["civil", "injunction", "appeal", "plaint", "petition", "writ", "suit", "decree", "summons", "tribunal"] },
-  { key: "contracts", label: "Contracts", keywords: ["contract", "agreement", "indemnity", "warranty", "breach", "consideration", "clause", "party", "purchase", "lease agreement"] },
-  { key: "evidence-notes", label: "Evidence & Notes", keywords: ["evidence", "exhibit", "statement", "affidavit", "forensic", "note", "witness", "proof", "annexure", "memo"] },
-  { key: "property", label: "Property / Real Estate", keywords: ["property", "land", "real estate", "sale deed", "registry", "tenant", "rent", "lease", "mutation", "allotment"] },
-  { key: "corporate", label: "Corporate / Commercial", keywords: ["company", "corporate", "commercial", "shareholder", "board", "memorandum", "articles", "merger", "acquisition", "director"] },
-  { key: "family", label: "Family Law", keywords: ["family", "nikah", "khula", "divorce", "maintenance", "custody", "guardianship", "inheritance", "dower", "talaq"] },
-  { key: "criminal", label: "Criminal Law", keywords: ["criminal", "fir", "bail", "offence", "ppc", "crpc", "prosecution", "accused", "charge", "sentence"] },
-  { key: "tax", label: "Tax / Revenue", keywords: ["tax", "fbr", "income tax", "sales tax", "revenue", "withholding", "assessment", "customs", "duty", "refund"] },
-  { key: "employment", label: "Labor / Employment", keywords: ["employment", "employee", "employer", "termination", "salary", "wages", "labor", "gratuity", "service rules", "hr"] },
-  { key: "constitutional", label: "Constitutional", keywords: ["constitution", "fundamental rights", "article", "constitutional petition", "article 199", "article 184", "judicial review", "public interest"] },
+  { key: "civil-litigation", label: "Civil Litigation", keywords: ["civil suit", "civil appeal", "injunction", "plaint", "petition", "writ", "suit", "decree", "summons", "tribunal", "interlocutory", "written statement"] },
+  { key: "contracts", label: "Contracts", keywords: ["contract", "agreement", "indemnity", "warranty", "breach of contract", "consideration", "clause", "partnership deed", "lease agreement", "promissory note"] },
+  { key: "evidence-notes", label: "Evidence & Notes", keywords: ["evidence", "exhibit", "witness statement", "affidavit", "forensic report", "deposition", "cross examination", "examination in chief", "proof", "annexure", "memo"] },
+  { key: "property", label: "Property / Real Estate", keywords: ["property", "land", "real estate", "sale deed", "registry", "tenant", "rent", "lease", "mutation", "allotment", "patwari", "fard", "khasra", "khewat", "inteqal", "shamilat", "ejectment", "partition suit"] },
+  { key: "corporate", label: "Corporate / Commercial", keywords: ["company", "corporate", "commercial", "shareholder", "board of directors", "memorandum of association", "articles of association", "merger", "secp", "companies act", "director", "partnership"] },
+  { key: "family", label: "Family Law", keywords: ["family court", "nikah", "nikahnama", "khula", "divorce", "maintenance suit", "custody of minor", "guardianship", "inheritance", "dower", "talaq", "dowry", "dissolution of marriage", "jactitation of marriage"] },
+  { key: "criminal", label: "Criminal Law", keywords: ["criminal", "fir", "bail", "offence", "ppc", "crpc", "prosecution", "accused", "charge sheet", "sentence", "superdari", "quashment", "anti terrorism", "nab", "cnsa", "cybercrime"] },
+  { key: "tax", label: "Tax / Revenue", keywords: ["tax", "fbr", "income tax", "sales tax", "revenue board", "withholding tax", "assessment", "customs act", "excise duty", "refund"] },
+  { key: "employment", label: "Labor / Employment", keywords: ["employment", "employee", "employer", "termination", "salary", "wages", "labor court", "gratuity", "service rules", "civil servant", "service tribunal", "pension"] },
+  { key: "constitutional", label: "Constitutional", keywords: ["constitution of pakistan", "fundamental rights", "article 199", "article 184", "constitutional petition", "judicial review", "public interest litigation", "suo motu", "quo warranto", "habeas corpus", "mandamus"] },
   { key: "intellectual-property", label: "Intellectual Property", keywords: ["trademark", "copyright", "patent", "ip", "infringement", "design", "licensing", "brand", "passing off"] },
   { key: "other", label: "Other", keywords: [] },
 ] as const;

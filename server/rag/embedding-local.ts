@@ -13,9 +13,11 @@ const OPENAI_EMBED_BASE_URL = process.env.RAG_OPENAI_BASE_URL    || "https://ope
 const OPENAI_EMBED_API_KEY  = process.env.OPENROUTER_API_KEY     || process.env.OPENAI_API_KEY || "";
 
 // Voyage AI settings (used when EMBEDDING_PROVIDER=voyage)
-const VOYAGE_API_KEY   = process.env.VOYAGE_API_KEY || "";
-const VOYAGE_MODEL     = process.env.VOYAGE_EMBED_MODEL || "voyage-law-2";
-const VOYAGE_BASE_URL  = "https://api.voyageai.com/v1/embeddings";
+const VOYAGE_API_KEY        = process.env.VOYAGE_API_KEY || "";
+const VOYAGE_API_KEY_BACKUP = process.env.VOYAGE_API_KEY_BACKUP || "";
+const VOYAGE_MODEL          = process.env.VOYAGE_EMBED_MODEL || "voyage-law-2";
+const VOYAGE_BASE_URL       = "https://api.voyageai.com/v1/embeddings";
+const VOYAGE_RERANK_URL     = "https://api.voyageai.com/v1/rerank";
 
 type SemanticEmbedder = (text: string) => Promise<number[]>;
 const importDynamically = new Function("modulePath", "return import(modulePath);") as (modulePath: string) => Promise<any>;
@@ -112,34 +114,56 @@ async function embedTextOpenAI(text: string, dim: number = DEFAULT_DIM): Promise
   }
 }
 
+/**
+ * Executes a POST request to Voyage API with automatic fallback to backup key on failure.
+ */
+async function fetchVoyageWithFailover(url: string, payload: object): Promise<Response> {
+  const keys = [VOYAGE_API_KEY, VOYAGE_API_KEY_BACKUP].filter(Boolean);
+  if (keys.length === 0) {
+    throw new Error("No Voyage API keys configured");
+  }
+
+  let lastError: any = null;
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${key}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (resp.ok) {
+        return resp;
+      }
+
+      const errText = await resp.text();
+      lastError = new Error(`Voyage API error (Key #${i + 1}) status ${resp.status}: ${errText.slice(0, 300)}`);
+      console.warn(`[RAG] Voyage API key #${i + 1} failed. ${lastError.message}`);
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[RAG] Voyage API key #${i + 1} fetch exception: ${err?.message || err}`);
+    }
+  }
+
+  throw lastError || new Error("All configured Voyage API keys failed");
+}
+
 // ─── Voyage AI Embedder ──────────────────────────────────────────────────────
 // Used when RAG_EMBEDDING_PROVIDER=voyage.
 // Voyage-law-2: legal-specific embeddings, 1024 dimensions, 16K token context.
 // Uses input_type="query" for search queries and "document" for indexing.
 
 async function embedTextVoyage(text: string, dim: number = DEFAULT_DIM, inputType: "query" | "document" = "query"): Promise<number[]> {
-  if (!VOYAGE_API_KEY) {
-    console.warn("[RAG] VOYAGE_API_KEY not set — falling back to hashing");
-    return embedTextHashing(text, dim);
-  }
   try {
-    const resp = await fetch(VOYAGE_BASE_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${VOYAGE_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: VOYAGE_MODEL,
-        input: [text.slice(0, 32000)],
-        input_type: inputType,
-      }),
+    const resp = await fetchVoyageWithFailover(VOYAGE_BASE_URL, {
+      model: VOYAGE_MODEL,
+      input: [text.slice(0, 32000)],
+      input_type: inputType,
     });
-    if (!resp.ok) {
-      const err = await resp.text();
-      console.warn(`[RAG] Voyage embed API error ${resp.status}: ${err.slice(0, 200)}`);
-      return embedTextHashing(text, dim);
-    }
     const json = await resp.json() as any;
     const embedding = json?.data?.[0]?.embedding as number[] | undefined;
     if (!embedding || embedding.length === 0) return embedTextHashing(text, dim);
@@ -152,29 +176,46 @@ async function embedTextVoyage(text: string, dim: number = DEFAULT_DIM, inputTyp
 }
 
 async function embedTextsVoyage(texts: string[], dim: number = DEFAULT_DIM, inputType: "query" | "document" = "query"): Promise<number[][]> {
-  if (!VOYAGE_API_KEY) return texts.map((t) => embedTextHashing(t, dim));
   try {
-    const resp = await fetch(VOYAGE_BASE_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${VOYAGE_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: VOYAGE_MODEL,
-        input: texts.map((t) => t.slice(0, 32000)),
-        input_type: inputType,
-      }),
+    const resp = await fetchVoyageWithFailover(VOYAGE_BASE_URL, {
+      model: VOYAGE_MODEL,
+      input: texts.map((t) => t.slice(0, 32000)),
+      input_type: inputType,
     });
-    if (!resp.ok) return texts.map((t) => embedTextHashing(t, dim));
     const json = await resp.json() as any;
     const items = json?.data as Array<{ index: number; embedding: number[] }> | undefined;
     if (!items) return texts.map((t) => embedTextHashing(t, dim));
     return items
       .sort((a, b) => a.index - b.index)
       .map((item) => fitToDimension(item.embedding, dim));
-  } catch {
+  } catch (err: any) {
+    console.warn(`[RAG] Voyage bulk embed failed (${err?.message || err}) — falling back to hashing`);
     return texts.map((t) => embedTextHashing(t, dim));
+  }
+}
+
+/**
+ * Calls Voyage Reranker API with automatic backup key failover.
+ * Returns relative relevance scores for the input documents.
+ */
+export async function rerankVoyage(query: string, documents: string[], topN?: number): Promise<Array<{ index: number; score: number }>> {
+  try {
+    const resp = await fetchVoyageWithFailover(VOYAGE_RERANK_URL, {
+      model: "rerank-2",
+      query: query,
+      documents: documents,
+      top_n: topN,
+    });
+    const json = await resp.json() as any;
+    const data = json?.data as Array<{ index: number; relevance_score: number }> | undefined;
+    if (!data) return [];
+    return data.map((item) => ({
+      index: item.index,
+      score: item.relevance_score,
+    }));
+  } catch (err: any) {
+    console.warn(`[RAG] Voyage Reranker failed (${err?.message || err}) — falling back to local ranking`);
+    return [];
   }
 }
 
