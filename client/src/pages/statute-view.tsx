@@ -328,6 +328,28 @@ export default function StatuteViewPage() {
             <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{doc.category}</p>
           </div>
         </div>
+        {doc.file?.isPdf && doc.file?.viewUrl && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              size="sm"
+              variant={viewMode === "pdf" ? "default" : "outline"}
+              className={viewMode === "pdf" ? "bg-primary text-primary-foreground hover:bg-primary" : "border-border text-foreground"}
+              onClick={() => setViewMode("pdf")}
+            >
+              <FileText size={14} className="mr-1" />
+              PDF View
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === "text" ? "default" : "outline"}
+              className={viewMode === "text" ? "bg-primary text-primary-foreground hover:bg-primary" : "border-border text-foreground"}
+              onClick={() => setViewMode("text")}
+            >
+              <List size={14} className="mr-1" />
+              Text View
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 flex flex-col xl:flex-row overflow-y-auto xl:overflow-hidden">
@@ -366,7 +388,8 @@ export default function StatuteViewPage() {
               <StatutePdfViewer 
                 fileUrl={doc.file.viewUrl} 
                 onNavigateToSection={(sectionId) => {
-                  console.log("Section clicked in PDF:", sectionId);
+                  setViewMode("text");
+                  setFocusSectionHint(sectionId);
                 }}
               />
             </div>
