@@ -223,55 +223,6 @@ export default function StatuteViewPage() {
     return processed;
   }
 
-  function renderDocContent(content: string) {
-    const processed = preprocessContent(content);
-    const lines = processed.split("\n");
-    const headingPatterns = /^\s*(PART|CHAPTER|SCHEDULE|ARTICLE|SECTION|TITLE|PREAMBLE|INTRODUCTORY|ANNEX|AMENDMENT)\b/i;
-    const subHeadingPatterns = /^\s*\d+[\.\)]\s+[A-Z]/;
-
-    return lines.map((line, idx) => {
-      const trimmed = line.trim();
-      if (!trimmed) return <div key={idx} className="h-4" />;
-
-      const isMainHeading = headingPatterns.test(trimmed) || (trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 120 && /[A-Z]/.test(trimmed));
-      const isSubHeading = subHeadingPatterns.test(trimmed);
-
-      if (isMainHeading) {
-        const sectionId = "section-" + trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-        return (
-          <h2
-            key={idx}
-            id={sectionId}
-            data-section-heading={trimmed}
-            className="text-xl font-bold text-foreground mt-10 mb-4 pt-4 transition-colors duration-500"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
-            {trimmed}
-          </h2>
-        );
-      }
-
-      if (isSubHeading) {
-        const sectionId = "section-" + trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-        return (
-          <h3
-            key={idx}
-            id={sectionId}
-            data-section-heading={trimmed}
-            className="text-base font-semibold text-foreground mt-6 mb-2 transition-colors duration-500"
-          >
-            {trimmed}
-          </h3>
-        );
-      }
-
-      return (
-        <p key={idx} className="text-foreground mb-1" data-line-idx={idx}>
-          {trimmed}
-        </p>
-      );
-    });
-  }
 
   async function handleChatSend() {
     if (!chatInput.trim() || !doc || isChatLoading) return;
@@ -407,7 +358,7 @@ export default function StatuteViewPage() {
                 className="max-w-none text-foreground leading-relaxed"
                 style={{ fontFamily: "'Inter', sans-serif", fontSize: "14px", lineHeight: "1.9" }}
               >
-                {renderDocContent(doc.content)}
+                <LegalMarkdown content={preprocessContent(doc.content)} />
               </div>
 
               {doc.isTruncated ? (

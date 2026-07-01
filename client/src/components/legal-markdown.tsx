@@ -99,26 +99,42 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ children }) => (
-            <h1 className="text-lg sm:text-xl font-bold text-foreground mt-4 mb-3 pb-2 border-b-3 border-primary/50" data-testid="text-heading-h1">
-              {children}
-            </h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="text-base sm:text-lg font-bold text-foreground mt-4 mb-2 pb-2 border-b-2 border-primary/30" data-testid="text-heading-h2">
-              {children}
-            </h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="text-sm font-bold text-primary mt-3 mb-2 uppercase tracking-wider" data-testid="text-heading-h3">
-              {children}
-            </h3>
-          ),
-          h4: ({ children }) => (
-            <h4 className="text-sm font-semibold text-foreground mt-3 mb-2" data-testid="text-heading-h4">
-              {children}
-            </h4>
-          ),
+          h1: ({ children }) => {
+            const text = extractText(children);
+            const sectionId = "section-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+            return (
+              <h1 id={sectionId} data-section-heading={text} className="text-lg sm:text-xl font-bold text-foreground mt-4 mb-3 pb-2 border-b-3 border-primary/50" data-testid="text-heading-h1">
+                {children}
+              </h1>
+            );
+          },
+          h2: ({ children }) => {
+            const text = extractText(children);
+            const sectionId = "section-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+            return (
+              <h2 id={sectionId} data-section-heading={text} className="text-base sm:text-lg font-bold text-foreground mt-4 mb-2 pb-2 border-b-2 border-primary/30" data-testid="text-heading-h2">
+                {children}
+              </h2>
+            );
+          },
+          h3: ({ children }) => {
+            const text = extractText(children);
+            const sectionId = "section-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+            return (
+              <h3 id={sectionId} data-section-heading={text} className="text-sm font-bold text-primary mt-3 mb-2 uppercase tracking-wider" data-testid="text-heading-h3">
+                {children}
+              </h3>
+            );
+          },
+          h4: ({ children }) => {
+            const text = extractText(children);
+            const sectionId = "section-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+            return (
+              <h4 id={sectionId} data-section-heading={text} className="text-sm font-semibold text-foreground mt-3 mb-2" data-testid="text-heading-h4">
+                {children}
+              </h4>
+            );
+          },
           p: ({ children }) => {
             const text = extractText(children);
             const processed = processTextForCitations(text);
