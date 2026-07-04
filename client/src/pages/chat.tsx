@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
-import { Scale, Send, Square, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Globe, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2, History, ShieldCheck, AlertTriangle, CircleDot, Database, Lightbulb } from "lucide-react";
+import { Scale, Send, Square, Trash2, Bookmark, BookmarkCheck, Loader2, AlertCircle, Share2, Check, Copy, Zap, Lock, Crown, ArrowUpRight, X, Paperclip, Mic, FileText, File, Sparkles, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, Folder, PlusCircle, User as UserIcon, Search, BookOpen, Brain, ExternalLink, Gavel, BarChart3, Link2, History, ShieldCheck, AlertTriangle, CircleDot, Database, Lightbulb } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getUpgradeCheckoutPath } from "@/lib/upgrade-path";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -20,13 +20,6 @@ interface ApexModelsData {
   tier: string;
 }
 
-interface AgentStep {
-  type: "thinking" | "searching" | "reading" | "synthesizing";
-  content: string;
-  searchQuery?: string;
-  results?: Array<{ title: string; url: string; snippet: string }>;
-}
-
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -42,11 +35,7 @@ interface ChatMessage {
   ragConfidence?: "high" | "medium" | "low";
   /** Raw DB case-law results (no AI processing) — rendered above AI prose. */
   caseLawCard?: CaseLawCardData;
-  // Agent-specific fields
-  agentSteps?: AgentStep[];
-  agentSearchQueries?: string[];
-  agentSourcesUsed?: Array<{ title: string; url: string; snippet: string }>;
-  isAgentMode?: boolean;
+
 }
 
 type AiMode = "standard" | "turbo" | string;
@@ -206,7 +195,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [ragEnabled, setRagEnabled] = useState(false);
   const [ragCaseFileId, setRagCaseFileId] = useState<number | null>(null);
-  const [agentStatus, setAgentStatus] = useState<string | null>(null);
   // Tool-search status: shown as a timer while AI searches case law DB
   const [toolSearchStatus, setToolSearchStatus] = useState<{
     active: boolean;
@@ -241,18 +229,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   });
   const upgradeCheckoutHref = getUpgradeCheckoutPath(usage?.tier);
   const canUseTurbo = usage?.tier === "pro" || usage?.tier === "chamber" || usage?.tier === "enterprise";
-  const canUseApex = usage?.tier === "chamber" || usage?.tier === "enterprise";
   const normalizedAiMode = String(aiMode || "").trim().toLowerCase();
-  const apexModeFromSelection =
-    normalizedAiMode === "apex-pro" || normalizedAiMode === "apex-apex-pro" || normalizedAiMode === "apex"
-      ? "apex-pro"
-      : normalizedAiMode === "apex-agent" || normalizedAiMode === "apex-apex-agent" || normalizedAiMode === "apex-agent-web"
-        ? "apex-agent"
-        : null;
-  const isApexAgentWebMode = normalizedAiMode === "apex-agent-web";
-  const isApexModelMode = Boolean(apexModeFromSelection) && !isApexAgentWebMode;
-  const isApexMode = isApexModelMode || isApexAgentWebMode;
-  const selectedApexModel = isApexAgentWebMode ? "apex-agent" : apexModeFromSelection;
+  const isApexMode =
+    normalizedAiMode === "apex-pro" || normalizedAiMode === "apex-apex-pro" || normalizedAiMode === "apex";
+  const selectedApexModel = isApexMode ? "apex-pro" : null;
   const turboMode = normalizedAiMode === "turbo";
 
   const { data: apexData } = useQuery<ApexModelsData>({
@@ -262,6 +242,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       return res.json();
     },
   });
+  // Filter out removed models (Apex Pro / Apex Agent) — keep only base Apex
+  const filteredApexModels = useMemo(() => {
+    if (!apexData?.models) return [];
+    return apexData.models.filter(m => {
+      const id = m.id.toLowerCase();
+      return !id.includes("apex-agent");
+    });
+  }, [apexData]);
+
 
   const getModelDisplayName = useCallback((modelId: string): string => {
     const modelKey = String(modelId || "").toLowerCase();
@@ -272,31 +261,17 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       "deepseek-reasoner": "DeepSeek Pro",
       "apex-pro": "Apex",
       "apex-apex-pro": "Apex",
-      "apex-agent": "Apex Pro",
-      "apex-apex-agent": "Apex Pro",
-      "apex-agent-web": "Apex Agent Web",
     };
     if (modelNames[modelKey]) return modelNames[modelKey];
     if (modelKey.includes("deepseek")) return "DeepSeek";
     const apexModel = apexData?.models.find(m => m.id.toLowerCase() === modelKey);
     if (apexModel) return apexModel.name;
-    if (modelKey.includes("apex-agent-web") || modelKey.includes("apex agent web")) return "Apex Agent Web";
-    if (modelKey.includes("apex-agent") || modelKey.includes("apex agent")) return "Apex Pro";
     if (modelKey.includes("apex-pro") || modelKey.includes("apex pro")) return "Apex";
     return "Standard";
   }, [apexData]);
 
   const getModelFunctionDescription = useCallback((modelIdOrName: string): string => {
     const id = modelIdOrName.toLowerCase();
-    if (id.includes("openai/gpt-oss-120b")) {
-      return "Highest quality legal reasoning and detailed drafting.";
-    }
-    if (id.includes("openai/gpt-oss-20b")) {
-      return "Balanced legal analysis with faster response time.";
-    }
-    if (id.includes("llama-3.1-8b-instant")) {
-      return "Low-latency responses for quick legal guidance.";
-    }
     if (id.includes("deepseek-reasoner") || id.includes("deepseek pro")) {
       return "Advanced multi-step reasoning for complex legal problems.";
     }
@@ -306,12 +281,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     if (id.includes("apex-pro")) {
       return "Kimi-K2.5 mode for fast, high-quality legal drafting and analysis.";
     }
-    if (id === "apex-agent-web") {
-      return "Kimi AI agent with live web research across Pakistani legal databases.";
-    }
-    if (id === "apex-agent") {
-      return "Kimi-K2-Thinking mode for deeper legal reasoning in non-web internal context.";
-    }
     if (id.includes("groq") || id.includes("standard")) {
       return "Default legal chat mode with reliable fast responses.";
     }
@@ -320,14 +289,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     return "AI legal assistant response.";
   }, [apexData]);
 
-  const currentModeName = useCallback((): { name: string; color: string; icon: "zap" | "sparkles" | "standard" | "globe" } => {
-    if (normalizedAiMode === "standard") return { name: "Standard", color: "text-muted-foreground", icon: "standard" };
+  const currentModeName = useCallback((): { name: string; color: string; icon: "zap" | "sparkles" | "standard" } => {
     if (normalizedAiMode === "turbo") return { name: "Turbo", color: "text-primary", icon: "zap" };
-    if (isApexAgentWebMode) return { name: "Apex Agent Web", color: "text-cyan-400", icon: "globe" };
-    const apexModelId = selectedApexModel || normalizedAiMode;
-    const apexModel = apexData?.models.find((m) => m.id.toLowerCase() === apexModelId);
-    return { name: apexModel?.name || getModelDisplayName(apexModelId), color: "text-emerald-400", icon: "sparkles" };
-  }, [normalizedAiMode, isApexAgentWebMode, selectedApexModel, apexData, getModelDisplayName]);
+    if (isApexMode) {
+      const apexModel = apexData?.models.find((m) => m.id.toLowerCase() === (selectedApexModel || normalizedAiMode));
+      return { name: apexModel?.name || getModelDisplayName(selectedApexModel || normalizedAiMode), color: "text-emerald-400", icon: "sparkles" };
+    }
+    return { name: "Standard", color: "text-muted-foreground", icon: "standard" };
+  }, [normalizedAiMode, isApexMode, selectedApexModel, apexData, getModelDisplayName]);
 
   useEffect(() => {
     chatStateStore[type] = { messages, shareUrl, sharedThreadId };
@@ -523,7 +492,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     const text = overrideInput || input;
     if ((!text.trim() && attachedFiles.length === 0) || isLoading) return;
     setApiError(null);
-    setAgentStatus(null);
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -547,48 +515,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     try {
       let response: Response;
 
-      // ── Apex Agent Web Mode (Kimi Web Research) ──────────────────────────
-      if (isApexAgentWebMode && isAlWakeelo && text.trim().length > 0 && currentFiles.length === 0) {
-        setAgentStatus("🔍 Initializing web research agent...");
-        try {
-          const agentRes = await apiRequest("POST", "/api/apex/agent", {
-            message: text,
-            maxIterations: 6,
-          });
-          const agentData = await agentRes.json();
 
-          if (!agentRes.ok) {
-            throw { message: agentData.message || "Agent research failed", isLimit: agentRes.status === 429 };
-          }
-
-          const agentSteps: AgentStep[] = Array.isArray(agentData.steps) ? agentData.steps : [];
-          const agentSearchQueries: string[] = Array.isArray(agentData.searchQueries) ? agentData.searchQueries : [];
-          const agentSourcesUsed = Array.isArray(agentData.sourcesUsed) ? agentData.sourcesUsed : [];
-          const assistantMessage: ChatMessage = {
-            id: assistantId,
-            role: "assistant",
-            content: agentData.content || "Research complete.",
-            modeName: "Apex Agent Web",
-            modelName: agentData.model || "Apex Agent Web",
-            modelId: "apex-agent-web",
-            modelDescription: "Kimi AI with live web research across legal databases",
-            isAgentMode: true,
-            agentSteps,
-            agentSearchQueries,
-            agentSourcesUsed,
-          };
-          setMessages([...updated, assistantMessage]);
-          await persistConsultationTurn(userMsg, assistantMessage);
-
-          setAgentStatus(null);
-          await apiRequest("POST", "/api/search-history", { type: "chat", query: text.substring(0, 80) }).catch(() => {});
-          queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
-          return;
-        } catch (agentErr: any) {
-          setAgentStatus(null);
-          throw agentErr;
-        }
-      }
 
       if (ragEnabled && isAlWakeelo && text.trim().length > 0 && currentFiles.length === 0) {
         // Include recent conversation history so RAG can understand follow-up questions
@@ -679,11 +606,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
         const modelId = data.model || selectedApexModel || normalizedAiMode || "standard";
         const modelLabel = modelId ? getModelDisplayName(modelId) : undefined;
         const modelDescription = modelId ? getModelFunctionDescription(modelId) : undefined;
-        const modeLabel = isApexAgentWebMode
-          ? "Apex Agent Web"
-          : isApexModelMode
-            ? getModelDisplayName(selectedApexModel || modelId)
-            : (turboMode && canUseTurbo ? "Turbo" : "Standard");
+        const modeLabel = isApexMode
+          ? getModelDisplayName(selectedApexModel || modelId)
+          : (turboMode && canUseTurbo ? "Turbo" : "Standard");
         const assistantMessage: ChatMessage = {
           id: assistantId,
           role: "assistant",
@@ -771,11 +696,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       const modelId = parsed.model || selectedApexModel || normalizedAiMode || "standard";
                       const modelLabel = getModelDisplayName(modelId);
                       const modelDescription = getModelFunctionDescription(modelId);
-                      const modeLabel = isApexAgentWebMode
-                        ? "Apex Agent Web"
-                        : isApexModelMode
-                          ? getModelDisplayName(selectedApexModel || modelId)
-                          : (turboMode && canUseTurbo ? "Turbo" : "Standard");
+                      const modeLabel = isApexMode
+                        ? getModelDisplayName(selectedApexModel || modelId)
+                        : (turboMode && canUseTurbo ? "Turbo" : "Standard");
                       setMessages(prev => {
                         const last = prev[prev.length - 1];
                         if (last && last.id === assistantId) {
@@ -859,7 +782,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       }
     } finally {
       setIsLoading(false);
-      setAgentStatus(null);
     }
   };
 
@@ -1470,36 +1392,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                               <span className={`text-[7px] font-semibold uppercase tracking-wider ${
                                 m.modeName === "Turbo" ? "text-amber-700 dark:text-amber-500" :
                                 m.modeName === "Standard" ? "text-muted-foreground" :
-                                m.isAgentMode ? "text-cyan-600" :
                                 "text-emerald-600"
                               }`}>
                                 {m.modeName === "Turbo" && <Zap size={8} className="inline mr-0.5" />}
-                                {m.isAgentMode && <Globe size={8} className="inline mr-0.5" />}
-                                {!m.isAgentMode && m.modeName !== "Turbo" && m.modeName !== "Standard" && <Sparkles size={8} className="inline mr-0.5" />}
+                                {m.modeName !== "Turbo" && m.modeName !== "Standard" && <Sparkles size={8} className="inline mr-0.5" />}
                                 {m.modeName}
                               </span>
                             )}
-                          </div>
-                        </div>
-                      )}
-                      {/* Agent Research Steps (compact, integrated) */}
-                      {m.isAgentMode && (m.agentSteps?.length || 0) > 0 && (
-                        <div className="mt-3 pt-3 border-t border-[#E9EEF5]">
-                          <p className="text-[9px] font-semibold uppercase tracking-widest text-cyan-600 mb-2 flex items-center gap-1.5">
-                            <Brain size={12} /> Research Steps
-                          </p>
-                          <div className="space-y-1.5 text-[10px]">
-                            {m.agentSteps!.slice(0, 3).map((step, idx) => (
-                              <div key={idx} className="flex items-start gap-2">
-                                <span className="shrink-0 mt-0.5">
-                                  {step.type === "thinking" && <Brain size={12} className="text-purple-500" />}
-                                  {step.type === "searching" && <Search size={12} className="text-cyan-500" />}
-                                  {step.type === "reading" && <BookOpen size={12} className="text-blue-500" />}
-                                  {step.type === "synthesizing" && <Sparkles size={12} className="text-emerald-500" />}
-                                </span>
-                                <span className="text-muted-foreground">{step.content}</span>
-                              </div>
-                            ))}
                           </div>
                         </div>
                       )}
@@ -1627,18 +1526,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-semibold uppercase tracking-wide transition-all border duration-150 ${
                   normalizedAiMode === "turbo"
                     ? "bg-amber-600/10 text-amber-700 dark:text-amber-500 border-amber-600/30"
-                    : isApexAgentWebMode
-                      ? "bg-cyan-500/10 text-cyan-600 border-cyan-500/30"
-                      : isApexMode
-                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
-                        : "text-muted-foreground border-border hover:border-primary hover:text-primary"
+                    : isApexMode
+                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                      : "text-muted-foreground border-border hover:border-primary hover:text-primary"
                 }`}
                 data-testid="button-model-selector"
               >
                 {normalizedAiMode === "turbo" ? (
                   <Zap size={12} className="text-primary" />
-                ) : isApexAgentWebMode ? (
-                  <Globe size={12} className="text-cyan-400" />
                 ) : isApexMode ? (
                   <Sparkles size={12} className="text-emerald-400" />
                 ) : (
@@ -1684,12 +1579,12 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       <div className="text-[10px] text-muted-foreground mt-0.5">Upgrade to Pro to unlock</div>
                     </div>
                   )}
-                  {canUseTurbo && apexData?.available && apexData.models.length > 0 && (
+                  {canUseTurbo && filteredApexModels.length > 0 && (
                     <>
                       <div className="px-4 py-1.5 text-[9px] text-emerald-500/70 uppercase tracking-widest font-bold border-b border-border/50 bg-emerald-500/5">
                         Apex Models
                       </div>
-                      {apexData.models.map(model => (
+                      {filteredApexModels.map(model => (
                         <button
                           key={model.id}
                           onClick={() => { setAiMode(model.id); setShowModelMenu(false); }}
@@ -1704,25 +1599,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       ))}
                     </>
                   )}
-                  {canUseApex && (
-                    <>
-                      <div className="px-4 py-1.5 text-[9px] text-cyan-400/70 uppercase tracking-widest font-bold border-b border-border/50 bg-cyan-500/5">
-                        Agent Mode
-                      </div>
-                      <button
-                        onClick={() => { setAiMode("apex-agent-web"); setShowModelMenu(false); }}
-                        className={`w-full text-left px-4 py-3 text-xs hover:bg-card transition-colors border-b border-border/50 last:border-0 ${normalizedAiMode === "apex-agent-web" ? "bg-cyan-500/10 text-cyan-400" : "text-muted-foreground"}`}
-                      >
-                        <div className="font-bold flex items-center gap-1.5">
-                          <Globe size={11} className="text-cyan-400" />
-                          Apex Agent Web
-                          <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-full font-black">WEB</span>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5">Live web research across Pakistani legal databases</div>
-                      </button>
-                    </>
-                  )}
-                  {(!apexData?.available || !apexData.models.length) && !canUseTurbo && (
+                  {!canUseTurbo && (
                     <div className="px-4 py-2 text-[9px] text-muted-foreground border-t border-border/30">
                       Upgrade to Pro for more models
                     </div>
@@ -2004,8 +1881,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 m.role === "assistant" &&
                 !displayContent.trim() &&
                 !m.caseLawCard &&
-                (!m.ragCitations || m.ragCitations.length === 0) &&
-                (!m.agentSteps || m.agentSteps.length === 0)
+                (!m.ragCitations || m.ragCitations.length === 0)
               ) {
                 return null;
               }
@@ -2036,8 +1912,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                             <div className="mb-3 pb-2 border-b border-primary/15">
                               <div className="text-[10px] text-foreground">
                                 {m.modeName && (
-                                  <span className={`mr-2 uppercase tracking-wider ${m.isAgentMode ? "text-cyan-400" : "text-primary"}`}>
-                                    {m.isAgentMode && <Globe size={9} className="inline mr-1" />}
+                                  <span className={`mr-2 uppercase tracking-wider text-primary`}>
                                     {m.modeName}
                                   </span>
                                 )}
@@ -2045,44 +1920,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                                 {m.moduleProfile && <span className="uppercase tracking-wider text-cyan-700 dark:text-cyan-300 ml-2">{m.moduleProfile}</span>}
                                 {m.modelDescription && <span className="block mt-1 text-muted-foreground">{m.modelDescription}</span>}
                               </div>
-                            </div>
-                          )}
-                          {/* Agent Research Steps */}
-                          {m.isAgentMode && (m.agentSteps?.length || 0) > 0 && (
-                            <div className="mb-4 rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-3">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-2 flex items-center gap-1.5">
-                                <Brain size={11} /> Research Process
-                              </p>
-                              <div className="space-y-1.5">
-                                {m.agentSteps!.map((step, idx) => (
-                                  <div key={idx} className="flex items-start gap-2 text-[11px]">
-                                    <span className="shrink-0 mt-0.5">
-                                      {step.type === "thinking" && <Brain size={11} className="text-purple-400" />}
-                                      {step.type === "searching" && <Search size={11} className="text-cyan-400" />}
-                                      {step.type === "reading" && <BookOpen size={11} className="text-blue-400" />}
-                                      {step.type === "synthesizing" && <Sparkles size={11} className="text-emerald-400" />}
-                                    </span>
-                                    <span className={`${
-                                      step.type === "thinking" ? "text-purple-700 dark:text-purple-300" :
-                                      step.type === "searching" ? "text-cyan-700 dark:text-cyan-300" :
-                                      step.type === "reading" ? "text-blue-700 dark:text-blue-300" :
-                                      "text-emerald-700 dark:text-emerald-300"
-                                    }`}>{step.content}</span>
-                                  </div>
-                                ))}
-                              </div>
-                              {(m.agentSearchQueries?.length || 0) > 0 && (
-                                <div className="mt-2 pt-2 border-t border-cyan-500/15">
-                                  <p className="text-[9px] font-black uppercase tracking-widest text-cyan-500 mb-1">Search Queries</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {m.agentSearchQueries!.map((q, idx) => (
-                                      <span key={idx} className="text-[10px] bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                                        {q}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
                             </div>
                           )}
                           {m.caseLawCard && m.caseLawCard.hits.length > 0 && (
@@ -2183,10 +2020,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
               );
             })}
 
-            {isLoading && !(messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && ((messages[messages.length - 1]?.content?.length ?? 0) > 0 || messages[messages.length - 1]?.caseLawCard || (messages[messages.length - 1]?.agentSteps?.length ?? 0) > 0)) && (
+            {isLoading && !(messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && ((messages[messages.length - 1]?.content?.length ?? 0) > 0 || messages[messages.length - 1]?.caseLawCard)) && (
               <div className="flex items-start gap-3 w-full">
-                <div className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full text-foreground flex items-center justify-center ${isApexAgentWebMode ? "bg-cyan-400" : "bg-primary"}`}>
-                  {isApexAgentWebMode ? <Globe size={18} /> : <Scale size={18} />}
+                <div className="h-8 w-8 sm:h-10 sm:w-10 shrink-0 rounded-full text-foreground flex items-center justify-center bg-primary">
+                  <Scale size={18} />
                 </div>
                 <div className="flex-1 flex flex-col gap-2">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-foreground">
@@ -2303,17 +2140,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   <button
                     onClick={() => setShowModelMenu(!showModelMenu)}
                     className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 border text-[10px] font-black uppercase tracking-wider ${
-                      isApexAgentWebMode
-                        ? "text-cyan-300 border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 focus-visible:ring-cyan-300/60"
-                        : isApexMode
-                          ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 focus-visible:ring-emerald-300/60"
-                          : normalizedAiMode === "turbo"
+                      isApexMode
+                        ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 focus-visible:ring-emerald-300/60"
+                        : normalizedAiMode === "turbo"
                             ? "text-primary border-primary/40 bg-primary/10 hover:bg-primary/20 focus-visible:ring-primary/60"
                             : "text-foreground border-border/60 bg-muted/30 hover:bg-muted/60 focus-visible:ring-slate-300/60"
                     }`}
                     data-testid="button-model-selector"
                   >
-                    {isApexAgentWebMode ? <Globe size={10} /> : isApexMode ? <Sparkles size={10} /> : normalizedAiMode === "turbo" ? <Zap size={10} /> : <Scale size={10} />}
+                    {isApexMode ? <Sparkles size={10} /> : normalizedAiMode === "turbo" ? <Zap size={10} /> : <Scale size={10} />}
                     {currentModeName().name}
                     <ChevronDown size={9} />
                   </button>
@@ -2334,10 +2169,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           <div className="text-[10px] text-muted-foreground mt-0.5">Upgrade to Pro to unlock</div>
                         </div>
                       )}
-                      {canUseTurbo && apexData?.available && apexData.models.length > 0 && (
+                      {canUseTurbo && filteredApexModels.length > 0 && (
                         <>
                           <div className="px-4 py-1.5 text-[9px] text-emerald-300 uppercase tracking-widest font-black border-b border-primary/10 bg-emerald-500/10">Apex Models</div>
-                          {apexData.models.map(model => (
+                          {filteredApexModels.map(model => (
                             <button
                               key={model.id}
                               onClick={() => { setAiMode(model.id); setShowModelMenu(false); }}
@@ -2351,29 +2186,8 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       )}
                       {!canUseTurbo && (
                         <div className="w-full text-left px-4 py-3 text-xs text-muted-foreground border-b border-primary/10">
-                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-muted-foreground" />Apex Models<span className="text-[8px] bg-emerald-500/20 text-emerald-500 px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
+                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-muted-foreground" />Turbo<span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black">PRO</span></div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">Upgrade to Pro to unlock</div>
-                        </div>
-                      )}
-                      {canUseApex ? (
-                        <>
-                          <div className="px-4 py-1.5 text-[9px] text-cyan-300 uppercase tracking-widest font-black border-b border-primary/10 bg-cyan-500/10">Agent Mode</div>
-                          <button
-                            onClick={() => { setAiMode("apex-agent-web"); setShowModelMenu(false); }}
-                            className={`w-full text-left px-4 py-3 text-xs hover:bg-muted border-b border-primary/10 last:border-0 ${normalizedAiMode === "apex-agent-web" ? "bg-cyan-500/12 text-cyan-300" : "text-foreground"}`}
-                          >
-                            <div className="font-bold flex items-center gap-1.5">
-                              <Globe size={11} className="text-cyan-400" />
-                              Apex Agent Web
-                              <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-full font-black">WEB</span>
-                            </div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5">Live web research across Pakistani legal databases</div>
-                          </button>
-                        </>
-                      ) : (
-                        <div className="w-full text-left px-4 py-3 text-xs text-muted-foreground border-b border-primary/10 last:border-0">
-                          <div className="font-bold flex items-center gap-1.5"><Lock size={10} className="text-muted-foreground" />Apex Agent Web<span className="text-[8px] bg-cyan-500/20 text-cyan-500 px-1.5 py-0.5 rounded-full font-black">CHAMBER</span></div>
-                          <div className="text-[10px] text-muted-foreground mt-0.5">Upgrade to Chamber to unlock</div>
                         </div>
                       )}
                     </div>
