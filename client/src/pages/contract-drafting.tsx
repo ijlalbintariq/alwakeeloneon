@@ -541,7 +541,11 @@ Specific Obligations: ${form.obligations || "[Not provided]"}${clauseInstruction
 
 Instructions:
 1. Draft a complete, professional contract for Pakistani legal practice.
-2. Use clear heading structure and clause numbering.
+2. Structure the document clearly:
+   - Use bold, uppercase heading lines for major sections (e.g., "1. SCOPE OF SERVICES", "2. PAYMENT AND CONSIDERATION").
+   - Put the document title in ALL CAPS at the very top.
+   - For any payment schedules, key milestones, or structured data lists, output them as a Markdown table (e.g. | Milestone | Details | Due Date |) for clean grid formatting.
+   - Place a line with the text "RESPECTFULLY SHEWETH" or "AFFIDAVIT" before signature blocks or affidavits to trigger physical page breaks.
 3. Include mandatory clauses: scope, consideration/payment, term, termination, confidentiality, indemnity, dispute resolution, governing law/jurisdiction, notices, and signatures.
 4. Keep unknown details as placeholders in square brackets.
 5. Return only contract text, no markdown fences, no extra commentary.`;
