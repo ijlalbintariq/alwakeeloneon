@@ -1136,7 +1136,13 @@ export default function ContractDraftingPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to export Word document");
+        const errorText = await response.text();
+        let errMsg = "Failed to export Word document";
+        try {
+          const errJson = JSON.parse(errorText);
+          if (errJson.message) errMsg = errJson.message;
+        } catch {}
+        throw new Error(`${response.status}: ${errMsg}`);
       }
 
       const blob = await response.blob();
@@ -1150,7 +1156,7 @@ export default function ContractDraftingPage() {
       toast({ title: "Success", description: "Word document exported successfully!" });
     } catch (err: any) {
       console.error("DOCX download error:", err);
-      toast({ title: "Export failed", description: "Could not create Word document.", variant: "destructive" });
+      toast({ title: "Export failed", description: err.message || "Could not create Word document.", variant: "destructive" });
     }
   };
 
