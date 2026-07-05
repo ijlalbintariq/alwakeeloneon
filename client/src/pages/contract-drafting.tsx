@@ -53,6 +53,7 @@ import {
   Header as DocxHeader,
 } from "docx";
 import type { Document as StoredDocument } from "@shared/schema";
+import { plainTextToTiptapHTML, isHTMLContent } from "@/lib/plain-to-tiptap";
 import { StyleMemoryPanel } from "@/components/style-memory-panel";
 import { generateLegalPDF } from "@/lib/generate-legal-pdf";
 import { useDocumentHead } from "@/hooks/use-document-head";
@@ -634,8 +635,9 @@ export default function ContractDraftingPage() {
   const editorRef = useRef<LegalEditorHandle | null>(null);
 
   const setEditorContent = useCallback((content: string) => {
-    setEditorHtml(content);
-    editorRef.current?.setContent(content);
+    const html = isHTMLContent(content) ? content : plainTextToTiptapHTML(content);
+    setEditorHtml(html);
+    editorRef.current?.setContent(html);
     setTimeout(() => {
       const text = editorRef.current?.getText() || "";
       setContractText(text);
@@ -2070,7 +2072,7 @@ export default function ContractDraftingPage() {
 
               <div
                 data-tutorial="editor"
-                className="rounded-2xl border border-[hsl(var(--preview-border))] bg-background/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl p-3 md:p-5 lg:p-7 min-h-[560px] md:min-h-[760px] print:bg-white print:text-black"
+                className="rounded-2xl border border-[hsl(var(--preview-border))] bg-background/72 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] backdrop-blur-xl p-0 overflow-hidden min-h-[560px] md:min-h-[760px] print:bg-white print:text-black"
                 style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
                 ref={printRef}
               >
@@ -2081,7 +2083,7 @@ export default function ContractDraftingPage() {
                     setEditorHtml(html);
                     setContractText(text);
                   }}
-                  className="w-full min-h-[520px] md:min-h-[700px] border-0 p-0 text-[15px] leading-relaxed text-foreground print:text-black"
+                  className="w-full min-h-[520px] md:min-h-[700px] border-0 p-0 text-foreground print:text-black"
                   placeholder="Your generated contract draft will appear here..."
                 />
               </div>
