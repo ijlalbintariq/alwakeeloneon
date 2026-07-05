@@ -1,0 +1,177 @@
+Excellent. Understood. I am Al Wakeelo AI, operating in Contract Drafting mode. I will generate a commercially realistic and enforceable commercial lease agreement for a retail shop in Lahore, strictly governed by the Punjab Rented Premises Ordinance 2009, incorporating a security deposit and a 10% annual rent escalation clause.
+
+The draft will be structured to cover comprehensive risk allocation and will be based on the principles derived from the provided Pakistani case law.
+
+---
+
+### COMMERCIAL LEASE AGREEMENT
+
+**FOR RETAIL SHOP PREMISES**
+
+**THIS LEASE AGREEMENT** is made and entered into on this ____ day of __________, 20____, at Lahore.
+
+**BETWEEN**
+
+**[NAME OF LESSOR/LANDLORD]**, son of _______________, resident of ____________________, holder of CNIC No. _______________ (hereinafter referred to as the **“Lessor”**, which expression shall mean and include his heirs, successors, legal representatives, and assigns) of the FIRST PART.
+
+**AND**
+
+**[NAME OF LESSEE/TENANT]**, son of _______________, resident of ____________________, holder of CNIC No. _______________ (hereinafter referred to as the **“Lessee”**, which expression shall mean and include his heirs, successors, legal representatives, and assigns) of the SECOND PART.
+
+The Lessor and the Lessee are hereinafter collectively referred to as the **“Parties”** and individually as a **“Party.”**
+
+**WHEREAS:**
+
+A. The Lessor is the lawful owner and in possession of a commercial shop bearing No. _____, situated at ____________________, Lahore (hereinafter referred to as the **“Demised Premises”**).
+
+B. The Lessee has approached the Lessor to take the Demised Premises on lease for the purpose of operating a retail business, and the Lessor has agreed to lease the same to the Lessee on the terms and conditions hereinafter appearing.
+
+C. The Parties intend that this Lease shall be governed by the provisions of the Punjab Rented Premises Ordinance, 2009.
+
+**NOW, THEREFORE, IN CONSIDERATION OF THE MUTUAL COVENANTS AND AGREEMENTS HEREIN CONTAINED, THE PARTIES AGREE AS FOLLOWS:**
+
+**1. DEMISE AND TERM**
+
+1.1 The Lessor hereby demises and leases the Demised Premises to the Lessee for a period of **[Number] Years**, commencing from ______________ (the “Commencement Date”) and ending on ______________ (the “Termination Date”).
+
+1.2 Upon the expiry of the initial term, the Lessee shall have the right to renew this Lease for a further period on mutually agreed terms, subject to the provisions of the Punjab Rented Premises Ordinance, 2009. In the absence of a renewal agreement, the tenancy shall continue on a month-to-month basis under the same terms and conditions, as held in **1999 MLD 1413** and **1963 PLD 213** (Sindh High Court), where it was established that upon expiry of a lease, a new relationship of statutory tenancy comes into existence.
+
+**2. RENT AND ESCALATION**
+
+2.1 The monthly rent for the Demised Premises shall be PKR _______________ (in words: ____________________), payable in advance on or before the 10th day of each calendar month.
+
+2.2 **Annual Escalation:** The monthly rent shall be increased by **10% (Ten Percent)** on each anniversary of the Commencement Date. The Lessor shall provide the Lessee with a written notice of the revised rent at least 30 days prior to the effective date of the escalation.
+
+2.3 All rent payments shall be made via crossed cheque or bank transfer to the Lessor’s designated bank account: [Account Details].
+
+**3. SECURITY DEPOSIT**
+
+3.1 Upon execution of this Agreement, the Lessee shall pay to the Lessor a refundable security deposit amounting to PKR _______________ (in words: ____________________), equivalent to **[Number]** months’ rent.
+
+3.2 The security deposit shall be held by the Lessor as a guarantee for the due performance of the Lessee’s obligations under this Agreement, including the payment of rent, utility bills, and the maintenance of the Demised Premises in good condition.
+
+3.3 The Lessor shall be entitled to deduct from the security deposit any amounts due from the Lessee, including but not limited to unpaid rent, cost of repairs for damage caused by the Lessee (beyond normal wear and tear), and any other sums recoverable under this Agreement.
+
+3.4 The balance of the security deposit, if any, shall be returned to the Lessee within **[Number]** days of the vacation of the Demised Premises and the delivery of vacant possession to the Lessor, subject to the deduction of any lawful claims. The principle regarding the use of security deposit for minor repairs was discussed in **1987 PLJ 260** (Sindh High Court).
+
+**4. USE OF PREMISES**
+
+4.1 The Demised Premises shall be used solely for the purpose of operating a retail business in [Specify Business Type, e.g., garments, electronics, general store] and for no other purpose whatsoever without the prior written consent of the Lessor.
+
+4.2 The Lessee shall not use the Demised Premises for any illegal, offensive, or hazardous activity, nor shall the Lessee cause any nuisance or disturbance to other tenants or neighbors.
+
+**5. MAINTENANCE AND REPAIRS**
+
+5.1 The Lessor shall be responsible for the structural maintenance of the Demised Premises, including the roof, external walls, and main electrical and plumbing systems.
+
+5.2 The Lessee shall be responsible for all day-to-day maintenance and minor repairs, including but not limited to internal painting, replacement of light bulbs, repair of internal fixtures, and upkeep of the shop’s interior.
+
+5.3 The Lessee shall not make any structural alterations or additions to the Demised Premises without the prior written consent of the Lessor.
+
+**6. UTILITIES AND OUTGOINGS**
+
+6.1 The Lessee shall be responsible for the payment of all utility charges, including electricity, gas, water, and telephone/internet bills, directly to the respective authorities.
+
+6.2 The Lessee shall also pay all applicable taxes, levies, and cesses in respect of the Demised Premises, except for the property tax which shall be borne by the Lessor.
+
+**7. SUBLETTING AND ASSIGNMENT**
+
+7.1 The Lessee shall not sublet, assign, or part with the possession of the Demised Premises or any part thereof without the prior written consent of the Lessor.
+
+**8. INSPECTION**
+
+8.1 The Lessor or his authorized representative shall have the right to inspect the Demised Premises at any reasonable time, after giving prior notice of at least 24 hours to the Lessee, except in case of an emergency.
+
+**9. DEFAULT AND TERMINATION**
+
+9.1 **Events of Default:** The following shall constitute events of default by the Lessee:
+    (a) Failure to pay rent for a period of **[Number]** consecutive months.
+    (b) Breach of any material term or condition of this Agreement.
+    (c) Use of the Demised Premises for an illegal purpose.
+    (d) Subletting or assigning the Demised Premises without the Lessor’s consent.
+
+9.2 **Remedy:** Upon the occurrence of an event of default, the Lessor may terminate this Lease by giving a **[Number]** -day written notice to the Lessee, requiring the Lessee to vacate the Demised Premises. The Lessor may then seek eviction through the appropriate Rent Controller under the Punjab Rented Premises Ordinance, 2009.
+
+9.3 The Lessor’s right to seek eviction on the ground of personal bonafide requirement is established in **2010 SCMR 1925** (Supreme Court of Pakistan), which held that the landlord’s requirement is discharged the moment he appears in the witness box and makes such a statement on oath.
+
+**10. FORCE MAJEURE**
+
+10.1 Neither Party shall be liable for any failure or delay in performing its obligations under this Agreement if such failure or delay is caused by an event beyond its reasonable control, including but not limited to acts of God, war, civil commotion, fire, flood, or government restrictions.
+
+**11. GOVERNING LAW AND JURISDICTION**
+
+11.1 This Agreement shall be governed by and construed in accordance with the laws of the Islamic Republic of Pakistan, particularly the Punjab Rented Premises Ordinance, 2009.
+
+11.2 Any dispute arising out of or in connection with this Agreement shall be subject to the exclusive jurisdiction of the courts and Rent Controllers in Lahore.
+
+**12. NOTICES**
+
+12.1 Any notice required to be given under this Agreement shall be in writing and shall be deemed to have been duly given if delivered personally or sent by registered post or courier to the addresses of the Parties first written above.
+
+**13. ENTIRE AGREEMENT**
+
+13.1 This Agreement constitutes the entire agreement between the Parties with respect to the subject matter hereof and supersedes all prior negotiations, representations, and agreements, whether written or oral.
+
+**14. INDEMNITY**
+
+14.1 The Lessee agrees to indemnify and hold harmless the Lessor from and against any and all claims, damages, losses, liabilities, and expenses (including reasonable legal fees) arising out of or in connection with the Lessee’s use of the Demised Premises or any breach of this Agreement by the Lessee.
+
+**IN WITNESS WHEREOF**, the Parties have executed this Agreement on the day and year first above written.
+
+**SIGNED AND DELIVERED BY THE LESSOR:**
+
+_____________________________
+Signature
+
+_____________________________
+Name
+
+**SIGNED AND DELIVERED BY THE LESSEE:**
+
+_____________________________
+Signature
+
+_____________________________
+Name
+
+**WITNESSES:**
+
+1. _____________________________
+   Name: _______________________
+   CNIC: _______________________
+   Address: ____________________
+
+2. _____________________________
+   Name: _______________________
+   CNIC: _______________________
+   Address: ____________________
+
+---
+
+### CASE LAW ANALYSIS & RELEVANCE
+
+The following case laws from the provided database are directly relevant to the clauses in this agreement:
+
+1.  **[2019 SCMR 627]** — *Supreme Court of Pakistan*
+    - **Facts:** A tenancy agreement was for a fixed term of 11 months. The dispute arose regarding the rights of the parties after the expiry of the fixed term.
+    - **Issue:** What is the nature of the tenancy after the expiry of a fixed-term lease agreement?
+    - **Held:** The Supreme Court held that after the expiry of the fixed term, the tenant does not automatically become a trespasser. The relationship of landlord and tenant continues, and the tenant can only be evicted on grounds provided by the relevant rent ordinance.
+    - **Relevance:** This case is crucial for **Clause 1.2 (Renewal)** and **Clause 9 (Default and Termination)** . It reinforces that even after the initial term expires, the Lessee cannot be forcibly evicted and must be proceeded against under the Punjab Rented Premises Ordinance, 2009.
+
+2.  **[1999 MLD 1413] & [1963 PLD 213]** — *Sindh High Court (citing PLD 1988 SC 190)*
+    - **Facts:** These cases discuss the status of a tenant after the expiry of a lease agreement.
+    - **Issue:** Does the tenant become a trespasser upon the expiry of the lease?
+    - **Held:** The court held that upon the expiry of a lease, a new relationship comes into existence, and the tenant becomes a "statutory tenant" under the relevant Rent Ordinance. The landlord cannot take back possession by force; he must file an application for ejectment on specific grounds.
+    - **Relevance:** This principle is directly incorporated into **Clause 1.2** and **Clause 9.2** of the agreement. It emphasizes that the Lessor must follow the legal process for eviction and cannot resort to self-help.
+
+3.  **[2010 SCMR 1925]** — *Supreme Court of Pakistan*
+    - **Facts:** A landlord sought eviction of a tenant on the ground of personal bonafide requirement.
+    - **Issue:** What standard of proof is required from a landlord to establish a bonafide personal requirement for the premises?
+    - **Held:** The Supreme Court held that the landlord's requirement is discharged the moment he appears in the witness box and makes a statement on oath or submits an affidavit to that effect. The burden then shifts to the tenant to disprove the landlord's claim.
+    - **Relevance:** This case is relevant to **Clause 9.3** and the Lessor's potential future need to reclaim the shop for personal use. It provides a clear legal pathway for the Lessor to establish this ground for eviction.
+
+4.  **[1987 PLJ 260]** — *Sindh High Court*
+    - **Facts:** The case dealt with the terms of a tenancy agreement and the use of a security deposit.
+    - **Issue:** Are the terms of a tenancy agreement enforceable after the expiry of the initial period? What is the purpose of a security deposit?
+    - **Held:** The court held that the terms of a tenancy agreement are enforceable even after the expiry of the initial period. It also discussed that a landlord holds a security deposit to effect minor repairs necessary at the time of handing over possession.
+    - **Relevance:** This case supports **Clause 3 (Security Deposit)** and **Clause 5 (Maintenance and Repairs)** . It confirms that the terms regarding the security deposit and maintenance obligations survive the initial term and remain binding on the parties.
