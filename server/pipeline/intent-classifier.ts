@@ -109,6 +109,9 @@ export const STATUTE_ABBREVIATION_MAP: Record<string, string> = {
   // Other common ones
   mvoa: "Motor Vehicles Ordinance 1965",
   pa: "Partnership Act 1932",
+  contract: "Contract Act 1872",
+  sra: "Specific Relief Act 1877",
+  arbitration: "Arbitration Act 1940",
 };
 
 /**
@@ -120,7 +123,7 @@ export function detectStatuteRef(query: string): StatuteRef | null {
   const q = query.toLowerCase().replace(/[^a-z0-9\s\-]/g, " ").replace(/\s+/g, " ").trim();
 
   // Pattern 1: ABBR <section> — e.g. "ppc 392", "crpc 497", "peca 20"
-  const abbrFirst = /\b(ppc|crpc|cpc|qso|qe|mflo|gwa|fca|ata|nao|poca|cnsa|peca|fia|tpa|ra|ito|sta|ira|ca|aa|mvoa|pa)\s+(\d[\d\-a-z]*)\b/i.exec(q);
+  const abbrFirst = /\b(ppc|crpc|cpc|qso|qe|mflo|gwa|fca|ata|nao|poca|cnsa|peca|fia|tpa|ra|ito|sta|ira|ca|aa|mvoa|pa|contract|sra|arbitration)\s+(\d[\d\-a-z]*)\b/i.exec(q);
   if (abbrFirst) {
     const abbr = abbrFirst[1].toLowerCase();
     const fullName = STATUTE_ABBREVIATION_MAP[abbr];
@@ -129,7 +132,7 @@ export function detectStatuteRef(query: string): StatuteRef | null {
 
   // Pattern 2: <section> ABBR — e.g. "354 ppc", "497 crpc", "302 ppc", "489-f ppc"
   // Very common in Pakistani legal queries where users type the section number first.
-  const numFirst = /\b(\d[\d\-a-z]*)\s+(ppc|crpc|cpc|qso|qe|mflo|gwa|fca|ata|nao|poca|cnsa|peca|fia|tpa|ra|ito|sta|ira|ca|aa|mvoa|pa)\b/i.exec(q);
+  const numFirst = /\b(\d[\d\-a-z]*)\s+(ppc|crpc|cpc|qso|qe|mflo|gwa|fca|ata|nao|poca|cnsa|peca|fia|tpa|ra|ito|sta|ira|ca|aa|mvoa|pa|contract|sra|arbitration)\b/i.exec(q);
   if (numFirst) {
     const abbr = numFirst[2].toLowerCase();
     const fullName = STATUTE_ABBREVIATION_MAP[abbr];

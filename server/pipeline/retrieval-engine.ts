@@ -66,7 +66,7 @@ export interface RetrievalResult {
 // Timeouts
 // ---------------------------------------------------------------------------
 
-const CASELAW_TIMEOUT_MS = 20000;  // Increased from 15000 - headnotes removed from ILIKE but still giving buffer
+const CASELAW_TIMEOUT_MS = 5000;  // Optimized for fast retrieval with index support
 const STATUTE_TIMEOUT_MS = 3000;  // Increased from 1500
 const ADMIN_DOC_TIMEOUT_MS = 1500;
 
@@ -375,7 +375,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
   // Path 3 (HYBRID PARTNER): RAG vector search — semantic search across admin case-law
   // AND the 600k+ indexed judgments table. RAG is the primary semantic path; give it
   // enough time (8s) to return meaningful results while still staying under the 20s budget.
-  const RAG_TIMEOUT_MS = 8000;
+  const RAG_TIMEOUT_MS = 4000;
   const ragPromise = userId
     ? retrieveForQuery({ userId, query: expandedQuery, topK: limit * 4 })
         .then(async (retrieval) => {

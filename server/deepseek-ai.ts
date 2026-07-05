@@ -3,8 +3,8 @@ import type { ChatCompletionTool, ChatCompletionMessageParam } from "openai/reso
 import { CITATION_SEARCH_TOOL, executeCitationSearch, normalizeCitationKey } from "./tools/citation-search-tool";
 
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-const DEEPSEEK_CHAT_MODEL = "deepseek-chat";
-const DEEPSEEK_REASONER_MODEL = "deepseek-reasoner";
+const DEEPSEEK_CHAT_MODEL = "deepseek-v4-flash";
+const DEEPSEEK_REASONER_MODEL = "deepseek-v4-pro";
 
 let deepseekClient: OpenAI | null = null;
 let modelVersionLogged = false;

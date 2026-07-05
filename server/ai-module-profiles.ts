@@ -98,7 +98,7 @@ export const MODULE_AI_PROFILES: Record<ModuleType, ModuleAiProfile> = {
       "contract.redline must return strict JSON with edits",
     ],
     modelStrategy: {
-      primary: "turbo",
+      primary: "standard",
       stream: false,
       tokenLimitKey: "contract-drafting",
     },

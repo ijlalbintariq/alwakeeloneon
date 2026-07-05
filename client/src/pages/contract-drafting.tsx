@@ -28,6 +28,7 @@ import {
   ZoomIn,
   ZoomOut,
   CircleHelp,
+  Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -502,8 +503,14 @@ function makeDefaultState(): ContractFormState {
   };
 }
 
-function buildGenerationPrompt(form: ContractFormState): string {
+function buildGenerationPrompt(form: ContractFormState, selectedClauses?: Array<{ title: string; prompt: string }>): string {
   const actualType = form.contractType === "Other" && form.customContractType ? form.customContractType : form.contractType;
+  
+  let clauseInstruction = "";
+  if (selectedClauses && selectedClauses.length > 0) {
+    clauseInstruction = `\n\nINCORPORATE THESE SPECIFIC CLAUSES (Draft them in detail):\n${selectedClauses.map((c, i) => `${i + 1}. [${c.title}]: ${c.prompt}`).join("\n")}`;
+  }
+
   return `You are drafting a formal Pakistani legal contract.
 
 Contract Type: ${actualType}
@@ -513,7 +520,7 @@ Second Party: ${form.secondParty || "[Not provided]"}
 Effective Date: ${form.effectiveDate || "[Not provided]"}
 Termination Notice: ${form.terminationNotice || "[Not provided]"}
 Jurisdiction: ${form.jurisdiction || "[Not provided]"}
-Specific Obligations: ${form.obligations || "[Not provided]"}
+Specific Obligations: ${form.obligations || "[Not provided]"}${clauseInstruction}
 
 Instructions:
 1. Draft a complete, professional contract for Pakistani legal practice.
@@ -628,6 +635,7 @@ export default function ContractDraftingPage() {
   const [riskFromCache, setRiskFromCache] = useState(false);
   const [zoom, setZoom] = useState(100);
   const [clauseSearch, setClauseSearch] = useState("");
+  const [selectedClauses, setSelectedClauses] = useState<Array<{ id: string; title: string; prompt: string; custom?: boolean }>>([]);
   const [customClausePrompt, setCustomClausePrompt] = useState("");
   const [clauseCategory, setClauseCategory] = useState("All");
   const [redlineItems, setRedlineItems] = useState<RedlineItem[]>([]);
@@ -802,7 +810,7 @@ export default function ContractDraftingPage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          messages: [{ role: "user", content: buildGenerationPrompt(form) }],
+          messages: [{ role: "user", content: buildGenerationPrompt(form, selectedClauses) }],
           type: "contract-drafting",
           moduleIntent: "contract.generateDraft",
           turbo: false,
@@ -1059,6 +1067,93 @@ export default function ContractDraftingPage() {
     setRedlineItems((prev) => prev.map((r) => (r.id === itemId ? { ...r, status: "rejected" } : r)));
   };
 
+  const parseHtmlToDocxSections = (htmlContent: string) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, "text/html");
+    const sections: any[] = [];
+
+    doc.body.childNodes.forEach((node) => {
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const el = node as HTMLElement;
+
+      if (["H1", "H2", "H3", "H4"].includes(el.tagName)) {
+        const level = parseInt(el.tagName.replace("H", ""), 10);
+        sections.push({
+          heading: el.textContent?.trim() || "",
+          level: level,
+          content: "",
+        });
+      } else if (el.tagName === "TABLE") {
+        const headers: string[] = [];
+        const rows: string[][] = [];
+        
+        el.querySelectorAll("th").forEach((th) => headers.push(th.textContent?.trim() || ""));
+        
+        el.querySelectorAll("tr").forEach((tr) => {
+          const rowCells: string[] = [];
+          tr.querySelectorAll("td").forEach((td) => rowCells.push(td.textContent?.trim() || ""));
+          if (rowCells.length > 0) rows.push(rowCells);
+        });
+
+        sections.push({
+          table: { headers, rows }
+        });
+      } else {
+        const text = el.textContent?.trim() || "";
+        if (!text) return;
+
+        // If we have an existing section, append this line to its content
+        if (sections.length > 0 && !sections[sections.length - 1].table) {
+          const lastSec = sections[sections.length - 1];
+          lastSec.content = lastSec.content ? lastSec.content + "\n" + text : text;
+        } else {
+          sections.push({
+            content: text,
+          });
+        }
+      }
+    });
+
+    return sections;
+  };
+
+  const downloadContractAsDocx = async () => {
+    const htmlContent = editorRef.current?.getHTML() || contractText;
+    if (!htmlContent.trim()) {
+      toast({ title: "Nothing to download", description: "Contract draft is empty.", variant: "destructive" });
+      return;
+    }
+
+    const sections = parseHtmlToDocxSections(htmlContent);
+    const title = form.title || "Contract Draft";
+
+    try {
+      const response = await fetch("/api/documents/generate-docx", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, sections }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to export Word document");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(form.title || "contract-draft").replace(/\s+/g, "-").toLowerCase()}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast({ title: "Success", description: "Word document exported successfully!" });
+    } catch (err: any) {
+      console.error("DOCX download error:", err);
+      toast({ title: "Export failed", description: "Could not create Word document.", variant: "destructive" });
+    }
+  };
+
   const downloadContract = () => {
     const content = contractText || "";
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -1123,41 +1218,68 @@ export default function ContractDraftingPage() {
       <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-primary/20">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-primary" />
-            <h3 className="text-sm font-bold text-foreground tracking-tight">AI Clause Suggester</h3>
+            <ShieldCheck size={16} className="text-primary" />
+            <h3 className="text-sm font-bold text-foreground tracking-tight">Compliance Findings</h3>
           </div>
           <button
             className="text-[10px] px-2 py-1 rounded border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50"
-            onClick={() => refreshClauseSuggestions({ silent: false })}
-            disabled={isLoadingClauseSuggestions}
-            data-testid="button-refresh-ai-clause-suggestions"
+            onClick={() => runComplianceCheck({ silent: false })}
+            disabled={isRunningCompliance}
+            data-testid="button-run-contract-compliance-rail"
           >
-            {isLoadingClauseSuggestions ? "Loading..." : "Refresh"}
+            {isRunningCompliance ? "Scanning..." : "Scan"}
           </button>
         </div>
-        {styleMemoryMeta && (
-          <div className="mb-2 rounded-md border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] text-foreground">
-            Style memory: {styleMemoryMeta.applied ? "applied" : "not applied"} · confidence {Math.round((styleMemoryMeta.confidence || 0) * 100)}%
-          </div>
-        )}
         <div className="space-y-2">
-          {liveClauseSuggestions.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => applySuggestedClause(item.prompt)}
-              className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-primary/10 border border-white/10 transition-all"
-              data-testid={`button-suggest-${item.id.replace(/[^a-zA-Z0-9-_]/g, "")}`}
-              disabled={isGenerating || isLoadingClauseSuggestions}
-            >
-              <div className="text-[11px] font-bold text-primary mb-0.5">{item.title}</div>
-              <div className="text-[9px] text-muted-foreground leading-tight">{item.subtitle}</div>
-            </button>
-          ))}
-          {!isLoadingClauseSuggestions && liveClauseSuggestions.length === 0 && (
-            <div className="rounded-lg border border-white/10 bg-white/5 p-2">
-              <p className="text-[10px] text-foreground">No live suggestions available.</p>
-              {clauseSuggestionError && <p className="mt-1 text-[9px] text-red-300">{clauseSuggestionError}</p>}
-            </div>
+          {complianceRisks.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              Run compliance check to scan the contract for risks and missing clauses.
+            </p>
+          ) : (
+            <>
+              {riskSeverityFilter !== "all" && (
+                <div className="flex justify-end mb-1">
+                  <button
+                    onClick={() => setRiskSeverityFilter("all")}
+                    className="text-[9px] text-primary hover:underline"
+                  >
+                    Show All ({complianceRisks.length})
+                  </button>
+                </div>
+              )}
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {filteredComplianceRisks.length === 0 ? (
+                  <p className="text-[10px] text-foreground">
+                    {riskSeverityFilter === "danger"
+                      ? "No critical findings in the latest scan."
+                      : "No warning findings in the latest scan."}
+                  </p>
+                ) : (
+                  filteredComplianceRisks.map((risk) => (
+                    <button
+                      key={risk.id}
+                      onClick={() => applySuggestedClause(risk.prompt)}
+                      className={`w-full text-left p-2 rounded-lg border transition-all hover:bg-primary/5 ${
+                        risk.severity === "danger"
+                          ? "border-red-400/30 bg-red-500/10"
+                          : "border-primary/25 bg-primary/10"
+                      }`}
+                      data-testid={`compliance-risk-${risk.id}`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {risk.severity === "danger" ? (
+                          <AlertTriangle size={12} className="text-red-300" />
+                        ) : (
+                          <CheckCircle2 size={12} className="text-primary" />
+                        )}
+                        <span className="text-[11px] font-semibold text-foreground">{risk.title}</span>
+                      </div>
+                      <p className="text-[9px] text-muted-foreground mt-1 leading-tight">{risk.detail}</p>
+                    </button>
+                  ))
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -1276,6 +1398,14 @@ export default function ContractDraftingPage() {
             >
               <Download size={11} className="shrink-0" />
               TXT
+            </button>
+            <button
+              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/10"
+              onClick={downloadContractAsDocx}
+              data-testid="button-header-export-docx"
+            >
+              <FileText size={11} className="shrink-0" />
+              DOCX
             </button>
             <button
               className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-primary/10"
@@ -1466,64 +1596,137 @@ export default function ContractDraftingPage() {
               />
             </div>
 
-            <div data-tutorial="clause-library" className="space-y-2 rounded-lg border border-border p-2">
-              <div className="flex items-center gap-1.5">
-                <Library size={12} className="text-primary" />
-                <p className="text-[10px] font-semibold text-primary uppercase tracking-widest">Clause Library</p>
-              </div>
-              <Input
-                value={clauseSearch}
-                onChange={(e) => setClauseSearch(e.target.value)}
-                className="h-7 bg-card/50 border border-border text-[10px] text-foreground placeholder:text-muted-foreground"
-                placeholder="Search clause library..."
-              />
-              <select
-                value={clauseCategory}
-                onChange={(e) => setClauseCategory(e.target.value)}
-                className="h-7 w-full bg-card/50 border border-border rounded-md px-2 text-[10px] text-foreground outline-none focus:border-primary"
-              >
-                {clauseCategories.map((category) => (
-                  <option key={category} value={category} className="bg-background">
-                    {category}
-                  </option>
-                ))}
-              </select>
-              <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
-                {filteredClauseLibrary.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => applySuggestedClause(item.prompt)}
-                    className="w-full text-left px-2 py-1 rounded-md bg-card/30 hover:bg-primary/10 border border-border text-[10px]"
-                    disabled={isGenerating}
+            <div data-tutorial="clause-library" className="space-y-2 rounded-lg border border-border p-2 bg-card/20">
+              <div className="flex items-center gap-1.5 justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Library size={14} className="text-primary" />
+                  <p className="text-[12px] font-bold text-primary uppercase tracking-wider">Clause Builder Plan</p>
+                </div>
+                {selectedClauses.length > 0 && (
+                  <button 
+                    onClick={() => setSelectedClauses([])}
+                    className="text-[9px] text-muted-foreground hover:text-red-300 transition-colors"
                   >
-                    <span className="font-semibold text-foreground">{item.title}</span>
-                    <span className="text-muted-foreground ml-1">— {item.subtitle}</span>
+                    Clear Plan ({selectedClauses.length})
                   </button>
-                ))}
-                {!filteredClauseLibrary.length && (
-                  <p className="text-[10px] text-muted-foreground text-center py-2">No clauses match.</p>
                 )}
               </div>
 
-              <div className="pt-2 border-t border-border/50 mt-2 space-y-2">
-                <p className="text-[9px] text-muted-foreground">Can't find what you need?</p>
-                <Textarea
-                  value={customClausePrompt}
-                  onChange={(e) => setCustomClausePrompt(e.target.value)}
-                  placeholder="e.g. Add a clause that imposes a 5% late delivery penalty fee."
-                  className="w-full text-[10px] min-h-[40px] resize-none px-2 py-1 bg-card/30 border border-border focus:border-primary focus-visible:ring-primary/30"
-                />
-                <button
-                  onClick={() => {
-                    applySuggestedClause(customClausePrompt);
-                    setCustomClausePrompt("");
-                  }}
-                  disabled={!customClausePrompt.trim() || isGenerating}
-                  className="w-full h-7 bg-primary text-primary-foreground rounded-md text-[10px] font-semibold flex items-center justify-center gap-1 hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
-                  {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                  Generate Custom Clause
-                </button>
+              {/* Selected Clauses Plan list */}
+              {selectedClauses.length > 0 ? (
+                <div className="space-y-1.5 p-1.5 rounded bg-primary/5 border border-primary/20 max-h-40 overflow-y-auto">
+                  <p className="text-[9px] font-bold text-foreground mb-1 uppercase tracking-wider">Plan Details:</p>
+                  {selectedClauses.map((c) => (
+                    <div key={c.id} className="flex items-start justify-between gap-1.5 p-1 rounded bg-white/5 border border-white/5">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold text-foreground truncate">{c.title}</p>
+                        <p className="text-[8px] text-muted-foreground truncate leading-none">{c.prompt}</p>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedClauses((prev) => prev.filter((item) => item.id !== c.id))}
+                        className="shrink-0 text-muted-foreground hover:text-red-300 p-0.5"
+                        title="Remove clause"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[9px] text-muted-foreground italic">No clauses selected yet. Choose from the library below or add custom ones to build your contract plan.</p>
+              )}
+
+              {/* Clause search & library */}
+              <div className="pt-2 border-t border-border/40 mt-1 space-y-1.5">
+                <div className="text-[9px] font-semibold text-muted-foreground uppercase">Add from Library:</div>
+                <div className="flex gap-1">
+                  <Input
+                    value={clauseSearch}
+                    onChange={(e) => setClauseSearch(e.target.value)}
+                    className="h-7 bg-card/50 border border-border text-[10px] text-foreground placeholder:text-muted-foreground flex-1"
+                    placeholder="Search clause..."
+                  />
+                  <select
+                    value={clauseCategory}
+                    onChange={(e) => setClauseCategory(e.target.value)}
+                    className="h-7 bg-card/50 border border-border rounded-md px-1 text-[10px] text-foreground outline-none focus:border-primary shrink-0 max-w-[80px]"
+                  >
+                    {clauseCategories.map((category) => (
+                      <option key={category} value={category} className="bg-background">
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="max-h-[300px] overflow-y-auto space-y-1 pr-1 border border-border/30 rounded p-1 bg-black/10">
+                  {filteredClauseLibrary.map((item) => {
+                    const isAdded = selectedClauses.some((c) => c.id === item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between gap-1.5 px-1.5 py-1 rounded bg-card/30 border border-border/30 text-[10px]"
+                      >
+                        <div className="min-w-0">
+                          <span className="font-semibold text-foreground truncate block">{item.title}</span>
+                          <span className="text-muted-foreground text-[8px] truncate block leading-none">{item.subtitle}</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (isAdded) {
+                              setSelectedClauses((prev) => prev.filter((c) => c.id !== item.id));
+                            } else {
+                              setSelectedClauses((prev) => [...prev, { id: item.id, title: item.title, prompt: item.prompt }]);
+                            }
+                          }}
+                          className={`shrink-0 px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                            isAdded
+                              ? "bg-red-500/20 text-red-300 border border-red-400/30 hover:bg-red-500/30"
+                              : "bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"
+                          }`}
+                        >
+                          {isAdded ? "Remove" : "Add"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {!filteredClauseLibrary.length && (
+                    <p className="text-[10px] text-muted-foreground text-center py-2">No matching clauses.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Add Custom Clause Section */}
+              <div className="pt-2 border-t border-border/40 mt-1 space-y-1.5">
+                <div className="text-[9px] font-semibold text-muted-foreground uppercase">Add Custom Clause:</div>
+                <div className="flex gap-1 items-start">
+                  <Textarea
+                    value={customClausePrompt}
+                    onChange={(e) => setCustomClausePrompt(e.target.value)}
+                    placeholder="e.g. 5% late penalty"
+                    className="text-[10px] min-h-[36px] h-9 resize-none px-2 py-1 bg-card/30 border border-border focus:border-primary focus-visible:ring-primary/30 flex-1 leading-tight"
+                  />
+                  <button
+                    onClick={() => {
+                      if (!customClausePrompt.trim()) return;
+                      const customId = `custom-${Date.now()}`;
+                      setSelectedClauses((prev) => [
+                        ...prev,
+                        {
+                          id: customId,
+                          title: `Custom (${customClausePrompt.trim().slice(0, 18)}...)`,
+                          prompt: customClausePrompt.trim(),
+                          custom: true,
+                        },
+                      ]);
+                      setCustomClausePrompt("");
+                      toast({ title: "Custom clause added to plan" });
+                    }}
+                    className="shrink-0 h-9 px-2 bg-primary/20 border border-primary/30 hover:bg-primary/30 text-primary rounded text-xs font-semibold flex items-center justify-center"
+                  >
+                    + Add
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1635,143 +1838,7 @@ export default function ContractDraftingPage() {
         <section className="flex-1 bg-[hsl(var(--preview-bg)/0.45)] p-3 md:p-6 overflow-y-auto scrollbar-hide">
           <div className="mx-auto w-full max-w-none">
             <div>
-              <div className="mb-5">
-                <div data-tutorial="compliance" className="p-4 rounded-xl border border-primary/25 glass-surface backdrop-blur-md">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ShieldCheck size={14} className="text-primary" />
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Risk Score Breakdown</p>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mb-2">
-                    {lastRiskScanAt
-                      ? `Live scan ${lastRiskScanAt.toLocaleTimeString()}${riskFromCache ? " (cached)" : ""}`
-                      : "Live scan pending..."}
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => {
-                        setRiskSeverityFilter("danger");
-                        if (!lastRiskScanAt) {
-                          void runComplianceCheck({ silent: false });
-                        }
-                      }}
-                      className={`min-w-0 h-8 rounded-lg border px-2 py-1 transition-colors ${
-                        riskSeverityFilter === "danger"
-                          ? "border-red-300/60 bg-red-500/20"
-                          : "border-red-400/25 bg-red-500/10 hover:bg-red-500/15"
-                      }`}
-                      data-testid="button-risk-filter-critical"
-                      title="Show critical findings"
-                    >
-                      <div className="flex h-full items-center justify-between gap-1 whitespace-nowrap">
-                        <p className="min-w-0 truncate text-[9px] font-semibold leading-none text-foreground uppercase tracking-[0.08em]">
-                          Critical
-                        </p>
-                        <p className="shrink-0 text-xs font-bold leading-none tabular-nums text-red-300">{riskBreakdown.critical}</p>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setRiskSeverityFilter("warning");
-                        if (!lastRiskScanAt) {
-                          void runComplianceCheck({ silent: false });
-                        }
-                      }}
-                      className={`min-w-0 h-8 rounded-lg border px-2 py-1 transition-colors ${
-                        riskSeverityFilter === "warning"
-                          ? "border-primary/60 bg-primary/20"
-                          : "border-primary/25 bg-primary/10 hover:bg-primary/15"
-                      }`}
-                      data-testid="button-risk-filter-warning"
-                      title="Show warning findings"
-                    >
-                      <div className="flex h-full items-center justify-between gap-1 whitespace-nowrap">
-                        <p className="min-w-0 truncate text-[9px] font-semibold leading-none text-foreground uppercase tracking-[0.08em]">
-                          Warnings
-                        </p>
-                        <p className="shrink-0 text-xs font-bold leading-none tabular-nums text-primary">{riskBreakdown.warning}</p>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setRiskSeverityFilter("all");
-                        if (!lastRiskScanAt) {
-                          void runComplianceCheck({ silent: false });
-                        }
-                      }}
-                      className={`min-w-0 h-8 rounded-lg border px-2 py-1 transition-colors ${
-                        riskSeverityFilter === "all"
-                          ? "border-emerald-300/60 bg-emerald-500/20"
-                          : "border-emerald-400/25 bg-emerald-500/10 hover:bg-emerald-500/15"
-                      }`}
-                      data-testid="button-risk-filter-coverage"
-                      title="Show all findings"
-                    >
-                      <div className="flex h-full items-center justify-between gap-1 whitespace-nowrap">
-                        <p className="min-w-0 truncate text-[9px] font-semibold leading-none text-foreground uppercase tracking-[0.08em]">
-                          Coverage
-                        </p>
-                        <p className="shrink-0 text-xs font-bold leading-none tabular-nums text-emerald-300">{mandatoryCoverage}%</p>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
 
-              {complianceRisks.length > 0 && (
-                <div className="mb-5 p-4 rounded-xl border border-primary/25 glass-surface backdrop-blur-md">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck size={14} className="text-primary" />
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-primary">
-                        Compliance Findings
-                      </p>
-                    </div>
-                    {riskSeverityFilter !== "all" && (
-                      <button
-                        onClick={() => setRiskSeverityFilter("all")}
-                        className="text-[10px] px-2 py-0.5 rounded border border-primary/30 text-primary hover:bg-primary/10"
-                        data-testid="button-risk-filter-clear"
-                      >
-                        Show All
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {filteredComplianceRisks.length === 0 ? (
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-2">
-                        <p className="text-[11px] text-foreground">
-                          {riskSeverityFilter === "danger"
-                            ? "No critical findings in the latest scan."
-                            : "No warning findings in the latest scan."}
-                        </p>
-                      </div>
-                    ) : (
-                      filteredComplianceRisks.slice(0, 4).map((risk) => (
-                        <button
-                          key={risk.id}
-                          onClick={() => applySuggestedClause(risk.prompt)}
-                          className={`w-full text-left p-2 rounded-lg border ${
-                            risk.severity === "danger"
-                              ? "border-red-400/30 bg-red-500/10"
-                              : "border-primary/25 bg-primary/10"
-                          }`}
-                          data-testid={`compliance-risk-${risk.id}`}
-                        >
-                          <div className="flex items-center gap-1.5">
-                            {risk.severity === "danger" ? (
-                              <AlertTriangle size={12} className="text-red-300" />
-                            ) : (
-                              <CheckCircle2 size={12} className="text-primary" />
-                            )}
-                            <span className="text-xs font-semibold text-foreground">{risk.title}</span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground mt-1">{risk.detail}</p>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
 
               <div
                 data-tutorial="editor"
@@ -1862,8 +1929,17 @@ export default function ContractDraftingPage() {
             className="p-1 hover:text-primary transition-colors text-muted-foreground"
             onClick={downloadContract}
             data-testid="button-download-contract"
+            title="Download TXT Document"
           >
             <Download size={18} />
+          </button>
+          <button
+            className="p-1 hover:text-primary transition-colors text-muted-foreground"
+            onClick={downloadContractAsDocx}
+            data-testid="button-download-contract-docx"
+            title="Download Word (DOCX) Document"
+          >
+            <FileText size={18} />
           </button>
           <button
             className="p-1 hover:text-primary transition-colors text-muted-foreground"

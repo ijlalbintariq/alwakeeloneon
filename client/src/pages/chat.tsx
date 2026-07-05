@@ -258,7 +258,9 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       "standard": "Standard",
       "turbo": "Turbo",
       "deepseek-chat": "Turbo",
+      "deepseek-v4-flash": "Turbo",
       "deepseek-reasoner": "DeepSeek Pro",
+      "deepseek-v4-pro": "DeepSeek Pro",
       "apex-pro": "Apex",
       "apex-apex-pro": "Apex",
     };
@@ -272,14 +274,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
   const getModelFunctionDescription = useCallback((modelIdOrName: string): string => {
     const id = modelIdOrName.toLowerCase();
-    if (id.includes("deepseek-reasoner") || id.includes("deepseek pro")) {
+    if (id.includes("deepseek-reasoner") || id.includes("deepseek-v4-pro") || id.includes("deepseek pro")) {
       return "Advanced multi-step reasoning for complex legal problems.";
     }
     if (id.includes("deepseek")) {
       return "Turbo legal analysis optimized for speed and quality.";
     }
     if (id.includes("apex-pro")) {
-      return "Kimi-K2.5 mode for fast, high-quality legal drafting and analysis.";
+      return "Claude Sonnet 5 mode for fast, high-quality legal drafting and analysis.";
     }
     if (id.includes("groq") || id.includes("standard")) {
       return "Default legal chat mode with reliable fast responses.";
@@ -1581,9 +1583,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                   )}
                   {canUseTurbo && filteredApexModels.length > 0 && (
                     <>
-                      <div className="px-4 py-1.5 text-[9px] text-emerald-500/70 uppercase tracking-widest font-bold border-b border-border/50 bg-emerald-500/5">
-                        Apex Models
-                      </div>
                       {filteredApexModels.map(model => (
                         <button
                           key={model.id}
@@ -1594,7 +1593,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                             <Sparkles size={11} className="text-emerald-500" />
                             {model.name}
                           </div>
-                          <div className="text-[10px] text-muted-foreground mt-0.5">{model.description}</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">Advanced legal research & analysis</div>
                         </button>
                       ))}
                     </>
@@ -2171,7 +2170,6 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       )}
                       {canUseTurbo && filteredApexModels.length > 0 && (
                         <>
-                          <div className="px-4 py-1.5 text-[9px] text-emerald-300 uppercase tracking-widest font-black border-b border-primary/10 bg-emerald-500/10">Apex Models</div>
                           {filteredApexModels.map(model => (
                             <button
                               key={model.id}
@@ -2179,7 +2177,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                               className={`w-full text-left px-4 py-3 text-xs hover:bg-muted border-b border-primary/10 last:border-0 ${normalizedAiMode === model.id.toLowerCase() ? "bg-emerald-500/10 text-emerald-300" : "text-foreground"}`}
                             >
                               <div className="font-bold flex items-center gap-1.5"><Sparkles size={11} className="text-emerald-400" />{model.name}</div>
-                              <div className="text-[10px] text-muted-foreground mt-0.5">{model.description}</div>
+                              <div className="text-[10px] text-muted-foreground mt-0.5">Advanced legal research & analysis</div>
                             </button>
                           ))}
                         </>

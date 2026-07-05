@@ -58,6 +58,7 @@ import { banUser, getAuditLogs, getUserBan, getUserBanMap, isUserBanned, logAudi
 import { scanUploadedBuffer } from "./file-scan";
 import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
+import { generateDocxBuffer } from "./services/docx-generator";
 import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, handleSitemapStatutes, clearSitemapCache } from "./sitemap";
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
@@ -6975,6 +6976,33 @@ MANDATORY CHECKS for inheritance matters:
 - GIFT vs. INHERITANCE: Hiba (gift during lifetime) is separate from inheritance. A gift made to deprive legal heirs can be challenged.
 `;
 
+const CONTRACT_LAW_ADDON = `
+
+━━━ CONTRACT LAW DEEP ANALYSIS (TOPIC-SPECIFIC) ━━━
+
+MANDATORY AREAS TO CHECK for commercial agreements and disputes:
+
+**Contract Act, 1872**:
+- **S.2(h) & S.10**: A contract must be enforceable by law and have (1) free consent, (2) competent parties, (3) lawful consideration, and (4) lawful object.
+- **S.13-22 (Free Consent)**: Analyze if there is Coercion (S.15), Undue Influence (S.16), Fraud (S.17), Misrepresentation (S.18), or Mistake (S.20-22). Fraud or misrepresentation makes the contract voidable.
+- **S.23 (Lawful Object/Consideration)**: Check if consideration is forbidden by law, defeats any law, is fraudulent, involves injury, or is opposed to public policy.
+- **S.25 (No Consideration = Void)**: Exceptions: natural love/affection in writing and registered, promise to compensate for past services, or written promise to pay time-barred debt.
+- **S.27 (Restraint of Trade)**: Any agreement restraining a person from exercising a lawful profession, trade, or business of any kind is VOID, except for sale of goodwill.
+- **S.28 (Restraint of Legal Proceedings)**: Restraining a party from enforcing their rights via ordinary legal proceedings is VOID, except for arbitration clauses (Exceptions 1 & 2).
+- **S.56 (Frustration / Force Majeure)**: Contract becomes void if the act becomes impossible or unlawful after the contract is made. If a force majeure clause is present, it governs instead of S.56.
+- **S.73 (Compensation for Breach)**: Standard damages are compensatory (natural consequences of breach), NOT remote or indirect. Liquidated damages under **S.74** must be a genuine pre-estimate of loss, and courts will only award reasonable compensation up to the specified amount (no penalties).
+
+**Specific Relief Act, 1877**:
+- **S.12**: Contracts that can be specifically enforced (e.g. sale of land where pecuniary compensation is not an adequate relief).
+- **S.21**: Contracts that CANNOT be specifically enforced (e.g., contracts for personal services, contracts dependent on personal qualifications, contracts with minute/numerous details).
+
+**Arbitration Act, 1940**:
+- **S.34**: Stay of legal proceedings in the presence of an arbitration clause. Party must apply for stay *before* filing written statement.
+
+**Doctrine of Privity of Contract**:
+- Only parties to a contract can sue or be sued under it. Exceptions: trust, family arrangements, agency.
+`;
+
 function getUserId(req: any): string | null {
   return req.session?.userId || null;
 }
@@ -8073,6 +8101,25 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error fetching document insights:", err);
       res.status(500).json({ message: "Failed to fetch document insights" });
+    }
+  });
+
+  app.post("/api/documents/generate-docx", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { title, sections, options } = req.body;
+      if (!title || !Array.isArray(sections)) {
+        return res.status(400).json({ message: "Invalid payload: title and sections array are required" });
+      }
+      const buf = await generateDocxBuffer(title, sections, options);
+      const safeTitle = title.replace(/[^a-zA-Z0-9 -]/g, "").trim().slice(0, 64) || "document";
+      res.setHeader("Content-Disposition", `attachment; filename="${safeTitle}.docx"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      return res.send(buf);
+    } catch (err) {
+      console.error("Error generating DOCX file:", err);
+      return res.status(500).json({ message: "Failed to generate Word document" });
     }
   });
 
@@ -15050,7 +15097,7 @@ document.addEventListener('keydown',function(e){
       // Inject detailed legal analysis instructions ONLY for the detected topic area.
       // This keeps the base prompt lean (~2,800 tokens) while providing deep guidance
       // when needed (property, criminal, family, inheritance).
-      if (!directMode && moduleType === "al-wakeelo") {
+      if (!directMode && (moduleType === "al-wakeelo" || moduleType === "contract-drafting")) {
         const topicLabels = (knowledgeResult.topics || []).map((t: string) => t.toLowerCase());
         const topicStr = topicLabels.join(" ");
         const userQuery = (lastUserMessage?.content || "").toLowerCase();
@@ -15063,11 +15110,23 @@ document.addEventListener('keydown',function(e){
           || /\b(khula|talaq|divorce|custody|maintenance|dower|mehr|hizanat|family court|wife|husband)\b/i.test(userQuery);
         const isInheritanceTopic = topicLabels.some((t: string) => /inherit|succession|miras|wirasat|gift|hiba|will|wasiy|faraid/.test(t))
           || /\b(inheritance|miras|wirasat|wills?|wasiy|faraid|succession|heir|legal heir|share|daughter.?share|wife.?share|son.?share)\b/i.test(userQuery);
+        const isContractTopic = topicLabels.some((t: string) => /contract|agreement|breach|partnership|arbitration|indemnity|guarantee|agency/.test(t))
+          || /\b(contract act|breach of contract|specific performance|force majeure|liquidated damages|indemnity|arbitration clause|privity|consideration|void agreement)\b/i.test(userQuery);
 
         if (isPropertyTopic) systemPrompt += PROPERTY_LAW_ADDON;
         if (isCriminalTopic) systemPrompt += CRIMINAL_LAW_ADDON;
         if (isFamilyTopic) systemPrompt += FAMILY_LAW_ADDON;
         if (isInheritanceTopic) systemPrompt += INHERITANCE_LAW_ADDON;
+        if (isContractTopic || moduleType === "contract-drafting") {
+          systemPrompt += CONTRACT_LAW_ADDON;
+          if (moduleType === "contract-drafting") {
+            systemPrompt += `\n\n━━━ CONTRACT DRAFTING SPECIAL RULES (OVERRIDES ALL PREVIOUS RULES) ━━━
+- You are drafting a contract or agreement. Do NOT follow the CASE LAW RULES, STATUTE RULES, or CITATION INTEGRITY guidelines.
+- Do NOT output any "VERIFIED JUDGMENTS", "VERIFIED STATUTES", or references analysis/commentary in the main response.
+- Do NOT include the "REFERENCES BLOCK" (the \`\`\`references JSON block) at the end of your response.
+- Return ONLY the clean, structured contract/agreement text or direct answers to contract questions, with no conversational preambles, introductions, or closing remarks.`;
+          }
+        }
       }
 
       // Phase 2: Tool search ONLY if pipeline returned 0 case law hits (fallback-only)

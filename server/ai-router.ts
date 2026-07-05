@@ -39,8 +39,13 @@ import {
   getOpenRouterModelName,
   isOpenRouterAvailable as isOpenRouterAvailableCheck,
 } from "./openrouter";
+import {
+  chatWithApex,
+  streamWithApex,
+  isApexAvailable,
+} from "./apex-ai";
 
-export type ProviderId = "groq" | "deepseek" | "deepseek-pro" | "openrouter";
+export type ProviderId = "groq" | "deepseek" | "deepseek-pro" | "openrouter" | "apex";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -154,6 +159,9 @@ async function* streamFromProvider(
     case "openrouter":
       yield* streamWithOpenRouter(opts);
       return;
+    case "apex":
+      yield* streamWithApex({ model: "apex-pro", messages: opts.messages as any, maxTokens: opts.maxTokens, temperature: opts.temperature });
+      return;
   }
 }
 
@@ -167,6 +175,8 @@ function providerModelName(provider: ProviderId): string {
       return getDeepSeekProModelName();
     case "openrouter":
       return getOpenRouterModelName();
+    case "apex":
+      return "anthropic/claude-3.5-sonnet";
   }
 }
 
@@ -179,6 +189,8 @@ function providerAvailable(provider: ProviderId): boolean {
       return isDeepSeekAvailable();
     case "openrouter":
       return isOpenRouterAvailableCheck();
+    case "apex":
+      return isApexAvailable();
   }
 }
 
@@ -283,6 +295,10 @@ async function callProvider(
       const r = await chatWithOpenRouter(opts);
       return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
     }
+    case "apex": {
+      const r = await chatWithApex({ model: "apex-pro", messages: opts.messages as any, maxTokens: opts.maxTokens, temperature: opts.temperature });
+      return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
+    }
   }
 }
 
@@ -302,7 +318,7 @@ export async function callWithFallback(
 
   for (const provider of chain) {
     if (!providerAvailable(provider)) {
-      console.warn(`[AI Router] Provider ${provider} unavailable — skipping`);
+      console.log(`[AI Router] Non-stream provider ${provider} unavailable — skipping`);
       continue;
     }
     const { signal, release } = makeAbortable(perProviderTimeout);
@@ -314,9 +330,7 @@ export async function callWithFallback(
         signal,
       });
       release();
-      const text = String(res.content || "").trim();
-      if (!text || /^no response generated\.?$/i.test(text)) {
-        // Treat empty output as a retryable failure for the chain.
+      if (!res.content) {
         throw new Error(`${provider} returned empty output`);
       }
       return { provider, modelName: res.modelName, content: res.content, inputTokens: res.inputTokens, outputTokens: res.outputTokens };
@@ -340,4 +354,4 @@ export async function callWithFallback(
 // ─── Default chains ──────────────────────────────────────────────────────
 
 export const DEFAULT_STANDARD_CHAIN: ProviderId[] = ["openrouter", "deepseek"];
-export const DEFAULT_TURBO_CHAIN: ProviderId[] = ["deepseek-pro", "deepseek"];
+export const DEFAULT_TURBO_CHAIN: ProviderId[] = ["apex", "openrouter", "deepseek-pro"];

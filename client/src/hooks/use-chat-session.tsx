@@ -40,7 +40,7 @@ const ChatSessionContext = createContext<ChatSession | null>(null);
 
 function getModelDisplayName(modelId: string): string {
   const id = modelId.toLowerCase();
-  if (id.includes("deepseek-reasoner")) return "DeepSeek Pro";
+  if (id.includes("deepseek-v4-pro") || id.includes("deepseek-reasoner")) return "DeepSeek Pro";
   if (id.includes("deepseek")) return "Turbo";
   if (id.includes("openai/gpt-oss-120b")) return "GPT OSS 120B";
   if (id.includes("openai/gpt-oss-20b")) return "GPT OSS 20B";
@@ -57,7 +57,7 @@ function getModelFunctionDescription(modelId: string): string {
   if (id.includes("openai/gpt-oss-120b")) return "Highest quality legal reasoning and detailed drafting.";
   if (id.includes("openai/gpt-oss-20b")) return "Balanced legal analysis with faster response time.";
   if (id.includes("llama-3.1-8b-instant")) return "Low-latency responses for quick legal guidance.";
-  if (id.includes("deepseek-reasoner")) return "Advanced multi-step reasoning for complex legal problems.";
+  if (id.includes("deepseek-v4-pro") || id.includes("deepseek-reasoner")) return "Advanced multi-step reasoning for complex legal problems.";
   if (id.includes("deepseek")) return "Turbo legal analysis optimized for speed and quality.";
   if (id.includes("apex-agent")) return "Kimi-K2-Thinking mode for deeper legal reasoning in non-web internal context.";
   if (id.includes("apex-pro")) return "Kimi-K2.5 mode for fast, high-quality legal drafting and analysis.";
@@ -119,7 +119,7 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         const data = await response.json();
-        const modelId = data.model || (turboMode && canUseTurbo ? "deepseek-chat" : "standard");
+        const modelId = data.model || (turboMode && canUseTurbo ? "deepseek-v4-flash" : "standard");
         const modeName = turboMode && canUseTurbo ? "Turbo" : "Standard";
         setMessages(prev => [...prev, {
           id: assistantId,
@@ -155,7 +155,7 @@ export function ChatSessionProvider({ children }: { children: React.ReactNode })
                     throw { message: parsed.error, isLimit: false };
                   }
                   if (parsed.done) {
-                    const modelId = parsed.model || (turboMode && canUseTurbo ? "deepseek-chat" : "standard");
+                    const modelId = parsed.model || (turboMode && canUseTurbo ? "deepseek-v4-flash" : "standard");
                     const modeName = turboMode && canUseTurbo ? "Turbo" : "Standard";
                     setMessages(prev => {
                       const last = prev[prev.length - 1];
