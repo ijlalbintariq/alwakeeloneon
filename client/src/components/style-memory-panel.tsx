@@ -44,19 +44,31 @@ export function StyleMemoryPanel({
   const [backfilling, setBackfilling] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isSystemDisabled, setIsSystemDisabled] = useState(false);
+  const [enablingSystem, setEnablingSystem] = useState(false);
 
   const scopeQuery = useMemo(() => `module=${encodeURIComponent(module)}&scope=${scope}`, [module, scope]);
 
   const loadSettings = async () => {
     const res = await fetch(`/api/style-memory/settings?${scopeQuery}`, { credentials: "include" });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      if (res.status === 503) {
+        setIsSystemDisabled(true);
+      }
+      throw new Error(await res.text());
+    }
     const data = (await res.json()) as StyleSettingsResponse;
     setSettings(data);
   };
 
   const loadSamples = async () => {
     const res = await fetch(`/api/style-memory/samples?${scopeQuery}&limit=20&offset=0`, { credentials: "include" });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      if (res.status === 503) {
+        setIsSystemDisabled(true);
+      }
+      throw new Error(await res.text());
+    }
     const data = await res.json();
     setSamples(Array.isArray(data?.items) ? data.items : []);
   };
@@ -64,15 +76,47 @@ export function StyleMemoryPanel({
   const refreshAll = async () => {
     setLoading(true);
     try {
+      setIsSystemDisabled(false);
       await Promise.all([loadSettings(), loadSamples()]);
     } catch (err: any) {
+      if (err?.message?.includes("disabled") || err?.status === 503) {
+        setIsSystemDisabled(true);
+      } else {
+        toast({
+          title: "Style memory unavailable",
+          description: err?.message || "Could not load style memory.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const enableSystemStyleMemory = async () => {
+    setEnablingSystem(true);
+    try {
+      const res = await fetch("/api/style-memory/toggle-system", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: true }),
+      });
+      if (!res.ok) throw new Error(await res.text());
       toast({
-        title: "Style memory unavailable",
-        description: err?.message || "Could not load style memory.",
+        title: "Style Memory Enabled",
+        description: "Style and tone training features are now active.",
+      });
+      setIsSystemDisabled(false);
+      await refreshAll();
+    } catch (err: any) {
+      toast({
+        title: "Failed to enable style memory",
+        description: err?.message || "Could not activate style memory on the server.",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setEnablingSystem(false);
     }
   };
 
@@ -214,6 +258,32 @@ export function StyleMemoryPanel({
       setDeletingAll(false);
     }
   };
+
+  if (isSystemDisabled) {
+    return (
+      <section className={`rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-4 text-center ${className}`}>
+        <div className="flex flex-col items-center justify-center space-y-3">
+          <div className="size-10 rounded-full bg-zinc-100 flex items-center justify-center">
+            <Brain size={20} className="text-zinc-400" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">Style Memory Disabled</h3>
+            <p className="text-[10px] text-zinc-500 max-w-[280px] mx-auto">
+              Style memory and writing sample presets are currently disabled on the server system.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={enableSystemStyleMemory}
+            disabled={enablingSystem}
+            className="h-7 text-[10px] bg-primary text-primary-foreground hover:bg-primary/90 font-bold px-4"
+          >
+            {enablingSystem ? "Activating..." : "Enable Style Memory"}
+          </Button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={`rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-slate-900/30 to-slate-800/30 p-3 ${className}`}>

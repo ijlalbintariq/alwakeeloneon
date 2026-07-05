@@ -165,7 +165,7 @@ const CASELAW_AUTO_FULL_SYNC_ON_UPLOAD = (() => {
 })();
 const CASELAW_PENDING_MAX_ATTEMPTS = Math.max(1, Number(process.env.CASELAW_PENDING_MAX_ATTEMPTS || 3));
 const CASELAW_PENDING_PROCESSING_STALE_MINUTES = Math.max(5, Number(process.env.CASELAW_PENDING_PROCESSING_STALE_MINUTES || 60));
-const STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
+let STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").toLowerCase() !== "false";
 // Diagnostic: log which AI model path will be used for standard chat
 console.log(`[AI Config] AI_ROUTER_V2=${process.env.AI_ROUTER_V2 || "(unset)"} isV2=${isAiRouterV2Enabled()} | OPENROUTER_API_KEY=${process.env.OPENROUTER_API_KEY ? "SET" : "NOT SET"} | Standard chain: ${isAiRouterV2Enabled() ? JSON.stringify(DEFAULT_STANDARD_CHAIN) : "legacy(openrouter→deepseek)"}`);
 const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
@@ -8178,6 +8178,19 @@ export async function registerRoutes(
       fileSize: DOCUMENT_UPLOAD_MAX_FILE_SIZE_BYTES,
       files: Math.max(1, Math.min(20, DOCUMENT_UPLOAD_MAX_FILES)),
     },
+  });
+
+  app.post("/api/style-memory/toggle-system", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { enabled } = req.body;
+      STYLE_MEMORY_ENABLED = !!enabled;
+      console.log(`[Style Memory] System state updated to: ${STYLE_MEMORY_ENABLED}`);
+      res.json({ enabled: STYLE_MEMORY_ENABLED });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message || "Failed to update style memory system state" });
+    }
   });
 
   app.get("/api/style-memory/settings", async (req, res) => {

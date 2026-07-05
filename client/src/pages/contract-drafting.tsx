@@ -17,8 +17,6 @@ import {
   Minimize2,
   PanelLeftClose,
   PanelLeftOpen,
-  PanelRightClose,
-  PanelRightOpen,
   Plus,
   Printer,
   ScanText,
@@ -29,9 +27,18 @@ import {
   ZoomOut,
   CircleHelp,
   Trash2,
+  Palette,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { LegalEditor, type LegalEditorHandle } from "@/components/legal-editor";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -658,6 +665,8 @@ export default function ContractDraftingPage() {
   const [zoom, setZoom] = useState(100);
   const [clauseSearch, setClauseSearch] = useState("");
   const [selectedClauses, setSelectedClauses] = useState<Array<{ id: string; title: string; prompt: string; custom?: boolean }>>([]);
+  const [sidebarTab, setSidebarTab] = useState<"setup" | "clauses" | "audit">("setup");
+  const [showAdvancedParams, setShowAdvancedParams] = useState(false);
   const [customClausePrompt, setCustomClausePrompt] = useState("");
   const [clauseCategory, setClauseCategory] = useState("All");
   const [redlineItems, setRedlineItems] = useState<RedlineItem[]>([]);
@@ -667,13 +676,11 @@ export default function ContractDraftingPage() {
   const [liveClauseSuggestions, setLiveClauseSuggestions] = useState<ClauseSuggestion[]>([]);
   const [clauseSuggestionError, setClauseSuggestionError] = useState<string | null>(null);
   const [leftRailOpen, setLeftRailOpen] = useState(true);
-  const [rightRailOpen, setRightRailOpen] = useState(true);
   const [focusWritingMode, setFocusWritingMode] = useState(false);
   const [styleMemoryMeta, setStyleMemoryMeta] = useState<StyleMemoryMeta | null>(null);
   const [generatingClauseId, setGeneratingClauseId] = useState<string | null>(null);
   const autoRiskScanSignatureRef = useRef<string>("");
   const leftRailVisible = leftRailOpen && !focusWritingMode;
-  const rightRailVisible = rightRailOpen && !focusWritingMode;
 
   useEffect(() => {
     const raw = localStorage.getItem(CONTRACT_AUTOSAVE_KEY);
@@ -697,6 +704,18 @@ export default function ContractDraftingPage() {
       localStorage.removeItem(CONTRACT_AUTOSAVE_KEY);
     }
   }, []);
+
+  const startNewContract = useCallback(() => {
+    if (window.confirm("Are you sure you want to start a new contract? Unsaved changes to the current contract will be lost.")) {
+      setForm(makeDefaultState());
+      setContractText("");
+      setEditorHtml("");
+      setSelectedDocId(null);
+      setSaveStatus("idle");
+      editorRef.current?.setContent("");
+      toast({ title: "New contract started", description: "All fields have been reset." });
+    }
+  }, [toast]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -1447,138 +1466,7 @@ export default function ContractDraftingPage() {
           ? "Sync error"
           : "Idle";
 
-  const renderRightRailContent = () => (
-    <>
-      <div className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-primary/20">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-primary" />
-            <h3 className="text-sm font-bold text-foreground tracking-tight">Compliance Findings</h3>
-          </div>
-          <button
-            className="text-[10px] px-2 py-1 rounded border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50"
-            onClick={() => runComplianceCheck({ silent: false })}
-            disabled={isRunningCompliance}
-            data-testid="button-run-contract-compliance-rail"
-          >
-            {isRunningCompliance ? "Scanning..." : "Scan"}
-          </button>
-        </div>
-        <div className="space-y-2">
-          {complianceRisks.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">
-              Run compliance check to scan the contract for risks and missing clauses.
-            </p>
-          ) : (
-            <>
-              {riskSeverityFilter !== "all" && (
-                <div className="flex justify-end mb-1">
-                  <button
-                    onClick={() => setRiskSeverityFilter("all")}
-                    className="text-[9px] text-primary hover:underline"
-                  >
-                    Show All ({complianceRisks.length})
-                  </button>
-                </div>
-              )}
-              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                {filteredComplianceRisks.length === 0 ? (
-                  <p className="text-[10px] text-foreground">
-                    {riskSeverityFilter === "danger"
-                      ? "No critical findings in the latest scan."
-                      : "No warning findings in the latest scan."}
-                  </p>
-                ) : (
-                  filteredComplianceRisks.map((risk) => (
-                    <button
-                      key={risk.id}
-                      onClick={() => applySuggestedClause(risk.prompt)}
-                      className={`w-full text-left p-2 rounded-lg border transition-all hover:bg-primary/5 ${
-                        risk.severity === "danger"
-                          ? "border-red-400/30 bg-red-500/10"
-                          : "border-primary/25 bg-primary/10"
-                      }`}
-                      data-testid={`compliance-risk-${risk.id}`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        {risk.severity === "danger" ? (
-                          <AlertTriangle size={12} className="text-red-300" />
-                        ) : (
-                          <CheckCircle2 size={12} className="text-primary" />
-                        )}
-                        <span className="text-[11px] font-semibold text-foreground">{risk.title}</span>
-                      </div>
-                      <p className="text-[9px] text-muted-foreground mt-1 leading-tight">{risk.detail}</p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
 
-      <div data-tutorial="redlines" className="glass-surface backdrop-blur-lg p-3 rounded-xl shadow-2xl border border-primary/20">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <GitCompareArrows size={16} className="text-primary" />
-            <h3 className="text-sm font-bold text-foreground tracking-tight">Counterparty Redline Mode</h3>
-          </div>
-          <button
-            className="text-[10px] px-2 py-1 rounded border border-primary/30 text-primary hover:bg-primary/10"
-            onClick={runCounterpartyRedline}
-            disabled={isRunningRedline}
-          >
-            Refresh
-          </button>
-        </div>
-        <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-          {!redlineItems.length && (
-            <p className="text-[11px] text-muted-foreground">
-              Run redline mode to generate counterparty edits, then accept or reject each one.
-            </p>
-          )}
-          {redlineItems.map((item) => (
-            <div key={item.id} className="rounded-lg border border-white/10 bg-white/5 p-2">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-semibold text-foreground">{item.title}</p>
-                <span
-                  className={`text-[9px] uppercase ${
-                    item.status === "accepted"
-                      ? "text-emerald-300"
-                      : item.status === "rejected"
-                        ? "text-red-300"
-                        : "text-primary"
-                  }`}
-                >
-                  {item.status}
-                </span>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">{item.rationale}</p>
-              <div className="mt-2 flex gap-2">
-                <button
-                  className="flex-1 rounded border border-emerald-400/30 bg-emerald-500/10 py-1 text-[10px] font-semibold text-emerald-200 disabled:opacity-40"
-                  onClick={() => acceptRedline(item)}
-                  disabled={item.status !== "pending"}
-                >
-                  Accept
-                </button>
-                <button
-                  className="flex-1 rounded border border-red-400/30 bg-red-500/10 py-1 text-[10px] font-semibold text-red-200 disabled:opacity-40"
-                  onClick={() => rejectRedline(item.id)}
-                  disabled={item.status !== "pending"}
-                >
-                  Reject
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div data-tutorial="style-memory"><StyleMemoryPanel module="contract-drafting" /></div>
-    </>
-  );
 
   return (
     <div className="h-full min-h-[500px] md:min-h-[620px] rounded-xl md:rounded-2xl border border-[hsl(var(--preview-border))] overflow-hidden preview-bg text-foreground flex flex-col fade-in">
@@ -1678,17 +1566,7 @@ export default function ContractDraftingPage() {
             >
               {focusWritingMode ? <Minimize2 size={14} /> : <Focus size={14} />}
             </button>
-            <button
-              className="hidden lg:inline-flex items-center justify-center h-9 px-2 rounded-md border border-border text-foreground hover:bg-card"
-              onClick={() => {
-                setFocusWritingMode(false);
-                setRightRailOpen((v) => !v);
-              }}
-              data-testid="button-toggle-right-contract-rail"
-              title={rightRailVisible ? "Hide AI panel" : "Show AI panel"}
-            >
-              {rightRailVisible ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
-            </button>
+
           </div>
         </div>
       </header>
@@ -1700,359 +1578,553 @@ export default function ContractDraftingPage() {
             leftRailVisible ? "lg:w-[300px] lg:border-r" : "lg:w-0 lg:border-r-0"
           } ${focusWritingMode ? "hidden" : ""}`}
         >
-          <div className="w-full lg:w-[300px] h-full flex flex-col">
+          <div className="w-full lg:w-[300px] h-full flex flex-col bg-background/55">
+            {/* Tab navigation */}
+            <div className="flex border-b border-border bg-card/40">
+              <button
+                onClick={() => setSidebarTab("setup")}
+                className={`flex-1 py-2 text-center text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 flex items-center justify-center gap-1 ${
+                  sidebarTab === "setup"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <FileText size={12} />
+                Setup
+              </button>
+              <button
+                onClick={() => setSidebarTab("clauses")}
+                className={`flex-1 py-2 text-center text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 flex items-center justify-center gap-1 ${
+                  sidebarTab === "clauses"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Library size={12} />
+                Clauses
+              </button>
+              <button
+                onClick={() => setSidebarTab("audit")}
+                className={`flex-1 py-2 text-center text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 flex items-center justify-center gap-1 ${
+                  sidebarTab === "audit"
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <ShieldCheck size={12} />
+                Review
+              </button>
+            </div>
+
+            {/* Tab Body */}
             <div className="p-2.5 overflow-y-auto scrollbar-hide flex-1 space-y-2.5">
-            <div className="space-y-0.5">
-              <h2 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <FileText size={14} className="text-primary" />
-                Input Parameters
-              </h2>
-              <p className="text-[10px] text-muted-foreground">Provide details to generate the legal draft</p>
-            </div>
-
-            <div className="space-y-2">
-              <div>
-                <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Contract Title</label>
-                <Input
-                  value={form.title}
-                  onChange={(e) => onFieldChange("title", e.target.value)}
-                  className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
-                  placeholder="e.g. Service Agreement 2026"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Contract Type</label>
-                <div className="flex gap-2">
-                  <select
-                    value={form.contractType}
-                    onChange={(e) => onFieldChange("contractType", e.target.value)}
-                    className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none"
-                  >
-                    {CONTRACT_TYPES.map((type) => (
-                      <option key={type} value={type} className="bg-background">
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                  {form.contractType === "Other" && (
-                    <Input
-                      value={form.customContractType || ""}
-                      onChange={(e) => onFieldChange("customContractType", e.target.value)}
-                      className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
-                      placeholder="e.g. Licensing Agreement"
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="text-primary/90 uppercase text-[9px] font-bold tracking-widest">Parties</div>
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">First Party (Employer)</label>
-                  <Input
-                    value={form.firstParty}
-                    onChange={(e) => onFieldChange("firstParty", e.target.value)}
-                    className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
-                    placeholder="e.g. Malik & Sons Enterprises"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Second Party (Contractor)</label>
-                  <Input
-                    value={form.secondParty}
-                    onChange={(e) => onFieldChange("secondParty", e.target.value)}
-                    className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
-                    placeholder="Full Legal Name"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="text-primary/90 uppercase text-[9px] font-bold tracking-widest">Duration</div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Effective Date</label>
-                  <Input
-                    type="date"
-                    value={form.effectiveDate}
-                    onChange={(e) => onFieldChange("effectiveDate", e.target.value)}
-                    className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Notice Period</label>
-                  <select
-                    value={form.terminationNotice}
-                    onChange={(e) => onFieldChange("terminationNotice", e.target.value)}
-                    className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none"
-                  >
-                    {NOTICE_PERIODS.map((p) => (
-                      <option key={p} value={p} className="bg-background">
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="text-primary/90 uppercase text-[9px] font-bold tracking-widest">Jurisdiction</div>
-              <div className="flex flex-wrap gap-1.5">
-                {JURISDICTIONS.map((city) => (
-                  <button
-                    key={city}
-                    onClick={() => onFieldChange("jurisdiction", city)}
-                    className={`px-2.5 py-1 rounded-full border text-[10px] font-bold transition-all ${
-                      form.jurisdiction === city
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-card/50 text-muted-foreground hover:border-primary/50"
-                    }`}
-                  >
-                    {city}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[9px] text-muted-foreground italic">Contract Act, 1872 (IX of 1872)</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="text-primary/90 uppercase text-[9px] font-bold tracking-widest">Obligations</div>
-              <Textarea
-                value={form.obligations}
-                onChange={(e) => onFieldChange("obligations", e.target.value)}
-                className="w-full bg-card/50 border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground resize-none"
-                placeholder="Describe the service scope or payment terms..."
-                rows={2}
-              />
-            </div>
-
-            <div data-tutorial="clause-library" className="space-y-2 rounded-lg border border-border p-2 bg-card/20">
-              <div className="flex items-center gap-1.5 justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Library size={14} className="text-primary" />
-                  <p className="text-[12px] font-bold text-primary uppercase tracking-wider">Clause Builder Plan</p>
-                </div>
-                {selectedClauses.length > 0 && (
-                  <button 
-                    onClick={() => setSelectedClauses([])}
-                    className="text-[9px] text-muted-foreground hover:text-red-300 transition-colors"
-                  >
-                    Clear Plan ({selectedClauses.length})
-                  </button>
-                )}
-              </div>
-
-              {/* Selected Clauses Plan list */}
-              {selectedClauses.length > 0 ? (
-                <div className="space-y-1.5 p-1.5 rounded bg-primary/5 border border-primary/20 max-h-40 overflow-y-auto">
-                  <p className="text-[9px] font-bold text-foreground mb-1 uppercase tracking-wider">Plan Details:</p>
-                  {selectedClauses.map((c) => (
-                    <div key={c.id} className="flex items-start justify-between gap-1.5 p-1 rounded bg-white/5 border border-white/5">
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-semibold text-foreground truncate">{c.title}</p>
-                        <p className="text-[8px] text-muted-foreground truncate leading-none">{c.prompt}</p>
-                      </div>
-                      <button 
-                        onClick={() => setSelectedClauses((prev) => prev.filter((item) => item.id !== c.id))}
-                        className="shrink-0 text-muted-foreground hover:text-red-300 p-0.5"
-                        title="Remove clause"
+              {sidebarTab === "setup" && (
+                <>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <h2 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <FileText size={14} className="text-primary" />
+                        Contract Details
+                      </h2>
+                      <button
+                        onClick={startNewContract}
+                        className="text-[9px] px-2 py-0.5 rounded border border-primary/45 text-primary hover:bg-primary/10 font-bold uppercase tracking-wider flex items-center gap-0.5 transition-colors cursor-pointer"
+                        title="Start a new contract"
+                        type="button"
                       >
-                        <Trash2 size={10} />
+                        <Plus size={10} />
+                        New
                       </button>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[9px] text-muted-foreground italic">No clauses selected yet. Choose from the library below or add custom ones to build your contract plan.</p>
-              )}
+                    <p className="text-[10px] text-muted-foreground">Define basic details of your contract</p>
+                  </div>
 
-              {/* Clause search & library */}
-              <div className="pt-2 border-t border-border/40 mt-1 space-y-1.5">
-                <div className="text-[9px] font-semibold text-muted-foreground uppercase">Add from Library:</div>
-                <div className="flex gap-1">
-                  <Input
-                    value={clauseSearch}
-                    onChange={(e) => setClauseSearch(e.target.value)}
-                    className="h-7 bg-card/50 border border-border text-[10px] text-foreground placeholder:text-muted-foreground flex-1"
-                    placeholder="Search clause..."
-                  />
-                  <select
-                    value={clauseCategory}
-                    onChange={(e) => setClauseCategory(e.target.value)}
-                    className="h-7 bg-card/50 border border-border rounded-md px-1 text-[10px] text-foreground outline-none focus:border-primary shrink-0 max-w-[80px]"
-                  >
-                    {clauseCategories.map((category) => (
-                      <option key={category} value={category} className="bg-background">
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="max-h-[300px] overflow-y-auto space-y-1 pr-1 border border-border/30 rounded p-1 bg-black/10">
-                  {filteredClauseLibrary.map((item) => {
-                    const isAdded = selectedClauses.some((c) => c.id === item.id);
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between gap-1.5 px-1.5 py-1 rounded bg-card/30 border border-border/30 text-[10px]"
-                      >
-                        <div className="min-w-0">
-                          <span className="font-semibold text-foreground truncate block">{item.title}</span>
-                          <span className="text-muted-foreground text-[8px] truncate block leading-none">{item.subtitle}</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            if (isAdded) {
-                              setSelectedClauses((prev) => prev.filter((c) => c.id !== item.id));
-                            } else {
-                              setSelectedClauses((prev) => [...prev, { id: item.id, title: item.title, prompt: item.prompt }]);
-                            }
-                          }}
-                          className={`shrink-0 px-1.5 py-0.5 rounded text-[8px] font-bold ${
-                            isAdded
-                              ? "bg-red-500/20 text-red-300 border border-red-400/30 hover:bg-red-500/30"
-                              : "bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"
-                          }`}
+                  <div className="space-y-2" data-tutorial="setup">
+                    <div>
+                      <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Contract Title</label>
+                      <div className="flex gap-1.5">
+                        <Input
+                          value={form.title}
+                          onChange={(e) => onFieldChange("title", e.target.value)}
+                          className="flex-1 h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
+                          placeholder="e.g. Service Agreement 2026"
+                        />
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <button
+                              className="h-8 px-2 bg-card border border-border rounded-md text-[10px] font-bold text-foreground hover:bg-accent flex items-center gap-1 transition-colors shrink-0 cursor-pointer select-none"
+                              title="Select Style Memory / Tone Presets"
+                              type="button"
+                            >
+                              <Palette size={12} className="text-primary" />
+                              Style
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[450px] !p-0 !bg-white border border-zinc-200 shadow-2xl overflow-hidden rounded-2xl">
+                            <div data-ui-preview="macos" data-theme="light" className="p-6 bg-white text-zinc-950">
+                              <DialogHeader>
+                                <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-1.5 text-primary">
+                                  <Palette size={16} />
+                                  Style & Tone Memory
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-zinc-500">
+                                  Upload sample contracts or paragraphs to train the AI to copy your personal writing style and vocabulary preferences.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="py-2">
+                                <StyleMemoryPanel module="contract-drafting" />
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Contract Type</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={form.contractType}
+                          onChange={(e) => onFieldChange("contractType", e.target.value)}
+                          className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none animate-fade-in"
                         >
-                          {isAdded ? "Remove" : "Add"}
-                        </button>
-                      </div>
-                    );
-                  })}
-                  {!filteredClauseLibrary.length && (
-                    <p className="text-[10px] text-muted-foreground text-center py-2">No matching clauses.</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Add Custom Clause Section */}
-              <div className="pt-2 border-t border-border/40 mt-1 space-y-1.5">
-                <div className="text-[9px] font-semibold text-muted-foreground uppercase">Add Custom Clause:</div>
-                <div className="flex gap-1 items-start">
-                  <Textarea
-                    value={customClausePrompt}
-                    onChange={(e) => setCustomClausePrompt(e.target.value)}
-                    placeholder="e.g. 5% late penalty"
-                    className="text-[10px] min-h-[36px] h-9 resize-none px-2 py-1 bg-card/30 border border-border focus:border-primary focus-visible:ring-primary/30 flex-1 leading-tight"
-                  />
-                  <button
-                    onClick={() => {
-                      if (!customClausePrompt.trim()) return;
-                      const customId = `custom-${Date.now()}`;
-                      setSelectedClauses((prev) => [
-                        ...prev,
-                        {
-                          id: customId,
-                          title: `Custom (${customClausePrompt.trim().slice(0, 18)}...)`,
-                          prompt: customClausePrompt.trim(),
-                          custom: true,
-                        },
-                      ]);
-                      setCustomClausePrompt("");
-                      toast({ title: "Custom clause added to plan" });
-                    }}
-                    className="shrink-0 h-9 px-2 bg-primary/20 border border-primary/30 hover:bg-primary/30 text-primary rounded text-xs font-semibold flex items-center justify-center"
-                  >
-                    + Add
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 rounded-lg border border-border p-2">
-              <div className="flex items-center gap-1.5">
-                <ListChecks size={12} className="text-primary" />
-                <p className="text-[10px] font-semibold text-primary uppercase tracking-widest">
-                  Mandatory Clauses
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-1 flex-1 rounded-full bg-accent overflow-hidden">
-                  <div className="h-full bg-emerald-500" style={{ width: `${mandatoryCoverage}%` }} />
-                </div>
-                <span className="text-[9px] text-emerald-600 dark:text-emerald-300 font-semibold">{mandatoryCoverage}%</span>
-              </div>
-              <div className="space-y-1.5 mt-2">
-                {mandatoryChecks.map((check) => {
-                  const isGeneratingThis = generatingClauseId === check.id;
-                  const anyLoading = isGenerating || isRunningCompliance || isRunningRedline || !!generatingClauseId;
-                  return (
-                    <div
-                      key={check.id}
-                      className={`p-1.5 rounded-lg border transition-all flex items-center justify-between gap-2 ${
-                        check.present
-                          ? "bg-emerald-500/5 border-emerald-500/20"
-                          : "bg-amber-500/5 border-amber-500/20"
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-foreground truncate">{check.label}</p>
-                        <p className="text-[8px] text-muted-foreground truncate">
-                          {check.present ? "Clause detected" : "Missing clause"}
-                        </p>
-                      </div>
-                      <div className="shrink-0">
-                        {check.present ? (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded-full border border-emerald-500/25">
-                            <CheckCircle2 size={10} />
-                            Covered
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => applySuggestedClause(check.prompt, check.id)}
-                            disabled={anyLoading}
-                            className="inline-flex items-center gap-0.5 text-[9px] font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 disabled:opacity-50 px-1.5 py-0.5 rounded transition-all cursor-pointer"
-                            title="Draft this clause"
-                          >
-                            {isGeneratingThis ? (
-                              <Loader2 size={10} className="animate-spin text-primary" />
-                            ) : (
-                              <Sparkles size={10} className="text-primary" />
-                            )}
-                            Auto-Draft
-                          </button>
+                          {CONTRACT_TYPES.map((type) => (
+                            <option key={type} value={type} className="bg-background">
+                              {type}
+                            </option>
+                          ))}
+                        </select>
+                        {form.contractType === "Other" && (
+                          <Input
+                            value={form.customContractType || ""}
+                            onChange={(e) => onFieldChange("customContractType", e.target.value)}
+                            className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
+                            placeholder="e.g. Licensing Agreement"
+                          />
                         )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+
+                    <div className="pt-1.5 pb-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvancedParams((prev) => !prev)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-primary/25 bg-primary/5 hover:bg-primary/10 text-primary text-[10px] font-bold transition-all cursor-pointer select-none shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                      >
+                        <span>{showAdvancedParams ? "Hide Advanced Parameters" : "Configure Optional Parameters (Parties, Dates, Jurisdiction)"}</span>
+                        <span>{showAdvancedParams ? "▲" : "▼"}</span>
+                      </button>
+                    </div>
+
+                    {showAdvancedParams && (
+                      <div className="space-y-3 p-2 rounded-lg border border-border bg-card/10 mt-1 transition-all">
+                        <div className="space-y-1.5">
+                          <div className="text-primary/95 uppercase text-[8px] font-bold tracking-wider">Parties</div>
+                          <div className="space-y-1.5">
+                            <div>
+                              <label className="block text-[9px] font-medium text-muted-foreground mb-0.5">First Party</label>
+                              <Input
+                                value={form.firstParty}
+                                onChange={(e) => onFieldChange("firstParty", e.target.value)}
+                                className="w-full h-7 bg-card/50 border border-border rounded-md px-2 text-xs text-foreground focus:border-primary placeholder:text-muted-foreground"
+                                placeholder="Employer Legal Name"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-medium text-muted-foreground mb-0.5">Second Party</label>
+                              <Input
+                                value={form.secondParty}
+                                onChange={(e) => onFieldChange("secondParty", e.target.value)}
+                                className="w-full h-7 bg-card/50 border border-border rounded-md px-2 text-xs text-foreground focus:border-primary placeholder:text-muted-foreground"
+                                placeholder="Contractor Legal Name"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="text-primary/95 uppercase text-[8px] font-bold tracking-wider">Duration</div>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <div>
+                              <label className="block text-[9px] font-medium text-muted-foreground mb-0.5">Effective Date</label>
+                              <Input
+                                type="date"
+                                value={form.effectiveDate}
+                                onChange={(e) => onFieldChange("effectiveDate", e.target.value)}
+                                className="w-full h-7 bg-card/50 border border-border rounded-md px-2 text-xs text-foreground focus:border-primary outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-medium text-muted-foreground mb-0.5">Notice Period</label>
+                              <select
+                                value={form.terminationNotice}
+                                onChange={(e) => onFieldChange("terminationNotice", e.target.value)}
+                                className="w-full h-7 bg-card/50 border border-border rounded-md px-2 text-xs text-foreground focus:border-primary outline-none"
+                              >
+                                {NOTICE_PERIODS.map((p) => (
+                                  <option key={p} value={p} className="bg-background">
+                                    {p}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="text-primary/95 uppercase text-[8px] font-bold tracking-wider">Jurisdiction</div>
+                          <div className="flex flex-wrap gap-1">
+                            {JURISDICTIONS.map((city) => (
+                              <button
+                                key={city}
+                                onClick={() => onFieldChange("jurisdiction", city)}
+                                className={`px-2 py-0.5 rounded-full border text-[9px] font-bold transition-all ${
+                                  form.jurisdiction === city
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border bg-card/50 text-muted-foreground hover:border-primary/50"
+                                }`}
+                              >
+                                {city}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-medium text-muted-foreground">Direct Drafting Instructions (write here to draft contract directly)</label>
+                      <Textarea
+                        value={form.obligations}
+                        onChange={(e) => onFieldChange("obligations", e.target.value)}
+                        className="w-full bg-card/50 border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground resize-y min-h-[160px]"
+                        placeholder="Describe key obligations, terms, payments, or guidelines here. The AI will draft the entire contract directly based on these instructions..."
+                        rows={8}
+                      />
+                    </div>
+                  </div>
+
+                </>
+              )}
+
+              {sidebarTab === "clauses" && (
+                <div className="space-y-2.5">
+                  <div className="space-y-0.5" data-tutorial="clause-library">
+                    <h2 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Library size={14} className="text-primary" />
+                      Clause Builder Plan
+                    </h2>
+                    <p className="text-[10px] text-muted-foreground">Add specific clauses to compile into the draft</p>
+                  </div>
+
+                  {selectedClauses.length > 0 ? (
+                    <div className="space-y-1.5 p-1.5 rounded bg-primary/5 border border-primary/20 max-h-36 overflow-y-auto">
+                      <div className="flex items-center justify-between gap-2 mb-1 border-b border-primary/20 pb-0.5">
+                        <span className="text-[8px] font-bold text-foreground uppercase tracking-wider">Plan details</span>
+                        <button 
+                          onClick={() => setSelectedClauses([])}
+                          className="text-[8px] text-muted-foreground hover:text-red-300 transition-colors uppercase font-bold"
+                        >
+                          Clear ({selectedClauses.length})
+                        </button>
+                      </div>
+                      {selectedClauses.map((c) => (
+                        <div key={c.id} className="flex items-start justify-between gap-1.5 p-1 rounded bg-white/5 border border-white/5">
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-semibold text-foreground truncate">{c.title}</p>
+                            <p className="text-[7px] text-muted-foreground truncate leading-none">{c.prompt}</p>
+                          </div>
+                          <button 
+                            onClick={() => setSelectedClauses((prev) => prev.filter((item) => item.id !== c.id))}
+                            className="shrink-0 text-muted-foreground hover:text-red-300 p-0.5"
+                            title="Remove clause"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[9px] text-muted-foreground italic">No clauses selected yet. Choose from the library below or type custom ones.</p>
+                  )}
+
+                  {/* Clause search & library */}
+                  <div className="pt-2 border-t border-border/40 mt-1 space-y-1.5">
+                    <div className="text-[9px] font-semibold text-muted-foreground uppercase">Add from Library:</div>
+                    <div className="flex gap-1">
+                      <Input
+                        value={clauseSearch}
+                        onChange={(e) => setClauseSearch(e.target.value)}
+                        className="h-7 bg-card/50 border border-border text-[10px] text-foreground placeholder:text-muted-foreground flex-1"
+                        placeholder="Search clause..."
+                      />
+                      <select
+                        value={clauseCategory}
+                        onChange={(e) => setClauseCategory(e.target.value)}
+                        className="h-7 bg-card/50 border border-border rounded-md px-1 text-[10px] text-foreground outline-none focus:border-primary shrink-0 max-w-[80px]"
+                      >
+                        {clauseCategories.map((category) => (
+                          <option key={category} value={category} className="bg-background">
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="max-h-[220px] overflow-y-auto space-y-1 pr-1 border border-border/30 rounded p-1 bg-black/10">
+                      {filteredClauseLibrary.map((item) => {
+                        const isAdded = selectedClauses.some((c) => c.id === item.id);
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between gap-1.5 px-1.5 py-1 rounded bg-card/30 border border-border/30 text-[10px]"
+                          >
+                            <div className="min-w-0">
+                              <span className="font-semibold text-foreground truncate block">{item.title}</span>
+                              <span className="text-muted-foreground text-[8px] truncate block leading-none">{item.subtitle}</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                if (isAdded) {
+                                  setSelectedClauses((prev) => prev.filter((c) => c.id !== item.id));
+                                } else {
+                                  setSelectedClauses((prev) => [...prev, { id: item.id, title: item.title, prompt: item.prompt }]);
+                                }
+                              }}
+                              className={`shrink-0 px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                isAdded
+                                  ? "bg-red-500/20 text-red-300 border border-red-400/30 hover:bg-red-500/30"
+                                  : "bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"
+                              }`}
+                            >
+                              {isAdded ? "Remove" : "Add"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {!filteredClauseLibrary.length && (
+                        <p className="text-[10px] text-muted-foreground text-center py-2">No matching clauses.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Add Custom Clause Section */}
+                  <div className="pt-2 border-t border-border/40 mt-1 space-y-1.5">
+                    <div className="text-[9px] font-semibold text-muted-foreground uppercase">Add Custom Clause:</div>
+                    <div className="flex gap-1 items-start">
+                      <Textarea
+                        value={customClausePrompt}
+                        onChange={(e) => setCustomClausePrompt(e.target.value)}
+                        placeholder="e.g. 5% late penalty"
+                        className="text-[10px] min-h-[36px] h-9 resize-none px-2 py-1 bg-card/30 border border-border focus:border-primary focus-visible:ring-primary/30 flex-1 leading-tight"
+                      />
+                      <button
+                        onClick={() => {
+                          if (!customClausePrompt.trim()) return;
+                          const customId = `custom-${Date.now()}`;
+                          setSelectedClauses((prev) => [
+                            ...prev,
+                            {
+                              id: customId,
+                              title: `Custom (${customClausePrompt.trim().slice(0, 18)}...)`,
+                              prompt: customClausePrompt.trim(),
+                              custom: true,
+                            },
+                          ]);
+                          setCustomClausePrompt("");
+                          toast({ title: "Custom clause added to plan" });
+                        }}
+                        className="shrink-0 h-9 px-2 bg-primary/20 border border-primary/30 hover:bg-primary/30 text-primary rounded text-xs font-semibold flex items-center justify-center"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {sidebarTab === "audit" && (
+                <div className="space-y-3">
+                  {/* Mandatory Clauses Coverage */}
+                  <div className="space-y-1.5 rounded-lg border border-border p-2">
+                    <div className="flex items-center gap-1.5">
+                      <ListChecks size={12} className="text-primary" />
+                      <p className="text-[10px] font-semibold text-primary uppercase tracking-widest">
+                        Mandatory Clauses
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1 flex-1 rounded-full bg-accent overflow-hidden">
+                        <div className="h-full bg-emerald-500" style={{ width: `${mandatoryCoverage}%` }} />
+                      </div>
+                      <span className="text-[9px] text-emerald-600 dark:text-emerald-300 font-semibold">{mandatoryCoverage}%</span>
+                    </div>
+                    <div className="space-y-1.5 mt-2 max-h-[140px] overflow-y-auto pr-1">
+                      {mandatoryChecks.map((check) => {
+                        const isGeneratingThis = generatingClauseId === check.id;
+                        const anyLoading = isGenerating || isRunningCompliance || isRunningRedline || !!generatingClauseId;
+                        return (
+                          <div
+                            key={check.id}
+                            className={`p-1 rounded border transition-all flex items-center justify-between gap-2 ${
+                              check.present
+                                ? "bg-emerald-500/5 border-emerald-500/10"
+                                : "bg-amber-500/5 border-amber-500/10"
+                            }`}
+                          >
+                            <span className="text-[9px] font-bold text-foreground truncate">{check.label}</span>
+                            <div className="shrink-0">
+                              {check.present ? (
+                                <span className="inline-flex items-center gap-0.5 text-[8px] font-semibold text-emerald-400 bg-emerald-500/10 px-1 py-0.5 rounded border border-emerald-500/20">
+                                  Covered
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => applySuggestedClause(check.prompt, check.id)}
+                                  disabled={anyLoading}
+                                  className="inline-flex items-center gap-0.5 text-[8px] font-semibold bg-primary/15 text-primary border border-primary/20 hover:bg-primary/25 disabled:opacity-50 px-1 py-0.5 rounded transition-all cursor-pointer"
+                                >
+                                  {isGeneratingThis ? "Drafting..." : "Auto-Draft"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Compliance Findings Scanner Results */}
+                  <div data-tutorial="compliance" className="space-y-1.5 rounded-lg border border-border p-2 bg-card/10">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck size={12} className="text-primary" />
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Compliance Findings</span>
+                      </div>
+                      <button
+                        onClick={() => runComplianceCheck({ silent: false })}
+                        className="text-[9px] px-1.5 py-0.5 rounded border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50"
+                        disabled={isRunningCompliance}
+                      >
+                        {isRunningCompliance ? "Scanning..." : "Scan"}
+                      </button>
+                    </div>
+                    
+                    {complianceRisks.length === 0 ? (
+                      <p className="text-[9px] text-muted-foreground italic text-center py-2">Click Scan to run compliance analysis.</p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                        {filteredComplianceRisks.map((risk) => (
+                          <button
+                            key={risk.id}
+                            onClick={() => applySuggestedClause(risk.prompt)}
+                            className={`w-full text-left p-1.5 rounded border transition-all hover:bg-primary/5 ${
+                              risk.severity === "danger"
+                                ? "border-red-400/20 bg-red-500/5"
+                                : "border-primary/20 bg-primary/5"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1">
+                              {risk.severity === "danger" ? (
+                                <AlertTriangle size={10} className="text-red-400" />
+                              ) : (
+                                <CheckCircle2 size={10} className="text-primary" />
+                              )}
+                              <span className="text-[9px] font-bold text-foreground">{risk.title}</span>
+                            </div>
+                            <p className="text-[8px] text-muted-foreground mt-0.5 leading-tight">{risk.detail}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Counterparty Redlines */}
+                  <div data-tutorial="redlines" className="space-y-1.5 rounded-lg border border-border p-2 bg-card/10">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <GitCompareArrows size={12} className="text-primary" />
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Redline Review</span>
+                      </div>
+                      <button
+                        onClick={runCounterpartyRedline}
+                        className="text-[9px] px-1.5 py-0.5 rounded border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50"
+                        disabled={isRunningRedline}
+                      >
+                        {isRunningRedline ? "Reviewing..." : "Analyze"}
+                      </button>
+                    </div>
+
+                    {!redlineItems.length ? (
+                      <p className="text-[9px] text-muted-foreground italic text-center py-2">Analyze redlines to audit counterparty changes.</p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                        {redlineItems.map((item) => (
+                          <div key={item.id} className="p-1.5 rounded border border-border/30 bg-card/45 space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="text-[9px] font-bold text-foreground truncate block">{item.title}</span>
+                              <span className={`text-[8px] uppercase font-semibold ${item.status === "accepted" ? "text-emerald-400" : item.status === "rejected" ? "text-red-400" : "text-primary"}`}>
+                                {item.status}
+                              </span>
+                            </div>
+                            <p className="text-[8px] text-muted-foreground leading-tight">{item.rationale}</p>
+                            {item.status === "pending" && (
+                              <div className="flex gap-1.5 pt-0.5">
+                                <button
+                                  className="flex-1 rounded border border-emerald-500/20 bg-emerald-500/10 py-0.5 text-[8px] font-bold text-emerald-200"
+                                  onClick={() => acceptRedline(item)}
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  className="flex-1 rounded border border-red-500/20 bg-red-500/10 py-0.5 text-[8px] font-bold text-red-200"
+                                  onClick={() => rejectRedline(item.id)}
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="p-2.5 border-t border-border space-y-1.5">
+            {/* Bottom Actions footer */}
+            <div className="p-2 border-t border-border space-y-1.5 bg-card/25 z-10">
               <button
                 onClick={generateDraft}
-                className="w-full py-2 bg-primary hover:bg-primary rounded-md text-primary-foreground font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-1.5 bg-primary hover:bg-primary/95 rounded-md text-primary-foreground font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
                 data-testid="button-generate-contract-draft"
                 disabled={isGenerating}
               >
-                {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                 {isGenerating ? "Generating..." : "Generate Contract Draft"}
               </button>
-              <button
-                onClick={() => runComplianceCheck({ silent: false })}
-                className="w-full py-2 bg-card/50 border border-border rounded-md text-foreground font-semibold text-xs hover:bg-accent transition-colors flex items-center justify-center gap-1.5"
-                data-testid="button-run-contract-compliance"
-                disabled={isRunningCompliance}
-              >
-                {isRunningCompliance ? <Loader2 size={14} className="animate-spin" /> : <ScanText size={14} />}
-                {isRunningCompliance ? "Scanning..." : "AI Risk Scan"}
-              </button>
-              <button
-                onClick={runCounterpartyRedline}
-                className="w-full py-2 bg-card/50 border border-border rounded-md text-foreground font-semibold text-xs hover:bg-accent transition-colors flex items-center justify-center gap-1.5"
-                data-testid="button-run-counterparty-redline"
-                disabled={isRunningRedline}
-              >
-                {isRunningRedline ? <Loader2 size={14} className="animate-spin" /> : <GitCompareArrows size={14} />}
-                {isRunningRedline ? "Reviewing..." : "Redline Mode"}
-              </button>
+              {sidebarTab === "audit" && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    onClick={() => runComplianceCheck({ silent: false })}
+                    className="py-1.5 bg-card border border-border rounded-md text-foreground font-semibold text-[10px] hover:bg-accent transition-colors flex items-center justify-center gap-1"
+                    data-testid="button-run-contract-compliance"
+                    disabled={isRunningCompliance}
+                  >
+                    {isRunningCompliance ? <Loader2 size={10} className="animate-spin" /> : <ScanText size={10} />}
+                    Scan Risk
+                  </button>
+                  <button
+                    onClick={runCounterpartyRedline}
+                    className="py-1.5 bg-card border border-border rounded-md text-foreground font-semibold text-[10px] hover:bg-accent transition-colors flex items-center justify-center gap-1"
+                    data-testid="button-run-counterparty-redline"
+                    disabled={isRunningRedline}
+                  >
+                    {isRunningRedline ? <Loader2 size={10} className="animate-spin" /> : <GitCompareArrows size={10} />}
+                    Redline
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -2092,34 +2164,9 @@ export default function ContractDraftingPage() {
                 />
               </div>
               <div className="mt-6 text-center text-muted-foreground text-xs">Contract Workspace</div>
-              <div className="mt-4 space-y-4 lg:hidden">{renderRightRailContent()}</div>
             </div>
           </div>
         </section>
-
-        <div className={`${focusWritingMode ? "hidden" : "hidden lg:flex"} items-stretch`}>
-          <button
-            onClick={() => setRightRailOpen((v) => !v)}
-            className="h-full w-6 border-l border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition-all"
-            data-testid="divider-toggle-right-contract-rail"
-            title={rightRailVisible ? "Collapse AI panel" : "Expand AI panel"}
-            aria-label={rightRailVisible ? "Collapse AI panel" : "Expand AI panel"}
-          >
-            {rightRailVisible ? <ChevronRight size={15} className="drop-shadow" /> : <ChevronLeft size={15} className="drop-shadow" />}
-          </button>
-        </div>
-
-        <aside
-          className={`hidden lg:flex transition-[width] duration-300 ease-out overflow-hidden ${
-            rightRailVisible
-              ? "w-[300px] xl:w-[320px] border-l border-[hsl(var(--preview-border))] bg-background/45 backdrop-blur-xl"
-              : "w-0 border-l-0"
-          }`}
-        >
-          <div className="w-[300px] xl:w-[320px] p-3 md:p-4 space-y-4 overflow-y-auto scrollbar-hide">
-            {renderRightRailContent()}
-          </div>
-        </aside>
       </main>
 
       <footer className="glass-shell border-t border-[hsl(var(--preview-border))] px-3 md:px-8 py-2 flex items-center justify-between gap-2 flex-wrap">
@@ -2190,7 +2237,20 @@ export default function ContractDraftingPage() {
           </button>
         </div>
       </footer>
-      <TutorialCards open={showTutorial} onOpenChange={setShowTutorial} moduleName="Contract Drafting" />
+      <TutorialCards
+        open={showTutorial}
+        onOpenChange={setShowTutorial}
+        moduleName="Contract Drafting"
+        onStepChange={(stepId) => {
+          if (stepId === "ai-engine" || stepId === "setup") {
+            setSidebarTab("setup");
+          } else if (stepId === "clause-library") {
+            setSidebarTab("clauses");
+          } else if (stepId === "compliance" || stepId === "redlines") {
+            setSidebarTab("audit");
+          }
+        }}
+      />
     </div>
   );
 }

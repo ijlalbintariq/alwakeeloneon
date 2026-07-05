@@ -162,8 +162,10 @@ SAFEPAY_SECRET_KEY=fd60d...
 SAFEPAY_ENVIRONMENT=production
 ```
 
-### 6.2 Pre-Deployment Build Verification
-Locally verify the typescript builds and check compile sanity:
+### 6.2 Pre-Deployment Build
+* **Redesigned Interactive Tutorial:** Re-wrote the step definitions in `TutorialCards` to match the redesigned three-tab structure (Workspace Controller, Setup & Style, Clause Library, Compliance Scan, Redlines, and Editor). Added an `onStepChange` hook that automatically toggles the active tab on the client page, aligning the sidebar layout dynamically to ensure highlighted elements are visible. The **Clause Library** tutorial step was configured to highlight the **Clause Builder Plan** section under the Clauses tab, ensuring correct visual alignment.
+* **Verification:** Verified that typescript builds cleanly with no compiler warnings or errors.
+
 ```bash
 # Clean compilation check
 npm run check

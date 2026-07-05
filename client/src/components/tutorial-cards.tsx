@@ -15,7 +15,7 @@ const LEGAL_DRAFTING_STEPS: TutorialStep[] = [
   {
     id: "ai-engine",
     title: "Drafting Chat",
-    icon: <MessageSquare size={24} className="text-blue-400" />,
+    icon: <MessageSquare size={24} style={{ color: "#60a5fa" }} />,
     description: "The AI command center below the editor. Type natural language instructions — \"Draft a Writ Petition under Article 199\" — and the AI generates a full court-ready document. Attach case files for context-aware drafting.",
     borderColor: "#3b82f6",
     bgGradient: "linear-gradient(135deg, rgba(59,130,246,0.15), rgba(30,64,175,0.15))",
@@ -23,7 +23,7 @@ const LEGAL_DRAFTING_STEPS: TutorialStep[] = [
   {
     id: "editor",
     title: "Tiptap Legal Editor",
-    icon: <PenTool size={24} className="text-emerald-400" />,
+    icon: <PenTool size={24} style={{ color: "#34d399" }} />,
     description: "A rich-text workspace with legal formatting. Bold, italic, lists, tables, headings, and page breaks. Edit AI-generated drafts, select text for targeted revisions, then export as PDF or Word.",
     borderColor: "#10b981",
     bgGradient: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(6,95,70,0.15))",
@@ -31,7 +31,7 @@ const LEGAL_DRAFTING_STEPS: TutorialStep[] = [
   {
     id: "workspace",
     title: "Workspace Panel",
-    icon: <FolderOpen size={24} className="text-amber-400" />,
+    icon: <FolderOpen size={24} style={{ color: "#fbbf24" }} />,
     description: "Your drafts hub. Browse saved drafts, load pre-built templates (Writ Petitions, Bail Applications, NDAs, Power of Attorney), collaborate via shared links, or access the case document archive.",
     borderColor: "#f59e0b",
     bgGradient: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(146,64,14,0.15))",
@@ -39,7 +39,7 @@ const LEGAL_DRAFTING_STEPS: TutorialStep[] = [
   {
     id: "style-memory",
     title: "Style Memory",
-    icon: <Brain size={24} className="text-purple-400" />,
+    icon: <Brain size={24} style={{ color: "#c084fc" }} />,
     description: "Upload your past documents and the AI learns your firm's writing style — terminology, clause phrasing, and formatting. Future drafts automatically match your signature legal voice.",
     borderColor: "#a855f7",
     bgGradient: "linear-gradient(135deg, rgba(168,85,247,0.15), rgba(88,28,135,0.15))",
@@ -47,7 +47,7 @@ const LEGAL_DRAFTING_STEPS: TutorialStep[] = [
   {
     id: "ai-panel",
     title: "AI Assistant & History",
-    icon: <Scale size={24} className="text-rose-400" />,
+    icon: <Scale size={24} style={{ color: "#fb7185" }} />,
     description: "The right panel has two tabs: AI Assistant shows controls, style memory status, and AI-recommended draft changes. Version History lets you restore previous versions of your document.",
     borderColor: "#f43f5e",
     bgGradient: "linear-gradient(135deg, rgba(244,63,94,0.15), rgba(136,19,55,0.15))",
@@ -55,7 +55,7 @@ const LEGAL_DRAFTING_STEPS: TutorialStep[] = [
   {
     id: "references",
     title: "Verified References",
-    icon: <BookOpen size={24} className="text-cyan-400" />,
+    icon: <BookOpen size={24} style={{ color: "#22d3ee" }} />,
     description: "Every statute section and case law citation in your draft is automatically verified against the knowledge base. Click any reference to view the full source document. Unverified citations are flagged.",
     borderColor: "#06b6d4",
     bgGradient: "linear-gradient(135deg, rgba(6,182,212,0.15), rgba(21,94,117,0.15))",
@@ -65,51 +65,51 @@ const LEGAL_DRAFTING_STEPS: TutorialStep[] = [
 const CONTRACT_DRAFTING_STEPS: TutorialStep[] = [
   {
     id: "ai-engine",
-    title: "AI Drafting Engine",
-    icon: <Sparkles size={24} className="text-blue-400" />,
-    description: "Fill in contract details — title, type, parties, jurisdiction — and click Generate. The AI drafts a complete contract under Pakistani law instantly.",
+    title: "AI Workspace Controller",
+    icon: <Sparkles size={24} style={{ color: "#60a5fa" }} />,
+    description: "The redesigned workspace panel houses all drafting settings. Toggle between three clean tabs: Setup, Clauses, and Review to configure and audit your contract.",
     borderColor: "#3b82f6",
     bgGradient: "linear-gradient(135deg, rgba(59,130,246,0.15), rgba(30,64,175,0.15))",
   },
   {
-    id: "editor",
-    title: "The Legal Editor",
-    icon: <PenTool size={24} className="text-emerald-400" />,
-    description: "A rich-text workspace where you can manually adjust, format, and refine the AI's output. Add bolding, italics, or lists before exporting the final draft.",
+    id: "setup",
+    title: "Contract Setup & Style",
+    icon: <PenTool size={24} style={{ color: "#34d399" }} />,
+    description: "Specify Title, Contract Type, and Direct Drafting Instructions. Toggle Advanced Parameters for Parties and Jurisdiction, and click 'Style' to load personalized tone presets.",
     borderColor: "#10b981",
     bgGradient: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(6,95,70,0.15))",
   },
   {
-    id: "style-memory",
-    title: "Style Memory",
-    icon: <Brain size={24} className="text-purple-400" />,
-    description: "Train the AI on your past documents. It automatically learns your firm's unique writing style, terminology, and formatting preferences.",
-    borderColor: "#a855f7",
-    bgGradient: "linear-gradient(135deg, rgba(168,85,247,0.15), rgba(88,28,135,0.15))",
-  },
-  {
     id: "clause-library",
     title: "Clause Library",
-    icon: <BookMarked size={24} className="text-amber-400" />,
-    description: "Search and insert standard legal clauses instantly. Can't find what you need? Prompt the AI to generate a custom clause directly into your document.",
+    icon: <BookMarked size={24} style={{ color: "#fbbf24" }} />,
+    description: "Search and insert standard legal clauses instantly from our library. Can't find the clause you want? Type custom guidelines in the Clause Builder plan to draft it.",
     borderColor: "#f59e0b",
     bgGradient: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(146,64,14,0.15))",
   },
   {
+    id: "compliance",
+    title: "AI Compliance Scan",
+    icon: <ShieldCheck size={24} style={{ color: "#22d3ee" }} />,
+    description: "Audit your contract against Pakistani laws (like the Contract Act 1872) to scan for legal risks, verify mandatory provisions, and resolve compliance vulnerabilities.",
+    borderColor: "#06b6d4",
+    bgGradient: "linear-gradient(135deg, rgba(6,182,212,0.15), rgba(21,94,117,0.15))",
+  },
+  {
     id: "redlines",
     title: "Counterparty Redlines",
-    icon: <Scale size={24} className="text-rose-400" />,
-    description: "Simulate an opposing counsel's review. The AI will find loopholes, suggest edits to strengthen your position, and let you accept or reject them.",
+    icon: <Scale size={24} style={{ color: "#fb7185" }} />,
+    description: "Simulate an opposing counsel's audit review. Check for loopholes or risk clauses, and directly accept or reject proposed changes right from the list.",
     borderColor: "#f43f5e",
     bgGradient: "linear-gradient(135deg, rgba(244,63,94,0.15), rgba(136,19,55,0.15))",
   },
   {
-    id: "compliance",
-    title: "Compliance Scanner",
-    icon: <ShieldCheck size={24} className="text-cyan-400" />,
-    description: "Automatically audit your draft against Pakistani laws (like the Contract Act 1872) to identify legal risks, missing elements, and enforceability issues.",
-    borderColor: "#06b6d4",
-    bgGradient: "linear-gradient(135deg, rgba(6,182,212,0.15), rgba(21,94,117,0.15))",
+    id: "editor",
+    title: "Tiptap Legal Editor",
+    icon: <BookOpen size={24} style={{ color: "#c084fc" }} />,
+    description: "A rich-text workspace where you edit draft revisions. Highlight any text for targeted refinements, and download output as Word DOCX, TXT, or PDF.",
+    borderColor: "#a855f7",
+    bgGradient: "linear-gradient(135deg, rgba(168,85,247,0.15), rgba(88,28,135,0.15))",
   },
 ];
 
@@ -120,7 +120,10 @@ function getCardPosition(rect: DOMRect, cardW: number, cardH: number): CardPos {
   const vh = window.innerHeight;
   const gap = 16;
   // Align card to top-third of target so it sits higher
-  const verticalAnchor = rect.top + rect.height / 3 - cardH / 2 - 30;
+  let verticalAnchor = rect.top + rect.height / 3 - cardH / 2 - 30;
+  if (rect.height > 400) {
+    verticalAnchor -= 60; // Lift card higher for tall elements like the legal editor
+  }
 
   // Try right
   if (rect.right + gap + cardW < vw) {
@@ -157,10 +160,12 @@ export function TutorialCards({
   open,
   onOpenChange,
   moduleName,
+  onStepChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   moduleName: string;
+  onStepChange?: (stepId: string) => void;
 }) {
   const steps = moduleName === "Legal Drafting" ? LEGAL_DRAFTING_STEPS : CONTRACT_DRAFTING_STEPS;
   const [current, setCurrent] = useState(0);
@@ -200,14 +205,25 @@ export function TutorialCards({
   }, [open]);
 
   useEffect(() => {
-    updateTargetRect();
+    if (open && onStepChange && step) {
+      onStepChange(step.id);
+    }
+  }, [open, step?.id, onStepChange]);
+
+  useEffect(() => {
+    // Settle tab switch transition before measuring target element
+    const timer = setTimeout(() => {
+      updateTargetRect();
+    }, 200);
+
     window.addEventListener("resize", updateTargetRect);
     window.addEventListener("scroll", updateTargetRect, true);
     return () => {
+      clearTimeout(timer);
       window.removeEventListener("resize", updateTargetRect);
       window.removeEventListener("scroll", updateTargetRect, true);
     };
-  }, [updateTargetRect]);
+  }, [updateTargetRect, step?.id]);
 
   // Close on Escape
   useEffect(() => {
