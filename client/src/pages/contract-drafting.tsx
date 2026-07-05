@@ -36,6 +36,22 @@ import { LegalEditor, type LegalEditorHandle } from "@/components/legal-editor";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
+import {
+  Document as DocxDocument,
+  Paragraph as DocxParagraph,
+  Packer as DocxPacker,
+  TextRun as DocxTextRun,
+  Table as DocxTable,
+  TableRow as DocxTableRow,
+  TableCell as DocxTableCell,
+  BorderStyle as DocxBorderStyle,
+  WidthType as DocxWidthType,
+  HeadingLevel as DocxHeadingLevel,
+  AlignmentType as DocxAlignmentType,
+  Footer as DocxFooter,
+  PageNumber as DocxPageNumber,
+  Header as DocxHeader,
+} from "docx";
 import type { Document as StoredDocument } from "@shared/schema";
 import { StyleMemoryPanel } from "@/components/style-memory-panel";
 import { generateLegalPDF } from "@/lib/generate-legal-pdf";
@@ -1124,38 +1140,244 @@ export default function ContractDraftingPage() {
       return;
     }
 
-    const sections = parseHtmlToDocxSections(htmlContent);
     const title = form.title || "Contract Draft";
 
     try {
-      const response = await fetch("/api/documents/generate-docx", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, sections }),
+      const parser = new DOMParser();
+      const docHtml = parser.parseFromString(htmlContent, "text/html");
+      const children: any[] = [];
+
+      // Center, Bold, Uppercase Document Title
+      children.push(
+        new DocxParagraph({
+          heading: DocxHeadingLevel.TITLE,
+          spacing: { after: 200 },
+          alignment: DocxAlignmentType.CENTER,
+          children: [
+            new DocxTextRun({
+              text: title.toUpperCase(),
+              color: "000000",
+              font: "Times New Roman",
+              size: 22,
+              bold: true,
+            }),
+          ],
+        }),
+      );
+
+      const cellBorder = {
+        top: { style: DocxBorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        bottom: { style: DocxBorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        left: { style: DocxBorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+        right: { style: DocxBorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+      };
+
+      const parseTextRuns = (element: Node): DocxTextRun[] => {
+        const runs: DocxTextRun[] = [];
+        
+        const traverse = (node: Node, activeStyles: { bold?: boolean; italics?: boolean; underline?: boolean }) => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent || "";
+            if (text) {
+              runs.push(new DocxTextRun({
+                text: text,
+                font: "Times New Roman",
+                size: 22, // 11pt
+                bold: activeStyles.bold,
+                italics: activeStyles.italics,
+                underline: activeStyles.underline ? {} : undefined,
+              }));
+            }
+          } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = node as HTMLElement;
+            const styles = { ...activeStyles };
+            if (["STRONG", "B"].includes(el.tagName)) styles.bold = true;
+            if (["EM", "I"].includes(el.tagName)) styles.italics = true;
+            if (["U"].includes(el.tagName)) styles.underline = true;
+            
+            el.childNodes.forEach(child => traverse(child, styles));
+          }
+        };
+
+        element.childNodes.forEach(child => traverse(child, {}));
+        return runs;
+      };
+
+      const getAlignment = (el: HTMLElement) => {
+        const textAlign = el.style.textAlign || el.getAttribute("align") || "";
+        if (textAlign === "center") return DocxAlignmentType.CENTER;
+        if (textAlign === "right") return DocxAlignmentType.RIGHT;
+        if (textAlign === "justify") return DocxAlignmentType.JUSTIFIED;
+        return DocxAlignmentType.LEFT;
+      };
+
+      // Process DOM Nodes
+      docHtml.body.childNodes.forEach((node) => {
+        if (node.nodeType !== 1) return; // literal 1 for element node
+        const el = node as HTMLElement;
+
+        if (["H1", "H2", "H3", "H4"].includes(el.tagName)) {
+          const levelVal = parseInt(el.tagName.replace("H", ""), 10);
+          const headingLevelsArr = [
+            DocxHeadingLevel.HEADING_1,
+            DocxHeadingLevel.HEADING_2,
+            DocxHeadingLevel.HEADING_3,
+            DocxHeadingLevel.HEADING_4,
+          ];
+          children.push(
+            new DocxParagraph({
+              heading: headingLevelsArr[Math.min(levelVal - 1, 3)],
+              spacing: { before: 120, after: 120 },
+              alignment: getAlignment(el),
+              children: parseTextRuns(el),
+            }),
+          );
+        } else if (el.tagName === "TABLE") {
+          const tableRows: DocxTableRow[] = [];
+          
+          el.querySelectorAll("tr").forEach((tr) => {
+            const cells: DocxTableCell[] = [];
+            
+            // Check headers
+            tr.querySelectorAll("th").forEach((th) => {
+              cells.push(
+                new DocxTableCell({
+                  borders: cellBorder,
+                  shading: { fill: "F2F2F2" },
+                  children: [
+                    new DocxParagraph({
+                      alignment: getAlignment(th),
+                      children: parseTextRuns(th),
+                    }),
+                  ],
+                }),
+              );
+            });
+
+            // Check data cells
+            tr.querySelectorAll("td").forEach((td) => {
+              cells.push(
+                new DocxTableCell({
+                  borders: cellBorder,
+                  children: [
+                    new DocxParagraph({
+                      alignment: getAlignment(td),
+                      children: parseTextRuns(td),
+                    }),
+                  ],
+                }),
+              );
+            });
+
+            if (cells.length > 0) {
+              tableRows.push(new DocxTableRow({ children: cells }));
+            }
+          });
+
+          if (tableRows.length > 0) {
+            children.push(
+              new DocxTable({
+                width: { size: 100, type: DocxWidthType.PERCENTAGE },
+                rows: tableRows,
+              }),
+            );
+            children.push(new DocxParagraph({ text: "" }));
+          }
+        } else if (["UL", "OL"].includes(el.tagName)) {
+          el.querySelectorAll("li").forEach((li) => {
+            children.push(
+              new DocxParagraph({
+                bullet: el.tagName === "UL" ? { level: 0 } : undefined,
+                spacing: { after: 120 },
+                alignment: getAlignment(li),
+                children: parseTextRuns(li),
+              }),
+            );
+          });
+        } else {
+          // Standard Paragraph, Div, etc.
+          const textRuns = parseTextRuns(el);
+          if (textRuns.length === 0) return;
+
+          // Default body text alignment to JUSTIFIED if not center/right
+          const alignVal = getAlignment(el);
+          const finalAlign = alignVal === DocxAlignmentType.LEFT ? DocxAlignmentType.JUSTIFIED : alignVal;
+
+          children.push(
+            new DocxParagraph({
+              spacing: { line: 276, lineRule: "auto", after: 160 },
+              alignment: finalAlign,
+              children: textRuns,
+            }),
+          );
+        }
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errMsg = "Failed to export Word document";
-        try {
-          const errJson = JSON.parse(errorText);
-          if (errJson.message) errMsg = errJson.message;
-        } catch {}
-        throw new Error(`${response.status}: ${errMsg}`);
-      }
+      const doc = new DocxDocument({
+        sections: [{
+          properties: {
+            page: {
+              margin: {
+                top: 1440,
+                bottom: 1440,
+                left: 1440,
+                right: 1440,
+              },
+            },
+          },
+          headers: {
+            default: new DocxHeader({
+              children: [
+                new DocxParagraph({
+                  alignment: DocxAlignmentType.RIGHT,
+                  children: [
+                    new DocxTextRun({
+                      text: title.toUpperCase(),
+                      font: "Times New Roman",
+                      size: 16, // 8pt
+                      color: "888888",
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          },
+          footers: {
+            default: new DocxFooter({
+              children: [
+                new DocxParagraph({
+                  alignment: DocxAlignmentType.CENTER,
+                  children: [
+                    new DocxTextRun({
+                      text: "Page ",
+                      font: "Times New Roman",
+                      size: 20, // 10pt
+                    }),
+                    new DocxTextRun({
+                      children: [DocxPageNumber.CURRENT],
+                      font: "Times New Roman",
+                      size: 20,
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          },
+          children,
+        }],
+      });
 
-      const blob = await response.blob();
+      const blob = await DocxPacker.toBlob(doc);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${(form.title || "contract-draft").replace(/\s+/g, "-").toLowerCase()}.docx`;
+      a.download = `${title.replace(/\s+/g, "-").toLowerCase()}.docx`;
       a.click();
       URL.revokeObjectURL(url);
 
       toast({ title: "Success", description: "Word document exported successfully!" });
     } catch (err: any) {
-      console.error("DOCX download error:", err);
+      console.error("Client DOCX generation error:", err);
       toast({ title: "Export failed", description: err.message || "Could not create Word document.", variant: "destructive" });
     }
   };
