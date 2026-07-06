@@ -285,7 +285,13 @@
   color: hsl(var(--foreground));
   text-align: justify;
   padding: 1in 1in 1in 1.25in;
-  min-height: 500px;
+  min-height: 1344px; /* Exact Legal height (14 inches = 1344px) */
+  width: 8.5in;      /* Exact Legal width (8.5 inches = 816px) */
+  margin: 2rem auto;  /* Floating document margin top/bottom, auto left/right */
+  background-color: hsl(var(--background));
+  box-shadow: 0 4px 24px hsl(var(--foreground) / 0.08);
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border) / 0.5);
   cursor: text;
   /* Legal page break ruler: 14in page - 2in margins = 12in = 1152px content */
   background-image: repeating-linear-gradient(
@@ -515,7 +521,13 @@
   }
 
   .legal-draft-editor {
-    padding: 0;
+    width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
     color: #000;
   }
 

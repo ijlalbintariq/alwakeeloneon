@@ -28,6 +28,9 @@ import {
   CircleHelp,
   Trash2,
   Palette,
+  Send,
+  Paperclip,
+  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -139,6 +142,17 @@ const CONTRACT_TYPES = [
   "Franchise Agreement",
   "Loan Agreement",
   "Mortgage Deed",
+  "SaaS Agreement",
+  "Shareholders Agreement",
+  "Construction Agreement",
+  "Founders Agreement",
+  "Memorandum of Understanding",
+  "Software License Agreement",
+  "Copyright Assignment Deed",
+  "IP Assignment Agreement",
+  "Trademark License Agreement",
+  "Settlement Deed",
+  "Will (Last Will & Testament)",
   "Other",
 ];
 
@@ -672,6 +686,7 @@ export default function ContractDraftingPage() {
     }
   }, []);
   const editorRef = useRef<LegalEditorHandle | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const setEditorContent = useCallback((content: string) => {
     const html = isHTMLContent(content) ? content : plainTextToTiptapHTML(content);
@@ -686,6 +701,7 @@ export default function ContractDraftingPage() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [isRunningCompliance, setIsRunningCompliance] = useState(false);
   const [complianceRisks, setComplianceRisks] = useState<ComplianceRisk[]>([]);
   const [lastRiskScanAt, setLastRiskScanAt] = useState<Date | null>(null);
@@ -874,18 +890,40 @@ export default function ContractDraftingPage() {
   const generateDraft = async () => {
     setIsGenerating(true);
     try {
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          messages: [{ role: "user", content: buildGenerationPrompt(form, selectedClauses) }],
-          type: "contract-drafting",
-          moduleIntent: "contract.generateDraft",
-          turbo: false,
-          stream: false,
-        }),
-      });
+      const prompt = buildGenerationPrompt(form, selectedClauses);
+      let response;
+
+      if (attachments.length > 0) {
+        const formData = new FormData();
+        formData.append("messages", JSON.stringify([{ role: "user", content: prompt }]));
+        formData.append("type", "contract-drafting");
+        formData.append("moduleIntent", "contract.generateDraft");
+        formData.append("turbo", "false");
+        formData.append("stream", "false");
+        
+        attachments.forEach((file) => {
+          formData.append("attachments", file);
+        });
+
+        response = await fetch("/api/ai/chat", {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
+      } else {
+        response = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            messages: [{ role: "user", content: prompt }],
+            type: "contract-drafting",
+            moduleIntent: "contract.generateDraft",
+            turbo: false,
+            stream: false,
+          }),
+        });
+      }
 
       if (!response.ok) {
         const text = await response.text();
@@ -898,6 +936,7 @@ export default function ContractDraftingPage() {
       setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
 
       setEditorContent(generated);
+      setAttachments([]); // Clear attachments on success
       await apiRequest("POST", "/api/search-history", {
         type: "contract",
         query: `${form.contractType} ${form.title}`.slice(0, 120),
@@ -1370,10 +1409,14 @@ export default function ContractDraftingPage() {
         sections: [{
           properties: {
             page: {
+              size: {
+                width: 12240, // 8.5 inches in twips (1 inch = 1440 twips)
+                height: 20160, // 14 inches in twips
+              },
               margin: {
                 top: 1440,
                 bottom: 1440,
-                left: 1440,
+                left: 1800, // 1.25 inches binding margin
                 right: 1440,
               },
             },
@@ -1460,19 +1503,7 @@ export default function ContractDraftingPage() {
   };
 
   const printContract = () => {
-    // Wrap plain text in basic HTML structure for the PDF generator
-    const htmlContent = contractText
-      .split("\n")
-      .map((line) => {
-        const trimmed = line.trim();
-        if (!trimmed) return "";
-        // Detect headings (all-caps lines or short bold lines)
-        if (trimmed === trimmed.toUpperCase() && trimmed.length < 80 && trimmed.length > 2) {
-          return `<h2>${trimmed}</h2>`;
-        }
-        return `<p>${trimmed}</p>`;
-      })
-      .join("");
+    const htmlContent = editorRef.current?.getHTML() || contractText;
 
     generateLegalPDF({
       html: htmlContent,
@@ -1748,106 +1779,87 @@ export default function ContractDraftingPage() {
                         )}
                       </div>
                     </div>
-
-                    <div className="pt-1.5 pb-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setShowAdvancedParams((prev) => !prev)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-primary/25 bg-primary/5 hover:bg-primary/10 text-primary text-[10px] font-bold transition-all cursor-pointer select-none shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                      >
-                        <span>{showAdvancedParams ? "Hide Advanced Parameters" : "Configure Optional Parameters (Parties, Dates, Jurisdiction)"}</span>
-                        <span>{showAdvancedParams ? "▲" : "▼"}</span>
-                      </button>
-                    </div>
-
-                    {showAdvancedParams && (
-                      <div className="space-y-3 p-2 rounded-lg border border-border bg-card/10 mt-1 transition-all">
-                        <div className="space-y-1.5">
-                          <div className="text-primary/95 uppercase text-[8px] font-bold tracking-wider">Parties</div>
-                          <div className="space-y-1.5">
-                            <div>
-                              <label className="block text-[9px] font-medium text-muted-foreground mb-0.5">First Party</label>
-                              <Input
-                                value={form.firstParty}
-                                onChange={(e) => onFieldChange("firstParty", e.target.value)}
-                                className="w-full h-7 bg-card/50 border border-border rounded-md px-2 text-xs text-foreground focus:border-primary placeholder:text-muted-foreground"
-                                placeholder="Employer Legal Name"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[9px] font-medium text-muted-foreground mb-0.5">Second Party</label>
-                              <Input
-                                value={form.secondParty}
-                                onChange={(e) => onFieldChange("secondParty", e.target.value)}
-                                className="w-full h-7 bg-card/50 border border-border rounded-md px-2 text-xs text-foreground focus:border-primary placeholder:text-muted-foreground"
-                                placeholder="Contractor Legal Name"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <div className="text-primary/95 uppercase text-[8px] font-bold tracking-wider">Duration</div>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <div>
-                              <label className="block text-[9px] font-medium text-muted-foreground mb-0.5">Effective Date</label>
-                              <Input
-                                type="date"
-                                value={form.effectiveDate}
-                                onChange={(e) => onFieldChange("effectiveDate", e.target.value)}
-                                className="w-full h-7 bg-card/50 border border-border rounded-md px-2 text-xs text-foreground focus:border-primary outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[9px] font-medium text-muted-foreground mb-0.5">Notice Period</label>
-                              <select
-                                value={form.terminationNotice}
-                                onChange={(e) => onFieldChange("terminationNotice", e.target.value)}
-                                className="w-full h-7 bg-card/50 border border-border rounded-md px-2 text-xs text-foreground focus:border-primary outline-none"
-                              >
-                                {NOTICE_PERIODS.map((p) => (
-                                  <option key={p} value={p} className="bg-background">
-                                    {p}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <div className="text-primary/95 uppercase text-[8px] font-bold tracking-wider">Jurisdiction</div>
-                          <div className="flex flex-wrap gap-1">
-                            {JURISDICTIONS.map((city) => (
-                              <button
-                                key={city}
-                                onClick={() => onFieldChange("jurisdiction", city)}
-                                className={`px-2 py-0.5 rounded-full border text-[9px] font-bold transition-all ${
-                                  form.jurisdiction === city
-                                    ? "border-primary bg-primary/10 text-primary"
-                                    : "border-border bg-card/50 text-muted-foreground hover:border-primary/50"
-                                }`}
-                              >
-                                {city}
-                              </button>
+                    <div className="mt-3.5 space-y-2">
+                      <label className="block text-[10px] font-medium text-muted-foreground">Direct Drafting Instructions (write here to draft contract directly)</label>
+                      <div className="relative bg-card/65 border border-border rounded-xl px-3 py-2.5 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-sm">
+                        {attachments.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-2 pb-2 border-b border-border/40">
+                            {attachments.map((file, idx) => (
+                              <div key={idx} className="flex items-center gap-1 bg-primary/10 border border-primary/20 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                <span className="truncate max-w-[120px]">{file.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                                  className="text-primary/70 hover:text-primary hover:bg-primary/20 rounded p-0.5 cursor-pointer"
+                                >
+                                  <X size={8} />
+                                </button>
+                              </div>
                             ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2 items-start">
+                          <textarea
+                            value={form.obligations}
+                            onChange={(e) => {
+                              onFieldChange("obligations", e.target.value);
+                              e.target.style.height = "auto";
+                              e.target.style.height = `${e.target.scrollHeight}px`;
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                if (!isGenerating && form.obligations.trim()) {
+                                  generateDraft();
+                                }
+                              }
+                            }}
+                            className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none resize-none min-h-[72px] max-h-[calc(100vh-510px)] overflow-y-auto leading-normal placeholder:text-[10px] pt-0.5"
+                            placeholder="Describe key obligations, terms, payments, or guidelines here. The AI will draft the entire contract directly based on these instructions..."
+                            disabled={isGenerating}
+                            rows={3}
+                          />
+                          <div className="flex flex-col gap-1 shrink-0 pt-0.5" data-tutorial="attach-reference-files">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="p-1.5 border border-primary/35 bg-primary/10 text-primary hover:bg-primary/15 hover:border-primary/50 hover:scale-105 active:scale-95 rounded-lg transition-all duration-150 cursor-pointer shadow-[0_1px_2px_rgba(var(--primary),0.05)] flex items-center justify-center"
+                              title="Attach file (.pdf, .txt, .docx)"
+                            >
+                              <Paperclip size={15} className="stroke-[2.2]" />
+                            </button>
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                if (files.length > 0) {
+                                  setAttachments((prev) => [...prev, ...files].slice(0, 5)); // Max 5 attachments
+                                }
+                                e.target.value = ""; // Clear file selector input
+                              }}
+                              accept=".pdf,.txt,.docx,.doc"
+                              multiple
+                              className="hidden"
+                            />
                           </div>
                         </div>
                       </div>
-                    )}
-
-                    <div className="space-y-1">
-                      <label className="block text-[10px] font-medium text-muted-foreground">Direct Drafting Instructions (write here to draft contract directly)</label>
-                      <Textarea
-                        value={form.obligations}
-                        onChange={(e) => onFieldChange("obligations", e.target.value)}
-                        className="w-full bg-card/50 border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground resize-y min-h-[160px]"
-                        placeholder="Describe key obligations, terms, payments, or guidelines here. The AI will draft the entire contract directly based on these instructions..."
-                        rows={8}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (form.obligations.trim()) {
+                            generateDraft();
+                          }
+                        }}
+                        disabled={isGenerating || !form.obligations.trim()}
+                        className="w-full py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md shadow-primary/10 active:scale-[0.99]"
+                      >
+                        {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                        {isGenerating ? "Generating..." : "Generate the Contract"}
+                      </button>
                     </div>
                   </div>
-
                 </>
               )}
 
@@ -2138,17 +2150,8 @@ export default function ContractDraftingPage() {
             </div>
 
             {/* Bottom Actions footer */}
-            <div className="p-2 border-t border-border space-y-1.5 bg-card/25 z-10">
-              <button
-                onClick={generateDraft}
-                className="w-full py-1.5 bg-primary hover:bg-primary/95 rounded-md text-primary-foreground font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
-                data-testid="button-generate-contract-draft"
-                disabled={isGenerating}
-              >
-                {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                {isGenerating ? "Generating..." : "Generate Contract Draft"}
-              </button>
-              {sidebarTab === "audit" && (
+            {sidebarTab === "audit" && (
+              <div className="p-2 border-t border-border space-y-1.5 bg-card/25 z-10">
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
                     onClick={() => runComplianceCheck({ silent: false })}
@@ -2169,8 +2172,8 @@ export default function ContractDraftingPage() {
                     Redline
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </section>
 
@@ -2242,43 +2245,6 @@ export default function ContractDraftingPage() {
             data-testid="button-zoom-in"
           >
             <ZoomIn size={18} />
-          </button>
-          <div className="h-4 w-px bg-primary/20 mx-2" />
-          <button
-            className="p-1 hover:text-primary transition-colors text-muted-foreground"
-            onClick={printContract}
-            data-testid="button-print-contract"
-          >
-            <Printer size={18} />
-          </button>
-          <button
-            className="p-1 hover:text-primary transition-colors text-muted-foreground"
-            onClick={downloadContract}
-            data-testid="button-download-contract"
-            title="Download TXT Document"
-          >
-            <Download size={18} />
-          </button>
-          <button
-            className="p-1 hover:text-primary transition-colors text-muted-foreground"
-            onClick={downloadContractAsDocx}
-            data-testid="button-download-contract-docx"
-            title="Download Word (DOCX) Document"
-          >
-            <FileText size={18} />
-          </button>
-          <button
-            className="p-1 hover:text-primary transition-colors text-muted-foreground"
-            onClick={() =>
-              apiRequest("POST", "/api/search-history", {
-                type: "contract",
-                query: (form.title || "Contract Draft").slice(0, 120),
-              }).catch(() => {})
-            }
-            data-testid="button-log-contract-session"
-            title="Log session activity"
-          >
-            <Search size={18} />
           </button>
         </div>
       </footer>

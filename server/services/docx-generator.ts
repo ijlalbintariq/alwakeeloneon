@@ -374,9 +374,21 @@ export async function generateDocxBuffer(
     }
   }
 
-  const pageSetup = options?.landscape
-    ? { page: { size: { orientation: PageOrientation.LANDSCAPE } } }
-    : {};
+  const pageSetup = {
+    page: {
+      size: {
+        width: options?.landscape ? 20160 : 12240,
+        height: options?.landscape ? 12240 : 20160,
+        orientation: options?.landscape ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT,
+      },
+      margin: {
+        top: 1440,
+        bottom: 1440,
+        left: 1800, // 1.25 inches binding margin
+        right: 1440,
+      },
+    },
+  };
 
   const doc = new Document({
     numbering: {
