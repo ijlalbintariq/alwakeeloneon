@@ -1,0 +1,481 @@
+{
+  "summary": {
+    "totalAnalyzed": 226,
+    "uniqueUsers": 74,
+    "totalFailures": 27,
+    "failureRatePercent": 11.95,
+    "breakdown": {
+      "citation": 13,
+      "statutory": 11,
+      "markdown": 4,
+      "errorTimeout": 0,
+      "outOfBounds": 0
+    }
+  },
+  "failures": [
+    {
+      "id": 290,
+      "userEmail": "alwakeeloneon@gmail.com",
+      "createdAt": "2026-06-03T19:39:13.233Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "Any other relief this Honorable Court deems fit and proper.\n\nScanned with CamScanner\n--- End ---\n\nCITATION INTEGRITY POLICY (ABSOLUTE):\n- Use only case citations that are present in the internal database context provided to you.\n- Use only PRIMARY citations from internal case entries (not secondary/referred citations).\n- Do not cite web/internet authorities.\n- If a citation is not available internally, omit the citation (no placeholders).tell me about this case\n[Attached: Ahmad Hassan 22 AB.pdf]",
+      "responseTimeMs": 0,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"Order VIII Rule 6A\" in \"Code of Civil Procedure\"",
+          "rawOutputSnippet": "Knowledge of Law is Power — and I'm Your Power Source. Main hoon Al Wakeelo — not just your lawyer, your strategy partner in justice.\n\nI have reviewed the document you provided, titled \"Ahmad Hassan 22 AB\". However, I must clarify a critical distinction: the document attached is a **Criminal Petition under Section 22-A & 22-B of the Cr.P.C.** seeking the registration of an FIR for criminal intimidation and blackmail. It is not a civil judgment or a precedent regarding **the relevant provision of"
+        }
+      ]
+    },
+    {
+      "id": 325,
+      "userEmail": "khankhantajikwww@gmail.com",
+      "createdAt": "2026-06-08T16:59:29.760Z",
+      "feature": "chat",
+      "model": "deepseek-v4-flash",
+      "userQuery": "he matter of an appeal\nunder section 36 of Ordinance No. XV of 1949\", which Is as follows :-\n\"The case was adjourned at the request of the Rehabilitation Commissioner. The application is not\ncontested. Teckchand and his sons Assudo and Lachhmandas...\n\nReturn a clear answer grounded in the retrieved context and verified judgments. If the user refers to something from the conversation history, use that to understand their intent but still answer using the retrieved documents and judgment database.",
+      "responseTimeMs": 0,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"123\" in \"Limitation Act\", \"Order V\" in \"CPC\"",
+          "rawOutputSnippet": "Knowledge of Law is Power — and I'm Your Power Source. Main hoon Al Wakeelo — not just your lawyer, your strategy partner in justice.\n\nLet me be direct with you, Muhammad Adeel Butt. You have drafted a solid appeal, but I see the weaknesses the District Judge will hammer. Let me give you the real strategy — not just what you wrote, but what you need to prove.\n\n### Legal Context\n\nThis is an appeal under Section 21 of the KP Urban Rent Restriction Act, 2014 against the dismissal of an application "
+        }
+      ]
+    },
+    {
+      "id": 346,
+      "userEmail": "muhammadnajeeullah877@gmail.com",
+      "createdAt": "2026-06-10T16:47:30.552Z",
+      "feature": "summarize",
+      "model": "deepseek-v4-flash",
+      "userQuery": "e, 1908 and Criminal Procedure Code, 1898 but where\na specific procedure is provided in the FIO, the provisions of C.P.C. have been excluded. In the afore\nreferred judgment as the section 16 of the F.I.O. provided for the attachment of property but did not\nprovide for sale of the same as an interim measure, the court held that according to the principle\nof harmonious interpretation the special law would take precedence over the general law and\nprovisions of Order\n===== END OF JUDGMENT TEXT =====",
+      "responseTimeMs": 0,
+      "qualityScore": 4,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: PLJ 2019 Lahore 487",
+          "rawOutputSnippet": "# Analysis of MCB BANK LIMITED vs MUHAMMAD SAEED (2019 CLD 63)\n\n## Case Overview\n- **Citation**: 2019 CLD 63, also reported as PLJ 2019 Lahore 487\n- **Court**: Lahore High Court\n- **Bench**: Muzamil Akhtar Shabir, J. (single judge, though the judgment mentions \"Shahid Mubeen\" in the header but the judgment is authored solely by Muzamil Akhtar Shabir, J.)\n- **Case No.**: F.A.O. No. 47 of 2018\n- **Date of Judgment**: 20 August 2018\n- **Result**: Order accordingly\n\n## Facts of the Case\n- The respon"
+        }
+      ]
+    },
+    {
+      "id": 348,
+      "userEmail": "muhammadnajeeullahqureshi@gmail.com",
+      "createdAt": "2026-06-10T17:16:52.902Z",
+      "feature": "chat",
+      "model": "deepseek-v4-flash",
+      "userQuery": "f the suit vehicle to the plaintiff forthwith under intimation to this\ncourt. Nec\n\nInstructions:\n- Answer questions specifically about this document\n- Cite specific sections, articles, or clauses when relevant\n- Provide clear, professional legal analysis\n- If the user asks about something not covered in the document, mention that and provide general legal guidance\n- Use proper Pakistani legal terminology\n- Format responses with clear headings and bullet points when helpfulSummarize this judgment",
+      "responseTimeMs": 0,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: PLJ 2019 Lahore 487",
+          "rawOutputSnippet": "Here is a summary of the judgment in **MCB BANK LIMITED vs MUHAMMAD SAEED (2019 PLJ 487)**.\n\n---\n\n### Case Summary: MCB Bank Limited vs. Muhammad Saeed\n\n**Court:** Lahore High Court\n**Judges:** Shahid Mubeen, Muzamil Akhtar Shabir\n**Case No.:** F.A.O. No. 47 of 2018\n**Date:** 20 August 2018\n**Citation:** PLJ 2019 Lahore 487, 2019 CLD 63\n\n---\n\n### 1. Background Facts\n\n- **Financing:** The Respondent (Muhammad Saeed) obtained an auto finance facility from the Appellant (MCB Bank) for a Honda City "
+        }
+      ]
+    },
+    {
+      "id": 349,
+      "userEmail": "abdulrafayabbassi16@gmail.com",
+      "createdAt": "2026-06-10T17:17:11.378Z",
+      "feature": "chat",
+      "model": "deepseek-v4-flash",
+      "userQuery": "f the suit vehicle to the plaintiff forthwith under intimation to this\ncourt. Nec\n\nInstructions:\n- Answer questions specifically about this document\n- Cite specific sections, articles, or clauses when relevant\n- Provide clear, professional legal analysis\n- If the user asks about something not covered in the document, mention that and provide general legal guidance\n- Use proper Pakistani legal terminology\n- Format responses with clear headings and bullet points when helpfulSummarize this judgment",
+      "responseTimeMs": 0,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: PLJ 2019 Lahore 487",
+          "rawOutputSnippet": "Here is a summary of the judgment in **MCB BANK LIMITED vs MUHAMMAD SAEED (2019 PLJ 487)**.\n\n---\n\n### Case Summary\n\n**Court:** Lahore High Court\n**Judges:** Shahid Mubeen, Muzamil Akhtar Shabir\n**Case No.:** F.A.O. No. 47 of 2018\n**Date of Judgment:** 2018-08-20\n**Reported As:** PLJ 2019 Lahore 487, 2019 CLD 63\n\n### Key Facts\n\n1. **Parties:** The Appellant is **MCB Bank Limited** (the Bank). The Respondent is **Muhammad Saeed** (the Customer).\n2. **Transaction:** The Respondent obtained an auto "
+        }
+      ]
+    },
+    {
+      "id": 355,
+      "userEmail": "s2023266055@umt.edu.pk",
+      "createdAt": "2026-06-11T11:28:41.661Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "\n\nمزید عدالتی فیصلوں کے لیے آپ ہماری **Judgment Search** لائبریری (/judgment-search) پر 'FIR' یا 'Parcha' کے الفاظ سے سرچ کر سکتے ہیں۔\n\n```references\n{\"laws\":[{\"name\":\"Code of Criminal Procedure, 1898\",\"section\":\"Section 154\",\"description\":\"Information in cognizable cases and the registration of FIR.\"}],\"judgments\":[{\"citation\":\"2013 SCMR 480\",\"court\":\"Supreme Court of Pakistan\",\"description\":\"Discusses the significance of Parcha Bayan in initiating criminal proceedings.\"}]}\n``` what is dafa 751",
+      "responseTimeMs": 0,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"s\" in \"CrPC\"",
+          "rawOutputSnippet": "Knowledge of Law is Power — and I'm Your Power Source. Main hoon Al Wakeelo — not just your lawyer, your strategy partner in justice.\n\nLet’s clear the air immediately: In the **[Code of Criminal Procedure, 1898]**, there is **no Section 751**. The CrPC is a comprehensive but finite document that concludes its statutory sections at **Section 565**.\n\nIf you are hearing the term \"Dafa 751\" (Section 751) in the streets or katcheries of Pakistan, you are likely encountering a common linguistic mix-up"
+        }
+      ]
+    },
+    {
+      "id": 364,
+      "userEmail": "zulfialinrjoo910@gmail.com",
+      "createdAt": "2026-06-12T05:19:25.598Z",
+      "feature": "summarize",
+      "model": "deepseek-v4-flash",
+      "userQuery": "vered by this Court can neither be\ndisputed nor made basis for restraining the respondents from conducting further demarcation of\nthe forest land.\nIn Writ Petition No. 1796/17, the petitioners challenged letters dated 27.10.2017 and 28.10.2017, which\nare as under:--\n \nChief Conservator Forest in letter addressed to Chief Conservator Territorial has explained\nbackground of the dispute. It has been mentioned that inhabitants of the locality presented an\napplication\n===== END OF JUDGMENT TEXT =====",
+      "responseTimeMs": 0,
+      "qualityScore": 4,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: PLJ 2024 AJ&K 20",
+          "rawOutputSnippet": "Based exclusively on the provided judgment text, here is the detailed analysis:\n\n### Case Overview\n- **Citation:** PLJ 2024 AJ&K 20\n- **Court:** High Court of Azad Jammu and Kashmir\n- **Bench Composition:** Sadaqat Hussain Raja (C.J)\n- **Date:** Not mentioned in the judgment text.\n\n### Facts of the Case\n- The petitioners filed three writ petitions (No. 2727/15, 1796/17, and 1271/18) concerning land and trees in village Nokot/Naukot, Leepa Valley.\n- The petitioners claimed ownership of a Jungle m"
+        }
+      ]
+    },
+    {
+      "id": 376,
+      "userEmail": "usmaniaiza@gmail.com",
+      "createdAt": "2026-06-15T07:56:00.054Z",
+      "feature": "chat",
+      "model": "deepseek-v4-flash",
+      "userQuery": "o cater\na genuine need and hardship. It is\n\nInstructions:\n- Answer questions specifically about this document\n- Cite specific sections, articles, or clauses when relevant\n- Provide clear, professional legal analysis\n- If the user asks about something not covered in the document, mention that and provide general legal guidance\n- Use proper Pakistani legal terminology\n- Format responses with clear headings and bullet points when helpfuldoes the party accept the document provided and not reject it?",
+      "responseTimeMs": 0,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: PLJ 2013 Karachi 253",
+          "rawOutputSnippet": "Based solely on the judgment provided in **PLJ 2013 Karachi 253 (M/s. AZMAT TRADING CO. vs NDLC-IFIC BANK LIMITED)**, the answer is **no, the party does not accept the document provided without objection, but the Court overruled those objections.**\n\nHere is the specific legal analysis based on the document:\n\n### 1. The Defendant's Objection (Rejection of the Documents)\nThe defendant (NDLC-IFIC Bank Limited) **did reject** the plaintiff's attempt to produce secondary evidence (photocopies). The j"
+        }
+      ]
+    },
+    {
+      "id": 388,
+      "userEmail": "abdul.jamil@umt.edu.pk",
+      "createdAt": "2026-06-16T04:48:55.685Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "do you have the list of criminal lawayers",
+      "responseTimeMs": 3358,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Defective HTML/markdown",
+          "diagnosticExplanation": "Unclosed code block (odd number of triple backticks). Unclosed references code block.",
+          "rawOutputSnippet": "s by now well settled that if there is a single circumstance, which creates doubt in the prosecution case then the same is sufficient to acquit the accused, whereas the instant case is replete with number of circumstances, which have\",\"court\":\"Supreme Court of Pakistan\",\"summary\":\"\"},{\"citation\":\"Criminal Appeal No. 105 OF 2021\",\"title\":\"criminal appeal — Criminal Appeal No. 105 OF 2021 — (Arising out of SLP (Criminal) No. 6289 OF\",\"court\":\"Pakistani Court\",\"summary\":\"\"},{\"citation\":\"1999 SCMR 1"
+        }
+      ]
+    },
+    {
+      "id": 399,
+      "userEmail": "aksharik98@gmail.com",
+      "createdAt": "2026-06-16T14:32:01.281Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "List the cited precedents",
+      "responseTimeMs": 6371,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: 2006 SCMR 13, PLD 2019 SC 504",
+          "rawOutputSnippet": "Based on the judgment **Malik Muhammad Anwar VS Chand Bibi (deceased) (2025 MLD 1294)**, the court cited several precedents to support its findings on inheritance, fraud, and revisional jurisdiction.\n\nThe cited precedents are categorized as follows:\n\n### 1. Pakistani Precedents (Binding/Authoritative)\nThe court relied on these cases regarding the burden of proof in inheritance, the validity of registered deeds, and the scope of Section 115 CPC:\n\n* **Bashir Ahmed through Legal Representative and "
+        }
+      ]
+    },
+    {
+      "id": 409,
+      "userEmail": "aksharik98@gmail.com",
+      "createdAt": "2026-06-17T16:39:16.062Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "List the cited precedents",
+      "responseTimeMs": 5101,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"120\" in \"Limitation Act\"",
+          "rawOutputSnippet": "Based on the judgment of the Sindh High Court in **Shahid and another vs Mst. Zainab and others (2024 YLR 1584)**, the following legal precedents and case law were cited by the parties and the Court to address the issues of *Benami* transactions and the limitation period:\n\n### 1. Precedents Cited by the Defendants\nThe Defendants (seeking rejection of the plaint) cited the following to argue that the suit was time-barred and lacked the necessary ingredients of a *Benami* claim:\n\n* **PLD 2010 Supr"
+        }
+      ]
+    },
+    {
+      "id": 414,
+      "userEmail": "gurujee5557@gmail.com",
+      "createdAt": "2026-06-17T18:56:57.175Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "How much time is required to execute supreme court decree",
+      "responseTimeMs": 10352,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"180\" in \"Limitation Act\"",
+          "rawOutputSnippet": "Knowledge of Law is Power — and I'm Your Power Source.\n\n### Legal Context\nThe execution of a decree passed by the Supreme Court of Pakistan involves a unique procedural intersection between the **Code of Civil Procedure, 1908 (CPC)** and the **Limitation Act, 1908**. Unlike ordinary civil decrees, a decree or order of the Supreme Court is executed through the court of first instance (the trial court) as if it were a decree passed by that court itself. The primary legal question involves determin"
+        }
+      ]
+    },
+    {
+      "id": 417,
+      "userEmail": "gurujee5557@gmail.com",
+      "createdAt": "2026-06-17T19:40:01.004Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "How much time can executing court take to execute the supreme court decree",
+      "responseTimeMs": 11155,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"183\" in \"Limitation Act)\"",
+          "rawOutputSnippet": "### Legal Context\nThe execution of a decree passed by the Supreme Court of Pakistan is governed by the **Code of Civil Procedure, 1908**, specifically **Order XXI**, read with **Section 38** (Court by which decree may be executed) and **Section 47** (Questions to be determined by the Court executing decree). While the Supreme Court passes the final judgment, the decree is typically sent down to the Court of first instance (the Trial Court) for execution as if it were a decree passed by that lowe"
+        }
+      ]
+    },
+    {
+      "id": 448,
+      "userEmail": "khankhantajikwww@gmail.com",
+      "createdAt": "2026-06-21T14:29:18.769Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "Any case if mentioned for the above discussion",
+      "responseTimeMs": 5716,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: 2011 SCMR 151, 2021 P Cr. L J 102",
+          "rawOutputSnippet": "The **Code of Criminal Procedure (Second Amendment) Ordinance, 2007** is a legislative document and does not itself contain citations of court cases. However, the provisions introduced by this Ordinance (specifically the amendments to **Section 497 Cr.P.C.**) have been extensively interpreted by the Superior Courts of Pakistan.\n\nTo understand how the \"Bail for Women\" provision is applied in practice, you may refer to the following landmark Pakistani case law:\n\n### 1. Mst. Nasreen v. The State (P"
+        }
+      ]
+    },
+    {
+      "id": 449,
+      "userEmail": "khankhantajikwww@gmail.com",
+      "createdAt": "2026-06-21T14:39:01.155Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "Any judgement in which a bail is granted for a woman even involved in serious offence just like corruption, terrorism,and murder",
+      "responseTimeMs": 6528,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: 2014 SCMR 386, 2014 SCMR 118, 2022 P Cr. L J 453",
+          "rawOutputSnippet": "Under the **Code of Criminal Procedure (Second Amendment) Ordinance, 2007**, women involved in \"Murder, Terrorism, and Financial Corruption\" are generally excluded from the automatic right to bail. However, the **third and fourth provisos** of the Ordinance allow for bail in these serious cases under two conditions:\n1. **Judicial Discretion:** If the court, \"having regard to the facts and circumstances of the case,\" directs her release.\n2. **Statutory Delay:** If she has been detained for **six "
+        }
+      ]
+    },
+    {
+      "id": 490,
+      "userEmail": "naseerahmad4241@gmail.com",
+      "createdAt": "2026-06-22T20:50:34.089Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "Can you make an examination in chief by reading an FIR for better unders of a case",
+      "responseTimeMs": 8477,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Defective HTML/markdown",
+          "diagnosticExplanation": "Unclosed code block (odd number of triple backticks).",
+          "rawOutputSnippet": "he witness's attention to that specific part of the FIR to impeach their credit.\n4. **Procedure:** To use the FIR, it must first be formally \"exhibited\" (marked as evidence) through the testimony of the informant or the police officer who recorded it.\n\nFor more comprehensive case law on the nuances of Section 154 CrPC and Article 140 QSO, I recommend searching our Judgment Search database (/judgment-search) with keywords like 'FIR substantive evidence' or 'Article 140 QSO contradiction'.\n\n```ref"
+        }
+      ]
+    },
+    {
+      "id": 497,
+      "userEmail": "ubaidullahbinyasir@gmail.com",
+      "createdAt": "2026-06-23T07:47:00.242Z",
+      "feature": "draft",
+      "model": "deepseek-chat",
+      "userQuery": "Role: Act as an expert appellate advocate specializing in Pakistani Civil Law, specifically the land and property laws of Punjab. \n\nObjective: Draft a highly persuasive, legally watertight Memorandum of Appeal to be filed before the District Judge, Lahore. The appeal challenges an order passed by Civil Judge 1st Class, Lahore (Mr. Faisal Mahmood) on 20.04.2026, which dismissed the objections of Defendant No. 1 against a Local Commission/Referee report in a suit for partition.\n\nCase Title: Muhammad Younas VS. Abdul Malik ETC. (Suit for Partition)\nCurrent Stage: Preliminary decree was passed on 24.09.2024. Local Commission submitted a report on 19.05.2025 claiming the property is \"easily partition-able.\" Defendant No. 1 filed objections, which were dismissed on 20.04.2026.\n\nThe Problem & Factual Reality:\nThe suit property is a very old, structurally integrated building. In reality, any physical division or construction of partition walls will compromise the load-bearing integrity of the ancient structure, rendering it highly hazardous for the inhabitants to live in. The Local Commission/Referee filed a biased report in favor of the plaintiff, completely disregarding the physical safety and structural constraints of the building.\n\nThe Trial Court’s Error of Law:\nThe Civil Judge dismissed the objections by rigidly relying on Section 9(5) of the Punjab Partition of Immovable Property Act, 2012, which states: \"The Court shall affirm the proposal of the referee... unless the Court is satisfied that the proposal is in contravention of any law.\" \nThe Judge ruled that because Defendant No. 1 only raised factual arguments (that the structure is old) and failed to prove which specific statutory law the proposal contravened, Section 10 (Internal Auction) is not triggered. The Judge held that physical partibility asserted by the referee is absolute.\n\nI need you to draft the \"Grounds of Appeal\" by converting our factual grievance (structural hazard) into direct \"contraventions of ",
+      "responseTimeMs": 0,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"ORDER XXI\" in \"CODE OF CIVIL PROCEDURE\"",
+          "rawOutputSnippet": "IN THE COURT OF DISTRICT JUDGE, LAHORE\n\nExecution Application No. ________________ of 2026\n\nMuhammad Younas\nSon of [Father's Name]\nResident of [Complete Address]\n\n.... Decree Holder\n\nVERSUS\n\n1. Abdul Malik\n   Son of [Father's Name]\n   Resident of [Complete Address]\n\n2. [Name of Defendant No. 2, if any]\n   Son of [Father's Name]\n   Resident of [Complete Address]\n\n.... Judgment Debtors\n\nAPPLICATION FOR EXECUTION OF DECREE UNDER ORDER XXI OF THE CODE OF CIVIL PROCEDURE, 1908\n\nINDEX OF DOCUMENTS\n\n| "
+        }
+      ]
+    },
+    {
+      "id": 498,
+      "userEmail": "ubaidullahbinyasir@gmail.com",
+      "createdAt": "2026-06-23T07:48:00.056Z",
+      "feature": "draft",
+      "model": "deepseek-v4-flash",
+      "userQuery": "Untitled Draft",
+      "responseTimeMs": 0,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"180\" in \"Limitation Act\", \"Order XXI Rule 10\" in \"CPC\", \"Order XXI Rule 11\" in \"CPC\"",
+          "rawOutputSnippet": "{\n \"edits\": [\n {\n \"id\": \"court-jurisdiction\",\n \"title\": \"Correct Court for Execution\",\n \"reason\": \"Under Order XXI Rule 10 CPC, execution must be filed before the court that passed the decree or its successor. The decree was passed by the Civil Judge 1st Class, Lahore, not the District Judge. Filing before the District Judge is procedurally incorrect and may be rejected.\",\n \"originalSnippet\": \"IN THE COURT OF DISTRICT JUDGE, LAHORE\",\n \"suggestedText\": \"IN THE COURT OF LEARNED CIVIL JUDGE 1ST CLA"
+        }
+      ]
+    },
+    {
+      "id": 531,
+      "userEmail": "pervezalikpt@gmail.com",
+      "createdAt": "2026-06-26T15:08:40.488Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "Any related judgement if student gives papers order of high court and pass again board issues diploma with restore date",
+      "responseTimeMs": 6780,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: PLD 2003 Lahore 734",
+          "rawOutputSnippet": "While the specific document provided (**2016 MLD 939**) deals with a student who had *already* passed and the Board tried to change the result, the legal logic used by Justice Shahid Karim supports the principle of **restoring the original timeline** to protect the student's career.\n\nIn Pakistani jurisprudence, when a student appears in an exam under a court order and passes, the following principles apply regarding the \"restoration\" of the date:\n\n### 1. Protection Against \"Educational Jeopardy\""
+        },
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"Order XXI\" in \"Code of Civil Procedure\"",
+          "rawOutputSnippet": "While the specific document provided (**2016 MLD 939**) deals with a student who had *already* passed and the Board tried to change the result, the legal logic used by Justice Shahid Karim supports the principle of **restoring the original timeline** to protect the student's career.\n\nIn Pakistani jurisprudence, when a student appears in an exam under a court order and passes, the following principles apply regarding the \"restoration\" of the date:\n\n### 1. Protection Against \"Educational Jeopardy\""
+        }
+      ]
+    },
+    {
+      "id": 564,
+      "userEmail": "akhundzada.95@gmail.com",
+      "createdAt": "2026-07-01T12:43:18.946Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "7/11 accepted on the basis of judicial record",
+      "responseTimeMs": 11777,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Defective HTML/markdown",
+          "diagnosticExplanation": "Unclosed code block (odd number of triple backticks). Unclosed references code block.",
+          "rawOutputSnippet": "e.\" Therefore, your primary remedy is to file a **Regular First Appeal (RFA)** in the higher court, not a simple revision.\n4. **Limitation:** You generally have 30 to 90 days (depending on the court) to file an appeal. Do not delay, as the \"judicial record\" is now working against you.\n\n```references\n{\"laws\":[{\"name\":\"Code of Civil Procedure, 1908\",\"section\":\"Order VII Rule 11\",\"description\":\"Provisions for the rejection of a plaint\"},{\"name\":\"Limitation Act, 1908\",\"section\":\"General\",\"descriptio"
+        }
+      ]
+    },
+    {
+      "id": 567,
+      "userEmail": "chotadonbad@gmail.com",
+      "createdAt": "2026-07-03T07:02:43.914Z",
+      "feature": "summarize",
+      "model": "deepseek-v4-flash",
+      "userQuery": "GOVERNMENT OF PUNJAB and others vs ISHTIAQ AHMAD BUTT and others",
+      "responseTimeMs": 0,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"151\" in \"First Schedule of the Limitation Act\"",
+          "rawOutputSnippet": "### Case Overview\n- **Citation**: 2017 PLJ 623\n- **Court**: Lahore High Court\n- **Bench Composition**: Ayesha A. Malik and Jawad Hassan\n- **Date**: 2017-02-01\n- **Case Number**: I.C.A. No. 184 of 2013 (along with I.C.A. No. 185 of 2013 and I.C.A. No. 186 of 2013)\n- **Result**: Appeal dismissed\n\n### Facts of the Case\n- The judgment arises from an impugned judgment dated 23.10.2012 passed by a learned Single Judge in W.P. No. 28854/2011, W.P. No. 27160 of 2011, and W.P. No. 25019/2011, whereby the"
+        }
+      ]
+    },
+    {
+      "id": 579,
+      "userEmail": "justinncrimson@wshu.net",
+      "createdAt": "2026-07-04T17:41:52.501Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "hi",
+      "responseTimeMs": 1130,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Defective HTML/markdown",
+          "diagnosticExplanation": "Unclosed code block (odd number of triple backticks). Unclosed references code block.",
+          "rawOutputSnippet": "ith Order 39 Rule 1 & 2 CPC and Order XXXVIII Rule 5 and Section 151 of CPC filed by the plaintiff. 2. The relevant facts for disposal of listed application are that the Plaintiff is a registered company under the laws of the People's Republic of China and is principally engaged in technology integration, engineering design, equipment and product manufacturing and technical services in the metallurgical i\",\"court\":\"Sindh High Court\",\"summary\":\"\"},{\"citation\":\"2024 SHC 44\",\"title\":\"NEW METALLURGY"
+        }
+      ]
+    },
+    {
+      "id": 645,
+      "userEmail": "sabirbol98@gmail.com",
+      "createdAt": "2026-07-06T07:18:53.543Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "summary of this judgement",
+      "responseTimeMs": 5725,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Statutory Mismatch",
+          "diagnosticExplanation": "AI cited incorrect sections or non-existent laws: \"retary\" in \"Assembly\"",
+          "rawOutputSnippet": "Here is a concise summary of the judgment **2017 P Cr. L J 1715**, presided over by Mr. Justice Muhammad Kamran Khan Mulakhail at the Balochistan High Court.\n\n### **Case Overview**\n* **Case Title:** Muhammad Azam Davi vs. The State\n* **Court:** Balochistan High Court\n* **Offenses Charged:** Sections 10(a) [Cyber Terrorism], 16(2), 20(1), and 24(c)(d) of the **Prevention of Electronic Crimes Act (PECA), 2016**.\n* **Result:** Bail Granted.\n\n### **Factual Background**\nThe Secretary of the Balochist"
+        }
+      ]
+    },
+    {
+      "id": 650,
+      "userEmail": "alinasir6161@gmail.com",
+      "createdAt": "2026-07-06T13:17:35.056Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "DACC Power Generation Company (Private) Limited (2013)",
+      "responseTimeMs": 6593,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: 2013 CLD 1354",
+          "rawOutputSnippet": "While the document you provided is specifically about **Control Risk (Pvt.) Ltd**, the case of **DACC Power Generation Company (Private) Limited vs. Registrar of Companies (reported as 2013 CLD 1354)** is a significant precedent often cited alongside it regarding the SECP’s power to wind up companies.\n\nHere is the legal analysis of the **DACC Power Generation (2013)** case and how it relates to the principles of winding up in Pakistan:\n\n### **1. Case Context**\nIn this case, DACC Power Generation"
+        }
+      ]
+    },
+    {
+      "id": 651,
+      "userEmail": "alinasir6161@gmail.com",
+      "createdAt": "2026-07-06T13:19:03.852Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "can you give court order regarding the dacc case",
+      "responseTimeMs": 7727,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: 2013 CLD 1354",
+          "rawOutputSnippet": "The case of **DACC Power Generation Company (Pvt) Ltd. vs. Registrar of Companies** (specifically **2013 CLD 1354**, often involving related litigation in the Lahore High Court and the SECP Appellate Bench) centers on the Registrar's power to initiate winding up when a company fails to function or comply with statutory mandates.\n\nSince this case is not the primary document provided, I will provide a professional legal summary of the court's findings and the resulting order based on Pakistani cor"
+        }
+      ]
+    },
+    {
+      "id": 652,
+      "userEmail": "alinasir6161@gmail.com",
+      "createdAt": "2026-07-06T13:20:08.568Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "let me know where i can find the official document",
+      "responseTimeMs": 6210,
+      "qualityScore": 3,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: 2013 CLD 1354",
+          "rawOutputSnippet": "To find the official documents for these judgments, you must look into the **Law Reports of Pakistan**. In our legal system, court judgments are officially published in specific journals, and the \"citations\" (the numbers like 2019 CLD 294) act as the address for these documents.\n\nHere is where you can find them:\n\n### **1. Online Legal Databases (Subscription Based)**\nMost Pakistani lawyers and law firms use these digital libraries to download the official PDF scans of judgments:\n* **PakistanLawS"
+        }
+      ]
+    },
+    {
+      "id": 653,
+      "userEmail": "alinasir6161@gmail.com",
+      "createdAt": "2026-07-06T13:22:37.500Z",
+      "feature": "chat",
+      "model": "google/gemini-3-flash-preview",
+      "userQuery": "give complete detail about dacc case only so its easier for me to find it",
+      "responseTimeMs": 6761,
+      "qualityScore": 5,
+      "failures": [
+        {
+          "category": "Citation Hallucination",
+          "diagnosticExplanation": "AI hallucinated case citations that do not exist in the database: 2013 CLD 1354, PLJ 2013 Lahore 670",
+          "rawOutputSnippet": "To help you locate and identify the **DACC Power Generation** case accurately, here are the complete technical and legal details. In Pakistani law reports, this case is a primary authority on the \"Just and Equitable\" grounds for winding up a company.\n\n### **1. Official Case Citations**\nYou will find the full text of the judgment in these specific law reports:\n* **Primary Citation:2013 CLD 1354** (Corporate Law Decisions)\n* **Secondary Citation:PLJ 2013 Lahore 670** (Punjab Law Journal)\n\n### **2."
+        }
+      ]
+    }
+  ]
+}

@@ -196,7 +196,8 @@ const PAKISTAN_LAW_ONLY_POLICY = `PAKISTAN LAW ONLY POLICY (ABSOLUTE):
 - Treat these as Pakistani citation/report families: PLD, SCMR, YLR, MLD, CLC, CLD, PLC (Pakistan Labour Cases), PLJ, PCRLJ/P Cr. L J, PTD, NLR, and neutral citations (LHC/IHC/SHC/PHC/BHC/AJKHC).
 - IDENTITY/TRUTHFULNESS: Never claim a specific underlying AI vendor, model family, or architecture (for example “OpenAI GPT-4”) unless the exact provider/model is explicitly supplied by runtime metadata in this session.
 - If asked “which model are you built on?”, respond neutrally: “I am Al Wakeelo. Model routing can vary by mode and deployment configuration.”
-- STRICT CITATION RULE: If a user asks about a specific case or judgment that is not retrieved from the local database context (the RAG context/provided documents), you must explicitly state that the case is not in your database. You must NEVER invent, guess, or hallucinate volume/page numbers (such as CLD, SCMR, PLD citations) under any circumstances. If you do not have the verified text of the case in your current context, declare that the case is not available in the database and decline to provide fictional details or page numbers.`;
+- STRICT CITATION RULE: If a user asks about a specific case or judgment that is not retrieved from the local database context (the RAG context/provided documents), you must explicitly state that the case is not in your database. You must NEVER invent, guess, or hallucinate volume/page numbers (such as CLD, SCMR, PLD citations) under any circumstances. If you do not have the verified text of the case in your current context, declare that the case is not available in the database and decline to provide fictional details or page numbers.
+- STRICT STATUTE RULE: You must only cite sections, articles, or orders of statutes that actually exist in Pakistani law. You must NEVER invent, guess, or hallucinate section numbers, schedule articles, or rules (e.g., do not cite "Section 180" of the Limitation Act, since the Limitation Act 1908 has only 32 sections and the rest are Articles in the First Schedule; cite it correctly as "Article 180 of the First Schedule of the Limitation Act, 1908". Do not cite "Order XXI" in a wrong context). If you are unsure of the exact statutory provision, state that you do not have the verified section verified in the database instead of guessing.`;
 const PUBLIC_CHAT_SYSTEM_PROMPT = `You are the AI legal intake assistant for AlWakeelo Law Chamber.
 
 Your responsibilities are:
@@ -369,6 +370,49 @@ function shouldAutoSyncCaseLawUploads(): boolean {
   return false;
 }
 
+function closeUnclosedMarkdownAndHtml(text: string): string {
+  if (!text) return "";
+  let result = text;
+
+  // 1. Close unclosed triple backticks (markdown code blocks)
+  const backtickCount = (result.match(/```/g) || []).length;
+  if (backtickCount % 2 !== 0) {
+    const lastOpenIndex = result.lastIndexOf("```");
+    const afterLastOpen = result.slice(lastOpenIndex);
+    if (afterLastOpen.includes("json")) {
+      const braceDiff = (afterLastOpen.match(/\{/g) || []).length - (afterLastOpen.match(/\}/g) || []).length;
+      if (braceDiff > 0) {
+        result += "\n" + "}".repeat(braceDiff);
+      }
+    }
+    result += "\n```";
+  }
+
+  // 2. Close other open inline markdown tags
+  const boldCount = (result.match(/\*\*/g) || []).length;
+  if (boldCount % 2 !== 0) {
+    result += "**";
+  }
+  const inlineCodeCount = (result.match(/(?<!`)`(?!`)/g) || []).length;
+  if (inlineCodeCount % 2 !== 0) {
+    result += "`";
+  }
+
+  // 3. Close open HTML tags
+  const tags = ["b", "i", "u", "strong", "em", "p", "div", "span", "code", "pre"];
+  for (const tag of tags) {
+    const openTagRegex = new RegExp(`<${tag}\\b[^>]*>`, "gi");
+    const closeTagRegex = new RegExp(`</${tag}>`, "gi");
+    const openCount = (result.match(openTagRegex) || []).length;
+    const closeCount = (result.match(closeTagRegex) || []).length;
+    if (openCount > closeCount) {
+      result += `</${tag}>`.repeat(openCount - closeCount);
+    }
+  }
+
+  return result;
+}
+
 function enforcePakistanLawOnlyOutput(text: string): string {
   if (!text) return "";
   const scoped = String(text)
@@ -381,8 +425,10 @@ function enforcePakistanLawOnlyOutput(text: string): string {
     .replace(/\bIndian Evidence Act(?:,\s*1872)?\b/gi, "Qanun-e-Shahadat Order, 1984")
     .replace(/\bSupreme Court of India\b/gi, "Supreme Court of Pakistan")
     .replace(/\bIndian High Court\b/gi, "Pakistani High Court")
+    .replace(/\bsection\s+(3[3-9]|[4-9]\d|1\d\d)\s+of\s+(?:the\s+)?Limitation\s+Act\b/gi, "Article $1 of the First Schedule of the Limitation Act");
     // SCC and AIR citations allowed — not removed
-  return stripCitationPlaceholderArtifacts(scoped);
+  const finalized = stripCitationPlaceholderArtifacts(scoped);
+  return closeUnclosedMarkdownAndHtml(finalized);
 }
 
 function buildApexModeSystemPrompt(
