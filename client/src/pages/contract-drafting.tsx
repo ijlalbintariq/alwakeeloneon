@@ -61,6 +61,7 @@ import {
 } from "docx";
 import type { Document as StoredDocument } from "@shared/schema";
 import { plainTextToTiptapHTML, isHTMLContent } from "@/lib/plain-to-tiptap";
+import { CONTRACT_TEMPLATES_MAP } from "@/lib/templates-data";
 import { StyleMemoryPanel } from "@/components/style-memory-panel";
 import { generateLegalPDF } from "@/lib/generate-legal-pdf";
 import { useDocumentHead } from "@/hooks/use-document-head";
@@ -474,6 +475,27 @@ const CLAUSE_LIBRARY: ClauseLibraryItem[] = [
     subtitle: "Transfer of receivable rights and notices.",
     prompt: "Draft an assignment of receivables clause with debtor notice, representations, and recourse terms.",
   },
+  {
+    id: "pakistan-tax-withholding",
+    title: "Tax Withholding & Sales Tax Compliance",
+    category: "Corporate & Commercial Clauses",
+    subtitle: "Section 153 ITO 2001 and provincial sales tax (PRA/SRB).",
+    prompt: "Draft a tax withholding and sales tax compliance clause specifying deduction of income tax at source under Section 153 of the Income Tax Ordinance, 2001 and invoicing with provincial sales tax on services (PRA, SRB, KPRA, or BRA) at standard rates, including exchange of active tax filer status certifications.",
+  },
+  {
+    id: "pakistan-specific-relief-injunction",
+    title: "Specific Injunctions (Specific Relief Act 1877)",
+    category: "Contractual Clauses",
+    subtitle: "Equitable relief under Sections 54 and 55.",
+    prompt: "Draft an equitable and injunctive relief clause stating that monetary damages would be inadequate in the event of a breach, and that the disclosing party shall be entitled to seek temporary and permanent injunctions and specific performance under Sections 54 and 55 of the Specific Relief Act, 1877 from a court of competent jurisdiction.",
+  },
+  {
+    id: "pakistan-witnesses-execution",
+    title: "Execution Witness Block (Qanun-e-Shahadat 1984)",
+    category: "Contractual Clauses",
+    subtitle: "Section 17 QSO witness block with CNICs.",
+    prompt: "Draft a standard Pakistani execution witness block requiring the signature, name, address, and CNIC number of two (2) male witnesses (or one male and two female witnesses) in accordance with Section 17 of the Qanun-e-Shahadat Order, 1984.",
+  },
 ];
 
 const MANDATORY_CLAUSES_BY_TYPE: Record<string, Array<{ id: string; label: string; keywords: string[]; prompt: string }>> = {
@@ -535,6 +557,12 @@ function buildGenerationPrompt(form: ContractFormState, selectedClauses?: Array<
     clauseInstruction = `\n\nINCORPORATE THESE SPECIFIC CLAUSES (Draft them in detail):\n${selectedClauses.map((c, i) => `${i + 1}. [${c.title}]: ${c.prompt}`).join("\n")}`;
   }
 
+  // Get master template from mapping if it exists
+  const masterTemplate = form.contractType !== "Other" ? CONTRACT_TEMPLATES_MAP[form.contractType] : "";
+  const templateReferenceInstruction = masterTemplate 
+    ? `\n\nUSE THIS MASTER TEMPLATE AS YOUR FOUNDATION AND STRUCTURAL GUIDELINE (Preserve its formatting, headings, statutory citations of Pakistan, and witnesses execution structure):\n${masterTemplate}`
+    : "";
+
   return `You are drafting a formal Pakistani legal contract.
 
 Contract Type: ${actualType}
@@ -544,7 +572,7 @@ Second Party: ${form.secondParty || "[Not provided]"}
 Effective Date: ${form.effectiveDate || "[Not provided]"}
 Termination Notice: ${form.terminationNotice || "[Not provided]"}
 Jurisdiction: ${form.jurisdiction || "[Not provided]"}
-Specific Obligations: ${form.obligations || "[Not provided]"}${clauseInstruction}
+Specific Obligations: ${form.obligations || "[Not provided]"}${clauseInstruction}${templateReferenceInstruction}
 
 Instructions:
 1. Draft a complete, professional contract for Pakistani legal practice.
@@ -1681,25 +1709,42 @@ export default function ContractDraftingPage() {
                     </div>
                     <div>
                       <label className="block text-[10px] font-medium text-muted-foreground mb-0.5">Contract Type</label>
-                      <div className="flex gap-2">
-                        <select
-                          value={form.contractType}
-                          onChange={(e) => onFieldChange("contractType", e.target.value)}
-                          className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none animate-fade-in"
-                        >
-                          {CONTRACT_TYPES.map((type) => (
-                            <option key={type} value={type} className="bg-background">
-                              {type}
-                            </option>
-                          ))}
-                        </select>
-                        {form.contractType === "Other" && (
-                          <Input
-                            value={form.customContractType || ""}
-                            onChange={(e) => onFieldChange("customContractType", e.target.value)}
-                            className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
-                            placeholder="e.g. Licensing Agreement"
-                          />
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex gap-2">
+                          <select
+                            value={form.contractType}
+                            onChange={(e) => onFieldChange("contractType", e.target.value)}
+                            className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary outline-none animate-fade-in"
+                          >
+                            {CONTRACT_TYPES.map((type) => (
+                              <option key={type} value={type} className="bg-background">
+                                {type}
+                              </option>
+                            ))}
+                          </select>
+                          {form.contractType === "Other" && (
+                            <Input
+                              value={form.customContractType || ""}
+                              onChange={(e) => onFieldChange("customContractType", e.target.value)}
+                              className="w-full h-8 bg-card/50 border border-border rounded-md px-2.5 text-xs text-foreground focus:border-primary focus-visible:ring-primary/30 placeholder:text-muted-foreground"
+                              placeholder="e.g. Licensing Agreement"
+                            />
+                          )}
+                        </div>
+                        {form.contractType !== "Other" && CONTRACT_TEMPLATES_MAP[form.contractType] && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to load the standard template for ${form.contractType}? Unsaved changes in the editor will be overwritten.`)) {
+                                setEditorContent(CONTRACT_TEMPLATES_MAP[form.contractType]);
+                                toast({ title: "Template Loaded", description: `${form.contractType} standard template has been loaded.` });
+                              }
+                            }}
+                            className="w-full h-7 border border-primary/45 bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-bold rounded transition-colors flex items-center justify-center gap-1 cursor-pointer select-none"
+                          >
+                            <FileText size={11} />
+                            Load Master Template
+                          </button>
                         )}
                       </div>
                     </div>
