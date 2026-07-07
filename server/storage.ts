@@ -505,6 +505,7 @@ export interface IStorage {
   getSearchHistory(userId: string): Promise<SearchHistory[]>;
 
   searchStatutes(query: string, limit?: number): Promise<Statute[]>;
+  getStatutesByTitle(shortTitle: string, limit?: number): Promise<Statute[]>;
   getStatuteByTitleAndSection(shortTitle: string, section: string): Promise<Statute | undefined>;
   getAllStatutes(): Promise<Statute[]>;
 
@@ -1462,7 +1463,9 @@ export class DatabaseStorage implements IStorage {
         .limit(limit);
     }
 
-    // Construct AND across fields for each token
+    // Use OR across tokens with relevance ranking (AND was too strict —
+    // complex multi-topic queries returned 0 results because no single
+    // statute matched ALL tokens simultaneously).
     const conditions = tokens.map((token) => {
       const pattern = `%${token}%`;
       return or(
@@ -1473,9 +1476,33 @@ export class DatabaseStorage implements IStorage {
       );
     });
 
+    // Require at least one token match (OR), then fetch extra and rank by match count
+    const fetchLimit = Math.min(limit * 5, 200);
+    const rows = await db.select()
+      .from(statutes)
+      .where(or(...conditions))
+      .limit(fetchLimit);
+
+    // Rank by number of matching tokens — statutes matching more tokens are more relevant
+    const ranked = rows.map((row: Statute) => {
+      const combined = `${row.shortTitle} ${row.section} ${row.description} ${row.punishment}`.toLowerCase();
+      let matchCount = 0;
+      for (const token of tokens) {
+        if (combined.includes(token)) matchCount++;
+      }
+      return { row, matchCount };
+    });
+
+    ranked.sort((a: { matchCount: number }, b: { matchCount: number }) => b.matchCount - a.matchCount);
+    return ranked.slice(0, limit).map((r: { row: Statute }) => r.row);
+  }
+
+  async getStatutesByTitle(shortTitle: string, limit: number = 20): Promise<Statute[]> {
+    const safeTitle = String(shortTitle || "").trim();
+    if (!safeTitle) return [];
     return await db.select()
       .from(statutes)
-      .where(and(...conditions))
+      .where(ilike(statutes.shortTitle, safeTitle))
       .limit(limit);
   }
 

@@ -218,7 +218,7 @@ export const LEGAL_TOPICS: LegalTopic[] = [
     id: "contract",
     label: "Contract / Breach / Specific Performance",
     primary: ["contract", "agreement", "breach", "specific performance"],
-    synonyms: ["consideration", "offer and acceptance", "contract act", "damages", "indemnity", "guarantee", "void agreement", "voidable", "specific relief", "contractual obligation", "breach of contract", "arbitration clause", "force majeure", "liquidated damages", "stamp paper", "notarized", "privity"],
+    synonyms: ["consideration", "offer and acceptance", "contract act", "damages", "indemnity", "guarantee", "void agreement", "voidable", "specific relief", "contractual obligation", "breach of contract", "arbitration clause", "force majeure", "liquidated damages", "stamp paper", "notarized", "privity", "contract act 1872", "specific relief act 1877", "section 73", "section 74", "section 12", "section 21", "section 22", "refund", "termination", "rescission", "restitution", "construction contract", "builder", "contractor"],
     minRelevanceScore: 22,
   },
   {
@@ -232,7 +232,7 @@ export const LEGAL_TOPICS: LegalTopic[] = [
     id: "property",
     label: "Property / Inheritance / Land",
     primary: ["property", "inheritance", "succession", "mutation", "trespass", "ownership", "possession", "land"],
-    synonyms: ["transfer of property", "sale deed", "gift deed", "waqf", "easement", "partition", "co-sharer", "title dispute", "adverse possession", "tenancy", "revenue record", "pre-emption", "shuf'a", "benami", "khasra", "fard", "registry", "allotment", "plot", "evacuee property", "cantonment"],
+    synonyms: ["transfer of property", "sale deed", "gift deed", "waqf", "easement", "partition", "co-sharer", "title dispute", "adverse possession", "tenancy", "revenue record", "pre-emption", "shuf'a", "benami", "khasra", "fard", "registry", "allotment", "plot", "evacuee property", "cantonment", "punjab land revenue act", "land revenue", "specific relief act", "injunction", "transfer of property act", "registration act", "joint khata", "undivided", "khewat", "khatauni", "patwari", "tehsildar", "revenue officer", "revenue court"],
     minRelevanceScore: 18,
   },
   {
@@ -608,7 +608,7 @@ export const LEGAL_TOPICS: LegalTopic[] = [
     id: "partition-suit",
     label: "Partition Suit / Division of Property",
     primary: ["partition of property", "partition suit", "division of joint property", "co-sharer"],
-    synonyms: ["co-owner", "partition decree", "metes and bounds", "property division", "share allotment", "partition by court", "right to partition", "joint property division", "partition proceedings"],
+    synonyms: ["co-owner", "partition decree", "metes and bounds", "property division", "share allotment", "partition by court", "right to partition", "joint property division", "partition proceedings", "punjab land revenue act", "section 135", "section 141", "section 142", "section 150", "revenue officer", "joint khata", "undivided estate", "agricultural land partition", "specific relief act", "injunction", "restraining order", "permanent injunction", "temporary injunction"],
     minRelevanceScore: 22,
   },
   {

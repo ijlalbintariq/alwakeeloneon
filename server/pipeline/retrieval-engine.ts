@@ -524,14 +524,12 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
   // Direct section lookup when user explicitly typed e.g. "PPC 392" or "Article 25 Constitution"
   if (intent.statuteRef) {
     const { fullName, sectionOrArticle } = intent.statuteRef;
-    // Search by full statute name + section number for precise token matching in database
     const directRows = await withTimeout(
       storage.searchStatutes(`${fullName} ${sectionOrArticle}`, limit * 3).catch(() => []),
       STATUTE_TIMEOUT_MS,
       [],
     ) as any[];
 
-    // Filter to matching section by normalizing strings and stripping prefixes
     const cleanUserSection = cleanSection(sectionOrArticle);
     const matched = directRows.filter((r: any) => {
       const dbSecClean = cleanSection(String(r.section || ""));
@@ -548,7 +546,6 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
         statuteDocumentTitle: fullName,
       } as RetrievedStatute));
     }
-    // Fallback: return all rows for this statute (top sections by relevance)
     const fallback = directRows.slice(0, limit).map((s: any) => ({
       shortTitle: String(s.shortTitle || ""),
       section: String(s.section || ""),
@@ -560,7 +557,131 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
     if (fallback.length > 0) return fallback;
   }
 
-  // Use intent.normalized query for general statute search to avoid token AND failure on synonyms
+  // ── Topic-to-Statute-Title Mapping ──────────────────────────────────────
+  // Instead of broad ILIKE keyword search across 88K+ statutes (which returns
+  // irrelevant noise), map detected topics to the exact statute shortTitles
+  // present in the database, then fetch sections from those specific statutes.
+  const TOPIC_STATUTE_MAP: Record<string, string[]> = {
+    "contract": ["Contract Act 1872", "Specific Relief Act 1877", "Specific Relief Act, 1877"],
+    "property": ["Transfer of Property Act 1882", "Transfer of Property Act, 1882", "Registration Act 1908", "West Pakistan Land Revenue Act 1967", "Specific Relief Act 1877", "Specific Relief Act, 1877"],
+    "partition-suit": ["The Punjab Partition of Immovable Property Act 2012", "West Pakistan Land Revenue Act 1967", "West Pakistan Land Revenue Rules 1968", "Specific Relief Act 1877", "Specific Relief Act, 1877", "Transfer of Property Act 1882"],
+    "murder": ["Pakistan Penal Code 1860", "Pakistan Penal Code, 1860", "Code of Criminal Procedure 1898", "Code of Criminal Procedure, 1898"],
+    "robbery": ["Pakistan Penal Code 1860", "Pakistan Penal Code, 1860"],
+    "bail": ["Code of Criminal Procedure 1898", "Code of Criminal Procedure, 1898"],
+    "family": ["Muslim Family Laws Ordinance 1961", "Family Courts Act 1964", "Guardians and Wards Act 1890", "Dissolution of Muslim Marriages Act 1939"],
+    "fraud": ["Pakistan Penal Code 1860", "Pakistan Penal Code, 1860"],
+    "constitutional": ["Constitution of Pakistan 1973", "Constitution of Pakistan, 1973"],
+    "cybercrime": ["Prevention of Electronic Crimes Act 2016"],
+    "narcotics": ["Control of Narcotic Substances Act 1997"],
+    "terrorism": ["Anti-Terrorism Act 1997"],
+    "labour": ["Industrial Relations Act 2012"],
+    "company-corporate": ["Companies Act 2017"],
+    "tax": ["Income Tax Ordinance 2001", "Sales Tax Act 1990"],
+    "tort-negligence": ["Specific Relief Act 1877", "Specific Relief Act, 1877", "Contract Act 1872"],
+    "easement": ["Easements Act 1882", "Easement Act 1882"],
+    "adverse-possession": ["Limitation Act 1908", "Transfer of Property Act 1882"],
+    "cancellation-documents": ["Specific Relief Act 1877", "Specific Relief Act, 1877", "Transfer of Property Act 1882"],
+    "islamic-inheritance": ["Muslim Family Laws Ordinance 1961", "West Pakistan Muslim Personal Law Shariat Application Act 1962"],
+    "pre-emption": ["Punjab Pre-Emption Act 1991", "West Pakistan Pre-Emption Act 1964"],
+  };
+
+  // Collect all relevant statute titles from detected topics
+  const targetTitles = new Set<string>();
+  for (const topic of intent.topics) {
+    const titles = TOPIC_STATUTE_MAP[topic.id];
+    if (titles) {
+      for (const t of titles) targetTitles.add(t);
+    }
+  }
+
+  // Also check for statute names mentioned directly in the query text
+  const queryLower = intent.normalized;
+  const STATUTE_NAME_PATTERNS: [RegExp, string[]][] = [
+    [/contract\s*act/i, ["Contract Act 1872"]],
+    [/specific\s*relief/i, ["Specific Relief Act 1877", "Specific Relief Act, 1877"]],
+    [/transfer\s*of\s*property/i, ["Transfer of Property Act 1882", "Transfer of Property Act, 1882"]],
+    [/land\s*revenue/i, ["West Pakistan Land Revenue Act 1967", "West Pakistan Land Revenue Rules 1968"]],
+    [/partition/i, ["The Punjab Partition of Immovable Property Act 2012"]],
+    [/penal\s*code|ppc/i, ["Pakistan Penal Code 1860", "Pakistan Penal Code, 1860"]],
+    [/criminal\s*procedure|crpc/i, ["Code of Criminal Procedure 1898", "Code of Criminal Procedure, 1898"]],
+    [/civil\s*procedure|cpc/i, ["Code of Civil Procedure 1908", "Code of Civil Procedure, 1908"]],
+    [/constitution/i, ["Constitution of Pakistan 1973", "Constitution of Pakistan, 1973"]],
+    [/family\s*law|family\s*court/i, ["Family Courts Act 1964", "Muslim Family Laws Ordinance 1961"]],
+    [/registration\s*act/i, ["Registration Act 1908"]],
+    [/qanun.e.shahadat|evidence/i, ["Qanun-e-Shahadat Order 1984"]],
+  ];
+  for (const [pattern, titles] of STATUTE_NAME_PATTERNS) {
+    if (pattern.test(queryLower)) {
+      for (const t of titles) targetTitles.add(t);
+    }
+  }
+
+  if (targetTitles.size > 0) {
+    // Fetch sections from targeted statutes using exact title match
+    const allResults: RetrievedStatute[] = [];
+    const perStatuteLimit = Math.max(3, Math.ceil(limit / targetTitles.size));
+
+    const promises = Array.from(targetTitles).map(async (title) => {
+      try {
+        const rows = await withTimeout(
+          storage.getStatutesByTitle(title, perStatuteLimit * 3).catch(() => []),
+          STATUTE_TIMEOUT_MS,
+          [],
+        ) as any[];
+
+        // Score by query relevance within this statute
+        const queryWords = intent.normalized.split(/\s+/).filter((w) => w.length >= 3);
+        const scored = rows.map((s: any) => {
+          const combined = norm(`${s.shortTitle || ""} ${s.section || ""} ${s.description || ""}`);
+          let score = 0;
+          for (const word of queryWords) {
+            if (combined.includes(word)) score += 10;
+          }
+          for (const topic of intent.topics) {
+            for (const term of [...topic.primary, ...topic.synonyms.slice(0, 6)]) {
+              if (combined.includes(term)) score += 8;
+            }
+          }
+          return {
+            shortTitle: String(s.shortTitle || ""),
+            section: String(s.section || ""),
+            description: String(s.description || ""),
+            punishment: String(s.punishment || ""),
+            relevanceScore: Math.max(score, 5), // Floor at 5 — these are from targeted statutes
+            statuteDocumentTitle: title,
+          } as RetrievedStatute;
+        });
+
+        return scored
+          .sort((a, b) => b.relevanceScore - a.relevanceScore)
+          .slice(0, perStatuteLimit);
+      } catch {
+        return [] as RetrievedStatute[];
+      }
+    });
+
+    const results = await Promise.all(promises);
+    for (const batch of results) {
+      allResults.push(...batch);
+    }
+
+    if (allResults.length > 0) {
+      // Sort all results by relevance and deduplicate
+      allResults.sort((a, b) => b.relevanceScore - a.relevanceScore);
+      const seen = new Set<string>();
+      const deduped: RetrievedStatute[] = [];
+      for (const s of allResults) {
+        const key = `${s.shortTitle}::${s.section}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(s);
+        if (deduped.length >= limit) break;
+      }
+      return deduped;
+    }
+  }
+
+  // Fallback: keyword search (only if topic mapping found nothing)
   const query = intent.normalized;
   const rawRows = await withTimeout(
     storage.searchStatutes(query, limit * 2).catch(() => []),
@@ -568,9 +689,7 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
     [],
   );
 
-  // Score statutes against the expanded query
   const queryWords = intent.normalized.split(/\s+/).filter((w) => w.length >= 3);
-
   const scored = (rawRows as any[]).map((s: any) => {
     const combined = norm(`${s.shortTitle || ""} ${s.section || ""} ${s.description || ""}`);
     let score = 0;
@@ -591,9 +710,8 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
     } as RetrievedStatute;
   });
 
-  // Only return statutes with at least minimal relevance
   return scored
-    .filter((s) => s.relevanceScore >= 8)
+    .filter((s) => s.relevanceScore >= 2)
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
     .slice(0, limit);
 }
@@ -654,7 +772,7 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
 } = {}): Promise<RetrievalResult> {
   const t0 = Date.now();
   const caseLawLimit = limits.caseLaw ?? 10;
-  const statuteLimit = limits.statutes ?? 4;
+  const statuteLimit = limits.statutes ?? 8;
   const adminDocLimit = limits.adminDocs ?? 3;
 
   const [caseLawResults, statuteResults, adminDocResults] = await Promise.all([
