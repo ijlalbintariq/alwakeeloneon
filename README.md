@@ -5,8 +5,8 @@
 <h1 align="center">Alwakeelo AI</h1>
 
 <p align="center">
-  <strong>Pakistan's AI-Powered Legal Workspace</strong><br/>
-  Search 600,000+ judgments · Draft petitions & contracts · AI legal chat grounded in real case law
+  <strong>Pakistan's First Open-Source Legal AI Platform</strong><br/>
+  Search 600,000+ judgments · AI legal chat · Draft petitions & contracts · Case management
 </p>
 
 <p align="center">
@@ -17,11 +17,12 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" alt="React 18" />
+  <img src="https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=white" alt="React 18" />
   <img src="https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white" alt="Express 5" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white" alt="Vite 7" />
+  <img src="https://img.shields.io/badge/Drizzle_ORM-0.45-C5F74F?logo=drizzle&logoColor=black" alt="Drizzle ORM" />
   <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License" />
 </p>
 
@@ -29,214 +30,228 @@
 
 ## What is Alwakeelo AI?
 
-Alwakeelo AI is a comprehensive legal workspace built for Pakistani advocates, law chambers, and legal professionals. It combines AI-powered research with Pakistan's largest digital judgment database to accelerate legal workflows from hours to minutes.
+Alwakeelo AI is a full-stack legal workspace built for Pakistani advocates, law chambers, and legal professionals. It combines retrieval-augmented generation (RAG) with Pakistan's largest digital judgment database to deliver AI responses grounded in verified case law — no hallucinations, no made-up citations.
 
-### The Problem
-
-Pakistan has 600,000+ court judgments scattered across expensive, outdated databases. A single PLD subscription costs PKR 50,000+/year. Most lawyers research case law by physically visiting court libraries. The average time to find a relevant judgment: **2-4 hours**.
-
-### The Solution
-
-An AI-native legal workspace where every AI response is grounded in verified judgments and statutes — no hallucinations, no made-up citations.
+> *"Research case law, draft petitions and contracts, and generate client-ready legal documents in minutes with Alwakeelo AI, fine-tuned for Pakistani legal practice."*
 
 ---
 
 ## Features
 
-### 🔍 Judgment Search Engine
-Search 600,000+ Pakistani court judgments from all major courts with full-text search, citation lookup, and advanced filtering.
+Alwakeelo ships with 12 core modules:
 
-- **Courts covered**: Supreme Court, Lahore HC, Sindh HC, Peshawar HC, Islamabad HC, Balochistan HC, Federal Shariat Court
-- **Law reports**: PLD, SCMR, YLR, MLD, CLC, CLD, PCrLJ, and more
-- **Search by**: Citation number, party name, keyword, court, year, judge
-- **PostgreSQL full-text search** with `tsvector` indexing for sub-second results
-- **Citation Network**: See which cases cite each other — trace legal reasoning chains across courts
+### 🔍 Judgment Search
+Search 600,000+ court judgments with PostgreSQL full-text search (`tsvector`). Filter by citation (PLD, SCMR, YLR, MLD, CLC, CLD, PCrLJ), party name, court, year, judge, or keyword. Sub-second results across the entire corpus.
+
+### 🔗 Citation Search
+Look up judgments by exact citation — year, journal, and page number. Trace citation networks to see which cases cite each other and follow legal reasoning chains across courts.
 
 ### 💬 AI Legal Chat (Al Wakeelo Engine)
-Ask legal questions and get answers grounded in verified Pakistani case law and statutes.
+The main AI workspace. Ask legal questions and receive answers grounded in verified Pakistani case law and statutes. Every citation is cross-checked against the database — unverified citations are flagged and removed before reaching the user.
 
-- **RAG (Retrieval-Augmented Generation)** — searches verified judgments and statutes before answering
-- **Citation verification** — every citation is cross-checked against the database; fake citations are flagged and removed
-- **Multi-source retrieval** — searches case law, statutes, admin knowledge base, and user documents simultaneously
-- **Intent classification** — understands query complexity, follow-ups, and domain (criminal, civil, family, constitutional, etc.)
-- **Conversation threads** — maintain context across multi-turn legal discussions
-- **Shareable conversations** — generate public links to share consultations
-
-### 📝 AI Legal Drafting
-Draft court-ready legal documents with AI assistance and verified case law citations.
-
-- **Document types**: Writ petitions, bail applications, appeals, legal notices, civil suits, criminal complaints
-- **TipTap rich text editor** with legal formatting (tables, citations, headings, numbered paragraphs)
-- **Auto-citation insertion** — AI suggests relevant case law while you draft
-- **Pakistani court formatting** — proper prayer clauses, verification statements, court headers
-- **Draft version history** — track changes across revisions
-- **DOCX export** — download court-ready documents
+### 📝 Legal Drafting
+Draft court-ready writ petitions, bail applications, appeals, legal notices, and civil suits. Powered by a TipTap rich text editor with 13 extensions (tables, color, highlight, typography, text-align, subscript, superscript, underline, placeholder, citation autocomplete). Includes draft version history and DOCX export.
 
 ### 📋 Contract Drafting
-Generate legally compliant contracts under Pakistani law with AI-powered clause generation.
+Generate client-ready contracts with structured clause sets, risk score breakdown, redline suggestions, and cleaner final drafts. Supports rental agreements, employment contracts, sale agreements, partnership deeds, NDAs, and service agreements — all compliant with Contract Act 1872, Stamp Act 1899, and Registration Act 1908.
 
-- **Contract types**: Rental agreements, employment contracts, sale agreements, partnership deeds, NDAs, service agreements
-- **Clause library** — AI-generated clause suggestions based on contract type
-- **Legal compliance** — references Contract Act 1872, Stamp Act 1899, Registration Act 1908, Arbitration Act 1940
-- **Style Memory** — learns your drafting style from uploaded documents and accepted edits
+### 📚 Statute Lookup
+Navigate 50+ statutes with section-level search — Constitution, PPC, CrPC, CPC, Qanun-e-Shahadat Order, Family Laws, and more. In-browser PDF viewing with `react-pdf`.
 
-### 📚 Statute Search
-Navigate Pakistani statutes with section-level search and full-text access.
+### 🧠 Style Memory (RAG-based Personalization)
+Train the AI on your uploads, saved drafts, and accepted redline edits so output follows your legal style and preferred language. Uses pgvector embeddings with configurable strictness levels (strict, balanced, flexible) and ownership modes (user-level, org-level, or combined).
 
-- **50+ statutes** — Constitution, PPC, CrPC, CPC, Qanun-e-Shahadat, Family Laws, and more
-- **Section-level search** — find specific sections by number or keyword
-- **PDF viewer** — read statute documents with in-browser PDF rendering
-- **Cross-references** — see which judgments interpret specific statute sections
+### 📁 Case Management
+Organize cases by type (criminal, civil, family, constitutional, tax, corporate, banking, labor, property). Track clients/parties with CNIC and contact details, manage 11 compliance types (hearings, filing deadlines, limitation dates, letter of authority, conflict checks, etc.), and link uploaded documents to specific cases.
 
-### 📁 Case Management System
-Organize cases, track compliance deadlines, and manage client information.
+### 📅 Daily Diary
+Hearing calendar with priority levels, outcomes, next-date tracking, and automated email digests (daily/weekly via Resend). Timezone-aware scheduling (Asia/Karachi default).
 
-- **Case files** — organize by type (criminal, civil, family, constitutional, tax, corporate, banking, labor, property)
-- **Client management** — parties, opponents, witnesses with CNIC and contact details
-- **Compliance tracking** — hearings, filing deadlines, limitation dates, letter of authority tracking (11 compliance types)
-- **Daily diary** — hearing calendar with priority levels, outcomes, and next-date tracking
-- **Document linking** — attach uploaded documents to specific cases
+### 📄 Case Documents
+Upload, review, and organize matter-specific documents with auto-classification by legal domain. Supports PDF, DOCX, and image uploads with dual OCR (Tesseract local + OCR.space cloud, English + Urdu).
 
-### 🧠 Style Memory
-AI that learns your writing style and adapts its output to match.
+### 📖 Knowledge Vault
+Private user documents and global admin legal resources for retrieval-grounded AI outputs. Supports GitHub-synced knowledge bases and organization-level shared resources.
 
-- **Learns from**: Uploaded documents, saved drafts, accepted redline edits
-- **Ownership modes**: User-level, org-level, or combined
-- **Strictness levels**: Strict, balanced, flexible
-- **Vector-based retrieval** — finds relevant style samples using pgvector embeddings
-
-### 🏢 Organization Workspace
-Collaborate across law chambers with shared resources and pooled AI usage.
-
-- **Org-level knowledge base** — shared legal resources accessible to all members
-- **Role-based access** — owner, admin, member roles
-- **Email-based invitations** — invite team members with invite codes
-- **Pooled AI quotas** — Chamber and Enterprise plans share AI action limits
+### 🎙️ Audio Transcription
+Convert legal voice notes and recorded audio into text using Whisper.cpp (local) or cloud transcription via DeepSeek/OpenRouter. Includes ffmpeg audio conversion.
 
 ---
 
 ## Tech Stack
 
 ### Frontend
-| Technology | Purpose |
-|---|---|
-| React 18 | UI framework |
-| TypeScript 5.6 | Type safety |
-| Vite 7 | Build tool |
-| Tailwind CSS 3 | Styling |
-| Radix UI | Accessible component primitives (20+ components) |
-| TanStack Query | Server state management |
-| TipTap | Rich text editor (13 extensions) |
-| Framer Motion | Animations |
-| Wouter | Lightweight routing |
-| Recharts | Data visualization |
-| react-pdf | In-browser PDF viewing |
-| Capacitor | Android native app |
+
+| Technology | Version | Purpose |
+|---|---|---|
+| React | 18.3 | UI framework |
+| TypeScript | 5.6 | Type safety |
+| Vite | 7.3 | Build tool & dev server |
+| Tailwind CSS | 3.4 | Utility-first styling |
+| Radix UI | — | 20+ accessible component primitives |
+| TanStack Query | 5.60 | Server state management & caching |
+| TipTap | — | Rich text editor (13 extensions) |
+| Wouter | 3.3 | Lightweight client-side routing |
+| Framer Motion | 11.18 | Animations |
+| Recharts | 2.15 | Data visualization |
+| react-pdf | 10.4 | In-browser PDF viewing |
+| react-window | 2.2 | Virtualized lists |
+| cmdk | 1.1 | Command palette (⌘K) |
+| Capacitor | 8.3 | Android native app |
+| jsPDF | 4.2 | Client-side PDF generation |
 
 ### Backend
-| Technology | Purpose |
-|---|---|
-| Express 5 | HTTP server |
-| PostgreSQL | Primary database |
-| Drizzle ORM | Type-safe database queries |
-| OpenAI SDK | AI provider client (DeepSeek, OpenRouter, Apex) |
-| @xenova/transformers | Local ML embeddings (384-dim multilingual) |
-| Passport + openid-client | Auth (email/password + Google OAuth) |
-| Resend | Transactional email |
-| Safepay | Pakistani payment gateway (PKR) |
-| Cloudflare R2 | Object storage (S3-compatible) |
-| Tesseract + OCR.space | Dual OCR (local + cloud, English + Urdu) |
-| Multer | File uploads |
 
-### Infrastructure
-| Technology | Purpose |
-|---|---|
-| Docker | Containerized deployment |
-| Render | Cloud hosting |
-| Cloudflare R2 | File storage |
-| pgvector | Vector similarity search |
-| IndexNow | Real-time search engine notification |
+| Technology | Version | Purpose |
+|---|---|---|
+| Express | 5.0 | HTTP server |
+| PostgreSQL | 16+ | Primary database + pgvector |
+| Drizzle ORM | 0.45 | Type-safe queries + Zod validation |
+| OpenAI SDK | 6.21 | AI provider client (DeepSeek, OpenRouter, Apex) |
+| @xenova/transformers | 2.17 | Local ML embeddings (384-dim multilingual) |
+| Passport | 0.7 | Authentication (email/password + Google OAuth) |
+| openid-client | 6.8 | Google OpenID Connect |
+| Resend | 6.9 | Transactional email |
+| Safepay | 0.3 | Pakistani payment gateway (PKR) |
+| Cloudflare R2 | — | S3-compatible object storage |
+| Multer | 2.0 | File upload handling |
+| Tesseract OCR | — | Local OCR (English + Urdu) |
+| OCR.space | — | Cloud OCR fallback |
+| mammoth | 1.11 | DOCX → text extraction |
+| unpdf | 1.4 | PDF text extraction |
+| docx | 9.6 | DOCX file generation |
+| ws | 8.18 | WebSocket support |
+
+### DevDependencies
+
+| Technology | Version | Purpose |
+|---|---|---|
+| drizzle-kit | 0.31 | Database migrations |
+| esbuild | 0.25 | Server bundling |
+| Playwright | 1.59 | E2E testing |
+| jsdom | 29.1 | Unit testing (DOM) |
+| PostCSS + Autoprefixer | — | CSS processing |
+| @tailwindcss/typography | 0.5 | Prose styling |
 
 ---
 
-## Architecture
+## AI Architecture
+
+### Multi-Provider Fallback Chain
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    React SPA (Vite)                       │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
-│  │ Judgment  │ │ AI Chat  │ │  Legal   │ │ Contract │   │
-│  │  Search   │ │ (Al Wak) │ │ Drafting │ │ Drafting │   │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘   │
-│       └─────────────┴────────────┴─────────────┘         │
-└──────────────────────────┬──────────────────────────────┘
-                           │ API
-┌──────────────────────────┴──────────────────────────────┐
-│                   Express 5 Server                        │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
-│  │   Auth   │ │ AI Router│ │   RAG    │ │   SEO    │   │
-│  │ Passport │ │ Fallback │ │ Pipeline │ │ SSR Meta │   │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘   │
-│       │             │            │             │          │
-│  ┌────┴─────────────┴────────────┴─────────────┴─────┐  │
-│  │              PostgreSQL + pgvector                  │  │
-│  │  judgments · statutes · case_law · threads ·        │  │
-│  │  documents · style_memory · organizations           │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                                                            │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
-│  │ DeepSeek │ │OpenRouter│ │  Apex AI │ │   R2     │   │
-│  │ (Primary)│ │(Fallback)│ │(Premium) │ │(Storage) │   │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘   │
-└──────────────────────────────────────────────────────────┘
-```
-
-### AI Provider Fallback Chain
-
-```
-User Query → Intent Classification → Knowledge Retrieval (RAG)
+User Query
     ↓
-Standard Mode: DeepSeek v4-flash (8K output)
-    ↓ (if fails)
-Turbo Mode: DeepSeek v4-flash + enhanced context
-    ↓ (if fails)
-Apex Mode: Claude Sonnet 5 via OpenRouter (agentic search)
+Intent Classification → Complexity Detection → Domain Detection
+    ↓
+Knowledge Retrieval (RAG)
+    ├── Case law index (600K+ judgments)
+    ├── Statute index (50+ statutes)
+    ├── Admin knowledge base
+    ├── User documents
+    └── Style memory (personalization)
+    ↓
+AI Generation (with fallback chain)
+    ↓
+Citation Verification → Strip unverified citations
+    ↓
+Response to user (with clickable, verified citations)
 ```
 
-Every AI response passes through the **citation verification pipeline** — citations are cross-checked against the judgment database. Unverified citations are flagged and removed before reaching the user.
+### AI Providers & Models
+
+| Mode | Provider | Model ID | Access |
+|------|----------|----------|--------|
+| **Standard** | OpenRouter → DeepSeek | `google/gemini-3-flash-preview` → `deepseek-v4-flash` | All tiers |
+| **Turbo** | OpenRouter (Kimi) → OpenRouter (Gemini) → DeepSeek Pro | `moonshotai/kimi-k2.5` → `google/gemini-3-flash-preview` → `deepseek-v4-pro` | Pro+ |
+| **Apex** | OpenRouter (Apex Pro/Agent) | `anthropic/claude-sonnet-5` (with Agentic step visualization) | Chamber+ |
+| **Fallback / Audio** | Moonshot AI (Kimi) | `kimi-k2.5` / `kimi-k2.6` (via `MOONSHOT_API_KEY`) | Chamber+ |
+
+The AI router uses a **race-with-deadline** pattern — if the primary provider doesn't emit a first token within the SLA timeout (30s), it automatically falls back to the next provider in the chain. Streaming and non-streaming fallback paths are handled separately.
+
+### RAG Pipeline
+
+| Component | Provider / Technology | Details |
+|-----------|------------------------|---------|
+| **Intent Classifier** | Custom Rule + AI | Query complexity, domain detection, follow-up detection |
+| **Query Rewriter** | AI | Reformulates queries for better retrieval |
+| **RAG Embeddings** | **Voyage AI** (Primary) or Xenova | **Voyage Law 2** (`voyage-law-2`, 1024 dims) or local `MiniLM-L12` (384 dims) |
+| **Reranking** | **Voyage Reranker** | **Voyage Rerank 2** (`rerank-2`) for document scoring |
+| **Vector Store** | pgvector | PostgreSQL vectorized storage |
+| **Chunker** | Custom sliding-window | Optimizes context window coverage |
 
 ---
 
-## Database Schema
+## Database
 
-36+ tables organized into these domains:
+45 tables across PostgreSQL with pgvector extension:
 
-| Domain | Tables | Key Models |
+| Domain | Tables | Highlights |
 |--------|--------|------------|
-| **Auth** | 4 | users, sessions, password_reset_tokens, email_verification_tokens |
-| **Legal Research** | 8 | judgments, case_law, citation_links, statutes, statute_documents, law_journals, courts_ref |
-| **AI Chat** | 3 | threads, messages, query_cache |
-| **Documents** | 3 | documents, document_files, case_documents |
-| **Knowledge (RAG)** | 4 | admin_knowledge, github_knowledge, org_knowledge + files |
-| **Style Memory** | 4 | style_memory_settings, samples, chunks (pgvector), events |
-| **Case Management** | 5 | case_files, case_clients, case_compliance, case_notes, diary_entries |
-| **Organizations** | 3 | organizations, org_members, org_invites |
-| **Business** | 6 | bookmarks, search_history, usage_tracking, ai_output_log, payment_records, notification_preferences |
-| **Lead Gen** | 3 | visitor_sessions, case_leads, public_funnel_events |
+| **Auth & Sessions** | 4 | Users, sessions (pg-backed), password reset, email verification |
+| **Legal Research** | 8 | Judgments (tsvector FTS), case_law, citation_links, unresolved_citations, statutes, statute_documents, law_journals, courts_ref |
+| **AI Chat** | 3 | Threads, messages, query_cache |
+| **Documents & Files** | 4 | Documents with auto-classification, R2 file metadata |
+| **Knowledge (RAG)** | 4 | Admin knowledge, GitHub-synced, org-level, file storage |
+| **Style Memory** | 4 | Settings, samples, chunks (pgvector embeddings), events |
+| **Case Management** | 5 | Case files, clients/parties, compliance (11 types), notes, diary entries |
+| **Organizations** | 3 | Orgs, members (owner/admin/member roles), email invites |
+| **Payments** | 1 | Safepay payment records (PKR) |
+| **Analytics** | 4 | Usage tracking, AI output quality log, search history, bookmarks |
+| **Lead Generation** | 3 | Visitor sessions, case leads, funnel events |
+| **Notifications** | 1 | Per-user email digest preferences (daily/weekly) |
 
 ---
 
 ## Subscription Tiers
 
-| Tier | Price (PKR/mo) | AI Actions | AI Modes | OCR Pages | Users |
-|------|---------------|------------|----------|-----------|-------|
-| Free | 0 | 12 | Standard | 100 | 1 |
-| Standard | 500 | 120 | Standard | 250 | 1 |
-| Pro | 1,000 | 350 | Standard + Turbo | 500 | 1 |
-| Chamber | 3,000 | 1,200 | All modes | 1,500 | 3 (pooled) |
-| Enterprise | 50,000 | 30,000 | All modes | Custom | Custom |
+| Tier | Monthly (PKR) | AI Actions | Modes | OCR Pages | Users |
+|------|--------------|------------|-------|-----------|-------|
+| **Free** | 0 | 12 | Standard | 100 | 1 |
+| **Standard** | 500 | 120 | Standard | 250 | 1 |
+| **Pro** ⭐ | 1,000 | 350 | Standard + Turbo | 500 | 1 |
+| **Chamber** | 4,500 | 1,200 (pooled) | All modes + Apex | 1,500 | 3 |
+| **Enterprise** | 50,000 | 30,000 | All modes + priority | Custom | Custom |
 
-Quarterly (10% off) and Yearly (20% off) billing cycles available.
+Billing cycles: Monthly · Quarterly (10% off) · Yearly (20% off)
+
+---
+
+## Courts & Law Reports
+
+**Courts:** Supreme Court of Pakistan · Lahore High Court · Sindh High Court · Peshawar High Court · Islamabad High Court · Balochistan High Court · Federal Shariat Court
+
+**Law Reports:** PLD · SCMR · YLR · MLD · CLC · CLD · PCrLJ
+
+---
+
+## SEO Infrastructure
+
+130,000+ indexable pages with enterprise-grade server-side SEO:
+
+- **Server-side meta injection** — unique `<title>`, `<meta description>`, canonical, OG/Twitter tags per route via `seo-meta.ts`
+- **Pre-render blocks** — visible HTML with judgment text, headnotes, court metadata for crawlers
+- **Dynamic sitemap** — paginated XML sitemaps (10K URLs/page), ordered by `decisionDate DESC`
+- **Schema.org** — CourtCase, Legislation, BlogPosting, Organization, LegalService, Dataset, WebSite, SoftwareApplication JSON-LD
+- **IndexNow** — real-time Bing/Yandex/Seznam/Naver notification
+- **Google Indexing API** — direct URL submission
+- **Proper 404s** — HTTP 404 for non-existent judgments (prevents soft 404s)
+- **Legacy redirects** — 301s for old URLs (`/judgment-search` → `/judgments`)
+
+---
+
+## Security
+
+- CSRF protection (origin/referer validation on mutating requests)
+- Content Security Policy (CSP) with strict directives
+- Rate limiting (auth, AI, global API — IP-based)
+- bcrypt password hashing
+- CAPTCHA (Cloudflare Turnstile + Google reCAPTCHA fallback)
+- Optional single-IP session enforcement
+- User ban system with admin audit logging
+- File upload scanning
+- HTTPS enforcement + HSTS in production
+- `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `COOP`, `CORP` headers
 
 ---
 
@@ -252,15 +267,15 @@ Quarterly (10% off) and Yearly (20% off) billing cycles available.
 
 ```bash
 # Clone the repository
-git clone https://github.com/alwakeelo/alwakeelo-ai.git
-cd alwakeelo-ai
+git clone https://github.com/ijlalbintariq/alwakeeloneon.git
+cd alwakeeloneon
 
 # Install dependencies
 npm install
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env with your database URL, API keys, etc.
+# Edit .env with your DATABASE_URL, API keys, etc.
 
 # Push database schema
 npm run db:push
@@ -269,20 +284,21 @@ npm run db:push
 npm run dev
 ```
 
-### Environment Variables
+### Key Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `DATABASE_URL` | ✅ | PostgreSQL connection string (with pgvector) |
 | `SESSION_SECRET` | ✅ | Express session secret |
-| `DEEPSEEK_API_KEY` | ✅ | Primary AI provider |
-| `OPENROUTER_API_KEY` | Optional | Fallback AI + Apex mode |
+| `DEEPSEEK_API_KEY` | ✅ | Primary AI provider (DeepSeek v4) |
+| `OPENROUTER_API_KEY` | Recommended | Fallback AI + Apex mode (Claude Sonnet 5, Kimi K2.5, Gemini 3 Flash) |
 | `GOOGLE_CLIENT_ID` | Optional | Google OAuth login |
 | `RESEND_API_KEY` | Optional | Transactional emails |
-| `SAFEPAY_API_KEY` | Optional | Payment processing |
-| `R2_*` | Optional | Cloudflare R2 file storage |
+| `SAFEPAY_API_KEY` | Optional | Payment processing (PKR) |
+| `R2_*` | Optional | Cloudflare R2 file storage (6 vars) |
 | `OCRSPACE_API_KEY` | Optional | Cloud OCR fallback |
-| `INDEXNOW_KEY` | Optional | Search engine ping |
+| `INDEXNOW_KEY` | Optional | Search engine real-time notification |
+| `CAPTCHA_ENFORCED` | Optional | Enable CAPTCHA on auth forms |
 
 ### Docker
 
@@ -291,50 +307,113 @@ docker build -t alwakeelo-ai .
 docker run -p 5000:5000 --env-file .env alwakeelo-ai
 ```
 
-### Production Build
+The Dockerfile uses `node:20-bookworm-slim` and installs `tesseract-ocr` (English + Urdu), `poppler-utils`, and `ca-certificates`.
+
+### Production
 
 ```bash
-npm run build    # Builds client (Vite) + server (esbuild)
-npm start        # Runs production server
+npm run build    # Builds client (Vite) + server (esbuild), 1.5GB memory limit
+npm start        # Runs node dist/index.cjs
+```
+
+### NPM Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | Start development server (tsx) |
+| `npm run build` | Production build |
+| `npm start` | Production server |
+| `npm run check` | TypeScript type checking |
+| `npm run db:push` | Push Drizzle schema to database |
+| `npm test` | Unit tests |
+| `npm run test:e2e` | E2E tests (Playwright) |
+| `npm run reindex:admin-caselaw` | Reindex case law RAG vectors |
+| `npm run reindex:statutes` | Reindex statute RAG vectors |
+
+---
+
+## Project Structure
+
+```
+├── client/                  # React frontend (Vite)
+│   ├── src/
+│   │   ├── pages/           # 41 page components
+│   │   ├── components/      # 21 shared components + ui/
+│   │   ├── hooks/           # Custom React hooks
+│   │   └── lib/             # Utilities
+│   ├── public/              # Static assets, PWA manifest
+│   └── index.html           # SPA shell with schema.org JSON-LD
+├── server/                  # Express 5 backend
+│   ├── routes.ts            # API routes (906KB monolith)
+│   ├── storage.ts           # Data access layer (220KB)
+│   ├── pipeline/            # AI intent classification & retrieval
+│   ├── rag/                 # RAG service, vector store, embeddings
+│   ├── style-memory/        # Style learning system (11 files)
+│   ├── retrieval/           # Clause library, TOC parser
+│   ├── services/            # Citation extractor, DOCX generator, Google indexing
+│   ├── middleware/          # Rate limiting
+│   ├── ai-router.ts         # Multi-provider AI with fallback chains
+│   ├── deepseek-ai.ts       # DeepSeek v4-flash / v4-pro
+│   ├── openrouter-ai.ts     # OpenRouter (Gemini 3 Flash)
+│   ├── apex-ai.ts           # Apex (Claude Sonnet 5)
+│   ├── static.ts            # Static serving + SSR SEO injection
+│   ├── seo-meta.ts          # Per-route meta tag generation
+│   ├── sitemap.ts           # Dynamic XML sitemap
+│   ├── indexnow.ts          # Real-time search engine notification
+│   ├── safepay.ts           # Payment processing (PKR)
+│   ├── email.ts             # Transactional email (Resend)
+│   ├── ocr.ts               # Local Tesseract OCR
+│   ├── cloud-ocr.ts         # Cloud OCR.space
+│   └── r2-storage.ts        # Cloudflare R2
+├── shared/                  # Shared code (client + server)
+│   ├── schema.ts            # Drizzle ORM schema (45 tables)
+│   ├── blog-data.ts         # Blog articles (125KB, 19 articles)
+│   └── models/              # Auth models
+├── Dockerfile               # Production container
+├── render.yaml              # Render.com deployment config
+├── drizzle.config.ts        # Drizzle migration config
+└── vite.config.ts           # Vite build config
 ```
 
 ---
 
-## SEO Infrastructure
+## Deployment
 
-The app includes enterprise-grade SEO for 130,000+ indexable pages:
+Deployed on [Render](https://render.com) via Docker:
 
-- **Server-side meta injection** — unique `<title>`, `<meta description>`, canonical URL, OG/Twitter tags per route
-- **Pre-render blocks** — visible HTML content for crawlers (judgment text, headnotes, court metadata)
-- **Dynamic sitemap** — paginated XML sitemaps (10K URLs/page) with real `lastmod` dates
-- **Schema.org markup** — CourtCase, Legislation, BlogPosting, Organization, LegalService JSON-LD
-- **IndexNow** — real-time Bing/Yandex notification on content changes
-- **Google Indexing API** — direct URL submission
-- **404 handling** — proper HTTP 404 for non-existent judgments (prevents soft 404s)
-
----
-
-## Security
-
-- CSRF protection (origin/referer validation on mutating requests)
-- Content Security Policy (CSP) headers
-- Rate limiting (auth, AI, global API tiers)
-- Bcrypt password hashing
-- CAPTCHA support (Cloudflare Turnstile + Google reCAPTCHA)
-- Single-IP session enforcement (optional)
-- User ban system with admin audit logging
-- File upload scanning
-- HTTPS enforcement + HSTS in production
+- **Plan**: Starter
+- **Health check**: `/health`
+- **Auto-deploy**: enabled
+- **Database**: PostgreSQL (Neon or Render Postgres)
+- **File storage**: Cloudflare R2
+- **Email**: Resend
+- **Payments**: Safepay (Pakistani gateway)
 
 ---
 
-## Courts & Law Reports
+## Blog & Legal Guides
 
-### Courts Covered
-Supreme Court of Pakistan · Lahore High Court · Sindh High Court · Peshawar High Court · Islamabad High Court · Balochistan High Court · Federal Shariat Court
+19 comprehensive legal guides covering Pakistani law topics:
 
-### Law Reports Indexed
-PLD (Pakistan Legal Decisions) · SCMR (Supreme Court Monthly Review) · YLR (Yearly Law Reporter) · MLD (Monthly Law Digest) · CLC (Civil Law Cases) · CLD (Corporate Law Decisions) · PCrLJ (Pakistan Criminal Law Journal)
+- Muslim Family Laws (Nikah, Talaq, Khula)
+- Bail & Criminal Procedure under CrPC
+- Contract Act 1872 for Business
+- Cybercrime & PECA 2016
+- Land Revenue Records (Fard, Mutation)
+- How to File a Civil Suit
+- Section 489-F PPC (Dishonoured Cheques)
+- Inheritance & Islamic Succession
+- Consumer Protection Laws
+- Trademark Registration
+- Writ Petitions & Article 199
+- Rent & Tenancy Laws
+- Labor & Employment Rights
+- Power of Attorney
+- Property Gift (Hiba)
+- Defamation Laws
+- FIR Guide (Registration & Quashment)
+- Company Registration (SECP)
+- ADR & Arbitration Act 1940
 
 ---
 
