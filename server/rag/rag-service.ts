@@ -1,8 +1,8 @@
 import crypto from "crypto";
 import { storage } from "../storage";
 import { db, dbAvailable, pool } from "../db";
-import { judgments, courtsRef, lawJournals } from "../../shared/schema";
-import { eq } from "drizzle-orm";
+import { judgments, courtsRef, lawJournals, adminKnowledge, statuteDocuments } from "../../shared/schema";
+import { eq, desc } from "drizzle-orm";
 import { chunkTextByTokens, type TextChunk } from "./chunker";
 import { embedTextLocal, embedTextsLocal } from "./embedding-local";
 import { cleanLegalDocumentText } from "./text-cleaner";
@@ -964,10 +964,14 @@ export async function ensureIndexedForGlobalCaseLaw(args: {
     }
   }
   if (sourceIds.length === 0) {
-    const allDocs = await storage.getAllAdminKnowledge();
-    sourceIds = allDocs
-      .filter((doc) => isCaseLawCategory(doc.category))
-      .map((doc) => doc.id);
+    try {
+      const allDocs = await db.select({ id: adminKnowledge.id, category: adminKnowledge.category }).from(adminKnowledge);
+      sourceIds = allDocs
+        .filter((doc: any) => isCaseLawCategory(doc.category))
+        .map((doc: any) => doc.id);
+    } catch (err) {
+      console.error("[RAG] Failed to fallback query adminKnowledge:", err);
+    }
   }
 
   return ensureIndexedForGlobalSource({
@@ -1001,8 +1005,12 @@ export async function ensureIndexedForGlobalStatutes(args: {
     }
   }
   if (sourceIds.length === 0) {
-    const allDocs = await storage.getAllStatuteDocuments();
-    sourceIds = allDocs.map((doc) => doc.id);
+    try {
+      const allDocs = await db.select({ id: statuteDocuments.id }).from(statuteDocuments);
+      sourceIds = allDocs.map((doc: any) => doc.id);
+    } catch (err) {
+      console.error("[RAG] Failed to fallback query statuteDocuments:", err);
+    }
   }
 
   return ensureIndexedForGlobalSource({
@@ -1037,10 +1045,14 @@ export async function ensureIndexedForGlobalAdminKnowledge(args: {
     }
   }
   if (sourceIds.length === 0) {
-    const allDocs = await storage.getAllAdminKnowledge();
-    sourceIds = allDocs
-      .filter((doc) => !isCaseLawCategory(doc.category))
-      .map((doc) => doc.id);
+    try {
+      const allDocs = await db.select({ id: adminKnowledge.id, category: adminKnowledge.category }).from(adminKnowledge);
+      sourceIds = allDocs
+        .filter((doc: any) => !isCaseLawCategory(doc.category))
+        .map((doc: any) => doc.id);
+    } catch (err) {
+      console.error("[RAG] Failed to fallback query adminKnowledge:", err);
+    }
   }
 
   return ensureIndexedForGlobalSource({
