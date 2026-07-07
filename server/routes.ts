@@ -2430,7 +2430,23 @@ async function callLegalDraftingAI(
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, [{ role: "user", parts: [{ text: userText }] }]);
   const startedAt = Date.now();
-  // Primary: Kimi K2.6 via direct API (Thinking model)
+
+  // Primary: Gemini 3.0 Flash via OpenRouter
+  if (isOpenRouterAvailable()) {
+    try {
+      const { chatWithOpenRouter } = await import("./openrouter");
+      const result = await withTimeout("Gemini 3.0 Flash", timeoutConfig.turboPrimary, () =>
+        chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3.0-flash", maxTokens, temperature }),
+      );
+      const safeText = assertNonEmptyModelOutput("Gemini 3.0 Flash", result.content);
+      console.log(`[AI Routing][legal-drafting] Gemini 3.0 Flash primary succeeded in ${Date.now() - startedAt}ms`);
+      return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
+    } catch (geminiErr) {
+      console.warn(`[AI Routing][legal-drafting] Gemini 3.0 Flash primary failed, trying Kimi:`, geminiErr);
+    }
+  }
+
+  // Fallback 1: Kimi K2.5 via Moonshot
   try {
     const { isMoonshotAvailable, chatWithMoonshot } = await import("./moonshot");
     if (isMoonshotAvailable()) {
@@ -2439,33 +2455,18 @@ async function callLegalDraftingAI(
           chatWithMoonshot({ messages: messages as any, maxTokens, temperature, useInstant: false }),
         );
         const safeText = assertNonEmptyModelOutput("Kimi K2.5", result.content);
-        console.log(`[AI Routing][legal-drafting] Kimi K2.5 primary succeeded in ${Date.now() - startedAt}ms`);
+        console.log(`[AI Routing][legal-drafting] Kimi K2.5 fallback succeeded in ${Date.now() - startedAt}ms`);
         return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
       } catch (kErr) {
-        console.warn(`[AI Routing][legal-drafting] Kimi K2.5 primary failed, trying Gemini:`, kErr);
+        console.warn(`[AI Routing][legal-drafting] Kimi K2.5 fallback failed, trying DeepSeek:`, kErr);
       }
     }
   } catch (importErr) {
     console.warn(`[AI Routing][legal-drafting] Moonshot module load failed:`, importErr);
   }
 
-  // Fallback 1: Gemini 3.0 Flash via OpenRouter
-  if (isOpenRouterAvailable()) {
-    try {
-      const { chatWithOpenRouter } = await import("./openrouter");
-      const result = await withTimeout("Gemini 3.0 Flash", timeoutConfig.turboPrimary, () =>
-        chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3-flash-preview", maxTokens, temperature }),
-      );
-      const safeText = assertNonEmptyModelOutput("Gemini 3.0 Flash", result.content);
-      console.log(`[AI Routing][legal-drafting] Gemini 3.0 Flash fallback succeeded in ${Date.now() - startedAt}ms`);
-      return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
-    } catch (geminiErr) {
-      console.warn(`[AI Routing][legal-drafting] Gemini 3.0 Flash fallback failed, trying DeepSeek:`, geminiErr);
-    }
-  }
-
+  // Fallback 2: DeepSeek Chat
   if (isDeepSeekAvailable()) {
-    // Use deepseek-chat as secondary fallback (fast, consistent with streaming path)
     try {
       const result = await withTimeout("DeepSeek-Chat", timeoutConfig.turboPrimary, () =>
         chatWithDeepSeek({ messages, maxTokens, temperature }),
@@ -2474,7 +2475,6 @@ async function callLegalDraftingAI(
       console.log(`[AI Routing][legal-drafting] DeepSeek Chat fallback succeeded in ${Date.now() - startedAt}ms (model=${result.model}, output=${result.content.length} chars)`);
       return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
     } catch (primaryErr: any) {
-      // If deepseek-chat times out or fails, retry once with DeepSeek R1 as fallback
       const errCode = primaryErr?.code || "";
       const isTimeout = errCode === "MODEL_TIMEOUT" || primaryErr?.message?.includes("timed out");
       const isEmpty = errCode === "EMPTY_MODEL_OUTPUT";
@@ -2490,7 +2490,7 @@ async function callLegalDraftingAI(
           return { text: enforcePakistanLawOnlyOutput(fallbackText), model: fallbackResult.model };
         } catch (fallbackErr) {
           console.error(`[AI Routing][legal-drafting] DeepSeek R1 fallback also failed:`, getErrorMessage(fallbackErr));
-          throw primaryErr; // Re-throw the original error for better error messages
+          throw primaryErr;
         }
       }
       throw primaryErr;
