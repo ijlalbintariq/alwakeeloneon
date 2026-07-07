@@ -3853,6 +3853,7 @@ function injectVerifiedCaseLawFallback(
         title: h.title,
         court: h.court || "",
         summary: (h.summary || "").slice(0, 300),
+        description: (h.summary || "").slice(0, 300),
       }));
       const newPayload = JSON.stringify({ laws, judgments });
       const newRefsBlock = "```references\n" + newPayload + "\n```";
@@ -3894,6 +3895,7 @@ function injectVerifiedCaseLawFallback(
     citation: h.citation,
     title: h.title,
     court: h.court || "",
+    summary: (h.summary || "").slice(0, 300),
     description: (h.summary || "").slice(0, 300),
   }));
 

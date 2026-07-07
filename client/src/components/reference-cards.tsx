@@ -13,6 +13,7 @@ interface JudgmentReference {
   citation: string;
   court: string;
   description: string;
+  title?: string;
 }
 
 interface ParsedReferences {
@@ -95,7 +96,8 @@ export function parseReferences(content: string): { cleanContent: string; refere
       .map((j: any) => ({
         citation: String(j?.citation || "").trim(),
         court: String(j?.court || "").trim(),
-        description: String(j?.description || "").trim(),
+        title: String(j?.title || "").trim(),
+        description: String(j?.description || j?.summary || j?.snippet || "").trim(),
       }))
       .filter((j: JudgmentReference) => j.citation.length > 0)
       .slice(0, 10);

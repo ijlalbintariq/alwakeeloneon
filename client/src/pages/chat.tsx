@@ -821,7 +821,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             base.caseLawCard = {
               hits: parsed.references.judgments.map((j) => ({
                 citation: j.citation,
-                title: "", // title not saved in references block
+                title: j.title || "",
                 court: j.court || "",
                 snippet: j.description || "",
               })),
@@ -1921,17 +1921,33 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                               </div>
                             </div>
                           )}
-                          {m.caseLawCard && m.caseLawCard.hits.length > 0 && (
-                            <CaseLawCard
-                              data={m.caseLawCard}
-                              aiCitedCitations={
-                                parsed?.references
-                                  ? new Set(parsed.references.judgments.map((j) => j.citation))
-                                  : undefined
-                              }
-                              onCitationClick={openJudgment}
-                            />
-                          )}
+                          {(() => {
+                            let cardData = m.caseLawCard;
+                            if (!cardData && parsed?.references?.judgments && parsed.references.judgments.length > 0) {
+                              cardData = {
+                                hits: parsed.references.judgments.map((j) => ({
+                                  citation: j.citation,
+                                  title: j.title || "",
+                                  court: j.court || "",
+                                  snippet: j.description || "",
+                                })),
+                                totalFound: parsed.references.judgments.length,
+                                queriesUsed: [],
+                              };
+                            }
+                            if (!cardData || cardData.hits.length === 0) return null;
+                            return (
+                              <CaseLawCard
+                                data={cardData}
+                                aiCitedCitations={
+                                  parsed?.references
+                                    ? new Set(parsed.references.judgments.map((j) => j.citation))
+                                    : undefined
+                                }
+                                onCitationClick={openJudgment}
+                              />
+                            );
+                          })()}
                           <LegalMarkdown content={displayContent} />
                           {parsed?.references && <ReferenceCards references={parsed.references} />}
                           {(m.ragCitations?.length || 0) > 0 && (() => {
