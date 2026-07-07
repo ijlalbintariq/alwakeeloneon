@@ -1384,7 +1384,7 @@ export function classifyQueryIntent(rawQuery: string): QueryIntent {
       expandedTerms: expandedStat.split(/\s+/),
       needsCaseLaw: true,   // Always fetch case law — rulings on this section are valuable
       needsStatutes: true,
-      needsAdminDocs: false,
+      needsAdminDocs: true,
       statuteRef,
     };
   }

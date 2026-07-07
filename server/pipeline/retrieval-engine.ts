@@ -43,7 +43,7 @@ export interface RetrievedStatute {
 export interface RetrievedDoc {
   title: string;
   content: string;
-  source: "admin" | "github" | "org";
+  source: "admin" | "github" | "org" | "statute";
 }
 
 export interface RetrievalResult {
@@ -724,18 +724,43 @@ async function fetchAdminDocs(intent: QueryIntent, limit: number, userId?: strin
   const query = intent.normalized;
   const docs: RetrievedDoc[] = [];
 
-  const [githubRaw, adminRaw] = await Promise.all([
+  const [githubRaw, adminRaw, ragResult] = await Promise.all([
     withTimeout(storage.searchGithubKnowledge(query, limit).catch(() => []), ADMIN_DOC_TIMEOUT_MS, []),
     withTimeout(storage.searchAdminKnowledge(query, limit).catch(() => []), ADMIN_DOC_TIMEOUT_MS, []),
+    userId
+      ? withTimeout(
+          retrieveForQuery({
+            userId,
+            query,
+            topK: limit * 2,
+          }).catch(() => null),
+          ADMIN_DOC_TIMEOUT_MS,
+          null
+        )
+      : Promise.resolve(null),
   ]);
 
+  if (ragResult && ragResult.matches) {
+    for (const match of ragResult.matches) {
+      const sType = String((match.metadata || {}).sourceType || "").toLowerCase();
+      if (sType === "admin-statute" || sType === "admin-knowledge") {
+        docs.push({
+          title: String(match.title || ""),
+          content: String(match.chunkText || ""),
+          source: sType === "admin-statute" ? "statute" : "admin",
+        });
+        if (docs.length >= limit) break;
+      }
+    }
+  }
+
   for (const doc of (githubRaw as any[])) {
-    docs.push({ title: String(doc.title || ""), content: String(doc.content || ""), source: "github" });
     if (docs.length >= limit) break;
+    docs.push({ title: String(doc.title || ""), content: String(doc.content || ""), source: "github" });
   }
   for (const doc of (adminRaw as any[])) {
-    docs.push({ title: String(doc.title || ""), content: String(doc.content || ""), source: "admin" });
     if (docs.length >= limit) break;
+    docs.push({ title: String(doc.title || ""), content: String(doc.content || ""), source: "admin" });
   }
 
   // Org docs
