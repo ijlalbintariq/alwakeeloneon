@@ -197,7 +197,7 @@ export function serveStatic(app: Express) {
   // without needing to execute JavaScript. Hidden from sighted users via
   // display:none — React's #root takes over visually.
   const STATIC_PRERENDER: Record<string, string> = {
-    "/": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Alwakeelo AI — Pakistan's AI-Powered Legal Assistant</h1>
   <p>Alwakeelo AI is Pakistan's first AI legal assistant, built for lawyers, law students, and anyone navigating Pakistani law. Search over 600,000 judgments from the Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, and Federal Shariat Court.</p>
   <h2>Features</h2>
@@ -215,7 +215,7 @@ export function serveStatic(app: Express) {
   <p>PLD (Pakistan Legal Decisions), SCMR (Supreme Court Monthly Review), YLR (Yearly Law Reporter), MLD (Monthly Law Digest), CLC (Civil Law Cases), CLD (Corporate Law Decisions), PCrLJ (Pakistan Criminal Law Journal), and more.</p>
 </div>`,
 
-    "/judgments": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/judgments": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Pakistani Judgment Search — 600,000+ Cases</h1>
   <p>Search over 600,000 Pakistani court judgments from the Supreme Court, High Courts, Federal Shariat Court, and Tribunals. Find case law by citation number, party name, court, year, and legal keywords.</p>
   <h2>Search by Citation</h2>
@@ -228,7 +228,7 @@ export function serveStatic(app: Express) {
   <p>Read the complete text of each judgment including headnotes, case summary, parties, decision date, and related citations. Each judgment links to other cases it cites and cases that cite it.</p>
 </div>`,
 
-    "/judgments/browse": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/judgments/browse": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Browse Pakistani Case Law &amp; Judgments Directory</h1>
   <p>Browse our directory of 600,000+ Pakistani judgments organized by court, year, and law journal. Find cases from the Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, and Balochistan High Court.</p>
   <h2>Browse by Court</h2>
@@ -239,7 +239,7 @@ export function serveStatic(app: Express) {
   <p>PLD (Pakistan Legal Decisions), SCMR (Supreme Court Monthly Review), YLR (Yearly Law Reporter), MLD (Monthly Law Digest), CLC (Civil Law Cases), CLD (Corporate Law Decisions), PCrLJ (Pakistan Criminal Law Journal).</p>
 </div>`,
 
-    "/statute-search": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/statute-search": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Pakistani Statute Search — Constitution, PPC, CPC, CrPC, Family Laws</h1>
   <p>Search Pakistani statutes by name, section number, or keyword. Access the full text of every major Pakistani law including the Constitution, criminal codes, civil procedure, family law, and commercial legislation.</p>
   <h2>Major Statutes Available</h2>
@@ -256,7 +256,7 @@ export function serveStatic(app: Express) {
   </ul>
 </div>`,
 
-    "/al-wakeelo": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/al-wakeelo": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Al Wakeelo Engine — Pakistani Legal AI Chat</h1>
   <p>Chat with Al Wakeelo, Pakistan's AI legal assistant. Ask questions about Pakistani statutes, judgments, court procedures, and legal rights. Al Wakeelo provides answers grounded in verified case law citations from 600,000+ Pakistani judgments.</p>
   <h2>What You Can Ask</h2>
@@ -273,7 +273,7 @@ export function serveStatic(app: Express) {
   <p>Al Wakeelo uses retrieval-augmented generation (RAG) to search verified Pakistani judgments and statutes before answering. Every citation is verified against our database of 600,000+ cases. Responses include exact case citations (PLD, SCMR, YLR, MLD) and statute sections you can click to read the full text.</p>
 </div>`,
 
-    "/legal-drafting": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/legal-drafting": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Legal Drafting — Court-Ready Petitions &amp; Applications</h1>
   <p>Draft writ petitions, bail applications, appeals, legal notices, and court documents under Pakistani law. Al Wakeelo's AI-assisted legal drafting generates court-ready documents with verified case law citations and proper Pakistani judicial formatting.</p>
   <h2>Document Types</h2>
@@ -289,7 +289,7 @@ export function serveStatic(app: Express) {
   <p>All drafts follow Pakistani judicial formatting standards with proper prayer clauses, section references, case law citations, and verification statements required by Pakistani courts.</p>
 </div>`,
 
-    "/contract-drafting": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/contract-drafting": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Contract Drafting — Pakistani Contract Act 1872</h1>
   <p>Draft legally compliant contracts under Pakistani law. Al Wakeelo generates rental agreements, employment contracts, sale agreements, partnership deeds, and more — all compliant with the Contract Act 1872 and relevant Pakistani legislation.</p>
   <h2>Contract Types</h2>
@@ -305,7 +305,7 @@ export function serveStatic(app: Express) {
   <p>All contracts reference applicable Pakistani statutes including the Contract Act 1872, Stamp Act 1899, Registration Act 1908, and Arbitration Act 1940.</p>
 </div>`,
 
-    "/citation-search": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/citation-search": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Citation Search — Pakistani Case Law</h1>
   <p>Look up Pakistani case law by citation. Search PLD, SCMR, CLC, MLD, YLR, CLD, PCrLJ, and other Pakistani law report citations. Find the full text of any cited judgment instantly.</p>
   <h2>Supported Citation Formats</h2>
@@ -314,7 +314,7 @@ export function serveStatic(app: Express) {
   <p>See which cases cite a given judgment and which judgments it relies on. Trace legal reasoning chains across Pakistani courts.</p>
 </div>`,
 
-    "/install": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/install": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Install Al Wakeelo on iPhone, Android, or Desktop</h1>
   <p>Install Al Wakeelo as a Progressive Web App (PWA) on your device. Get instant access to Pakistan's AI legal assistant without downloading from an app store. Works on iPhone, Android, Windows, and macOS.</p>
   <h2>Installation Guides</h2>
@@ -325,30 +325,30 @@ export function serveStatic(app: Express) {
   </ul>
 </div>`,
 
-    "/privacy": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/privacy": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Privacy Policy — Al Wakeelo</h1>
   <p>How Al Wakeelo collects, uses, and protects your data. This privacy policy covers account information, AI chat history, document uploads, search history, and your rights as a user in Pakistan.</p>
   <p>Al Wakeelo is committed to protecting your privacy and complying with applicable Pakistani data protection laws. We use industry-standard security measures to protect your personal and legal data.</p>
 </div>`,
 
-    "/terms": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/terms": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Terms of Service — Al Wakeelo</h1>
   <p>Al Wakeelo terms of service covering acceptable use, AI output disclaimer, subscription terms, and legal notices for users in Pakistan. By using Al Wakeelo, you agree to these terms.</p>
   <p>Al Wakeelo provides AI-generated legal information and drafting suggestions. AI outputs are not binding legal advice. Users should consult a licensed attorney for official legal representation in Pakistani courts.</p>
 </div>`,
 
-    "/cancellation-return-refund-policy": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/cancellation-return-refund-policy": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Cancellation, Return &amp; Refund Policy — Al Wakeelo</h1>
   <p>Al Wakeelo subscription cancellation, return, and refund policy. Learn about billing cycle handling, refund eligibility, pro-rated refunds, and how to cancel your Al Wakeelo subscription plan.</p>
   <p>Since Al Wakeelo provides digital services, AI responses, and document processing, physical returns do not apply. Refund requests are evaluated on a case-by-case basis.</p>
 </div>`,
 
-    "/ownership-statement": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/ownership-statement": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Ownership Statement — Al Wakeelo</h1>
   <p>Al Wakeelo ownership and operator information. Company details, registration, and the team behind Pakistan's AI legal assistant. Al Wakeelo is a product focused on making Pakistani legal research accessible through artificial intelligence.</p>
 </div>`,
 
-    "/about": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/about": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>About Al Wakeelo</h1>
   <p>Al Wakeelo is Pakistan's premier AI legal assistant workspace. Our mission is to make justice and legal knowledge accessible to all citizens, advocates, and chambers in Pakistan using advanced artificial intelligence.</p>
   <p>Operated by Majnoon Studio, Al Wakeelo brings together a database of over 600,000 court judgments, federal and provincial statutes, and case-intake logs in a single secure platform.</p>
@@ -360,7 +360,7 @@ export function serveStatic(app: Express) {
   </ul>
 </div>`,
 
-    "/contact": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/contact": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Contact Al Wakeelo</h1>
   <p>Have questions, need support, or want to schedule a legal consultation? Reach out to Al Wakeelo and the team at Majnoon Studio.</p>
   <h2>Contact Channels</h2>
@@ -372,7 +372,7 @@ export function serveStatic(app: Express) {
   <p>Submit your messages directly using the contact form on our web application.</p>
 </div>`,
 
-    "/faq": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/faq": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Frequently Asked Questions (FAQ)</h1>
   <p>Answers to common questions about Al Wakeelo, Pakistan's AI legal assistant.</p>
   <h2>General FAQ</h2>
@@ -384,7 +384,7 @@ export function serveStatic(app: Express) {
   <p>We index over 600,000 Pakistani judgments from 1947 to present day, including Supreme Court, High Courts, and Federal Shariat Court decisions.</p>
 </div>`,
 
-    "/blog": `<div id="seo-prerender" style="display:none" aria-hidden="true">
+    "/blog": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Al Wakeelo Legal Guides &amp; Blog</h1>
   <p>Read comprehensive legal guides and articles written by advocates and legal experts on Pakistani law. Learn about your rights, legal procedures, and contract requirements under Pakistani legislation.</p>
   <h2>Available Guides</h2>

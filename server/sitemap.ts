@@ -13,11 +13,11 @@
  *
  * Counts are cached for 1 hour to avoid repeated `count(*)` on every Googlebot
  * fetch of the index. Page XML is computed on demand (Postgres ORDER BY id
- * LIMIT/OFFSET is fast on indexed primary keys).
+ * LIMIT/OFFSET ensures recent judgments appear first for Googlebot).
  */
 
 import type { Request, Response } from "express";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 import { db } from "./db";
 import { judgments, statuteDocuments } from "@shared/schema";
 
@@ -212,7 +212,7 @@ export async function handleSitemapJudgments(req: Request, res: Response): Promi
       .select({ id: judgments.id, updatedAt: judgments.updatedAt })
       .from(judgments)
       .where(eq(judgments.isActive, true))
-      .orderBy(asc(judgments.id))
+      .orderBy(desc(judgments.decisionDate))
       .limit(PAGE_SIZE)
       .offset(offset);
 
