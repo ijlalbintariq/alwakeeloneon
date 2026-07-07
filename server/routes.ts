@@ -11752,7 +11752,7 @@ Query: ${query || "Not provided"}
 Draft Excerpt:
 ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         try {
-          const aiResult = await callStandardAISimple(sysInstruction, userInput, 1200, { timeoutProfile: "analysis", temperature: 0.3 });
+          const aiResult = await callTurboAI(sysInstruction, [{ role: "user", parts: [{ text: userInput }] }], 1200, { timeoutProfile: "analysis", temperature: 0.3 });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: query || "" });
           const aiSuggestions = parseClauseSuggestionsFromAi(aiResult.text, safeLimit);
           if (aiSuggestions.length > 0) {
@@ -14152,7 +14152,7 @@ Jurisdiction: ${jurisdiction || "Lahore"}
 Current Draft Excerpt:
 ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
         try {
-          const aiResult = await callStandardAISimple(sysInstruction, userInput, 1400, { timeoutProfile: "analysis", temperature: 0.3 });
+          const aiResult = await callTurboAI(sysInstruction, [{ role: "user", parts: [{ text: userInput }] }], 1400, { timeoutProfile: "analysis", temperature: 0.3 });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: safePrompt });
           const clauseText = normalizeDraftingText(aiResult.text);
           if (clauseText) {
