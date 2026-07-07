@@ -45,6 +45,7 @@ import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, runToolJudgmentSearch, repairReferencesJson } from "./deepseek-ai";
 import { runToolJudgmentSearchOR, isOpenRouterAvailable } from "./openrouter-ai";
 import { streamWithOpenRouter } from "./openrouter";
+import { getMoonshotModelName } from "./moonshot";
 import {
   isAiRouterV2Enabled,
   raceToDeadline,
@@ -2209,7 +2210,7 @@ function buildMessages(systemPrompt: string, contents: Array<{ role: string; par
 
 const MODEL_TIMEOUT_MS = {
   standardPrimary: 30000,
-  turboPrimary: 30000,
+  turboPrimary: 75000,
   apexPrimary: 90000, // K2.6 with enriched tool-search context needs 60-90s
 };
 
@@ -2226,11 +2227,11 @@ const MODEL_TIMEOUT_PROFILES: Record<TimeoutProfile, TimeoutConfig> = {
   },
   search: {
     standardPrimary: 30000,
-    turboPrimary: 30000,
+    turboPrimary: 60000,
   },
   analysis: {
     standardPrimary: 90000, // DeepSeek R1 can take 60-80s for complex drafts with attachments
-    turboPrimary: 45000,
+    turboPrimary: 75000,
   },
 };
 
@@ -2322,14 +2323,14 @@ async function callTurboAI(
     const { isMoonshotAvailable, chatWithMoonshot } = await import("./moonshot");
     if (isMoonshotAvailable()) {
       try {
-        const result = await withTimeout("Kimi K2.6", timeoutConfig.turboPrimary, () =>
-          chatWithMoonshot({ messages: messages as any, maxTokens, temperature }),
+        const result = await withTimeout("Kimi K2.5", timeoutConfig.turboPrimary, () =>
+          chatWithMoonshot({ messages: messages as any, maxTokens, temperature, useInstant: false }),
         );
-        const safeText = assertNonEmptyModelOutput("Kimi K2.6", result.content);
-        console.log(`[AI Routing][turbo] Primary Kimi K2.6 (direct) succeeded in ${Date.now() - startedAt}ms`);
+        const safeText = assertNonEmptyModelOutput("Kimi K2.5", result.content);
+        console.log(`[AI Routing][turbo] Primary Kimi K2.5 (direct) succeeded in ${Date.now() - startedAt}ms`);
         return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
       } catch (kErr) {
-        console.warn(`[AI Routing][turbo] Kimi K2.6 (direct) failed, trying Gemini:`, kErr);
+        console.warn(`[AI Routing][turbo] Kimi K2.5 (direct) failed, trying Gemini:`, kErr);
       }
     }
   } catch (importErr) {
@@ -2434,14 +2435,14 @@ async function callLegalDraftingAI(
     const { isMoonshotAvailable, chatWithMoonshot } = await import("./moonshot");
     if (isMoonshotAvailable()) {
       try {
-        const result = await withTimeout("Kimi K2.6", timeoutConfig.turboPrimary, () =>
-          chatWithMoonshot({ messages: messages as any, maxTokens, temperature }),
+        const result = await withTimeout("Kimi K2.5", timeoutConfig.turboPrimary, () =>
+          chatWithMoonshot({ messages: messages as any, maxTokens, temperature, useInstant: false }),
         );
-        const safeText = assertNonEmptyModelOutput("Kimi K2.6", result.content);
-        console.log(`[AI Routing][legal-drafting] Kimi K2.6 primary succeeded in ${Date.now() - startedAt}ms`);
+        const safeText = assertNonEmptyModelOutput("Kimi K2.5", result.content);
+        console.log(`[AI Routing][legal-drafting] Kimi K2.5 primary succeeded in ${Date.now() - startedAt}ms`);
         return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
       } catch (kErr) {
-        console.warn(`[AI Routing][legal-drafting] Kimi K2.6 primary failed, trying Gemini:`, kErr);
+        console.warn(`[AI Routing][legal-drafting] Kimi K2.5 primary failed, trying Gemini:`, kErr);
       }
     }
   } catch (importErr) {
@@ -2990,6 +2991,12 @@ function suppressWrongIndianJurisdictionForPakCitation(responseText: string, _us
 function stripChainOfThought(text: string): string {
   if (!text) return text;
 
+  // Strip <think>...</think> tags if present
+  let withoutThinkTags = text.replace(/<think>[\s\S]*?<\/think>\s*/gi, "");
+  if (!withoutThinkTags.trim()) {
+    withoutThinkTags = text;
+  }
+
   // Common prefixes that indicate chain-of-thought reasoning
   const cotPrefixes = [
     /^The user is asking/i,
@@ -3011,12 +3018,12 @@ function stripChainOfThought(text: string): string {
     /^The (query|question|prompt) (is|asks|requires)/i,
   ];
 
-  const lines = text.split("\n");
+  const lines = withoutThinkTags.split("\n");
   const firstLine = lines[0]?.trim() || "";
 
   // Check if the response starts with chain-of-thought
   const startsWithCoT = cotPrefixes.some(rx => rx.test(firstLine));
-  if (!startsWithCoT) return text;
+  if (!startsWithCoT) return withoutThinkTags;
 
   // Find the actual response — look for Al Wakeelo's structured response markers
   const responseMarkers = [
@@ -5826,6 +5833,7 @@ async function passesMalwareScan(
 
 function normalizeDraftingText(content: string): string {
   return content
+    .replace(/<think>[\s\S]*?<\/think>\s*/gi, "")
     .replace(/```references[\s\S]*?```/gi, "")
     .replace(/```recommendations[\s\S]*?```/gi, "")
     .replace(/```[a-zA-Z]*\s*/g, "")
@@ -15441,8 +15449,9 @@ The user has attached the following documents for your reference. Analyze them c
         selectedRoute = "standard";
       } else if (requestedTurbo) {
         if (isTurboAllowedForTier(userTier)) {
-          if (!isDeepSeekAvailable()) {
-            return res.status(503).json({ message: "Turbo mode is currently unavailable because DeepSeek is not configured." });
+          const { isMoonshotAvailable } = await import("./moonshot");
+          if (!isMoonshotAvailable()) {
+            return res.status(503).json({ message: "Turbo mode is currently unavailable because Moonshot/Kimi is not configured." });
           }
           selectedRoute = "turbo";
         } else {
@@ -15453,7 +15462,7 @@ The user has attached the following documents for your reference. Analyze them c
       let usedModel = selectedRoute === "apex"
         ? (selectedApexModel || "apex-pro")
         : selectedRoute === "turbo"
-          ? getDeepSeekProModelName()
+          ? getMoonshotModelName()
           : "deepseek"; // Using deepseek-chat for standard mode (Groq deprecated)
       const enforcePrimaryLinkedSourceCitations = moduleProfile.features.strictCitations;
       if (enforcePrimaryLinkedSourceCitations) {
@@ -15737,6 +15746,7 @@ The user has attached the following documents for your reference. Analyze them c
                 messages: streamMessages as any,
                 maxTokens: tokenLimit,
                 temperature,
+                useInstant: false,
               })) {
                 writeChunkToClient(text);
               }

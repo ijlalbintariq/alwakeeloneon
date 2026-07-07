@@ -26,7 +26,7 @@ function loadDotEnv(): void {
 
     const key = line.slice(0, idx).trim();
     if (!key) continue;
-    if (process.env[key] !== undefined) continue;
+    if (process.env[key] !== undefined && process.env[key] !== "") continue;
 
     const value = stripWrappingQuotes(line.slice(idx + 1));
     process.env[key] = value;
