@@ -2317,28 +2317,37 @@ async function callTurboAI(
   const messages = buildMessages(systemPrompt, contents);
   const startedAt = Date.now();
 
+  // Try direct Moonshot API first
+  try {
+    const { isMoonshotAvailable, chatWithMoonshot } = await import("./moonshot");
+    if (isMoonshotAvailable()) {
+      try {
+        const result = await withTimeout("Kimi K2.5", timeoutConfig.turboPrimary, () =>
+          chatWithMoonshot({ messages: messages as any, maxTokens, temperature }),
+        );
+        const safeText = assertNonEmptyModelOutput("Kimi K2.5", result.content);
+        console.log(`[AI Routing][turbo] Primary Kimi K2.5 (direct) succeeded in ${Date.now() - startedAt}ms`);
+        return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
+      } catch (kErr) {
+        console.warn(`[AI Routing][turbo] Kimi K2.5 (direct) failed, trying Gemini:`, kErr);
+      }
+    }
+  } catch (importErr) {
+    console.warn(`[AI Routing][turbo] Moonshot module load failed:`, importErr);
+  }
+
+  // Fallback 1: Gemini via OpenRouter
   if (isOpenRouterAvailable()) {
     try {
       const { chatWithOpenRouter } = await import("./openrouter");
-      const result = await withTimeout("Kimi K2.5", timeoutConfig.turboPrimary, () =>
-        chatWithOpenRouter({ messages: messages as any, model: "moonshotai/kimi-k2.5", maxTokens, temperature }),
+      const result = await withTimeout("Gemini 3.0 Flash", timeoutConfig.turboPrimary, () =>
+        chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3-flash-preview", maxTokens, temperature }),
       );
-      const safeText = assertNonEmptyModelOutput("Kimi K2.5", result.content);
-      console.log(`[AI Routing][turbo] Primary Kimi K2.5 succeeded in ${Date.now() - startedAt}ms`);
+      const safeText = assertNonEmptyModelOutput("Gemini 3.0 Flash", result.content);
+      console.log(`[AI Routing][turbo] Fallback Gemini succeeded in ${Date.now() - startedAt}ms`);
       return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
-    } catch (kErr) {
-      console.warn(`[AI Routing][turbo] Kimi K2.5 failed, trying Gemini:`, kErr);
-      try {
-        const { chatWithOpenRouter } = await import("./openrouter");
-        const result = await withTimeout("Gemini 3.0 Flash", timeoutConfig.turboPrimary, () =>
-          chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3-flash-preview", maxTokens, temperature }),
-        );
-        const safeText = assertNonEmptyModelOutput("Gemini 3.0 Flash", result.content);
-        console.log(`[AI Routing][turbo] Fallback Gemini succeeded in ${Date.now() - startedAt}ms`);
-        return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
-      } catch (geminiErr) {
-        console.error(`[AI Routing][turbo] Gemini failed as well:`, geminiErr);
-      }
+    } catch (geminiErr) {
+      console.error(`[AI Routing][turbo] Gemini failed as well:`, geminiErr);
     }
   }
 
@@ -15653,7 +15662,7 @@ The user has attached the following documents for your reference. Analyze them c
           // Al Wakeelo: tool-searched judgments + pipeline statutes injected via systemPromptFull.
           // V2 router (Gemini via OpenRouter) only for al-wakeelo chat.
           // Draft, contract-drafting, brief → DeepSeek streaming directly (faster for long-form generation).
-          const useV2Router = isAiRouterV2Enabled() && moduleType === "al-wakeelo";
+          const useV2Router = isAiRouterV2Enabled() && (moduleType === "al-wakeelo" || moduleType === "draft" || moduleType === "contract-drafting");
           if (useV2Router) {
             const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
             console.log(`[AI Stream] V2 route=${selectedRoute} chain=${JSON.stringify(chain)} msgCount=${streamMessages.length} systemLen=${streamMessages[0]?.content?.length || 0}`);
@@ -15687,9 +15696,9 @@ The user has attached the following documents for your reference. Analyze them c
           } else if (selectedRoute === "turbo") {
             usedModel = "kimi";
             try {
-              for await (const text of streamWithOpenRouter({
-                messages: streamMessages,
-                model: "moonshotai/kimi-k2.5",
+              const { streamWithMoonshot } = await import("./moonshot");
+              for await (const text of streamWithMoonshot({
+                messages: streamMessages as any,
                 maxTokens: tokenLimit,
                 temperature,
               })) {

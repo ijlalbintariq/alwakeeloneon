@@ -44,6 +44,12 @@ import {
   streamWithApex,
   isApexAvailable,
 } from "./apex-ai";
+import {
+  chatWithMoonshot,
+  streamWithMoonshot,
+  isMoonshotAvailable,
+  getMoonshotModelName,
+} from "./moonshot";
 
 export type ProviderId = "groq" | "deepseek" | "deepseek-pro" | "openrouter" | "apex" | "kimi" | "gemini";
 
@@ -160,7 +166,7 @@ async function* streamFromProvider(
       yield* streamWithOpenRouter(opts);
       return;
     case "kimi":
-      yield* streamWithOpenRouter({ ...opts, model: "moonshotai/kimi-k2.5" });
+      yield* streamWithMoonshot(opts);
       return;
     case "gemini":
       yield* streamWithOpenRouter({ ...opts, model: "google/gemini-3-flash-preview" });
@@ -182,7 +188,7 @@ function providerModelName(provider: ProviderId): string {
     case "openrouter":
       return getOpenRouterModelName();
     case "kimi":
-      return "moonshotai/kimi-k2.5";
+      return getMoonshotModelName();
     case "gemini":
       return "google/gemini-3-flash-preview";
     case "apex":
@@ -198,9 +204,10 @@ function providerAvailable(provider: ProviderId): boolean {
     case "deepseek-pro":
       return isDeepSeekAvailable();
     case "openrouter":
-    case "kimi":
     case "gemini":
       return isOpenRouterAvailableCheck();
+    case "kimi":
+      return isMoonshotAvailable();
     case "apex":
       return isApexAvailable();
   }
@@ -308,7 +315,7 @@ async function callProvider(
       return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
     }
     case "kimi": {
-      const r = await chatWithOpenRouter({ ...opts, model: "moonshotai/kimi-k2.5" });
+      const r = await chatWithMoonshot(opts);
       return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
     }
     case "gemini": {
