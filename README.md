@@ -40,41 +40,49 @@ Alwakeelo AI is a full-stack legal workspace built for Pakistani advocates, law 
 
 Alwakeelo ships with 12 core modules:
 
+### 💬 AI Legal Chat
+Consult with an AI legal advisor trained on Pakistani law. Get strategy and next-step guidance fast.
+
+### 👑 Al Wakeelo Engine
+Use the main legal AI workspace with grounded responses, references, and practical next-step guidance.
+
 ### 🔍 Judgment Search
-Search 600,000+ court judgments with PostgreSQL full-text search (`tsvector`). Filter by citation (PLD, SCMR, YLR, MLD, CLC, CLD, PCrLJ), party name, court, year, judge, or keyword. Sub-second results across the entire corpus.
+Find relevant Pakistani case law with quick citation-focused search and contextual summaries.
 
 ### 🔗 Citation Search
-Look up judgments by exact citation — year, journal, and page number. Trace citation networks to see which cases cite each other and follow legal reasoning chains across courts.
-
-### 💬 AI Legal Chat (Al Wakeelo Engine)
-The main AI workspace. Ask legal questions and receive answers grounded in verified Pakistani case law and statutes. Every citation is cross-checked against the database — unverified citations are flagged and removed before reaching the user.
-
-### 📝 Legal Drafting
-Draft court-ready writ petitions, bail applications, appeals, legal notices, and civil suits. Powered by a TipTap rich text editor with 13 extensions (tables, color, highlight, typography, text-align, subscript, superscript, underline, placeholder, citation autocomplete). Includes draft version history and DOCX export.
-
-### 📋 Contract Drafting
-Generate client-ready contracts with structured clause sets, risk score breakdown, redline suggestions, and cleaner final drafts. Supports rental agreements, employment contracts, sale agreements, partnership deeds, NDAs, and service agreements — all compliant with Contract Act 1872, Stamp Act 1899, and Registration Act 1908.
+Search directly by year, journal, and page to locate precise judgments and linked details quickly.
 
 ### 📚 Statute Lookup
-Navigate 50+ statutes with section-level search — Constitution, PPC, CrPC, CPC, Qanun-e-Shahadat Order, Family Laws, and more. In-browser PDF viewing with `react-pdf`.
+Navigate Pakistani statutes and sections with plain-language legal explanations.
 
-### 🧠 Style Memory (RAG-based Personalization)
-Train the AI on your uploads, saved drafts, and accepted redline edits so output follows your legal style and preferred language. Uses pgvector embeddings with configurable strictness levels (strict, balanced, flexible) and ownership modes (user-level, org-level, or combined).
+### 📝 Legal Drafting
+Prepare petitions, notices, applications, and legal replies with structured templates, clause-ready sections, and style-consistent drafting support.
 
-### 📁 Case Management
-Organize cases by type (criminal, civil, family, constitutional, tax, corporate, banking, labor, property). Track clients/parties with CNIC and contact details, manage 11 compliance types (hearings, filing deadlines, limitation dates, letter of authority, conflict checks, etc.), and link uploaded documents to specific cases.
+### 🧠 Style-Memory RAG
+Train AI on your uploads, drafts, and accepted edits so output follows your legal style and preferred language.
 
-### 📅 Daily Diary
-Hearing calendar with priority levels, outcomes, next-date tracking, and automated email digests (daily/weekly via Resend). Timezone-aware scheduling (Asia/Karachi default).
+### 📋 Contract Drafting
+Generate client-ready contracts with structured clause sets, risk score breakdown, redline suggestions, and cleaner final drafts for negotiation or execution.
 
 ### 📄 Case Documents
-Upload, review, and organize matter-specific documents with auto-classification by legal domain. Supports PDF, DOCX, and image uploads with dual OCR (Tesseract local + OCR.space cloud, English + Urdu).
+Upload, review, and organize matter-specific documents with faster legal analysis support.
 
 ### 📖 Knowledge Vault
-Private user documents and global admin legal resources for retrieval-grounded AI outputs. Supports GitHub-synced knowledge bases and organization-level shared resources.
+Maintain private user documents and global admin legal resources for retrieval-grounded outputs.
+
+### 👥 Organization Workspace
+Support chamber and team workflows with shared access controls and collaboration-ready structure.
 
 ### 🎙️ Audio Transcription
-Convert legal voice notes and recorded audio into text using Whisper.cpp (local) or cloud transcription via DeepSeek/OpenRouter. Includes ffmpeg audio conversion.
+Convert legal voice notes and recorded audio into text for research, drafting, and case preparation.
+
+### Additional Case & Calendar Management Features
+
+#### 📁 Case Management
+Organize cases by type (criminal, civil, family, constitutional, tax, corporate, banking, labor, property). Track clients/parties with CNIC and contact details, manage 11 compliance types (hearings, filing deadlines, limitation dates, letter of authority, conflict checks, etc.), and link uploaded documents to specific cases.
+
+#### 📅 Daily Diary
+Hearing calendar with priority levels, outcomes, next-date tracking, and automated email digests (daily/weekly via Resend). Timezone-aware scheduling (Asia/Karachi default).
 
 ---
 
@@ -163,11 +171,15 @@ Response to user (with clickable, verified citations)
 | Mode | Provider | Model ID | Access |
 |------|----------|----------|--------|
 | **Standard** | OpenRouter → DeepSeek | `google/gemini-3-flash-preview` → `deepseek-v4-flash` | All tiers |
-| **Turbo** | OpenRouter (Kimi) → OpenRouter (Gemini) → DeepSeek Pro | `moonshotai/kimi-k2.5` → `google/gemini-3-flash-preview` → `deepseek-v4-pro` | Pro+ |
-| **Apex** | OpenRouter (Apex Pro/Agent) | `anthropic/claude-sonnet-5` (with Agentic step visualization) | Chamber+ |
+| **Turbo** | OpenRouter (Kimi) → OpenRouter (Gemini) → DeepSeek Pro/R1 | `moonshotai/kimi-k2.5` (via OpenRouter conceptually) → `google/gemini-3-flash-preview` → DeepSeek Pro/R1 | Pro+ |
+| **Apex** | OpenRouter (Apex Pro/Agent) | Claude 3.5 Sonnet (`anthropic/claude-3.5-sonnet`) | Chamber+ |
 | **Fallback / Audio** | Moonshot AI (Kimi) | `kimi-k2.5` / `kimi-k2.6` (via `MOONSHOT_API_KEY`) | Chamber+ |
 
 The AI router uses a **race-with-deadline** pattern — if the primary provider doesn't emit a first token within the SLA timeout (30s), it automatically falls back to the next provider in the chain. Streaming and non-streaming fallback paths are handled separately.
+
+#### ⚠️ Core Routing & Integration Notes:
+- **Direct Moonshot Integration**: In the actual code implementation (`server/moonshot.ts`), Kimi K2.5 is integrated directly using `MOONSHOT_API_KEY` (pointing to `https://api.moonshot.ai/v1`) rather than OpenRouter.
+- **Fallback Chain Configuration**: In the current codebase version, `DEFAULT_TURBO_CHAIN` in `server/ai-router.ts` is configured as `["kimi", "gemini"]`. The DeepSeek Pro/R1 final fallback represents the planned logical routing layer.
 
 ### RAG Pipeline
 
@@ -286,19 +298,33 @@ npm run dev
 
 ### Key Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string (with pgvector) |
-| `SESSION_SECRET` | ✅ | Express session secret |
-| `DEEPSEEK_API_KEY` | ✅ | Primary AI provider (DeepSeek v4) |
+| Variable | Required / Optional | Description |
+|----------|---------------------|-------------|
+| `DATABASE_URL` | ✅ Required | PostgreSQL connection string (with pgvector) |
+| `SESSION_SECRET` | ✅ Required | Express session secret |
+| `DEEPSEEK_API_KEY` | ✅ Required | Primary AI provider (DeepSeek v4) |
+| `MOONSHOT_API_KEY` | Optional (Required if using Kimi/Moonshot) | API key for direct Moonshot/Kimi integration (points to `https://api.moonshot.ai/v1`) |
 | `OPENROUTER_API_KEY` | Recommended | Fallback AI + Apex mode (Claude Sonnet 5, Kimi K2.5, Gemini 3 Flash) |
-| `GOOGLE_CLIENT_ID` | Optional | Google OAuth login |
-| `RESEND_API_KEY` | Optional | Transactional emails |
-| `SAFEPAY_API_KEY` | Optional | Payment processing (PKR) |
-| `R2_*` | Optional | Cloudflare R2 file storage (6 vars) |
-| `OCRSPACE_API_KEY` | Optional | Cloud OCR fallback |
-| `INDEXNOW_KEY` | Optional | Search engine real-time notification |
-| `CAPTCHA_ENFORCED` | Optional | Enable CAPTCHA on auth forms |
+| `GOOGLE_CLIENT_ID` | Optional | Google OAuth client ID for login |
+| `RESEND_API_KEY` | Optional | Transactional email provider API key (via Resend) |
+| `RESEND_FROM_EMAIL` | Optional | The sender email address for Resend notifications |
+| `SAFEPAY_API_KEY` | Optional | Public key for Safepay payment gateway integration (PKR checkout session) |
+| `SAFEPAY_SECRET_KEY` | Optional | Secret key for Safepay payment gateway operations |
+| `SAFEPAY_ENVIRONMENT` | Optional | Environment for Safepay (`sandbox` or `production`) |
+| `SAFEPAY_WEBHOOK_SECRET` | Optional | Webhook verification secret for Safepay payment notifications |
+| `R2_ACCOUNT_ID` | Optional | Cloudflare R2 Account ID for S3-compatible storage |
+| `R2_ACCESS_KEY_ID` | Optional | Cloudflare R2 Access Key ID |
+| `R2_SECRET_ACCESS_KEY` | Optional | Cloudflare R2 Secret Access Key |
+| `R2_BUCKET` | Optional | Cloudflare R2 Bucket name |
+| `R2_ENDPOINT` | Optional | Cloudflare R2 endpoint URL |
+| `R2_REGION` | Optional | Cloudflare R2 region (e.g. `auto`) |
+| `R2_PUBLIC_BASE_URL` | Optional | Public CDN or base URL mapping to Cloudflare R2 |
+| `GOOGLE_INDEXING_CREDENTIALS` | Optional | Google Indexing API JSON credentials for service account URL submission |
+| `INDEXNOW_KEY` | Optional | Key for IndexNow real-time Bing/Yandex search indexing notification |
+| `OCRSPACE_API_KEY` | Optional | Cloud OCR.space API key for PDF/image OCR fallback |
+| `CAPTCHA_ENFORCED` | Optional | Set to `true` to enable CAPTCHA on auth forms |
+| `TURNSTILE_SECRET_KEY` | Optional | Cloudflare Turnstile CAPTCHA secret key |
+| `RECAPTCHA_SECRET_KEY` | Optional | Google reCAPTCHA fallback secret key |
 
 ### Docker
 
