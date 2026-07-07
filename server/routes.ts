@@ -413,7 +413,7 @@ function closeUnclosedMarkdownAndHtml(text: string): string {
   return result;
 }
 
-function enforcePakistanLawOnlyOutput(text: string): string {
+export function enforcePakistanLawOnlyOutput(text: string): string {
   if (!text) return "";
   const scoped = String(text)
     .replace(/\bsection\s+(\d+[A-Za-z-]*)\s+of\s+ipc\b/gi, "Section $1 PPC")
@@ -2316,11 +2316,38 @@ async function callTurboAI(
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, contents);
   const startedAt = Date.now();
+
+  if (isOpenRouterAvailable()) {
+    try {
+      const { chatWithOpenRouter } = await import("./openrouter");
+      const result = await withTimeout("Kimi K2.5", timeoutConfig.turboPrimary, () =>
+        chatWithOpenRouter({ messages: messages as any, model: "moonshotai/kimi-k2.5", maxTokens, temperature }),
+      );
+      const safeText = assertNonEmptyModelOutput("Kimi K2.5", result.content);
+      console.log(`[AI Routing][turbo] Primary Kimi K2.5 succeeded in ${Date.now() - startedAt}ms`);
+      return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
+    } catch (kErr) {
+      console.warn(`[AI Routing][turbo] Kimi K2.5 failed, trying Gemini:`, kErr);
+      try {
+        const { chatWithOpenRouter } = await import("./openrouter");
+        const result = await withTimeout("Gemini 3.0 Flash", timeoutConfig.turboPrimary, () =>
+          chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3-flash-preview", maxTokens, temperature }),
+        );
+        const safeText = assertNonEmptyModelOutput("Gemini 3.0 Flash", result.content);
+        console.log(`[AI Routing][turbo] Fallback Gemini succeeded in ${Date.now() - startedAt}ms`);
+        return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
+      } catch (geminiErr) {
+        console.error(`[AI Routing][turbo] Gemini failed as well:`, geminiErr);
+      }
+    }
+  }
+
+  // Fallback to DeepSeek R1
   const result = await withTimeout("DeepSeek R1", timeoutConfig.turboPrimary, () =>
     chatWithDeepSeekPro({ messages, maxTokens, temperature }),
   );
   const safeText = assertNonEmptyModelOutput("DeepSeek R1", result.content);
-  console.log(`[AI Routing][turbo] Primary DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
+  console.log(`[AI Routing][turbo] Final Fallback DeepSeek R1 succeeded in ${Date.now() - startedAt}ms`);
   return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
 }
 
@@ -15658,14 +15685,29 @@ The user has attached the following documents for your reference. Analyze them c
             console.log(`[AI Stream] DeepSeek done in ${Date.now() - streamStartMs}ms module=${moduleType}`);
             routingPath.push("deepseek:direct");
           } else if (selectedRoute === "turbo") {
-            usedModel = getDeepSeekProModelName();
-            for await (const text of streamWithDeepSeek({
-              messages: streamMessages,
-              model: getDeepSeekProModelName(),
-              maxTokens: tokenLimit,
-              temperature,
-            })) {
-              writeChunkToClient(text);
+            usedModel = "kimi";
+            try {
+              for await (const text of streamWithOpenRouter({
+                messages: streamMessages,
+                model: "moonshotai/kimi-k2.5",
+                maxTokens: tokenLimit,
+                temperature,
+              })) {
+                writeChunkToClient(text);
+              }
+            } catch (kErr) {
+              console.warn(`[AI Chat] Kimi failed, falling back to Gemini:`, kErr);
+              if (!fullContent) {
+                usedModel = "gemini-3-flash";
+                for await (const text of streamWithOpenRouter({
+                  messages: streamMessages,
+                  model: "google/gemini-3-flash-preview",
+                  maxTokens: tokenLimit,
+                  temperature,
+                })) {
+                  writeChunkToClient(text);
+                }
+              }
             }
           } else {
             // Standard mode (non-router v2): Gemini Flash 3.0 via OpenRouter (primary), DeepSeek fallback

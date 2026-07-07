@@ -45,7 +45,7 @@ import {
   isApexAvailable,
 } from "./apex-ai";
 
-export type ProviderId = "groq" | "deepseek" | "deepseek-pro" | "openrouter" | "apex";
+export type ProviderId = "groq" | "deepseek" | "deepseek-pro" | "openrouter" | "apex" | "kimi" | "gemini";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -159,6 +159,12 @@ async function* streamFromProvider(
     case "openrouter":
       yield* streamWithOpenRouter(opts);
       return;
+    case "kimi":
+      yield* streamWithOpenRouter({ ...opts, model: "moonshotai/kimi-k2.5" });
+      return;
+    case "gemini":
+      yield* streamWithOpenRouter({ ...opts, model: "google/gemini-3-flash-preview" });
+      return;
     case "apex":
       yield* streamWithApex({ model: "apex-pro", messages: opts.messages as any, maxTokens: opts.maxTokens, temperature: opts.temperature });
       return;
@@ -175,6 +181,10 @@ function providerModelName(provider: ProviderId): string {
       return getDeepSeekProModelName();
     case "openrouter":
       return getOpenRouterModelName();
+    case "kimi":
+      return "moonshotai/kimi-k2.5";
+    case "gemini":
+      return "google/gemini-3-flash-preview";
     case "apex":
       return "anthropic/claude-3.5-sonnet";
   }
@@ -188,6 +198,8 @@ function providerAvailable(provider: ProviderId): boolean {
     case "deepseek-pro":
       return isDeepSeekAvailable();
     case "openrouter":
+    case "kimi":
+    case "gemini":
       return isOpenRouterAvailableCheck();
     case "apex":
       return isApexAvailable();
@@ -295,6 +307,14 @@ async function callProvider(
       const r = await chatWithOpenRouter(opts);
       return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
     }
+    case "kimi": {
+      const r = await chatWithOpenRouter({ ...opts, model: "moonshotai/kimi-k2.5" });
+      return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
+    }
+    case "gemini": {
+      const r = await chatWithOpenRouter({ ...opts, model: "google/gemini-3-flash-preview" });
+      return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
+    }
     case "apex": {
       const r = await chatWithApex({ model: "apex-pro", messages: opts.messages as any, maxTokens: opts.maxTokens, temperature: opts.temperature });
       return { content: r.content, modelName: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
@@ -354,4 +374,4 @@ export async function callWithFallback(
 // ─── Default chains ──────────────────────────────────────────────────────
 
 export const DEFAULT_STANDARD_CHAIN: ProviderId[] = ["openrouter", "deepseek"];
-export const DEFAULT_TURBO_CHAIN: ProviderId[] = ["apex", "openrouter", "deepseek-pro"];
+export const DEFAULT_TURBO_CHAIN: ProviderId[] = ["kimi", "gemini"];
