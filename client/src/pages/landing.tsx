@@ -633,7 +633,7 @@ export default function LandingPage() {
               <a href="/cancellation-return-refund-policy" onClick={(e) => { e.preventDefault(); navigate("/cancellation-return-refund-policy"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Cancellation/Return/Refund Policy</a>
               <a href="/ownership-statement" onClick={(e) => { e.preventDefault(); navigate("/ownership-statement"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Ownership Statement</a>
               <a href="https://www.reddit.com/" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Reddit Community</a>
-              <a href="https://www.linkedin.com/company/alwakeelo" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">LinkedIn</a>
+              <a href="https://www.linkedin.com/company/135135493" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">LinkedIn</a>
             </div>
             <p className="text-xs text-muted-foreground">
               &copy; {new Date().getFullYear()} Alwakeelo. All rights reserved.
