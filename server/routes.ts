@@ -2429,7 +2429,26 @@ async function callLegalDraftingAI(
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, [{ role: "user", parts: [{ text: userText }] }]);
   const startedAt = Date.now();
-  // Primary: Gemini 3.0 Flash via OpenRouter (extremely fast, optimized for JSON structures)
+  // Primary: Kimi K2.6 via direct API (Thinking model)
+  try {
+    const { isMoonshotAvailable, chatWithMoonshot } = await import("./moonshot");
+    if (isMoonshotAvailable()) {
+      try {
+        const result = await withTimeout("Kimi K2.6", timeoutConfig.turboPrimary, () =>
+          chatWithMoonshot({ messages: messages as any, maxTokens, temperature }),
+        );
+        const safeText = assertNonEmptyModelOutput("Kimi K2.6", result.content);
+        console.log(`[AI Routing][legal-drafting] Kimi K2.6 primary succeeded in ${Date.now() - startedAt}ms`);
+        return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
+      } catch (kErr) {
+        console.warn(`[AI Routing][legal-drafting] Kimi K2.6 primary failed, trying Gemini:`, kErr);
+      }
+    }
+  } catch (importErr) {
+    console.warn(`[AI Routing][legal-drafting] Moonshot module load failed:`, importErr);
+  }
+
+  // Fallback 1: Gemini 3.0 Flash via OpenRouter
   if (isOpenRouterAvailable()) {
     try {
       const { chatWithOpenRouter } = await import("./openrouter");
@@ -2437,10 +2456,10 @@ async function callLegalDraftingAI(
         chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3-flash-preview", maxTokens, temperature }),
       );
       const safeText = assertNonEmptyModelOutput("Gemini 3.0 Flash", result.content);
-      console.log(`[AI Routing][legal-drafting] Gemini 3.0 Flash primary succeeded in ${Date.now() - startedAt}ms`);
+      console.log(`[AI Routing][legal-drafting] Gemini 3.0 Flash fallback succeeded in ${Date.now() - startedAt}ms`);
       return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
     } catch (geminiErr) {
-      console.warn(`[AI Routing][legal-drafting] Gemini 3.0 Flash failed, falling back to DeepSeek:`, geminiErr);
+      console.warn(`[AI Routing][legal-drafting] Gemini 3.0 Flash fallback failed, trying DeepSeek:`, geminiErr);
     }
   }
 
@@ -11776,18 +11795,7 @@ Query: ${query || "Not provided"}
 Draft Excerpt:
 ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         try {
-          let aiResult: { text: string; model: string };
-          if (isOpenRouterAvailable()) {
-            const { chatWithOpenRouter } = await import("./openrouter");
-            const messages = [
-              { role: "system" as const, content: sysInstruction },
-              { role: "user" as const, content: userInput },
-            ];
-            const orResult = await chatWithOpenRouter({ messages, model: "google/gemini-3-flash-preview", maxTokens: 1200, temperature: 0.3 });
-            aiResult = { text: orResult.content, model: orResult.model };
-          } else {
-            aiResult = await callTurboAI(sysInstruction, [{ role: "user", parts: [{ text: userInput }] }], 1200, { timeoutProfile: "analysis", temperature: 0.3 });
-          }
+          const aiResult = await callTurboAI(sysInstruction, [{ role: "user", parts: [{ text: userInput }] }], 1200, { timeoutProfile: "analysis", temperature: 0.3 });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: query || "" });
           const aiSuggestions = parseClauseSuggestionsFromAi(aiResult.text, safeLimit);
           if (aiSuggestions.length > 0) {
