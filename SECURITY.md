@@ -2,7 +2,7 @@
 
 ## Reporting
 
-Email security issues to `purchasingagreement@gmail.com`. Do not open public issues for vulnerabilities.
+Email security issues to `support@alwakeelo.com and alwakeeloneon@gmail.com`. Do not open public issues for vulnerabilities.
 
 ## Known accepted vulnerabilities
 
