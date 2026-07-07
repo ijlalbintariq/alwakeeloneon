@@ -2446,26 +2446,7 @@ async function callLegalDraftingAI(
     }
   }
 
-  // Fallback 1: Kimi K2.5 via Moonshot
-  try {
-    const { isMoonshotAvailable, chatWithMoonshot } = await import("./moonshot");
-    if (isMoonshotAvailable()) {
-      try {
-        const result = await withTimeout("Kimi K2.5", timeoutConfig.turboPrimary, () =>
-          chatWithMoonshot({ messages: messages as any, maxTokens, temperature, useInstant: false }),
-        );
-        const safeText = assertNonEmptyModelOutput("Kimi K2.5", result.content);
-        console.log(`[AI Routing][legal-drafting] Kimi K2.5 fallback succeeded in ${Date.now() - startedAt}ms`);
-        return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
-      } catch (kErr) {
-        console.warn(`[AI Routing][legal-drafting] Kimi K2.5 fallback failed, trying DeepSeek:`, kErr);
-      }
-    }
-  } catch (importErr) {
-    console.warn(`[AI Routing][legal-drafting] Moonshot module load failed:`, importErr);
-  }
-
-  // Fallback 2: DeepSeek Chat
+  // Fallback: DeepSeek Chat
   if (isDeepSeekAvailable()) {
     try {
       const result = await withTimeout("DeepSeek-Chat", timeoutConfig.turboPrimary, () =>
