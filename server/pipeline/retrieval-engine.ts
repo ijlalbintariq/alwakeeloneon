@@ -15,7 +15,9 @@
  */
 
 import { storage } from "../storage";
-import { retrieveForQuery } from "../rag/rag-service";
+import { similaritySearch } from "../rag/vector-store";
+import { embedTextLocal } from "../rag/embedding-local";
+import { retrieveForQuery, GLOBAL_STATUTE_RAG_USER_ID, GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID } from "../rag/rag-service";
 import type { CaseLaw } from "../../shared/schema";
 import type { QueryIntent, LegalTopic } from "./intent-classifier";
 import { normalizeCitationKey } from "../tools/citation-search-tool";
@@ -68,7 +70,7 @@ export interface RetrievalResult {
 
 const CASELAW_TIMEOUT_MS = 5000;  // Optimized for fast retrieval with index support
 const STATUTE_TIMEOUT_MS = 3000;  // Increased from 1500
-const ADMIN_DOC_TIMEOUT_MS = 1500;
+const ADMIN_DOC_TIMEOUT_MS = 4000;  // Budget: ~800ms embedding + ~200ms HNSW search + network margin
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([
@@ -724,34 +726,78 @@ async function fetchAdminDocs(intent: QueryIntent, limit: number, userId?: strin
   const query = intent.normalized;
   const docs: RetrievedDoc[] = [];
 
-  const [githubRaw, adminRaw, ragResult] = await Promise.all([
+  // Embed the query for direct vector search against statute & knowledge indexes.
+  // This is MUCH faster than retrieveForQuery which queries ALL global indexes
+  // including global-admin-judgments (5.5M rows, 50-100s per query).
+  const embeddingPromise = withTimeout(
+    embedTextLocal(query).catch(() => null),
+    ADMIN_DOC_TIMEOUT_MS,
+    null,
+  );
+
+  const [githubRaw, adminRaw, queryEmbedding] = await Promise.all([
     withTimeout(storage.searchGithubKnowledge(query, limit).catch(() => []), ADMIN_DOC_TIMEOUT_MS, []),
     withTimeout(storage.searchAdminKnowledge(query, limit).catch(() => []), ADMIN_DOC_TIMEOUT_MS, []),
-    userId
-      ? withTimeout(
-          retrieveForQuery({
-            userId,
-            query,
-            topK: limit * 2,
-          }).catch(() => null),
-          ADMIN_DOC_TIMEOUT_MS,
-          null
-        )
-      : Promise.resolve(null),
+    embeddingPromise,
   ]);
 
-  if (ragResult && ragResult.matches) {
-    for (const match of ragResult.matches) {
-      const sType = String((match.metadata || {}).sourceType || "").toLowerCase();
-      if (sType === "admin-statute" || sType === "admin-knowledge") {
+  // Direct vector search against statute & knowledge indexes only (fast, HNSW indexed)
+  if (queryEmbedding) {
+    console.log(`[fetchAdminDocs] Embedding OK (dim=${queryEmbedding.length}), running similaritySearch...`);
+    const candidateTopK = Math.max(limit * 2, 10);
+    const ragMatches = await withTimeout(
+      Promise.all([
+        similaritySearch({
+          userId: GLOBAL_STATUTE_RAG_USER_ID,
+          queryEmbedding,
+          queryText: query,
+          topK: candidateTopK,
+          vectorWeight: 0.72,
+          keywordWeight: 0.28,
+        }).catch((err) => { console.warn(`[fetchAdminDocs] statute search error: ${err.message}`); return []; }),
+        similaritySearch({
+          userId: GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
+          queryEmbedding,
+          queryText: query,
+          topK: candidateTopK,
+          vectorWeight: 0.72,
+          keywordWeight: 0.28,
+        }).catch((err) => { console.warn(`[fetchAdminDocs] knowledge search error: ${err.message}`); return []; }),
+      ]),
+      ADMIN_DOC_TIMEOUT_MS,
+      [[], []],
+    );
+
+    console.log(`[fetchAdminDocs] statute=${ragMatches[0].length} knowledge=${ragMatches[1].length} results`);
+
+    const allMatches = [...ragMatches[0], ...ragMatches[1]]
+      .filter((m) => m.score >= 0.15)
+      .sort((a, b) => b.score - a.score);
+
+    console.log(`[fetchAdminDocs] ${allMatches.length} matches after score filter (>= 0.15)`);
+    for (const m of allMatches.slice(0, 3)) {
+      console.log(`  [score=${m.score.toFixed(4)}] sourceType=${(m.metadata as any)?.sourceType || "?"} title="${(m.title || "").slice(0, 50)}"`);
+    }
+
+    for (const match of allMatches) {
+      if (docs.length >= limit) break;
+      const sType = String((match.metadata || {} as any).sourceType || "").toLowerCase();
+      if (sType === "admin-statute" || sType === "statute") {
         docs.push({
           title: String(match.title || ""),
           content: String(match.chunkText || ""),
-          source: sType === "admin-statute" ? "statute" : "admin",
+          source: "statute",
         });
-        if (docs.length >= limit) break;
+      } else {
+        docs.push({
+          title: String(match.title || ""),
+          content: String(match.chunkText || ""),
+          source: "admin",
+        });
       }
     }
+  } else {
+    console.log(`[fetchAdminDocs] No embedding available — skipping vector search`);
   }
 
   for (const doc of (githubRaw as any[])) {
