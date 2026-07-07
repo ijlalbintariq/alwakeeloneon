@@ -40,7 +40,8 @@ interface MoonshotResponse {
 export async function chatWithMoonshot(options: MoonshotChatOptions): Promise<MoonshotResponse> {
   const client = getClient();
   const model = options.model || DEFAULT_MODEL;
-  const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
+  // Moonshot Kimi K2.5 requires temperature to be exactly 1.0
+  const temperature = 1.0;
 
   const response = await client.chat.completions.create({
     model,
@@ -63,7 +64,8 @@ export async function chatWithMoonshot(options: MoonshotChatOptions): Promise<Mo
 export async function* streamWithMoonshot(options: MoonshotChatOptions): AsyncGenerator<string> {
   const client = getClient();
   const model = options.model || DEFAULT_MODEL;
-  const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
+  // Moonshot Kimi K2.5 requires temperature to be exactly 1.0
+  const temperature = 1.0;
 
   const stream = await client.chat.completions.create({
     model,

@@ -2429,40 +2429,55 @@ async function callLegalDraftingAI(
   const temperature = Number.isFinite(options?.temperature) ? Number(options?.temperature) : 0.7;
   const messages = buildMessages(systemPrompt, [{ role: "user", parts: [{ text: userText }] }]);
   const startedAt = Date.now();
-  if (!isDeepSeekAvailable()) {
-    throw new Error("Legal drafting requires DeepSeek. Configure DEEPSEEK_API_KEY.");
+  // Primary: Gemini 3.0 Flash via OpenRouter (extremely fast, optimized for JSON structures)
+  if (isOpenRouterAvailable()) {
+    try {
+      const { chatWithOpenRouter } = await import("./openrouter");
+      const result = await withTimeout("Gemini 3.0 Flash", timeoutConfig.turboPrimary, () =>
+        chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3-flash-preview", maxTokens, temperature }),
+      );
+      const safeText = assertNonEmptyModelOutput("Gemini 3.0 Flash", result.content);
+      console.log(`[AI Routing][legal-drafting] Gemini 3.0 Flash primary succeeded in ${Date.now() - startedAt}ms`);
+      return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
+    } catch (geminiErr) {
+      console.warn(`[AI Routing][legal-drafting] Gemini 3.0 Flash failed, falling back to DeepSeek:`, geminiErr);
+    }
   }
 
-  // Use deepseek-chat as primary (fast, consistent with streaming path)
-  try {
-    const result = await withTimeout("DeepSeek-Chat", timeoutConfig.turboPrimary, () =>
-      chatWithDeepSeek({ messages, maxTokens, temperature }),
-    );
-    const safeText = assertNonEmptyModelOutput("DeepSeek Chat", result.content);
-    console.log(`[AI Routing][legal-drafting] DeepSeek Chat succeeded in ${Date.now() - startedAt}ms (model=${result.model}, output=${result.content.length} chars)`);
-    return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
-  } catch (primaryErr: any) {
-    // If deepseek-chat times out or fails, retry once with DeepSeek R1 as fallback
-    const errCode = primaryErr?.code || "";
-    const isTimeout = errCode === "MODEL_TIMEOUT" || primaryErr?.message?.includes("timed out");
-    const isEmpty = errCode === "EMPTY_MODEL_OUTPUT";
-    if (isTimeout || isEmpty) {
-      console.warn(`[AI Routing][legal-drafting] DeepSeek Chat ${isTimeout ? "timed out" : "empty output"} after ${Date.now() - startedAt}ms — retrying with DeepSeek R1`);
-      const retryStarted = Date.now();
-      try {
-        const fallbackResult = await withTimeout("DeepSeek-R1-Fallback", timeoutConfig.standardPrimary, () =>
-          chatWithDeepSeekPro({ messages, maxTokens, temperature }),
-        );
-        const fallbackText = assertNonEmptyModelOutput("DeepSeek R1", fallbackResult.content);
-        console.log(`[AI Routing][legal-drafting] DeepSeek R1 fallback succeeded in ${Date.now() - retryStarted}ms`);
-        return { text: enforcePakistanLawOnlyOutput(fallbackText), model: fallbackResult.model };
-      } catch (fallbackErr) {
-        console.error(`[AI Routing][legal-drafting] DeepSeek R1 fallback also failed:`, getErrorMessage(fallbackErr));
-        throw primaryErr; // Re-throw the original error for better error messages
+  if (isDeepSeekAvailable()) {
+    // Use deepseek-chat as secondary fallback (fast, consistent with streaming path)
+    try {
+      const result = await withTimeout("DeepSeek-Chat", timeoutConfig.turboPrimary, () =>
+        chatWithDeepSeek({ messages, maxTokens, temperature }),
+      );
+      const safeText = assertNonEmptyModelOutput("DeepSeek Chat", result.content);
+      console.log(`[AI Routing][legal-drafting] DeepSeek Chat fallback succeeded in ${Date.now() - startedAt}ms (model=${result.model}, output=${result.content.length} chars)`);
+      return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
+    } catch (primaryErr: any) {
+      // If deepseek-chat times out or fails, retry once with DeepSeek R1 as fallback
+      const errCode = primaryErr?.code || "";
+      const isTimeout = errCode === "MODEL_TIMEOUT" || primaryErr?.message?.includes("timed out");
+      const isEmpty = errCode === "EMPTY_MODEL_OUTPUT";
+      if (isTimeout || isEmpty) {
+        console.warn(`[AI Routing][legal-drafting] DeepSeek Chat ${isTimeout ? "timed out" : "empty output"} after ${Date.now() - startedAt}ms — retrying with DeepSeek R1`);
+        const retryStarted = Date.now();
+        try {
+          const fallbackResult = await withTimeout("DeepSeek-R1-Fallback", timeoutConfig.standardPrimary, () =>
+            chatWithDeepSeekPro({ messages, maxTokens, temperature }),
+          );
+          const fallbackText = assertNonEmptyModelOutput("DeepSeek R1", fallbackResult.content);
+          console.log(`[AI Routing][legal-drafting] DeepSeek R1 fallback succeeded in ${Date.now() - retryStarted}ms`);
+          return { text: enforcePakistanLawOnlyOutput(fallbackText), model: fallbackResult.model };
+        } catch (fallbackErr) {
+          console.error(`[AI Routing][legal-drafting] DeepSeek R1 fallback also failed:`, getErrorMessage(fallbackErr));
+          throw primaryErr; // Re-throw the original error for better error messages
+        }
       }
+      throw primaryErr;
     }
-    throw primaryErr;
   }
+
+  throw new Error("No AI providers available for legal drafting.");
 }
 
 async function callApexAIPrimary(
@@ -11761,7 +11776,18 @@ Query: ${query || "Not provided"}
 Draft Excerpt:
 ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         try {
-          const aiResult = await callTurboAI(sysInstruction, [{ role: "user", parts: [{ text: userInput }] }], 1200, { timeoutProfile: "analysis", temperature: 0.3 });
+          let aiResult: { text: string; model: string };
+          if (isOpenRouterAvailable()) {
+            const { chatWithOpenRouter } = await import("./openrouter");
+            const messages = [
+              { role: "system" as const, content: sysInstruction },
+              { role: "user" as const, content: userInput },
+            ];
+            const orResult = await chatWithOpenRouter({ messages, model: "google/gemini-3-flash-preview", maxTokens: 1200, temperature: 0.3 });
+            aiResult = { text: orResult.content, model: orResult.model };
+          } else {
+            aiResult = await callTurboAI(sysInstruction, [{ role: "user", parts: [{ text: userInput }] }], 1200, { timeoutProfile: "analysis", temperature: 0.3 });
+          }
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: query || "" });
           const aiSuggestions = parseClauseSuggestionsFromAi(aiResult.text, safeLimit);
           if (aiSuggestions.length > 0) {
