@@ -9864,6 +9864,7 @@ export async function registerRoutes(
       const parsed = z.object({
         batchSize: z.number().int().min(1).max(100).optional(),
         mode: z.enum(["full", "incremental"]).optional(),
+        source: z.enum(["case-law", "statute-docs", "knowledge-vault"]).optional(),
       }).parse(req.body || {});
 
       if (globalAdminRagReindexJob.running) {
@@ -9887,6 +9888,18 @@ export async function registerRoutes(
       freshState.mode = mode;
       freshState.startedAt = new Date();
       freshState.finishedAt = null;
+
+      if (parsed.source) {
+        let matchedIndex = 0;
+        GLOBAL_ADMIN_RAG_SOURCE_ORDER.forEach((key, idx) => {
+          if (key === parsed.source) {
+            matchedIndex = idx;
+          } else {
+            freshState.sources[key].done = true;
+          }
+        });
+        freshState.activeSourceIndex = matchedIndex;
+      }
 
       Object.assign(globalAdminRagReindexJob, freshState);
 

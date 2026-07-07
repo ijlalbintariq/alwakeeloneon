@@ -343,6 +343,23 @@ function GlobalRagIndexCard() {
     },
   });
 
+  const startIncrementalStatutesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/rag/reindex-global/start", { batchSize: 50, mode: "incremental", source: "statute-docs" });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: data?.message || "Statutes-only incremental indexing started" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/rag/reindex-global/status"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: err?.message || "Failed to start incremental statutes indexing",
+        variant: "destructive",
+      });
+    },
+  });
+
   const stopMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/admin/rag/reindex-global/stop", {});
@@ -390,9 +407,19 @@ function GlobalRagIndexCard() {
               <>
                 <Button
                   variant="ghost"
-                  className="text-emerald-200 border border-emerald-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  className="text-emerald-300 border border-emerald-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
+                  onClick={() => startIncrementalStatutesMutation.mutate()}
+                  disabled={startIncrementalStatutesMutation.isPending || startIncrementalMutation.isPending || startMutation.isPending || isLoading}
+                  data-testid="button-start-global-rag-index-statutes"
+                >
+                  {startIncrementalStatutesMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+                  <span>Index Missing Statutes Only</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="text-blue-200 border border-blue-500/40 rounded-xl text-[10px] uppercase tracking-widest font-black"
                   onClick={() => startIncrementalMutation.mutate()}
-                  disabled={startIncrementalMutation.isPending || startMutation.isPending || isLoading}
+                  disabled={startIncrementalMutation.isPending || startIncrementalStatutesMutation.isPending || startMutation.isPending || isLoading}
                   data-testid="button-start-global-rag-index-incremental"
                 >
                   {startIncrementalMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
@@ -401,7 +428,7 @@ function GlobalRagIndexCard() {
                 <Button
                   className="bg-primary text-primary-foreground rounded-xl text-[10px] uppercase tracking-widest font-black"
                   onClick={() => startMutation.mutate()}
-                  disabled={startMutation.isPending || startIncrementalMutation.isPending || isLoading}
+                  disabled={startMutation.isPending || startIncrementalMutation.isPending || startIncrementalStatutesMutation.isPending || isLoading}
                   data-testid="button-start-global-rag-index"
                 >
                   {startMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
