@@ -445,7 +445,7 @@ function buildApexModeSystemPrompt(
 - JURISDICTIONAL GROUNDING: You represent Pakistani law. You are STRICTLY FORBIDDEN from citing the Indian Evidence Act 1872 or Indian case law. Always use the Qanun-e-Shahadat Order 1984.
 - Under Section 24 CPC, a High Court has ZERO jurisdiction to transfer a case to another province. Inter-provincial transfers are strictly reserved for the Supreme Court of Pakistan.`;
 
-  const apexInstant = `APEX PROFILE (KIMI-K2.5-INSTANT):
+  const apexInstant = `APEX PROFILE (KIMI-K2.6-INSTANT):
  - Primary goal: fast, polished legal output with clear structure.
  - Keep reasoning concise and practical while preserving legal accuracy.
  - Prioritize court-ready language and clean formatting when drafting is requested.
@@ -2322,14 +2322,14 @@ async function callTurboAI(
     const { isMoonshotAvailable, chatWithMoonshot } = await import("./moonshot");
     if (isMoonshotAvailable()) {
       try {
-        const result = await withTimeout("Kimi K2.5", timeoutConfig.turboPrimary, () =>
+        const result = await withTimeout("Kimi K2.6", timeoutConfig.turboPrimary, () =>
           chatWithMoonshot({ messages: messages as any, maxTokens, temperature }),
         );
-        const safeText = assertNonEmptyModelOutput("Kimi K2.5", result.content);
-        console.log(`[AI Routing][turbo] Primary Kimi K2.5 (direct) succeeded in ${Date.now() - startedAt}ms`);
+        const safeText = assertNonEmptyModelOutput("Kimi K2.6", result.content);
+        console.log(`[AI Routing][turbo] Primary Kimi K2.6 (direct) succeeded in ${Date.now() - startedAt}ms`);
         return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
       } catch (kErr) {
-        console.warn(`[AI Routing][turbo] Kimi K2.5 (direct) failed, trying Gemini:`, kErr);
+        console.warn(`[AI Routing][turbo] Kimi K2.6 (direct) failed, trying Gemini:`, kErr);
       }
     }
   } catch (importErr) {

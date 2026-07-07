@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 const MOONSHOT_BASE_URL = "https://api.moonshot.ai/v1";
-const DEFAULT_MODEL = "kimi-k2.5";
+const DEFAULT_MODEL = "kimi-k2.6";
 
 let moonshotClient: OpenAI | null = null;
 
@@ -40,7 +40,7 @@ interface MoonshotResponse {
 export async function chatWithMoonshot(options: MoonshotChatOptions): Promise<MoonshotResponse> {
   const client = getClient();
   const model = options.model || DEFAULT_MODEL;
-  // Moonshot Kimi K2.5 requires temperature to be exactly 1.0
+  // Moonshot Kimi K2.6 requires temperature to be exactly 1.0
   const temperature = 1.0;
 
   const response = await client.chat.completions.create({
@@ -64,7 +64,7 @@ export async function chatWithMoonshot(options: MoonshotChatOptions): Promise<Mo
 export async function* streamWithMoonshot(options: MoonshotChatOptions): AsyncGenerator<string> {
   const client = getClient();
   const model = options.model || DEFAULT_MODEL;
-  // Moonshot Kimi K2.5 requires temperature to be exactly 1.0
+  // Moonshot Kimi K2.6 requires temperature to be exactly 1.0
   const temperature = 1.0;
 
   const stream = await client.chat.completions.create({
