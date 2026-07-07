@@ -946,31 +946,15 @@ export async function ensureIndexedForGlobalCaseLaw(args: {
   await ensureRagSchema();
 
   let sourceIds: number[] = [];
-  if (dbAvailable && pool) {
+  if (dbAvailable) {
     try {
-      const rows = await pool.query(
-        `
-        SELECT id
-        FROM admin_knowledge
-        WHERE replace(replace(replace(lower(coalesce(category, '')), '-', ''), ' ', ''), '_', '') = 'caselaw'
-        ORDER BY id ASC
-        `,
-      );
-      sourceIds = (rows.rows || [])
+      const rows = await db.select({ id: adminKnowledge.id, category: adminKnowledge.category }).from(adminKnowledge).orderBy(adminKnowledge.id);
+      sourceIds = rows
+        .filter((row: any) => isCaseLawCategory(row.category))
         .map((row: any) => Number(row.id))
         .filter((id: number) => Number.isInteger(id) && id > 0);
-    } catch {
-      // Fallback below when direct query fails.
-    }
-  }
-  if (sourceIds.length === 0) {
-    try {
-      const allDocs = await db.select({ id: adminKnowledge.id, category: adminKnowledge.category }).from(adminKnowledge);
-      sourceIds = allDocs
-        .filter((doc: any) => isCaseLawCategory(doc.category))
-        .map((doc: any) => doc.id);
     } catch (err) {
-      console.error("[RAG] Failed to fallback query adminKnowledge:", err);
+      console.error("[RAG] Failed to query adminKnowledge in ensureIndexedForGlobalCaseLaw:", err);
     }
   }
 
@@ -988,28 +972,14 @@ export async function ensureIndexedForGlobalStatutes(args: {
   await ensureRagSchema();
 
   let sourceIds: number[] = [];
-  if (dbAvailable && pool) {
+  if (dbAvailable) {
     try {
-      const rows = await pool.query(
-        `
-        SELECT id
-        FROM statute_documents
-        ORDER BY id ASC
-        `,
-      );
-      sourceIds = (rows.rows || [])
+      const rows = await db.select({ id: statuteDocuments.id }).from(statuteDocuments).orderBy(statuteDocuments.id);
+      sourceIds = rows
         .map((row: any) => Number(row.id))
         .filter((id: number) => Number.isInteger(id) && id > 0);
-    } catch {
-      // Fallback below when direct query fails.
-    }
-  }
-  if (sourceIds.length === 0) {
-    try {
-      const allDocs = await db.select({ id: statuteDocuments.id }).from(statuteDocuments);
-      sourceIds = allDocs.map((doc: any) => doc.id);
     } catch (err) {
-      console.error("[RAG] Failed to fallback query statuteDocuments:", err);
+      console.error("[RAG] Failed to query statuteDocuments in ensureIndexedForGlobalStatutes:", err);
     }
   }
 
@@ -1027,31 +997,15 @@ export async function ensureIndexedForGlobalAdminKnowledge(args: {
   await ensureRagSchema();
 
   let sourceIds: number[] = [];
-  if (dbAvailable && pool) {
+  if (dbAvailable) {
     try {
-      const rows = await pool.query(
-        `
-        SELECT id
-        FROM admin_knowledge
-        WHERE replace(replace(replace(lower(coalesce(category, '')), '-', ''), ' ', ''), '_', '') <> 'caselaw'
-        ORDER BY id ASC
-        `,
-      );
-      sourceIds = (rows.rows || [])
+      const rows = await db.select({ id: adminKnowledge.id, category: adminKnowledge.category }).from(adminKnowledge).orderBy(adminKnowledge.id);
+      sourceIds = rows
+        .filter((row: any) => !isCaseLawCategory(row.category))
         .map((row: any) => Number(row.id))
         .filter((id: number) => Number.isInteger(id) && id > 0);
-    } catch {
-      // Fallback below when direct query fails.
-    }
-  }
-  if (sourceIds.length === 0) {
-    try {
-      const allDocs = await db.select({ id: adminKnowledge.id, category: adminKnowledge.category }).from(adminKnowledge);
-      sourceIds = allDocs
-        .filter((doc: any) => !isCaseLawCategory(doc.category))
-        .map((doc: any) => doc.id);
     } catch (err) {
-      console.error("[RAG] Failed to fallback query adminKnowledge:", err);
+      console.error("[RAG] Failed to query adminKnowledge in ensureIndexedForGlobalAdminKnowledge:", err);
     }
   }
 
