@@ -70,7 +70,7 @@ export interface RetrievalResult {
 
 const CASELAW_TIMEOUT_MS = 5000;  // Optimized for fast retrieval with index support
 const STATUTE_TIMEOUT_MS = 3000;  // Increased from 1500
-const ADMIN_DOC_TIMEOUT_MS = 10_000;  // Budget: covers HNSW cold-load (~5-8s first query) + embedding (~800ms). Warm queries complete in <100ms.
+const ADMIN_DOC_TIMEOUT_MS = 15_000;  // 15s budget: covers HNSW cold-load (~5-12s first query) + GIN keyword + embedding (~800ms). Warm queries complete in <1s.
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([
