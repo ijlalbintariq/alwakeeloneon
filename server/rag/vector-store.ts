@@ -304,7 +304,61 @@ export async function similaritySearch(args: {
   const isGlobalId = GLOBAL_ADMIN_RAG_USER_IDS.includes(args.userId);
   const userIdClause = isGlobalId ? `c.user_id = '${args.userId}' AND $1 = $1` : "c.user_id = $1";
 
-  const sql = `
+  // When keywordWeight is 0, skip the expensive keyword_hits CTE entirely.
+  // This avoids a sequential full-text scan on large tables (e.g. 165K statute chunks)
+  // and uses only the HNSW vector index (<10ms).
+  const skipKeywords = keywordWeight === 0;
+
+  const sql = skipKeywords ? `
+    WITH vector_hits AS (
+      SELECT
+        r.id,
+        r.rag_document_id,
+        r.source_document_id,
+        d.title,
+        r.chunk_index,
+        COALESCE(p.token_count, r.token_count) as token_count,
+        COALESCE(p.chunk_text, r.chunk_text) as chunk_text,
+        r.metadata,
+        r.vector_score,
+        0::float8 AS keyword_score
+      FROM (
+        SELECT
+          c.id,
+          c.rag_document_id,
+          c.source_document_id,
+          c.chunk_index,
+          c.token_count,
+          c.chunk_text,
+          c.metadata,
+          c.parent_chunk_id,
+          GREATEST(0, 1 - (c.embedding <=> $2::vector)) AS vector_score
+        FROM rag_chunks c
+        WHERE ${userIdClause}${sourceFilter}${filterSql} AND $3::text IS NOT NULL
+        ORDER BY c.embedding <=> $2::vector ASC
+        LIMIT $5
+      ) r
+      JOIN rag_documents d ON d.id = r.rag_document_id
+      LEFT JOIN rag_chunks p ON p.id = r.parent_chunk_id
+    )
+    SELECT
+      id,
+      rag_document_id,
+      source_document_id,
+      title,
+      chunk_index,
+      token_count,
+      chunk_text,
+      metadata,
+      vector_score,
+      keyword_score,
+      vector_score AS score,
+      $6::float8 AS _vw,
+      $7::float8 AS _kw
+    FROM vector_hits
+    ORDER BY score DESC
+    LIMIT $4
+  ` : `
     WITH vector_hits AS (
       SELECT
         r.id,
