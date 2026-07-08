@@ -752,8 +752,8 @@ async function fetchAdminDocs(intent: QueryIntent, limit: number, userId?: strin
           queryEmbedding,
           queryText: query,
           topK: candidateTopK,
-          vectorWeight: 1.0,
-          keywordWeight: 0,   // Vector-only: skips slow full-text scan, uses HNSW (<10ms)
+          vectorWeight: 0.72,
+          keywordWeight: 0.28,   // Hybrid: HNSW vector (<10ms) + GIN full-text (47MB index, <100ms)
         }).catch((err) => { console.warn(`[fetchAdminDocs] statute search error: ${err.message}`); return []; }),
         similaritySearch({
           userId: GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID,
