@@ -99,7 +99,7 @@ export const MODULE_AI_PROFILES: Record<ModuleType, ModuleAiProfile> = {
     ],
     modelStrategy: {
       primary: "standard",
-      stream: false,
+      stream: true,
       tokenLimitKey: "contract-drafting",
     },
     features: {

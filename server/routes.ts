@@ -15768,7 +15768,7 @@ The user has attached the following documents for your reference. Analyze them c
             // Draft & contract modules always use Gemini-first chain (even turbo)
             const isDraftModule = moduleType === "draft" || moduleType === "contract-drafting";
             const chain = isDraftModule
-              ? [...DEFAULT_STANDARD_CHAIN.slice(0, 0), "openrouter", "kimi", "deepseek"] as typeof DEFAULT_STANDARD_CHAIN   // Gemini → Kimi → DeepSeek for drafting
+              ? DEFAULT_STANDARD_CHAIN   // Gemini → Kimi → DeepSeek for drafting
               : (selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN);
             console.log(`[AI Stream] V2 route=${selectedRoute} chain=${JSON.stringify(chain)} msgCount=${streamMessages.length} systemLen=${streamMessages[0]?.content?.length || 0}`);
             const streamStartMs = Date.now();

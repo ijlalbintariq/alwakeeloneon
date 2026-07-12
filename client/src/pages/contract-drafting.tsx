@@ -891,9 +891,9 @@ export default function ContractDraftingPage() {
     setIsGenerating(true);
     try {
       const prompt = buildGenerationPrompt(form, selectedClauses);
-      let response;
 
       if (attachments.length > 0) {
+        // ── With attachments: FormData, no streaming (server can't stream multipart) ──
         const formData = new FormData();
         formData.append("messages", JSON.stringify([{ role: "user", content: prompt }]));
         formData.append("type", "contract-drafting");
@@ -905,13 +905,24 @@ export default function ContractDraftingPage() {
           formData.append("attachments", file);
         });
 
-        response = await fetch("/api/ai/chat", {
+        const response = await fetch("/api/ai/chat", {
           method: "POST",
           credentials: "include",
           body: formData,
         });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || "Failed to generate contract draft");
+        }
+        const data = await response.json();
+        const generated = (data?.content || "").trim();
+        if (!generated) throw new Error("AI returned empty draft.");
+        setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
+        setEditorContent(generated);
+        setAttachments([]);
       } else {
-        response = await fetch("/api/ai/chat", {
+        // ── Without attachments: SSE streaming for live text ──
+        const response = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -920,23 +931,63 @@ export default function ContractDraftingPage() {
             type: "contract-drafting",
             moduleIntent: "contract.generateDraft",
             turbo: false,
-            stream: false,
+            stream: true,
           }),
         });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || "Failed to generate contract draft");
+        }
+
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("text/event-stream") && response.body) {
+          // SSE streaming: read chunks and update editor live
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let accumulated = "";
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr || jsonStr === "[DONE]") continue;
+              try {
+                const parsed = JSON.parse(jsonStr);
+                if (parsed.text) {
+                  accumulated += parsed.text;
+                  setEditorContent(accumulated);
+                }
+                if (parsed.styleMemory) {
+                  setStyleMemoryMeta(parsed.styleMemory as StyleMemoryMeta | null);
+                }
+                if (parsed.error) {
+                  throw new Error(parsed.error);
+                }
+              } catch (parseErr: any) {
+                if (parseErr?.message && !parseErr.message.includes("JSON")) throw parseErr;
+              }
+            }
+          }
+          if (!accumulated.trim()) throw new Error("AI returned empty draft.");
+        } else {
+          // Fallback: JSON response (server didn't stream)
+          const data = await response.json();
+          const generated = (data?.content || "").trim();
+          if (!generated) throw new Error("AI returned empty draft.");
+          setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
+          setEditorContent(generated);
+        }
       }
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Failed to generate contract draft");
-      }
-
-      const data = await response.json();
-      const generated = (data?.content || "").trim();
-      if (!generated) throw new Error("AI returned empty draft.");
-      setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
-
-      setEditorContent(generated);
-      setAttachments([]); // Clear attachments on success
+      setAttachments([]);
       await apiRequest("POST", "/api/search-history", {
         type: "contract",
         query: `${form.contractType} ${form.title}`.slice(0, 120),
