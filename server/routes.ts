@@ -11799,7 +11799,7 @@ Query: ${query || "Not provided"}
 Draft Excerpt:
 ${(draftText || "").slice(0, 8000) || "[No draft text provided]"}`;
         try {
-          const aiResult = await callTurboAI(sysInstruction, [{ role: "user", parts: [{ text: userInput }] }], 1200, { timeoutProfile: "analysis", temperature: 0.3 });
+          const aiResult = await callLegalDraftingAI(sysInstruction, userInput, 1200, { timeoutProfile: "analysis", temperature: 0.3 });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: query || "" });
           const aiSuggestions = parseClauseSuggestionsFromAi(aiResult.text, safeLimit);
           if (aiSuggestions.length > 0) {
@@ -14034,14 +14034,41 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             ];
 
             try {
-              for await (const chunk of streamWithDeepSeek({
-                messages: streamMessages,
-                maxTokens: TOKEN_LIMITS.draft,
-                temperature: 0.25,
-                model: 'deepseek-chat',
-              })) {
-                fullContent += chunk;
-                res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+              // Primary: Gemini 3.0 Flash via OpenRouter streaming
+              if (isOpenRouterAvailable()) {
+                try {
+                  for await (const chunk of streamWithOpenRouter({
+                    messages: streamMessages,
+                    maxTokens: TOKEN_LIMITS.draft,
+                    temperature: 0.25,
+                  })) {
+                    fullContent += chunk;
+                    res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                  }
+                } catch (geminiStreamErr: any) {
+                  console.warn('[LegalDrafting:Stream] Gemini streaming failed, falling back to DeepSeek:', geminiStreamErr?.message);
+                  // Fallback: DeepSeek streaming (only if Gemini produced no content)
+                  if (!fullContent.trim()) {
+                    for await (const chunk of streamWithDeepSeek({
+                      messages: streamMessages,
+                      maxTokens: TOKEN_LIMITS.draft,
+                      temperature: 0.25,
+                    })) {
+                      fullContent += chunk;
+                      res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                    }
+                  }
+                }
+              } else {
+                // No OpenRouter: DeepSeek direct
+                for await (const chunk of streamWithDeepSeek({
+                  messages: streamMessages,
+                  maxTokens: TOKEN_LIMITS.draft,
+                  temperature: 0.25,
+                })) {
+                  fullContent += chunk;
+                  res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                }
               }
             } catch (streamErr: any) {
               console.error('[LegalDrafting:Stream] Streaming failed:', streamErr?.message);
@@ -14199,7 +14226,7 @@ Jurisdiction: ${jurisdiction || "Lahore"}
 Current Draft Excerpt:
 ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
         try {
-          const aiResult = await callTurboAI(sysInstruction, [{ role: "user", parts: [{ text: userInput }] }], 1400, { timeoutProfile: "analysis", temperature: 0.3 });
+          const aiResult = await callLegalDraftingAI(sysInstruction, userInput, 1400, { timeoutProfile: "analysis", temperature: 0.3 });
           await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: safePrompt });
           const clauseText = normalizeDraftingText(aiResult.text);
           if (clauseText) {
@@ -15703,7 +15730,11 @@ The user has attached the following documents for your reference. Analyze them c
           // Draft, contract-drafting, brief → DeepSeek streaming directly (faster for long-form generation).
           const useV2Router = isAiRouterV2Enabled() && (moduleType === "al-wakeelo" || moduleType === "draft" || moduleType === "contract-drafting");
           if (useV2Router) {
-            const chain = selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN;
+            // Draft & contract modules always use Gemini-first chain (even turbo)
+            const isDraftModule = moduleType === "draft" || moduleType === "contract-drafting";
+            const chain = isDraftModule
+              ? DEFAULT_STANDARD_CHAIN   // Gemini → DeepSeek (always Gemini primary for drafting)
+              : (selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN);
             console.log(`[AI Stream] V2 route=${selectedRoute} chain=${JSON.stringify(chain)} msgCount=${streamMessages.length} systemLen=${streamMessages[0]?.content?.length || 0}`);
             const streamStartMs = Date.now();
             const result = await streamWithFallback(chain, {
