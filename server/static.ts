@@ -408,6 +408,28 @@ export function serveStatic(app: Express) {
     <li>A Complete Guide to FIR in Pakistan: Registration, Remedies, and Quashment</li>
     <li>Company Registration in Pakistan: Step-by-Step SECP Guide</li>
     <li>Understanding ADR and Arbitration under Pakistan's Arbitration Act 1940</li>
+    <li>Legal Document Automation for Law Firms: 2026 Guide</li>
+    <li>Top 4 Best Legal AI Tools Alternatives in 2026</li>
+    <li>Lease Agreement in Pakistan: Complete Legal Drafting Guide & Format</li>
+    <li>Affidavit Format in Pakistan: Writing Guide & Standard Templates</li>
+    <li>Power of Attorney Drafting Guide: Legal Requirements in Pakistan</li>
+    <li>AI for Legal Drafting: Transforming Pakistani Law Chambers</li>
+    <li>Best Legal Drafting AI Tools for Lawyers in 2026</li>
+    <li>Top Alternatives to LexisNexis for Legal Research in Pakistan</li>
+    <li>Harvey AI Alternatives: Best Legal GenAI Platforms for Law Firms</li>
+    <li>Non-Disclosure Agreement (NDA) in Pakistan: Drafting Guide & Templates</li>
+    <li>Legal Drafting in Pakistan: Rules, Forms, and Pleading Standards</li>
+    <li>How to Draft a Legal Notice in Pakistan: Format & Templates</li>
+    <li>Partnership Deed Drafting Guide under Partnership Act 1932</li>
+    <li>Free Legal Drafting Templates for Pakistani Lawyers</li>
+    <li>Best Legal Drafting Software for Law Firms in 2026</li>
+    <li>How to Write a Case Brief: Guide for Pakistani Law Students & Advocates</li>
+    <li>Top Legal AI Platforms in 2026: Comprehensive Review</li>
+    <li>Vakalatnama Drafting Guide: Legal Representation in Pakistan</li>
+    <li>How to Conduct Constitutional Law Research in Pakistan</li>
+    <li>Legal Workflow Automation: Streamlining Law Firm Operations</li>
+    <li>Contract Review Checklist: 10 Clauses Every Lawyer Must Check</li>
+    <li>Legal Prompt Engineering: How to Guide AI for Precise Drafting</li>
   </ul>
 </div>`,
   };

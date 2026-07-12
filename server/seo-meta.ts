@@ -27,9 +27,9 @@ interface RouteRule {
 }
 
 const DEFAULT_META: SeoMeta = {
-  title: "Alwakeelo AI — Your Digital Lawyer | AI Legal Assistant for Pakistan",
+  title: "Alwakeelo AI - Pakistan Law Search & AI Legal Assistant | Digital Lawyer",
   description:
-    "Alwakeelo AI is Pakistan's premier AI-powered legal assistant. Search 600,000+ judgments, draft contracts and petitions, and get guidance grounded in Pakistani statutes.",
+    "Pakistan's premier AI-powered digital lawyer and case law search. Search 600,000+ judgments (PLD, SCMR, YLR), search Pakistan Penal Code, CPC & CrPC, draft petitions, and generate legally binding contracts.",
   index: true,
 };
 
@@ -37,9 +37,9 @@ const ROUTE_RULES: RouteRule[] = [
   {
     match: /^\/$/,
     meta: {
-      title: "Alwakeelo AI — Your Digital Lawyer | AI Legal Assistant for Pakistan",
+      title: "Alwakeelo AI - Pakistan Law Search & AI Legal Assistant | Digital Lawyer",
       description:
-        "Alwakeelo AI is Pakistan's premier AI-powered legal assistant. Search 600,000+ judgments, draft contracts and petitions, and get guidance grounded in Pakistani statutes.",
+        "Pakistan's premier AI-powered digital lawyer and case law search. Search 600,000+ judgments (PLD, SCMR, YLR), search Pakistan Penal Code, CPC & CrPC, draft petitions, and generate legally binding contracts.",
       index: true,
     },
   },
