@@ -2446,7 +2446,22 @@ async function callLegalDraftingAI(
     }
   }
 
-  // Fallback: DeepSeek Chat
+  // Fallback 1: Kimi K2.5
+  try {
+    const { isMoonshotAvailable, chatWithMoonshot } = await import("./moonshot");
+    if (isMoonshotAvailable()) {
+      const result = await withTimeout("Kimi K2.5", timeoutConfig.turboPrimary, () =>
+        chatWithMoonshot({ messages: messages as any, maxTokens, temperature, useInstant: false }),
+      );
+      const safeText = assertNonEmptyModelOutput("Kimi K2.5", result.content);
+      console.log(`[AI Routing][legal-drafting] Kimi K2.5 fallback succeeded in ${Date.now() - startedAt}ms`);
+      return { text: enforcePakistanLawOnlyOutput(safeText), model: result.model };
+    }
+  } catch (kimiErr) {
+    console.warn(`[AI Routing][legal-drafting] Kimi K2.5 fallback failed, trying DeepSeek:`, kimiErr);
+  }
+
+  // Fallback 2: DeepSeek Chat
   if (isDeepSeekAvailable()) {
     try {
       const result = await withTimeout("DeepSeek-Chat", timeoutConfig.turboPrimary, () =>
@@ -14046,16 +14061,36 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
                     res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
                   }
                 } catch (geminiStreamErr: any) {
-                  console.warn('[LegalDrafting:Stream] Gemini streaming failed, falling back to DeepSeek:', geminiStreamErr?.message);
-                  // Fallback: DeepSeek streaming (only if Gemini produced no content)
+                  console.warn('[LegalDrafting:Stream] Gemini streaming failed, falling back to Kimi:', geminiStreamErr?.message);
+                  // Fallback 1: Kimi K2.5 streaming (only if Gemini produced no content)
                   if (!fullContent.trim()) {
-                    for await (const chunk of streamWithDeepSeek({
-                      messages: streamMessages,
-                      maxTokens: TOKEN_LIMITS.draft,
-                      temperature: 0.25,
-                    })) {
-                      fullContent += chunk;
-                      res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                    try {
+                      const { isMoonshotAvailable, streamWithMoonshot } = await import('./moonshot');
+                      if (isMoonshotAvailable()) {
+                        for await (const chunk of streamWithMoonshot({
+                          messages: streamMessages as any,
+                          maxTokens: TOKEN_LIMITS.draft,
+                          temperature: 0.25,
+                        })) {
+                          fullContent += chunk;
+                          res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                        }
+                      } else {
+                        throw new Error('Kimi unavailable');
+                      }
+                    } catch (kimiStreamErr: any) {
+                      console.warn('[LegalDrafting:Stream] Kimi streaming failed, falling back to DeepSeek:', kimiStreamErr?.message);
+                      // Fallback 2: DeepSeek streaming (only if still no content)
+                      if (!fullContent.trim()) {
+                        for await (const chunk of streamWithDeepSeek({
+                          messages: streamMessages,
+                          maxTokens: TOKEN_LIMITS.draft,
+                          temperature: 0.25,
+                        })) {
+                          fullContent += chunk;
+                          res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                        }
+                      }
                     }
                   }
                 }
@@ -15733,7 +15768,7 @@ The user has attached the following documents for your reference. Analyze them c
             // Draft & contract modules always use Gemini-first chain (even turbo)
             const isDraftModule = moduleType === "draft" || moduleType === "contract-drafting";
             const chain = isDraftModule
-              ? DEFAULT_STANDARD_CHAIN   // Gemini → DeepSeek (always Gemini primary for drafting)
+              ? [...DEFAULT_STANDARD_CHAIN.slice(0, 0), "openrouter", "kimi", "deepseek"] as typeof DEFAULT_STANDARD_CHAIN   // Gemini → Kimi → DeepSeek for drafting
               : (selectedRoute === "turbo" ? DEFAULT_TURBO_CHAIN : DEFAULT_STANDARD_CHAIN);
             console.log(`[AI Stream] V2 route=${selectedRoute} chain=${JSON.stringify(chain)} msgCount=${streamMessages.length} systemLen=${streamMessages[0]?.content?.length || 0}`);
             const streamStartMs = Date.now();
