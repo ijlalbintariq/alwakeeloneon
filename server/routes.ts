@@ -21045,15 +21045,19 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
   });
 
   // ── MCP Unified Route ──────────────────────────────────────────────────────
-  app.post(["/api/mcp", "/mcp"], async (req, res) => {
+  app.all(["/api/mcp", "/mcp", "/api/mcp/:token", "/mcp/:token"], async (req, res) => {
+    let token = "";
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Missing or invalid Authorization header. Expected Bearer token." });
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    } else if (req.query.token) {
+      token = String(req.query.token).trim();
+    } else if (req.params.token) {
+      token = String(req.params.token).trim();
     }
 
-    const token = authHeader.substring(7).trim();
     if (!token) {
-      return res.status(401).json({ error: "Empty token provided." });
+      return res.status(401).json({ error: "Missing or invalid token. Provide as Authorization header, URL query ?token=..., or path parameter." });
     }
 
     try {

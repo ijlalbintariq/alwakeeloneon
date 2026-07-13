@@ -56,12 +56,20 @@ async function runTests() {
   await mcpServer.connect(mcpTransport);
 
   // Register MCP unified route
-  app.post(["/api/mcp", "/mcp"], async (req: any, res: any) => {
+  app.all(["/api/mcp", "/mcp", "/api/mcp/:token", "/mcp/:token"], async (req: any, res: any) => {
+    let token = "";
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    } else if (req.query.token) {
+      token = String(req.query.token).trim();
+    } else if (req.params.token) {
+      token = String(req.params.token).trim();
+    }
+
+    if (!token) {
       return res.status(401).json({ error: "Missing/invalid authorization" });
     }
-    const token = authHeader.substring(7).trim();
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
     const record = await storage.getApiKeyByHash(tokenHash);
     if (!record) {
@@ -216,6 +224,37 @@ async function runTests() {
         throw new Error("search_statutes failed");
       }
       console.log("Success: search_statutes returned statutory info.");
+
+      // Test Case F: Call search_statutes tool via query parameter token (URL-only)
+      console.log("\n--- Test Case 6: Call search_statutes via Query Parameter Token ---");
+      const res6 = await fetch(`http://localhost:${PORT}/api/mcp?token=${testToken}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "mcp-session-id": sessionId,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 6,
+          method: "tools/call",
+          params: {
+            name: "search_statutes",
+            arguments: {
+              query: "murder",
+              limit: 1,
+            }
+          }
+        }),
+      });
+      console.log("Status Code (Expected 200):", res6.status);
+      const data6 = await parseSseResponse(res6);
+      console.log("Call result text:", data6.result?.content?.[0]?.text);
+      if (res6.status !== 200 || data6.error) {
+        console.error("Error payload:", data6.error);
+        throw new Error("Query Parameter Token authentication failed");
+      }
+      console.log("Success: Query Parameter Token authentication works.");
 
       console.log("\n=== All Tests Passed Successfully ===");
     } catch (err) {
