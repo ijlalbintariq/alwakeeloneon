@@ -2436,7 +2436,7 @@ async function callLegalDraftingAI(
     try {
       const { chatWithOpenRouter } = await import("./openrouter");
       const result = await withTimeout("Gemini 3.0 Flash", timeoutConfig.turboPrimary, () =>
-        chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3.0-flash", maxTokens, temperature }),
+        chatWithOpenRouter({ messages: messages as any, model: "google/gemini-3-flash-preview", maxTokens, temperature }),
       );
       const safeText = assertNonEmptyModelOutput("Gemini 3.0 Flash", result.content);
       console.log(`[AI Routing][legal-drafting] Gemini 3.0 Flash primary succeeded in ${Date.now() - startedAt}ms`);
