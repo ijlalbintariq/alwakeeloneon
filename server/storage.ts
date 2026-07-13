@@ -5,9 +5,10 @@ import {
   threads, messages, documents, bookmarks, searchHistory, statutes, caseLaw, githubKnowledge, queryCache, usageTracking, aiOutputLog, adminKnowledge, statuteDocuments, savedJudgments,
   organizations, orgMembers, orgInvites, orgKnowledge, lawJournals, courtsRef, judgments, citationLinks, unresolvedCitations, documentFiles, adminKnowledgeFiles, statuteDocumentFiles, visitorSessions, caseLeads, publicFunnelEvents,
   styleMemorySettings, styleMemorySamples, styleMemoryChunks, styleMemoryEvents,
-  caseFiles, caseClients, caseCompliance, caseDocuments, caseNotes, diaryEntries, notificationPreferences, paymentRecords,
+  caseFiles, caseClients, caseCompliance, caseDocuments, caseNotes, diaryEntries, notificationPreferences, paymentRecords, apiKeys,
   type Thread, type InsertThread,
   type Message, type InsertMessage,
+  type ApiKey,
   type Document, type InsertDocument,
   type DocumentFile, type InsertDocumentFile,
   type Bookmark, type InsertBookmark,
@@ -635,6 +636,12 @@ export interface IStorage {
   getPaymentRecordByTracker(tracker: string): Promise<PaymentRecord | undefined>;
   getPaymentRecordsByUser(userId: string): Promise<PaymentRecord[]>;
   updatePaymentRecordStatus(tracker: string, status: string, response?: Record<string, unknown>): Promise<PaymentRecord | undefined>;
+
+  // ── MCP API Keys ───────────────────────────────────────────────────────────
+  createApiKey(userId: string, name: string, keyHash: string): Promise<ApiKey>;
+  getApiKeyByHash(keyHash: string): Promise<ApiKey | undefined>;
+  listApiKeys(userId: string): Promise<ApiKey[]>;
+  revokeApiKey(userId: string, id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4140,6 +4147,38 @@ export class DatabaseStorage implements IStorage {
       .where(eq(paymentRecords.safepayTracker, tracker))
       .returning();
     return record;
+  }
+
+  // ── MCP API Keys ───────────────────────────────────────────────────────────
+
+  async createApiKey(userId: string, name: string, keyHash: string): Promise<ApiKey> {
+    const [record] = await db.insert(apiKeys)
+      .values({ userId, name, keyHash })
+      .returning();
+    return record;
+  }
+
+  async getApiKeyByHash(keyHash: string): Promise<ApiKey | undefined> {
+    const [record] = await db.select()
+      .from(apiKeys)
+      .where(and(eq(apiKeys.keyHash, keyHash), eq(apiKeys.isActive, true)))
+      .limit(1);
+    return record;
+  }
+
+  async listApiKeys(userId: string): Promise<ApiKey[]> {
+    return await db.select()
+      .from(apiKeys)
+      .where(eq(apiKeys.userId, userId))
+      .orderBy(desc(apiKeys.createdAt));
+  }
+
+  async revokeApiKey(userId: string, id: number): Promise<boolean> {
+    const [record] = await db.update(apiKeys)
+      .set({ isActive: false })
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.userId, userId)))
+      .returning();
+    return !!record;
   }
 }
 

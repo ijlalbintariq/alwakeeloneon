@@ -779,6 +779,21 @@ export const TIER_LIMITS: Record<string, TierPlanConfig> = {
   },
 };
 
+
+export const apiKeys = pgTable("api_keys", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  name: text("name").notNull().default("Default Key"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+});
+
+export const insertApiKeySchema = createInsertSchema(apiKeys);
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+
 // API Types
 export type CreateThreadRequest = {
   title?: string;

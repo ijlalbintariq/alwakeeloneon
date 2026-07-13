@@ -23,6 +23,7 @@ import {
   caseDocuments,
   caseCompliance,
   type CaseLaw,
+  apiKeys,
 } from "@shared/schema";
 import { and, count, desc, eq, ilike, lt, sql, like, or, inArray } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
@@ -40,6 +41,8 @@ import os from "node:os";
 import path from "node:path";
 import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
+import { mcpServer, mcpUserContext } from "./mcp-server";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, runToolJudgmentSearch, repairReferencesJson } from "./deepseek-ai";
@@ -7130,7 +7133,7 @@ function getUserId(req: any): string | null {
   return req.session?.userId || null;
 }
 
-async function checkUsageLimit(userId: string, feature: string, res: any): Promise<boolean> {
+export async function checkUsageLimit(userId: string, feature: string, res: any): Promise<boolean> {
   try {
     if (!checkRateLimit(userId, feature)) {
       res.status(429).json({ message: "Too many requests. Please wait a moment before trying again." });
@@ -7188,7 +7191,7 @@ async function checkUsageLimit(userId: string, feature: string, res: any): Promi
   }
 }
 
-async function logUsageCost(userId: string, feature: string, model: string, inputText: string, outputText: string, extra?: { userQuery?: string; responseTimeMs?: number }) {
+export async function logUsageCost(userId: string, feature: string, model: string, inputText: string, outputText: string, extra?: { userQuery?: string; responseTimeMs?: number }) {
   try {
     const inputTokens = estimateTokens(inputText);
     const outputTokens = estimateTokens(outputText);
@@ -20967,6 +20970,114 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     }).catch(() => {});
   }, 60 * 60 * 1000); // Every hour
   subscriptionReminderTimer.unref?.();
+
+  // ── MCP Server Initialization ──────────────────────────────────────────────
+  const mcpTransport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => crypto.randomUUID(), // stateful session management
+  });
+
+  mcpServer.connect(mcpTransport).catch((err) => {
+    console.error("[MCP] Failed to connect server to transport:", err);
+  });
+
+  // ── API Key Management Endpoints ──────────────────────────────────────────
+  app.post("/api/settings/keys", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+
+    const name = String(req.body.name || "Default Key").trim();
+    if (!name) return res.status(400).json({ message: "Key name is required" });
+
+    try {
+      // Generate a secure key: aw_live_ followed by 32 random bytes (hex)
+      const token = `aw_live_${crypto.randomBytes(32).toString("hex")}`;
+      // SHA-256 hash to store securely
+      const keyHash = crypto.createHash("sha256").update(token).digest("hex");
+
+      await storage.createApiKey(userId, name, keyHash);
+      
+      // Return the plain-text token only once
+      res.json({ token, name });
+    } catch (err: any) {
+      console.error("[API Key] Failed to generate API key:", err);
+      res.status(500).json({ message: "Failed to create API key" });
+    }
+  });
+
+  app.get("/api/settings/keys", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+
+    try {
+      const keys = await storage.listApiKeys(userId);
+      res.json(keys.map(k => ({
+        id: k.id,
+        name: k.name,
+        isActive: k.isActive,
+        createdAt: k.createdAt,
+        lastUsedAt: k.lastUsedAt,
+        // Show only redacted preview for security
+        preview: `aw_live_xxxxxxxx...${k.keyHash.substring(0, 4)}`
+      })));
+    } catch (err: any) {
+      console.error("[API Key] Failed to list API keys:", err);
+      res.status(500).json({ message: "Failed to load API keys" });
+    }
+  });
+
+  app.delete("/api/settings/keys/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+
+    const keyId = Number(req.params.id);
+    if (!keyId || isNaN(keyId)) return res.status(400).json({ message: "Invalid key ID" });
+
+    try {
+      const success = await storage.revokeApiKey(userId, keyId);
+      if (!success) {
+        return res.status(404).json({ message: "Key not found or unauthorized" });
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("[API Key] Failed to revoke key:", err);
+      res.status(500).json({ message: "Failed to revoke key" });
+    }
+  });
+
+  // ── MCP Unified Route ──────────────────────────────────────────────────────
+  app.post(["/api/mcp", "/mcp"], async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing or invalid Authorization header. Expected Bearer token." });
+    }
+
+    const token = authHeader.substring(7).trim();
+    if (!token) {
+      return res.status(401).json({ error: "Empty token provided." });
+    }
+
+    try {
+      const keyHash = crypto.createHash("sha256").update(token).digest("hex");
+      const apiKeyRecord = await storage.getApiKeyByHash(keyHash);
+      if (!apiKeyRecord) {
+        return res.status(401).json({ error: "Invalid or inactive API key." });
+      }
+
+      // Update lastUsedAt timestamp asynchronously
+      db.update(apiKeys)
+        .set({ lastUsedAt: new Date() })
+        .where(eq(apiKeys.id, apiKeyRecord.id))
+        .catch((err) => console.error("[MCP] Failed to update key lastUsedAt:", err));
+
+      // Run request within user context and forward to MCP Streamable Transport
+      await mcpUserContext.run(apiKeyRecord.userId, async () => {
+        await mcpTransport.handleRequest(req, res, req.body);
+      });
+    } catch (err: any) {
+      console.error("[MCP] Server error during request:", err);
+      res.status(500).json({ error: "Internal MCP server error" });
+    }
+  });
 
   return httpServer;
 }

@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
-  User as UserIcon, Mail, Crown, Loader2, Save, TrendingUp, AlertTriangle, Shield, LogOut, Sparkles, Camera, Trash2, Bell
+  User as UserIcon, Mail, Crown, Loader2, Save, TrendingUp, AlertTriangle, Shield, LogOut, Sparkles, Camera, Trash2, Bell, Key, Copy, Check
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,12 +40,69 @@ export default function UserPanelPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
+  const [newKeyName, setNewKeyName] = useState("");
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const { data: apiKeysList, isLoading: apiKeysLoading } = useQuery<any[]>({
+    queryKey: ["/api/settings/keys"],
+    enabled: !!profile,
+  });
+
+  const createKeyMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiRequest("POST", "/api/settings/keys", { name });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setGeneratedKey(data.token);
+      setNewKeyName("");
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/keys"] });
+      toast({ title: "API Key created successfully" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to generate API Key",
+        description: err.message || "An error occurred",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteKeyMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/settings/keys/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/keys"] });
+      toast({ title: "API Key revoked successfully" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to revoke key",
+        description: err.message || "An error occurred",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCopyKey = () => {
+    if (generatedKey) {
+      navigator.clipboard.writeText(generatedKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: "Copied to clipboard" });
+    }
+  };
+
   useEffect(() => {
     if (profile) {
       setFirstName(profile.firstName || "");
       setLastName(profile.lastName || "");
     }
   }, [profile]);
+
 
   const updateProfileMutation = useMutation({
     mutationFn: async () => {
@@ -318,6 +375,87 @@ export default function UserPanelPage() {
                 <LogOut size={12} />
                 <span>Sign Out</span>
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="preview-surface rounded-2xl">
+            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-4 px-4">
+              <Key size={14} className="text-primary" />
+              <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground">API Integration (MCP)</span>
+            </CardHeader>
+            <CardContent className="space-y-3 px-4 pb-4 pt-1">
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Connect AlWakeelo directly to AI applications like Claude Desktop, Cursor, or Gemini. Your search limits and quotas apply.
+              </p>
+
+              {/* Generated Key Section */}
+              {generatedKey && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-primary">Your New API Key</span>
+                    <span className="text-[8px] text-amber-300 font-bold uppercase">Copy now! This will not be shown again.</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <code className="text-[10px] bg-background border px-2 py-1 rounded block flex-1 truncate text-foreground font-mono select-all">
+                      {generatedKey}
+                    </code>
+                    <Button onClick={handleCopyKey} size="sm" variant="outline" className="h-7 px-2 border-primary/30 text-primary">
+                      {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Generate Key Input */}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Key name (e.g. Claude Desktop)"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  className="bg-background border-[hsl(var(--preview-border))] rounded-lg text-[10px] h-7 text-foreground flex-1"
+                />
+                <Button
+                  onClick={() => createKeyMutation.mutate(newKeyName)}
+                  disabled={createKeyMutation.isPending || !newKeyName.trim()}
+                  className="h-7 px-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg text-[9px] font-black uppercase tracking-wider shrink-0"
+                >
+                  {createKeyMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : "Generate"}
+                </Button>
+              </div>
+
+              {/* Keys List */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[8px] font-black uppercase tracking-wider text-muted-foreground block">Active Keys</span>
+                {apiKeysLoading ? (
+                  <div className="flex justify-center py-2"><Loader2 size={12} className="animate-spin text-primary" /></div>
+                ) : apiKeysList && apiKeysList.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {apiKeysList.map((k) => (
+                      <div key={k.id} className="rounded-lg border border-[hsl(var(--preview-border))] bg-background px-2.5 py-1.5 flex items-center justify-between gap-3 text-[10px]">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-foreground truncate">{k.name}</p>
+                          <code className="text-[8px] text-muted-foreground font-mono">{k.preview}</code>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[8px] text-muted-foreground uppercase">
+                            {k.lastUsedAt ? `Used ${new Date(k.lastUsedAt).toLocaleDateString()}` : "Never used"}
+                          </span>
+                          <Button
+                            onClick={() => deleteKeyMutation.mutate(k.id)}
+                            disabled={deleteKeyMutation.isPending}
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md"
+                          >
+                            <Trash2 size={10} />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[9px] text-muted-foreground italic py-1">No API keys generated yet.</p>
+                )}
+              </div>
             </CardContent>
           </Card>
 
