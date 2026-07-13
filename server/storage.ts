@@ -4169,7 +4169,7 @@ export class DatabaseStorage implements IStorage {
   async listApiKeys(userId: string): Promise<ApiKey[]> {
     return await db.select()
       .from(apiKeys)
-      .where(eq(apiKeys.userId, userId))
+      .where(and(eq(apiKeys.userId, userId), eq(apiKeys.isActive, true)))
       .orderBy(desc(apiKeys.createdAt));
   }
 
