@@ -43,6 +43,7 @@ export default function UserPanelPage() {
   const [newKeyName, setNewKeyName] = useState("");
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   const { data: apiKeysList, isLoading: apiKeysLoading } = useQuery<any[]>({
     queryKey: ["/api/settings/keys"],
@@ -93,6 +94,16 @@ export default function UserPanelPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast({ title: "Copied to clipboard" });
+    }
+  };
+
+  const handleCopyUrl = () => {
+    if (generatedKey) {
+      const fullUrl = `https://alwakeelo.com/api/mcp?token=${generatedKey}`;
+      navigator.clipboard.writeText(fullUrl);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+      toast({ title: "Integration URL copied to clipboard" });
     }
   };
 
@@ -390,18 +401,35 @@ export default function UserPanelPage() {
 
               {/* Generated Key Section */}
               {generatedKey && (
-                <div className="rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-2 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-primary">Your New API Key</span>
-                    <span className="text-[8px] text-amber-300 font-bold uppercase">Copy now! This will not be shown again.</span>
+                <div className="rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-2 space-y-2">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-primary">Your New API Key</span>
+                      <span className="text-[8px] text-amber-300 font-bold uppercase">Shown once!</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <code className="text-[10px] bg-background border px-2 py-1 rounded block flex-1 truncate text-foreground font-mono select-all">
+                        {generatedKey}
+                      </code>
+                      <Button onClick={handleCopyKey} size="sm" variant="outline" className="h-7 w-7 p-0 border-primary/30 text-primary">
+                        {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <code className="text-[10px] bg-background border px-2 py-1 rounded block flex-1 truncate text-foreground font-mono select-all">
-                      {generatedKey}
-                    </code>
-                    <Button onClick={handleCopyKey} size="sm" variant="outline" className="h-7 px-2 border-primary/30 text-primary">
-                      {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                    </Button>
+
+                  <div className="space-y-1 border-t border-primary/10 pt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-primary">Claude / ChatGPT Connection URL</span>
+                      <span className="text-[7.5px] text-muted-foreground leading-none">Use directly in app settings</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <code className="text-[10px] bg-background border px-2 py-1 rounded block flex-1 truncate text-foreground font-mono select-all">
+                        {`https://alwakeelo.com/api/mcp?token=${generatedKey}`}
+                      </code>
+                      <Button onClick={handleCopyUrl} size="sm" variant="outline" className="h-7 w-7 p-0 border-primary/30 text-primary">
+                        {copiedUrl ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
