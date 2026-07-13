@@ -41,7 +41,7 @@ import os from "node:os";
 import path from "node:path";
 import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
-import { mcpServer, mcpUserContext } from "./mcp-server";
+import { mcpServer, mcpUserContext, createMcpServer } from "./mcp-server";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
@@ -20971,14 +20971,9 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
   }, 60 * 60 * 1000); // Every hour
   subscriptionReminderTimer.unref?.();
 
-  // ── MCP Server Initialization ──────────────────────────────────────────────
-  const mcpTransport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(), // stateful session management
-  });
-
-  mcpServer.connect(mcpTransport).catch((err) => {
-    console.error("[MCP] Failed to connect server to transport:", err);
-  });
+  // ── MCP Server Session Registry ─────────────────────────────────────────────
+  // Map to hold active transport sessions to support race-free parallel connection handling
+  const mcpSessions = new Map<string, StreamableHTTPServerTransport>();
 
   // ── API Key Management Endpoints ──────────────────────────────────────────
   app.post("/api/settings/keys", async (req, res) => {
@@ -21073,9 +21068,52 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         .where(eq(apiKeys.id, apiKeyRecord.id))
         .catch((err) => console.error("[MCP] Failed to update key lastUsedAt:", err));
 
+      // Determine the session ID from the headers
+      const sessionId = req.headers["mcp-session-id"];
+      let transport: StreamableHTTPServerTransport;
+
+      if (sessionId) {
+        // Look up existing transport for this session
+        const existingTransport = mcpSessions.get(String(sessionId));
+        if (!existingTransport) {
+          return res.status(404).json({ error: "Session not found or expired" });
+        }
+        transport = existingTransport;
+      } else {
+        // Check if this is an initialization request
+        const messages = Array.isArray(req.body) ? req.body : [req.body];
+        const isInit = messages.some((m: any) => m && m.method === "initialize");
+        
+        if (!isInit) {
+          return res.status(400).json({ error: "Mcp-Session-Id header is required for non-initialization requests." });
+        }
+
+        // Create a fresh transport for this new session
+        const newSessionId = crypto.randomUUID();
+        transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => newSessionId,
+        });
+
+        // Instantiate a fresh MCP Server configuration for this connection
+        const sessionMcpServer = createMcpServer();
+        await sessionMcpServer.connect(transport);
+
+        // Save session in registry
+        mcpSessions.set(newSessionId, transport);
+
+        // Remove from registry on close/error
+        transport.onclose = () => {
+          mcpSessions.delete(newSessionId);
+        };
+        transport.onerror = (err) => {
+          console.error(`[MCP Session ${newSessionId}] Error:`, err);
+          mcpSessions.delete(newSessionId);
+        };
+      }
+
       // Run request within user context and forward to MCP Streamable Transport
       await mcpUserContext.run(apiKeyRecord.userId, async () => {
-        await mcpTransport.handleRequest(req, res, req.body);
+        await transport.handleRequest(req, res, req.body);
       });
     } catch (err: any) {
       console.error("[MCP] Server error during request:", err);

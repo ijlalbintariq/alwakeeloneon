@@ -59,12 +59,6 @@ async function logToolUsage(userId: string, feature: string, query: string, outp
   }
 }
 
-// Instantiate the standards-compliant MCP Server
-export const mcpServer = new McpServer({
-  name: "alwakeelo-mcp",
-  version: "1.0.0",
-});
-
 // Helper to fetch current context user ID
 function getAuthenticatedUserId(): string {
   const userId = mcpUserContext.getStore();
@@ -74,189 +68,202 @@ function getAuthenticatedUserId(): string {
   return userId;
 }
 
-// ── MCP Tools Registration ──────────────────────────────────────────────────
+export function registerAllTools(server: McpServer) {
+  // 1. Search Case Law
+  server.registerTool("search_case_law", {
+    description: "Search Pakistani judgments and case law using the exact AlWakeelo hybrid search pipeline (Voyage Law-2, reranker, and court boosts).",
+    inputSchema: {
+      query: z.string().describe("The search query containing legal topics or case details"),
+      limit: z.number().optional().default(5).describe("Maximum number of records to return (default 5, max 10)"),
+    }
+  }, async ({ query, limit }) => {
+    const userId = getAuthenticatedUserId();
+    const safeLimit = Math.min(10, Math.max(1, limit));
 
-// 1. Search Case Law
-mcpServer.registerTool("search_case_law", {
-  description: "Search Pakistani judgments and case law using the exact AlWakeelo hybrid search pipeline (Voyage Law-2, reranker, and court boosts).",
-  inputSchema: {
-    query: z.string().describe("The search query containing legal topics or case details"),
-    limit: z.number().optional().default(5).describe("Maximum number of records to return (default 5, max 10)"),
-  }
-}, async ({ query, limit }) => {
-  const userId = getAuthenticatedUserId();
-  const safeLimit = Math.min(10, Math.max(1, limit));
+    // Enforce standard query quota
+    await enforceQuota(userId, "search-judgments");
 
-  // Enforce standard query quota
-  await enforceQuota(userId, "search-judgments");
+    const t0 = Date.now();
+    // Call the exact same retrieval pipeline
+    const result = await retrieveLegalCaseLaw({
+      userId,
+      query,
+      limit: safeLimit,
+    });
+    const latency = Date.now() - t0;
 
-  const t0 = Date.now();
-  // Call the exact same retrieval pipeline
-  const result = await retrieveLegalCaseLaw({
-    userId,
-    query,
-    limit: safeLimit,
+    // Track usage metrics
+    await logToolUsage(userId, "search-judgments", query);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            version: VERSION,
+            source: SOURCE,
+            retrieval_version: RETRIEVAL_VERSION,
+            query,
+            latencyMs: latency,
+            judgments: result.rows.map((j) => ({
+              id: j.id,
+              citation: j.citation,
+              court: j.court,
+              title: j.title,
+              summary: j.summary,
+              decisionYear: j.citationYear,
+            })),
+          }, null, 2),
+        }
+      ]
+    };
   });
-  const latency = Date.now() - t0;
 
-  // Track usage metrics
-  await logToolUsage(userId, "search-judgments", query);
+  // 2. Search Statutes
+  server.registerTool("search_statutes", {
+    description: "Search Pakistani statutory provisions and acts using AlWakeelo's taxonomic matching logic.",
+    inputSchema: {
+      query: z.string().describe("Keywords, section numbers, or act names (e.g. PPC 302)"),
+      limit: z.number().optional().default(5).describe("Maximum sections to return (default 5, max 10)"),
+    }
+  }, async ({ query, limit }) => {
+    const userId = getAuthenticatedUserId();
+    const safeLimit = Math.min(10, Math.max(1, limit));
 
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify({
-          version: VERSION,
-          source: SOURCE,
-          retrieval_version: RETRIEVAL_VERSION,
-          query,
-          latencyMs: latency,
-          judgments: result.rows.map((j) => ({
-            id: j.id,
-            citation: j.citation,
-            court: j.court,
-            title: j.title,
-            summary: j.summary,
-            decisionYear: j.citationYear,
-          })),
-        }, null, 2),
-      }
-    ]
-  };
-});
+    // Enforce statute query quota
+    await enforceQuota(userId, "search-statutes");
 
-// 2. Search Statutes
-mcpServer.registerTool("search_statutes", {
-  description: "Search Pakistani statutory provisions and acts using AlWakeelo's taxonomic matching logic.",
-  inputSchema: {
-    query: z.string().describe("Keywords, section numbers, or act names (e.g. PPC 302)"),
-    limit: z.number().optional().default(5).describe("Maximum sections to return (default 5, max 10)"),
-  }
-}, async ({ query, limit }) => {
-  const userId = getAuthenticatedUserId();
-  const safeLimit = Math.min(10, Math.max(1, limit));
+    const t0 = Date.now();
+    // Mimic intent classifier and fetch statutes using targeted taxonomic matching
+    const dummyIntent = {
+      raw: query,
+      normalized: query.toLowerCase(),
+      type: "statute" as const,
+      topics: [] as any[],
+      expandedQuery: query,
+      expandedTerms: query.split(/\s+/),
+      needsCaseLaw: false,
+      needsStatutes: true,
+      needsAdminDocs: false,
+    };
+    
+    const retrievalResult = await runRetrieval(dummyIntent, userId, { statutes: safeLimit });
+    const latency = Date.now() - t0;
 
-  // Enforce statute query quota
-  await enforceQuota(userId, "search-statutes");
+    // Track usage metrics
+    await logToolUsage(userId, "search-statutes", query);
 
-  const t0 = Date.now();
-  // Mimic intent classifier and fetch statutes using targeted taxonomic matching
-  const dummyIntent = {
-    raw: query,
-    normalized: query.toLowerCase(),
-    type: "statute" as const,
-    topics: [] as any[],
-    expandedQuery: query,
-    expandedTerms: query.split(/\s+/),
-    needsCaseLaw: false,
-    needsStatutes: true,
-    needsAdminDocs: false,
-  };
-  
-  const retrievalResult = await runRetrieval(dummyIntent, userId, { statutes: safeLimit });
-  const latency = Date.now() - t0;
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            version: VERSION,
+            source: SOURCE,
+            retrieval_version: RETRIEVAL_VERSION,
+            query,
+            latencyMs: latency,
+            statutes: retrievalResult.statutes.map((s) => ({
+              shortTitle: s.shortTitle,
+              section: s.section,
+              description: s.description,
+              punishment: s.punishment,
+              statuteDocumentTitle: s.statuteDocumentTitle,
+            })),
+          }, null, 2),
+        }
+      ]
+    };
+  });
 
-  // Track usage metrics
-  await logToolUsage(userId, "search-statutes", query);
+  // 3. Get Judgment Detail
+  server.registerTool("get_judgment", {
+    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID.",
+    inputSchema: {
+      id: z.string().describe("The judgment UUID"),
+    }
+  }, async ({ id }) => {
+    const userId = getAuthenticatedUserId();
 
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify({
-          version: VERSION,
-          source: SOURCE,
-          retrieval_version: RETRIEVAL_VERSION,
-          query,
-          latencyMs: latency,
-          statutes: retrievalResult.statutes.map((s) => ({
-            shortTitle: s.shortTitle,
-            section: s.section,
-            description: s.description,
-            punishment: s.punishment,
-            statuteDocumentTitle: s.statuteDocumentTitle,
-          })),
-        }, null, 2),
-      }
-    ]
-  };
-});
+    // Enforce quota
+    await enforceQuota(userId, "search-judgments");
 
-// 3. Get Judgment Detail
-mcpServer.registerTool("get_judgment", {
-  description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID.",
-  inputSchema: {
-    id: z.string().describe("The judgment UUID"),
-  }
-}, async ({ id }) => {
-  const userId = getAuthenticatedUserId();
+    const detail = await storage.getJudgmentDetail(id);
+    if (!detail) {
+      throw new McpError(ErrorCode.InvalidRequest, `Judgment not found for ID: ${id}`);
+    }
 
-  // Enforce quota
-  await enforceQuota(userId, "search-judgments");
+    // Track usage
+    await logToolUsage(userId, "search-judgments", `get_judgment:${id}`);
 
-  const detail = await storage.getJudgmentDetail(id);
-  if (!detail) {
-    throw new McpError(ErrorCode.InvalidRequest, `Judgment not found for ID: ${id}`);
-  }
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            version: VERSION,
+            source: SOURCE,
+            id: detail.id,
+            citation: detail.citation,
+            title: detail.title,
+            courtName: detail.courtName || detail.courtSnapshot || "Pakistani Court",
+            decisionDate: detail.decisionDate,
+            headnotes: detail.headnotes,
+            fullText: detail.fullText,
+            pdfUrl: detail.pdfUrl,
+          }, null, 2),
+        }
+      ]
+    };
+  });
 
-  // Track usage
-  await logToolUsage(userId, "search-judgments", `get_judgment:${id}`);
+  // 4. Legal Research (Full Grounded RAG Pipeline)
+  server.registerTool("legal_research", {
+    description: "Perform deep, multi-stage legal research across AlWakeelo's full RAG context (intent analysis, Voyage Law-2 embeddings, reranker, citation validation, and parent-child chunk resolution). Returns the exact grounded text context injected into LLM system prompts.",
+    inputSchema: {
+      query: z.string().describe("The legal query, scenario description, or question to research"),
+    }
+  }, async ({ query }) => {
+    const userId = getAuthenticatedUserId();
 
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify({
-          version: VERSION,
-          source: SOURCE,
-          id: detail.id,
-          citation: detail.citation,
-          title: detail.title,
-          courtName: detail.courtName || detail.courtSnapshot || "Pakistani Court",
-          decisionDate: detail.decisionDate,
-          headnotes: detail.headnotes,
-          fullText: detail.fullText,
-          pdfUrl: detail.pdfUrl,
-        }, null, 2),
-      }
-    ]
-  };
-});
+    // Legal research calls count as Chat RAG actions
+    await enforceQuota(userId, "chat");
 
-// 4. Legal Research (Full Grounded RAG Pipeline)
-mcpServer.registerTool("legal_research", {
-  description: "Perform deep, multi-stage legal research across AlWakeelo's full RAG context (intent analysis, Voyage Law-2 embeddings, reranker, citation validation, and parent-child chunk resolution). Returns the exact grounded text context injected into LLM system prompts.",
-  inputSchema: {
-    query: z.string().describe("The legal query, scenario description, or question to research"),
-  }
-}, async ({ query }) => {
-  const userId = getAuthenticatedUserId();
+    const t0 = Date.now();
+    // Execute the exact same 3-stage RAG pipeline
+    const contextString = await gatherKnowledgeContextV2(query, userId);
+    const latency = Date.now() - t0;
 
-  // Legal research calls count as Chat RAG actions
-  await enforceQuota(userId, "chat");
+    // Track usage metrics (log token count and costs for AI billing)
+    await logToolUsage(userId, "legal-research", query, contextString);
 
-  const t0 = Date.now();
-  // Execute the exact same 3-stage RAG pipeline
-  const contextString = await gatherKnowledgeContextV2(query, userId);
-  const latency = Date.now() - t0;
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            version: VERSION,
+            source: SOURCE,
+            retrieval_version: RETRIEVAL_VERSION,
+            query,
+            latencyMs: latency,
+            context: contextString,
+          }, null, 2),
+        }
+      ]
+    };
+  });
+}
 
-  // Track usage metrics (log token count and costs for AI billing)
-  await logToolUsage(userId, "legal-research", query, contextString);
+// Factory to create a fully configured fresh MCP Server
+export function createMcpServer(): McpServer {
+  const server = new McpServer({
+    name: "alwakeelo-mcp",
+    version: "1.0.0",
+  });
+  registerAllTools(server);
+  return server;
+}
 
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify({
-          version: VERSION,
-          source: SOURCE,
-          retrieval_version: RETRIEVAL_VERSION,
-          query,
-          latencyMs: latency,
-          context: contextString,
-        }, null, 2),
-      }
-    ]
-  };
-});
+// Single default server instance for backward compatibility (e.g. stdio runner)
+export const mcpServer = createMcpServer();
