@@ -76,6 +76,11 @@ export function registerAllTools(server: McpServer) {
     inputSchema: {
       query: z.string().describe("The search query containing legal topics or case details"),
       limit: z.number().optional().default(5).describe("Maximum number of records to return (default 5, max 10)"),
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+      destructiveHint: false,
     }
   }, async ({ query, limit }) => {
     const userId = getAuthenticatedUserId();
@@ -126,6 +131,11 @@ export function registerAllTools(server: McpServer) {
     inputSchema: {
       query: z.string().describe("Keywords, section numbers, or act names (e.g. PPC 302)"),
       limit: z.number().optional().default(5).describe("Maximum sections to return (default 5, max 10)"),
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+      destructiveHint: false,
     }
   }, async ({ query, limit }) => {
     const userId = getAuthenticatedUserId();
@@ -182,6 +192,11 @@ export function registerAllTools(server: McpServer) {
     description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID.",
     inputSchema: {
       id: z.string().describe("The judgment UUID"),
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+      destructiveHint: false,
     }
   }, async ({ id }) => {
     const userId = getAuthenticatedUserId();
@@ -223,6 +238,11 @@ export function registerAllTools(server: McpServer) {
     description: "Perform deep, multi-stage legal research across AlWakeelo's full RAG context (intent analysis, Voyage Law-2 embeddings, reranker, citation validation, and parent-child chunk resolution). Returns the exact grounded text context injected into LLM system prompts.",
     inputSchema: {
       query: z.string().describe("The legal query, scenario description, or question to research"),
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+      destructiveHint: false,
     }
   }, async ({ query }) => {
     const userId = getAuthenticatedUserId();
@@ -265,6 +285,11 @@ export function registerAllTools(server: McpServer) {
       petitionerName: z.string().describe("Name of the petitioner/plaintiff"),
       respondentName: z.string().describe("Name of the respondent/defendant"),
       additionalClauses: z.string().optional().describe("Any additional specific grounds or instructions to include"),
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+      destructiveHint: false,
     }
   }, async ({ topic, facts, courtName, petitionerName, respondentName, additionalClauses }) => {
     const userId = getAuthenticatedUserId();
@@ -357,6 +382,11 @@ export function registerAllTools(server: McpServer) {
       terms: z.string().describe("Core terms, duration, financial considerations, and obligations"),
       governingLaw: z.string().optional().default("Pakistan").describe("Governing provincial law or jurisdiction (e.g. Punjab, Sindh)"),
       additionalClauses: z.string().optional().describe("Optional custom terms, dispute resolution, or terminations details"),
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+      destructiveHint: false,
     }
   }, async ({ contractType, parties, terms, governingLaw, additionalClauses }) => {
     const userId = getAuthenticatedUserId();

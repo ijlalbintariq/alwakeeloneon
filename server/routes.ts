@@ -7562,7 +7562,7 @@ export async function registerRoutes(
   // OpenAI Apps Challenge domain verification
   app.get("/.well-known/openai-apps-challenge", (req, res) => {
     res.setHeader("Content-Type", "text/plain");
-    res.send(process.env.OPENAI_APPS_CHALLENGE_TOKEN || "no-token-configured");
+    res.send(process.env.OPENAI_APPS_CHALLENGE_TOKEN || "gBiXXGVL5vJTg4dW0Id1TEsHpkHwRGQpgSYVBe1v6dw");
   });
 
   // OAuth 2.0 Discovery metadata
