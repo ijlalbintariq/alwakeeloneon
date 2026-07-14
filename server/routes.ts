@@ -43,6 +43,9 @@ import multer from "multer";
 import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 import { mcpServer, mcpUserContext, createMcpServer } from "./mcp-server";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { retrieveLegalCaseLaw } from "./legal-retrieval";
+import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
+import { runRetrieval } from "./pipeline/retrieval-engine";
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
 import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, runToolJudgmentSearch, repairReferencesJson } from "./deepseek-ai";
@@ -21118,6 +21121,325 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     } catch (err: any) {
       console.error("[MCP] Server error during request:", err);
       res.status(500).json({ error: "Internal MCP server error" });
+    }
+  });
+
+  // ── OpenAPI Schema and REST Bridge for ChatGPT Custom Actions ───────────────
+  const OPENAPI_SCHEMA = {
+    openapi: "3.0.0",
+    info: {
+      title: "AlWakeelo Legal AI Search",
+      description: "API for searching Pakistani case law and statutes database.",
+      version: "1.0.0"
+    },
+    servers: [
+      {
+        url: "https://alwakeelo.com"
+      }
+    ],
+    paths: {
+      "/api/mcp/search_case_law": {
+        "post": {
+          "summary": "Search case law",
+          "description": "Search Pakistani judgments and case law using Voyage Law-2 embeddings, reranker, and boosts.",
+          "operationId": "searchCaseLaw",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "query": { "type": "string", "description": "Legal keywords" },
+                    "limit": { "type": "integer", "default": 5 }
+                  },
+                  "required": ["query"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Search results",
+              "content": {
+                "application/json": {
+                  "schema": { "type": "object" }
+                }
+              }
+            }
+          },
+          "security": [{ "ApiKeyAuth": [] }]
+        }
+      },
+      "/api/mcp/search_statutes": {
+        "post": {
+          "summary": "Search statutes",
+          "description": "Search Pakistani statutory provisions and acts.",
+          "operationId": "searchStatutes",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "query": { "type": "string", "description": "Statutory keywords or section numbers" },
+                    "limit": { "type": "integer", "default": 5 }
+                  },
+                  "required": ["query"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Statutory results",
+              "content": {
+                "application/json": {
+                  "schema": { "type": "object" }
+                }
+              }
+            }
+          },
+          "security": [{ "ApiKeyAuth": [] }]
+        }
+      },
+      "/api/mcp/get_judgment": {
+        "post": {
+          "summary": "Get judgment detail",
+          "description": "Retrieve full text of a specific judgment by UUID.",
+          "operationId": "getJudgment",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "description": "Judgment UUID" }
+                  },
+                  "required": ["id"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Judgment detail",
+              "content": {
+                "application/json": {
+                  "schema": { "type": "object" }
+                }
+              }
+            }
+          },
+          "security": [{ "ApiKeyAuth": [] }]
+        }
+      },
+      "/api/mcp/legal_research": {
+        "post": {
+          "summary": "Legal research",
+          "description": "Perform deep legal research across AlWakeelo's full RAG context.",
+          "operationId": "legalResearch",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "query": { "type": "string", "description": "Legal query or scenario details" }
+                  },
+                  "required": ["query"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Research findings",
+              "content": {
+                "application/json": {
+                  "schema": { "type": "object" }
+                }
+              }
+            }
+          },
+          "security": [{ "ApiKeyAuth": [] }]
+        }
+      }
+    },
+    "components": {
+      "securitySchemes": {
+        "ApiKeyAuth": {
+          "type": "apiKey",
+          "in": "header",
+          "name": "Authorization",
+          "description": "Provide your AlWakeelo API Key (e.g. Bearer aw_live_xxx)"
+        }
+      }
+    }
+  };
+
+  async function verifyMcpToken(req: any, res: any, next: any) {
+    let token = "";
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    } else if (authHeader) {
+      token = authHeader.trim();
+    } else if (req.query.token) {
+      token = String(req.query.token).trim();
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: "Missing or invalid token. Provide as Authorization header or URL query ?token=..." });
+    }
+
+    try {
+      const keyHash = crypto.createHash("sha256").update(token).digest("hex");
+      const apiKeyRecord = await storage.getApiKeyByHash(keyHash);
+      if (!apiKeyRecord) {
+        return res.status(401).json({ error: "Invalid or inactive API key." });
+      }
+
+      req.mcpUserId = apiKeyRecord.userId;
+      req.mcpApiKeyId = apiKeyRecord.id;
+      next();
+    } catch (err) {
+      res.status(500).json({ error: "Internal authentication error" });
+    }
+  }
+
+  app.get("/api/mcp/openapi.json", (req, res) => {
+    res.json(OPENAPI_SCHEMA);
+  });
+
+  app.post("/api/mcp/search_case_law", verifyMcpToken, async (req: any, res) => {
+    const userId = req.mcpUserId;
+    const { query, limit } = req.body;
+    if (!query) return res.status(400).json({ error: "Missing query parameter" });
+    const safeLimit = Math.min(10, Math.max(1, limit || 5));
+
+    try {
+      const allowed = await checkUsageLimit(userId, "search-judgments", res);
+      if (!allowed) return;
+
+      const result = await retrieveLegalCaseLaw({ userId, query, limit: safeLimit });
+      await storage.logUsage(userId, "search-judgments").catch(() => {});
+
+      // Update key last used
+      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
+
+      res.json({
+        judgments: result.rows.map((j) => ({
+          id: j.id,
+          citation: j.citation,
+          court: j.court,
+          title: j.title,
+          summary: j.summary,
+          decisionYear: j.citationYear,
+        })),
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Search failed" });
+    }
+  });
+
+  app.post("/api/mcp/search_statutes", verifyMcpToken, async (req: any, res) => {
+    const userId = req.mcpUserId;
+    const { query, limit } = req.body;
+    if (!query) return res.status(400).json({ error: "Missing query parameter" });
+    const safeLimit = Math.min(10, Math.max(1, limit || 5));
+
+    try {
+      const allowed = await checkUsageLimit(userId, "search-statutes", res);
+      if (!allowed) return;
+
+      const dummyIntent = {
+        raw: query,
+        normalized: query.toLowerCase(),
+        type: "statute" as const,
+        topics: [] as any[],
+        expandedQuery: query,
+        expandedTerms: query.split(/\s+/),
+        needsCaseLaw: false,
+        needsStatutes: true,
+        needsAdminDocs: false,
+      };
+      const retrievalResult = await runRetrieval(dummyIntent, userId, { statutes: safeLimit });
+      await storage.logUsage(userId, "search-statutes").catch(() => {});
+
+      // Update key last used
+      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
+
+      res.json({
+        statutes: retrievalResult.statutes.map((s) => ({
+          shortTitle: s.shortTitle,
+          section: s.section,
+          description: s.description,
+          punishment: s.punishment,
+          statuteDocumentTitle: s.statuteDocumentTitle,
+        })),
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Statutes search failed" });
+    }
+  });
+
+  app.post("/api/mcp/get_judgment", verifyMcpToken, async (req: any, res) => {
+    const userId = req.mcpUserId;
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: "Missing judgment ID" });
+
+    try {
+      const allowed = await checkUsageLimit(userId, "search-judgments", res);
+      if (!allowed) return;
+
+      const detail = await storage.getJudgmentDetail(id);
+      if (!detail) return res.status(404).json({ error: "Judgment not found" });
+
+      await storage.logUsage(userId, "search-judgments").catch(() => {});
+
+      // Update key last used
+      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
+
+      res.json({
+        id: detail.id,
+        citation: detail.citation,
+        title: detail.title,
+        courtName: detail.courtName || detail.courtSnapshot || "Pakistani Court",
+        decisionDate: detail.decisionDate,
+        headnotes: detail.headnotes,
+        fullText: detail.fullText,
+        pdfUrl: detail.pdfUrl,
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Fetch failed" });
+    }
+  });
+
+  app.post("/api/mcp/legal_research", verifyMcpToken, async (req: any, res) => {
+    const userId = req.mcpUserId;
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ error: "Missing query parameter" });
+
+    try {
+      const allowed = await checkUsageLimit(userId, "chat", res);
+      if (!allowed) return;
+
+      const contextString = await gatherKnowledgeContextV2(query, userId);
+      await logUsageCost(userId, "chat", "deepseek-chat", query, contextString, { userQuery: query });
+
+      // Update key last used
+      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
+
+      res.json({
+        query,
+        context: contextString,
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Legal research failed" });
     }
   });
 

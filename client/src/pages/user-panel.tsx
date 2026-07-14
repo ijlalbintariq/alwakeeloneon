@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
-  User as UserIcon, Mail, Crown, Loader2, Save, TrendingUp, AlertTriangle, Shield, LogOut, Sparkles, Camera, Trash2, Bell, Key, Copy, Check
+  User as UserIcon, Mail, Crown, Loader2, Save, TrendingUp, AlertTriangle, Shield, LogOut, Sparkles, Camera, Trash2, Bell, Key, Copy, Check, ExternalLink
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -398,6 +399,13 @@ export default function UserPanelPage() {
               <p className="text-[10px] text-muted-foreground leading-relaxed">
                 Connect AlWakeelo directly to AI applications like Claude Desktop, Cursor, or Gemini. Your search limits and quotas apply.
               </p>
+
+              <div className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-lg p-2 text-[9.5px]">
+                <span className="text-muted-foreground">Need help connecting?</span>
+                <Link to="/settings/mcp-tutorial" className="text-primary font-bold hover:underline inline-flex items-center gap-0.5">
+                  View Setup Guide <ExternalLink size={10} />
+                </Link>
+              </div>
 
               {/* Generated Key Section */}
               {generatedKey && (

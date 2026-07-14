@@ -31,6 +31,7 @@ const KnowledgeVaultPage = lazy(() => import("@/pages/knowledge-vault"));
 const AdminPanelPage = lazy(() => import("@/pages/admin-panel"));
 const AdminSetupPage = lazy(() => import("@/pages/admin-setup"));
 const UserPanelPage = lazy(() => import("@/pages/user-panel"));
+const McpTutorialPage = lazy(() => import("@/pages/mcp-tutorial"));
 const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
 const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
 const SharedConversationPage = lazy(() => import("@/pages/shared-conversation"));
@@ -287,6 +288,7 @@ function Router({ onReady }: { onReady?: () => void }) {
         <Route path="/organization" component={OrganizationRoute} />
         <Route path="/admin" component={AdminPanelPage} />
         <Route path="/settings" component={UserPanelPage} />
+        <Route path="/settings/mcp-tutorial" component={McpTutorialPage} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>
