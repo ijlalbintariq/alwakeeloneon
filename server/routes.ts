@@ -21201,16 +21201,27 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       let targetId = String(id).trim();
       
-      // If the input is NOT a UUID format, assume it is a citation string (e.g. "2020 SCMR 1486")
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
       if (!isUuid) {
+        // If it is a numeric ID from case_law table, resolve it to the citation string first
+        if (/^\d+$/.test(targetId)) {
+          const [caseLawRow] = await db.select({ citation: caseLaw.citation })
+            .from(caseLaw)
+            .where(eq(caseLaw.id, Number(targetId)))
+            .limit(1);
+          if (caseLawRow && caseLawRow.citation) {
+            targetId = caseLawRow.citation;
+          }
+        }
+
+        // Now lookup by citation in judgments table to get the UUID
         const [resolvedRow] = await db.select({ id: judgments.id })
           .from(judgments)
           .where(eq(judgments.citationString, targetId))
           .limit(1);
           
         if (!resolvedRow) {
-          return res.status(404).json({ error: `Judgment with citation '${targetId}' not found.` });
+          return res.status(404).json({ error: `Judgment with ID or citation '${targetId}' not found.` });
         }
         targetId = resolvedRow.id;
       }
