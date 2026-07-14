@@ -7565,6 +7565,25 @@ export async function registerRoutes(
     res.send(process.env.OPENAI_APPS_CHALLENGE_TOKEN || "no-token-configured");
   });
 
+  // OAuth 2.0 Discovery metadata
+  const OAUTH_METADATA = {
+    issuer: "https://www.alwakeelo.com",
+    authorization_endpoint: "https://www.alwakeelo.com/api/oauth/authorize",
+    token_endpoint: "https://www.alwakeelo.com/api/oauth/token",
+    response_types_supported: ["code"],
+    grant_types_supported: ["authorization_code"],
+    token_endpoint_auth_methods_supported: ["client_secret_post", "client_secret_basic"],
+    scopes_supported: ["openid", "profile"]
+  };
+
+  app.get("/.well-known/oauth-authorization-server", (req, res) => {
+    res.json(OAUTH_METADATA);
+  });
+
+  app.get("/.well-known/openid-configuration", (req, res) => {
+    res.json(OAUTH_METADATA);
+  });
+
   app.use("/api", (req, res, next) => {
     if (
       !dbAvailable &&
