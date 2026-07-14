@@ -32,6 +32,7 @@ const AdminPanelPage = lazy(() => import("@/pages/admin-panel"));
 const AdminSetupPage = lazy(() => import("@/pages/admin-setup"));
 const UserPanelPage = lazy(() => import("@/pages/user-panel"));
 const McpTutorialPage = lazy(() => import("@/pages/mcp-tutorial"));
+const OauthConsentPage = lazy(() => import("@/pages/oauth-consent"));
 const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
 const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
 const SharedConversationPage = lazy(() => import("@/pages/shared-conversation"));
@@ -42,6 +43,7 @@ const OwnershipStatementPage = lazy(() => import("@/pages/ownership-statement"))
 const AboutPage = lazy(() => import("@/pages/about"));
 const ContactPage = lazy(() => import("@/pages/contact"));
 const FaqPage = lazy(() => import("@/pages/faq"));
+const McpPublicLandingPage = lazy(() => import("@/pages/mcp-public-landing"));
 const BlogPage = lazy(() => import("@/pages/blog"));
 const BlogDetailPage = lazy(() => import("@/pages/blog-detail"));
 const OrganizationPage = lazy(() => import("@/pages/organization"));
@@ -185,6 +187,14 @@ function Router({ onReady }: { onReady?: () => void }) {
     );
   }
 
+  if (location === "/mcp") {
+    return (
+      <PublicPageShell>
+        <McpPublicLandingPage />
+      </PublicPageShell>
+    );
+  }
+
   if (location === "/blog") {
     return (
       <PublicPageShell>
@@ -289,6 +299,7 @@ function Router({ onReady }: { onReady?: () => void }) {
         <Route path="/admin" component={AdminPanelPage} />
         <Route path="/settings" component={UserPanelPage} />
         <Route path="/settings/mcp-tutorial" component={McpTutorialPage} />
+        <Route path="/oauth/authorize" component={OauthConsentPage} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>

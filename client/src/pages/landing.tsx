@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail, Sun, Moon } from "lucide-react";
+import { ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail, Sun, Moon, Cpu, Terminal, Compass, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -42,6 +42,7 @@ const CORE_FEATURES = [
   { icon: FileText, title: "Legal Drafting", desc: "Prepare petitions, notices, applications, and legal replies with structured templates, clause-ready sections, and style-consistent drafting support.", bgClass: "bg-primary/10", iconClass: "text-primary" },
   { icon: Users, title: "Style-Memory RAG", desc: "Train AI on your uploads, drafts, and accepted edits so output follows your legal style and preferred language.", bgClass: "bg-sky-500/10", iconClass: "text-sky-500" },
   { icon: Shield, title: "Contract Drafting", desc: "Generate client-ready contracts with structured clause sets, risk score breakdown, redline suggestions, and cleaner final drafts for negotiation or execution.", bgClass: "bg-red-500/10", iconClass: "text-red-500" },
+  { icon: Cpu, title: "AI Integrations (MCP)", desc: "Connect AL WAKEELO's RAG database directly to Claude, ChatGPT, or Gemini settings using your secure API key.", bgClass: "bg-amber-500/10", iconClass: "text-amber-500" },
   { icon: Paperclip, title: "Case Documents", desc: "Upload, review, and organize matter-specific documents with faster legal analysis support.", bgClass: "bg-cyan-500/10", iconClass: "text-cyan-500" },
   { icon: FileText, title: "Knowledge Vault", desc: "Maintain private user documents and global admin legal resources for retrieval-grounded outputs.", bgClass: "bg-violet-500/10", iconClass: "text-violet-400" },
   { icon: Users, title: "Organization Workspace", desc: "Support chamber and team workflows with shared access controls and collaboration-ready structure.", bgClass: "bg-teal-500/10", iconClass: "text-teal-400" },
@@ -294,6 +295,75 @@ export default function LandingPage() {
                 <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* MCP Integration Feature Section */}
+      <section className="py-16 md:py-24 px-6 bg-gradient-to-b from-background to-card border-b border-border/60">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          <div className="lg:col-span-6 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-xs text-amber-500 font-bold uppercase tracking-widest">
+              <Sparkles size={12} className="animate-pulse" />
+              New Feature
+            </div>
+            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Bring AL WAKEELO RAG <br/>
+              <span className="text-primary italic">directly into Claude &amp; ChatGPT</span>
+            </h2>
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              Connect our massive database of 600,000+ judgments and laws directly to your own AI chatbot app. 
+              No more copying and pasting—simply generate a secure API Key and start searching Pakistan laws inside Claude Desktop, Claude Connectors, or ChatGPT Custom GPTs.
+            </p>
+            <div className="flex flex-wrap gap-4 pt-2">
+              <button
+                onClick={() => navigate("/mcp")}
+                className="px-6 py-3 bg-primary text-primary-foreground rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+              >
+                View MCP Integration Guide <ArrowRight size={13} />
+              </button>
+            </div>
+          </div>
+          
+          <div className="lg:col-span-6 relative">
+            <div className="absolute inset-0 bg-primary/5 rounded-3xl blur-2xl -z-10" />
+            <div className="rounded-3xl border border-border bg-card p-6 md:p-8 space-y-6 shadow-xl">
+              <div className="flex gap-4 items-start border-b border-border pb-4">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400 flex-shrink-0">
+                  <Cpu size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">Claude Connectors</h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Paste our secure token URL directly into Claude Connectors settings to list and call RAG search tools.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 items-start border-b border-border pb-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                  <Compass size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">ChatGPT Custom Actions</h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Import our OpenAPI schema URL into your Custom GPT Actions to instantly integrate statutory search.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 items-start">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 flex-shrink-0">
+                  <Terminal size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">Google Gemini Spark</h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Bridge AL WAKEELO directly into Google Workspace Gemini sessions using our stateful remote transport.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import { runRetrieval } from "./pipeline/retrieval-engine";
-import { checkUsageLimit, logUsageCost } from "./routes";
+import { checkUsageLimit, logUsageCost, normalizeCourtReadyDraftingText, normalizeDraftingText } from "./routes";
+import { chatWithDeepSeek } from "./deepseek-ai";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
@@ -248,6 +249,172 @@ export function registerAllTools(server: McpServer) {
             query,
             latencyMs: latency,
             context: contextString,
+          }, null, 2),
+        }
+      ]
+    };
+  });
+
+  // 5. Draft Legal Petition
+  server.registerTool("draft_petition", {
+    description: "Generate a fully formatted, professional, filing-ready legal petition or application for Pakistani courts grounded in actual statutes and case law.",
+    inputSchema: {
+      topic: z.string().describe("The legal subject/title (e.g. Ejectment Petition under Rented Premises Act, Bail Application under Sec 497 CrPC)"),
+      facts: z.string().describe("The factual background, dates, and details of the case"),
+      courtName: z.string().describe("The target court/forum (e.g. Rent Controller Lahore, Sessions Judge Karachi)"),
+      petitionerName: z.string().describe("Name of the petitioner/plaintiff"),
+      respondentName: z.string().describe("Name of the respondent/defendant"),
+      additionalClauses: z.string().optional().describe("Any additional specific grounds or instructions to include"),
+    }
+  }, async ({ topic, facts, courtName, petitionerName, respondentName, additionalClauses }) => {
+    const userId = getAuthenticatedUserId();
+
+    // Enforce "draft" quota limits
+    await enforceQuota(userId, "draft");
+
+    // Gather grounded context using our semantic search / case law database
+    const searchQuery = `${topic} ${facts}`;
+    const searchResult = await retrieveLegalCaseLaw({
+      userId,
+      query: searchQuery,
+      limit: 3,
+    });
+
+    const contextStr = searchResult.rows.map((j) => 
+      `Citation: ${j.citation}\nCourt: ${j.court}\nTitle: ${j.title}\nSummary: ${j.summary}`
+    ).join("\n\n");
+
+    const systemPrompt = `You are AL WAKEELO — Your Digital Lawyer, Always on Duty. You are in legal drafting mode. Generate a formal, professional, airtight legal petition or application that is filing-ready under the Code of Civil Procedure (CPC) 1908 and applicable Pakistani statutes.
+    
+    CRITICAL FORMATTING RULES:
+    1. Do NOT use markdown tags or symbols (#, **, __, etc.).
+    2. Write a clear Court Heading block at the top, centered, e.g., "IN THE COURT OF THE ${courtName.toUpperCase()}".
+    3. Include the Parties Block clearly outlining:
+       ${petitionerName} ... Petitioner
+       VERSUS
+       ${respondentName} ... Respondent
+    4. Write numbered paragraphs stating the facts, cause of action, jurisdiction, and court fee calculations.
+    5. Valuation/Court Fee: State that the court fee is affixed per the Court Fees Act 1870.
+    6. Include a distinct "PRAYER" section at the end.
+    7. Include a "VERIFICATION" block stating the truth of the contents.
+    8. List of Documents: Append a numbered List of Documents section after the verification block.
+    9. Memo of Address: Include address for service at the bottom.
+    
+    GROUNDING CONTEXT:
+    Use the following verified Pakistani case laws/statutes to support the grounds:
+    ${contextStr}
+    
+    FACTS TO BASE ON:
+    ${facts}
+    
+    ADDITIONAL INSTRUCTIONS:
+    ${additionalClauses || "None"}`;
+
+    const userText = `Please draft the petition for "${topic}".`;
+
+    const t0 = Date.now();
+    const response = await chatWithDeepSeek({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userText }
+      ],
+      temperature: 0.3,
+    });
+    const latency = Date.now() - t0;
+
+    let formattedText = response.content;
+    try {
+      formattedText = normalizeCourtReadyDraftingText(formattedText);
+    } catch (e) {
+      console.error("[MCP] Normalizer failed:", e);
+    }
+
+    // Log usage to the database
+    await logToolUsage(userId, "draft", searchQuery, formattedText);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            version: VERSION,
+            source: SOURCE,
+            latencyMs: latency,
+            topic,
+            draft: formattedText,
+          }, null, 2),
+        }
+      ]
+    };
+  });
+
+  // 6. Draft Contract
+  server.registerTool("draft_contract", {
+    description: "Generate a fully structured, commercially realistic, and legally enforceable contract under Pakistani laws (e.g., Contract Act 1872).",
+    inputSchema: {
+      contractType: z.string().describe("Type of contract (e.g. Partnership Deed, Non-Disclosure Agreement, Commercial Lease)"),
+      parties: z.string().describe("Details of the contracting parties"),
+      terms: z.string().describe("Core terms, duration, financial considerations, and obligations"),
+      governingLaw: z.string().optional().default("Pakistan").describe("Governing provincial law or jurisdiction (e.g. Punjab, Sindh)"),
+      additionalClauses: z.string().optional().describe("Optional custom terms, dispute resolution, or terminations details"),
+    }
+  }, async ({ contractType, parties, terms, governingLaw, additionalClauses }) => {
+    const userId = getAuthenticatedUserId();
+
+    // Enforce "contract-drafting" quota limits
+    await enforceQuota(userId, "contract-drafting");
+
+    const systemPrompt = `You are AL WAKEELO — Your Digital Lawyer, Always on Duty. You are in contract drafting mode. Generate a formal, comprehensive, legally enforceable contract under the Pakistani Contract Act 1872 and other governing laws.
+    
+    CRITICAL FORMATTING RULES:
+    1. Do NOT use markdown code blocks or blockquotes for formatting.
+    2. Write a clear title centered at the top (e.g. "PARTNERSHIP DEED" or "LEASE AGREEMENT").
+    3. Include a detailed preamble describing the parties, their addresses, and the date.
+    4. Structure the agreement into numbered clauses (e.g., Section 1: Definitions, Section 2: Consideration, etc.).
+    5. Include default standard boilerplate terms (Dispute Resolution via arbitration under Arbitration Act 1940, Severability, Force Majeure, and Termination).
+    6. Include a distinct signatures block for the parties and two witnesses at the bottom.
+    
+    CONTRACT DETAILS:
+    Type: ${contractType}
+    Parties: ${parties}
+    Terms: ${terms}
+    Governing Law: ${governingLaw}
+    
+    ADDITIONAL CLAUSES:
+    ${additionalClauses || "None"}`;
+
+    const userText = `Please draft the contract for "${contractType}".`;
+
+    const t0 = Date.now();
+    const response = await chatWithDeepSeek({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userText }
+      ],
+      temperature: 0.3,
+    });
+    const latency = Date.now() - t0;
+
+    let formattedText = response.content;
+    try {
+      formattedText = normalizeDraftingText(formattedText);
+    } catch (e) {
+      console.error("[MCP] Normalizer failed:", e);
+    }
+
+    // Log usage to the database
+    await logToolUsage(userId, "contract-drafting", contractType, formattedText);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            version: VERSION,
+            source: SOURCE,
+            latencyMs: latency,
+            contractType,
+            draft: formattedText,
           }, null, 2),
         }
       ]

@@ -79,7 +79,14 @@ export default function AuthPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      navigate("/dashboard");
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirect = searchParams.get("redirect");
+      if (redirect) {
+        // Redirect to authorization flow with query parameters preserved
+        window.location.href = `${redirect}?${searchParams.toString()}`;
+      } else {
+        navigate("/dashboard");
+      }
     },
     onError: (error: any) => {
       const message = typeof error?.message === "string" ? error.message : "Invalid email or password";

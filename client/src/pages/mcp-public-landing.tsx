@@ -13,17 +13,22 @@ import {
   Compass, 
   BookOpen, 
   ArrowRight,
-  Sparkles
+  Sparkles,
+  UserPlus
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
-export default function McpTutorialPage() {
+export default function McpPublicLandingPage() {
   useDocumentHead({
-    title: "AI Integration Guide | AL WAKEELO",
-    description: "Step-by-step tutorial to connect your AL WAKEELO legal MCP server to Claude, ChatGPT, and Gemini.",
-    path: "/settings/mcp-tutorial",
+    title: "AI Integration (MCP) | AL WAKEELO - Pakistan's AI Legal Assistant",
+    description: "Connect AL WAKEELO's massive Pakistani legal RAG database directly to Claude Connectors, ChatGPT Custom Actions, or Gemini Spark.",
+    path: "/mcp",
   });
 
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
@@ -48,31 +53,58 @@ export default function McpTutorialPage() {
 }`;
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto fade-in pb-12">
+    <div className="space-y-12 fade-in max-w-5xl mx-auto pb-16">
       {/* Header Banner */}
-      <div className="rounded-3xl border border-primary/20 bg-primary/5 p-6 md:p-8 space-y-4 relative overflow-hidden">
+      <section className="text-center space-y-4 py-8 relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-44 h-44 rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-44 h-44 rounded-full bg-primary/5 blur-3xl" />
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs text-primary font-bold uppercase tracking-widest">
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-xs text-amber-500 font-bold uppercase tracking-widest">
           <Sparkles size={12} className="animate-pulse" />
           Model Context Protocol
         </div>
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-          AI Integrations &amp; MCP Guide
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+          Connect AL WAKEELO RAG <br/>
+          <span className="text-primary italic">directly to your own AI App</span>
         </h1>
-        <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-2xl">
-          Model Context Protocol (MCP) is a universal bridge that connects AI applications to custom data stores. 
-          Use your AL WAKEELO API Key to connect our case law and statutes database directly to your favorite AI models.
+        <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          Model Context Protocol (MCP) is the universal bridge for AI. Use AL WAKEELO MCP to query 600,000+ Pakistani judgments and statutory acts directly inside Claude, ChatGPT, or Google Gemini.
         </p>
-        <div className="flex flex-wrap gap-3 pt-2">
-          <a
-            href="/settings"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <Key size={13} />
-            Generate API Key in Settings
-            <ArrowRight size={12} />
-          </a>
+      </section>
+
+      {/* CTA Box to get API Key */}
+      <div className="rounded-3xl border border-primary/30 bg-primary/10 p-6 md:p-8 text-center space-y-4 relative overflow-hidden">
+        <h2 className="text-xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+          Generate Your AL WAKEELO API Key to Connect
+        </h2>
+        <p className="text-xs md:text-sm text-muted-foreground max-w-xl mx-auto">
+          To connect your AI application to our database, you will need a secure integration token. Create a free account or log in to generate your API key instantly.
+        </p>
+        <div className="flex justify-center gap-3">
+          {user ? (
+            <button
+              onClick={() => navigate("/settings")}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Key size={13} />
+              Go to API Settings
+              <ArrowRight size={12} />
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate("/auth?mode=register")}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <UserPlus size={13} />
+                Create Free Account
+              </button>
+              <button
+                onClick={() => navigate("/auth?mode=login")}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-5 py-2.5 text-xs font-bold text-foreground hover:bg-card/75 transition-colors"
+              >
+                Log In
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -111,19 +143,19 @@ export default function McpTutorialPage() {
                     Open <a href="https://claude.ai" target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">claude.ai <ExternalLink size={10} /></a> and log in.
                   </li>
                   <li>
-                    Navigate to **Settings** → **Connectors** (or type <kbd className="px-1.5 py-0.5 bg-muted rounded border text-[10px]">/</kbd> in chat and select **Connectors**).
+                    Navigate to **Settings** → **Connectors** (or type <kbd className="px-1.5 py-0.5 bg-muted rounded border text-[10px]">/</kbd> in chat).
                   </li>
                   <li>
                     Click **Add Custom Connector**.
                   </li>
                   <li>
-                    Paste your AL WAKEELO URL:
+                    Paste your AL WAKEELO URL (containing your secure token):
                     <div className="flex items-center gap-1.5 mt-1.5 bg-background border rounded px-2 py-1 font-mono text-[10px] text-foreground truncate select-all">
                       <span>https://alwakeelo.com/api/mcp?token=YOUR_API_KEY</span>
                     </div>
                   </li>
                   <li>
-                    Click **Connect**. Claude will verify the link and register the legal search tools instantly!
+                    Click **Connect**. Claude will verify and load all legal search tools instantly!
                   </li>
                 </ol>
               </CardContent>
@@ -164,9 +196,6 @@ export default function McpTutorialPage() {
                     {copiedText === "claude-desktop" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                   </Button>
                 </div>
-                <p className="mt-2 text-[10px] leading-normal text-muted-foreground">
-                  3. **Save** the file and **restart** Claude Desktop. Look for the plug icon in the bottom-right of the chat box.
-                </p>
               </CardContent>
             </Card>
           </div>

@@ -5833,7 +5833,7 @@ async function passesMalwareScan(
   return { ok: false, reason: scan.reason || "File failed malware scan." };
 }
 
-function normalizeDraftingText(content: string): string {
+export function normalizeDraftingText(content: string): string {
   return content
     .replace(/<think>[\s\S]*?<\/think>\s*/gi, "")
     .replace(/```references[\s\S]*?```/gi, "")
@@ -5843,7 +5843,7 @@ function normalizeDraftingText(content: string): string {
     .trim();
 }
 
-function normalizeCourtReadyDraftingText(content: string): string {
+export function normalizeCourtReadyDraftingText(content: string): string {
   const PARTY_ROLE_PATTERN =
     /^(PETITIONER|PETITIONERS|RESPONDENT|RESPONDENTS|APPELLANT|APPELLANTS|DEFENDANT|DEFENDANTS|PLAINTIFF|PLAINTIFFS|COMPLAINANT|COMPLAINANTS|ACCUSED)$/i;
   const PARTY_ALIGN_COLUMN = 74;
@@ -21042,6 +21042,308 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     }
   });
 
+  async function verifyMcpToken(req: any, res: any, next: any) {
+    let token = "";
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    } else if (authHeader) {
+      token = authHeader.trim();
+    } else if (req.query.token) {
+      token = String(req.query.token).trim();
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: "Missing or invalid token. Provide as Authorization header or URL query ?token=..." });
+    }
+
+    try {
+      const keyHash = crypto.createHash("sha256").update(token).digest("hex");
+      const apiKeyRecord = await storage.getApiKeyByHash(keyHash);
+      if (!apiKeyRecord) {
+        return res.status(401).json({ error: "Invalid or inactive API key." });
+      }
+
+      req.mcpUserId = apiKeyRecord.userId;
+      req.mcpApiKeyId = apiKeyRecord.id;
+      next();
+    } catch (err) {
+      res.status(500).json({ error: "Internal authentication error" });
+    }
+  }
+
+  app.get("/api/mcp/openapi.json", (req, res) => {
+    res.json(OPENAPI_SCHEMA);
+  });
+
+  app.post("/api/mcp/search_case_law", verifyMcpToken, async (req: any, res) => {
+    const userId = req.mcpUserId;
+    const { query, limit } = req.body;
+    if (!query) return res.status(400).json({ error: "Missing query parameter" });
+    const safeLimit = Math.min(10, Math.max(1, limit || 5));
+
+    try {
+      const allowed = await checkUsageLimit(userId, "search-judgments", res);
+      if (!allowed) return;
+
+      const result = await retrieveLegalCaseLaw({ userId, query, limit: safeLimit });
+      await storage.logUsage(userId, "search-judgments").catch(() => {});
+
+      // Update key last used
+      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
+
+      res.json({
+        judgments: result.rows.map((j) => ({
+          id: j.id,
+          citation: j.citation,
+          court: j.court,
+          title: j.title,
+          summary: j.summary,
+          decisionYear: j.citationYear,
+        })),
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Search failed" });
+    }
+  });
+
+  app.post("/api/mcp/search_statutes", verifyMcpToken, async (req: any, res) => {
+    const userId = req.mcpUserId;
+    const { query, limit } = req.body;
+    if (!query) return res.status(400).json({ error: "Missing query parameter" });
+    const safeLimit = Math.min(10, Math.max(1, limit || 5));
+
+    try {
+      const allowed = await checkUsageLimit(userId, "search-statutes", res);
+      if (!allowed) return;
+
+      const dummyIntent = {
+        raw: query,
+        normalized: query.toLowerCase(),
+        type: "statute" as const,
+        topics: [] as any[],
+        expandedQuery: query,
+        expandedTerms: query.split(/\s+/),
+        needsCaseLaw: false,
+        needsStatutes: true,
+        needsAdminDocs: false,
+      };
+      const retrievalResult = await runRetrieval(dummyIntent, userId, { statutes: safeLimit });
+      await storage.logUsage(userId, "search-statutes").catch(() => {});
+
+      // Update key last used
+      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
+
+      res.json({
+        statutes: retrievalResult.statutes.map((s) => ({
+          shortTitle: s.shortTitle,
+          section: s.section,
+          description: s.description,
+          punishment: s.punishment,
+          statuteDocumentTitle: s.statuteDocumentTitle,
+        })),
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Statutes search failed" });
+    }
+  });
+
+  app.post("/api/mcp/get_judgment", verifyMcpToken, async (req: any, res) => {
+    const userId = req.mcpUserId;
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: "Missing judgment ID" });
+
+    try {
+      const allowed = await checkUsageLimit(userId, "search-judgments", res);
+      if (!allowed) return;
+
+      const detail = await storage.getJudgmentDetail(id);
+      if (!detail) return res.status(404).json({ error: "Judgment not found" });
+
+      await storage.logUsage(userId, "search-judgments").catch(() => {});
+
+      // Update key last used
+      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
+
+      res.json({
+        id: detail.id,
+        citation: detail.citation,
+        title: detail.title,
+        courtName: detail.courtName || detail.courtSnapshot || "Pakistani Court",
+        decisionDate: detail.decisionDate,
+        headnotes: detail.headnotes,
+        fullText: detail.fullText,
+        pdfUrl: detail.pdfUrl,
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Fetch failed" });
+    }
+  });
+
+  app.post("/api/mcp/legal_research", verifyMcpToken, async (req: any, res) => {
+    const userId = req.mcpUserId;
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ error: "Missing query parameter" });
+
+    try {
+      const allowed = await checkUsageLimit(userId, "chat", res);
+      if (!allowed) return;
+
+      const contextString = await gatherKnowledgeContextV2(query, userId);
+      await logUsageCost(userId, "chat", "deepseek-chat", query, contextString, { userQuery: query });
+
+      // Update key last used
+      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
+
+      res.json({
+        query,
+        context: contextString,
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Legal research failed" });
+    }
+  });
+
+  app.post("/api/mcp/draft_petition", verifyMcpToken, async (req: any, res) => {
+    const userId = req.mcpUserId;
+    const { topic, facts, courtName, petitionerName, respondentName, additionalClauses } = req.body;
+    if (!topic || !facts || !courtName || !petitionerName || !respondentName) {
+      return res.status(400).json({ error: "Missing required fields: topic, facts, courtName, petitionerName, respondentName" });
+    }
+
+    try {
+      const allowed = await checkUsageLimit(userId, "draft", res);
+      if (!allowed) return;
+
+      const searchQuery = `${topic} ${facts}`;
+      const searchResult = await retrieveLegalCaseLaw({
+        userId,
+        query: searchQuery,
+        limit: 3,
+      });
+
+      const contextStr = searchResult.rows.map((j) => 
+        `Citation: ${j.citation}\nCourt: ${j.court}\nTitle: ${j.title}\nSummary: ${j.summary}`
+      ).join("\n\n");
+
+      const systemPrompt = `You are AL WAKEELO — Your Digital Lawyer, Always on Duty. You are in legal drafting mode. Generate a formal, professional, airtight legal petition or application that is filing-ready under the Code of Civil Procedure (CPC) 1908 and applicable Pakistani statutes.
+      
+      CRITICAL FORMATTING RULES:
+      1. Do NOT use markdown tags or symbols (#, **, __, etc.).
+      2. Write a clear Court Heading block at the top, centered, e.g., "IN THE COURT OF THE ${courtName.toUpperCase()}".
+      3. Include the Parties Block clearly outlining:
+         ${petitionerName} ... Petitioner
+         VERSUS
+         ${respondentName} ... Respondent
+      4. Write numbered paragraphs stating the facts, cause of action, jurisdiction, and court fee calculations.
+      5. Valuation/Court Fee: State that the court fee is affixed per the Court Fees Act 1870.
+      6. Include a distinct "PRAYER" section at the end.
+      7. Include a "VERIFICATION" block stating the truth of the contents.
+      8. List of Documents: Append a numbered List of Documents section after the verification block.
+      9. Memo of Address: Include address for service at the bottom.
+      
+      GROUNDING CONTEXT:
+      Use the following verified Pakistani case laws/statutes to support the grounds:
+      ${contextStr}
+      
+      FACTS TO BASE ON:
+      ${facts}
+      
+      ADDITIONAL INSTRUCTIONS:
+      ${additionalClauses || "None"}`;
+
+      const userText = `Please draft the petition for "${topic}".`;
+
+      const response = await chatWithDeepSeek({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userText }
+        ],
+        temperature: 0.3,
+      });
+
+      let formattedText = response.content;
+      try {
+        formattedText = normalizeCourtReadyDraftingText(formattedText);
+      } catch (e) {
+        console.error("[MCP] Normalizer failed:", e);
+      }
+
+      await storage.logUsage(userId, "draft");
+      
+      // Update key last used
+      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
+
+      res.json({
+        topic,
+        draft: formattedText,
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Draft petition failed" });
+    }
+  });
+
+  app.post("/api/mcp/draft_contract", verifyMcpToken, async (req: any, res) => {
+    const userId = req.mcpUserId;
+    const { contractType, parties, terms, governingLaw, additionalClauses } = req.body;
+    if (!contractType || !parties || !terms) {
+      return res.status(400).json({ error: "Missing required fields: contractType, parties, terms" });
+    }
+
+    try {
+      const allowed = await checkUsageLimit(userId, "contract-drafting", res);
+      if (!allowed) return;
+
+      const systemPrompt = `You are AL WAKEELO — Your Digital Lawyer, Always on Duty. You are in contract drafting mode. Generate a formal, comprehensive, legally enforceable contract under the Pakistani Contract Act 1872 and other governing laws.
+      
+      CRITICAL FORMATTING RULES:
+      1. Do NOT use markdown code blocks or blockquotes for formatting.
+      2. Write a clear title centered at the top (e.g. "PARTNERSHIP DEED" or "LEASE AGREEMENT").
+      3. Include a detailed preamble describing the parties, their addresses, and the date.
+      4. Structure the agreement into numbered clauses (e.g., Section 1: Definitions, Section 2: Consideration, etc.).
+      5. Include default standard boilerplate terms (Dispute Resolution via arbitration under Arbitration Act 1940, Severability, Force Majeure, and Termination).
+      6. Include a distinct signatures block for the parties and two witnesses at the bottom.
+      
+      CONTRACT DETAILS:
+      Type: ${contractType}
+      Parties: ${parties}
+      Terms: ${terms}
+      Governing Law: ${governingLaw || "Pakistan"}
+      
+      ADDITIONAL CLAUSES:
+      ${additionalClauses || "None"}`;
+
+      const userText = `Please draft the contract for "${contractType}".`;
+
+      const response = await chatWithDeepSeek({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userText }
+        ],
+        temperature: 0.3,
+      });
+
+      let formattedText = response.content;
+      try {
+        formattedText = normalizeDraftingText(formattedText);
+      } catch (e) {
+        console.error("[MCP] Normalizer failed:", e);
+      }
+
+      await storage.logUsage(userId, "contract-drafting");
+      
+      // Update key last used
+      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
+
+      res.json({
+        contractType,
+        draft: formattedText,
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Draft contract failed" });
+    }
+  });
+
   // ── MCP Unified Route ──────────────────────────────────────────────────────
   app.all(["/api/mcp", "/mcp", "/api/mcp/:token", "/mcp/:token"], async (req, res) => {
     let token = "";
@@ -21267,6 +21569,79 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
           },
           "security": [{ "ApiKeyAuth": [] }]
         }
+      },
+      "/api/mcp/draft_petition": {
+        "post": {
+          "summary": "Draft legal petition",
+          "description": "Generate a filing-ready Pakistani court petition grounded in case law and statutes.",
+          "operationId": "draftPetition",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "topic": { "type": "string", "description": "E.g., Bail Application under Sec 497 CrPC" },
+                    "facts": { "type": "string", "description": "Factual details of the dispute" },
+                    "courtName": { "type": "string", "description": "Name of the target court" },
+                    "petitionerName": { "type": "string", "description": "Name of the petitioner" },
+                    "respondentName": { "type": "string", "description": "Name of the respondent" },
+                    "additionalClauses": { "type": "string", "description": "Optional custom grounds" }
+                  },
+                  "required": ["topic", "facts", "courtName", "petitionerName", "respondentName"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Generated court-ready draft text",
+              "content": {
+                "application/json": {
+                  "schema": { "type": "object" }
+                }
+              }
+            }
+          },
+          "security": [{ "ApiKeyAuth": [] }]
+        }
+      },
+      "/api/mcp/draft_contract": {
+        "post": {
+          "summary": "Draft legal contract",
+          "description": "Generate a fully structured, commercially realistic legal contract under Pakistani law.",
+          "operationId": "draftContract",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "contractType": { "type": "string", "description": "E.g., Partnership Deed, Commercial Lease" },
+                    "parties": { "type": "string", "description": "Details of the contracting parties" },
+                    "terms": { "type": "string", "description": "Core clauses, values, and obligations" },
+                    "governingLaw": { "type": "string", "description": "Optional governing provincial law" },
+                    "additionalClauses": { "type": "string", "description": "Optional custom guidelines" }
+                  },
+                  "required": ["contractType", "parties", "terms"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Generated contract text",
+              "content": {
+                "application/json": {
+                  "schema": { "type": "object" }
+                }
+              }
+            }
+          },
+          "security": [{ "ApiKeyAuth": [] }]
+        }
       }
     },
     "components": {
@@ -21281,165 +21656,91 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     }
   };
 
-  async function verifyMcpToken(req: any, res: any, next: any) {
-    let token = "";
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.substring(7).trim();
-    } else if (authHeader) {
-      token = authHeader.trim();
-    } else if (req.query.token) {
-      token = String(req.query.token).trim();
+
+
+  // ── OAuth 2.0 Endpoints for ChatGPT App Directory ─────────────────────────
+  const oauthCodes = new Map<string, { userId: string; redirectUri: string; expiresAt: number }>();
+
+  // 1. Authorize Entry Point (Redirects to React consent screen or Login)
+  app.get("/api/oauth/authorize", (req, res) => {
+    const userId = getUserId(req);
+    const searchParams = new URLSearchParams(req.query as any);
+
+    if (!userId) {
+      // Not logged in: redirect to login page preserving OAuth parameters
+      return res.redirect(`/auth?redirect=/oauth/authorize&${searchParams.toString()}`);
     }
 
-    if (!token) {
-      return res.status(401).json({ error: "Missing or invalid token. Provide as Authorization header or URL query ?token=..." });
+    // Logged in: redirect to the frontend consent screen
+    res.redirect(`/oauth/authorize?${searchParams.toString()}`);
+  });
+
+  // 2. Authorize Confirmation (Called by React Consent screen)
+  app.post("/api/oauth/authorize/confirm", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { redirect_uri, state } = req.body;
+    if (!redirect_uri) {
+      return res.status(400).json({ error: "Missing redirect_uri parameter" });
     }
 
     try {
+      // Generate a short-lived authorization code (expires in 5 minutes)
+      const code = crypto.randomBytes(16).toString("hex");
+      oauthCodes.set(code, {
+        userId,
+        redirectUri: redirect_uri,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+      });
+
+      const redirectUrl = `${redirect_uri}?code=${code}&state=${encodeURIComponent(state || "")}`;
+      res.json({ redirectUrl });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to generate authorization code" });
+    }
+  });
+
+  // 3. Token Exchange Endpoint (POST /api/oauth/token)
+  app.post("/api/oauth/token", async (req, res) => {
+    const { grant_type, code, redirect_uri } = req.body;
+
+    if (grant_type !== "authorization_code") {
+      return res.status(400).json({ error: "unsupported_grant_type" });
+    }
+
+    if (!code) {
+      return res.status(400).json({ error: "invalid_request", error_description: "Missing code parameter" });
+    }
+
+    const record = oauthCodes.get(code);
+    if (!record) {
+      return res.status(400).json({ error: "invalid_grant", error_description: "Invalid or expired code" });
+    }
+
+    // Clean up used code (one-time use only)
+    oauthCodes.delete(code);
+
+    if (record.expiresAt < Date.now()) {
+      return res.status(400).json({ error: "invalid_grant", error_description: "Code has expired" });
+    }
+
+    try {
+      // Generate a fresh secure API Key for this integration
+      const token = `aw_live_${crypto.randomBytes(32).toString("hex")}`;
       const keyHash = crypto.createHash("sha256").update(token).digest("hex");
-      const apiKeyRecord = await storage.getApiKeyByHash(keyHash);
-      if (!apiKeyRecord) {
-        return res.status(401).json({ error: "Invalid or inactive API key." });
-      }
 
-      req.mcpUserId = apiKeyRecord.userId;
-      req.mcpApiKeyId = apiKeyRecord.id;
-      next();
-    } catch (err) {
-      res.status(500).json({ error: "Internal authentication error" });
-    }
-  }
+      await storage.createApiKey(record.userId, "ChatGPT Connection Key", keyHash);
 
-  app.get("/api/mcp/openapi.json", (req, res) => {
-    res.json(OPENAPI_SCHEMA);
-  });
-
-  app.post("/api/mcp/search_case_law", verifyMcpToken, async (req: any, res) => {
-    const userId = req.mcpUserId;
-    const { query, limit } = req.body;
-    if (!query) return res.status(400).json({ error: "Missing query parameter" });
-    const safeLimit = Math.min(10, Math.max(1, limit || 5));
-
-    try {
-      const allowed = await checkUsageLimit(userId, "search-judgments", res);
-      if (!allowed) return;
-
-      const result = await retrieveLegalCaseLaw({ userId, query, limit: safeLimit });
-      await storage.logUsage(userId, "search-judgments").catch(() => {});
-
-      // Update key last used
-      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
-
+      // Return OAuth compliant response
       res.json({
-        judgments: result.rows.map((j) => ({
-          id: j.id,
-          citation: j.citation,
-          court: j.court,
-          title: j.title,
-          summary: j.summary,
-          decisionYear: j.citationYear,
-        })),
+        access_token: token,
+        token_type: "Bearer",
+        expires_in: 315360000, // 10 years (long-lived connection)
       });
     } catch (err) {
-      res.status(500).json({ error: "Search failed" });
-    }
-  });
-
-  app.post("/api/mcp/search_statutes", verifyMcpToken, async (req: any, res) => {
-    const userId = req.mcpUserId;
-    const { query, limit } = req.body;
-    if (!query) return res.status(400).json({ error: "Missing query parameter" });
-    const safeLimit = Math.min(10, Math.max(1, limit || 5));
-
-    try {
-      const allowed = await checkUsageLimit(userId, "search-statutes", res);
-      if (!allowed) return;
-
-      const dummyIntent = {
-        raw: query,
-        normalized: query.toLowerCase(),
-        type: "statute" as const,
-        topics: [] as any[],
-        expandedQuery: query,
-        expandedTerms: query.split(/\s+/),
-        needsCaseLaw: false,
-        needsStatutes: true,
-        needsAdminDocs: false,
-      };
-      const retrievalResult = await runRetrieval(dummyIntent, userId, { statutes: safeLimit });
-      await storage.logUsage(userId, "search-statutes").catch(() => {});
-
-      // Update key last used
-      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
-
-      res.json({
-        statutes: retrievalResult.statutes.map((s) => ({
-          shortTitle: s.shortTitle,
-          section: s.section,
-          description: s.description,
-          punishment: s.punishment,
-          statuteDocumentTitle: s.statuteDocumentTitle,
-        })),
-      });
-    } catch (err) {
-      res.status(500).json({ error: "Statutes search failed" });
-    }
-  });
-
-  app.post("/api/mcp/get_judgment", verifyMcpToken, async (req: any, res) => {
-    const userId = req.mcpUserId;
-    const { id } = req.body;
-    if (!id) return res.status(400).json({ error: "Missing judgment ID" });
-
-    try {
-      const allowed = await checkUsageLimit(userId, "search-judgments", res);
-      if (!allowed) return;
-
-      const detail = await storage.getJudgmentDetail(id);
-      if (!detail) return res.status(404).json({ error: "Judgment not found" });
-
-      await storage.logUsage(userId, "search-judgments").catch(() => {});
-
-      // Update key last used
-      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
-
-      res.json({
-        id: detail.id,
-        citation: detail.citation,
-        title: detail.title,
-        courtName: detail.courtName || detail.courtSnapshot || "Pakistani Court",
-        decisionDate: detail.decisionDate,
-        headnotes: detail.headnotes,
-        fullText: detail.fullText,
-        pdfUrl: detail.pdfUrl,
-      });
-    } catch (err) {
-      res.status(500).json({ error: "Fetch failed" });
-    }
-  });
-
-  app.post("/api/mcp/legal_research", verifyMcpToken, async (req: any, res) => {
-    const userId = req.mcpUserId;
-    const { query } = req.body;
-    if (!query) return res.status(400).json({ error: "Missing query parameter" });
-
-    try {
-      const allowed = await checkUsageLimit(userId, "chat", res);
-      if (!allowed) return;
-
-      const contextString = await gatherKnowledgeContextV2(query, userId);
-      await logUsageCost(userId, "chat", "deepseek-chat", query, contextString, { userQuery: query });
-
-      // Update key last used
-      db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
-
-      res.json({
-        query,
-        context: contextString,
-      });
-    } catch (err) {
-      res.status(500).json({ error: "Legal research failed" });
+      console.error("[OAuth] Failed to generate access token:", err);
+      res.status(500).json({ error: "server_error" });
     }
   });
 

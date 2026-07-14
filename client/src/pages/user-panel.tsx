@@ -397,7 +397,7 @@ export default function UserPanelPage() {
             </CardHeader>
             <CardContent className="space-y-3 px-4 pb-4 pt-1">
               <p className="text-[10px] text-muted-foreground leading-relaxed">
-                Connect AlWakeelo directly to AI applications like Claude Desktop, Cursor, or Gemini. Your search limits and quotas apply.
+                Connect AL WAKEELO directly to AI applications like Claude Desktop, Cursor, or Gemini. Your search limits and quotas apply.
               </p>
 
               <div className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-lg p-2 text-[9.5px]">
