@@ -8,6 +8,9 @@ import { checkUsageLimit, logUsageCost, normalizeCourtReadyDraftingText, normali
 import { chatWithDeepSeek } from "./deepseek-ai";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { db } from "./db";
+import { caseLaw, judgments } from "@shared/schema";
+import { eq, inArray } from "drizzle-orm";
 
 // Request-scoped storage to track the authenticated user's ID across JSON-RPC calls
 export const mcpUserContext = new AsyncLocalStorage<string>();
@@ -101,6 +104,22 @@ export function registerAllTools(server: McpServer) {
     // Track usage metrics
     await logToolUsage(userId, "search-judgments", query);
 
+    // Map case law citations to actual judgments UUIDs in bulk to avoid N+1 query overhead
+    const citations = result.rows.map(j => j.citation).filter(Boolean);
+    const judgmentMap = new Map<string, string>();
+    if (citations.length > 0) {
+      const matchingJudgments = await db.select({
+        id: judgments.id,
+        citation: judgments.citationString
+      })
+      .from(judgments)
+      .where(inArray(judgments.citationString, citations));
+      
+      for (const row of matchingJudgments) {
+        judgmentMap.set(row.citation, row.id);
+      }
+    }
+
     return {
       content: [
         {
@@ -112,7 +131,7 @@ export function registerAllTools(server: McpServer) {
             query,
             latencyMs: latency,
             judgments: result.rows.map((j) => ({
-              id: j.id,
+              id: judgmentMap.get(j.citation) || String(j.id),
               citation: j.citation,
               court: j.court,
               title: j.title,
@@ -189,9 +208,9 @@ export function registerAllTools(server: McpServer) {
 
   // 3. Get Judgment Detail
   server.registerTool("get_judgment", {
-    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID.",
+    description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID or numeric ID.",
     inputSchema: {
-      id: z.string().describe("The judgment UUID"),
+      id: z.string().describe("The judgment UUID, numeric ID, or citation"),
     },
     annotations: {
       readOnlyHint: true,
@@ -204,13 +223,40 @@ export function registerAllTools(server: McpServer) {
     // Enforce quota
     await enforceQuota(userId, "search-judgments");
 
-    const detail = await storage.getJudgmentDetail(id);
+    let targetId = String(id).trim();
+    
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+    if (!isUuid) {
+      // If it is a numeric ID from case_law table, resolve it to the citation string first
+      if (/^\d+$/.test(targetId)) {
+        const [caseLawRow] = await db.select({ citation: caseLaw.citation })
+          .from(caseLaw)
+          .where(eq(caseLaw.id, Number(targetId)))
+          .limit(1);
+        if (caseLawRow && caseLawRow.citation) {
+          targetId = caseLawRow.citation;
+        }
+      }
+
+      // Now lookup by citation in judgments table to get the UUID
+      const [resolvedRow] = await db.select({ id: judgments.id })
+        .from(judgments)
+        .where(eq(judgments.citationString, targetId))
+        .limit(1);
+        
+      if (!resolvedRow) {
+        throw new McpError(ErrorCode.InvalidRequest, `Judgment with ID or citation '${targetId}' not found.`);
+      }
+      targetId = resolvedRow.id;
+    }
+
+    const detail = await storage.getJudgmentDetail(targetId);
     if (!detail) {
-      throw new McpError(ErrorCode.InvalidRequest, `Judgment not found for ID: ${id}`);
+      throw new McpError(ErrorCode.InvalidRequest, `Judgment not found for ID: ${targetId}`);
     }
 
     // Track usage
-    await logToolUsage(userId, "search-judgments", `get_judgment:${id}`);
+    await logToolUsage(userId, "search-judgments", `get_judgment:${targetId}`);
 
     return {
       content: [
