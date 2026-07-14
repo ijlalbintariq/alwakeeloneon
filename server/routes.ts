@@ -21350,6 +21350,8 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
       token = authHeader.substring(7).trim();
+    } else if (authHeader) {
+      token = authHeader.trim();
     } else if (req.query.token) {
       token = String(req.query.token).trim();
     } else if (req.params.token) {
