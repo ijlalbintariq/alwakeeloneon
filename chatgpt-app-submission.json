@@ -5,7 +5,7 @@
     "display_name": "AL WAKEELO",
     "subtitle": "Pakistani Legal Assistant",
     "description": "AL WAKEELO is your digital legal assistant that searches 600,000+ Pakistani case laws and statutes, drafts CPC-compliant petitions and commercial contracts, and conducts deep legal research.",
-    "category": "education & research",
+    "category": "EDUCATION",
     "website_url": "https://alwakeelo.com",
     "support_url": "https://alwakeelo.com/support",
     "privacy_policy_url": "https://alwakeelo.com/privacy",
@@ -21,51 +21,117 @@
   },
   "tools": {
     "search_case_law": {
-      "readOnlyHint": true,
-      "openWorldHint": false,
-      "destructiveHint": false,
-      "justification": "Queries the database for matching Pakistani court judgments and case law."
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Queries the database for matching court judgments. Does not create or update state.",
+        "open_world_justification": "Query is processed internally and results are served entirely from local database indexes.",
+        "destructive_justification": "Does not perform any deletions, database edits, or mutations."
+      }
     },
     "search_statutes": {
-      "readOnlyHint": true,
-      "openWorldHint": false,
-      "destructiveHint": false,
-      "justification": "Queries acts, ordinances, and sections from Pakistani statutory laws."
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Queries the database for matching statutory sections. Does not modify state.",
+        "open_world_justification": "Searches only localized indexes of statutory files stored inside database.",
+        "destructive_justification": "Does not delete, modify, or overwrite any statute documents."
+      }
     },
     "get_judgment": {
-      "readOnlyHint": true,
-      "openWorldHint": false,
-      "destructiveHint": false,
-      "justification": "Fetches the full-text content of a specific judgment by UUID."
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Retrieves the full-text detail of a specific judgment. No modifications to data.",
+        "open_world_justification": "The document is loaded directly from local server records.",
+        "destructive_justification": "Does not delete or alter the requested judgment data."
+      }
     },
     "legal_research": {
-      "readOnlyHint": true,
-      "openWorldHint": false,
-      "destructiveHint": false,
-      "justification": "Queries the full legal RAG retrieval system for comprehensive research answers."
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Retrieves knowledge files and formats summaries for analysis. Does not modify state.",
+        "open_world_justification": "Fetches grounded details from internal indexes.",
+        "destructive_justification": "Does not execute state transitions or destructive operations."
+      }
     },
     "draft_petition": {
-      "readOnlyHint": true,
-      "openWorldHint": false,
-      "destructiveHint": false,
-      "justification": "Generates CPC-compliant court petition text based on facts, topic, and case law."
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Generates court petition drafts in text form. No changes are saved to server state.",
+        "open_world_justification": "Runs Deepseek inference and uses local vectors to formulate legal drafts.",
+        "destructive_justification": "Does not delete or change any records."
+      }
     },
     "draft_contract": {
-      "readOnlyHint": true,
-      "openWorldHint": false,
-      "destructiveHint": false,
-      "justification": "Generates commercial contracts under the Contract Act 1872 based on parties and terms."
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Generates agreement draft text for user convenience. Does not alter server state.",
+        "open_world_justification": "Processes inputs using deep learning templates.",
+        "destructive_justification": "No modifications to existing contract registries or user databases."
+      }
     }
   },
   "test_cases": [
-    "Find Supreme Court cases related to bail under Section 497 CrPC for murder charges.",
-    "Draft a commercial lease agreement between landlord Malik Ahmed and tenant Bilal Khan for commercial shop 4B in Lahore.",
-    "Get the full judgment details for case UUID 12345.",
-    "Search for Lahore High Court judgments on tenancy eviction default.",
-    "Draft a partnership deed between three partners setting up a law firm."
+    {
+      "description": "Ensure the assistant can search Supreme Court bail decisions.",
+      "user_prompt": "Find Supreme Court cases related to bail under Section 497 CrPC for murder charges.",
+      "tools_triggered": "search_case_law"
+    },
+    {
+      "description": "Ensure commercial lease agreements can be drafted properly.",
+      "user_prompt": "Draft a commercial lease agreement between landlord Malik Ahmed and tenant Bilal Khan for commercial shop 4B in Lahore.",
+      "tools_triggered": "draft_contract"
+    },
+    {
+      "description": "Ensure judgment content can be fetched using document IDs.",
+      "user_prompt": "Get the full judgment details for case UUID 12345.",
+      "tools_triggered": "get_judgment"
+    },
+    {
+      "description": "Verify high court case law searches function normally.",
+      "user_prompt": "Search for Lahore High Court judgments on tenancy eviction default.",
+      "tools_triggered": "search_case_law"
+    },
+    {
+      "description": "Verify contract drafting can handle partnership deeds.",
+      "user_prompt": "Draft a partnership deed between three partners setting up a law firm.",
+      "tools_triggered": "draft_contract"
+    }
   ],
   "negative_test_cases": [
-    "Request legal research with an empty query string.",
-    "Try to draft a petition without providing court name, petitioner name, or facts."
+    {
+      "description": "Prevent legal research with an empty prompt query.",
+      "user_prompt": "Request legal research with an empty query string."
+    },
+    {
+      "description": "Validate error handling when petition drafting is missing required fields.",
+      "user_prompt": "Try to draft a petition without providing court name, petitioner name, or facts."
+    },
+    {
+      "description": "Handle lookup for non-existent judgment UUID gracefully.",
+      "user_prompt": "Get judgment for non-existent ID 99999."
+    }
   ]
 }
