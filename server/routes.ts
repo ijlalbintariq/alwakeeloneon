@@ -7559,6 +7559,12 @@ export async function registerRoutes(
     }
   });
 
+  // OpenAI Apps Challenge domain verification
+  app.get("/.well-known/openai-apps-challenge", (req, res) => {
+    res.setHeader("Content-Type", "text/plain");
+    res.send(process.env.OPENAI_APPS_CHALLENGE_TOKEN || "no-token-configured");
+  });
+
   app.use("/api", (req, res, next) => {
     if (
       !dbAvailable &&
