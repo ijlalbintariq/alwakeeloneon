@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "AL WAKEELO",
+    "subtitle": "Pakistani Legal Assistant & Search",
+    "description": "AL WAKEELO is your digital legal assistant that searches 600,000+ Pakistani case laws and statutes, drafts CPC-compliant petitions and commercial contracts, and conducts deep legal research.",
+    "category": "legal",
+    "website_url": "https://alwakeelo.com",
+    "support_url": "https://alwakeelo.com/support",
+    "privacy_policy_url": "https://alwakeelo.com/privacy",
+    "terms_of_service_url": "https://alwakeelo.com/terms"
+  },
+  "mcp_server": {
+    "url": "https://alwakeelo.com/api/mcp",
+    "auth": {
+      "type": "oauth2",
+      "authorization_url": "https://alwakeelo.com/api/oauth/authorize",
+      "token_url": "https://alwakeelo.com/api/oauth/token"
+    }
+  },
+  "tools": [
+    {
+      "name": "search_case_law",
+      "readOnlyHint": true,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "justification": "Queries the database for matching Pakistani court judgments and case law."
+    },
+    {
+      "name": "search_statutes",
+      "readOnlyHint": true,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "justification": "Queries acts, ordinances, and sections from Pakistani statutory laws."
+    },
+    {
+      "name": "get_judgment",
+      "readOnlyHint": true,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "justification": "Fetches the full-text content of a specific judgment by UUID."
+    },
+    {
+      "name": "legal_research",
+      "readOnlyHint": true,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "justification": "Queries the full legal RAG retrieval system for comprehensive research answers."
+    },
+    {
+      "name": "draft_petition",
+      "readOnlyHint": true,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "justification": "Generates CPC-compliant court petition text based on facts, topic, and case law."
+    },
+    {
+      "name": "draft_contract",
+      "readOnlyHint": true,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "justification": "Generates commercial contracts under the Contract Act 1872 based on parties and terms."
+    }
+  ],
+  "test_cases": {
+    "positive": [
+      "Find Supreme Court cases related to bail under Section 497 CrPC for murder charges.",
+      "Draft a commercial lease agreement between landlord Malik Ahmed and tenant Bilal Khan for commercial shop 4B in Lahore.",
+      "Get the full judgment details for case UUID 12345."
+    ],
+    "negative": [
+      "Request legal research with an empty query string.",
+      "Try to draft a petition without providing court name, petitioner name, or facts."
+    ]
+  }
+}
