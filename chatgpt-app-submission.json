@@ -19,59 +19,53 @@
       "token_url": "https://alwakeelo.com/api/oauth/token"
     }
   },
-  "tools": [
-    {
-      "name": "search_case_law",
+  "tools": {
+    "search_case_law": {
       "readOnlyHint": true,
       "openWorldHint": false,
       "destructiveHint": false,
       "justification": "Queries the database for matching Pakistani court judgments and case law."
     },
-    {
-      "name": "search_statutes",
+    "search_statutes": {
       "readOnlyHint": true,
       "openWorldHint": false,
       "destructiveHint": false,
       "justification": "Queries acts, ordinances, and sections from Pakistani statutory laws."
     },
-    {
-      "name": "get_judgment",
+    "get_judgment": {
       "readOnlyHint": true,
       "openWorldHint": false,
       "destructiveHint": false,
       "justification": "Fetches the full-text content of a specific judgment by UUID."
     },
-    {
-      "name": "legal_research",
+    "legal_research": {
       "readOnlyHint": true,
       "openWorldHint": false,
       "destructiveHint": false,
       "justification": "Queries the full legal RAG retrieval system for comprehensive research answers."
     },
-    {
-      "name": "draft_petition",
+    "draft_petition": {
       "readOnlyHint": true,
       "openWorldHint": false,
       "destructiveHint": false,
       "justification": "Generates CPC-compliant court petition text based on facts, topic, and case law."
     },
-    {
-      "name": "draft_contract",
+    "draft_contract": {
       "readOnlyHint": true,
       "openWorldHint": false,
       "destructiveHint": false,
       "justification": "Generates commercial contracts under the Contract Act 1872 based on parties and terms."
     }
+  },
+  "test_cases": [
+    "Find Supreme Court cases related to bail under Section 497 CrPC for murder charges.",
+    "Draft a commercial lease agreement between landlord Malik Ahmed and tenant Bilal Khan for commercial shop 4B in Lahore.",
+    "Get the full judgment details for case UUID 12345.",
+    "Search for Lahore High Court judgments on tenancy eviction default.",
+    "Draft a partnership deed between three partners setting up a law firm."
   ],
-  "test_cases": {
-    "positive": [
-      "Find Supreme Court cases related to bail under Section 497 CrPC for murder charges.",
-      "Draft a commercial lease agreement between landlord Malik Ahmed and tenant Bilal Khan for commercial shop 4B in Lahore.",
-      "Get the full judgment details for case UUID 12345."
-    ],
-    "negative": [
-      "Request legal research with an empty query string.",
-      "Try to draft a petition without providing court name, petitioner name, or facts."
-    ]
-  }
+  "negative_test_cases": [
+    "Request legal research with an empty query string.",
+    "Try to draft a petition without providing court name, petitioner name, or facts."
+  ]
 }
