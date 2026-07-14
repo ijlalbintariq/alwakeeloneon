@@ -21092,9 +21092,25 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       // Update key last used
       db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, req.mcpApiKeyId)).catch(() => {});
 
+      // Map case law citations to actual judgments UUIDs in bulk to avoid N+1 query overhead
+      const citations = result.rows.map(j => j.citation).filter(Boolean);
+      const judgmentMap = new Map<string, string>();
+      if (citations.length > 0) {
+        const matchingJudgments = await db.select({
+          id: judgments.id,
+          citation: judgments.citationString
+        })
+        .from(judgments)
+        .where(inArray(judgments.citationString, citations));
+        
+        for (const row of matchingJudgments) {
+          judgmentMap.set(row.citation, row.id);
+        }
+      }
+
       res.json({
         judgments: result.rows.map((j) => ({
-          id: j.id,
+          id: judgmentMap.get(j.citation) || String(j.id),
           citation: j.citation,
           court: j.court,
           title: j.title,
@@ -21103,6 +21119,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         })),
       });
     } catch (err) {
+      console.error("[MCP] Search case law failed:", err);
       res.status(500).json({ error: "Search failed" });
     }
   });
@@ -21151,13 +21168,29 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
   app.post("/api/mcp/get_judgment", verifyMcpToken, async (req: any, res) => {
     const userId = req.mcpUserId;
     const { id } = req.body;
-    if (!id) return res.status(400).json({ error: "Missing judgment ID" });
+    if (!id) return res.status(400).json({ error: "Missing judgment ID or citation" });
 
     try {
       const allowed = await checkUsageLimit(userId, "search-judgments", res);
       if (!allowed) return;
 
-      const detail = await storage.getJudgmentDetail(id);
+      let targetId = String(id).trim();
+      
+      // If the input is NOT a UUID format, assume it is a citation string (e.g. "2020 SCMR 1486")
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+      if (!isUuid) {
+        const [resolvedRow] = await db.select({ id: judgments.id })
+          .from(judgments)
+          .where(eq(judgments.citationString, targetId))
+          .limit(1);
+          
+        if (!resolvedRow) {
+          return res.status(404).json({ error: `Judgment with citation '${targetId}' not found.` });
+        }
+        targetId = resolvedRow.id;
+      }
+
+      const detail = await storage.getJudgmentDetail(targetId);
       if (!detail) return res.status(404).json({ error: "Judgment not found" });
 
       await storage.logUsage(userId, "search-judgments").catch(() => {});
@@ -21176,6 +21209,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         pdfUrl: detail.pdfUrl,
       });
     } catch (err) {
+      console.error("[MCP] Get judgment failed:", err);
       res.status(500).json({ error: "Fetch failed" });
     }
   });
