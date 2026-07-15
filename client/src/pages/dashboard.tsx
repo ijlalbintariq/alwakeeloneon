@@ -16,6 +16,8 @@ type UsageData = {
   used: number;
   remaining: number;
   percentage: number;
+  isAtLimit?: boolean;
+  isNearLimit?: boolean;
 };
 
 interface ActivitySummary {
@@ -63,8 +65,8 @@ export default function DashboardPage() {
   ];
 
   const usagePercentage = usage?.monthlyLimit === 999999 ? 0 : (usage?.percentage ?? 0);
-  const isNearLimit = usagePercentage >= 80;
-  const isAtLimit = usagePercentage >= 100;
+  const isAtLimit = usage?.isAtLimit !== undefined ? usage.isAtLimit : (usagePercentage >= 100);
+  const isNearLimit = usage?.isNearLimit !== undefined ? usage.isNearLimit : (usagePercentage >= 80);
   const upgradeHref = getUpgradeCheckoutPath(usage?.tier);
   const upgradeLabel = getUpgradeActionLabel(usage?.tier);
   const cycleLabelRaw = String(usage?.subscriptionCycle || "monthly").toLowerCase();

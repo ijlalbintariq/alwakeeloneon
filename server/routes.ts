@@ -11722,10 +11722,33 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
           + (await storage.getTotalUsageCountByFeature(userId, "search-statutes"))
           + (await storage.getTotalUsageCountByFeature(userId, "summarize"))
           + (await storage.getTotalUsageCountByFeature(userId, "brief"))
+          + (await storage.getTotalUsageCountByFeature(userId, "draft"))
+          + (await storage.getTotalUsageCountByFeature(userId, "contract-drafting"))
         : used;
       const displayUsed = isFreeTier ? freeUsedTotal : used;
       const remaining = Math.max(0, limits.monthlyQueries - displayUsed);
       const percentage = Math.min(100, Math.round((displayUsed / limits.monthlyQueries) * 100));
+
+      // Calculate feature-specific limits for free tier to accurately reflect limits
+      const chatUsed = isFreeTier
+        ? (await storage.getTotalUsageCountByFeature(userId, "chat"))
+          + (await storage.getTotalUsageCountByFeature(userId, "chat-apex"))
+          + (await storage.getTotalUsageCountByFeature(userId, "search-judgments"))
+          + (await storage.getTotalUsageCountByFeature(userId, "search-statutes"))
+          + (await storage.getTotalUsageCountByFeature(userId, "summarize"))
+          + (await storage.getTotalUsageCountByFeature(userId, "brief"))
+        : used;
+
+      const draftUsed = isFreeTier ? await storage.getTotalUsageCountByFeature(userId, "draft") : 0;
+      const contractUsed = isFreeTier ? await storage.getTotalUsageCountByFeature(userId, "contract-drafting") : 0;
+
+      const isAtLimit = isFreeTier
+        ? (chatUsed >= 10 || draftUsed >= 1 || contractUsed >= 1)
+        : (used >= limits.monthlyQueries);
+
+      const isNearLimit = isFreeTier
+        ? (chatUsed >= 8 || draftUsed >= 1 || contractUsed >= 1)
+        : (percentage >= 80);
 
       res.json({
         tier,
@@ -11739,6 +11762,8 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         used: displayUsed,
         remaining,
         percentage,
+        isAtLimit,
+        isNearLimit,
       });
     } catch (err) {
       console.error("Error fetching usage:", err);
