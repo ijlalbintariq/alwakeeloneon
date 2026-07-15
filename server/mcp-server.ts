@@ -5,6 +5,7 @@ import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import { runRetrieval } from "./pipeline/retrieval-engine";
 import { checkUsageLimit, logUsageCost, normalizeCourtReadyDraftingText, normalizeDraftingText } from "./routes";
+import { PAKISTANI_JUDICIAL_FORMAT_GUIDANCE } from "./legal-drafting-template";
 import { chatWithDeepSeek } from "./deepseek-ai";
 import { isOpenRouterAvailable, chatWithOpenRouter } from "./openrouter";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -435,32 +436,24 @@ export function registerAllTools(server: McpServer) {
       `Citation: ${j.citation}\nCourt: ${j.court}\nTitle: ${j.title}\nSummary: ${j.summary}`
     ).join("\n\n");
 
-    const systemPrompt = `You are AL WAKEELO — Your Digital Lawyer, Always on Duty. You are in legal drafting mode. Generate a formal, professional, airtight legal petition or application that is filing-ready under the Code of Civil Procedure (CPC) 1908 and applicable Pakistani statutes.
-    
-    CRITICAL FORMATTING RULES:
-    1. Do NOT use markdown tags or symbols (#, **, __, etc.).
-    2. Write a clear Court Heading block at the top, centered, e.g., "IN THE COURT OF THE ${courtName.toUpperCase()}".
-    3. Include the Parties Block clearly outlining:
-       ${petitionerName} ... Petitioner
-       VERSUS
-       ${respondentName} ... Respondent
-    4. Write numbered paragraphs stating the facts, cause of action, jurisdiction, and court fee calculations.
-    5. Valuation/Court Fee: State that the court fee is affixed per the Court Fees Act 1870.
-    6. Include a distinct "PRAYER" section at the end.
-    7. Include a "VERIFICATION" block stating the truth of the contents.
-    8. List of Documents: Append a numbered List of Documents section after the verification block.
-    9. Memo of Address: Include address for service at the bottom.
-    
-    GROUNDING CONTEXT:
-    Use the following verified Pakistani case laws/statutes to support the grounds:
-    ${contextStr}
-    
-    FACTS TO BASE ON:
-    ${facts}
-    
-    ADDITIONAL INSTRUCTIONS:
-    ${additionalClauses || "None"}`;
+    const systemPrompt = `${PAKISTANI_JUDICIAL_FORMAT_GUIDANCE}
 
+CRITICAL: Do NOT use markdown tags or symbols (#, **, __, etc.).
+
+COURT: ${courtName.toUpperCase()}
+PETITIONER: ${petitionerName}
+RESPONDENT: ${respondentName}
+DOCUMENT TYPE: ${topic}
+
+INTERNAL DATABASE REFERENCES:
+Use the following verified Pakistani case laws/statutes to support the grounds:
+${contextStr}
+
+FACTS TO BASE ON:
+${facts}
+
+ADDITIONAL INSTRUCTIONS:
+${additionalClauses || "None"}`;
     const userText = `Please draft the petition for "${topic}".`;
 
     const t0 = Date.now();
