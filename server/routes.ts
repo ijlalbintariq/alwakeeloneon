@@ -21512,6 +21512,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     }
 
     if (!token) {
+      res.setHeader("WWW-Authenticate", 'Bearer resource_metadata="https://www.alwakeelo.com/.well-known/oauth-authorization-server"');
       return res.status(401).json({ error: "Missing or invalid token. Provide as Authorization header, URL query ?token=..., or path parameter." });
     }
 
@@ -21519,6 +21520,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const keyHash = crypto.createHash("sha256").update(token).digest("hex");
       const apiKeyRecord = await storage.getApiKeyByHash(keyHash);
       if (!apiKeyRecord) {
+        res.setHeader("WWW-Authenticate", 'Bearer resource_metadata="https://www.alwakeelo.com/.well-known/oauth-authorization-server"');
         return res.status(401).json({ error: "Invalid or inactive API key." });
       }
 
