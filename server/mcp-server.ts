@@ -6,6 +6,7 @@ import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import { runRetrieval } from "./pipeline/retrieval-engine";
 import { checkUsageLimit, logUsageCost, normalizeCourtReadyDraftingText, normalizeDraftingText } from "./routes";
 import { chatWithDeepSeek } from "./deepseek-ai";
+import { isOpenRouterAvailable, chatWithOpenRouter } from "./openrouter";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
@@ -72,6 +73,62 @@ function getAuthenticatedUserId(): string {
     throw new McpError(ErrorCode.InvalidRequest, "Unauthorized: Missing or invalid API key.");
   }
   return userId;
+}
+
+/**
+ * Gemini-first AI routing for MCP drafting tools.
+ * Chain: Gemini 3.0 Flash → Kimi K2.5 → DeepSeek V4 Flash
+ * Matches the same routing used by the web app for consistency.
+ */
+async function callMcpDraftingAI(
+  systemPrompt: string,
+  userText: string,
+  temperature = 0.3,
+): Promise<{ content: string; model: string }> {
+  const messages: Array<{ role: "system" | "user"; content: string }> = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userText },
+  ];
+
+  // Primary: Gemini 3.0 Flash via OpenRouter
+  if (isOpenRouterAvailable()) {
+    try {
+      const result = await chatWithOpenRouter({
+        messages: messages as any,
+        model: "google/gemini-3-flash-preview",
+        temperature,
+      });
+      if (result.content && result.content.trim()) {
+        console.log(`[MCP Drafting] Gemini 3.0 Flash succeeded (model=${result.model})`);
+        return { content: result.content, model: result.model };
+      }
+    } catch (geminiErr: any) {
+      console.warn(`[MCP Drafting] Gemini 3.0 Flash failed, trying Kimi:`, geminiErr?.message || geminiErr);
+    }
+  }
+
+  // Fallback 1: Kimi K2.5
+  try {
+    const { isMoonshotAvailable, chatWithMoonshot } = await import("./moonshot");
+    if (isMoonshotAvailable()) {
+      const result = await chatWithMoonshot({
+        messages: messages as any,
+        temperature,
+        useInstant: false,
+      });
+      if (result.content && result.content.trim()) {
+        console.log(`[MCP Drafting] Kimi K2.5 fallback succeeded (model=${result.model})`);
+        return { content: result.content, model: result.model };
+      }
+    }
+  } catch (kimiErr: any) {
+    console.warn(`[MCP Drafting] Kimi K2.5 failed, trying DeepSeek:`, kimiErr?.message || kimiErr);
+  }
+
+  // Fallback 2: DeepSeek V4 Flash
+  const result = await chatWithDeepSeek({ messages, temperature });
+  console.log(`[MCP Drafting] DeepSeek fallback succeeded (model=${result.model})`);
+  return { content: result.content, model: result.model };
 }
 
 export function registerAllTools(server: McpServer) {
@@ -407,13 +464,7 @@ export function registerAllTools(server: McpServer) {
     const userText = `Please draft the petition for "${topic}".`;
 
     const t0 = Date.now();
-    const response = await chatWithDeepSeek({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userText }
-      ],
-      temperature: 0.3,
-    });
+    const response = await callMcpDraftingAI(systemPrompt, userText, 0.3);
     const latency = Date.now() - t0;
 
     let formattedText = response.content;
@@ -485,13 +536,7 @@ export function registerAllTools(server: McpServer) {
     const userText = `Please draft the contract for "${contractType}".`;
 
     const t0 = Date.now();
-    const response = await chatWithDeepSeek({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userText }
-      ],
-      temperature: 0.3,
-    });
+    const response = await callMcpDraftingAI(systemPrompt, userText, 0.3);
     const latency = Date.now() - t0;
 
     let formattedText = response.content;
