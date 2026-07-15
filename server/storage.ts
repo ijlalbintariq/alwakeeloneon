@@ -220,9 +220,25 @@ const CASELAW_REPORT_CODES = new Set([
   "LHC", "IHC", "SHC", "PHC", "BHC", "AJKHC",
 ]);
 
+const COURT_REPORT_MAP: Record<string, string> = {
+  LAHORE: "LHC",
+  LAH: "LHC",
+  KARACHI: "SHC",
+  KAR: "SHC",
+  SINDH: "SHC",
+  SHC: "SHC",
+  PESHAWAR: "PHC",
+  PESH: "PHC",
+  BALOCHISTAN: "BHC",
+  ISLAMABAD: "IHC",
+  AJK: "AJKHC",
+  AJKHC: "AJKHC",
+};
+
 function extractKnownCaseLawReport(raw: string): string | null {
   const direct = normalizeCaseLawCitationReport(raw);
   if (CASELAW_REPORT_CODES.has(direct)) return direct;
+  if (COURT_REPORT_MAP[direct]) return COURT_REPORT_MAP[direct];
 
   const tokens = String(raw || "")
     .split(/\s+/g)
@@ -234,6 +250,8 @@ function extractKnownCaseLawReport(raw: string): string | null {
     for (let start = 0; start + len <= tokens.length; start += 1) {
       const candidate = tokens.slice(start, start + len).join("");
       if (CASELAW_REPORT_CODES.has(candidate)) return candidate;
+      const mapped = COURT_REPORT_MAP[candidate];
+      if (mapped) return mapped;
     }
   }
   return null;

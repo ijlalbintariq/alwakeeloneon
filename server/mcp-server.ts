@@ -10,7 +10,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
 import { caseLaw, judgments } from "@shared/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, like, sql } from "drizzle-orm";
 
 // Request-scoped storage to track the authenticated user's ID across JSON-RPC calls
 export const mcpUserContext = new AsyncLocalStorage<string>();
@@ -239,9 +239,30 @@ export function registerAllTools(server: McpServer) {
       }
 
       // Now lookup by citation in judgments table to get the UUID
+      let cleanTarget = targetId.toUpperCase();
+      const COURT_REPORT_MAP: Record<string, string> = {
+        LAHORE: "LHC",
+        LAH: "LHC",
+        KARACHI: "SHC",
+        KAR: "SHC",
+        SINDH: "SHC",
+        SHC: "SHC",
+        PESHAWAR: "PHC",
+        PESH: "PHC",
+        BALOCHISTAN: "BHC",
+        ISLAMABAD: "IHC",
+        AJK: "AJKHC",
+        AJKHC: "AJKHC",
+      };
+
+      for (const [nick, canonical] of Object.entries(COURT_REPORT_MAP)) {
+        cleanTarget = cleanTarget.replace(new RegExp(`\\b${nick}\\b`, 'g'), canonical);
+      }
+      cleanTarget = cleanTarget.replace(/\s+/g, "");
+
       const [resolvedRow] = await db.select({ id: judgments.id })
         .from(judgments)
-        .where(eq(judgments.citationString, targetId))
+        .where(like(sql`upper(replace(${judgments.citationString}, ' ', ''))`, `%${cleanTarget}%`))
         .limit(1);
         
       if (!resolvedRow) {

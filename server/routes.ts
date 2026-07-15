@@ -4179,9 +4179,25 @@ function normalizeCitationToken(token: string): string {
     .toUpperCase();
 }
 
+const COURT_REPORT_MAP: Record<string, string> = {
+  LAHORE: "LHC",
+  LAH: "LHC",
+  KARACHI: "SHC",
+  KAR: "SHC",
+  SINDH: "SHC",
+  SHC: "SHC",
+  PESHAWAR: "PHC",
+  PESH: "PHC",
+  BALOCHISTAN: "BHC",
+  ISLAMABAD: "IHC",
+  AJK: "AJKHC",
+  AJKHC: "AJKHC",
+};
+
 function resolveCaseLawReportToken(raw: string): string | null {
   const direct = normalizeCitationToken(raw);
   if (CASELAW_REPORT_CODES.has(direct)) return direct;
+  if (COURT_REPORT_MAP[direct]) return COURT_REPORT_MAP[direct];
 
   const tokens = String(raw || "")
     .split(/\s+/g)
@@ -4193,6 +4209,8 @@ function resolveCaseLawReportToken(raw: string): string | null {
     for (let start = 0; start + len <= tokens.length; start += 1) {
       const candidate = tokens.slice(start, start + len).join("");
       if (CASELAW_REPORT_CODES.has(candidate)) return candidate;
+      const mapped = COURT_REPORT_MAP[candidate];
+      if (mapped) return mapped;
     }
   }
   return null;
@@ -11571,6 +11589,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
 
       // STEP 2: Fallback — substring LIKE on citation string only.
       // Title search disabled for public endpoint to prevent data probing.
+      const cleanQ = q.replace(/\s+/g, "").toUpperCase();
       const [result] = await db
         .select({
           id: judgments.id,
@@ -11580,7 +11599,7 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         })
         .from(judgments)
         .leftJoin(courtsRef, eq(judgments.courtId, courtsRef.id))
-        .where(like(judgments.citationString, `%${q}%`))
+        .where(like(sql`upper(replace(${judgments.citationString}, ' ', ''))`, `%${cleanQ}%`))
         .limit(1);
 
       if (result) {
