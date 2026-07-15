@@ -9,8 +9,8 @@ import { chatWithDeepSeek } from "./deepseek-ai";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
-import { caseLaw, judgments } from "@shared/schema";
-import { eq, inArray, like, sql } from "drizzle-orm";
+import { caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries } from "@shared/schema";
+import { eq, inArray, like, sql, and, gte, lte, desc } from "drizzle-orm";
 
 // Request-scoped storage to track the authenticated user's ID across JSON-RPC calls
 export const mcpUserContext = new AsyncLocalStorage<string>();
@@ -515,6 +515,261 @@ export function registerAllTools(server: McpServer) {
           }, null, 2),
         }
       ]
+    };
+  });
+
+  // ── CATEGORY: Case Management & CRM ──────────────────────────────────────
+
+  // 7. List Case Files
+  server.registerTool("list_case_files", {
+    description: "List the authenticated lawyer's case files. Optionally filter by status (active, pending, closed, archived).",
+    inputSchema: {
+      status: z.enum(["active", "pending", "closed", "archived"]).optional().describe("Filter by case status"),
+      limit: z.number().optional().default(10).describe("Max records to return (default 10, max 25)"),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  }, async ({ status, limit }) => {
+    const userId = getAuthenticatedUserId();
+    const safeLimit = Math.min(25, Math.max(1, limit));
+
+    const conditions: any[] = [eq(caseFiles.userId, userId)];
+    if (status) conditions.push(eq(caseFiles.status, status));
+
+    const rows = await db.select()
+      .from(caseFiles)
+      .where(and(...conditions))
+      .orderBy(desc(caseFiles.updatedAt))
+      .limit(safeLimit);
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        version: VERSION, source: SOURCE,
+        totalResults: rows.length,
+        cases: rows.map(c => ({
+          id: c.id, title: c.title, caseType: c.caseType,
+          court: c.court, caseNumber: c.caseNumber,
+          status: c.status, priority: c.priority,
+          referenceNo: c.referenceNo,
+          createdAt: c.createdAt,
+        })),
+      }, null, 2) }],
+    };
+  });
+
+  // 8. Get Case Details
+  server.registerTool("get_case_details", {
+    description: "Get complete details of a specific case file including clients, notes, and compliance checklist items.",
+    inputSchema: {
+      caseId: z.number().describe("The case file ID"),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  }, async ({ caseId }) => {
+    const userId = getAuthenticatedUserId();
+
+    const [caseFile] = await db.select().from(caseFiles)
+      .where(and(eq(caseFiles.id, caseId), eq(caseFiles.userId, userId)))
+      .limit(1);
+    if (!caseFile) throw new McpError(ErrorCode.InvalidRequest, `Case #${caseId} not found or access denied.`);
+
+    const [clients, notes, compliance] = await Promise.all([
+      db.select().from(caseClients).where(eq(caseClients.caseId, caseId)),
+      db.select().from(caseNotes).where(eq(caseNotes.caseId, caseId)).orderBy(desc(caseNotes.createdAt)),
+      db.select().from(caseCompliance).where(eq(caseCompliance.caseId, caseId)).orderBy(desc(caseCompliance.dueDate)),
+    ]);
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        version: VERSION, source: SOURCE,
+        case: {
+          id: caseFile.id, title: caseFile.title, caseType: caseFile.caseType,
+          court: caseFile.court, caseNumber: caseFile.caseNumber,
+          status: caseFile.status, priority: caseFile.priority,
+          referenceNo: caseFile.referenceNo, description: caseFile.description,
+          createdAt: caseFile.createdAt, updatedAt: caseFile.updatedAt,
+        },
+        clients: clients.map(c => ({ id: c.id, role: c.role, name: c.name, phone: c.phone, cnic: c.cnic })),
+        notes: notes.map(n => ({ id: n.id, content: n.content, createdAt: n.createdAt })),
+        compliance: compliance.map(c => ({
+          id: c.id, type: c.type, title: c.title,
+          dueDate: c.dueDate, status: c.status, court: c.court, judge: c.judge,
+        })),
+      }, null, 2) }],
+    };
+  });
+
+  // 9. Create Case File
+  server.registerTool("create_case_file", {
+    description: "Create a new legal case file in the lawyer's case management dashboard.",
+    inputSchema: {
+      title: z.string().describe("Case title (e.g. Malik Ahmed vs Bilal Khan)"),
+      caseType: z.enum(["criminal", "civil", "family", "constitutional", "tax", "corporate", "banking", "labor", "property", "other"]).describe("Type of legal case"),
+      court: z.string().optional().describe("Court name (e.g. Rent Controller Lahore)"),
+      caseNumber: z.string().optional().describe("Official case/suit number"),
+      priority: z.enum(["low", "normal", "high", "urgent"]).optional().default("normal"),
+      description: z.string().optional().describe("Brief case description or background facts"),
+    },
+    annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  }, async ({ title, caseType, court, caseNumber, priority, description }) => {
+    const userId = getAuthenticatedUserId();
+
+    const [created] = await db.insert(caseFiles).values({
+      userId, title, caseType, court, caseNumber, priority, description,
+    }).returning();
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        version: VERSION, source: SOURCE,
+        message: `Case file "${title}" created successfully.`,
+        case: { id: created.id, title: created.title, caseType: created.caseType, court: created.court, status: created.status },
+      }, null, 2) }],
+    };
+  });
+
+  // 10. Add Case Note
+  server.registerTool("add_case_note", {
+    description: "Add a progress note, hearing update, or log entry to an existing case file.",
+    inputSchema: {
+      caseId: z.number().describe("The case file ID to add the note to"),
+      content: z.string().describe("The note content (e.g. 'Opponent requested adjournment. Next hearing fixed for arguments.')"),
+    },
+    annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  }, async ({ caseId, content }) => {
+    const userId = getAuthenticatedUserId();
+
+    // Verify case ownership
+    const [caseFile] = await db.select({ id: caseFiles.id }).from(caseFiles)
+      .where(and(eq(caseFiles.id, caseId), eq(caseFiles.userId, userId)))
+      .limit(1);
+    if (!caseFile) throw new McpError(ErrorCode.InvalidRequest, `Case #${caseId} not found or access denied.`);
+
+    const [note] = await db.insert(caseNotes).values({ caseId, userId, content }).returning();
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        version: VERSION, source: SOURCE,
+        message: "Note added successfully.",
+        note: { id: note.id, caseId, content: note.content, createdAt: note.createdAt },
+      }, null, 2) }],
+    };
+  });
+
+  // ── CATEGORY: Court Diary & Hearing Scheduler ────────────────────────────
+
+  // 11. List Diary Entries
+  server.registerTool("list_diary_entries", {
+    description: "List court hearing dates, trial schedules, and compliance tasks from the lawyer's diary for a given date range.",
+    inputSchema: {
+      startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+      endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  }, async ({ startDate, endDate }) => {
+    const userId = getAuthenticatedUserId();
+
+    const rows = await db.select().from(diaryEntries)
+      .where(and(
+        eq(diaryEntries.userId, userId),
+        gte(diaryEntries.date, startDate),
+        lte(diaryEntries.date, endDate),
+      ))
+      .orderBy(diaryEntries.date);
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        version: VERSION, source: SOURCE,
+        dateRange: { from: startDate, to: endDate },
+        totalEntries: rows.length,
+        entries: rows.map(e => ({
+          id: e.id, date: e.date, time: e.time,
+          title: e.title, description: e.description,
+          caseId: e.caseId, priority: e.priority,
+          completed: e.completed, outcome: e.outcome, nextDate: e.nextDate,
+        })),
+      }, null, 2) }],
+    };
+  });
+
+  // 12. Add Diary Entry
+  server.registerTool("add_diary_entry", {
+    description: "Schedule a new court hearing, compliance deadline, or task in the lawyer's court diary.",
+    inputSchema: {
+      date: z.string().describe("Hearing/task date (YYYY-MM-DD)"),
+      title: z.string().describe("Title (e.g. Arguments on Bail Application)"),
+      time: z.string().optional().describe("Time (e.g. 09:00 AM)"),
+      description: z.string().optional().describe("Additional details or notes"),
+      caseId: z.number().optional().describe("Link to an existing case file ID"),
+      priority: z.enum(["low", "normal", "high", "urgent"]).optional().default("normal"),
+    },
+    annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  }, async ({ date, title, time, description, caseId, priority }) => {
+    const userId = getAuthenticatedUserId();
+
+    // If caseId provided, verify ownership
+    if (caseId) {
+      const [caseFile] = await db.select({ id: caseFiles.id }).from(caseFiles)
+        .where(and(eq(caseFiles.id, caseId), eq(caseFiles.userId, userId)))
+        .limit(1);
+      if (!caseFile) throw new McpError(ErrorCode.InvalidRequest, `Case #${caseId} not found or access denied.`);
+    }
+
+    const [entry] = await db.insert(diaryEntries).values({
+      userId, date, title, time, description, caseId, priority,
+    }).returning();
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        version: VERSION, source: SOURCE,
+        message: `Diary entry "${title}" scheduled for ${date}.`,
+        entry: { id: entry.id, date: entry.date, time: entry.time, title: entry.title, priority: entry.priority },
+      }, null, 2) }],
+    };
+  });
+
+  // 13. Update Diary Status
+  server.registerTool("update_diary_status", {
+    description: "Mark a court hearing or diary task as completed, record the outcome, and optionally schedule the next hearing date.",
+    inputSchema: {
+      entryId: z.number().describe("The diary entry ID"),
+      completed: z.boolean().describe("Whether the hearing/task is completed"),
+      outcome: z.string().optional().describe("Court outcome (e.g. 'Defendant filed reply. Case adjourned.')"),
+      nextDate: z.string().optional().describe("Next hearing date if adjourned (YYYY-MM-DD)"),
+    },
+    annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  }, async ({ entryId, completed, outcome, nextDate }) => {
+    const userId = getAuthenticatedUserId();
+
+    // Verify diary entry ownership
+    const [existing] = await db.select().from(diaryEntries)
+      .where(and(eq(diaryEntries.id, entryId), eq(diaryEntries.userId, userId)))
+      .limit(1);
+    if (!existing) throw new McpError(ErrorCode.InvalidRequest, `Diary entry #${entryId} not found or access denied.`);
+
+    const [updated] = await db.update(diaryEntries)
+      .set({ completed, outcome, nextDate })
+      .where(eq(diaryEntries.id, entryId))
+      .returning();
+
+    // If nextDate provided, automatically create a follow-up diary entry
+    let followUp = null;
+    if (nextDate && existing.title) {
+      const [newEntry] = await db.insert(diaryEntries).values({
+        userId,
+        date: nextDate,
+        title: `[Follow-up] ${existing.title}`,
+        description: outcome ? `Previous outcome: ${outcome}` : undefined,
+        caseId: existing.caseId,
+        priority: existing.priority,
+      }).returning();
+      followUp = { id: newEntry.id, date: newEntry.date, title: newEntry.title };
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        version: VERSION, source: SOURCE,
+        message: `Diary entry #${entryId} updated.`,
+        updated: { id: updated.id, completed: updated.completed, outcome: updated.outcome, nextDate: updated.nextDate },
+        followUpEntry: followUp,
+      }, null, 2) }],
     };
   });
 }
