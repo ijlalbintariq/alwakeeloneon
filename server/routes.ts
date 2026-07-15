@@ -7583,14 +7583,16 @@ export async function registerRoutes(
     res.send(process.env.OPENAI_APPS_CHALLENGE_TOKEN || "gBiXXGVL5vJTg4dW0Id1TEsHpkHwRGQpgSYVBe1v6dw");
   });
 
-  // OAuth 2.0 Discovery metadata
+  // OAuth 2.0 Discovery metadata (supports Claude Desktop, ChatGPT, and other MCP clients)
   const OAUTH_METADATA = {
     issuer: "https://www.alwakeelo.com",
     authorization_endpoint: "https://www.alwakeelo.com/api/oauth/authorize",
     token_endpoint: "https://www.alwakeelo.com/api/oauth/token",
+    registration_endpoint: "https://www.alwakeelo.com/api/oauth/register",
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code"],
-    token_endpoint_auth_methods_supported: ["client_secret_post", "client_secret_basic"],
+    token_endpoint_auth_methods_supported: ["client_secret_post", "client_secret_basic", "none"],
+    code_challenge_methods_supported: ["S256"],
     scopes_supported: ["openid", "profile"]
   };
 
@@ -7600,6 +7602,43 @@ export async function registerRoutes(
 
   app.get("/.well-known/openid-configuration", (req, res) => {
     res.json(OAUTH_METADATA);
+  });
+
+  // Dynamic Client Registration (RFC 7591) — required by Claude Desktop MCP
+  // Claude auto-calls this to register itself as an OAuth client before starting the auth flow.
+  const registeredClients = new Map<string, { clientId: string; clientSecret: string; name: string; redirectUris: string[]; createdAt: number }>();
+
+  app.post("/api/oauth/register", (req, res) => {
+    try {
+      const { client_name, redirect_uris, grant_types, response_types, token_endpoint_auth_method } = req.body || {};
+      const clientId = `alw_${crypto.randomBytes(16).toString("hex")}`;
+      const clientSecret = `alws_${crypto.randomBytes(32).toString("hex")}`;
+      const safeName = String(client_name || "MCP Client").slice(0, 100);
+      const safeRedirects = Array.isArray(redirect_uris) ? redirect_uris.map(String).slice(0, 5) : [];
+
+      registeredClients.set(clientId, {
+        clientId,
+        clientSecret,
+        name: safeName,
+        redirectUris: safeRedirects,
+        createdAt: Date.now(),
+      });
+
+      console.log(`[OAuth DCR] Registered client: ${safeName} (${clientId})`);
+
+      res.status(201).json({
+        client_id: clientId,
+        client_secret: clientSecret,
+        client_name: safeName,
+        redirect_uris: safeRedirects,
+        grant_types: grant_types || ["authorization_code"],
+        response_types: response_types || ["code"],
+        token_endpoint_auth_method: token_endpoint_auth_method || "client_secret_post",
+      });
+    } catch (err) {
+      console.error("[OAuth DCR] Registration failed:", err);
+      res.status(500).json({ error: "registration_failed" });
+    }
   });
 
   app.use("/api", (req, res, next) => {
