@@ -19,10 +19,22 @@ export default function OauthConsentPage() {
   const [loading, setLoading] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
-  const clientId = params.get("client_id") || "chatgpt";
+  const clientId = params.get("client_id") || "unknown";
   const redirectUri = params.get("redirect_uri");
   const state = params.get("state") || "";
   const responseType = params.get("response_type") || "code";
+
+  // Detect app name from redirect_uri or client_id
+  const appName = (() => {
+    const uri = redirectUri?.toLowerCase() || "";
+    if (uri.includes("claude.ai") || uri.includes("anthropic")) return "Claude";
+    if (uri.includes("openai.com") || uri.includes("chatgpt")) return "ChatGPT";
+    if (uri.includes("cursor")) return "Cursor";
+    if (uri.includes("windsurf") || uri.includes("codeium")) return "Windsurf";
+    if (uri.includes("copilot") || uri.includes("github")) return "GitHub Copilot";
+    if (clientId.startsWith("alw_")) return "MCP Client";
+    return "External App";
+  })();
 
   const handleAuthorize = async () => {
     if (!redirectUri) {
@@ -74,10 +86,10 @@ export default function OauthConsentPage() {
             <Compass size={22} className="animate-pulse" />
           </div>
           <CardTitle className="text-xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Authorize ChatGPT Connection
+            Authorize {appName} Connection
           </CardTitle>
           <CardDescription className="text-xs">
-            A request has been made to connect your account to ChatGPT.
+            A request has been made to connect your account to {appName}.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs text-muted-foreground leading-relaxed">
