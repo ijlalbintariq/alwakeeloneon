@@ -329,3 +329,36 @@ Do not summarize the draft.
 Do not provide explanations unless explicitly requested.
 
 Always produce a complete court-ready pleading following Pakistani legal drafting practice.`;
+
+/**
+ * CONTRACT_LAW_ADDON
+ * 
+ * Deep analysis guidance for contract drafting. Appended to the contract
+ * drafting system prompt so the AI checks for legal pitfalls under Pakistani law.
+ */
+export const CONTRACT_LAW_ADDON = `
+
+━━━ CONTRACT LAW DEEP ANALYSIS (TOPIC-SPECIFIC) ━━━
+
+MANDATORY AREAS TO CHECK for commercial agreements and disputes:
+
+**Contract Act, 1872**:
+- **S.2(h) & S.10**: A contract must be enforceable by law and have (1) free consent, (2) competent parties, (3) lawful consideration, and (4) lawful object.
+- **S.13-22 (Free Consent)**: Analyze if there is Coercion (S.15), Undue Influence (S.16), Fraud (S.17), Misrepresentation (S.18), or Mistake (S.20-22). Fraud or misrepresentation makes the contract voidable.
+- **S.23 (Lawful Object/Consideration)**: Check if consideration is forbidden by law, defeats any law, is fraudulent, involves injury, or is opposed to public policy.
+- **S.25 (No Consideration = Void)**: Exceptions: natural love/affection in writing and registered, promise to compensate for past services, or written promise to pay time-barred debt.
+- **S.27 (Restraint of Trade)**: Any agreement restraining a person from exercising a lawful profession, trade, or business of any kind is VOID, except for sale of goodwill.
+- **S.28 (Restraint of Legal Proceedings)**: Restraining a party from enforcing their rights via ordinary legal proceedings is VOID, except for arbitration clauses (Exceptions 1 & 2).
+- **S.56 (Frustration / Force Majeure)**: Contract becomes void if the act becomes impossible or unlawful after the contract is made. If a force majeure clause is present, it governs instead of S.56.
+- **S.73 (Compensation for Breach)**: Standard damages are compensatory (natural consequences of breach), NOT remote or indirect. Liquidated damages under **S.74** must be a genuine pre-estimate of loss, and courts will only award reasonable compensation up to the specified amount (no penalties).
+
+**Specific Relief Act, 1877**:
+- **S.12**: Contracts that can be specifically enforced (e.g. sale of land where pecuniary compensation is not an adequate relief).
+- **S.21**: Contracts that CANNOT be specifically enforced (e.g., contracts for personal services, contracts dependent on personal qualifications, contracts with minute/numerous details).
+
+**Arbitration Act, 1940**:
+- **S.34**: Stay of legal proceedings in the presence of an arbitration clause. Party must apply for stay *before* filing written statement.
+
+**Doctrine of Privity of Contract**:
+- Only parties to a contract can sue or be sued under it. Exceptions: trust, family arrangements, agency.
+`;

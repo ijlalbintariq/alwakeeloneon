@@ -5,7 +5,7 @@ import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import { runRetrieval } from "./pipeline/retrieval-engine";
 import { checkUsageLimit, logUsageCost, normalizeCourtReadyDraftingText, normalizeDraftingText } from "./routes";
-import { PAKISTANI_JUDICIAL_FORMAT_GUIDANCE } from "./legal-drafting-template";
+import { PAKISTANI_JUDICIAL_FORMAT_GUIDANCE, CONTRACT_LAW_ADDON } from "./legal-drafting-template";
 import { chatWithDeepSeek } from "./deepseek-ai";
 import { isOpenRouterAvailable, chatWithOpenRouter } from "./openrouter";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -516,7 +516,7 @@ ${additionalClauses || "None"}`;
     4. Structure the agreement into numbered clauses (e.g., Section 1: Definitions, Section 2: Consideration, etc.).
     5. Include default standard boilerplate terms (Dispute Resolution via arbitration under Arbitration Act 1940, Severability, Force Majeure, and Termination).
     6. Include a distinct signatures block for the parties and two witnesses at the bottom.
-    
+    ${CONTRACT_LAW_ADDON}
     CONTRACT DETAILS:
     Type: ${contractType}
     Parties: ${parties}
@@ -525,7 +525,6 @@ ${additionalClauses || "None"}`;
     
     ADDITIONAL CLAUSES:
     ${additionalClauses || "None"}`;
-
     const userText = `Please draft the contract for "${contractType}".`;
 
     const t0 = Date.now();
