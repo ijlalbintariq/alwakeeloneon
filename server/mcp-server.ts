@@ -9,8 +9,10 @@ import { chatWithDeepSeek } from "./deepseek-ai";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
-import { caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries } from "@shared/schema";
+import { caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
 import { eq, inArray, like, sql, and, gte, lte, desc } from "drizzle-orm";
+import { uploadBufferToR2 } from "./r2-storage";
+import path from "node:path";
 
 // Request-scoped storage to track the authenticated user's ID across JSON-RPC calls
 export const mcpUserContext = new AsyncLocalStorage<string>();
@@ -769,6 +771,121 @@ export function registerAllTools(server: McpServer) {
         message: `Diary entry #${entryId} updated.`,
         updated: { id: updated.id, completed: updated.completed, outcome: updated.outcome, nextDate: updated.nextDate },
         followUpEntry: followUp,
+      }, null, 2) }],
+    };
+  });
+
+  // ── CATEGORY: Document Upload ─────────────────────────────────────────────
+
+  // 14. Upload Case Document
+  server.registerTool("upload_case_document", {
+    description: "Upload a document or image to a specific case file. Accepts base64-encoded file data. Supports PDF, DOCX, JPG, PNG, and other common formats.",
+    inputSchema: {
+      caseId: z.number().describe("The case file ID to attach the document to"),
+      fileName: z.string().describe("Original filename with extension (e.g. 'court_order.pdf', 'evidence_photo.jpg')"),
+      fileData: z.string().describe("Base64-encoded file content"),
+      label: z.string().optional().describe("Document label (e.g. 'FIR Copy', 'Medical Report', 'Power of Attorney')"),
+    },
+    annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  }, async ({ caseId, fileName, fileData, label }) => {
+    const userId = getAuthenticatedUserId();
+
+    // Verify case ownership
+    const [caseFile] = await db.select({ id: caseFiles.id, title: caseFiles.title }).from(caseFiles)
+      .where(and(eq(caseFiles.id, caseId), eq(caseFiles.userId, userId)))
+      .limit(1);
+    if (!caseFile) throw new McpError(ErrorCode.InvalidRequest, `Case #${caseId} not found or access denied.`);
+
+    // Decode base64 file
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(fileData, "base64");
+    } catch {
+      throw new McpError(ErrorCode.InvalidRequest, "Invalid base64 file data.");
+    }
+
+    if (buffer.length === 0) {
+      throw new McpError(ErrorCode.InvalidRequest, "File data is empty.");
+    }
+
+    // Determine MIME type from extension
+    const ext = path.extname(fileName).toLowerCase();
+    const MIME_MAP: Record<string, string> = {
+      ".pdf": "application/pdf",
+      ".doc": "application/msword",
+      ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+      ".tiff": "image/tiff", ".tif": "image/tiff",
+      ".txt": "text/plain",
+      ".csv": "text/csv",
+      ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    };
+    const mimeType = MIME_MAP[ext] || "application/octet-stream";
+
+    // Determine source type
+    const isImage = mimeType.startsWith("image/");
+    const sourceType = isImage ? "image" : "upload";
+
+    // 1. Create a document record in the database
+    const [doc] = await db.insert(documents).values({
+      userId,
+      title: label || fileName,
+      sourceType,
+      mimeType,
+      fileExtension: ext,
+      detectedDomain: "legal",
+      detectedDomainLabel: "Legal Document",
+      classificationMethod: "mcp-upload",
+    }).returning();
+
+    // 2. Upload to Cloudflare R2
+    const r2Result = await uploadBufferToR2({
+      buffer,
+      fileName,
+      contentType: mimeType,
+      prefix: `case-docs/${userId}`,
+    });
+
+    // 3. Create document_files record (R2 reference)
+    if (r2Result) {
+      await db.insert(documentFiles).values({
+        documentId: doc.id,
+        userId,
+        provider: r2Result.provider,
+        bucket: r2Result.bucket,
+        objectKey: r2Result.objectKey,
+        originalFilename: fileName,
+        mimeType,
+        sizeBytes: buffer.length,
+        etag: r2Result.etag,
+        publicUrl: r2Result.publicUrl,
+      });
+    }
+
+    // 4. Link document to the case file
+    await db.insert(caseDocuments).values({
+      caseId,
+      documentId: doc.id,
+      label: label || fileName,
+    });
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        version: VERSION, source: SOURCE,
+        message: `Document "${fileName}" uploaded and linked to case "${caseFile.title}".`,
+        document: {
+          id: doc.id,
+          fileName,
+          label: label || fileName,
+          mimeType,
+          sizeBytes: buffer.length,
+          storedInR2: !!r2Result,
+          publicUrl: r2Result?.publicUrl || null,
+        },
+        case: { id: caseFile.id, title: caseFile.title },
       }, null, 2) }],
     };
   });
