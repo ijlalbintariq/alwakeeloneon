@@ -3416,25 +3416,25 @@ function LegalDraftingPageInner() {
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="px-3 py-1.5 border-b border-border bg-background/25 flex items-center justify-between">
                   <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Drafting Chat</p>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <span className="text-[9px] text-muted-foreground">{draftChatMessages.length} msgs</span>
                     {chatState !== "minimized" && (
                       <button
                         type="button"
                         onClick={() => setChatState("minimized")}
-                        className="inline-flex items-center justify-center size-6 rounded hover:bg-card/60 text-muted-foreground hover:text-foreground transition-colors"
+                        className="inline-flex items-center justify-center size-7 rounded-md border border-border bg-card/50 hover:bg-primary/15 hover:border-primary/40 text-muted-foreground hover:text-primary transition-all"
                         title="Minimize chat"
                       >
-                        <ChevronDown size={13} />
+                        <ChevronDown size={16} />
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => setChatState(prev => prev === "expanded" ? "default" : prev === "minimized" ? "default" : "expanded")}
-                      className="inline-flex items-center justify-center size-6 rounded hover:bg-card/60 text-muted-foreground hover:text-foreground transition-colors"
+                      className="inline-flex items-center justify-center size-7 rounded-md border border-border bg-card/50 hover:bg-primary/15 hover:border-primary/40 text-muted-foreground hover:text-primary transition-all"
                       title={chatState === "expanded" ? "Restore chat" : chatState === "minimized" ? "Restore chat" : "Expand chat"}
                     >
-                      {chatState === "expanded" ? <Minimize2 size={13} /> : chatState === "minimized" ? <ChevronUp size={13} /> : <Maximize2 size={13} />}
+                      {chatState === "expanded" ? <Minimize2 size={15} /> : chatState === "minimized" ? <ChevronUp size={16} /> : <Maximize2 size={15} />}
                     </button>
                   </div>
                 </div>
