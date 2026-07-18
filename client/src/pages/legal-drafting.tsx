@@ -33,6 +33,8 @@ import {
   Minimize2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Calculator,
   Clock,
   Mic,
@@ -1600,7 +1602,7 @@ function LegalDraftingPageInner() {
   const [workspaceStateHydrated, setWorkspaceStateHydrated] = useState(false);
   const [feeCalcOpen, setFeeCalcOpen] = useState(false);
   const [caseFileImportOpen, setCaseFileImportOpen] = useState(false);
-  const [chatExpanded, setChatExpanded] = useState(false);
+  const [chatState, setChatState] = useState<"default" | "minimized" | "expanded">("default");
   const voice = useVoiceRecorder();
   const draftHistory = useDraftHistory(selectedDraftId ? `draft-${selectedDraftId}` : "workspace");
   const [rightRailTab, setRightRailTab] = useState<"ai" | "history">("ai");
@@ -3398,7 +3400,7 @@ function LegalDraftingPageInner() {
 
           <div className="flex-1 min-h-0 flex flex-col">
             {/* ── Tiptap Legal Editor ── */}
-            <div data-tutorial="editor" className={`${chatExpanded ? "h-0 overflow-hidden" : "flex-1 min-h-0 overflow-hidden border-b border-[hsl(var(--preview-border))]"} flex flex-col transition-all duration-300`}>
+            <div data-tutorial="editor" className={`${chatState === "expanded" ? "h-0 overflow-hidden" : "flex-1 min-h-0 overflow-hidden border-b border-[hsl(var(--preview-border))]"} flex flex-col transition-all duration-300`}>
               <LegalEditor
                 ref={editorRef}
                 initialContent={editorHtml}
@@ -3409,24 +3411,35 @@ function LegalDraftingPageInner() {
             </div>
 
             {/* ── Chat section (below editor) ── */}
-            <div data-tutorial="ai-engine" className={`${chatExpanded ? "flex-1 min-h-0" : "h-[260px] lg:h-[300px]"} shrink-0 flex flex-col overflow-hidden transition-all duration-300`}>
+            <div data-tutorial="ai-engine" className={`${chatState === "expanded" ? "flex-1 min-h-0" : chatState === "minimized" ? "h-[40px]" : "h-[260px] lg:h-[300px]"} shrink-0 flex flex-col overflow-hidden transition-all duration-300`}>
             <div className="h-full w-full rounded-xl border border-border bg-background/72 backdrop-blur-xl flex flex-col overflow-hidden">
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="px-3 py-1.5 border-b border-border bg-background/25 flex items-center justify-between">
                   <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Drafting Chat</p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <span className="text-[9px] text-muted-foreground">{draftChatMessages.length} msgs</span>
+                    {chatState !== "minimized" && (
+                      <button
+                        type="button"
+                        onClick={() => setChatState("minimized")}
+                        className="inline-flex items-center justify-center size-6 rounded hover:bg-card/60 text-muted-foreground hover:text-foreground transition-colors"
+                        title="Minimize chat"
+                      >
+                        <ChevronDown size={13} />
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setChatExpanded(prev => !prev)}
+                      onClick={() => setChatState(prev => prev === "expanded" ? "default" : prev === "minimized" ? "default" : "expanded")}
                       className="inline-flex items-center justify-center size-6 rounded hover:bg-card/60 text-muted-foreground hover:text-foreground transition-colors"
-                      title={chatExpanded ? "Collapse chat" : "Expand chat"}
+                      title={chatState === "expanded" ? "Restore chat" : chatState === "minimized" ? "Restore chat" : "Expand chat"}
                     >
-                      {chatExpanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                      {chatState === "expanded" ? <Minimize2 size={13} /> : chatState === "minimized" ? <ChevronUp size={13} /> : <Maximize2 size={13} />}
                     </button>
                   </div>
                 </div>
 
+                {chatState !== "minimized" && (<>
                 <div
                   ref={chatListRef}
                   className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3"
@@ -3647,6 +3660,7 @@ function LegalDraftingPageInner() {
                     </button>
                   </div>
                 </div>
+              </>)}
               </div>
             </div>
             </div>
