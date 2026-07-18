@@ -379,8 +379,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="rounded-3xl border border-border bg-gradient-to-b from-[#1f2a40] to-[#131c2e] p-5 shadow-xl">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Research Panel</p>
-                <span className="text-[10px] text-muted-foreground">Live Workspace</span>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-400">Research Panel</p>
+                <span className="text-[10px] text-slate-400">Live Workspace</span>
               </div>
               <div className="space-y-3">
                 <div className="rounded-xl border border-border bg-background p-3 text-xs text-foreground">Judgment Search: <span className="text-primary">2023 SCMR 1450</span></div>
@@ -390,8 +390,8 @@ export default function LandingPage() {
             </div>
             <div className="rounded-3xl border border-border bg-gradient-to-b from-[#241f17] to-[#17120f] p-5 shadow-xl">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Drafting Panel</p>
-                <span className="text-[10px] text-muted-foreground">Conversion Ready</span>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-400">Drafting Panel</p>
+                <span className="text-[10px] text-slate-400">Conversion Ready</span>
               </div>
               <div className="space-y-3">
                 <div className="rounded-xl border border-primary/20 bg-background p-3 text-xs text-foreground">Legal Draft: <span className="text-primary">Petition structure ready</span></div>
