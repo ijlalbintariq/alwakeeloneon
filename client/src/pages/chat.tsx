@@ -1629,7 +1629,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         <Zap size={11} className="text-primary" />
                         Turbo
                       </div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">Deep reasoning & analysis</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">Deep reasoning & analysis (avg. response 3-5 mins)</div>
                     </button>
                   )}
                   {!canUseTurbo && (
@@ -1670,7 +1670,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
             <span className={`text-[9px] tracking-wide ${currentModeName().color}`}>
               {normalizedAiMode === "standard" ? "" :
-                normalizedAiMode === "turbo" ? "Deep reasoning mode" :
+                normalizedAiMode === "turbo" ? "Deep reasoning mode (avg. response 3-5 mins)" :
                 `Using ${currentModeName().name}`}
             </span>
           </div>
@@ -2273,7 +2273,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       {canUseTurbo ? (
                         <button onClick={() => { setAiMode("turbo"); setShowModelMenu(false); }} className={`w-full text-left px-4 py-3 text-xs hover:bg-muted border-b border-primary/10 ${normalizedAiMode === "turbo" ? "bg-primary/10 text-primary" : "text-foreground"}`}>
                           <div className="font-bold flex items-center gap-1.5"><Zap size={11} className="text-primary" />Turbo</div>
-                          <div className="text-[10px] text-muted-foreground mt-0.5">Deep reasoning & analysis</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">Deep reasoning & analysis (avg. response 3-5 mins)</div>
                         </button>
                       ) : (
                         <div className="w-full text-left px-4 py-3 text-xs text-muted-foreground border-b border-primary/10">
