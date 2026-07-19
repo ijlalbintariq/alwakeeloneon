@@ -449,6 +449,16 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       .filter(Boolean);
   }, []);
 
+  /** Strip embedded document text from user-facing display */
+  const sanitizeUserDisplay = useCallback((content: string): string => {
+    return String(content || "")
+      .replace(/\[ATTACHED DOCUMENTS\][\s\S]*?\[END ATTACHED DOCUMENTS\]/g, "")
+      .replace(/---\s*Attached\s+(?:DOC\/DOCX|PDF|TXT|FILE):[\s\S]*?---\s*End\s*---/gi, "")
+      .replace(/\[Attached:[^\]]*\]/gi, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }, []);
+
   // Use a ref to always have the latest sharedThreadId inside async callbacks,
   // avoiding stale closures that cause duplicate thread creation on mobile.
   const sharedThreadIdRef = useRef(sharedThreadId);
@@ -822,11 +832,13 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       const restored: ChatMessage[] = data.messages.map((m: any, idx: number) => {
         const content = String(m.content || "");
         const attachments = parseAttachmentNames(content);
+        const hasEmbeddedDocs = /\[ATTACHED DOCUMENTS\]/.test(content) || /---\s*Attached\s+(?:DOC\/DOCX|PDF|TXT|FILE):/i.test(content);
         const base: ChatMessage = {
           ...(attachments.length > 0 ? { attachments } : {}),
           id: String(m.id ?? `${threadId}-${idx}`),
           role: m.role === "assistant" ? "assistant" : "user",
           content,
+          ...(hasEmbeddedDocs ? { displayContent: sanitizeUserDisplay(content) } : {}),
         };
         // Reconstruct caseLawCard from the saved references block so the
         // "Case Law from Database" card re-appears when loading history.
@@ -855,7 +867,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       console.error("Failed to load thread:", err);
       setApiError("Failed to load consultation");
     }
-  }, [parseAttachmentNames]);
+  }, [parseAttachmentNames, sanitizeUserDisplay]);
 
   useEffect(() => {
     if (restoredThreadOnce) return;
@@ -1478,7 +1490,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     </>
                   ) : (
                     <>
-                      <p className="text-sm whitespace-pre-wrap leading-normal">{(displayContent || m.content).replace(/\[Attached:.*?\]/g, "").replace(/\[ATTACHED DOCUMENTS\][\s\S]*?\[END ATTACHED DOCUMENTS\]/g, "").trim()}</p>
+                      <p className="text-sm whitespace-pre-wrap leading-normal">{sanitizeUserDisplay(m.displayContent || displayContent || m.content)}</p>
                       {m.attachments && m.attachments.length > 0 && (
                         <div className="flex flex-col gap-2 mt-3 pt-2.5 border-t border-white/10">
                           {m.attachments.map((name, i) => (
@@ -2037,7 +2049,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         </>
                       ) : (
                         <>
-                          <p className="text-foreground leading-relaxed whitespace-pre-wrap">{(displayContent || m.content).replace(/\[Attached:.*?\]/g, "").replace(/\[ATTACHED DOCUMENTS\][\s\S]*?\[END ATTACHED DOCUMENTS\]/g, "").trim()}</p>
+                          <p className="text-foreground leading-relaxed whitespace-pre-wrap">{sanitizeUserDisplay(m.displayContent || displayContent || m.content)}</p>
                           {m.attachments && m.attachments.length > 0 && (
                             <div className="flex flex-col gap-2 mt-3 pt-2.5 border-t border-border/30">
                               {m.attachments.map((name, i) => (
