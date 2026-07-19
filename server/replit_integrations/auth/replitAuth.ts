@@ -56,7 +56,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProduction,
+      secure: isProduction && process.env.DISABLE_HTTPS_REDIRECT !== "true",
       maxAge: sessionTtl,
       sameSite: "lax",
     },

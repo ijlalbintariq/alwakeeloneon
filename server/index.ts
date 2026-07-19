@@ -34,7 +34,7 @@ app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 app.use(crawlerVerificationMiddleware);
 
 app.use((req, res, next) => {
-  if (process.env.NODE_ENV !== "production") return next();
+  if (process.env.NODE_ENV !== "production" || process.env.DISABLE_HTTPS_REDIRECT === "true") return next();
 
   const forwardedProto = String(req.headers["x-forwarded-proto"] || "")
     .split(",")[0]
