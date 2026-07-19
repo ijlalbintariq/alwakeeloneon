@@ -116,6 +116,7 @@ export async function* streamWithMoonshot(options: MoonshotChatOptions): AsyncGe
   let isReasoning = false;
   let emittedThinkingStart = false;
 
+  let reasoningCount = 0;
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta as any;
     const reasoning = delta?.reasoning_content;
@@ -126,6 +127,10 @@ export async function* streamWithMoonshot(options: MoonshotChatOptions): AsyncGe
         yield "%%THINKING_START%%";
         emittedThinkingStart = true;
         isReasoning = true;
+      }
+      reasoningCount += 1;
+      if (reasoningCount % 15 === 0) {
+        yield "%%THINKING_HEARTBEAT%%";
       }
       // Silently discard reasoning text — do not yield it to the client
       continue;

@@ -15888,6 +15888,10 @@ The user has attached the following documents for your reference. Analyze them c
             res.write(`data: ${JSON.stringify({ thinking: true })}\n\n`);
             return;
           }
+          if (text === "%%THINKING_HEARTBEAT%%") {
+            res.write(`data: ${JSON.stringify({ thinking: true, heartbeat: true })}\n\n`);
+            return;
+          }
           if (text === "%%THINKING_END%%") {
             res.write(`data: ${JSON.stringify({ thinking: false })}\n\n`);
             return;
