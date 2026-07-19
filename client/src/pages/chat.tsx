@@ -931,11 +931,27 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     }
   };
 
-  const getFileIcon = (name: string) => {
+  const getFileIcon = (name: string, size = 16) => {
     const ext = name.split(".").pop()?.toLowerCase();
-    if (ext === "pdf") return <FileText size={12} className="text-red-400" />;
-    if (ext === "txt") return <FileText size={12} className="text-blue-400" />;
-    return <File size={12} className="text-muted-foreground" />;
+    if (ext === "pdf") return <FileText size={size} className="text-red-400" />;
+    if (ext === "doc" || ext === "docx") return <FileText size={size} className="text-blue-500" />;
+    if (ext === "txt") return <FileText size={size} className="text-slate-400" />;
+    if (ext === "jpg" || ext === "jpeg" || ext === "png") return <File size={size} className="text-emerald-400" />;
+    return <File size={size} className="text-muted-foreground" />;
+  };
+
+  const getFileExtBadge = (name: string) => {
+    const ext = name.split(".").pop()?.toUpperCase() || "FILE";
+    const colors: Record<string, string> = {
+      PDF: "bg-red-500/20 text-red-300",
+      DOC: "bg-blue-500/20 text-blue-300",
+      DOCX: "bg-blue-500/20 text-blue-300",
+      TXT: "bg-slate-500/20 text-slate-300",
+      JPG: "bg-emerald-500/20 text-emerald-300",
+      JPEG: "bg-emerald-500/20 text-emerald-300",
+      PNG: "bg-emerald-500/20 text-emerald-300",
+    };
+    return <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${colors[ext] || "bg-muted text-muted-foreground"}`}>{ext}</span>;
   };
 
   const parsedAssistantMessages = useMemo(() => {
@@ -1462,13 +1478,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     </>
                   ) : (
                     <>
-                      <p className="text-sm whitespace-pre-wrap leading-normal">{m.content.replace(/\[Attached:.*?\]/, "").trim()}</p>
+                      <p className="text-sm whitespace-pre-wrap leading-normal">{(displayContent || m.content).replace(/\[Attached:.*?\]/g, "").replace(/\[ATTACHED DOCUMENTS\][\s\S]*?\[END ATTACHED DOCUMENTS\]/g, "").trim()}</p>
                       {m.attachments && m.attachments.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border/20">
+                        <div className="flex flex-col gap-2 mt-3 pt-2.5 border-t border-white/10">
                           {m.attachments.map((name, i) => (
-                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-950/20 rounded-lg text-[10px] font-bold">
-                              {getFileIcon(name)} {name}
-                            </span>
+                            <div key={i} className="flex items-center gap-2.5 px-3 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 hover:bg-white/15 transition-colors">
+                              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+                                {getFileIcon(name, 16)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-semibold truncate">{name}</p>
+                                <p className="text-[9px] text-white/50">Attached document</p>
+                              </div>
+                              {getFileExtBadge(name)}
+                            </div>
                           ))}
                         </div>
                       )}
@@ -2014,13 +2037,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         </>
                       ) : (
                         <>
-                          <p className="text-foreground leading-relaxed whitespace-pre-wrap">{m.content.replace(/\[Attached:.*?\]/, "").trim()}</p>
+                          <p className="text-foreground leading-relaxed whitespace-pre-wrap">{(displayContent || m.content).replace(/\[Attached:.*?\]/g, "").replace(/\[ATTACHED DOCUMENTS\][\s\S]*?\[END ATTACHED DOCUMENTS\]/g, "").trim()}</p>
                           {m.attachments && m.attachments.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-3">
+                            <div className="flex flex-col gap-2 mt-3 pt-2.5 border-t border-border/30">
                               {m.attachments.map((name, i) => (
-                                <span key={i} className="text-[10px] bg-accent border border-border px-2 py-1 rounded text-foreground inline-flex items-center gap-1">
-                                  {getFileIcon(name)} {name}
-                                </span>
+                                <div key={i} className="flex items-center gap-2.5 px-3 py-2 bg-muted/60 backdrop-blur-sm rounded-xl border border-border hover:border-primary/30 transition-colors">
+                                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    {getFileIcon(name, 16)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-semibold text-foreground truncate">{name}</p>
+                                    <p className="text-[9px] text-muted-foreground">Attached document</p>
+                                  </div>
+                                  {getFileExtBadge(name)}
+                                </div>
                               ))}
                             </div>
                           )}
