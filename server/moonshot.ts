@@ -54,6 +54,9 @@ export async function chatWithMoonshot(options: MoonshotChatOptions): Promise<Mo
 
   if (isKimiModel) {
     apiOptions.thinking = useInstant ? { type: "disabled" } : { type: "enabled" };
+    if (!useInstant) {
+      apiOptions.temperature = 1.0;
+    }
   }
 
   const response = await client.chat.completions.create(apiOptions);
@@ -103,6 +106,9 @@ export async function* streamWithMoonshot(options: MoonshotChatOptions): AsyncGe
 
   if (isKimiModel) {
     apiOptions.thinking = useInstant ? { type: "disabled" } : { type: "enabled" };
+    if (!useInstant) {
+      apiOptions.temperature = 1.0;
+    }
   }
 
   const stream = (await client.chat.completions.create(apiOptions)) as any;
