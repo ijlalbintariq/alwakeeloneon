@@ -2215,7 +2215,7 @@ function buildMessages(systemPrompt: string, contents: Array<{ role: string; par
 
 const MODEL_TIMEOUT_MS = {
   standardPrimary: 30000,
-  turboPrimary: 75000,
+  turboPrimary: 180000, // Kimi thinking mode needs up to 3 minutes
   apexPrimary: 90000, // K2.6 with enriched tool-search context needs 60-90s
 };
 
@@ -15924,6 +15924,7 @@ The user has attached the following documents for your reference. Analyze them c
               maxTokens: tokenLimit,
               temperature,
               onChunk: writeChunkToClient,
+              perProviderTimeoutMs: selectedRoute === "turbo" ? 180_000 : undefined,
               onProviderError: (p, err) => {
                 console.log(`[AI Router] Stream provider ${p} failed: ${err instanceof Error ? err.message : String(err)}`);
               },
