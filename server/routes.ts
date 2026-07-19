@@ -17224,6 +17224,32 @@ ${boundedRaw}`;
     }
   });
 
+  app.get("/api/admin/debug-moonshot", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) { res.sendStatus(401); return; }
+    const admin = await storage.isUserAdmin(userId);
+    if (!admin) { res.status(403).json({ message: "Admin access required" }); return; }
+
+    try {
+      const { chatWithMoonshot } = await import("./moonshot");
+      const r = await chatWithMoonshot({
+        messages: [{ role: "user", content: "ping" }],
+        maxTokens: 10,
+        temperature: 0.1,
+      });
+      res.json({ success: true, response: r });
+    } catch (err: any) {
+      console.error("[Debug Moonshot] Native API call failed:", err);
+      res.json({
+        success: false,
+        error: err?.message || String(err),
+        stack: err?.stack || "",
+        envKeyExists: !!process.env.MOONSHOT_API_KEY,
+        envKeyLength: process.env.MOONSHOT_API_KEY?.length || 0,
+      });
+    }
+  });
+
   app.post("/api/admin/setup", async (req, res) => {
     try {
       const configuredSetupKey = process.env.ADMIN_SETUP_KEY?.trim();
