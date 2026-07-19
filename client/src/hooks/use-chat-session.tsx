@@ -7,6 +7,8 @@ type ChatMessage = {
   id: string;
   role: Role;
   content: string;
+  /** Clean user-facing text when content has embedded attachment data */
+  displayContent?: string;
   modeName?: string;
   modelName?: string;
   modelId?: string;

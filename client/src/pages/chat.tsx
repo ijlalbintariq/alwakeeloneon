@@ -24,6 +24,8 @@ interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** Clean user-facing text when content has embedded attachment data */
+  displayContent?: string;
   attachments?: string[];
   modeName?: string;
   modelName?: string;
@@ -702,9 +704,22 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                         ? getModelDisplayName(selectedApexModel || modelId)
                         : (turboMode && canUseTurbo ? "Turbo" : "Standard");
                       setMessages(prev => {
-                        const last = prev[prev.length - 1];
+                        let updated = [...prev];
+                        // If the server embedded attachment text into the user message,
+                        // update the stored message so follow-up requests carry the document content.
+                        if (typeof parsed.embeddedAttachmentContent === "string" && parsed.embeddedAttachmentContent) {
+                          const userMsgIdx = updated.findIndex(m => m.id === userMsg.id);
+                          if (userMsgIdx >= 0) {
+                            updated[userMsgIdx] = {
+                              ...updated[userMsgIdx],
+                              content: parsed.embeddedAttachmentContent,
+                              displayContent: updated[userMsgIdx].content,
+                            };
+                          }
+                        }
+                        const last = updated[updated.length - 1];
                         if (last && last.id === assistantId) {
-                          return [...prev.slice(0, -1), {
+                          return [...updated.slice(0, -1), {
                             ...last,
                             modeName: canUseTurbo ? modeLabel : undefined,
                             modelName: modelLabel,
@@ -714,7 +729,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                             routingPath: Array.isArray(parsed.routingPath) ? parsed.routingPath.map(String) : undefined,
                           }];
                         }
-                        return prev;
+                        return updated;
                       });
                       persistedAssistantContent = accumulated;
                       break;
@@ -1366,7 +1381,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
           <div className="max-w-2xl mx-auto w-full">
           {messages.map((m) => {
             const parsed = m.role === "assistant" ? parsedAssistantMessages.get(m.id) ?? null : null;
-            const displayContent = parsed ? parsed.cleanContent : m.content;
+            const displayContent = parsed ? parsed.cleanContent : (m.displayContent || m.content);
             return (
               <div
                 key={m.id}
@@ -1872,7 +1887,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
 
             {messages.map((m) => {
               const parsed = m.role === "assistant" ? parsedAssistantMessages.get(m.id) ?? null : null;
-              const displayContent = parsed ? parsed.cleanContent : m.content;
+              const displayContent = parsed ? parsed.cleanContent : (m.displayContent || m.content);
 
               // Skip rendering empty assistant messages to avoid showing blank bubbles
               // during initial state loading/preparing.
