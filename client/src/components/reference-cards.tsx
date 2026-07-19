@@ -67,6 +67,8 @@ function parseToc(content: string): TocEntry[] {
 }
 
 export function parseReferences(content: string): { cleanContent: string; references: ParsedReferences | null } {
+  // Strip any leaked <think> blocks as a fail-safe fallback
+  content = content.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   const refFencedPattern = /```references\s*\n?([\s\S]*?)\n?```/gi;
   const genericFencedPattern = /```(?:json)?\s*\n?([\s\S]*?)\n?```/gi;
   const parseJsonLoose = (raw: string): any | null => {

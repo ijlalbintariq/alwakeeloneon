@@ -183,6 +183,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const [messages, setMessages] = useState<ChatMessage[]>(stored?.messages || []);
   const [input, setInput] = useState(initialMessage || "");
   const [isLoading, setIsLoading] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [aiMode, setAiMode] = useState<AiMode>("standard");
   const [showModelMenu, setShowModelMenu] = useState(false);
@@ -519,6 +520,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     setMessages(updated);
     setInput("");
     setIsLoading(true);
+    setIsThinking(false);
     setToolSearchStatus({ active: false, queries: [], totalFound: 0, totalMs: 0 });
 
     const currentFiles = [...attachedFiles];
@@ -678,6 +680,14 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       }));
                       continue;
                     }
+                    if (parsed.thinking === true) {
+                      setIsThinking(true);
+                      continue;
+                    }
+                    if (parsed.thinking === false) {
+                      setIsThinking(false);
+                      continue;
+                    }
                     // Case Law Card payload — raw DB judgment hits, no AI processing.
                     // Arrives right after tool-search completes, before AI streaming.
                     if (parsed.caseLawCard && Array.isArray(parsed.caseLawCard.hits)) {
@@ -809,6 +819,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       }
     } finally {
       setIsLoading(false);
+      setIsThinking(false);
     }
   };
 
@@ -1998,7 +2009,34 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                               />
                             );
                           })()}
-                          <LegalMarkdown content={displayContent} />
+                          {!displayContent.trim() && isThinking ? (
+                            <div className="flex flex-col gap-3 py-1">
+                              <div className="flex items-center gap-2">
+                                <Loader2 size={13} className="animate-spin text-primary flex-shrink-0" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-foreground/75 animate-pulse">
+                                  Analyzing statutes & case law...
+                                </span>
+                              </div>
+                              <style>{`
+                                @keyframes shimmer-aw {
+                                  0% { background-position: -1000px 0; }
+                                  100% { background-position: 1000px 0; }
+                                }
+                                .animate-shimmer-aw {
+                                  background: linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.12) 50%,rgba(255,255,255,0.04) 100%);
+                                  background-size: 1000px 100%;
+                                  animation: shimmer-aw 2s infinite;
+                                }
+                              `}</style>
+                              <div className="space-y-2">
+                                <div className="h-3 bg-muted/50 rounded animate-shimmer-aw"></div>
+                                <div className="h-3 bg-muted/50 rounded animate-shimmer-aw" style={{ animationDelay: "0.25s", width: "92%" }}></div>
+                                <div className="h-3 bg-muted/50 rounded animate-shimmer-aw" style={{ animationDelay: "0.5s", width: "78%" }}></div>
+                              </div>
+                            </div>
+                          ) : (
+                            <LegalMarkdown content={displayContent} />
+                          )}
                           {parsed?.references && <ReferenceCards references={parsed.references} />}
                           {(m.ragCitations?.length || 0) > 0 && (() => {
                             const visibleCitations = m.ragCitations!.filter(isVisibleCitation);
@@ -2107,13 +2145,15 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                       <div className="flex items-center gap-2">
                         <Loader2 size={12} className="animate-spin text-primary flex-shrink-0" />
                         <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/80">
-                          {toolSearchStatus.queries.length > 0
-                            ? toolSearchStatus.active
-                              ? "Searching case law"
-                              : "Writing response"
-                            : elapsedMs < 2000
-                              ? "Preparing"
-                              : "Retrieving context"}
+                          {isThinking
+                            ? "Analyzing & reasoning"
+                            : toolSearchStatus.queries.length > 0
+                              ? toolSearchStatus.active
+                                ? "Searching case law"
+                                : "Writing response"
+                              : elapsedMs < 2000
+                                ? "Preparing"
+                                : "Retrieving context"}
                         </span>
                       </div>
                       <span className="text-[11px] font-mono text-primary tabular-nums">

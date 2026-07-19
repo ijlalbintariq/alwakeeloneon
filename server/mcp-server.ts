@@ -349,7 +349,7 @@ export function registerAllTools(server: McpServer) {
             id: detail.id,
             citation: detail.citation,
             title: detail.title,
-            courtName: detail.courtName || detail.courtSnapshot || "Pakistani Court",
+            courtName: detail.court || "Pakistani Court",
             decisionDate: detail.decisionDate,
             headnotes: detail.headnotes,
             fullText: detail.fullText,
@@ -584,7 +584,7 @@ ${additionalClauses || "None"}`;
       content: [{ type: "text", text: JSON.stringify({
         version: VERSION, source: SOURCE,
         totalResults: rows.length,
-        cases: rows.map(c => ({
+        cases: rows.map((c: any) => ({
           id: c.id, title: c.title, caseType: c.caseType,
           court: c.court, caseNumber: c.caseNumber,
           status: c.status, priority: c.priority,
@@ -626,9 +626,9 @@ ${additionalClauses || "None"}`;
           referenceNo: caseFile.referenceNo, description: caseFile.description,
           createdAt: caseFile.createdAt, updatedAt: caseFile.updatedAt,
         },
-        clients: clients.map(c => ({ id: c.id, role: c.role, name: c.name, phone: c.phone, cnic: c.cnic })),
-        notes: notes.map(n => ({ id: n.id, content: n.content, createdAt: n.createdAt })),
-        compliance: compliance.map(c => ({
+        clients: clients.map((c: any) => ({ id: c.id, role: c.role, name: c.name, phone: c.phone, cnic: c.cnic })),
+        notes: notes.map((n: any) => ({ id: n.id, content: n.content, createdAt: n.createdAt })),
+        compliance: compliance.map((c: any) => ({
           id: c.id, type: c.type, title: c.title,
           dueDate: c.dueDate, status: c.status, court: c.court, judge: c.judge,
         })),
@@ -718,7 +718,7 @@ ${additionalClauses || "None"}`;
         version: VERSION, source: SOURCE,
         dateRange: { from: startDate, to: endDate },
         totalEntries: rows.length,
-        entries: rows.map(e => ({
+        entries: rows.map((e: any) => ({
           id: e.id, date: e.date, time: e.time,
           title: e.title, description: e.description,
           caseId: e.caseId, priority: e.priority,

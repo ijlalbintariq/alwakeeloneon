@@ -44,7 +44,6 @@ import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex
 import { mcpServer, mcpUserContext, createMcpServer } from "./mcp-server";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { retrieveLegalCaseLaw } from "./legal-retrieval";
-import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import { runRetrieval } from "./pipeline/retrieval-engine";
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
@@ -15885,6 +15884,14 @@ The user has attached the following documents for your reference. Analyze them c
 
         let fullContent = "";
         const writeChunkToClient = (text: string) => {
+          if (text === "%%THINKING_START%%") {
+            res.write(`data: ${JSON.stringify({ thinking: true })}\n\n`);
+            return;
+          }
+          if (text === "%%THINKING_END%%") {
+            res.write(`data: ${JSON.stringify({ thinking: false })}\n\n`);
+            return;
+          }
           const chunk = text || "";
           if (!chunk) return;
           fullContent += chunk;
@@ -21357,7 +21364,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         id: detail.id,
         citation: detail.citation,
         title: detail.title,
-        courtName: detail.courtName || detail.courtSnapshot || "Pakistani Court",
+        courtName: detail.court || "Pakistani Court",
         decisionDate: detail.decisionDate,
         headnotes: detail.headnotes,
         fullText: detail.fullText,
@@ -21564,7 +21571,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       db.update(apiKeys)
         .set({ lastUsedAt: new Date() })
         .where(eq(apiKeys.id, apiKeyRecord.id))
-        .catch((err) => console.error("[MCP] Failed to update key lastUsedAt:", err));
+        .catch((err: any) => console.error("[MCP] Failed to update key lastUsedAt:", err));
 
       // Determine the session ID from the headers
       const sessionId = req.headers["mcp-session-id"];

@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 const MOONSHOT_BASE_URL = "https://api.moonshot.ai/v1";
-const DEFAULT_MODEL = "moonshot-v1-128k";
+const DEFAULT_MODEL = "kimi-k2.5";
 
 let moonshotClient: OpenAI | null = null;
 
@@ -107,8 +107,8 @@ export async function* streamWithMoonshot(options: MoonshotChatOptions): AsyncGe
 
   const stream = (await client.chat.completions.create(apiOptions)) as any;
 
-  let startedReasoning = false;
-  let finishedReasoning = false;
+  let isReasoning = false;
+  let emittedThinkingStart = false;
 
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta as any;
@@ -116,24 +116,26 @@ export async function* streamWithMoonshot(options: MoonshotChatOptions): AsyncGe
     const content = delta?.content;
 
     if (reasoning) {
-      if (!startedReasoning) {
-        yield "<think>\n";
-        startedReasoning = true;
+      if (!emittedThinkingStart) {
+        yield "%%THINKING_START%%";
+        emittedThinkingStart = true;
+        isReasoning = true;
       }
-      yield reasoning;
+      // Silently discard reasoning text — do not yield it to the client
+      continue;
     }
 
     if (content) {
-      if (startedReasoning && !finishedReasoning) {
-        yield "\n</think>\n\n";
-        finishedReasoning = true;
+      if (isReasoning) {
+        yield "%%THINKING_END%%";
+        isReasoning = false;
       }
       yield content;
     }
   }
 
-  if (startedReasoning && !finishedReasoning) {
-    yield "\n</think>\n\n";
+  if (isReasoning) {
+    yield "%%THINKING_END%%";
   }
 }
 
