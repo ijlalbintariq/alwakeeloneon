@@ -35,7 +35,7 @@ function FeatureCard({
 
 const CORE_FEATURES = [
   { icon: MessageSquare, title: "AI Legal Chat", desc: "Consult with an AI legal advisor trained on Pakistani law. Get strategy and next-step guidance fast.", bgClass: "bg-primary/10", iconClass: "text-primary" },
-  { icon: Crown, title: "Al Wakeelo Engine", desc: "Use the main legal AI workspace with grounded responses, references, and practical next-step guidance.", bgClass: "bg-primary/10", iconClass: "text-primary" },
+  { icon: Crown, title: "AL WAKEELO Engine", desc: "Use the main legal AI workspace with grounded responses, references, and practical next-step guidance.", bgClass: "bg-primary/10", iconClass: "text-primary" },
   { icon: Search, title: "Judgment Search", desc: "Find relevant Pakistani case law with quick citation-focused search and contextual summaries.", bgClass: "bg-blue-500/10", iconClass: "text-blue-500" },
   { icon: BookOpen, title: "Citation Search", desc: "Search directly by year, journal, and page to locate precise judgments and linked details quickly.", bgClass: "bg-indigo-500/10", iconClass: "text-indigo-400" },
   { icon: BookOpen, title: "Statute Lookup", desc: "Navigate Pakistani statutes and sections with plain-language legal explanations.", bgClass: "bg-emerald-500/10", iconClass: "text-emerald-500" },
@@ -51,11 +51,11 @@ const CORE_FEATURES = [
 
 const FAQ_ITEMS = [
   {
-    q: "Can I use Al Wakeelo for Pakistani case law research?",
+    q: "Can I use AL WAKEELO for Pakistani case law research?",
     a: "Yes. You can search judgments, explore statutes, and use AI-assisted legal research workflows focused on Pakistani law.",
   },
   {
-    q: "Does Al Wakeelo replace a licensed advocate?",
+    q: "Does AL WAKEELO replace a licensed advocate?",
     a: "No. It supports legal research and drafting, but professional legal advice and representation should come from a licensed advocate.",
   },
   {
@@ -67,14 +67,14 @@ const FAQ_ITEMS = [
     a: "The platform is designed with privacy and access controls. For sensitive matters, always use official chamber consultation channels as well.",
   },
   {
-    q: "Is Alwakeelo discussed on Reddit or legal forums?",
-    a: "Yes — Pakistani lawyers and legal researchers discuss Al Wakeelo on Reddit, legal tech communities, and professional networks. We actively welcome community feedback and incorporate it into platform improvements.",
+    q: "Is AL WAKEELO discussed on Reddit or legal forums?",
+    a: "Yes — Pakistani lawyers and legal researchers discuss AL WAKEELO on Reddit, legal tech communities, and professional networks. We actively welcome community feedback and incorporate it into platform improvements.",
   },
 ];
 
 export default function LandingPage() {
   useDocumentHead({
-    title: "Alwakeelo AI - Pakistan Law Search & AI Legal Assistant | Digital Lawyer",
+    title: "AL WAKEELO AI - Pakistan Law Search & AI Legal Assistant | Digital Lawyer",
     description:
       "Pakistan's premier AI-powered digital lawyer and case law search. Search 600,000+ judgments (PLD, SCMR, YLR), search Pakistan Penal Code, CPC & CrPC, draft petitions, and generate legally binding contracts.",
     path: "/",
@@ -135,9 +135,9 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl overflow-hidden border border-amber-400/30 shadow-lg shadow-amber-500/20">
-              <img src="/logo.svg" alt="Alwakeelo logo" className="w-full h-full object-cover" />
+              <img src="/logo.svg" alt="AL WAKEELO logo" className="w-full h-full object-cover" />
             </div>
-            <span className="text-xl font-bold italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Alwakeelo</span>
+            <span className="text-xl font-bold italic tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>AL WAKEELO</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             <a href="/" className="text-sm text-foreground hover:text-foreground transition-colors">Home</a>
@@ -208,14 +208,14 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
-            <span className="italic">Alwakeelo AI Workspace</span>
+            <span className="italic">AL WAKEELO AI Workspace</span>
             <br />
             <span className="text-primary italic">for Advocates & Chambers</span>
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
             Research case law, draft petitions and contracts, and generate client-ready legal documents in minutes
-            with Alwakeelo AI, fine-tuned for Pakistani legal practice.
+            with AL WAKEELO AI, fine-tuned for Pakistani legal practice.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -411,7 +411,7 @@ export default function LandingPage() {
               Everything You Need in One Platform
             </h2>
             <p className="text-muted-foreground mt-4 max-w-xl mx-auto">
-              From case research to contract drafting, Al Wakeelo handles the full spectrum of legal work.
+              From case research to contract drafting, AL WAKEELO handles the full spectrum of legal work.
             </p>
           </div>
 
@@ -607,7 +607,7 @@ export default function LandingPage() {
             Built for Pakistani Legal Professionals
           </h2>
           <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-2xl mx-auto">
-            Al Wakeelo combines cutting-edge AI technology with deep knowledge of Pakistani law to provide 
+            AL WAKEELO combines cutting-edge AI technology with deep knowledge of Pakistani law to provide 
             lawyers, advocates, and legal professionals with a powerful research and drafting assistant. 
             Our platform is backed by a comprehensive database of Pakistani judgments, statutes, and legal texts.
             Trusted by advocates and discussed across platforms including Reddit, legal forums, and professional networks.
@@ -689,9 +689,9 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg overflow-hidden border border-amber-400/30">
-                <img src="/logo.svg" alt="Alwakeelo logo" className="w-full h-full object-cover" />
+                <img src="/logo.svg" alt="AL WAKEELO logo" className="w-full h-full object-cover" />
               </div>
-              <span className="text-sm font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Alwakeelo</span>
+              <span className="text-sm font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>AL WAKEELO</span>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <a href="/about" onClick={(e) => { e.preventDefault(); navigate("/about"); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">About Us</a>
@@ -706,12 +706,12 @@ export default function LandingPage() {
               <a href="https://www.linkedin.com/company/al-wakeelo" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">LinkedIn</a>
             </div>
             <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} Alwakeelo. All rights reserved.
+              &copy; {new Date().getFullYear()} AL WAKEELO. All rights reserved.
             </p>
           </div>
           <div className="mt-6 text-center">
             <p className="text-xs text-muted-foreground">
-              Alwakeelo by <span className="text-muted-foreground font-semibold">Majnun Studio</span>
+              AL WAKEELO by <span className="text-muted-foreground font-semibold">Majnun Studio</span>
             </p>
           </div>
         </div>
