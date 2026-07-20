@@ -38,7 +38,7 @@ into a self-contained search phrase of 4-10 words suitable for a legal database 
 
 Rules:
 - Replace pronouns and vague references with the actual legal topic from history.
-- Keep all legal terms exact: PPC, CNSA, Article 199, SCMR, bail, qatl, diyat, etc.
+- Keep all legal terms, sections, journals, and abbreviations exact: PPC, CrPC, CPC, QSO, CNSA, PECA, SCMR, PLD, YLR, CLC, PCrLJ, Section, Article, hiba, diyat, qisas, FIR, nikkah, khula, khasra, patwari, mutation.
 - Remove filler words: "can you tell me", "what about", "I want to know".
 - Output ONLY the rewritten query — no explanation, no punctuation at the end.
 - If the query is already self-contained, return it unchanged.
