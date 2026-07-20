@@ -1532,16 +1532,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getStatuteByTitleAndSection(shortTitle: string, section: string): Promise<Statute | undefined> {
-    const [row] = await db.select()
+    const cleanSec = section.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    
+    // 1. Try direct matching with wildcard on shortTitle and section
+    const rows = await db.select()
       .from(statutes)
       .where(
         and(
-          ilike(statutes.shortTitle, shortTitle),
-          ilike(statutes.section, section)
+          ilike(statutes.shortTitle, `%${shortTitle}%`),
+          or(
+            ilike(statutes.section, `%${section}%`),
+            ilike(statutes.section, `%${cleanSec}%`)
+          )
         )
       )
-      .limit(1);
-    return row;
+      .limit(20);
+      
+    // 2. Perform clean section check to find the best match
+    for (const r of rows) {
+      const dbSecClean = r.section.toLowerCase().replace(/[^a-z0-9]/gi, "");
+      if (dbSecClean === cleanSec || dbSecClean.startsWith(cleanSec) || dbSecClean.includes(cleanSec)) {
+        return r;
+      }
+    }
+    
+    return rows[0];
   }
 
   async getAllStatutes(): Promise<Statute[]> {
@@ -5088,6 +5103,7 @@ export const STOP_WORDS = new Set([
   "therefore","whether","both","each","some","more","most","other","only","also",
   "very","even","still","well","back","way","first","last","long","little","own",
   "right","old","same","new","want","need","take","make","come","get","put","ask",
+  "of", "in", "at", "by", "an", "or", "to", "is", "it", "on", "as", "so", "vs", "versus", "v"
 ]);
 
 // Statically pre-compiled regular expressions to prevent V8 CPU bottlenecks in mapping loops

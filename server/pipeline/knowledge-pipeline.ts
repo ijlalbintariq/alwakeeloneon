@@ -122,11 +122,10 @@ export async function runKnowledgePipeline(
       `expandedQuery="${intent.expandedQuery.slice(0, 80)}"`,
     );
 
-    // ---- Stage 2: Retrieve ----
     const retrieval = await runRetrieval(
       intent,
       userId || "",
-      { caseLaw: 10, statutes: 4, adminDocs: 6 },
+      { caseLaw: 10, statutes: 8, adminDocs: 6 },
     );
     console.log(
       `[Pipeline:2:Retrieve] ` +

@@ -526,6 +526,28 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
   // Direct section lookup when user explicitly typed e.g. "PPC 392" or "Article 25 Constitution"
   if (intent.statuteRef) {
     const { fullName, sectionOrArticle } = intent.statuteRef;
+    
+    // Try exact target lookup first
+    try {
+      const directMatch = await withTimeout(
+        storage.getStatuteByTitleAndSection(fullName, sectionOrArticle),
+        STATUTE_TIMEOUT_MS,
+        undefined,
+      );
+      if (directMatch) {
+        return [{
+          shortTitle: String(directMatch.shortTitle || ""),
+          section: String(directMatch.section || ""),
+          description: String(directMatch.description || ""),
+          punishment: String(directMatch.punishment || ""),
+          relevanceScore: 100,
+          statuteDocumentTitle: fullName,
+        }];
+      }
+    } catch (err) {
+      console.warn(`[RAG:Statutes] Direct lookup failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
     const directRows = await withTimeout(
       storage.searchStatutes(`${fullName} ${sectionOrArticle}`, limit * 3).catch(() => []),
       STATUTE_TIMEOUT_MS,
