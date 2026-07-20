@@ -353,7 +353,13 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
   // targeted search query. Without this, "ppc" matches every criminal case generically.
   // The statute-aware query searches for "section 354" + "PPC" as co-occurring terms,
   // which is far more precise than loose "354 & ppc" tokenization.
-  let judgmentSearchQuery = intent.normalized;
+  //
+  // IMPORTANT: Use expandedQuery (topic-classified legal terms) instead of raw normalized
+  // text. Long narrative queries like "my husband marries another women..." contain noise
+  // words that dilute the keyword search. The expandedQuery injects focused legal terms
+  // (e.g. "marriage", "divorce", "dower", "custody") from the intent classifier, which
+  // the signal-token prioritizer in searchJudgmentsByKeywords will pick up correctly.
+  let judgmentSearchQuery = expandedQuery;
   if (intent.statuteRef) {
     const { abbr, sectionOrArticle } = intent.statuteRef;
     // Build targeted query: "section 354 PPC" or "354 PPC" — keeps section+abbr together
