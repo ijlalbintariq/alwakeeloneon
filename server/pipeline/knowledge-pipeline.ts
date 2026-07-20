@@ -87,7 +87,7 @@ export async function runKnowledgePipeline(
   context?: { module?: string },
 ): Promise<PipelineRunResult> {
   const t0 = Date.now();
-  const key = `${userId || "anon"}::${normKey(rawQuery)}`;
+  const key = `${userId || "anon"}::${context?.module || "none"}::${normKey(rawQuery)}`;
   const cached = cacheGet(key);
   // Never use a cached empty string — it means a previous request timed out or found nothing.
   // Retry the DB every time until we get real results, then cache them.
