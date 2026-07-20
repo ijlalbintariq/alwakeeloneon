@@ -84,6 +84,7 @@ export async function runKnowledgePipeline(
   rawQuery: string,
   userId?: string,
   conversationHistory?: ConversationTurn[],
+  context?: { module?: string },
 ): Promise<PipelineRunResult> {
   const t0 = Date.now();
   const key = `${userId || "anon"}::${normKey(rawQuery)}`;
@@ -114,7 +115,7 @@ export async function runKnowledgePipeline(
     const queryForRetrieval = await rewriteFollowUpQuery(rawQuery, history);
 
     // ---- Stage 1: Classify intent ----
-    const intent = classifyQueryIntent(queryForRetrieval);
+    const intent = classifyQueryIntent(queryForRetrieval, context);
     console.log(
       `[Pipeline:1:Classify] query="${queryForRetrieval.slice(0, 60)}"${queryForRetrieval !== rawQuery ? ` (rewritten from "${rawQuery.slice(0, 40)}")` : ""} ` +
       `type=${intent.type} ` +
@@ -211,9 +212,10 @@ export async function gatherKnowledgeContextV2(
   query: string,
   userId?: string,
   conversationHistory?: ConversationTurn[],
+  context?: { module?: string },
 ): Promise<string> {
   try {
-    const result = await runKnowledgePipeline(query, userId, conversationHistory);
+    const result = await runKnowledgePipeline(query, userId, conversationHistory, context);
     return result.contextString;
   } catch (err) {
     console.error("[Pipeline:Error]", err instanceof Error ? err.message : String(err));
@@ -231,9 +233,10 @@ export async function gatherKnowledgeWithHits(
   query: string,
   userId?: string,
   conversationHistory?: ConversationTurn[],
+  context?: { module?: string },
 ): Promise<PipelineRunResult> {
   try {
-    return await runKnowledgePipeline(query, userId, conversationHistory);
+    return await runKnowledgePipeline(query, userId, conversationHistory, context);
   } catch (err) {
     console.error("[Pipeline:Error]", err instanceof Error ? err.message : String(err));
     return {

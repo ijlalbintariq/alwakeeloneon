@@ -8021,7 +8021,8 @@ export async function registerRoutes(
         content: firstMessage,
       });
 
-      const knowledgeContext = await gatherKnowledgeContextV2(firstMessage, userId);
+      const module = req.body.module;
+      const knowledgeContext = await gatherKnowledgeContextV2(firstMessage, userId, undefined, { module });
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       let usedModel = "";
@@ -8244,7 +8245,8 @@ export async function registerRoutes(
         parts: [{ text: m.content }],
       }));
 
-      const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
+      const module = req.body.module;
+      const knowledgeContext = await gatherKnowledgeContextV2(message, userId, undefined, { module });
       const systemPromptFull = getLegalSystemPrompt() + knowledgeContext;
 
       const _t0 = Date.now();
@@ -10192,6 +10194,7 @@ export async function registerRoutes(
           role: z.enum(["user", "assistant"]),
           content: z.string(),
         })).max(10).optional(),
+        module: z.string().optional(),
       }).parse(req.body);
 
       // If caseFileId provided, scope to that case's documents
@@ -10205,7 +10208,7 @@ export async function registerRoutes(
       }
 
       // Expand query with legal synonyms for better keyword search recall
-      const intent = classifyQueryIntent(parsed.query);
+      const intent = classifyQueryIntent(parsed.query, { module: parsed.module });
       const expandedQuery = intent.expandedQuery || parsed.query;
 
       // ── Run RAG retrieval AND judgment DB search in PARALLEL ──────────
@@ -10241,7 +10244,7 @@ export async function registerRoutes(
           return result;
         })(),
         // Judgment DB pipeline — 8s timeout (usually returns in 3s)
-        gatherKnowledgeContextV2(parsed.query, userId)
+        gatherKnowledgeContextV2(parsed.query, userId, undefined, { module: parsed.module })
           .catch((e) => {
             console.error("[RAG:ask] judgment pipeline error (non-fatal):", e);
             return "";
@@ -13921,7 +13924,7 @@ Rules:
         // Run refinement, knowledge gathering, and tool search ALL in parallel
         const [draftRefineResult, legalKnowledgeContextRaw, draftToolSearchResult] = await Promise.all([
           draftRefinePromise,
-          gatherKnowledgeContextV2(legalKnowledgeQuery, userId),
+          gatherKnowledgeContextV2(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }),
           draftToolSearchPromise,
         ]);
         const refinedDraftPrompt = draftRefineResult.refined;
@@ -16839,17 +16842,17 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
       const allowed = await checkUsageLimit(userId, "draft", res);
       if (!allowed) return;
 
-      const { title, content } = req.body as { title?: string; content?: string };
+      const { title, content, module } = req.body as { title?: string; content?: string; module?: string };
       const draftText = (content || "").trim();
       if (!draftText) {
         return res.json({ risks: [] });
       }
 
       const draftTitle = (title || "Untitled Draft").trim();
-      const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 14000)}`;
+      const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 14000)}\nmodule:${module || ""}`;
 
       const { content: responseText, fromCache } = await getCachedOrCall("draft-risk-analysis", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContextV2(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
+        const knowledgeContext = await gatherKnowledgeContextV2(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId, undefined, { module });
         const sysInstruction = `${getLegalSystemPrompt()}
 
 You are a legal drafting risk scanner for Pakistani legal documents.
@@ -16963,7 +16966,7 @@ ${knowledgeContext ? `\n<LEGAL_CONTEXT>\n${knowledgeContext}\n</LEGAL_CONTEXT>` 
       const allowed = await checkUsageLimit(userId, "draft", res);
       if (!allowed) return;
 
-      const { title, content, maxEdits } = req.body as { title?: string; content?: string; maxEdits?: number };
+      const { title, content, maxEdits, module } = req.body as { title?: string; content?: string; maxEdits?: number; module?: string };
       const draftText = (content || "").trim();
       if (!draftText) {
         return res.json({ edits: [] });
@@ -16971,10 +16974,10 @@ ${knowledgeContext ? `\n<LEGAL_CONTEXT>\n${knowledgeContext}\n</LEGAL_CONTEXT>` 
 
       const draftTitle = (title || "Untitled Draft").trim();
       const safeMaxEdits = Math.max(1, Math.min(10, Number(maxEdits) || 6));
-      const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 16000)}\nmax:${safeMaxEdits}`;
+      const cacheKey = `${draftTitle}\n\n${draftText.slice(0, 16000)}\nmax:${safeMaxEdits}\nmodule:${module || ""}`;
 
       const { content: responseText, fromCache } = await getCachedOrCall("draft-recommendations", cacheKey, async () => {
-        const knowledgeContext = await gatherKnowledgeContextV2(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId);
+        const knowledgeContext = await gatherKnowledgeContextV2(`${draftTitle}\n${draftText.slice(0, 2000)}`, userId, undefined, { module });
         const sysInstruction = `You are a Pakistani court drafting redline assistant.
 
 TASK:
@@ -20008,7 +20011,7 @@ ${(documentContent || "").slice(0, 6000)}
       return res.status(503).json({ message: "Apex AI is not configured" });
     }
 
-    const { model, message, threadId, systemContext } = req.body;
+    const { model, message, threadId, systemContext, module } = req.body;
     if (!model || !message) {
       return res.status(400).json({ message: "Model and message are required" });
     }
@@ -20040,7 +20043,7 @@ ${(documentContent || "").slice(0, 6000)}
         systemPrompt += `\n\n${systemContext}`;
       }
 
-      const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
+      const knowledgeContext = await gatherKnowledgeContextV2(message, userId, undefined, { module });
       systemPrompt += knowledgeContext;
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
@@ -20215,7 +20218,7 @@ ${(documentContent || "").slice(0, 6000)}
       return res.status(403).json({ message: "Apex Agent requires Chamber or Enterprise plan." });
     }
 
-    const { message, threadId, systemContext, maxIterations } = req.body;
+    const { message, threadId, systemContext, maxIterations, module } = req.body;
     if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({ message: "Message is required" });
     }
@@ -20260,7 +20263,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
 
-      const knowledgeContext = await gatherKnowledgeContextV2(message, userId);
+      const knowledgeContext = await gatherKnowledgeContextV2(message, userId, undefined, { module });
       systemPrompt += knowledgeContext;
 
       // Wrap with Apex mode profile (same as main handler)
@@ -21416,7 +21419,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const allowed = await checkUsageLimit(userId, "chat", res);
       if (!allowed) return;
 
-      const contextString = await gatherKnowledgeContextV2(query, userId);
+      const contextString = await gatherKnowledgeContextV2(query, userId, undefined, { module: req.body.module });
       await logUsageCost(userId, "chat", "deepseek-chat", query, contextString, { userQuery: query });
 
       // Update key last used
