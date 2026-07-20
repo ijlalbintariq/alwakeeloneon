@@ -69,7 +69,7 @@ export interface RetrievalResult {
 // ---------------------------------------------------------------------------
 
 const CASELAW_TIMEOUT_MS = 5000;  // Optimized for fast retrieval with index support
-const STATUTE_TIMEOUT_MS = 3000;  // Increased from 1500
+const STATUTE_TIMEOUT_MS = 8000;  // Increased from 3000 to allow slow Voyage network calls
 const ADMIN_DOC_TIMEOUT_MS = 15_000;  // 15s budget: covers HNSW cold-load (~5-12s first query) + GIN keyword + embedding (~800ms). Warm queries complete in <1s.
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -705,39 +705,151 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
     }
   }
 
-  // Fallback: keyword search (only if topic mapping found nothing)
+  // Fallback: semantic hybrid search (Voyage Law-2 similarity + keyword matching)
   const query = intent.normalized;
-  const rawRows = await withTimeout(
-    storage.searchStatutes(query, limit * 2).catch(() => []),
-    STATUTE_TIMEOUT_MS,
-    [],
-  );
+  
+  let queryEmbedding: number[] | null = null;
+  try {
+    queryEmbedding = await withTimeout(embedTextLocal(query), STATUTE_TIMEOUT_MS, null);
+  } catch (err) {
+    console.warn(`[RAG:Statutes] Failed to embed query:`, err);
+  }
+
+  const [rawRows, vectorMatches] = await Promise.all([
+    withTimeout(storage.searchStatutes(query, limit * 3).catch(() => []), STATUTE_TIMEOUT_MS, []),
+    queryEmbedding
+      ? withTimeout(
+          similaritySearch({
+            userId: "global-admin-statute-sections",
+            queryEmbedding,
+            queryText: query,
+            topK: Math.max(limit * 2, 15),
+            vectorWeight: 0.72,
+            keywordWeight: 0.28,
+          }).catch((err) => {
+            console.warn(`[RAG:Statutes] Vector similarity search failed:`, err);
+            return [];
+          }),
+          STATUTE_TIMEOUT_MS,
+          [],
+        )
+      : Promise.resolve([]),
+  ]);
 
   const queryWords = intent.normalized.split(/\s+/).filter((w) => w.length >= 3);
-  const scored = (rawRows as any[]).map((s: any) => {
+
+  // Map to easily check section matches
+  const statuteMap = new Map<string, RetrievedStatute & { vectorScore?: number; keywordScore?: number }>();
+
+  // Helper to normalize strings
+  const getSectionKey = (title: string, sec: string) => `${norm(title)}::${norm(sec)}`;
+
+  // 1. Process keyword rows
+  for (const s of rawRows as any[]) {
+    const key = getSectionKey(s.shortTitle, s.section);
     const combined = norm(`${s.shortTitle || ""} ${s.section || ""} ${s.description || ""}`);
-    let score = 0;
+    let kwScore = 0;
     for (const word of queryWords) {
-      if (combined.includes(word)) score += 10;
+      if (combined.includes(word)) kwScore += 10;
     }
     for (const topic of intent.topics) {
       for (const term of [...topic.primary, ...topic.synonyms.slice(0, 4)]) {
-        if (combined.includes(term)) score += 8;
+        if (combined.includes(term)) kwScore += 8;
       }
     }
-    return {
+    const normKw = Math.min(1.0, kwScore / 50);
+
+    statuteMap.set(key, {
       shortTitle: String(s.shortTitle || ""),
       section: String(s.section || ""),
       description: String(s.description || ""),
       punishment: String(s.punishment || ""),
-      relevanceScore: score,
-    } as RetrievedStatute;
-  });
+      relevanceScore: 0, // calculated below
+      keywordScore: normKw,
+      vectorScore: 0,
+    });
+  }
 
-  return scored
-    .filter((s) => s.relevanceScore >= 2)
-    .sort((a, b) => b.relevanceScore - a.relevanceScore)
-    .slice(0, limit);
+  // 2. Process vector matches
+  for (const m of vectorMatches) {
+    const sTitle = String((m.metadata as any)?.shortTitle || "");
+    const sec = String((m.metadata as any)?.section || "");
+    if (!sTitle || !sec) continue;
+
+    const key = getSectionKey(sTitle, sec);
+    
+    // Parse description and punishment from chunkText
+    // Format: `STATUTE: ...\nSECTION: ...\nDESCRIPTION:\n...\nPUNISHMENT: ...`
+    const parts = (m.chunkText || "").split("\nDESCRIPTION:\n");
+    const descAndPunish = parts[1] || "";
+    const subParts = descAndPunish.split("\nPUNISHMENT: ");
+    const description = subParts[0] || "";
+    const punishment = subParts[1] || "None";
+
+    const existing = statuteMap.get(key);
+    if (existing) {
+      existing.vectorScore = m.score;
+    } else {
+      statuteMap.set(key, {
+        shortTitle: sTitle,
+        section: sec,
+        description,
+        punishment,
+        relevanceScore: 0,
+        vectorScore: m.score,
+        keywordScore: 0,
+      });
+    }
+  }
+
+  // 3. Compute fused hybrid scores
+  const candidates: RetrievedStatute[] = [];
+  for (const item of statuteMap.values()) {
+    const fused = 0.72 * (item.vectorScore || 0) + 0.28 * (item.keywordScore || 0);
+    item.relevanceScore = Math.round(fused * 100);
+    candidates.push({
+      shortTitle: item.shortTitle,
+      section: item.section,
+      description: item.description,
+      punishment: item.punishment,
+      relevanceScore: item.relevanceScore,
+    });
+  }
+
+  candidates.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  const topCandidates = candidates.slice(0, 15);
+
+  // 4. Apply Voyage Reranker if active
+  if (topCandidates.length > 0 && process.env.RAG_EMBEDDING_PROVIDER?.toLowerCase() === "voyage") {
+    try {
+      const { rerankVoyage } = await import("../rag/embedding-local");
+      const docsToRerank = topCandidates.map(
+        (c) => `STATUTE: ${c.shortTitle}\nSECTION: ${c.section}\nDESCRIPTION:\n${c.description}`
+      );
+      const rerankResult = await withTimeout(
+        rerankVoyage(query, docsToRerank),
+        STATUTE_TIMEOUT_MS,
+        [],
+      );
+      
+      const rerankScores = new Map<number, number>();
+      for (const item of rerankResult) {
+        rerankScores.set(item.index, item.score);
+      }
+
+      for (let idx = 0; idx < topCandidates.length; idx++) {
+        const rerankScore = rerankScores.get(idx) ?? 0;
+        topCandidates[idx].relevanceScore = Math.round(
+          (rerankScore * 0.60 + (topCandidates[idx].relevanceScore / 100) * 0.40) * 100
+        );
+      }
+      topCandidates.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    } catch (err) {
+      console.warn(`[RAG:Statutes] Voyage reranking failed:`, err);
+    }
+  }
+
+  return topCandidates.slice(0, limit);
 }
 
 // ---------------------------------------------------------------------------
