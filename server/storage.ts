@@ -1469,7 +1469,7 @@ export class DatabaseStorage implements IStorage {
       .toLowerCase()
       .split(MULTIPLE_SPACES_REGEX)
       .map((token) => token.trim())
-      .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
+      .filter((token) => (token.length >= 2 || /^\d+$/.test(token)) && !STOP_WORDS.has(token))
       .slice(0, 10);
 
     if (tokens.length === 0) {

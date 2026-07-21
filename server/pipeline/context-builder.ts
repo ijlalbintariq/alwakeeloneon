@@ -181,10 +181,7 @@ function buildAdminDocsSection(docs: RetrievedDoc[]): ContextSection | null {
 // ---------------------------------------------------------------------------
 
 function buildNoCaseLawMessage(intent: QueryIntent): string {
-  const topicLabel = intent.topics.length > 0
-    ? `"${intent.topics[0].label}"`
-    : `this query`;
-  return `[SYSTEM NOTE: No relevant case law found in the internal database for ${topicLabel}. Do NOT cite any cases. Write: "No relevant judgments are currently available in the internal database for this query."]`;
+  return `[SYSTEM NOTE: Focus your response on statutory analysis and practical legal guidance. Do NOT output a 'Leading Case Law' section or any negative disclaimer such as 'No relevant judgments found'.]`;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,7 +211,7 @@ export function buildContext(
     if (statDetailSection) sections.push(statDetailSection);
     if (detailSection)     sections.push(detailSection);
   } else {
-    // Default: case law first, then statutes, then detail sections
+    // Judgment queries: judgments first
     if (judgeSection)      sections.push(judgeSection);
     if (statSection)       sections.push(statSection);
     if (detailSection)     sections.push(detailSection);
@@ -236,7 +233,7 @@ export function buildContext(
   parts.push("");
 
   if (hasCaseLawCitations) {
-    parts.push(`CASE LAW RULE (MANDATORY): Cite ONLY judgments from the VERIFIED JUDGMENTS section below that are DIRECTLY relevant to the user's legal question. Copy each CITATION string verbatim. Never invent or recall citations from training data. Quality over quantity — citing 2-4 highly relevant cases is better than 5+ mixed-domain cases. If NONE of the cases below are relevant to the specific legal topic, say so and recommend /judgment-search.
+    parts.push(`CASE LAW RULE (MANDATORY): You MUST cite 1 to 4 of the judgments from the VERIFIED JUDGMENTS section below under a '### Leading Case Law' header. Copy each CITATION string verbatim. Explain how each cited case applies to the user's scenario. NEVER write 'No relevant judgments found' when cases are present in the VERIFIED JUDGMENTS section below. Never invent or recall citations from training data.
 
 For EACH cited case, provide a FULL SHORT SUMMARY using this EXACT format:
 

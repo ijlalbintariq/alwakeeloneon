@@ -1823,7 +1823,7 @@ export const STATUTE_ABBREVIATION_MAP: Record<string, string> = {
   "qr": "Punjab Qaumi Razakars Ordinance 1965",
   "rcl": "Punjab Race Courses Licensing Ordinance 1996",
   "rrml": "Punjab Redemption and Restitution of Mortgaged Land Amendment Ordinance 2001",
-  "rs": "Punjab Regularization of Service Act 2018",
+  "prsa": "Punjab Regularization of Service Act 2018",
   "ri": "Punjab Relief Of Indebtedness Act 1934",
   "rfsp": "Punjab Removal From Service Special Powers Amendment Ordinance 2001",
   "rfspf": "Punjab Removal From Service Special Powers First Amendment Ordinance 2002",

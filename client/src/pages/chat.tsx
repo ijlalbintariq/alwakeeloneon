@@ -1483,21 +1483,20 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           )}
 
                           {/* References/Definitions */}
-                          {parsed?.references && (parsed.references.judgments.length > 0 || parsed.references.laws.length > 0) && (
+                          {parsed?.references && parsed.references.judgments.length > 0 && (
                             <div className="space-y-2">
-                              {[...parsed.references.judgments.slice(0, 2).map((ref) => ({ title: ref.citation, name: ref.citation, description: ref.description })),
-                                ...parsed.references.laws.slice(0, 2).map((ref) => ({ title: ref.name, name: ref.name, description: ref.description })),
-                              ].slice(0, 2).map((ref, idx) => (
-                                <div key={idx} className="flex gap-3 p-3 rounded-lg bg-muted border border-border hover:border-primary/30 transition-colors duration-150">
-                                  <Link2 size={16} className="text-primary flex-shrink-0 mt-0.5" />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-semibold text-foreground truncate">{ref.title || ref.name}</p>
-                                    {ref.description && (
-                                      <p className="text-[9px] text-muted-foreground mt-1 line-clamp-1">{ref.description}</p>
-                                    )}
+                              {parsed.references.judgments.slice(0, 2).map((ref) => ({ title: ref.citation, name: ref.citation, description: ref.description }))
+                                .slice(0, 2).map((ref, idx) => (
+                                  <div key={idx} className="flex gap-3 p-3 rounded-lg bg-muted border border-border hover:border-primary/30 transition-colors duration-150">
+                                    <Link2 size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[10px] font-semibold text-foreground truncate">{ref.title || ref.name}</p>
+                                      {ref.description && (
+                                        <p className="text-[9px] text-muted-foreground mt-1 line-clamp-1">{ref.description}</p>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                ))}
                             </div>
                           )}
                         </div>

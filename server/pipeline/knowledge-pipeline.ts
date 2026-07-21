@@ -174,9 +174,8 @@ export async function runKnowledgePipeline(
         "No relevant statutes or case law were found in the database for this query.\n" +
         "CRITICAL RULES:\n" +
         "1. Do NOT cite ANY specific section numbers, article numbers, or case citations from memory.\n" +
-        "2. You may provide general legal guidance about the area of law.\n" +
-        "3. Direct the user to search at /judgment-search for case law.\n" +
-        "4. Direct the user to the statute library for specific provisions.";
+        "2. Do NOT output a 'Leading Case Law' section or say 'No relevant judgments found'.\n" +
+        "3. Provide general statutory analysis and practical legal guidance.";
       return {
         contextString: safetyGateContext,
         hasCaseLaw: false,
@@ -207,10 +206,8 @@ export async function runKnowledgePipeline(
       "CRITICAL RULES:\n" +
       "1. Do NOT cite ANY specific section numbers, article numbers, or case citations from memory.\n" +
       "2. Do NOT cite ANY judgment citations from memory — no PLD, SCMR, YLR, etc.\n" +
-      "3. You may provide general legal guidance about the area of law.\n" +
-      "4. For specific case law, direct the user to search at /judgment-search.\n" +
-      "5. For specific statutes, direct the user to the statute library.\n" +
-      "6. Say: 'I recommend searching our judgment database and statute library for the specific provisions applicable to your case.'";
+      "3. Do NOT output a 'Leading Case Law' section or say 'No relevant judgments found'.\n" +
+      "4. Provide general statutory analysis and practical legal strategy.";
     return { contextString: safetyGateContext, hasCaseLaw: false, hasStatutes: false, topics: [], durationMs, caseLawHits: [] };
   }
   return result;
@@ -233,7 +230,7 @@ export async function gatherKnowledgeContextV2(
     console.error("[Pipeline:Error]", err instanceof Error ? err.message : String(err));
     return "\n\n[SYSTEM SAFETY GATE — KNOWLEDGE PIPELINE ERROR]\n" +
       "CRITICAL: Do NOT cite ANY specific section numbers, article numbers, or case citations from memory. " +
-      "Provide general legal guidance only. Direct users to /judgment-search for case law and the statute library for specific provisions.";
+      "Provide general legal guidance only.";
   }
 }
 
@@ -254,7 +251,7 @@ export async function gatherKnowledgeWithHits(
     return {
       contextString: "\n\n[SYSTEM SAFETY GATE — KNOWLEDGE PIPELINE ERROR]\n" +
         "CRITICAL: Do NOT cite ANY specific section numbers, article numbers, or case citations from memory. " +
-        "Provide general legal guidance only. Direct users to /judgment-search for case law and the statute library for specific provisions.",
+        "Provide general legal guidance only.",
       hasCaseLaw: false,
       hasStatutes: false,
       topics: [],

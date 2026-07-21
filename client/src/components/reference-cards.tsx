@@ -23,6 +23,9 @@ interface ParsedReferences {
 
 interface StatuteLookupResult {
   found: boolean;
+  documentId?: number;
+  documentTitle?: string;
+  sourceType?: string;
   statutes?: Array<{ shortTitle: string; section: string; description: string; punishment: string }>;
   documents?: Array<{ id: number; title: string; content: string; category: string }>;
   knowledgeVault?: Array<{ title: string; content: string }>;
@@ -359,15 +362,28 @@ function LawDetailPopup({ law, onClose }: { law: LawReference; onClose: () => vo
               </div>
             )}
 
-            {/* Open in Statute Search link — always shown when we have a law name */}
-            {!isLoading && (
+            {/* Open Full Statute button — links directly to statute document viewer */}
+            {!isLoading && lookupData?.documentId && (
+              <div className="border-t border-border pt-4 space-y-2">
+                <a
+                  href={`/statute-view/${lookupData.documentId}`}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-sm font-semibold hover:bg-emerald-500/20 transition-colors"
+                >
+                  <BookOpen size={16} />
+                  Open Full Statute{lookupData.documentTitle ? `: ${lookupData.documentTitle}` : ""}
+                </a>
+              </div>
+            )}
+
+            {/* Fallback: Search link when no direct document match */}
+            {!isLoading && !lookupData?.documentId && (
               <div className="border-t border-border pt-4">
                 <a
                   href={`/statute-search?q=${encodeURIComponent(law.section ? `${law.name} ${law.section}` : law.name)}`}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 border border-primary/30 rounded-xl text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
                 >
                   <ExternalLink size={16} />
-                  Open in Statute Search
+                  Search in Statute Library
                 </a>
               </div>
             )}
@@ -541,17 +557,6 @@ function JudgmentDetailPopup({ judgment, onClose }: { judgment: JudgmentReferenc
 
               {lookupData?.found && (
                 <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.open(`/judgment/${lookupData.id}`, '_blank');
-                    }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary border border-primary rounded-xl text-primary-foreground text-sm font-semibold hover:bg-primary/95 transition-colors"
-                  >
-                    <ExternalLink size={16} />
-                    Read Full Judgment Details
-                  </button>
-
                   {lookupData.hasSource && (
                     <button
                       onClick={handleViewSource}
@@ -566,6 +571,12 @@ function JudgmentDetailPopup({ judgment, onClose }: { judgment: JudgmentReferenc
                       {isLoadingSource ? "Loading Document..." : "Open Case Law Document"}
                       <span className="text-[10px] text-primary/60 ml-1">({sourceLabel})</span>
                     </button>
+                  )}
+                  {!lookupData.hasSource && !isLoadingLookup && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-card/50 rounded-lg text-[11px] text-muted-foreground">
+                      <FileText size={12} />
+                      Found in database (no linked source document)
+                    </div>
                   )}
                 </div>
               )}
@@ -608,44 +619,7 @@ export function ReferenceCards({ references }: { references: ParsedReferences })
   return (
     <>
       <div className="mt-4 pt-4 border-t border-border/50 space-y-3" data-testid="reference-cards-container">
-        {references.laws.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <BookOpen size={13} className="text-primary" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary/80" data-testid="text-relevant-laws-label">Relevant Laws</span>
-              <ChevronRight size={12} className="text-muted-foreground" />
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {references.laws.map((law, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSelectedLaw(law);
-                  }}
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                  }}
-                  className="flex-shrink-0 bg-card/80 border border-border/50 rounded-xl p-3 text-left max-w-[260px] transition-all hover:bg-muted/50 hover:border-primary/30 active:scale-[0.98] cursor-pointer select-none"
-                  style={{ touchAction: "manipulation" }}
-                  data-testid={`card-law-${i}`}
-                >
-                  <p className="text-xs font-bold text-foreground truncate" data-testid={`text-law-name-${i}`}>
-                    {law.name}
-                  </p>
-                  {law.section && (
-                    <p className="text-[10px] text-primary/70 font-semibold mt-0.5" data-testid={`text-law-section-${i}`}>{law.section}</p>
-                  )}
-                  <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed" data-testid={`text-law-description-${i}`}>
-                    {law.description}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+
 
         {references.judgments.length > 0 && (
           <div>

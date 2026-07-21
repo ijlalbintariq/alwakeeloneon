@@ -42,59 +42,8 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
   const statutePattern = /\b(?:(Section\s+\d+(?:\s*[A-Za-z]*)?(?:\s+(?:PPC|CPC|IPC|PCA|PMLA|BNPL|SECP))?)|(?:(?:PPC|CPC|IPC|PCA|PMLA|BNPL|SECP|Constitution|Qanun-e-Shahadat)\s+(?:Order|Act|Code|Rule|Ordinance|1997|1998|1999|2000|2001|2002|2003|2004|2005|2006|2007|2008|2009|2010|2011|2012|2013|2014|2015|2016|2017|2018|2019|2020|2021|2022|2023|2024)))\b/gi;
 
   const processTextForCitations = (text: string) => {
-    const parts: (string | React.ReactNode)[] = [];
-    let lastIndex = 0;
-    const allMatches: Array<{ start: number; end: number; text: string; label: string; type: 'citation' | 'statute' }> = [];
-
-    let match;
-    while ((match = citationPattern.exec(text)) !== null) {
-      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[0], type: 'citation' });
-    }
-
-    // Report-first citations: PLJ 2010 Lahore 122, PLD 2020 Supreme Court 686
-    while ((match = reportFirstPattern.exec(text)) !== null) {
-      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[0], type: 'citation' });
-    }
-
-    // Full statute names in brackets and statute patterns are no longer highlighted automatically
-    // to prevent plain-text section numbers from becoming red and clickable.
-    /*
-    while ((match = bracketStatutePattern.exec(text)) !== null) {
-      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[1], type: 'statute' });
-    }
-
-    while ((match = statutePattern.exec(text)) !== null) {
-      allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[0], type: 'statute' });
-    }
-    */
-
-    allMatches.sort((a, b) => a.start - b.start);
-
-    // Remove overlaps - keep first match when ranges overlap
-    const deduped = allMatches.filter((m, i) => {
-      if (i === 0) return true;
-      return m.start >= allMatches[i - 1].end;
-    });
-
-    deduped.forEach((m) => {
-      if (m.start > lastIndex) {
-        parts.push(text.slice(lastIndex, m.start));
-      }
-      const searchQuery = encodeURIComponent(m.label);
-      const href = m.type === 'statute' ? `/statute-search?q=${searchQuery}` : `/judgments?q=${searchQuery}`;
-      parts.push(
-        <LegalLink key={`${m.type}-${m.start}`} href={href}>
-          {m.label}
-        </LegalLink>
-      );
-      lastIndex = m.end;
-    });
-
-    if (lastIndex < text.length) {
-      parts.push(text.slice(lastIndex));
-    }
-
-    return parts.length > 0 ? parts : text;
+    // Disable automatic inline citation highlighting
+    return text;
   };
 
   return (
@@ -148,31 +97,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             );
           },
           strong: ({ children }) => {
-            const text = extractText(children);
-            // Disable bold bracketed statute parser to prevent accidental highlights
-            /*
-            const statuteMatch = text.match(/^\[(.+?)\]$/);
-            if (statuteMatch) {
-              const statuteName = statuteMatch[1];
-              const searchQuery = encodeURIComponent(statuteName);
-              return (
-                <LegalLink href={`/statute-search?q=${searchQuery}`}>
-                  <strong className="font-bold">{statuteName}</strong>
-                </LegalLink>
-              );
-            }
-            */
-            // Use fresh non-global regex to avoid stateful lastIndex bug with g flag
-            const isCitation = /\b\d{4}\s+(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ|PLC|NLR|PSC|ALD|KLR|PTD|PTCL|PLS|GBLR|CLD|TAX|SLR|LHC|IHC|SHC)\s+\d+\b/i.test(text)
-              || /\b(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ|PLC|NLR|PSC|ALD|KLR|PTD|PTCL|PLS|GBLR|CLD|TAX|SLR)\s+(?:19|20)\d{2}\b/i.test(text);
-            if (isCitation) {
-              const searchQuery = encodeURIComponent(text);
-              return (
-                <LegalLink href={`/judgments?q=${searchQuery}`}>
-                  <strong className="font-bold">{text}</strong>
-                </LegalLink>
-              );
-            }
+            // Disable inline citation highlighting for bold text
             return <strong className="text-foreground font-bold">{children}</strong>;
           },
           ul: ({ children }) => (

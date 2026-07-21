@@ -595,10 +595,23 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
     if (fallback.length > 0) return fallback;
   }
 
-  // ── Topic-to-Statute-Title Mapping ──────────────────────────────────────
-  // Instead of broad ILIKE keyword search across 88K+ statutes (which returns
-  // irrelevant noise), map detected topics to the exact statute shortTitles
-  // present in the database, then fetch sections from those specific statutes.
+  // ── PRIMARY: Semantic Vector Search (88K embeddings) ─────────────────────
+  // Always run vector search first — this is the main search path that uses
+  // all 88K statute embeddings for semantic understanding of the query.
+  const query = intent.normalized;
+  const queryWords = query.split(/\s+/).filter((w) => w.length >= 3);
+
+  // Start embedding the query immediately (async)
+  let queryEmbedding: number[] | null = null;
+  try {
+    queryEmbedding = await withTimeout(getCachedQueryEmbedding(query), STATUTE_TIMEOUT_MS, null);
+  } catch (err) {
+    console.warn(`[RAG:Statutes] Failed to embed query:`, err);
+  }
+
+  // ── SUPPLEMENTARY: Topic-to-Statute-Title Mapping ──────────────────────
+  // Use detected topics to boost results from known relevant statutes.
+  // This supplements vector search, not replaces it.
   const TOPIC_STATUTE_MAP: Record<string, string[]> = {
     "contract": ["Contract Act 1872", "Specific Relief Act 1877", "Specific Relief Act, 1877"],
     "property": ["Transfer of Property Act 1882", "Transfer of Property Act, 1882", "Registration Act 1908", "West Pakistan Land Revenue Act 1967", "Specific Relief Act 1877", "Specific Relief Act, 1877"],
@@ -623,7 +636,6 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
     "pre-emption": ["Punjab Pre-Emption Act 1991", "West Pakistan Pre-Emption Act 1964"],
   };
 
-  // Collect all relevant statute titles from detected topics
   const targetTitles = new Set<string>();
   for (const topic of intent.topics) {
     const titles = TOPIC_STATUTE_MAP[topic.id];
@@ -654,82 +666,51 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
     }
   }
 
-  if (targetTitles.size > 0) {
-    // Fetch sections from targeted statutes using exact title match
-    const allResults: RetrievedStatute[] = [];
-    const perStatuteLimit = Math.max(3, Math.ceil(limit / targetTitles.size));
-
-    const promises = Array.from(targetTitles).map(async (title) => {
-      try {
-        const rows = await withTimeout(
-          storage.getStatutesByTitle(title, perStatuteLimit * 3).catch(() => []),
-          STATUTE_TIMEOUT_MS,
-          [],
-        ) as any[];
-
-        // Score by query relevance within this statute
-        const queryWords = intent.normalized.split(/\s+/).filter((w) => w.length >= 3);
-        const scored = rows.map((s: any) => {
-          const combined = norm(`${s.shortTitle || ""} ${s.section || ""} ${s.description || ""}`);
-          let score = 0;
-          for (const word of queryWords) {
-            if (combined.includes(word)) score += 10;
+  // ── Run ALL search paths in parallel ───────────────────────────────────
+  // 1. Vector similarity search (88K embeddings — primary)
+  // 2. Keyword search (ILIKE fallback)
+  // 3. Topic-mapped statute title search (supplementary boost)
+  const topicMapPromise = targetTitles.size > 0
+    ? (async () => {
+        const perStatuteLimit = Math.max(3, Math.ceil(limit / targetTitles.size));
+        const promises = Array.from(targetTitles).map(async (title) => {
+          try {
+            const rows = await withTimeout(
+              storage.getStatutesByTitle(title, perStatuteLimit * 3).catch(() => []),
+              STATUTE_TIMEOUT_MS,
+              [],
+            ) as any[];
+            const scored = rows.map((s: any) => {
+              const combined = norm(`${s.shortTitle || ""} ${s.section || ""} ${s.description || ""}`);
+              let score = 0;
+              for (const word of queryWords) {
+                if (combined.includes(word)) score += 10;
+              }
+              for (const topic of intent.topics) {
+                for (const term of [...topic.primary, ...topic.synonyms.slice(0, 6)]) {
+                  if (combined.includes(term)) score += 8;
+                }
+              }
+              return {
+                shortTitle: String(s.shortTitle || ""),
+                section: String(s.section || ""),
+                description: String(s.description || ""),
+                punishment: String(s.punishment || ""),
+                relevanceScore: Math.max(score, 5),
+                statuteDocumentTitle: title,
+              } as RetrievedStatute;
+            });
+            return scored.sort((a, b) => b.relevanceScore - a.relevanceScore).slice(0, perStatuteLimit);
+          } catch {
+            return [] as RetrievedStatute[];
           }
-          for (const topic of intent.topics) {
-            for (const term of [...topic.primary, ...topic.synonyms.slice(0, 6)]) {
-              if (combined.includes(term)) score += 8;
-            }
-          }
-          return {
-            shortTitle: String(s.shortTitle || ""),
-            section: String(s.section || ""),
-            description: String(s.description || ""),
-            punishment: String(s.punishment || ""),
-            relevanceScore: Math.max(score, 5), // Floor at 5 — these are from targeted statutes
-            statuteDocumentTitle: title,
-          } as RetrievedStatute;
         });
+        const results = await Promise.all(promises);
+        return results.flat();
+      })()
+    : Promise.resolve([] as RetrievedStatute[]);
 
-        return scored
-          .sort((a, b) => b.relevanceScore - a.relevanceScore)
-          .slice(0, perStatuteLimit);
-      } catch {
-        return [] as RetrievedStatute[];
-      }
-    });
-
-    const results = await Promise.all(promises);
-    for (const batch of results) {
-      allResults.push(...batch);
-    }
-
-    if (allResults.length > 0) {
-      // Sort all results by relevance and deduplicate
-      allResults.sort((a, b) => b.relevanceScore - a.relevanceScore);
-      const seen = new Set<string>();
-      const deduped: RetrievedStatute[] = [];
-      for (const s of allResults) {
-        const key = `${s.shortTitle}::${s.section}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        deduped.push(s);
-        if (deduped.length >= limit) break;
-      }
-      return deduped;
-    }
-  }
-
-  // Fallback: semantic hybrid search (Voyage Law-2 similarity + keyword matching)
-  const query = intent.normalized;
-  
-  let queryEmbedding: number[] | null = null;
-  try {
-    queryEmbedding = await withTimeout(getCachedQueryEmbedding(query), STATUTE_TIMEOUT_MS, null);
-  } catch (err) {
-    console.warn(`[RAG:Statutes] Failed to embed query:`, err);
-  }
-
-  const [rawRows, vectorMatches] = await Promise.all([
+  const [rawRows, vectorMatches, topicMapResults] = await Promise.all([
     withTimeout(storage.searchStatutes(query, limit * 3).catch(() => []), STATUTE_TIMEOUT_MS, []),
     queryEmbedding
       ? withTimeout(
@@ -748,17 +729,43 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
           [],
         )
       : Promise.resolve([]),
+    topicMapPromise,
   ]);
 
-  const queryWords = intent.normalized.split(/\s+/).filter((w) => w.length >= 3);
+  console.log(`[RAG:Statutes] Results — vector: ${vectorMatches.length}, keyword: ${(rawRows as any[]).length}, topicMap: ${topicMapResults.length}`);
 
-  // Map to easily check section matches
-  const statuteMap = new Map<string, RetrievedStatute & { vectorScore?: number; keywordScore?: number }>();
-
-  // Helper to normalize strings
+  // ── Merge all results into a single scored map ─────────────────────────
+  const statuteMap = new Map<string, RetrievedStatute & { vectorScore?: number; keywordScore?: number; topicBoost?: number }>();
   const getSectionKey = (title: string, sec: string) => `${norm(title)}::${norm(sec)}`;
 
-  // 1. Process keyword rows
+  // 1. Process vector matches (PRIMARY — highest trust)
+  for (const m of vectorMatches) {
+    const sTitle = String((m.metadata as any)?.shortTitle || "");
+    const sec = String((m.metadata as any)?.section || "");
+    if (!sTitle || !sec) continue;
+
+    const key = getSectionKey(sTitle, sec);
+
+    // Parse description and punishment from chunkText
+    const parts = (m.chunkText || "").split("\nDESCRIPTION:\n");
+    const descAndPunish = parts[1] || "";
+    const subParts = descAndPunish.split("\nPUNISHMENT: ");
+    const description = subParts[0] || "";
+    const punishment = subParts[1] || "None";
+
+    statuteMap.set(key, {
+      shortTitle: sTitle,
+      section: sec,
+      description,
+      punishment,
+      relevanceScore: 0,
+      vectorScore: m.score,
+      keywordScore: 0,
+      topicBoost: 0,
+    });
+  }
+
+  // 2. Process keyword rows (merge into existing or add new)
   for (const s of rawRows as any[]) {
     const key = getSectionKey(s.shortTitle, s.section);
     const combined = norm(`${s.shortTitle || ""} ${s.section || ""} ${s.description || ""}`);
@@ -773,53 +780,60 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
     }
     const normKw = Math.min(1.0, kwScore / 50);
 
-    statuteMap.set(key, {
-      shortTitle: String(s.shortTitle || ""),
-      section: String(s.section || ""),
-      description: String(s.description || ""),
-      punishment: String(s.punishment || ""),
-      relevanceScore: 0, // calculated below
-      keywordScore: normKw,
-      vectorScore: 0,
-    });
-  }
-
-  // 2. Process vector matches
-  for (const m of vectorMatches) {
-    const sTitle = String((m.metadata as any)?.shortTitle || "");
-    const sec = String((m.metadata as any)?.section || "");
-    if (!sTitle || !sec) continue;
-
-    const key = getSectionKey(sTitle, sec);
-    
-    // Parse description and punishment from chunkText
-    // Format: `STATUTE: ...\nSECTION: ...\nDESCRIPTION:\n...\nPUNISHMENT: ...`
-    const parts = (m.chunkText || "").split("\nDESCRIPTION:\n");
-    const descAndPunish = parts[1] || "";
-    const subParts = descAndPunish.split("\nPUNISHMENT: ");
-    const description = subParts[0] || "";
-    const punishment = subParts[1] || "None";
-
     const existing = statuteMap.get(key);
     if (existing) {
-      existing.vectorScore = m.score;
+      existing.keywordScore = normKw;
     } else {
       statuteMap.set(key, {
-        shortTitle: sTitle,
-        section: sec,
-        description,
-        punishment,
+        shortTitle: String(s.shortTitle || ""),
+        section: String(s.section || ""),
+        description: String(s.description || ""),
+        punishment: String(s.punishment || ""),
         relevanceScore: 0,
-        vectorScore: m.score,
-        keywordScore: 0,
+        keywordScore: normKw,
+        vectorScore: 0,
+        topicBoost: 0,
       });
     }
   }
 
-  // 3. Compute fused hybrid scores
+  // 3. Process topic map results (boost score for matching entries)
+  for (const tmResult of topicMapResults) {
+    const key = getSectionKey(tmResult.shortTitle, tmResult.section);
+    const existing = statuteMap.get(key);
+    if (existing) {
+      // Boost: this statute was found by both vector/keyword AND topic map
+      existing.topicBoost = Math.min(0.15, (tmResult.relevanceScore || 5) / 100);
+      // Enrich description if vector match had empty description
+      if (!existing.description && tmResult.description) {
+        existing.description = tmResult.description;
+      }
+      if (!existing.punishment && tmResult.punishment) {
+        existing.punishment = tmResult.punishment;
+      }
+      if (tmResult.statuteDocumentTitle) {
+        (existing as any).statuteDocumentTitle = tmResult.statuteDocumentTitle;
+      }
+    } else {
+      // Topic map found a statute not in vector or keyword results — add it
+      statuteMap.set(key, {
+        shortTitle: tmResult.shortTitle,
+        section: tmResult.section,
+        description: tmResult.description,
+        punishment: tmResult.punishment,
+        relevanceScore: 0,
+        vectorScore: 0,
+        keywordScore: 0,
+        topicBoost: Math.min(0.15, (tmResult.relevanceScore || 5) / 100),
+        statuteDocumentTitle: tmResult.statuteDocumentTitle,
+      } as any);
+    }
+  }
+
+  // 4. Compute fused hybrid scores (vector-first weighting)
   const candidates: RetrievedStatute[] = [];
   for (const item of statuteMap.values()) {
-    const fused = 0.72 * (item.vectorScore || 0) + 0.28 * (item.keywordScore || 0);
+    const fused = 0.65 * (item.vectorScore || 0) + 0.25 * (item.keywordScore || 0) + 0.10 * (item.topicBoost || 0);
     item.relevanceScore = Math.round(fused * 100);
     candidates.push({
       shortTitle: item.shortTitle,
@@ -827,13 +841,14 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
       description: item.description,
       punishment: item.punishment,
       relevanceScore: item.relevanceScore,
+      statuteDocumentTitle: (item as any).statuteDocumentTitle,
     });
   }
 
   candidates.sort((a, b) => b.relevanceScore - a.relevanceScore);
   const topCandidates = candidates.slice(0, 15);
 
-  // 4. Apply Voyage Reranker if active
+  // 5. Apply Voyage Reranker if active
   if (topCandidates.length > 0 && process.env.RAG_EMBEDDING_PROVIDER?.toLowerCase() === "voyage") {
     try {
       const { rerankVoyage } = await import("../rag/embedding-local");
