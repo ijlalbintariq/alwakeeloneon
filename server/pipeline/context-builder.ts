@@ -47,8 +47,8 @@ export interface ContextOutput {
 // ---------------------------------------------------------------------------
 
 // Excerpt lengths by source: judgment rows have rich headnotes so get more chars
-const EXCERPT_CHARS_JUDGMENT = 600;
-const EXCERPT_CHARS_EXTRACTED = 300;
+const EXCERPT_CHARS_JUDGMENT = 2000;
+const EXCERPT_CHARS_EXTRACTED = 1000;
 
 function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSection | null {
   const lines: string[] = [];
@@ -205,13 +205,16 @@ export function buildContext(
   const statDetailSection = buildStatutesDetailSection(retrieval.statutes);
 
   if (statuteFirst) {
-    // Statute queries: statutes first so the AI leads with the law, then supporting case law
+    // Statute queries: concise citations first (both statutes + case law),
+    // then verbose detail sections. This ordering ensures case law citations
+    // survive token-budget truncation — the detail sections are large and
+    // were previously pushing case law off the end of the context window.
     if (statSection)       sections.push(statSection);
-    if (statDetailSection) sections.push(statDetailSection);
     if (judgeSection)      sections.push(judgeSection);
+    if (statDetailSection) sections.push(statDetailSection);
     if (detailSection)     sections.push(detailSection);
   } else {
-    // Default: case law first
+    // Default: case law first, then statutes, then detail sections
     if (judgeSection)      sections.push(judgeSection);
     if (statSection)       sections.push(statSection);
     if (detailSection)     sections.push(detailSection);

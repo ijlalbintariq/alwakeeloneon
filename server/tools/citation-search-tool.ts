@@ -389,6 +389,7 @@ export async function executeCitationSearch(args: CitationSearchArgs): Promise<s
       found: merged.length,
       message: `Found ${merged.length} judgment(s). Use ONLY these citations in your response.`,
       results: merged.map((r) => ({
+        id: (r as any).judgmentId || r.id,
         citation: r.citation,
         court: r.court,
         title: r.title,

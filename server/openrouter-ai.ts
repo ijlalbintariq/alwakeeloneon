@@ -69,7 +69,7 @@ export interface ToolJudgmentSearchResult {
    * AI sees, but exposed verbatim to the frontend so it can render a raw,
    * authoritative case-law list independent of the AI's prose.
    */
-  verifiedHits: Array<{ citation: string; title: string; court: string; summary: string }>;
+  verifiedHits: Array<{ id?: string; citation: string; title: string; court: string; summary: string }>;
 }
 
 /**
@@ -198,7 +198,7 @@ export async function runToolJudgmentSearchOR(
   // DB connection. Without a guard the Promise.all hangs and blows past the
   // outer ENRICHMENT_BUDGET_MS, causing the AI to receive zero case law context.
   const DB_SEARCH_TIMEOUT_MS = 18000;
-  const allResults: Array<{ citation: string; court: string; title: string; summary: string }> = [];
+  const allResults: Array<{ id?: string; citation: string; court: string; title: string; summary: string }> = [];
   const queriesUsed: string[] = [];
 
   await Promise.all(
@@ -264,5 +264,5 @@ export async function runToolJudgmentSearchOR(
     ...lines,
   ].join("\n");
 
-  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation), verifiedTitles: unique.map(u => ({ title: u.title, citation: u.citation })), verifiedHits: unique.map(u => ({ citation: u.citation, title: u.title, court: u.court, summary: u.summary })) };
+  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation), verifiedTitles: unique.map(u => ({ title: u.title, citation: u.citation })), verifiedHits: unique.map(u => ({ id: u.id, citation: u.citation, title: u.title, court: u.court, summary: u.summary })) };
 }

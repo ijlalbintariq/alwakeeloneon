@@ -2473,9 +2473,9 @@ export const LEGAL_TOPICS: LegalTopic[] = [
   {
     id: "family",
     label: "Family Law / Divorce / Custody",
-    primary: ["family", "divorce", "custody", "marriage", "maintenance", "dower", "khula", "guardianship"],
-    synonyms: ["muslim family laws", "family court", "child custody", "visitation rights", "dower amount", "prompt dower", "deferred dower", "nikah", "nikahnama", "talaq", "dissolution of marriage", "jactitation of marriage", "restitution of conjugal rights", "guardian", "ward", "minor", "narcotics", "cnsa", "section 9", "maintenance allowance", "interim maintenance", "past maintenance", "family courts act 1964", "muslim family laws ordinance 1961", "dissolution of muslim marriages act 1939", "guardians and wards act 1890", "section 25", "section 12 gwa", "hizanat", "mother's custody", "father's custody", "pauperism"],
-    minRelevanceScore: 28,
+    primary: ["family", "divorce", "custody", "marriage", "maintenance", "dower", "khula", "guardianship", "husband", "wife", "spouse", "marries", "married"],
+    synonyms: ["muslim family laws", "family court", "child custody", "visitation rights", "dower amount", "prompt dower", "deferred dower", "nikah", "nikahnama", "talaq", "dissolution of marriage", "jactitation of marriage", "restitution of conjugal rights", "guardian", "ward", "minor", "maintenance allowance", "interim maintenance", "past maintenance", "family courts act 1964", "muslim family laws ordinance 1961", "dissolution of muslim marriages act 1939", "guardians and wards act 1890", "section 25", "section 12 gwa", "hizanat", "mother's custody", "father's custody", "pauperism", "second marriage", "second wife", "another wife", "another woman", "polygamy", "co-wife", "polygamous", "permission of first wife", "permission of existing wife", "consent of wife", "secret marriage", "mehr", "arbitration council", "union council", "polygamy section 6"],
+    minRelevanceScore: 22,
   },
   {
     id: "property",

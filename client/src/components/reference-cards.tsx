@@ -539,27 +539,48 @@ function JudgmentDetailPopup({ judgment, onClose }: { judgment: JudgmentReferenc
                 </div>
               )}
 
-              {lookupData?.found && lookupData.hasSource && (
-                <button
-                  onClick={handleViewSource}
-                  disabled={isLoadingSource}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 border border-primary/30 rounded-xl text-primary text-sm font-semibold hover:bg-primary/20 transition-colors disabled:opacity-50"
-                >
-                  {isLoadingSource ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <FileText size={16} />
+              {lookupData?.found && (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.open(`/judgment/${lookupData.id}`, '_blank');
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary border border-primary rounded-xl text-primary-foreground text-sm font-semibold hover:bg-primary/95 transition-colors"
+                  >
+                    <ExternalLink size={16} />
+                    Read Full Judgment Details
+                  </button>
+
+                  {lookupData.hasSource && (
+                    <button
+                      onClick={handleViewSource}
+                      disabled={isLoadingSource}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 border border-primary/30 rounded-xl text-primary text-sm font-semibold hover:bg-primary/20 transition-colors disabled:opacity-50"
+                    >
+                      {isLoadingSource ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <FileText size={16} />
+                      )}
+                      {isLoadingSource ? "Loading Document..." : "Open Case Law Document"}
+                      <span className="text-[10px] text-primary/60 ml-1">({sourceLabel})</span>
+                    </button>
                   )}
-                  {isLoadingSource ? "Loading Document..." : "Open Case Law Document"}
-                  <span className="text-[10px] text-primary/60 ml-1">({sourceLabel})</span>
-                </button>
+                </div>
               )}
 
-              {lookupData?.found && !lookupData.hasSource && !isLoadingLookup && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-card/50 rounded-lg text-[11px] text-muted-foreground">
-                  <FileText size={12} />
-                  Found in database (no linked source document)
-                </div>
+              {!isLoadingLookup && !lookupData?.found && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open(`/judgments?q=${encodeURIComponent(judgment.citation)}`, '_blank');
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 border border-primary/30 rounded-xl text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
+                >
+                  <ExternalLink size={16} />
+                  Search Database for Citation
+                </button>
               )}
             </div>
           </div>

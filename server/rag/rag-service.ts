@@ -671,24 +671,21 @@ export async function indexJudgmentDocument(judgmentId: string): Promise<RAGInde
   };
 }
 
-// ── Query embedding cache ─────────────────────────────────────────────────
-// Same query text produces the same embedding — cache for 5 minutes to avoid
-// redundant OpenAI API calls on repeated or follow-up questions.
-const _queryEmbedCache = new Map<string, { vector: number[]; ts: number }>();
+const _queryEmbedCache = new Map<string, { promise: Promise<number[]>; ts: number }>();
 const QUERY_EMBED_CACHE_TTL = 300_000; // 5 minutes
 
-async function getCachedQueryEmbedding(text: string): Promise<number[]> {
+export async function getCachedQueryEmbedding(text: string): Promise<number[]> {
   const key = text.trim().toLowerCase().slice(0, 300);
   const cached = _queryEmbedCache.get(key);
-  if (cached && Date.now() - cached.ts < QUERY_EMBED_CACHE_TTL) return cached.vector;
-  const vector = await embedTextLocal(text);
-  _queryEmbedCache.set(key, { vector, ts: Date.now() });
+  if (cached && Date.now() - cached.ts < QUERY_EMBED_CACHE_TTL) return cached.promise;
+  const promise = embedTextLocal(text);
+  _queryEmbedCache.set(key, { promise, ts: Date.now() });
   // Evict if cache grows too large
   if (_queryEmbedCache.size > 500) {
     const oldest = [..._queryEmbedCache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0];
     if (oldest) _queryEmbedCache.delete(oldest[0]);
   }
-  return vector;
+  return promise;
 }
 
 export async function retrieveForQuery(args: {

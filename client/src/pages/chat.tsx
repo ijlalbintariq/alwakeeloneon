@@ -1241,7 +1241,11 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   };
 
   // Helper function to open judgment directly if found, else fallback to search
-  const openJudgment = async (citation: string) => {
+  const openJudgment = async (citation: string, id?: string) => {
+    if (id) {
+      window.open(`/judgment/${id}`, '_blank');
+      return;
+    }
     try {
       const res = await apiRequest("GET", `/api/caseLaw/lookup?q=${encodeURIComponent(citation)}`);
       const data = await res.json();

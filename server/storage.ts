@@ -1525,9 +1525,19 @@ export class DatabaseStorage implements IStorage {
   async getStatutesByTitle(shortTitle: string, limit: number = 20): Promise<Statute[]> {
     const safeTitle = String(shortTitle || "").trim();
     if (!safeTitle) return [];
-    return await db.select()
+    
+    // 1. Try exact match
+    const exactRows = await db.select()
       .from(statutes)
       .where(ilike(statutes.shortTitle, safeTitle))
+      .limit(limit);
+    if (exactRows.length > 0) return exactRows;
+
+    // 2. Try loose match (strip commas, punctuation and replace spaces with wildcards)
+    const cleanTitle = safeTitle.replace(/[^a-z0-9\s]/gi, "").replace(/\s+/g, "%");
+    return await db.select()
+      .from(statutes)
+      .where(ilike(statutes.shortTitle, `%${cleanTitle}%`))
       .limit(limit);
   }
 
@@ -2211,6 +2221,7 @@ export class DatabaseStorage implements IStorage {
 
               results.push({
                 id: numericId,
+                judgmentId: row.id,
                 citation,
                 citationYear: Number.isInteger(row.year) ? row.year : null,
                 citationReport: row.journalCode || null,
@@ -2596,6 +2607,7 @@ export class DatabaseStorage implements IStorage {
 
       results.push({
         id: numericId,
+        judgmentId: row.id,
         citation,
         citationYear: Number.isInteger(row.year) ? row.year : null,
         citationReport: row.journalCode || null,
@@ -2655,6 +2667,7 @@ export class DatabaseStorage implements IStorage {
       const titleStr = String(row.title || parties || `Case ${citation}`).trim();
       return {
         id: numericId,
+        judgmentId: row.id,
         citation,
         citationYear: Number.isInteger(row.year) ? row.year : null,
         citationReport: row.journalCode || null,

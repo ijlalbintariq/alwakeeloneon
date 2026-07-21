@@ -56,7 +56,9 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
       allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[0], type: 'citation' });
     }
 
-    // Full statute names in brackets e.g. [Islamabad Rent Restriction Ordinance, 2001]
+    // Full statute names in brackets and statute patterns are no longer highlighted automatically
+    // to prevent plain-text section numbers from becoming red and clickable.
+    /*
     while ((match = bracketStatutePattern.exec(text)) !== null) {
       allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[1], type: 'statute' });
     }
@@ -64,6 +66,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
     while ((match = statutePattern.exec(text)) !== null) {
       allMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0], label: match[0], type: 'statute' });
     }
+    */
 
     allMatches.sort((a, b) => a.start - b.start);
 
@@ -146,6 +149,8 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
           },
           strong: ({ children }) => {
             const text = extractText(children);
+            // Disable bold bracketed statute parser to prevent accidental highlights
+            /*
             const statuteMatch = text.match(/^\[(.+?)\]$/);
             if (statuteMatch) {
               const statuteName = statuteMatch[1];
@@ -156,6 +161,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
                 </LegalLink>
               );
             }
+            */
             // Use fresh non-global regex to avoid stateful lastIndex bug with g flag
             const isCitation = /\b\d{4}\s+(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ|PLC|NLR|PSC|ALD|KLR|PTD|PTCL|PLS|GBLR|CLD|TAX|SLR|LHC|IHC|SHC)\s+\d+\b/i.test(text)
               || /\b(?:PLD|SCMR|YLR|MLD|CLC|PCRLJ|PLJ|PLC|NLR|PSC|ALD|KLR|PTD|PTCL|PLS|GBLR|CLD|TAX|SLR)\s+(?:19|20)\d{2}\b/i.test(text);

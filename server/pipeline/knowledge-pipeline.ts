@@ -29,19 +29,23 @@ import { rewriteFollowUpQuery, type ConversationTurn } from "./query-rewriter";
 // Cache (mirrors old knowledgeContextCache behaviour)
 // ---------------------------------------------------------------------------
 
+interface CachedPipelineResult {
+  contextString: string;
+  caseLawHits: CaseLawHit[];
+}
 type TimedEntry<T> = { value: T; expiresAt: number };
-const contextCache = new Map<string, TimedEntry<string>>();
+const contextCache = new Map<string, TimedEntry<CachedPipelineResult>>();
 const CACHE_TTL_MS = Number(process.env.KNOWLEDGE_CONTEXT_CACHE_TTL_MS || 120_000);
 const MAX_CACHE_ENTRIES = 400;
 
-function cacheGet(key: string): string | undefined {
+function cacheGet(key: string): CachedPipelineResult | undefined {
   const entry = contextCache.get(key);
   if (!entry) return undefined;
   if (entry.expiresAt <= Date.now()) { contextCache.delete(key); return undefined; }
   return entry.value;
 }
 
-function cacheSet(key: string, value: string): void {
+function cacheSet(key: string, value: CachedPipelineResult): void {
   contextCache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
   if (contextCache.size <= MAX_CACHE_ENTRIES) return;
   const now = Date.now();
@@ -65,6 +69,7 @@ function normKey(q: string): string {
 }
 
 export interface CaseLawHit {
+  id?: string | number;
   citation: string;
   title: string;
   court: string;
@@ -91,14 +96,14 @@ export async function runKnowledgePipeline(
   const cached = cacheGet(key);
   // Never use a cached empty string — it means a previous request timed out or found nothing.
   // Retry the DB every time until we get real results, then cache them.
-  if (cached !== undefined && cached.length > 0) {
+  if (cached !== undefined && cached.contextString.length > 0) {
     return {
-      contextString: cached,
-      hasCaseLaw: cached.includes("VERIFIED JUDGMENTS"),
-      hasStatutes: cached.includes("VERIFIED STATUTES"),
+      contextString: cached.contextString,
+      hasCaseLaw: cached.contextString.includes("VERIFIED JUDGMENTS"),
+      hasStatutes: cached.contextString.includes("VERIFIED STATUTES"),
       topics: [],
       durationMs: 0,
-      caseLawHits: [],
+      caseLawHits: cached.caseLawHits,
     };
   }
 
@@ -151,8 +156,15 @@ export async function runKnowledgePipeline(
     console.log(`[Pipeline:Done] totalMs=${durationMs}`);
 
     // Only cache non-empty results. Empty means timeout or no data — don't poison the cache.
+    const caseLawHits = retrieval.caseLaw.map(hit => ({
+      id: (hit.row as any).judgmentId || (hit.row as any).sourceDocId || undefined,
+      citation: hit.row.citation,
+      title: hit.row.title,
+      court: hit.row.court,
+      summary: hit.row.summary
+    }));
     if (ctx.contextString.length > 0) {
-      cacheSet(key, ctx.contextString);
+      cacheSet(key, { contextString: ctx.contextString, caseLawHits });
     }
 
     // R4: If context is empty (no results found), inject safety gate
@@ -181,7 +193,7 @@ export async function runKnowledgePipeline(
       hasStatutes: ctx.hasStatutes,
       topics: intent.topics.map((t) => t.label),
       durationMs,
-      caseLawHits: retrieval.caseLaw.map(hit => ({ citation: hit.row.citation, title: hit.row.title, court: hit.row.court, summary: hit.row.summary })),
+      caseLawHits,
     };
   })();
 

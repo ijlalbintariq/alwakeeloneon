@@ -46,7 +46,7 @@ export const MODULE_AI_PROFILES: Record<ModuleType, ModuleAiProfile> = {
     features: {
       knowledgeRetrieval: true,
       attachments: true,
-      strictCitations: true,  // judgment-table rows now exempt from requireLinkedSource check in resolveCaseCitationFromInternalDb
+      strictCitations: false,  // Chat mode: don't strip citations — pool-mode rejection causes valid case law to disappear after streaming
       clauseModeStrictness: "low",
     },
   },

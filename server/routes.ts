@@ -176,7 +176,7 @@ let STYLE_MEMORY_ENABLED = String(process.env.STYLE_MEMORY_ENABLED || "true").to
 console.log(`[AI Config] AI_ROUTER_V2=${process.env.AI_ROUTER_V2 || "(unset)"} isV2=${isAiRouterV2Enabled()} | OPENROUTER_API_KEY=${process.env.OPENROUTER_API_KEY ? "SET" : "NOT SET"} | Standard chain: ${isAiRouterV2Enabled() ? JSON.stringify(DEFAULT_STANDARD_CHAIN) : "legacy(openrouter→deepseek)"}`);
 const STYLE_CONTEXT_MIN_CONFIDENCE = Math.max(0, Number(process.env.STYLE_CONTEXT_MIN_CONFIDENCE || 0.56));
 const STYLE_PROMPT_TOKEN_BUDGET = Math.max(200, Number(process.env.STYLE_PROMPT_TOKEN_BUDGET || 900));
-const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 6000));
+const KNOWLEDGE_PROMPT_TOKEN_BUDGET = Math.max(400, Number(process.env.KNOWLEDGE_PROMPT_TOKEN_BUDGET || 24000));
 const ATTACHMENT_PROMPT_TOKEN_BUDGET = Math.max(500, Number(process.env.ATTACHMENT_PROMPT_TOKEN_BUDGET || 48000));
 const ATTACHMENT_FILE_TOKEN_BUDGET = Math.max(150, Number(process.env.ATTACHMENT_FILE_TOKEN_BUDGET || 16000));
 const CASELAW_RAG_INDEX_DOC_TIMEOUT_MS = Math.max(5000, Number(process.env.CASELAW_RAG_INDEX_DOC_TIMEOUT_MS || 45000));
@@ -3478,7 +3478,21 @@ export async function verifyReferencesBlock(
       if (poolMode) return null;
 
       if (!effectivePolicy.strict) {
-        // Non-strict mode: trust the AI-provided citation data.
+        // Best-effort database lookup to canonicalize the citation, court, and title
+        const matched = await resolveCaseCitationFromInternalDb(citation, {
+          requirePrimary: false,
+          requireLinkedSource: false,
+        }).catch(() => null);
+
+        if (matched) {
+          return {
+            citation: sanitizeReferenceText(matched.citation, 140),
+            court: sanitizeReferenceText(matched.court || court || "Pakistani Courts", 120),
+            description: sanitizeReferenceText(description || matched.summary || "", 320),
+          };
+        }
+
+        // Fallback to AI-provided data if not found in DB
         return {
           citation: sanitizeReferenceText(citation, 140),
           court: sanitizeReferenceText(court || "Pakistani Courts", 120),
@@ -3530,27 +3544,22 @@ export async function verifyReferencesBlock(
  * cannot prevent. Even if the AI ignores all anti-hallucination instructions,
  * this function strips the fake citation before the user sees it.
  */
-export function enforceProseCitationIntegrity(
+export async function enforceProseCitationIntegrity(
   content: string,
   trustedCitations?: Iterable<string>,
-): string {
-  if (!trustedCitations) return content;
-
+): Promise<string> {
   // Build normalised set of trusted citations from the tool search pool
   const trustedKeys = new Set<string>();
-  for (const c of trustedCitations) {
-    const key = String(c || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (key) trustedKeys.add(key);
+  if (trustedCitations) {
+    for (const c of trustedCitations) {
+      const key = String(c || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (key) trustedKeys.add(key);
+    }
   }
-  // If no trusted pool exists OR pool is too small to be authoritative, skip.
-  // A small pool (< 5 hits) means tool search had partial coverage — stripping
-  // every other citation produces empty "Leading Case Law" sections.
-  const PROSE_SCRUB_MIN_POOL = 5;
-  if (trustedKeys.size < PROSE_SCRUB_MIN_POOL) return content;
 
   // Separate references block from prose — don't touch the block (already verified)
   const refsMatch = content.match(/(```references[\s\S]*?```)/);
@@ -3560,13 +3569,17 @@ export function enforceProseCitationIntegrity(
   // Match **[CITATION]** patterns in prose — the standard citation format
   // Matches: **[PLD 2020 Supreme Court 456]**, **[2024 SCMR 1419]**, etc.
   const citationPattern = /\*\*\[([^\]]{5,140})\]\*\*/g;
+  const matches: Array<{ fullMatch: string; citationInner: string }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = citationPattern.exec(proseBody)) !== null) {
+    matches.push({ fullMatch: m[0], citationInner: m[1] });
+  }
 
-  proseBody = proseBody.replace(citationPattern, (fullMatch, citationInner: string) => {
+  // Process matches sequentially using database checks if they're not in the trusted search pool
+  for (const { fullMatch, citationInner } of matches) {
     // Skip statute/act references — these are NOT judgment citations.
-    // The AI often formats statute names as **[Transfer of Property Act, 1882]** or
-    // **[Muslim Family Laws Ordinance, 1961]** which the scrubber was stripping.
     const STATUTE_KEYWORDS = /\b(act|ordinance|order|code|rules?|laws?|constitution|schedule|regulation|amendment)\b/i;
-    if (STATUTE_KEYWORDS.test(citationInner)) return fullMatch;
+    if (STATUTE_KEYWORDS.test(citationInner)) continue;
 
     const key = citationInner
       .toLowerCase()
@@ -3575,17 +3588,48 @@ export function enforceProseCitationIntegrity(
       .trim();
 
     // Check if this citation is in the trusted pool
-    if (trustedKeys.has(key)) return fullMatch; // verified — keep it
+    if (trustedKeys.has(key)) continue; // verified — keep it
 
     // Check partial matches (formatting variants)
+    let isTrusted = false;
     for (const tk of trustedKeys) {
-      if (tk.includes(key) || key.includes(tk)) return fullMatch; // close enough — keep it
+      if (tk.includes(key) || key.includes(tk)) {
+        isTrusted = true;
+        break;
+      }
+    }
+    if (isTrusted) continue; // close enough — keep it
+
+    // If a trusted citations pool is active, do NOT fall back to database check.
+    // Scrub the citation immediately to prevent citing cases outside the active search results.
+    if (trustedKeys.size > 0) {
+      console.warn(`[CitationScrubber] Stripped citation because it is not in the active trusted pool: "${citationInner}"`);
+      proseBody = proseBody.replace(
+        fullMatch,
+        `*(a relevant judicial precedent should be verified via the Judgment Search database at /judgment-search)*`,
+      );
+      continue;
     }
 
-    // NOT in trusted pool — this is a hallucinated citation. Replace with safe fallback.
+    // NOT in trusted pool — perform db lookup to check if it's a real citation in our DB
+    const dbMatched = await resolveCaseCitationFromInternalDb(citationInner, {
+      requirePrimary: false,
+      requireLinkedSource: false,
+    }).catch(() => null);
+
+    if (dbMatched && isCaseLawRowCitationTrusted(dbMatched)) {
+      // It exists in our database! Keep it, and update its formatting to matches DB canonical value
+      proseBody = proseBody.replace(fullMatch, `**[${dbMatched.citation}]**`);
+      continue;
+    }
+
+    // Truly fake/hallucinated citation. Replace with safe fallback.
     console.warn(`[CitationScrubber] Stripped hallucinated citation: "${citationInner}"`);
-    return `*(a relevant judicial precedent should be verified via the Judgment Search database at /judgment-search)*`;
-  });
+    proseBody = proseBody.replace(
+      fullMatch,
+      `*(a relevant judicial precedent should be verified via the Judgment Search database at /judgment-search)*`,
+    );
+  }
 
   // Restore references block
   if (refsBlock) {
@@ -3827,10 +3871,7 @@ export async function applyAlWakeeloSafetyGuardrails(
   const verifiedRefs = await verifyReferencesBlock(withRefs, policy, trustedCitations, trustedTitles);
   // R3: Prose-level statute fact-checking — replace unverified Section X of Y mentions
   const statuteChecked = await enforceStatuteSectionIntegrity(verifiedRefs);
-  // R4: Prose-level citation hallucination scrubber — strip **[fake PLD/SCMR]** from
-  // prose text when they're not in the trusted tool-search pool. This is the final
-  // CODE-LEVEL guard against hallucinated citations reaching the user.
-  const citationScrubbed = enforceProseCitationIntegrity(statuteChecked, trustedCitations);
+  const citationScrubbed = await enforceProseCitationIntegrity(statuteChecked, trustedCitations);
   return citationScrubbed;
 }
 
@@ -3839,6 +3880,10 @@ export async function applyAlWakeeloSafetyGuardrails(
  * (references block has judgments:[]) but the tool search or pipeline DID find cases,
  * inject them into the references block AND append a brief prose section.
  * This guarantees case law reaches the user regardless of model compliance.
+ *
+ * If the AI already cited case law in its prose (e.g. a "Leading Case Law" section),
+ * we skip the redundant prose section but still populate the JSON references block
+ * so the frontend card renders correctly.
  */
 function injectVerifiedCaseLawFallback(
   content: string,
@@ -3846,59 +3891,46 @@ function injectVerifiedCaseLawFallback(
 ): string {
   if (!verifiedHits || verifiedHits.length === 0) return content;
 
+  // Detect if the AI explicitly said it couldn't find case law (a false negative).
+  // This happens when the tool search populated the card but the AI model didn't
+  // incorporate the results into its prose.
+  const NO_CASES_RE = /no\s+relevant\s+(?:judgments?|case\s*law|cases?)\s+(?:found|available|located)/i;
+  const aiSaidNoCases = NO_CASES_RE.test(content);
+
+  // Detect whether the AI already cited case law properly in its prose.
+  // Check both standard format (2024 SCMR 1419) and bracket format ([PLD 2025 SC 247]).
+  const FORMAL_CITATION_RE = /\b\d{4}\s+(?:SCMR|PLD|CLC|YLR|MLD|PCRLJ|PLJ|NLR|PTCL|PTD|LHC|IHC|SHC|PHC|ALD|KLR|PLC|CLD)\b/gi;
+  const BRACKET_CITATION_RE = /\[\s*(?:\d{4}\s+)?(?:SCMR|PLD|CLC|YLR|MLD|PCRLJ|PLJ|NLR|PTCL|PTD|LHC|IHC|SHC|PHC|ALD|KLR|PLC|CLD)\s+\d{4}\b[^\]]*\]/gi;
+  const proseCitationCount = (content.match(FORMAL_CITATION_RE) || []).length
+    + (content.match(BRACKET_CITATION_RE) || []).length;
+
+  // Also detect if the AI wrote a dedicated case law section with explanations
+  const HAS_CASE_LAW_SECTION = /#{1,4}\s*(?:Leading|Relevant|Key|Important|Related)?\s*Case\s*Law/i.test(content);
+  const HAS_CASE_EXPLANATIONS = /\b(?:Facts?|Issue|Held|Relevance)\s*:/i.test(content);
+  const aiWroteDetailedCaseLaw = HAS_CASE_LAW_SECTION && (HAS_CASE_EXPLANATIONS || proseCitationCount >= 1);
+
+  const aiAlreadyCitedCaseLaw = proseCitationCount >= 2 || aiWroteDetailedCaseLaw;
+
   // Check if references block already has judgments
   const refsMatch = content.match(/```references\s*([\s\S]*?)```/i);
   if (refsMatch) {
     try {
       const payload = JSON.parse(refsMatch[1].trim());
       if (payload.judgments && payload.judgments.length > 0) {
-        return content; // Already has judgments, no injection needed
+        // Card already has judgments. Only skip if the AI ALSO cited them in prose.
+        // If the AI said "no judgments found" despite the card having results,
+        // we need to correct the prose.
+        if (!aiSaidNoCases && aiAlreadyCitedCaseLaw) {
+          return content; // AI cited cases properly AND card has results — all good
+        }
+        // Fall through: AI said "no cases found" or didn't cite enough — fix the prose
       }
-      // Inject verified judgments into the existing references block
-      const laws = payload.laws || [];
-      const judgments = verifiedHits.slice(0, 8).map(h => ({
-        citation: h.citation,
-        title: h.title,
-        court: h.court || "",
-        summary: (h.summary || "").slice(0, 300),
-        description: (h.summary || "").slice(0, 300),
-      }));
-      const newPayload = JSON.stringify({ laws, judgments });
-      const newRefsBlock = "```references\n" + newPayload + "\n```";
-
-      // Build prose section with top 3 citations
-      const topHits = verifiedHits.slice(0, 3);
-      const proseLines = [
-        "\n\n### Relevant Case Law from Internal Database\n",
-        ...topHits.map(h => {
-          const briefSummary = (h.summary || "").slice(0, 200);
-          return `- **[${h.citation}]** — ${h.title}${briefSummary ? `: ${briefSummary}` : ""}`;
-        }),
-        "\n*For more comprehensive case law, search our [Judgment Search](/judgment-search) database.*\n",
-      ];
-      const proseSection = proseLines.join("\n");
-
-      // Replace the old references block and insert prose before it
-      const withProse = content.replace(/```references\s*[\s\S]*?```/i, proseSection + "\n" + newRefsBlock);
-      return withProse;
     } catch {
-      // JSON parse failed — still inject below
+      // JSON parse failed — continue to injection below
     }
   }
 
-  // Fallback: append case law section at the end regardless of references block state
-  const topHits = verifiedHits.slice(0, 5);
-  const proseLines = [
-    "\n\n### Relevant Case Law from Internal Database\n",
-    ...topHits.map(h => {
-      const briefSummary = (h.summary || "").slice(0, 200);
-      return `- **[${h.citation}]** — ${h.title}${briefSummary ? `: ${briefSummary}` : ""}`;
-    }),
-    "\n*For comprehensive case law research, explore our [Judgment Search](/judgment-search) database.*\n",
-  ];
-  const proseSection = proseLines.join("\n");
-
-  // Build judgments array for references block
+  // Build judgments array for references block (always needed for frontend card)
   const judgments = verifiedHits.slice(0, 8).map(h => ({
     citation: h.citation,
     title: h.title,
@@ -3907,22 +3939,61 @@ function injectVerifiedCaseLawFallback(
     description: (h.summary || "").slice(0, 300),
   }));
 
-  // Try to replace existing empty references block
-  const refsReplaceMatch = content.match(/```references\s*[\s\S]*?```/i);
+  // Build prose section
+  let proseSection = "";
+  if (aiSaidNoCases || !aiAlreadyCitedCaseLaw) {
+    // AI either falsely claimed no cases OR didn't cite enough — inject prose
+    const topHits = verifiedHits.slice(0, 5);
+    const proseLines = [
+      "\n\n### Relevant Case Law from Internal Database\n",
+      ...topHits.map(h => {
+        const briefSummary = (h.summary || "").slice(0, 200);
+        return `- **[${h.citation}]** — ${h.title}${briefSummary ? `: ${briefSummary}` : ""}`;
+      }),
+      "\n*For comprehensive case law research, explore our [Judgment Search](/judgment-search) database.*\n",
+    ];
+    proseSection = proseLines.join("\n");
+  }
+
+  // If the AI said "no relevant judgments found", replace that false statement
+  let processed = content;
+  if (aiSaidNoCases && proseSection) {
+    // Replace the paragraph containing the false "no judgments" claim
+    processed = processed.replace(
+      /(?:#{1,4}\s*)?(?:Leading\s+)?Case\s+Law[^\n]*\n[^\n]*no\s+relevant\s+(?:judgments?|case\s*law|cases?)\s+(?:found|available|located)[^\n]*/i,
+      proseSection,
+    );
+    // If the replace didn't match (different phrasing), strip just the false claim
+    if (NO_CASES_RE.test(processed)) {
+      processed = processed.replace(
+        /[^\n]*no\s+relevant\s+(?:judgments?|case\s*law|cases?)\s+(?:found|available|located)[^\n]*/i,
+        "",
+      );
+    }
+  }
+
+  // Try to replace/update existing references block
+  const refsReplaceMatch = processed.match(/```references\s*[\s\S]*?```/i);
   if (refsReplaceMatch) {
-    const existingLaws = (() => {
+    const existingPayload = (() => {
       try {
         const p = JSON.parse(refsReplaceMatch[0].replace(/```references\s*/i, "").replace(/```$/i, "").trim());
-        return p.laws || [];
-      } catch { return []; }
+        return { laws: p.laws || [], existingJudgments: p.judgments || [] };
+      } catch { return { laws: [], existingJudgments: [] }; }
     })();
-    const newRefsBlock = "```references\n" + JSON.stringify({ laws: existingLaws, judgments }) + "\n```";
-    return content.replace(/```references\s*[\s\S]*?```/i, proseSection + "\n" + newRefsBlock);
+    // Merge: keep existing judgments if they exist, otherwise use our injected ones
+    const finalJudgments = existingPayload.existingJudgments.length > 0
+      ? existingPayload.existingJudgments
+      : judgments;
+    const newRefsBlock = "```references\n" + JSON.stringify({ laws: existingPayload.laws, judgments: finalJudgments }) + "\n```";
+    // Only add prose before refs block if it wasn't already inserted via the replacement above
+    const extraProse = aiSaidNoCases ? "" : proseSection;
+    return processed.replace(/```references\s*[\s\S]*?```/i, extraProse + "\n" + newRefsBlock);
   }
 
   // No references block at all — append everything
   const newRefsBlock = "```references\n" + JSON.stringify({ laws: [], judgments }) + "\n```";
-  return content + proseSection + "\n" + newRefsBlock;
+  return processed + proseSection + "\n" + newRefsBlock;
 }
 
 /**
@@ -6977,7 +7048,13 @@ DEFAULT: Citizen mode. When in doubt, assume the user is a non-lawyer.
 For LEGAL QUERIES, use markdown ### headings. Include at minimum:
 ### Legal Context — area of law, jurisdiction, key legal questions
 ### Statutory Framework — cite specific sections with full statute names in bold
-### Leading Case Law — ONLY from VERIFIED JUDGMENTS section (see citation rules below)
+### Leading Case Law — ONLY from VERIFIED JUDGMENTS section (see citation rules below). For EACH case, use this EXACT format:
+  #### **[CITATION]** — Short Case Title
+  - **Facts:** One sentence describing the dispute or factual scenario.
+  - **Issue:** The legal question the court addressed.
+  - **Held:** The court's decision and reasoning in 1-2 sentences.
+  - **Relevance:** Why this case directly helps or warns the user's situation.
+  Include at least 3 cases (up to 5) for substantive legal queries. Never list a citation without these four sub-points.
 ### Practical Strategy — cause of action, evidence needs, procedural pathway, limitation period, timeline
 
 For SIMPLE questions: 2-3 sections, each brief. Omit sections not applicable.
@@ -7026,8 +7103,11 @@ CASE LAW RULES:
 4. Copy citations VERBATIM. Never abbreviate, retype, use placeholders [I]/[II]/[III], or invent variations.
 5. Every cited case MUST be topically relevant. Criminal case in property dispute = automatic disqualification.
 6. NEVER fabricate, synthesize, or estimate citations. Zero citations > one fake citation. Always.
-7. Format: **[EXACT CITATION]** — Legal principle. Ratio decidendi. Application to present case.
+7. Format each case as: #### **[EXACT CITATION]** — Short Title, then four bullet sub-points: **Facts:** (one sentence), **Issue:** (the legal question), **Held:** (decision + reasoning), **Relevance:** (why it helps/warns the user). Never list a citation as a one-liner.
 8. Frontend verifies every citation. A fabricated citation produces a broken card and destroys credibility.
+9. When writing the "Short Title" of a case, always use the exact text from the "TITLE:" field in the VERIFIED JUDGMENTS section (e.g. "SHABANA NAZ vs MUHAMMAD SALEEM"). Do NOT use the court name or a generic description.
+10. Only cite the primary judgments listed in the VERIFIED JUDGMENTS section. Never cite or mention secondary "cited judgments" or other citations that are mentioned inside the EXCERPTS or headnotes of the primary judgments. Doing so will corrupt the citation integrity checker.
+
 
 STATUTE RULES:
 1. ONLY cite specific section/article numbers from "VERIFIED STATUTES" section below.
@@ -15537,6 +15617,7 @@ document.addEventListener('keydown',function(e){
         try {
           // Trim summaries for transport (frontend can fetch full doc on click).
           const cardHits = cardSource.slice(0, 25).map((h) => ({
+            id: (h as any).id || (h as any).judgmentId || undefined,
             citation: h.citation,
             title: h.title,
             court: h.court,
@@ -15682,9 +15763,9 @@ The user has attached the following documents for your reference. Analyze them c
       // verbose responses to "is it bailable?"-style follow-ups.
       const tokenLimit = (!directMode && moduleType === "al-wakeelo")
         ? (queryComplexity === "simple"
-            ? Math.min(2048, baseTokenLimit)
+            ? Math.min(4096, baseTokenLimit)
             : queryComplexity === "moderate"
-              ? Math.min(4096, baseTokenLimit)
+              ? Math.min(8192, baseTokenLimit)
               : baseTokenLimit)
         : baseTokenLimit;
       const timeoutProfile: TimeoutProfile = directMode ? "search" : "default";
@@ -15736,7 +15817,7 @@ The user has attached the following documents for your reference. Analyze them c
         toolSearchResult.foundCount > 0
           ? `\n\nCITATION MANDATE (REQUIRED — read carefully):\n` +
             `- Cite ONLY judgments from the AI-SEARCHED JUDGMENTS list above that are DIRECTLY relevant to the user's legal question.\n` +
-            `- Quality over quantity — citing 1-2 highly relevant cases is ALWAYS better than citing 3+ mixed-domain cases.\n` +
+            `- You MUST cite at least 3 relevant cases (up to 5) with full detail for each (Facts, Issue, Held, Relevance). Never cite irrelevant or mixed-domain cases just to reach the minimum.\n` +
             `- If NONE of the cases in the list are relevant to the specific legal topic, do NOT cite any of them. Instead, acknowledge that no relevant case law was found in the database and recommend searching the Judgment Search database.\n` +
             `- Always use the FORMAL CITATION string, never the case name alone.\n` +
             `  WRONG: "Sohail Iqbal vs State held that..."\n` +
@@ -15749,20 +15830,36 @@ The user has attached the following documents for your reference. Analyze them c
             `- For EACH case in the list, verify it is DIRECTLY relevant to the legal domain being discussed.\n` +
             `- SKIP any case that belongs to a different legal domain (e.g. criminal case in a property dispute, prisoner rights case in a contract matter).\n` +
             `- PCRLJ/Criminal citations in a civil/property/family query = SKIP IT.\n` +
-            `- A topically irrelevant citation DESTROYS credibility — citing 2 relevant cases is ALWAYS better than 3 mixed-domain cases.\n` +
+            `- A topically irrelevant citation DESTROYS credibility — skip off-topic cases entirely.\n` +
             `- If a case is about a completely different legal topic (e.g., landlord-tenant in a CrPC FIR query), DO NOT CITE IT.\n` +
             `\nCITATION DEPTH (MANDATORY for each case cited):\n` +
-            `- State the LEGAL PRINCIPLE the case established.\n` +
-            `- State the RATIO DECIDENDI (the court's key deciding reason).\n` +
-            `- State the APPLICATION (why this case directly applies to the present query).\n` +
-            `- NEVER cite a case with just "the court held that X" — explain WHY the court reached that conclusion.`
+            `- You MUST use this EXACT format for EVERY case you cite:\n` +
+            `\n` +
+            `### **[CITATION STRING]** — Short Title\n` +
+            `- **Facts:** One-sentence summary of the dispute/situation.\n` +
+            `- **Issue:** The legal question the court addressed.\n` +
+            `- **Held:** The court's ruling and reasoning (ratio decidendi).\n` +
+            `- **Relevance:** Why this case directly applies to the user's situation.\n` +
+            `\n` +
+            `- You MUST cite at least 3 cases (up to 5) using this format. If fewer than 3 relevant cases exist in the pool, cite all available and state that additional cases were not found.\n` +
+            `- NEVER cite a case with just "the court held that X" — always use the structured format above.\n` +
+            `- Present all cases under a "## Leading Case Law" section in your response.`
           : pipelineCitationLines.length > 0
             ? `\n\nCITATION MANDATE FROM INTERNAL DATABASE (REQUIRED):\n` +
               `- The knowledge pipeline retrieved verified Pakistani judgments for this query (listed in the VERIFIED JUDGMENTS section above).\n` +
-              `- You MUST cite at least 2 of those judgments using their EXACT formal citation strings.\n` +
+              `- You MUST cite at least 3 of those judgments (up to 5) using their EXACT formal citation strings.\n` +
               `- Always use the citation format: **[CITATION]** e.g. **[2021 MLD 456]** or **[PLD 2019 SC 1]**.\n` +
               `- Do NOT invent or guess citations — only cite what appears in the VERIFIED JUDGMENTS context.\n` +
               `- Each cited judgment must appear in your prose AND in the final references block.\n` +
+              `- Use this EXACT format for EVERY case:\n` +
+              `\n` +
+              `### **[CITATION STRING]** — Short Title\n` +
+              `- **Facts:** One-sentence summary of the dispute/situation.\n` +
+              `- **Issue:** The legal question the court addressed.\n` +
+              `- **Held:** The court's ruling and reasoning.\n` +
+              `- **Relevance:** Why this case directly applies to the user's situation.\n` +
+              `\n` +
+              `- Present all cases under a "## Leading Case Law" section.\n` +
               `\nPIPELINE CITATION HINTS (use these exact strings):\n` +
               pipelineCitationLines.slice(0, 15).map(c => `  - ${c}`).join("\n")
             : "";
@@ -16084,9 +16181,7 @@ The user has attached the following documents for your reference. Analyze them c
           ? toolSearchResult.verifiedHits
           : extractPipelineVerifiedHits(knowledgeContext);
         // Only inject if we have hits from trusted sources (tool search or pipeline)
-        // and the AI didn't explicitly say "no relevant judgments found"
-        const aiSaidNoResults = /no relevant judgments? found/i.test(fullContent);
-        if (moduleType === "al-wakeelo" && !directMode && fallbackHits.length > 0 && !aiSaidNoResults) {
+        if (moduleType === "al-wakeelo" && !directMode && fallbackHits.length > 0) {
           const injected = injectVerifiedCaseLawFallback(fullContent, fallbackHits);
           if (injected !== fullContent) {
             fullContent = injected;
@@ -16243,8 +16338,7 @@ The user has attached the following documents for your reference. Analyze them c
       const fallbackHitsNS = (toolSearchResult?.verifiedHits?.length > 0)
         ? toolSearchResult.verifiedHits
         : extractPipelineVerifiedHits(knowledgeContext);
-      const aiSaidNoResultsNS = /no relevant judgments? found/i.test(completion);
-      if (moduleType === "al-wakeelo" && !directMode && fallbackHitsNS.length > 0 && !aiSaidNoResultsNS) {
+      if (moduleType === "al-wakeelo" && !directMode && fallbackHitsNS.length > 0) {
         const injected = injectVerifiedCaseLawFallback(completion, fallbackHitsNS);
         if (injected !== completion) {
           completion = injected;

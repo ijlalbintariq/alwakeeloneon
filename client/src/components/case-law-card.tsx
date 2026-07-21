@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { ScrollText, ExternalLink, ChevronDown, ChevronUp, Star, Database, Loader2 } from "lucide-react";
 
 export interface CaseLawHit {
+  id?: string;
   citation: string;
   title: string;
   court: string;
@@ -19,7 +20,7 @@ interface CaseLawCardProps {
   /** Set of citations the AI also cited in its response. Used to mark them with a ★. */
   aiCitedCitations?: Set<string>;
   /** Click handler — opens the judgment detail page. */
-  onCitationClick: (citation: string) => void;
+  onCitationClick: (citation: string, id?: string) => void;
 }
 
 interface AiSummary {
@@ -75,21 +76,25 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
 
     setSummaryLoading(prev => ({ ...prev, [idx]: true }));
     try {
-      // Step 1: Resolve judgmentId via /api/caseLaw/lookup
+      // Step 1: Resolve judgmentId via /api/caseLaw/lookup or local hit.id
       let jId = resolvedJudgmentIds[idx];
       if (jId === undefined) {
-        const lookupRes = await fetch(`/api/caseLaw/lookup?q=${encodeURIComponent(hit.citation)}`, {
-          credentials: "include",
-        });
-        if (lookupRes.ok) {
-          const lookupData = await lookupRes.json();
-          if (lookupData.found && lookupData.id) {
-            jId = String(lookupData.id);
+        if (hit.id) {
+          jId = String(hit.id);
+        } else {
+          const lookupRes = await fetch(`/api/caseLaw/lookup?q=${encodeURIComponent(hit.citation)}`, {
+            credentials: "include",
+          });
+          if (lookupRes.ok) {
+            const lookupData = await lookupRes.json();
+            if (lookupData.found && lookupData.id) {
+              jId = String(lookupData.id);
+            } else {
+              jId = null;
+            }
           } else {
             jId = null;
           }
-        } else {
-          jId = null;
         }
         setResolvedJudgmentIds(prev => ({ ...prev, [idx]: jId }));
       }
@@ -274,7 +279,7 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onCitationClick(hit.citation);
+                              onCitationClick(hit.citation, hit.id);
                             }}
                             className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline mt-1"
                           >
@@ -288,7 +293,7 @@ export function CaseLawCard({ data, aiCitedCitations, onCitationClick }: CaseLaw
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onCitationClick(hit.citation);
+                              onCitationClick(hit.citation, hit.id);
                             }}
                             className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
                           >

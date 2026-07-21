@@ -17,7 +17,7 @@
 import { storage } from "../storage";
 import { similaritySearch } from "../rag/vector-store";
 import { embedTextLocal } from "../rag/embedding-local";
-import { retrieveForQuery, GLOBAL_STATUTE_RAG_USER_ID, GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID } from "../rag/rag-service";
+import { retrieveForQuery, getCachedQueryEmbedding, GLOBAL_STATUTE_RAG_USER_ID, GLOBAL_ADMIN_KNOWLEDGE_RAG_USER_ID } from "../rag/rag-service";
 import type { CaseLaw } from "../../shared/schema";
 import type { QueryIntent, LegalTopic } from "./intent-classifier";
 import { normalizeCitationKey } from "../tools/citation-search-tool";
@@ -381,11 +381,15 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
   }).catch(() => [] as CaseLaw[]);
 
   // Path 3 (HYBRID PARTNER): RAG vector search — semantic search across admin case-law
-  // AND the 600k+ indexed judgments table. RAG is the primary semantic path; give it
   // enough time (8s) to return meaningful results while still staying under the 20s budget.
-  const RAG_TIMEOUT_MS = 4000;
+  const RAG_TIMEOUT_MS = 8000;
   const ragPromise = userId
-    ? retrieveForQuery({ userId, query: expandedQuery, topK: limit * 4 })
+    ? retrieveForQuery({
+        userId,
+        query: intent.normalized,
+        expandedQueryText: expandedQuery,
+        topK: limit * 4,
+      })
         .then(async (retrieval) => {
           // ── Separate RAG matches into admin-case-law vs judgment groups ──
           const adminDocIds: number[] = [];
@@ -419,6 +423,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
 
               judgmentCaseLaw.push({
                 id: numericId,
+                judgmentId: judgmentId,
                 citation: citationStr,
                 citationYear: citYear,
                 citationReport: null,
@@ -445,7 +450,10 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
 
           return { adminCaseLaw, judgmentCaseLaw };
         })
-        .catch(() => ({ adminCaseLaw: [] as CaseLaw[], judgmentCaseLaw: [] as CaseLaw[] }))
+        .catch((err) => {
+          console.warn("[RAG] retrieveForQuery failed:", err?.message || err);
+          return { adminCaseLaw: [], judgmentCaseLaw: [] };
+        })
     : Promise.resolve({ adminCaseLaw: [] as CaseLaw[], judgmentCaseLaw: [] as CaseLaw[] });
 
   const [judgmentRaw, keywordRaw, ragResult] = await Promise.all([
@@ -716,7 +724,7 @@ async function fetchStatutes(intent: QueryIntent, limit: number): Promise<Retrie
   
   let queryEmbedding: number[] | null = null;
   try {
-    queryEmbedding = await withTimeout(embedTextLocal(query), STATUTE_TIMEOUT_MS, null);
+    queryEmbedding = await withTimeout(getCachedQueryEmbedding(query), STATUTE_TIMEOUT_MS, null);
   } catch (err) {
     console.warn(`[RAG:Statutes] Failed to embed query:`, err);
   }
@@ -870,7 +878,7 @@ async function fetchAdminDocs(intent: QueryIntent, limit: number, userId?: strin
   // This is MUCH faster than retrieveForQuery which queries ALL global indexes
   // including global-admin-judgments (5.5M rows, 50-100s per query).
   const embeddingPromise = withTimeout(
-    embedTextLocal(query).catch(() => null),
+    getCachedQueryEmbedding(query).catch(() => null),
     ADMIN_DOC_TIMEOUT_MS,
     null,
   );

@@ -361,7 +361,7 @@ export interface ToolJudgmentSearchResult {
   queriesUsed: string[];
   verifiedCitations: string[];
   verifiedTitles: Array<{ title: string; citation: string }>;
-  verifiedHits: Array<{ citation: string; title: string; court: string; summary: string }>;
+  verifiedHits: Array<{ id?: string; citation: string; title: string; court: string; summary: string }>;
 }
 
 export async function runToolJudgmentSearch(
@@ -389,7 +389,7 @@ export async function runToolJudgmentSearch(
     { role: "user", content: safeQuery },
   ];
 
-  const allResults: Array<{ citation: string; court: string; title: string; summary: string }> = [];
+  const allResults: Array<{ id?: string; citation: string; court: string; title: string; summary: string }> = [];
   const queriesUsed: string[] = [];
   let rounds = 0;
 
@@ -484,5 +484,5 @@ export async function runToolJudgmentSearch(
     ...lines,
   ].join("\n");
 
-  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation), verifiedTitles: unique.map(u => ({ title: u.title, citation: u.citation })), verifiedHits: unique.map(u => ({ citation: u.citation, title: u.title, court: u.court, summary: u.summary })) };
+  return { contextString, foundCount: unique.length, queriesUsed, verifiedCitations: unique.map(u => u.citation), verifiedTitles: unique.map(u => ({ title: u.title, citation: u.citation })), verifiedHits: unique.map(u => ({ id: u.id, citation: u.citation, title: u.title, court: u.court, summary: u.summary })) };
 }
