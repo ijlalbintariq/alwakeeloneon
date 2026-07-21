@@ -81,7 +81,7 @@ function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSect
     const reportingInfo = reportingType ? ` | REPORTING: ${reportingType}` : "";
     // Judgment rows: mark explicitly so AI knows this is from the verified DB
     const sourceTag = row.sourceType === "judgment" ? " | SOURCE: Verified Judgment DB" : "";
-    lines.push(`- CITATION: ${citation} | COURT: ${courtName}${reportingInfo}${sourceTag} | TITLE: ${title}${summary}`);
+    lines.push(`- CITATION: ${citation} | COURT: ${courtName}${reportingInfo}${sourceTag}${summary}`);
   }
 
   if (lines.length === 0) return null;
@@ -91,6 +91,7 @@ function buildVerifiedJudgmentsSection(caseLaw: RetrievedCaseLaw[]): ContextSect
     heading: "=== VERIFIED JUDGMENTS FROM INTERNAL DATABASE ===",
     lines: [
       "Use ONLY these citations. Copy each CITATION string EXACTLY. Format: **[CITATION STRING]** — explanation.",
+      "STRICT RULE: Cite ONLY the formal citation string (e.g. **[2024 SCMR 142]**). DO NOT write party names, case titles, or 'vs' anywhere in your text.",
       "FORBIDDEN: Do NOT use [I] [II] [A] (1) (2) placeholder notation. Every citation must be a real string from this list.",
       ...lines,
     ],
@@ -127,7 +128,7 @@ function buildCaseLawDetailSection(caseLaw: RetrievedCaseLaw[]): ContextSection 
     const detail = row.summary ? String(row.summary).slice(0, excerptLen) : "";
     // Judgment rows get a clear label so the AI treats them as authoritative
     const rowLabel = isJudgment ? "JUDGMENT" : "CASE";
-    lines.push(`- [${rowLabel}] ${citation} (${row.court}): ${row.title}`);
+    lines.push(`- [${rowLabel}] ${citation} (${row.court})`);
     if (detail) lines.push(`  ${isJudgment ? "Headnotes" : "Excerpt"}: ${detail}${detail.length >= excerptLen ? "..." : ""}`);
   }
   if (lines.length === 0) return null;
@@ -233,7 +234,7 @@ export function buildContext(
   parts.push("");
 
   if (hasCaseLawCitations) {
-    parts.push(`CASE LAW RULE (MANDATORY): You MUST cite 1 to 4 of the judgments from the VERIFIED JUDGMENTS section below under a '### Leading Case Law' header. Copy each CITATION string verbatim. Explain how each cited case applies to the user's scenario. NEVER write 'No relevant judgments found' when cases are present in the VERIFIED JUDGMENTS section below. Never invent or recall citations from training data.
+    parts.push(`CASE LAW RULE (MANDATORY): You MUST cite 1 to 4 of the judgments from the VERIFIED JUDGMENTS section below under a '### Leading Case Law' header. Copy each CITATION string verbatim (e.g. **[2024 SCMR 142]**). Explain how each cited case applies to the user's scenario. Include the citation and case title naturally. NEVER write 'No relevant judgments found' when cases are present in the VERIFIED JUDGMENTS section below. Never invent or recall citations from training data.
 
 For EACH cited case, provide a FULL SHORT SUMMARY using this EXACT format:
 

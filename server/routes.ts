@@ -2397,9 +2397,10 @@ CRITICAL CITATION RULES:
 - Never cite cases from your training data that are not in the section below
 - Do NOT hallucinate or invent citations
 - Copy citations verbatim from the database section below
+- Include the citation (e.g. **[2024 SCMR 142]**) and case title naturally in your response.
 
 Format all citations as: **[CITATION]** — brief explanation
-Example: **[PLD 2020 SC 456]** — Supreme Court held that bail cancellation requires proof of supervening circumstances...
+Example: **[PLD 2020 SC 456]** (State vs John) — Supreme Court held that bail cancellation requires proof of supervening circumstances...
 `;
 
 // Removed: callStandardAIWithTools function (tool-calling disabled)
@@ -3899,6 +3900,10 @@ export function stripForbiddenNoJudgmentsMessage(content: string): string {
     "",
   );
   cleaned = cleaned.replace(
+    /\s*\([^)]*(?:Judgment\s+Search|\/judgment-search)[^)]*\)/gi,
+    "",
+  );
+  cleaned = cleaned.replace(
     /^[^\n]*(?:Judgment\s+Search|\/judgment-search)[^\n]*/gmi,
     "",
   );
@@ -3907,6 +3912,11 @@ export function stripForbiddenNoJudgmentsMessage(content: string): string {
   cleaned = cleaned.replace(/^\s*#{1,4}\s*(?:Leading|Relevant|Key)?\s*Case\s+Law\s*$/gmi, "");
 
   return cleaned.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+export function stripPartyNamesFromProseCitations(content: string): string {
+  // Do not strip party names — preserve content as-is
+  return content;
 }
 
 export async function applyAlWakeeloSafetyGuardrails(
@@ -3920,7 +3930,8 @@ export async function applyAlWakeeloSafetyGuardrails(
   // R3: Prose-level statute fact-checking — replace unverified Section X of Y mentions
   const statuteChecked = await enforceStatuteSectionIntegrity(verifiedRefs);
   const citationScrubbed = await enforceProseCitationIntegrity(statuteChecked, trustedCitations);
-  return stripForbiddenNoJudgmentsMessage(citationScrubbed);
+  const noPartyNames = stripPartyNamesFromProseCitations(citationScrubbed);
+  return stripForbiddenNoJudgmentsMessage(noPartyNames);
 }
 
 /**
@@ -4001,7 +4012,7 @@ export function injectVerifiedCaseLawFallback(
       "\n\n### Relevant Case Law from Internal Database\n",
       ...topHits.map(h => {
         const briefSummary = (h.summary || "").slice(0, 200);
-        return `- **[${h.citation}]** — ${h.title}${briefSummary ? `: ${briefSummary}` : ""}`;
+        return `- **[${h.citation}]**${briefSummary ? `: ${briefSummary}` : ""}`;
       }),
     ];
     proseSection = proseLines.join("\n");
@@ -7151,6 +7162,9 @@ CONFIDENCE & UNCERTAINTY:
 
 ━━━ CITATION INTEGRITY (NON-NEGOTIABLE) ━━━
 
+MANDATORY FORMAL CITATION RULE:
+Whenever referencing a judicial precedent anywhere in your response (prose, headings, or bullets), you MUST write the exact formal citation string enclosed in bold brackets, e.g., **[2024 SCMR 142]** or **[PLD 2020 SC 456]**. Never refer to a judgment vaguely (e.g. "a Supreme Court ruling held...") or using party names alone without the formal bracketed citation string attached.
+
 CASE LAW RULES:
 1. ONLY cite cases from the "VERIFIED JUDGMENTS" section below. NEVER from training memory.
 2. If no cases in database for a point → write analysis WITHOUT citation.
@@ -7160,7 +7174,7 @@ CASE LAW RULES:
 6. NEVER fabricate, synthesize, or estimate citations. Zero citations > one fake citation. Always.
 7. Format each case heading ONLY as: #### **[EXACT CITATION]** (e.g. #### **[2024 SCMR 142]**), then four bullet sub-points: **Facts:** (one sentence), **Issue:** (the legal question), **Held:** (decision + reasoning), **Relevance:** (why it helps/warns the user). Never list a citation as a one-liner.
 8. Frontend verifies every citation. A fabricated citation produces a broken card and destroys credibility.
-9. Strictly NEVER write case titles, party names (such as "Muhammad Hanif Sultan and others vs Pir Sultan Noor Ahmad" or "Sohail Iqbal vs State"), or "vs" anywhere in your text or headings. ONLY write the formal law report citation string (e.g. **[2024 SCMR 142]**).
+9. Include the formal citation string (e.g. **[2024 SCMR 142]**) verbatim in your text whenever mentioning a case. You may include party names naturally alongside the citation.
 10. Only cite the primary judgments listed in the VERIFIED JUDGMENTS section. Never cite or mention secondary "cited judgments" or other citations that are mentioned inside the EXCERPTS or headnotes of the primary judgments. Doing so will corrupt the citation integrity checker.
 
 
@@ -10397,7 +10411,7 @@ export async function registerRoutes(
       // If BOTH RAG and judgment DB returned nothing, return a helpful fallback
       if (!ragContext && !judgmentContext) {
         return res.json({
-          answer: "No relevant results found from uploaded documents or the judgment database. Try searching with different keywords, or use the Judgment Search (/judgment-search) to find specific cases.",
+          answer: "No relevant legal records were found for this query in the current context.",
           confidence: "low",
           citations: [],
           retrieval: {
@@ -15885,13 +15899,12 @@ The user has attached the following documents for your reference. Analyze them c
 
       const toolMandateBlock =
         toolSearchResult.foundCount > 0
-          ? `\n\nCITATION MANDATE (REQUIRED — read carefully):\n` +
+          ? `\n\nMANDATORY FORMAL CITATION RULE (NON-NEGOTIABLE):\n` +
+            `- Whenever referencing a judicial precedent in prose, headings, or bullets, you MUST write the exact formal citation string enclosed in bold brackets, e.g., "**[2024 SCMR 1419]**" or "**[PLD 2020 SC 456]**". Never mention a case vaguely without its bracketed formal citation.\n` +
             `- Cite ONLY judgments from the AI-SEARCHED JUDGMENTS list above that are DIRECTLY relevant to the user's legal question.\n` +
             `- You MUST cite at least 3 relevant cases (up to 5) with full detail for each (Facts, Issue, Held, Relevance). Never cite irrelevant or mixed-domain cases just to reach the minimum.\n` +
             `- If NONE of the cases in the list are relevant to the specific legal topic, do NOT cite any of them.\n` +
-            `- Always use ONLY the FORMAL CITATION string. Strictly NEVER write case titles, party names (such as "Muhammad Hanif Sultan and others vs Pir Sultan Noor Ahmad" or "Sohail Iqbal vs State"), or "vs" in your headings or text.\n` +
-            `  WRONG: "Sohail Iqbal vs State held that..." or "### [2024 SCMR 142] — Muhammad Hanif Sultan vs Pir..."\n` +
-            `  RIGHT: "**[2024 SCMR 1419]** held that..." or "### **[2024 SCMR 1419]**"\n` +
+            `- Include the FORMAL CITATION string (e.g. "**[2024 SCMR 1419]**") verbatim in your response. You may include case titles or party names naturally.\n` +
             `  Copy each citation EXACTLY as listed (e.g. "2024 SCMR 1419", "PLD 2020 SC 456", "2019 PCRLJ 1683").\n` +
             `- Do NOT cite any case that is not in the list above — those citations will be removed.\n` +
             `- Do NOT cite from memory or training data, even on familiar topics like Section 302 PPC or cheque dishonour.\n` +
@@ -15915,10 +15928,11 @@ The user has attached the following documents for your reference. Analyze them c
             `- NEVER cite a case with just "the court held that X" — always use the structured format above.\n` +
             `- Present all cases under a "## Leading Case Law" section in your response.`
           : pipelineCitationLines.length > 0
-            ? `\n\nCITATION MANDATE FROM INTERNAL DATABASE (REQUIRED):\n` +
+            ? `\n\nMANDATORY FORMAL CITATION RULE (NON-NEGOTIABLE):\n` +
+              `- Whenever referencing a judicial precedent anywhere in your response, you MUST write the exact formal citation string enclosed in bold brackets, e.g. **[2021 MLD 456]** or **[PLD 2019 SC 1]**. Never mention a case vaguely without its bracketed formal citation.\n` +
               `- The knowledge pipeline retrieved verified Pakistani judgments for this query (listed in the VERIFIED JUDGMENTS section above).\n` +
               `- You MUST cite at least 3 of those judgments (up to 5) using their EXACT formal citation strings.\n` +
-              `- Always use the citation format: **[CITATION]** e.g. **[2021 MLD 456]** or **[PLD 2019 SC 1]**. Strictly NEVER write case titles or party names.\n` +
+              `- Always use the citation format: **[CITATION]** e.g. **[2021 MLD 456]** or **[PLD 2019 SC 1]**. You may include case titles or party names naturally.\n` +
               `- Do NOT invent or guess citations — only cite what appears in the VERIFIED JUDGMENTS context.\n` +
               `- Each cited judgment must appear in your prose AND in the final references block.\n` +
               `- Use this EXACT format for EVERY case:\n` +
