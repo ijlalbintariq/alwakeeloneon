@@ -2375,11 +2375,11 @@ async function callStandardAISimple(
   return callStandardAI(systemPrompt, [{ role: "user", parts: [{ text: userText }] }], maxTokens, options);
 }
 
-// Addon for system prompt emphasizing citation from injected verified cases via judgment search database
+// Addon for system prompt emphasizing citation from injected verified cases via database
 const VERIFIED_JUDGMENTS_CITATION_ADDON = `
 
-=== CASE LAW RETRIEVAL: JUDGMENT SEARCH DATABASE ===
-These verified cases come from Al Wakeelo's Judgment Search database (searchable by users at /judgment-search).
+=== CASE LAW RETRIEVAL: INTERNAL DATABASE ===
+These verified cases come from Al Wakeelo's internal database.
 The "VERIFIED JUDGMENTS FROM INTERNAL DATABASE" section below contains ONLY real, verified case law
 from our internal Pakistani legal database. These are the ONLY citations you should use.
 
@@ -2387,7 +2387,7 @@ MANDATORY JUDGMENT RULES:
 
 RULE J1 — NO VERIFIED CASES:
 If the VERIFIED JUDGMENTS section below is empty or has no results for a case law query:
-Do NOT output a "Leading Case Law" header or section. Do NOT write "No relevant judgments found" or recommend /judgment-search. Simply focus your response on statutory analysis and practical legal strategy.
+Do NOT output a "Leading Case Law" header or section. Do NOT write "No relevant judgments found" or mention/recommend any search database. Simply focus your response on statutory analysis and practical legal strategy.
 
 RULE J2 — VERIFIED CASES PRESENT:
 If verified cases are present in the VERIFIED JUDGMENTS section below, you MUST select and cite 1 to 4 of the most applicable cases under a "### Leading Case Law" header in your response. Cite ONLY those cases with verbatim citations and court names. Explain how each cited case applies to the user's situation. NEVER write "No relevant judgments found" when cases are present in the verified section. Never invent citations from memory or training data.
@@ -3880,7 +3880,7 @@ export function stripForbiddenNoJudgmentsMessage(content: string): string {
   cleaned = cleaned.replace(
     /^\s*#{1,4}\s*(?:Leading|Relevant|Key)?\s*Case\s+Law[\s\S]*?(?=\n+#{1,4}\s+|\n\s*\n\s*###|\n{3,}|$)/gmi,
     (match) => {
-      if (/(?:no\s+(?:relevant|specific|direct)?\s*(?:judgments?|case\s*laws?)|search\s+our\s+Judgment\s+Search)/i.test(match)) {
+      if (/(?:no\s+(?:relevant|specific|direct)?\s*(?:judgments?|case\s*laws?)|search\s+our\s+Judgment\s+Search|Judgment\s+Search\s+database|\/judgment-search)/i.test(match)) {
         return "";
       }
       return match;
@@ -3893,13 +3893,13 @@ export function stripForbiddenNoJudgmentsMessage(content: string): string {
     ""
   );
 
-  // 3. Remove isolated lines containing "No relevant judgments" or "/judgment-search"
+  // 3. Remove isolated lines containing "No relevant judgments", "Judgment Search", or "/judgment-search"
   cleaned = cleaned.replace(
     /^[^\n]*No\s+relevant\s+judgments[^\n]*/gmi,
     "",
   );
   cleaned = cleaned.replace(
-    /^[^\n]*search\s+our\s+Judgment\s+Search\s+database[^\n]*/gmi,
+    /^[^\n]*(?:Judgment\s+Search|\/judgment-search)[^\n]*/gmi,
     "",
   );
 
@@ -4003,7 +4003,6 @@ export function injectVerifiedCaseLawFallback(
         const briefSummary = (h.summary || "").slice(0, 200);
         return `- **[${h.citation}]** — ${h.title}${briefSummary ? `: ${briefSummary}` : ""}`;
       }),
-      "\n*For comprehensive case law research, explore our [Judgment Search](/judgment-search) database.*\n",
     ];
     proseSection = proseLines.join("\n");
   }
