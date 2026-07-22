@@ -31,6 +31,7 @@ interface OpenRouterChatOptions {
   maxTokens?: number;
   model?: string;
   temperature?: number;
+  signal?: AbortSignal;
 }
 
 interface OpenRouterResponse {
@@ -68,18 +69,49 @@ export async function* streamWithOpenRouter(options: OpenRouterChatOptions): Asy
   const model = options.model || DEFAULT_MODEL;
   const temperature = Number.isFinite(options.temperature) ? Number(options.temperature) : 0.7;
 
-  const stream = await client.chat.completions.create({
-    model,
-    messages: options.messages as any,
-    max_tokens: options.maxTokens || 8192,
-    temperature,
-    stream: true,
-  });
+  const controller = new AbortController();
+  const INACTIVITY_TIMEOUT_MS = Number(process.env.AI_STREAM_INACTIVITY_TIMEOUT_MS || 45000);
 
-  for await (const chunk of stream) {
-    const text = chunk.choices[0]?.delta?.content;
-    if (text) {
-      yield text;
+  const parentSignal = options.signal;
+  const onParentAbort = () => controller.abort();
+  if (parentSignal) {
+    if (parentSignal.aborted) controller.abort();
+    else parentSignal.addEventListener("abort", onParentAbort);
+  }
+
+  let watchdog: NodeJS.Timeout | null = null;
+  const resetWatchdog = () => {
+    if (watchdog) clearTimeout(watchdog);
+    watchdog = setTimeout(() => {
+      console.warn(`[OpenRouterStream] Inactivity timeout of ${INACTIVITY_TIMEOUT_MS}ms triggered for model ${model}. Aborting stream.`);
+      controller.abort();
+    }, INACTIVITY_TIMEOUT_MS);
+  };
+
+  try {
+    resetWatchdog();
+    const stream = await client.chat.completions.create(
+      {
+        model,
+        messages: options.messages as any,
+        max_tokens: options.maxTokens || 8192,
+        temperature,
+        stream: true,
+      },
+      { signal: controller.signal } as any,
+    );
+
+    for await (const chunk of stream) {
+      resetWatchdog();
+      const text = chunk.choices[0]?.delta?.content;
+      if (text) {
+        yield text;
+      }
+    }
+  } finally {
+    if (watchdog) clearTimeout(watchdog);
+    if (parentSignal) {
+      parentSignal.removeEventListener("abort", onParentAbort);
     }
   }
 }
@@ -87,3 +119,4 @@ export async function* streamWithOpenRouter(options: OpenRouterChatOptions): Asy
 export function getOpenRouterModelName(): string {
   return DEFAULT_MODEL;
 }
+
