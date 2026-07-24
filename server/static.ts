@@ -213,6 +213,14 @@ export function serveStatic(app: Express) {
   <p>Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, Federal Shariat Court, District Courts, and Tribunals.</p>
   <h2>Law Reports</h2>
   <p>PLD (Pakistan Legal Decisions), SCMR (Supreme Court Monthly Review), YLR (Yearly Law Reporter), MLD (Monthly Law Digest), CLC (Civil Law Cases), CLD (Corporate Law Decisions), PCrLJ (Pakistan Criminal Law Journal), and more.</p>
+  <h2>How Al Wakeelo Works</h2>
+  <p>Al Wakeelo uses Retrieval-Augmented Generation (RAG) technology to ground every response in verified Pakistani legal sources. When you ask a question, the AI searches our database of 600,000+ judgments and Pakistani statutes, retrieves relevant precedents, and constructs its answer using only verified citations. This eliminates the hallucination problem common in standard AI models.</p>
+  <h2>Who Uses Al Wakeelo</h2>
+  <p>Al Wakeelo serves practicing advocates across Pakistan, law firms and chambers in Karachi, Lahore, Islamabad, Peshawar, and Quetta, law students preparing for bar examinations and legal research, corporate legal departments needing contract drafting and compliance review, and citizens seeking to understand their rights under Pakistani law.</p>
+  <h2>Pakistani Statutes Available</h2>
+  <p>Search the full text of major Pakistani legislation: Constitution of Pakistan 1973, Pakistan Penal Code 1860 (PPC), Code of Criminal Procedure 1898 (CrPC), Code of Civil Procedure 1908 (CPC), Qanun-e-Shahadat Order 1984 (QSO), Contract Act 1872, Transfer of Property Act 1882, Specific Relief Act 1877, Muslim Family Laws Ordinance 1961, Prevention of Electronic Crimes Act 2016 (PECA), Companies Act 2017, and more.</p>
+  <h2>AI-Powered Legal Drafting</h2>
+  <p>Draft court-ready legal documents including writ petitions under Article 199 of the Constitution, bail applications (pre-arrest and post-arrest), civil suit plaints, legal notices, appeals, and stay applications. All drafts follow Pakistani judicial formatting standards with proper prayer clauses, statutory references, and verification statements. Contract drafting covers lease agreements, employment contracts, NDAs, partnership deeds, and sale agreements under the Contract Act 1872, Stamp Act 1899, and Registration Act 1908.</p>
 </div>`,
 
     "/judgments": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">

@@ -124,8 +124,27 @@ const ROUTE_RULES: RouteRule[] = [
     match: /^\/faq$/,
     meta: {
       title: "Frequently Asked Questions (FAQ) | Al Wakeelo",
-      description: "Got questions about Al Wakeelo? Read our comprehensive FAQ covering features, AI grounding, database statistics, and subscriptions.",
+      description:
+        "Answers to common questions about Al Wakeelo, Pakistan's AI legal assistant. Learn about AI grounding, citation accuracy, court database coverage, drafting capabilities, and data privacy.",
       index: true,
+      schemaMarkup: `<script type="application/ld+json">
+${JSON.stringify(
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "What is Al Wakeelo?", "acceptedAnswer": { "@type": "Answer", "text": "Al Wakeelo is Pakistan's first AI-powered legal assistant platform. It leverages large language models and a database of over 600,000 Pakistani court judgments to help advocates, law chambers, and individuals perform legal research and document drafting." } },
+      { "@type": "Question", "name": "Does Al Wakeelo replace a lawyer?", "acceptedAnswer": { "@type": "Answer", "text": "No. Al Wakeelo is a legal research and drafting assistant. It provides informational drafts and legal citations grounded in Pakistani law, but does not provide binding legal advice. For any official legal action, you must consult a licensed advocate." } },
+      { "@type": "Question", "name": "How does the AI prevent hallucinations (fake cases)?", "acceptedAnswer": { "@type": "Answer", "text": "Al Wakeelo uses a Retrieval-Augmented Generation (RAG) pipeline. Before answering any query, the engine queries our database of 600,000+ real judgments, extracts verified precedents, and forces the AI model to construct its response strictly using those verified citations." } },
+      { "@type": "Question", "name": "What court records are indexed?", "acceptedAnswer": { "@type": "Answer", "text": "Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, and Federal Shariat Court decisions. We support PLD, SCMR, CLC, YLR, MLD, CLD, and PCrLJ reporting journals." } },
+      { "@type": "Question", "name": "What documents can the Legal Drafting module write?", "acceptedAnswer": { "@type": "Answer", "text": "Writ petitions, bail applications (pre-arrest, post-arrest, protective), appeals, civil suits (for declaration, injunctions), stay applications, and statutory legal notices under Pakistani law." } },
+      { "@type": "Question", "name": "Is my chat history and case data private?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. All user query data, conversations, and document uploads are strictly protected under secure database controls. Only authenticated users inside your chamber or organization can view shared drafts, files, or thread histories." } }
+    ]
+  },
+  null,
+  2
+)}
+</script>`,
     },
   },
   {

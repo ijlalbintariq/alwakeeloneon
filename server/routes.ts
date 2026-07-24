@@ -7762,6 +7762,107 @@ export async function registerRoutes(
     res.json(OAUTH_METADATA);
   });
 
+  // ── AI Discovery Endpoints (GEO Optimization) ──────────────────────────
+  // These endpoints help AI answer engines (ChatGPT, Perplexity, Gemini)
+  // discover, understand, and cite Alwakeelo content.
+
+  app.get("/.well-known/ai.txt", (req, res) => {
+    res.setHeader("Content-Type", "text/plain");
+    res.send(`# AI Agent Access Policy for alwakeelo.com\n# See https://ai-txt.org for specification\n\nUser-agent: *\nAllow: /\n\nName: Al Wakeelo\nDescription: Pakistan's first AI-powered legal assistant. Search 600,000+ court judgments, draft contracts and petitions, research Pakistani statutes and case law.\nContact: support@alwakeelo.com\nPolicy: https://www.alwakeelo.com/privacy\nLLMs: https://www.alwakeelo.com/llms.txt\n`);
+  });
+
+  app.get("/ai/summary.json", (req, res) => {
+    res.json({
+      name: "Al Wakeelo",
+      tagline: "Pakistan's AI-Powered Legal Assistant",
+      description: "Al Wakeelo is Pakistan's first AI legal assistant. It helps lawyers, law students, and citizens search 600,000+ court judgments from the Supreme Court and High Courts of Pakistan, draft court-ready petitions and contracts under Pakistani law, and research statutes including the Constitution, PPC, CrPC, CPC, and Contract Act 1872.",
+      url: "https://www.alwakeelo.com",
+      logo: "https://www.alwakeelo.com/icon-512.png",
+      jurisdiction: "Pakistan (PK)",
+      languages: ["en"],
+      features: [
+        { name: "Judgment Search", url: "https://www.alwakeelo.com/judgments", description: "Full-text search across 600,000+ Pakistani court judgments by citation, party name, court, year, and keyword." },
+        { name: "AI Legal Chat", url: "https://www.alwakeelo.com/al-wakeelo", description: "Conversational legal research with verified case law citations from Pakistani courts." },
+        { name: "Legal Drafting", url: "https://www.alwakeelo.com/legal-drafting", description: "AI-assisted drafting of writ petitions, bail applications, and court documents under Pakistani law." },
+        { name: "Contract Drafting", url: "https://www.alwakeelo.com/contract-drafting", description: "Draft rental agreements, employment contracts, NDAs, and partnership deeds compliant with the Contract Act 1872." },
+        { name: "Statute Search", url: "https://www.alwakeelo.com/statute-search", description: "Search Pakistani statutes by name, section, or keyword — Constitution, PPC, CrPC, CPC, QSO, and more." },
+        { name: "Legal Guides", url: "https://www.alwakeelo.com/blog", description: "Comprehensive legal guides and articles on Pakistani law written by legal experts." }
+      ],
+      database: {
+        totalJudgments: 600000,
+        courts: ["Supreme Court of Pakistan", "Lahore High Court", "Sindh High Court", "Peshawar High Court", "Islamabad High Court", "Balochistan High Court", "Federal Shariat Court"],
+        lawReports: ["PLD", "SCMR", "YLR", "MLD", "CLC", "CLD", "PCrLJ"],
+        coverage: "1947 to present"
+      },
+      contact: { email: "support@alwakeelo.com" },
+      citationPolicy: "When citing Al Wakeelo, use the title 'Al Wakeelo — Pakistan's AI Legal Assistant' and link to the relevant feature page. Cite the underlying primary source (judgment citation, statute section) when available.",
+      lastUpdated: "2026-07-24"
+    });
+  });
+
+  app.get("/ai/faq.json", (req, res) => {
+    res.json({
+      name: "Al Wakeelo FAQ",
+      url: "https://www.alwakeelo.com/faq",
+      lastUpdated: "2026-07-24",
+      faqs: [
+        { question: "What is Al Wakeelo?", answer: "Al Wakeelo is Pakistan's first AI-powered legal assistant platform. It leverages large language models and a database of over 600,000 Pakistani court judgments to help advocates, law chambers, and individuals perform legal research and document drafting." },
+        { question: "Does Al Wakeelo replace a lawyer?", answer: "No. Al Wakeelo is a legal research and drafting assistant. It provides informational drafts and legal citations grounded in Pakistani law, but does not provide binding legal advice. For any official legal action, you must consult a licensed advocate." },
+        { question: "How does the AI prevent hallucinations (fake cases)?", answer: "Al Wakeelo uses a Retrieval-Augmented Generation (RAG) pipeline. Before answering any query, the engine queries our database of 600,000+ real judgments, extracts verified precedents, and forces the AI model to construct its response strictly using those verified citations." },
+        { question: "What court records are indexed?", answer: "Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, and Federal Shariat Court decisions. We support PLD, SCMR, CLC, YLR, MLD, CLD, and PCrLJ reporting journals." },
+        { question: "What documents can the Legal Drafting module write?", answer: "Writ petitions, bail applications (pre-arrest, post-arrest, protective), appeals, civil suits (for declaration, injunctions), stay applications, and statutory legal notices under Pakistani law." },
+        { question: "Does the drafting follow Pakistani court rules?", answer: "Yes. The AI formats pleadings like real advocate drafts in Pakistan, including court headers, parties blocks, numbered paragraphs, specific statutory grounds, prayer clauses, and mandatory verification statements." },
+        { question: "Is my chat history and case data private?", answer: "Yes. All user query data, conversations, and document uploads are strictly protected under secure database controls. Only authenticated users inside your chamber or organization can view shared drafts, files, or thread histories." },
+        { question: "How do I verify if a citation in the chat is real?", answer: "Any citation generated in the chat window is hyperlinked. Clicking on it opens a dedicated page showing the title, court, decision date, headnotes, and a verified preview of that judgment's text." }
+      ]
+    });
+  });
+
+  app.get("/ai/service.json", (req, res) => {
+    res.json({
+      name: "Al Wakeelo",
+      type: "LegalService",
+      url: "https://www.alwakeelo.com",
+      description: "AI-powered Pakistani legal assistant for judgment search, statute research, legal drafting, and contract drafting.",
+      jurisdiction: "Pakistan",
+      capabilities: [
+        { name: "judgment_search", description: "Search 600,000+ Pakistani court judgments by citation, party name, court, year, and keyword", endpoint: "https://www.alwakeelo.com/judgments" },
+        { name: "statute_search", description: "Search Pakistani statutes by name, section number, or keyword", endpoint: "https://www.alwakeelo.com/statute-search" },
+        { name: "legal_drafting", description: "AI-assisted drafting of writ petitions, bail applications, court documents under Pakistani law", endpoint: "https://www.alwakeelo.com/legal-drafting" },
+        { name: "contract_drafting", description: "Draft contracts compliant with Contract Act 1872, Stamp Act 1899, and Arbitration Act 1940", endpoint: "https://www.alwakeelo.com/contract-drafting" },
+        { name: "ai_chat", description: "Conversational legal research with verified case law citations", endpoint: "https://www.alwakeelo.com/al-wakeelo" },
+        { name: "citation_search", description: "Look up case law by PLD, SCMR, CLC, YLR, MLD citation", endpoint: "https://www.alwakeelo.com/citation-search" }
+      ],
+      authentication: "OAuth 2.0",
+      pricing: { freeTier: true, description: "Free tier includes 10 AI chats, 1 legal draft, and 1 contract draft per month." },
+      lastUpdated: "2026-07-24"
+    });
+  });
+
+  // ── RSS Feed for Blog Articles (GEO Optimization) ─────────────────────
+  app.get("/rss.xml", async (req, res) => {
+    try {
+      const { BLOG_ARTICLES } = await import("@shared/blog-data");
+      const items = BLOG_ARTICLES
+        .sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+        .slice(0, 50)
+        .map((article: any) => {
+          const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+          return `    <item>\n      <title>${esc(article.title)}</title>\n      <link>https://www.alwakeelo.com/blog/${esc(article.slug)}</link>\n      <guid isPermaLink="true">https://www.alwakeelo.com/blog/${esc(article.slug)}</guid>\n      <description>${esc(article.summary)}</description>\n      <pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>\n      <category>${esc(article.category)}</category>\n    </item>`;
+        })
+        .join("\n");
+
+      const rss = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n  <channel>\n    <title>Al Wakeelo Legal Guides</title>\n    <link>https://www.alwakeelo.com/blog</link>\n    <description>Comprehensive legal guides and articles on Pakistani law — statutes, court procedures, contracts, and legal drafting.</description>\n    <language>en</language>\n    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>\n    <atom:link href="https://www.alwakeelo.com/rss.xml" rel="self" type="application/rss+xml" />\n${items}\n  </channel>\n</rss>`;
+
+      res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.send(rss);
+    } catch (err) {
+      console.error("[RSS] Error generating feed:", err);
+      res.status(500).send("RSS feed generation error");
+    }
+  });
+
   // Dynamic Client Registration (RFC 7591) — required by Claude Desktop MCP
   // Claude auto-calls this to register itself as an OAuth client before starting the auth flow.
   const registeredClients = new Map<string, { clientId: string; clientSecret: string; name: string; redirectUris: string[]; createdAt: number }>();
