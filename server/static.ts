@@ -209,8 +209,8 @@ export function serveStatic(app: Express) {
     <li><strong>Statute Search</strong> — Search the Constitution of Pakistan, Pakistan Penal Code (PPC), Code of Criminal Procedure (CrPC), Code of Civil Procedure (CPC), Qanun-e-Shahadat Order, Family Laws, and more.</li>
     <li><strong>Citation Network</strong> — Explore which cases cite each other and trace the legal reasoning chain across Pakistani courts.</li>
   </ul>
-  <h2>Courts Covered</h2>
-  <p>Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, Federal Shariat Court, District Courts, and Tribunals.</p>
+  <h2>Jurisdictions Covered</h2>
+  <p>The Supreme Bench of Pakistan, Lahore High Bench, Sindh High Bench, Peshawar High Bench, Islamabad judiciary, Balochistan judiciary, Federal Shariat appellate forum, district-level forums, and specialized tribunals.</p>
   <h2>Law Reports</h2>
   <p>PLD (Pakistan Legal Decisions), SCMR (Supreme Court Monthly Review), YLR (Yearly Law Reporter), MLD (Monthly Law Digest), CLC (Civil Law Cases), CLD (Corporate Law Decisions), PCrLJ (Pakistan Criminal Law Journal), and more.</p>
   <h2>How Al Wakeelo Works</h2>
@@ -225,26 +225,26 @@ export function serveStatic(app: Express) {
 
     "/judgments": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Pakistani Judgment Search — 600,000+ Cases</h1>
-  <p>Search over 600,000 Pakistani court judgments from the Supreme Court, High Courts, Federal Shariat Court, and Tribunals. Find case law by citation number, party name, court, year, and legal keywords.</p>
+  <p>Search over 600,000 Pakistani judicial decisions from the Supreme Bench, provincial High Benches, the Federal Shariat forum, and special tribunals. Find case law by citation number, party name, jurisdiction, year, and legal keywords.</p>
   <h2>Search by Citation</h2>
-  <p>Look up judgments by their official citation — PLD 2024 Supreme Court 100, 2023 SCMR 500, 2022 YLR 200, MLD, CLC, CLD, PCrLJ citations are all searchable.</p>
+  <p>Look up judgments by their official citation — PLD 2024 SC 100, 2023 SCMR 500, 2022 YLR 200, MLD, CLC, CLD, PCrLJ citations are all searchable across every reporting journal.</p>
   <h2>Search by Party Name</h2>
-  <p>Find cases by petitioner or respondent name. Search for cases involving the State, Federation of Pakistan, Provincial Governments, NAB, FIA, or private parties.</p>
-  <h2>Courts Available</h2>
-  <p>Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, Balochistan High Court, Federal Shariat Court.</p>
+  <p>Find cases by petitioner or respondent name. Search for proceedings involving the State, Federation of Pakistan, Provincial Governments, NAB, FIA, or private parties.</p>
+  <h2>Jurisdictions Covered</h2>
+  <p>The Supreme Bench of Pakistan, Lahore High Bench, Sindh High Bench, Peshawar High Bench, Islamabad judiciary, Balochistan judiciary, and the Federal Shariat appellate forum.</p>
   <h2>Full Judgment Text</h2>
-  <p>Read the complete text of each judgment including headnotes, case summary, parties, decision date, and related citations. Each judgment links to other cases it cites and cases that cite it.</p>
+  <p>Read the complete text of each decision including headnotes, case summary, parties, decision date, and related citations. Every judgment links to the precedents it relies on and subsequent decisions that reference it.</p>
 </div>`,
 
     "/judgments/browse": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Browse Pakistani Case Law &amp; Judgments Directory</h1>
-  <p>Browse our directory of 600,000+ Pakistani judgments organized by court, year, and law journal. Find cases from the Supreme Court of Pakistan, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, and Balochistan High Court.</p>
-  <h2>Browse by Court</h2>
-  <p>Select any Pakistani court to browse its judgments chronologically — Supreme Court, High Courts, Federal Shariat Court, and Tribunals.</p>
+  <p>Browse our directory of 600,000+ Pakistani judicial decisions organized by jurisdiction, year, and law journal. Find cases from the Supreme Bench, all five provincial High Benches, and the Federal Shariat appellate forum.</p>
+  <h2>Browse by Jurisdiction</h2>
+  <p>Select any Pakistani judicial body to browse its decisions chronologically — the apex bench, regional High Benches, the Shariat appellate forum, and specialized tribunals.</p>
   <h2>Browse by Year</h2>
-  <p>Navigate judgments by year from 1947 to present. Find landmark cases and recent decisions.</p>
+  <p>Navigate decisions by year from 1947 to present. Find landmark rulings and recent precedents across every tier of the Pakistani judiciary.</p>
   <h2>Browse by Law Journal</h2>
-  <p>PLD (Pakistan Legal Decisions), SCMR (Supreme Court Monthly Review), YLR (Yearly Law Reporter), MLD (Monthly Law Digest), CLC (Civil Law Cases), CLD (Corporate Law Decisions), PCrLJ (Pakistan Criminal Law Journal).</p>
+  <p>PLD (Pakistan Legal Decisions), SCMR (Supreme Monthly Review), YLR (Yearly Law Reporter), MLD (Monthly Law Digest), CLC (Civil Law Cases), CLD (Corporate Law Decisions), PCrLJ (Pakistan Criminal Law Journal).</p>
 </div>`,
 
     "/statute-search": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
