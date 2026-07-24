@@ -7839,6 +7839,76 @@ export async function registerRoutes(
     });
   });
 
+  // ── IndexNow — Instant Search Engine Notification ─────────────────────
+  // Notifies Bing, Yandex, and other IndexNow-supporting engines when
+  // content is published or updated. Key file hosted at /e842b5c7a162456f93b985bc11951e94.txt
+  const INDEXNOW_KEY = "e842b5c7a162456f93b985bc11951e94";
+  const INDEXNOW_HOST = "www.alwakeelo.com";
+
+  // Submit a batch of URLs to IndexNow (Bing endpoint)
+  async function submitToIndexNow(urls: string[]): Promise<{ success: boolean; submitted: number; error?: string }> {
+    try {
+      const response = await fetch("https://api.indexnow.org/IndexNow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({
+          host: INDEXNOW_HOST,
+          key: INDEXNOW_KEY,
+          keyLocation: `https://${INDEXNOW_HOST}/${INDEXNOW_KEY}.txt`,
+          urlList: urls.slice(0, 10000), // IndexNow max 10k per request
+        }),
+      });
+      if (response.ok || response.status === 202) {
+        return { success: true, submitted: urls.length };
+      }
+      return { success: false, submitted: 0, error: `HTTP ${response.status}` };
+    } catch (err: any) {
+      return { success: false, submitted: 0, error: err.message };
+    }
+  }
+
+  // POST /api/indexnow/submit — submit all important URLs (admin use)
+  app.post("/api/indexnow/submit", async (req, res) => {
+    try {
+      const { BLOG_ARTICLES } = await import("@shared/blog-data");
+      const staticUrls = [
+        `https://${INDEXNOW_HOST}/`,
+        `https://${INDEXNOW_HOST}/judgments`,
+        `https://${INDEXNOW_HOST}/judgments/browse`,
+        `https://${INDEXNOW_HOST}/statute-search`,
+        `https://${INDEXNOW_HOST}/al-wakeelo`,
+        `https://${INDEXNOW_HOST}/legal-drafting`,
+        `https://${INDEXNOW_HOST}/contract-drafting`,
+        `https://${INDEXNOW_HOST}/citation-search`,
+        `https://${INDEXNOW_HOST}/blog`,
+        `https://${INDEXNOW_HOST}/faq`,
+        `https://${INDEXNOW_HOST}/about`,
+        `https://${INDEXNOW_HOST}/contact`,
+        `https://${INDEXNOW_HOST}/install`,
+      ];
+      const blogUrls = BLOG_ARTICLES.map((a: any) => `https://${INDEXNOW_HOST}/blog/${a.slug}`);
+      const allUrls = [...staticUrls, ...blogUrls];
+
+      const result = await submitToIndexNow(allUrls);
+      console.log(`[IndexNow] Batch submit: ${result.submitted} URLs, success=${result.success}`);
+      res.json({ ...result, urls: allUrls.length });
+    } catch (err: any) {
+      console.error("[IndexNow] Error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // POST /api/indexnow/ping — submit a single URL
+  app.post("/api/indexnow/ping", async (req, res) => {
+    const { url } = req.body;
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({ error: "Missing 'url' in request body" });
+    }
+    const result = await submitToIndexNow([url]);
+    console.log(`[IndexNow] Ping: ${url}, success=${result.success}`);
+    res.json(result);
+  });
+
   // ── RSS Feed for Blog Articles (GEO Optimization) ─────────────────────
   app.get("/rss.xml", async (req, res) => {
     try {
