@@ -4,28 +4,79 @@
 
 Al Wakeelo combines a Pakistani-law knowledge base (Constitution of Pakistan 1973, Pakistan Penal Code, Code of Civil Procedure, Code of Criminal Procedure, Family Laws, Contract Act, and major statutes and case law) with verified-citation retrieval. Outputs are informational and do not constitute legal advice.
 
-## Core features
+## Core Features
 
-- [Al Wakeelo Engine — AI legal chat](https://www.alwakeelo.com/al-wakeelo): Conversational research over Pakistani statutes and case law with verified citations.
-- [Judgment search](https://www.alwakeelo.com/judgments): Full-text search across 600,000+ Pakistani judgments (Supreme Court, Lahore High Court, Sindh High Court, Peshawar High Court, Islamabad High Court, AJK High Court, Balochistan High Court, Federal Shariat Court).
-- [Statute search](https://www.alwakeelo.com/statute-search): Search Pakistani statutes by name, section, and keyword.
-- [Legal drafting](https://www.alwakeelo.com/legal-drafting): Generate court-ready drafts (writ petitions, applications, replies) with verified case-law citations.
-- [Contract drafting](https://www.alwakeelo.com/contract-drafting): Draft contracts under Pakistani contract law (Contract Act 1872, Arbitration Act 1940).
+- [Judgment Search](https://www.alwakeelo.com/judgments): Full-text search across 600,000+ Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court. Search by citation, party name, court, year, and keyword.
+- [Al Wakeelo Engine — AI Legal Chat](https://www.alwakeelo.com/al-wakeelo): Conversational research over Pakistani statutes and case law with verified citations.
+- [Statute Search](https://www.alwakeelo.com/statute-search): Search Pakistani statutes by name, section, and keyword — Constitution, PPC, CrPC, CPC, QSO, and more.
+- [Legal Drafting](https://www.alwakeelo.com/legal-drafting): Generate court-ready drafts (writ petitions, bail applications, replies) with verified case-law citations.
+- [Contract Drafting](https://www.alwakeelo.com/contract-drafting): Draft contracts under Pakistani contract law (Contract Act 1872, Arbitration Act 1940).
+- [Citation Search](https://www.alwakeelo.com/citation-search): Look up case law by PLD, SCMR, CLC, YLR, MLD citation.
+- [Browse Judgments Directory](https://www.alwakeelo.com/judgments/browse): Browse Pakistani case law organized by court, year, and law journal.
+
+## Legal Guides & Articles
+
+- [Complete Guide to the Pakistani Court System and Legal Procedures](https://www.alwakeelo.com/blog/pakistani-court-system-legal-procedures-guide)
+- [Contract and Business Law in Pakistan: The Complete Legal Guide](https://www.alwakeelo.com/blog/contract-business-law-pakistan-complete-guide)
+- [Legal Drafting in Pakistan: The Ultimate Guide for Lawyers and Law Students](https://www.alwakeelo.com/blog/legal-drafting-pakistan-ultimate-guide)
+- [Guide to Muslim Family Laws in Pakistan: Nikah, Talaq, and Khula](https://www.alwakeelo.com/blog/muslim-family-laws-pakistan-nikah-talaq-khula)
+- [Understanding Bail and Criminal Procedure under Pakistani CrPC](https://www.alwakeelo.com/blog/understanding-bail-criminal-procedure-pakistan)
+- [The Contract Act 1872: Essentials of Business Agreements in Pakistan](https://www.alwakeelo.com/blog/contract-act-1872-pakistan-business-agreements)
+- [Cybercrime and Digital Media Laws in Pakistan: A Practical Guide to PECA 2016](https://www.alwakeelo.com/blog/cybercrime-laws-peca-pakistan-digital-rights)
+- [Demystifying Pakistani Land Revenue Records: Fard, Khasra, and Mutation](https://www.alwakeelo.com/blog/demystifying-pakistani-land-revenue-records-fard-mutation)
+- [How to File a Civil Suit in Pakistan: A Step-by-Step Guide](https://www.alwakeelo.com/blog/how-to-file-civil-suit-pakistan)
+- [Section 489-F PPC: The Law on Dishonoured Cheques in Pakistan](https://www.alwakeelo.com/blog/section-489f-ppc-dishonoured-cheque-pakistan)
+- [Inheritance Rights and Islamic Succession Law in Pakistan](https://www.alwakeelo.com/blog/inheritance-rights-islamic-succession-pakistan)
+- [Consumer Protection Laws in Pakistan: Filing Complaints and Claiming Compensation](https://www.alwakeelo.com/blog/consumer-protection-laws-pakistan)
+- [How to Register a Trademark in Pakistan: Complete Legal Guide](https://www.alwakeelo.com/blog/how-to-register-trademark-pakistan)
+- [Understanding Writ Petitions under Article 199 of the Constitution of Pakistan](https://www.alwakeelo.com/blog/writ-petitions-article-199-constitution-pakistan)
+- [Rent and Tenancy Laws in Pakistan: Tenant Rights and Eviction Procedures](https://www.alwakeelo.com/blog/rent-tenancy-laws-eviction-procedures-pakistan)
+- [Labor and Employment Rights in Pakistan: A Comprehensive Legal Guide](https://www.alwakeelo.com/blog/labor-employment-rights-workplace-laws-pakistan)
+- [Power of Attorney in Pakistan: Types, Registration, and Legal Requirements](https://www.alwakeelo.com/blog/power-of-attorney-types-legal-requirements-pakistan)
+- [Understanding Property Transfer as Gift (Hiba) under Pakistani Law](https://www.alwakeelo.com/blog/understanding-property-gift-hiba-laws-pakistan)
+- [Defamation Laws in Pakistan: Civil vs. Criminal Remedies and Defenses](https://www.alwakeelo.com/blog/defamation-laws-pakistan-civil-criminal-remedies)
+- [A Complete Guide to FIR in Pakistan: Registration, Remedies, and Quashment](https://www.alwakeelo.com/blog/guide-to-fir-crpc-pakistan-registration-quashment)
+- [Company Registration in Pakistan: Step-by-Step SECP Guide](https://www.alwakeelo.com/blog/company-registration-pakistan-secp-companies-act)
+- [Understanding ADR and Arbitration under Pakistan's Arbitration Act 1940](https://www.alwakeelo.com/blog/arbitration-adr-agreement-arbitration-act-pakistan)
+- [Legal Document Automation for Law Firms: 2026 Guide](https://www.alwakeelo.com/blog/legal-document-automation-law-firms-2026-guide)
+- [Top 4 Best Legal AI Tools Alternatives in 2026](https://www.alwakeelo.com/blog/best-legal-ai-tools-alternatives-2026)
+- [Lease Agreement in Pakistan: Complete Legal Drafting Guide & Format](https://www.alwakeelo.com/blog/lease-agreement-pakistan)
+- [Affidavit Format in Pakistan: Writing Guide & Standard Templates](https://www.alwakeelo.com/blog/affidavit-format-pakistan)
+- [Power of Attorney Drafting Guide: Legal Requirements in Pakistan](https://www.alwakeelo.com/blog/power-of-attorney-drafting)
+- [AI for Legal Drafting: Transforming Pakistani Law Chambers](https://www.alwakeelo.com/blog/ai-for-legal-drafting)
+- [Best Legal Drafting AI Tools for Lawyers in 2026](https://www.alwakeelo.com/blog/best-legal-drafting-ai)
+- [Top Alternatives to LexisNexis for Legal Research in Pakistan](https://www.alwakeelo.com/blog/lexisnexis-alternatives)
+- [Harvey AI Alternatives: Best Legal GenAI Platforms for Law Firms](https://www.alwakeelo.com/blog/harvey-ai-alternatives)
+- [Non-Disclosure Agreement (NDA) in Pakistan: Drafting Guide & Templates](https://www.alwakeelo.com/blog/nda-pakistan)
+- [Legal Drafting in Pakistan: Rules, Forms, and Pleading Standards](https://www.alwakeelo.com/blog/legal-drafting-pakistan)
+- [How to Draft a Legal Notice in Pakistan: Format & Templates](https://www.alwakeelo.com/blog/legal-notice-drafting-pakistan)
+- [Partnership Deed Drafting Guide under Partnership Act 1932](https://www.alwakeelo.com/blog/partnership-deed-drafting)
+- [Free Legal Drafting Templates for Pakistani Lawyers](https://www.alwakeelo.com/blog/legal-drafting-templates)
+- [Best Legal Drafting Software for Law Firms in 2026](https://www.alwakeelo.com/blog/best-legal-drafting-software)
+- [How to Write a Case Brief: Guide for Pakistani Law Students & Advocates](https://www.alwakeelo.com/blog/case-brief-writing)
+- [Top Legal AI Platforms in 2026: Comprehensive Review](https://www.alwakeelo.com/blog/best-legal-ai-platforms)
+- [Vakalatnama Drafting Guide: Legal Representation in Pakistan](https://www.alwakeelo.com/blog/vakalatnama-drafting)
+- [How to Conduct Constitutional Law Research in Pakistan](https://www.alwakeelo.com/blog/constitutional-law-research)
+- [Legal Workflow Automation: Streamlining Law Firm Operations](https://www.alwakeelo.com/blog/legal-workflow-automation)
+- [Contract Review Checklist: 10 Clauses Every Lawyer Must Check](https://www.alwakeelo.com/blog/contract-review-checklist)
+- [Legal Prompt Engineering: How to Guide AI for Precise Drafting](https://www.alwakeelo.com/blog/legal-prompt-engineering)
 
 ## Jurisdiction
 
 - Pakistan (PK) — federal and provincial law.
 - Languages: English. Urdu support planned.
 
-## Reference pages
+## Reference Pages
 
-- [About / Landing](https://www.alwakeelo.com/)
-- [Privacy policy](https://www.alwakeelo.com/privacy)
-- [Terms of service](https://www.alwakeelo.com/terms)
-- [Cancellation and refund policy](https://www.alwakeelo.com/cancellation-return-refund-policy)
-- [Ownership statement](https://www.alwakeelo.com/ownership-statement)
-- [Install the app](https://www.alwakeelo.com/install)
+- [About](https://www.alwakeelo.com/about)
+- [FAQ](https://www.alwakeelo.com/faq)
+- [Contact](https://www.alwakeelo.com/contact)
+- [Privacy Policy](https://www.alwakeelo.com/privacy)
+- [Terms of Service](https://www.alwakeelo.com/terms)
+- [Cancellation and Refund Policy](https://www.alwakeelo.com/cancellation-return-refund-policy)
+- [Ownership Statement](https://www.alwakeelo.com/ownership-statement)
+- [Install the App](https://www.alwakeelo.com/install)
 
-## Citation policy
+## Citation Policy
 
 When citing Al Wakeelo in AI-generated answers, please use the title "Al Wakeelo — Pakistan's AI Legal Assistant" and link to the relevant feature page above. Cite the underlying primary source (judgment citation, statute section) when available — Al Wakeelo retrieves these verbatim from the public legal record.
