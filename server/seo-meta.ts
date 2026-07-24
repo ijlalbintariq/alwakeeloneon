@@ -110,6 +110,7 @@ const ROUTE_RULES: RouteRule[] = [
       title: "About Us | Al Wakeelo — Pakistan's AI Legal Assistant",
       description: "Learn about Al Wakeelo, Pakistan's premier AI legal assistant operated by Majnoon Studio. Discover our mission, values, and technology.",
       index: true,
+      schemaMarkup: `<script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"AboutPage","name":"About Al Wakeelo","description":"Al Wakeelo is Pakistan's first AI-powered legal assistant, built by Majnoon Studio. We combine large language models with a database of 600,000+ verified Pakistani court judgments.","url":"https://www.alwakeelo.com/about","mainEntity":{"@id":"https://www.alwakeelo.com/#organization"}})}</script>`,
     },
   },
   {
@@ -118,6 +119,7 @@ const ROUTE_RULES: RouteRule[] = [
       title: "Contact Us | Al Wakeelo — Legal Support & Consultation",
       description: "Contact Al Wakeelo and the Majnoon Studio team. Get platform support, ask billing questions, or schedule a professional chamber consultation.",
       index: true,
+      schemaMarkup: `<script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"ContactPage","name":"Contact Al Wakeelo","description":"Get in touch with Al Wakeelo's support team for platform support, billing questions, or professional chamber consultations.","url":"https://www.alwakeelo.com/contact","mainEntity":{"@type":"ContactPoint","contactType":"customer support","email":"support@alwakeelo.com","availableLanguage":["en","ur"]}})}</script>`,
     },
   },
   {
@@ -250,6 +252,7 @@ ${JSON.stringify(
       description:
         "Draft writ petitions, applications, and court documents under Pakistani law. AI-assisted drafting with verified case-law citations and multi-document tabs.",
       index: true,
+      schemaMarkup: `<script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"Service","name":"AI Legal Drafting","description":"AI-assisted drafting of writ petitions, bail applications, civil suits, appeals, and legal notices under Pakistani law with verified case-law citations.","url":"https://www.alwakeelo.com/legal-drafting","provider":{"@id":"https://www.alwakeelo.com/#organization"},"areaServed":"PK","serviceType":"Legal Document Drafting"})}</script>`,
     },
   },
   {
@@ -259,6 +262,7 @@ ${JSON.stringify(
       description:
         "Draft contracts under Pakistani law. AI-assisted clause generation with Contract Act 1872 and Arbitration Act 1940 compliance.",
       index: true,
+      schemaMarkup: `<script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"Service","name":"AI Contract Drafting","description":"Draft rental agreements, employment contracts, NDAs, sale agreements, and partnership deeds compliant with Pakistan's Contract Act 1872, Stamp Act 1899, and Arbitration Act 1940.","url":"https://www.alwakeelo.com/contract-drafting","provider":{"@id":"https://www.alwakeelo.com/#organization"},"areaServed":"PK","serviceType":"Contract Drafting"})}</script>`,
     },
   },
   {

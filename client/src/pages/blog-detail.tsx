@@ -34,7 +34,10 @@ export default function BlogDetailPage() {
     );
   }
 
-  const otherArticles = BLOG_ARTICLES.filter((a) => a.slug !== slug).slice(0, 2);
+  // Prefer articles from the same category for hub-and-spoke interlinking
+  const sameCategory = BLOG_ARTICLES.filter((a) => a.slug !== slug && a.category === article.category);
+  const otherCategory = BLOG_ARTICLES.filter((a) => a.slug !== slug && a.category !== article.category);
+  const otherArticles = [...sameCategory, ...otherCategory].slice(0, 3);
 
   return (
     <div className="space-y-10 fade-in">
@@ -67,8 +70,8 @@ export default function BlogDetailPage() {
 
       {/* Suggested Articles */}
       <section className="border-t border-border pt-10 space-y-4">
-        <h3 className="text-xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Other Legal Guides</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h3 className="text-xl font-bold italic" style={{ fontFamily: "'Playfair Display', serif" }}>Related Legal Guides</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {otherArticles.map((item) => (
             <div key={item.slug} className="p-5 rounded-2xl border border-border bg-card/30 flex flex-col justify-between hover:border-primary/20 transition-all">
               <div className="space-y-2">

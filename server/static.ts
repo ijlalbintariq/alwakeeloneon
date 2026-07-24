@@ -360,24 +360,47 @@ export function serveStatic(app: Express) {
   <h1>About Al Wakeelo</h1>
   <p>Al Wakeelo is Pakistan's premier AI legal assistant workspace. Our mission is to make justice and legal knowledge accessible to all citizens, advocates, and chambers in Pakistan using advanced artificial intelligence.</p>
   <p>Operated by Majnoon Studio, Al Wakeelo brings together a database of over 600,000 court judgments, federal and provincial statutes, and case-intake logs in a single secure platform.</p>
+  
+  <h2>Mission and Vision</h2>
+  <p>Our vision is to revolutionize the legal landscape of Pakistan by democratizing access to case law and statutory information. We believe that empowering legal professionals with cutting-edge AI tools will significantly reduce the time spent on manual research, allowing advocates to focus on strategy, argumentation, and client advocacy. We are committed to transparency, accuracy, and providing an unbiased, reliable legal assistant that acts as a digital co-counsel for every legal practitioner.</p>
+  
+  <h2>The Technology</h2>
+  <p>At the core of Al Wakeelo is our advanced Retrieval-Augmented Generation (RAG) pipeline. Traditional AI models often suffer from "hallucinations"—inventing fake case laws or sections. Al Wakeelo solves this by explicitly searching our proprietary database of over 600,000 verified Pakistani court judgments and statutes before generating an answer. Every legal principle or citation provided by our engine is grounded in actual judicial precedents from the Supreme Court, High Courts, and Federal Shariat Court, ensuring unparalleled accuracy and reliability for our users.</p>
+  
+  <h2>The Team</h2>
+  <p>Al Wakeelo is built and maintained by Majnoon Studio, a dedicated team of engineers, legal researchers, and data scientists. We work closely with practicing advocates and legal experts in Pakistan to ensure our platform meets the rigorous demands of court-ready drafting and profound legal analysis. Our team continuously updates our legal databases and refines our AI models to stay current with the latest jurisprudence and amendments in Pakistani law.</p>
+
   <h2>Our Core Values</h2>
   <ul>
-    <li>Accuracy and Grounding — We verify citations against real judgments to eliminate hallucinations.</li>
-    <li>Privacy First — Your queries and files are secure with us.</li>
-    <li>Empowering Advocates — We build tools to accelerate research and drafting for legal professionals.</li>
+    <li><strong>Accuracy and Grounding</strong> — We verify citations against real judgments to eliminate hallucinations.</li>
+    <li><strong>Privacy First</strong> — Your queries, chat history, and files are protected with industry-standard encryption and access controls.</li>
+    <li><strong>Empowering Advocates</strong> — We build tools that genuinely accelerate research, drafting, and case preparation for legal professionals across the nation.</li>
   </ul>
 </div>`,
 
     "/contact": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>Contact Al Wakeelo</h1>
-  <p>Have questions, need support, or want to schedule a legal consultation? Reach out to Al Wakeelo and the team at Majnoon Studio.</p>
-  <h2>Contact Channels</h2>
+  <p>Have questions, need technical support, or want to explore enterprise solutions for your law firm? Reach out to Al Wakeelo and the dedicated team at Majnoon Studio. We are here to assist you with platform navigation, subscription inquiries, and providing demonstrations of our AI capabilities.</p>
+  
+  <h2>Support Channels</h2>
+  <p>We offer multiple ways to get in touch with our support and sales teams to ensure you receive timely assistance.</p>
   <ul>
-    <li>Email Support: support@alwakeelo.com</li>
-    <li>Phone / WhatsApp: 00923358341897</li>
-    <li>Business Hours: Monday - Friday, 9:00 AM - 5:00 PM (PKT)</li>
+    <li><strong>Email Support:</strong> Send us an email at support@alwakeelo.com. We typically respond to all technical support and billing inquiries within 24 hours.</li>
+    <li><strong>Phone / WhatsApp:</strong> For urgent queries or to speak with a representative directly, you can reach us at 00923358341897.</li>
+    <li><strong>In-App Chat:</strong> Registered users can utilize the built-in feedback and support features directly from the Al Wakeelo dashboard.</li>
   </ul>
-  <p>Submit your messages directly using the contact form on our web application.</p>
+  
+  <h2>Business Hours</h2>
+  <p>Our support team is available during standard business hours to assist you with any questions or issues you may encounter while using the platform.</p>
+  <ul>
+    <li>Monday to Friday: 9:00 AM - 5:00 PM (PKT)</li>
+    <li>Saturday & Sunday: Closed (System maintenance and automated support only)</li>
+  </ul>
+  
+  <h2>Office Location & Consultations</h2>
+  <p>Al Wakeelo is operated by Majnoon Studio. While our platform is fully digital and accessible online from anywhere in Pakistan, we do arrange virtual meetings and professional chamber consultations for law firms looking to integrate our AI solutions into their existing workflows. Please contact us via email or WhatsApp to schedule a dedicated session with our implementation team.</p>
+
+  <p>For immediate assistance with common queries, you can also check our comprehensive FAQ section or submit your messages directly using the contact form on our web application.</p>
 </div>`,
 
     "/faq": `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
@@ -568,23 +591,45 @@ export function serveStatic(app: Express) {
       const slug = blogMatch[1];
       const article = BLOG_ARTICLES.find((a) => a.slug === slug);
       if (article) {
+        const wordCount = article.content.split(/\s+/).length;
         const schema = {
           "@context": "https://schema.org",
           "@type": "BlogPosting",
           "headline": article.title,
           "description": article.summary,
           "datePublished": article.publishedAt,
+          "dateModified": article.publishedAt,
           "genre": article.category,
+          "keywords": article.category,
+          "wordCount": wordCount,
+          "url": `https://www.alwakeelo.com/blog/${article.slug}`,
+          "mainEntityOfPage": `https://www.alwakeelo.com/blog/${article.slug}`,
+          "image": "https://www.alwakeelo.com/icon-512.png",
+          "author": {
+            "@type": "Organization",
+            "name": "Al Wakeelo Legal Team",
+            "url": "https://www.alwakeelo.com/about"
+          },
           "publisher": {
             "@type": "Organization",
             "name": "Al Wakeelo",
+            "url": "https://www.alwakeelo.com",
             "logo": {
               "@type": "ImageObject",
-              "url": "https://www.alwakeelo.com/assets/logo.png"
+              "url": "https://www.alwakeelo.com/icon-512.png"
             }
           }
         };
-        const schemaMarkup = `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n</script>`;
+        const breadcrumb = {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.alwakeelo.com" },
+            { "@type": "ListItem", "position": 2, "name": "Legal Guides", "item": "https://www.alwakeelo.com/blog" },
+            { "@type": "ListItem", "position": 3, "name": article.title, "item": `https://www.alwakeelo.com/blog/${article.slug}` }
+          ]
+        };
+        const schemaMarkup = `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n</script>\n<script type="application/ld+json">\n${JSON.stringify(breadcrumb, null, 2)}\n</script>`;
         customMeta = {
           title: `${article.title} | Al Wakeelo Legal Guides`,
           description: article.summary,
@@ -592,7 +637,7 @@ export function serveStatic(app: Express) {
           schemaMarkup,
         };
         const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-        preRenderBlock = `<div id="seo-prerender" style="display:none" aria-hidden="true">
+        preRenderBlock = `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
   <h1>${esc(article.title)}</h1>
   <p><strong>Category:</strong> ${esc(article.category)}</p>
   <p><strong>Published:</strong> ${esc(article.publishedAt)}</p>
