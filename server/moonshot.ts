@@ -45,10 +45,11 @@ export async function chatWithMoonshot(options: MoonshotChatOptions): Promise<Mo
   const isKimiModel = model.startsWith("kimi");
   const useInstant = options.useInstant ?? false;
 
+  const defaultMaxTokens = isKimiModel && !useInstant ? 16384 : 8192;
   const apiOptions: any = {
     model,
     messages: options.messages as any,
-    max_tokens: options.maxTokens || 8192,
+    max_tokens: Math.max(options.maxTokens || 0, defaultMaxTokens),
     temperature: options.temperature ?? (isKimiModel ? (useInstant ? 0.6 : 1.0) : 0.7),
   };
 
@@ -96,10 +97,11 @@ export async function* streamWithMoonshot(options: MoonshotChatOptions): AsyncGe
   const isKimiModel = model.startsWith("kimi");
   const useInstant = options.useInstant ?? false;
 
+  const defaultMaxTokens = isKimiModel && !useInstant ? 16384 : 8192;
   const apiOptions: any = {
     model,
     messages: options.messages as any,
-    max_tokens: options.maxTokens || 8192,
+    max_tokens: Math.max(options.maxTokens || 0, defaultMaxTokens),
     temperature: options.temperature ?? (isKimiModel ? (useInstant ? 0.6 : 1.0) : 0.7),
     stream: true,
   };

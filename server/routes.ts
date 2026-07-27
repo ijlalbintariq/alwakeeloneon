@@ -7710,6 +7710,16 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
+  app.get(["/download/manifest.xml", "/word-addin/manifest.xml"], (_req, res) => {
+    const manifestPath = path.resolve(process.cwd(), "word-addin/manifest.xml");
+    if (fs.existsSync(manifestPath)) {
+      res.setHeader("Content-Type", "application/xml");
+      res.setHeader("Content-Disposition", 'attachment; filename="alwakeelo-manifest.xml"');
+      return res.sendFile(manifestPath);
+    }
+    return res.status(404).send("Manifest file not found.");
+  });
+
   app.get("/robots.txt", (_req, res) => {
     // Always use the canonical www origin — must match the canonical URLs
     // in sitemap.xml and <link rel="canonical">. PUBLIC_SITE_URL may be
@@ -16325,7 +16335,7 @@ The user has attached the following documents for your reference. Analyze them c
               const { streamWithMoonshot } = await import("./moonshot");
               for await (const text of streamWithMoonshot({
                 messages: streamMessages as any,
-                maxTokens: tokenLimit,
+                maxTokens: Math.max(tokenLimit, 16384),
                 temperature,
                 useInstant: false,
               })) {

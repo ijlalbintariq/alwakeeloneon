@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+  xsi:type="TaskPaneApp">
+  <Id>d58e3760-4966-419b-ab29-fbf5f2efb4b9</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>AL WAKEELO</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="AL WAKEELO" />
+  <Description DefaultValue="Pakistan's AI Legal Assistant for Microsoft Word" />
+  <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-80.png" />
+  <SupportUrl DefaultValue="https://www.alwakeelo.com/support" />
+  <AppDomains>
+    <AppDomain>https://localhost:3000</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Document" />
+  </Hosts>
+  <Requirements>
+    <Sets>
+      <Set Name="WordApi" MinVersion="1.4" />
+    </Sets>
+  </Requirements>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://localhost:3000/taskpane.html" />
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.0" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Document">
+        <DesktopFormFactor>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <CustomTab id="AlWakeeloTab">
+              <Group id="ResearchGroup">
+                <Label resid="ResearchGroupLabel" />
+                <Icon>
+                  <bt:Image size="16" resid="Icon16" />
+                  <bt:Image size="32" resid="Icon32" />
+                  <bt:Image size="80" resid="Icon80" />
+                </Icon>
+                <Control xsi:type="Button" id="CaseLawBtn">
+                  <Label resid="CaseLawLabel" />
+                  <Supertip>
+                    <Title resid="CaseLawLabel" />
+                    <Description resid="CaseLawDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonId1</TaskpaneId>
+                    <SourceLocation resid="TaskpaneUrl" />
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="StatutesBtn">
+                  <Label resid="StatutesLabel" />
+                  <Supertip>
+                    <Title resid="StatutesLabel" />
+                    <Description resid="StatutesDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonId2</TaskpaneId>
+                    <SourceLocation resid="TaskpaneUrl" />
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="CitationsBtn">
+                  <Label resid="CitationsLabel" />
+                  <Supertip>
+                    <Title resid="CitationsLabel" />
+                    <Description resid="CitationsDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonId3</TaskpaneId>
+                    <SourceLocation resid="TaskpaneUrl" />
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="DraftGroup">
+                <Label resid="DraftGroupLabel" />
+                <Icon>
+                  <bt:Image size="16" resid="Icon16" />
+                  <bt:Image size="32" resid="Icon32" />
+                  <bt:Image size="80" resid="Icon80" />
+                </Icon>
+                <Control xsi:type="Button" id="AiChatBtn">
+                  <Label resid="AiChatLabel" />
+                  <Supertip>
+                    <Title resid="AiChatLabel" />
+                    <Description resid="AiChatDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonId4</TaskpaneId>
+                    <SourceLocation resid="TaskpaneUrl" />
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="ContractBtn">
+                  <Label resid="ContractLabel" />
+                  <Supertip>
+                    <Title resid="ContractLabel" />
+                    <Description resid="ContractDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonId5</TaskpaneId>
+                    <SourceLocation resid="TaskpaneUrl" />
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PetitionBtn">
+                  <Label resid="PetitionLabel" />
+                  <Supertip>
+                    <Title resid="PetitionLabel" />
+                    <Description resid="PetitionDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonId6</TaskpaneId>
+                    <SourceLocation resid="TaskpaneUrl" />
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="ReviewGroup">
+                <Label resid="ReviewGroupLabel" />
+                <Icon>
+                  <bt:Image size="16" resid="Icon16" />
+                  <bt:Image size="32" resid="Icon32" />
+                  <bt:Image size="80" resid="Icon80" />
+                </Icon>
+                <Control xsi:type="Button" id="CourtFormatBtn">
+                  <Label resid="CourtFormatLabel" />
+                  <Supertip>
+                    <Title resid="CourtFormatLabel" />
+                    <Description resid="CourtFormatDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>courtFormat</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="CheckCitationsBtn">
+                  <Label resid="CheckCitationsLabel" />
+                  <Supertip>
+                    <Title resid="CheckCitationsLabel" />
+                    <Description resid="CheckCitationsDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>checkCitations</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="AlWakeeloGroup">
+                <Label resid="AlWakeeloGroupLabel" />
+                <Icon>
+                  <bt:Image size="16" resid="Icon16" />
+                  <bt:Image size="32" resid="Icon32" />
+                  <bt:Image size="80" resid="Icon80" />
+                </Icon>
+                <Control xsi:type="Button" id="OpenPanelBtn">
+                  <Label resid="OpenPanelLabel" />
+                  <Supertip>
+                    <Title resid="OpenPanelLabel" />
+                    <Description resid="OpenPanelDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonId7</TaskpaneId>
+                    <SourceLocation resid="TaskpaneUrl" />
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SettingsBtn">
+                  <Label resid="SettingsLabel" />
+                  <Supertip>
+                    <Title resid="SettingsLabel" />
+                    <Description resid="SettingsDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonId8</TaskpaneId>
+                    <SourceLocation resid="TaskpaneUrl" />
+                  </Action>
+                </Control>
+              </Group>
+              <Label resid="AlWakeeloTabLabel" />
+            </CustomTab>
+          </ExtensionPoint>
+          <ExtensionPoint xsi:type="ContextMenu">
+            <OfficeMenu id="ContextMenuText">
+              <Control xsi:type="Button" id="FindPrecedentBtn">
+                <Label resid="FindPrecedentLabel" />
+                <Supertip>
+                  <Title resid="FindPrecedentLabel" />
+                  <Description resid="FindPrecedentDesc" />
+                </Supertip>
+                <Icon>
+                  <bt:Image size="16" resid="Icon16" />
+                  <bt:Image size="32" resid="Icon32" />
+                  <bt:Image size="80" resid="Icon80" />
+                </Icon>
+                <Action xsi:type="ExecuteFunction">
+                  <FunctionName>findPrecedent</FunctionName>
+                </Action>
+              </Control>
+              <Control xsi:type="Button" id="ExplainThisBtn">
+                <Label resid="ExplainThisLabel" />
+                <Supertip>
+                  <Title resid="ExplainThisLabel" />
+                  <Description resid="ExplainThisDesc" />
+                </Supertip>
+                <Icon>
+                  <bt:Image size="16" resid="Icon16" />
+                  <bt:Image size="32" resid="Icon32" />
+                  <bt:Image size="80" resid="Icon80" />
+                </Icon>
+                <Action xsi:type="ExecuteFunction">
+                  <FunctionName>explainThis</FunctionName>
+                </Action>
+              </Control>
+              <Control xsi:type="Button" id="AnalyzeClausesBtn">
+                <Label resid="AnalyzeClausesLabel" />
+                <Supertip>
+                  <Title resid="AnalyzeClausesLabel" />
+                  <Description resid="AnalyzeClausesDesc" />
+                </Supertip>
+                <Icon>
+                  <bt:Image size="16" resid="Icon16" />
+                  <bt:Image size="32" resid="Icon32" />
+                  <bt:Image size="80" resid="Icon80" />
+                </Icon>
+                <Action xsi:type="ExecuteFunction">
+                  <FunctionName>analyzeClauses</FunctionName>
+                </Action>
+              </Control>
+            </OfficeMenu>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon16" DefaultValue="https://localhost:3000/assets/icon-16.png" />
+        <bt:Image id="Icon32" DefaultValue="https://localhost:3000/assets/icon-32.png" />
+        <bt:Image id="Icon80" DefaultValue="https://localhost:3000/assets/icon-80.png" />
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="TaskpaneUrl" DefaultValue="https://localhost:3000/taskpane.html" />
+        <bt:Url id="CommandsUrl" DefaultValue="https://localhost:3000/commands.html" />
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="AlWakeeloTabLabel" DefaultValue="AL WAKEELO" />
+        <bt:String id="ResearchGroupLabel" DefaultValue="Research" />
+        <bt:String id="CaseLawLabel" DefaultValue="Case Law" />
+        <bt:String id="StatutesLabel" DefaultValue="Statutes" />
+        <bt:String id="CitationsLabel" DefaultValue="Citations" />
+        
+        <bt:String id="DraftGroupLabel" DefaultValue="Draft" />
+        <bt:String id="AiChatLabel" DefaultValue="AI Chat" />
+        <bt:String id="ContractLabel" DefaultValue="Contract" />
+        <bt:String id="PetitionLabel" DefaultValue="Petition" />
+        
+        <bt:String id="ReviewGroupLabel" DefaultValue="Review" />
+        <bt:String id="CourtFormatLabel" DefaultValue="Court Format" />
+        <bt:String id="CheckCitationsLabel" DefaultValue="Check Citations" />
+        
+        <bt:String id="AlWakeeloGroupLabel" DefaultValue="AL WAKEELO" />
+        <bt:String id="OpenPanelLabel" DefaultValue="Open Panel" />
+        <bt:String id="SettingsLabel" DefaultValue="Settings" />
+        
+        <bt:String id="FindPrecedentLabel" DefaultValue="AL WAKEELO: Find Precedent" />
+        <bt:String id="ExplainThisLabel" DefaultValue="AL WAKEELO: Explain This" />
+        <bt:String id="AnalyzeClausesLabel" DefaultValue="AL WAKEELO: Analyze Clauses" />
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="CaseLawDesc" DefaultValue="Search for case law and precedents." />
+        <bt:String id="StatutesDesc" DefaultValue="Search for statutes and regulations." />
+        <bt:String id="CitationsDesc" DefaultValue="View relevant citations." />
+        <bt:String id="AiChatDesc" DefaultValue="Chat with the AI Legal Assistant." />
+        <bt:String id="ContractDesc" DefaultValue="Draft contracts." />
+        <bt:String id="PetitionDesc" DefaultValue="Draft petitions." />
+        <bt:String id="CourtFormatDesc" DefaultValue="Apply Pakistani High Court formatting." />
+        <bt:String id="CheckCitationsDesc" DefaultValue="Check document for citations." />
+        <bt:String id="OpenPanelDesc" DefaultValue="Open the main AL WAKEELO panel." />
+        <bt:String id="SettingsDesc" DefaultValue="Configure AL WAKEELO settings." />
+        <bt:String id="FindPrecedentDesc" DefaultValue="Find precedent for selected text." />
+        <bt:String id="ExplainThisDesc" DefaultValue="Explain selected text." />
+        <bt:String id="AnalyzeClausesDesc" DefaultValue="Analyze clauses in selected text." />
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

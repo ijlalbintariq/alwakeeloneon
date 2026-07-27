@@ -1,5 +1,7 @@
 import "./load-env";
 import "./proxy-env";
+import fs from "fs";
+import path from "path";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -66,6 +68,28 @@ app.use((req, res, next) => {
 
 const SAFE_HTTP_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
+// Word Add-in origins allowed for cross-origin API access
+const WORD_ADDIN_ORIGINS = new Set([
+  "https://localhost:3000",      // Local development
+  "https://addin.alwakeelo.com", // Production add-in hosting
+]);
+
+// CORS middleware for Word Add-in cross-origin requests
+app.use((req, res, next) => {
+  const origin = req.get("origin");
+  if (origin && WORD_ADDIN_ORIGINS.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Max-Age", "86400");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+  }
+  return next();
+});
+
 function isSameOriginRequest(req: Request): boolean {
   const host = req.get("host");
   if (!host) return false;
@@ -73,7 +97,8 @@ function isSameOriginRequest(req: Request): boolean {
   const expectedOrigin = `${req.protocol}://${host}`;
   const origin = req.get("origin");
   if (origin) {
-    return origin === expectedOrigin;
+    // Allow same-origin OR whitelisted Word Add-in origins
+    return origin === expectedOrigin || WORD_ADDIN_ORIGINS.has(origin);
   }
 
   const referer = req.get("referer");
@@ -83,7 +108,8 @@ function isSameOriginRequest(req: Request): boolean {
   }
 
   try {
-    return new URL(referer).origin === expectedOrigin;
+    const refererOrigin = new URL(referer).origin;
+    return refererOrigin === expectedOrigin || WORD_ADDIN_ORIGINS.has(refererOrigin);
   } catch {
     return false;
   }
@@ -443,6 +469,11 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
+    const wordAddinDistPath = path.resolve(process.cwd(), "word-addin/dist");
+    if (fs.existsSync(wordAddinDistPath)) {
+      console.log(`[Dev] Serving MS Word Add-in static files at /word-addin from ${wordAddinDistPath}`);
+      app.use("/word-addin", express.static(wordAddinDistPath));
+    }
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }

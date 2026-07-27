@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Smartphone, Monitor, Apple, Chrome, ArrowDown, Share, MoreVertical, Plus, ExternalLink, CheckCircle2, Menu } from "lucide-react";
+import { Smartphone, Monitor, Apple, Chrome, ArrowDown, Share, MoreVertical, Plus, ExternalLink, CheckCircle2, Menu, Download, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { useDocumentHead } from "@/hooks/use-document-head";
 
@@ -181,8 +181,11 @@ export default function InstallAppPage() {
           </div>
         </div>
 
-        <div className="mt-8 text-center">
-          <Link href="/dashboard" className="text-primary hover:text-primary text-sm font-semibold transition-colors">
+        <div className="mt-8 flex justify-center gap-6">
+          <Link href="/word-addin-guide" className="text-[#C9A84C] hover:underline text-sm font-semibold transition-colors flex items-center gap-1.5">
+            <FileText size={16} /> Microsoft Word Add-in Setup Guide &rarr;
+          </Link>
+          <Link href="/dashboard" className="text-primary hover:underline text-sm font-semibold transition-colors">
             Go to Dashboard
           </Link>
         </div>

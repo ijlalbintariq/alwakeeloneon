@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail, Sun, Moon, Cpu, Terminal, Compass, Sparkles } from "lucide-react";
+import { ArrowRight, Search, FileText, MessageSquare, BookOpen, Shield, Zap, Crown, Users, Mic, Paperclip, Globe, ChevronRight, LayoutDashboard, Menu, X, PhoneCall, Mail, Sun, Moon, Cpu, Terminal, Compass, Sparkles, Download } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -13,6 +13,7 @@ function FeatureCard({
   desc,
   bgClass,
   iconClass,
+  badge,
   className = "",
 }: {
   icon: any;
@@ -20,10 +21,17 @@ function FeatureCard({
   desc: string;
   bgClass: string;
   iconClass: string;
+  badge?: string;
   className?: string;
 }) {
   return (
-    <div className={`group h-full p-7 bg-card border border-border rounded-2xl hover:border-border transition-all hover:shadow-xl flex flex-col ${className}`}>
+    <div className={`group h-full p-7 bg-card border border-border rounded-2xl hover:border-border transition-all hover:shadow-xl flex flex-col relative ${className}`}>
+      {badge && (
+        <span className="absolute top-4 right-4 inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] text-amber-500 font-extrabold uppercase tracking-wider">
+          <Sparkles size={10} className="animate-pulse" />
+          {badge}
+        </span>
+      )}
       <div className={`w-12 h-12 rounded-xl ${bgClass} flex items-center justify-center mb-4`}>
         <Icon size={22} className={iconClass} />
       </div>
@@ -34,8 +42,8 @@ function FeatureCard({
 }
 
 const CORE_FEATURES = [
-  { icon: MessageSquare, title: "AI Legal Chat", desc: "Consult with an AI legal advisor trained on Pakistani law. Get strategy and next-step guidance fast.", bgClass: "bg-primary/10", iconClass: "text-primary" },
   { icon: Crown, title: "AL WAKEELO Engine", desc: "Use the main legal AI workspace with grounded responses, references, and practical next-step guidance.", bgClass: "bg-primary/10", iconClass: "text-primary" },
+  { icon: FileText, title: "Microsoft Word Add-in", desc: "Use AL WAKEELO directly inside MS Word to research case law, lookup 5,900+ statutes, audit contract risks, and draft petitions without leaving Word.", bgClass: "bg-primary/10", iconClass: "text-primary", badge: "New Feature" },
   { icon: Search, title: "Judgment Search", desc: "Find relevant Pakistani case law with quick citation-focused search and contextual summaries.", bgClass: "bg-blue-500/10", iconClass: "text-blue-500" },
   { icon: BookOpen, title: "Citation Search", desc: "Search directly by year, journal, and page to locate precise judgments and linked details quickly.", bgClass: "bg-indigo-500/10", iconClass: "text-indigo-400" },
   { icon: BookOpen, title: "Statute Lookup", desc: "Navigate Pakistani statutes and sections with plain-language legal explanations.", bgClass: "bg-emerald-500/10", iconClass: "text-emerald-500" },
@@ -360,6 +368,99 @@ export default function LandingPage() {
                   <h3 className="font-bold text-foreground text-sm">Google Gemini Spark</h3>
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                     Bridge AL WAKEELO directly into Google Workspace Gemini sessions using our stateful remote transport.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Official Microsoft Word Add-in Feature Section (Website Theme Matched) */}
+      <section className="py-16 md:py-24 px-6 bg-gradient-to-b from-background to-card border-y border-border/60">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          <div className="lg:col-span-6 space-y-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-xs text-amber-500 font-extrabold uppercase tracking-widest">
+                <Sparkles size={12} className="animate-pulse" />
+                New Feature
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs text-primary font-bold uppercase tracking-widest">
+                <FileText size={14} />
+                Official MS Word Add-in
+              </div>
+            </div>
+            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+              AL WAKEELO Legal AI <br/>
+              <span className="text-primary italic">Inside Microsoft Word</span>
+            </h2>
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              Research 600,000+ judgments, lookup 5,900+ statutes, audit commercial contracts for risk, and consult AI legal advisors—all without leaving your Word document.
+            </p>
+            <div className="flex flex-wrap gap-4 pt-2">
+              <a
+                href="/word-addin/manifest.xml"
+                download="alwakeelo-manifest.xml"
+                className="px-6 py-3.5 bg-primary text-primary-foreground rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+              >
+                <Download size={15} /> Download Free Add-in Manifest (.xml)
+              </a>
+              <button
+                onClick={() => navigate("/word-addin-guide")}
+                className="px-6 py-3.5 bg-card hover:bg-muted text-foreground border border-border rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2"
+              >
+                View Setup Guide <ArrowRight size={13} />
+              </button>
+            </div>
+          </div>
+
+          <div className="lg:col-span-6 relative">
+            <div className="absolute inset-0 bg-primary/5 rounded-3xl blur-2xl -z-10" />
+            <div className="rounded-3xl border border-border bg-card p-6 md:p-8 space-y-6 shadow-xl">
+              <div className="flex gap-4 items-start border-b border-border pb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                  <Search size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">600K+ Judgment Search</h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Instant keyword & pinpoint citation search (PLD, SCMR, YLR) right in your Word sidebar.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 items-start border-b border-border pb-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 flex-shrink-0">
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">Legal Drafting & Court Petitions</h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Draft High Court petitions, bail applications, replies, and notices directly inside MS Word.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 items-start border-b border-border pb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 flex-shrink-0">
+                  <Shield size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">Contract Risk & Redline Audit</h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Scan agreements for missing indemnity or jurisdiction clauses with 1-click Word fix insertion.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 items-start">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 flex-shrink-0">
+                  <BookOpen size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">5,900+ Statute & Section Lookup</h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Explore statutory sections, punishments, and legal explanations directly inside your Word document.
                   </p>
                 </div>
               </div>

@@ -23,6 +23,7 @@ const KNOWN_SPA_ROUTES: RegExp[] = [
   /^\/cancellation-return-refund-policy$/,
   /^\/ownership-statement$/,
   /^\/install$/,
+  /^\/word-addin-guide$/,
   /^\/dashboard$/,
   /^\/judgments$/,
   /^\/judgments\/browse$/,
@@ -670,6 +671,22 @@ export function serveStatic(app: Express) {
     res.setHeader("Cache-Control", HTML_CACHE_HEADER);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(finalStatus).send(html);
+  }
+
+  const wordAddinDistPath = path.resolve(process.cwd(), "word-addin/dist");
+  if (fs.existsSync(wordAddinDistPath)) {
+    console.log(`[Static] Serving MS Word Add-in static files at /word-addin from ${wordAddinDistPath}`);
+    app.use("/word-addin", express.static(wordAddinDistPath, {
+      etag: true,
+      maxAge: "7d",
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith(".html")) {
+          res.setHeader("Cache-Control", HTML_CACHE_HEADER);
+        } else {
+          res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+        }
+      }
+    }));
   }
 
   app.use(express.static(distPath, {

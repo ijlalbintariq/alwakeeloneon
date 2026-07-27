@@ -2014,10 +2014,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                           })()}
                           {!displayContent.trim() && isThinking ? (
                             <div className="flex flex-col gap-3 py-1">
-                              <div className="flex items-center gap-2">
-                                <Loader2 size={13} className="animate-spin text-primary flex-shrink-0" />
-                                <span className="text-xs font-bold uppercase tracking-wider text-foreground/75 animate-pulse">
-                                  Analyzing statutes & case law...
+                              <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg">
+                                <Loader2 size={14} className="animate-spin text-primary flex-shrink-0" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-primary animate-pulse">
+                                  🧠 Deep Legal Reasoning in Progress... (Analyzing statutes & precedents)
                                 </span>
                               </div>
                               <style>{`

@@ -52,7 +52,7 @@ const URGENCY_OPTIONS = [
   { key: "urgent", label: "Urgent" },
 ] as const;
 
-const PUBLIC_ROUTES = new Set(["/", "/privacy", "/terms", "/install"]);
+const PUBLIC_ROUTES = new Set(["/", "/privacy", "/terms", "/install", "/word-addin-guide"]);
 
 function getOrCreatePublicSessionId(): string {
   const key = "alwakeelo_public_session_id";

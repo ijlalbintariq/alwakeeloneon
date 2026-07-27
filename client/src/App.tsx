@@ -50,6 +50,7 @@ const OrganizationPage = lazy(() => import("@/pages/organization"));
 const CaseFilesPage = lazy(() => import("@/pages/case-files"));
 const DailyDiaryPage = lazy(() => import("@/pages/daily-diary"));
 const InstallAppPage = lazy(() => import("@/pages/install-app"));
+const WordAddinGuidePage = lazy(() => import("@/pages/word-addin-guide"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const CheckoutSuccessPage = lazy(() => import("@/pages/checkout-success"));
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -153,6 +154,10 @@ function Router({ onReady }: { onReady?: () => void }) {
 
   if (location === "/install") {
     return <InstallAppPage />;
+  }
+
+  if (location === "/word-addin-guide") {
+    return <WordAddinGuidePage />;
   }
 
   if (location.startsWith("/checkout/success")) {

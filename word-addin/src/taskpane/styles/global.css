@@ -1,0 +1,116 @@
+/* AL WAKEELO Premium Legal AI Design System */
+:root {
+  --gold-primary: #C9A84C;
+  --gold-hover: #B59338;
+  --gold-gradient: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
+  --obsidian-bg: #0F141C;
+  --obsidian-surface: #1A2234;
+  --warm-bg: #FAF9F6;
+  --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --hover-shadow: 0 8px 24px rgba(201, 168, 76, 0.18);
+  --border-subtle: #E8E5DE;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--warm-bg);
+  color: #1F2937;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom Thin Luxury Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 168, 76, 0.6);
+}
+
+/* Glassmorphism & Micro-Interactions */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+}
+
+.luxury-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--border-subtle) !important;
+}
+
+.luxury-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold-primary) !important;
+  box-shadow: var(--hover-shadow) !important;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(201, 168, 76, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.slide-up {
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pulse-glow {
+  animation: pulseGlow 2s infinite;
+}
+
+/* Text Truncation */
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
