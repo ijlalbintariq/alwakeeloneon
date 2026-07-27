@@ -381,4 +381,4 @@ export async function callWithFallback(
 // ─── Default chains ──────────────────────────────────────────────────────
 
 export const DEFAULT_STANDARD_CHAIN: ProviderId[] = ["openrouter", "kimi", "deepseek"];
-export const DEFAULT_TURBO_CHAIN: ProviderId[] = ["openrouter", "kimi", "gemini"];
+export const DEFAULT_TURBO_CHAIN: ProviderId[] = ["kimi", "openrouter", "gemini"];
