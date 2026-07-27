@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
-    "build:word-addin": "cd word-addin && npm run build",
+    "build:word-addin": "cd word-addin && npm install && npm run build",
     "build": "npm run build:word-addin && NODE_OPTIONS=--max-old-space-size=1536 tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
