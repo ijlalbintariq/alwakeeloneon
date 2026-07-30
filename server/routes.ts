@@ -15647,12 +15647,21 @@ document.addEventListener('keydown',function(e){
       // V2 pipeline: intent classify → topic-validated retrieval → structured context
       // For al-wakeelo: pipeline handles statutes + admin docs; tool search handles case law.
       // Build conversation history for the query rewriter (prior turns only, no system msgs).
-      // Excludes the last user message itself — that's the rawQuery being rewritten.
-      const priorTurns: ConversationTurn[] = userMessages
+      // Retain Thread Turn 0 (initial user message) + recent turns so root topic is never lost.
+      const allFiltered = userMessages
         .filter((m) => m.role === "user" || m.role === "assistant")
-        .slice(0, -1) // drop last entry (= lastUserMessage)
-        .slice(-6)    // keep last 3 exchanges max (cheap on tokens)
-        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+        .slice(0, -1); // drop last entry (= lastUserMessage)
+
+      const firstUserTurn = allFiltered.find((m) => m.role === "user");
+      const recentTurns = allFiltered.slice(-6);
+      const combinedTurns = firstUserTurn && !recentTurns.includes(firstUserTurn)
+        ? [firstUserTurn, ...recentTurns]
+        : recentTurns;
+
+      const priorTurns: ConversationTurn[] = combinedTurns.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
 
       const knowledgePromise: Promise<PipelineRunResult> = knowledgeNeeded
         ? gatherKnowledgeWithHits(lastUserMessage!.content, userId, priorTurns, { module: moduleType }).catch((err) => {
