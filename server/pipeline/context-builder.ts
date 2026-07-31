@@ -112,6 +112,7 @@ function buildVerifiedStatutesSection(statutes: RetrievedStatute[]): ContextSect
     lines: [
       "Cite these statute names and sections exactly as shown. Show the full statute name, not the abbreviation.",
       "When referencing a section, tell the user they can open the full statute document from the statute library.",
+      "DOMAIN RELEVANCE OMISSION RULE: Check the legal domain of every statutory section listed below. Only discuss statutory sections that directly apply to the user's primary legal topic (e.g., criminal law, PPC, CrPC, bail, family law). You MUST IGNORE and COMPLETELY OMIT any statutory section whose legal domain does not match the user's primary case type (for example, omit civil, transport, or commercial regulatory acts like Tramways Act, Railways Act, Companies Act, etc., when answering criminal or family law queries).",
       ...lines,
     ],
   };
