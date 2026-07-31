@@ -185,8 +185,8 @@ export default function DashboardPage() {
                         <p className="text-[11px] md:text-xs text-muted-foreground leading-snug">{action.desc}</p>
                       </div>
                       <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1.5">
-                        <button className="rounded-md border border-[hsl(var(--preview-border))] px-3 py-1.5 text-[10px] sm:text-[11px] font-semibold text-foreground">How to use</button>
-                        <button className="rounded-md border border-[hsl(var(--preview-border))] bg-primary text-primary-foreground px-3 py-1.5 text-[10px] sm:text-[11px] font-semibold">
+                        <button className="rounded-md border border-[hsl(var(--preview-border))] px-2 py-0.5 text-[10px] font-semibold text-foreground">How to use</button>
+                        <button className="rounded-md border border-[hsl(var(--preview-border))] bg-primary text-primary-foreground px-2 py-0.5 text-[10px] font-semibold">
                           {actionLabel(action.label)}
                         </button>
                       </div>
