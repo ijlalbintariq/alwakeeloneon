@@ -175,18 +175,18 @@ export default function DashboardPage() {
                   href={action.href}
                   className="block no-underline hover:no-underline focus:no-underline"
                 >
-                  <div className="h-full min-h-[100px] md:min-h-[120px] rounded-xl border border-[hsl(var(--preview-border))] bg-background/55 p-2.5 md:p-3 cursor-pointer transition-all hover:border-primary/35 hover:bg-card">
-                    <div className="flex h-full flex-col gap-2.5 md:gap-3" data-testid={`action-${action.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <div className="h-full min-h-[85px] md:min-h-[95px] rounded-xl border border-[hsl(var(--preview-border))] bg-background/55 p-2 md:p-2.5 cursor-pointer transition-all hover:border-primary/35 hover:bg-card">
+                    <div className="flex h-full flex-col gap-1.5 md:gap-2" data-testid={`action-${action.label.toLowerCase().replace(/\s+/g, '-')}`}>
                       <div>
-                        <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-card text-foreground">
-                          <Icon size={13} />
+                        <div className="mb-1 inline-flex h-6.5 w-6.5 items-center justify-center rounded-lg border border-[hsl(var(--preview-border))] bg-card text-foreground">
+                          <Icon size={12} />
                         </div>
-                        <h4 className="text-sm md:text-base font-bold leading-tight mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>{action.label}</h4>
-                        <p className="text-[11px] md:text-xs text-muted-foreground leading-snug">{action.desc}</p>
+                        <h4 className="text-xs md:text-sm font-bold leading-tight mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>{action.label}</h4>
+                        <p className="text-[10px] md:text-[11px] text-muted-foreground leading-snug">{action.desc}</p>
                       </div>
-                      <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1.5">
-                        <button className="rounded-md border border-[hsl(var(--preview-border))] px-2 py-0.5 text-[10px] font-semibold text-foreground">How to use</button>
-                        <button className="rounded-md border border-[hsl(var(--preview-border))] bg-primary text-primary-foreground px-2 py-0.5 text-[10px] font-semibold">
+                      <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
+                        <button className="rounded-md border border-[hsl(var(--preview-border))] px-3 py-1.5 text-[10px] sm:text-[11px] font-semibold text-foreground">How to use</button>
+                        <button className="rounded-md border border-[hsl(var(--preview-border))] bg-primary text-primary-foreground px-3 py-1.5 text-[10px] sm:text-[11px] font-semibold">
                           {actionLabel(action.label)}
                         </button>
                       </div>
