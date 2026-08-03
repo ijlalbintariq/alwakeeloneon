@@ -14252,24 +14252,26 @@ Rules:
               refined: safePrompt, wasRefined: false, elapsedMs: 0,
             }));
 
-        // --- Tool Judgment Search for drafts ---
-        // Same as chat module: AI picks 2-3 search queries, finds 10-25 verified
-        // judgments from the DB. Critical for the "cite 3 case law" requirement.
-        // Uses safePrompt to enable parallel execution with refinement.
-        const draftToolSearchPromise = isDeepSeekAvailable()
-          ? runToolJudgmentSearch(safePrompt, (q, n) => {
-              console.log(`[LegalDrafting:ToolSearch] query="${q}" found=${n}`);
-            }, undefined, 8000).catch((err) => {
-              console.warn("[LegalDrafting:ToolSearch] Failed:", err?.message || err);
-              return { contextString: "", foundCount: 0, queriesUsed: [] as string[], verifiedCitations: [] as string[], verifiedTitles: [] as Array<{title:string;citation:string}>, verifiedHits: [] as Array<{citation:string;title:string;court:string;summary:string}> };
-            })
-          : Promise.resolve({ contextString: "", foundCount: 0, queriesUsed: [] as string[], verifiedCitations: [] as string[], verifiedTitles: [] as Array<{title:string;citation:string}>, verifiedHits: [] as Array<{citation:string;title:string;court:string;summary:string}> });
+        // --- Phase 1: Pipeline knowledge gathering (returns caseLawHits) ---
+        // Uses gatherKnowledgeWithHits (same as chat engine) to get both
+        // context string AND structured caseLawHits for fallback decisions.
+        interface DraftToolSearchResult {
+          contextString: string;
+          foundCount: number;
+          queriesUsed: string[];
+          verifiedCitations: string[];
+          verifiedTitles: Array<{title:string;citation:string}>;
+          verifiedHits: Array<{citation:string;title:string;court:string;summary:string}>;
+        }
+        const emptyToolResult: DraftToolSearchResult = { contextString: "", foundCount: 0, queriesUsed: [], verifiedCitations: [], verifiedTitles: [], verifiedHits: [] };
 
-        // Run refinement, knowledge gathering, and tool search ALL in parallel
-        const [draftRefineResult, legalKnowledgeContextRaw, draftToolSearchResult] = await Promise.all([
+        // Run refinement and knowledge pipeline in parallel
+        const [draftRefineResult, knowledgePipelineResult] = await Promise.all([
           draftRefinePromise,
-          gatherKnowledgeContextV2(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }),
-          draftToolSearchPromise,
+          gatherKnowledgeWithHits(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
+            console.warn("[LegalDrafting:Pipeline] Knowledge pipeline unavailable:", err?.message || err);
+            return { contextString: "", hasCaseLaw: false, hasStatutes: false, topics: [], durationMs: 0, caseLawHits: [] as CaseLawHit[] };
+          }),
         ]);
         const refinedDraftPrompt = draftRefineResult.refined;
         if (draftRefineResult.wasRefined) {
@@ -14277,19 +14279,76 @@ Rules:
         } else if (skipRefine) {
           console.log(`[LegalDrafting:QueryRefine] Skipped — prompt already clear (${safePrompt.length} chars)`);
         }
-        const legalKnowledgeContext = trimTextToTokenBudget(legalKnowledgeContextRaw, 8000);
+        const legalKnowledgeContext = trimTextToTokenBudget(knowledgePipelineResult.contextString, 8000);
+        const pipelineCaseLawHits = knowledgePipelineResult.caseLawHits || [];
 
-        // Merge tool-searched judgments into the knowledge context block
-        const toolSearchBlock = draftToolSearchResult.contextString
-          ? `\n\n${draftToolSearchResult.contextString}`
-          : "";
+        // --- Phase 2: Tool search ONLY if pipeline returned 0 case law hits (fallback) ---
+        // Mirrors the chat engine pattern: pipeline first, AI tool search as fallback.
+        // This saves 1 AI API call + 3-5 redundant DB calls for ~90% of queries.
+        const useOpenRouterToolsDraft = isOpenRouterAvailable();
+        const draftToolSearchCapable = useOpenRouterToolsDraft || isDeepSeekAvailable();
+        const draftToolSearchEnabled = draftToolSearchCapable && pipelineCaseLawHits.length === 0;
+        let draftToolSearchResult: DraftToolSearchResult = { ...emptyToolResult };
+        if (draftToolSearchEnabled) {
+          console.log("[LegalDrafting:ToolSearch:Fallback] Pipeline returned 0 case law hits — running tool search");
+          try {
+            draftToolSearchResult = await (useOpenRouterToolsDraft
+              ? runToolJudgmentSearchOR(safePrompt, (q, n) => {
+                  console.log(`[LegalDrafting:ToolSearch:OR] query="${q}" found=${n}`);
+                }, undefined, 18000)
+              : runToolJudgmentSearch(safePrompt, (q, n) => {
+                  console.log(`[LegalDrafting:ToolSearch:DS] query="${q}" found=${n}`);
+                }, undefined, 8000)
+            );
+          } catch (err: any) {
+            console.warn("[LegalDrafting:ToolSearch] Failed:", err?.message || err);
+            draftToolSearchResult = { ...emptyToolResult };
+          }
+        }
+
         if (draftToolSearchResult.foundCount > 0) {
           console.log(`[LegalDrafting:ToolSearch:Done] found=${draftToolSearchResult.foundCount} queries=${JSON.stringify(draftToolSearchResult.queriesUsed)}`);
         }
 
-        const legalKnowledgeContextBlock = (legalKnowledgeContext || toolSearchBlock)
-          ? `${legalKnowledgeContext}${toolSearchBlock}`
-          : "\n\nREFERENCE MATERIALS:\n- No high-confidence internal matches were found for this prompt.\n- If a citation is unavailable in internal references, omit it (do not use placeholders).";
+        // Build pipeline case law context string (from caseLawHits)
+        const pipelineCaseLawContext = pipelineCaseLawHits.length > 0
+          ? pipelineCaseLawHits.map((h) =>
+              `[${h.citation}] ${h.title} (${h.court})\nSummary: ${(h.summary || "").slice(0, 400)}`
+            ).join("\n\n")
+          : "";
+
+        // Effective case context: prefer pipeline hits, fallback to tool search
+        const effectiveDraftCaseContext = draftToolSearchResult.contextString || pipelineCaseLawContext;
+        const hasCaseLawForDraft = pipelineCaseLawHits.length > 0 || draftToolSearchResult.foundCount > 0;
+
+        // Build the non-case-law knowledge context block (statutes, knowledge vault etc.)
+        const legalKnowledgeContextBlock = legalKnowledgeContext
+          || "\n\nREFERENCE MATERIALS:\n- No high-confidence internal statute/knowledge matches were found for this prompt.";
+
+        // Build case law injection turns (fake user/assistant conversation turns)
+        // LLMs weight user/assistant content much higher than system content,
+        // so framing the pool as data the user provided improves citation adherence.
+        const draftCaseLawTurns: Array<{ role: "user" | "assistant"; content: string }> =
+          effectiveDraftCaseContext
+            ? [
+                {
+                  role: "user",
+                  content:
+                    `Before drafting, please use these Pakistani case-law records I retrieved from our internal database for this petition:\n\n` +
+                    `${effectiveDraftCaseContext}\n\n` +
+                    `CASE LAW CITATION MANDATE (STRICT):\n` +
+                    `- You MUST cite at least 3 relevant judgments from this list in the GROUNDS section of the draft.\n` +
+                    `- For each citation, state the case name and citation string, then explain its relevance to the current matter in 1-2 sentences.\n` +
+                    `- Use ONLY the exact citation strings shown above — do not modify, guess, or invent any citation.\n` +
+                    `- If fewer than 3 cases in the list are relevant, cite as many as are genuinely applicable.`,
+                },
+                {
+                  role: "assistant",
+                  content:
+                    `Understood. I will draft the petition and cite relevant judgments from the provided list in the GROUNDS section, using their exact formal citations.`,
+                },
+              ]
+            : [];
 
         const typeLockInstruction = selectedDocType
           ? buildStrictTypeLockInstruction(selectedDocType, profile.label)
@@ -14477,10 +14536,11 @@ Court-ready formatting requirements (mandatory):
 - Court hierarchy rule (strict): use the correct Pakistani forum for selected filing type (e.g., Writ/Article 199 -> High Court; family matters -> Family Court; CPLA -> Supreme Court). Never place writ petitions in Family Court.
 - Keep prayer specific to this filing type and facts; avoid generic/contract wording.
 - Do not invent facts, dates, orders, or citations; use placeholders like [______] where details are missing.
-- Case law citation rule (strict): include only citations that are real and verifiable from Al Wakeelo internal Knowledge Base; if unavailable, omit citation.
+- Case law citation rule (strict): cite ONLY judgments provided in the case-law conversation turns above. Do not invent, guess, or fabricate any citation string, volume number, or page number.
+${hasCaseLawForDraft ? "- You MUST include at least 3 relevant case law citations from the provided pool in the GROUNDS section. For each, state the full citation and explain its relevance." : "- No verified case law was retrieved from the internal database for this query. State in the GROUNDS section that relevant case law should be added by the practitioner. Do NOT fabricate or hallucinate any citations."}
 - Statute citation rule (strict): cite only authentic Pakistani statute provisions; do not invent section/article numbers.
 - Statute terminology rule (strict): The Qanun-e-Shahadat Order, 1984 (QSO) uses "Article" NOT "Section" (e.g. "Article 10 of the Qanun-e-Shahadat Order, 1984", never "Section 10"). Similarly, the Constitution uses "Article" (e.g. "Article 199"). PPC, CrPC, and CPC use "Section".
-- Use only citations available in the INTERNAL DATABASE REFERENCES block below. Do not cite any authority outside that block.
+- Use only case law citations available in the provided case-law turns. Do not cite any case authority outside that provided pool.
 - End with signature block (party/counsel) and place/date.
 - Keep spacing court-ready: no trailing spaces, no markdown bullets, and exactly clean paragraph breaks between sections.
 
@@ -14499,7 +14559,7 @@ Jurisdiction/Forum (if provided): ${jurisdiction || "Pakistan"}
 ACTIVE DRAFT (this is the ONLY draft you are working on — do NOT switch to any other case or matter):
 ${draftContextForGeneration || "[No draft/context provided]"}
 
-INTERNAL DATABASE REFERENCES (AUTO-LOADED):
+INTERNAL DATABASE REFERENCES (STATUTES & KNOWLEDGE):
 ${legalKnowledgeContextBlock}
 
 Reference skeleton (adapt to facts):
@@ -14515,6 +14575,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             let fullContent = '';
             const streamMessages = [
               { role: 'system' as const, content: sysInstruction },
+              ...draftCaseLawTurns.map(t => ({ role: t.role as 'user' | 'assistant', content: t.content })),
               { role: 'user' as const, content: userInput },
             ];
 
