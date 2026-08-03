@@ -14159,22 +14159,35 @@ Rules:
         const documentTypeOverride = String((req.body as any)?.documentTypeOverride || "").trim().toLowerCase();
         const useCustomDocType = rawDocType === "custom-input" && customDocType.length > 0;
 
-        // R2: If client sends a documentTypeOverride (from clarification button), use it
-        const effectiveDocTypeRaw = documentTypeOverride && documentTypeOverride in LEGAL_DRAFTING_DOC_TYPES
+        // R2: If client sends a documentTypeOverride or valid documentType, identify it
+        const effectiveDocTypeRaw = (documentTypeOverride && documentTypeOverride in LEGAL_DRAFTING_DOC_TYPES)
           ? documentTypeOverride
-          : documentType;
+          : (documentType && documentType in LEGAL_DRAFTING_DOC_TYPES ? documentType : undefined);
 
-        // When user explicitly says "convert to/into X", only infer from their prompt
-        // to prevent existing draft keywords (e.g. "HIGH COURT", "constitutional petition")
-        // from overriding the user's conversion intent.
         const isConversionRequest = /(convert|change|turn|transform|make)\s+(this\s+|it\s+)?(in\s*t?\s*o|to|in)\s/i.test(safePrompt);
-        const inferencePrompt = !rawDocType && baseDraftText.trim().length > 0 && !isConversionRequest
-          ? `${safePrompt}\n\nExisting Draft Context:\n${baseDraftText.slice(0, 2600)}`
-          : safePrompt;
 
-        const selectedDocType = useCustomDocType
-          ? null
-          : normalizeLegalDraftingDocType(effectiveDocTypeRaw, inferencePrompt);
+        let selectedDocType: LegalDraftingDocType | null = null;
+        if (!useCustomDocType) {
+          if (isConversionRequest) {
+            // Priority 1: Explicit conversion intent — infer from prompt only
+            selectedDocType = inferLegalDraftingDocTypeFromPrompt(safePrompt);
+          } else if (effectiveDocTypeRaw) {
+            // Priority 2: Lock to active session/provided doc type when no conversion is requested
+            selectedDocType = effectiveDocTypeRaw as LegalDraftingDocType;
+          } else {
+            // Priority 3: Infer from user's prompt alone (e.g. initial prompt "Draft a Constitutional Petition...")
+            const promptInferred = inferLegalDraftingDocTypeFromPrompt(safePrompt);
+            if (promptInferred) {
+              selectedDocType = promptInferred;
+            } else if (baseDraftText.trim().length > 0) {
+              // Priority 4: Existing draft present, prompt didn't state a doc type.
+              // ONLY check the header/title block (first 400 chars of baseDraftText),
+              // NEVER scan 2000+ chars which include index pages or attachments mentioning Wakalatnama/Power of Attorney!
+              const draftHeader = baseDraftText.slice(0, 400);
+              selectedDocType = inferLegalDraftingDocTypeFromPrompt(draftHeader);
+            }
+          }
+        }
 
         // R2: Ambiguity check — if no doc type inferred and prompt is vague, return clarification
         if (!useCustomDocType && !selectedDocType && isAmbiguousLegalPrompt(safePrompt, selectedDocType, baseDraftText.trim().length > 0)) {
@@ -14199,10 +14212,10 @@ Rules:
             ? LEGAL_DRAFTING_DOC_TYPES[selectedDocType]
             : {
                 // Fallback: no doc type matched — PRESERVE whatever the existing draft is about.
-                // This happens when user says "refresh", "rewrite", "improve" etc.
+                // This happens when user says "refresh", "rewrite", "improve", "add case law" etc.
                 label: "Preserve Existing Draft (same case type, same subject matter)",
                 checklist:
-                  "- PRESERVE the same case type, offence/cause of action, parties, court/forum from the existing draft\n- PRESERVE the same statutory provisions and legal grounds\n- Improve language, formatting, and legal arguments while keeping the same subject matter\n- Do NOT change the filing type (e.g. do not convert a criminal bail to a civil suit)\n- Keep all existing facts, dates, FIR numbers, section numbers intact",
+                  "- PRESERVE the exact same case type, offence/cause of action, parties, court/forum from the existing draft\n- PRESERVE the same statutory provisions and legal grounds\n- Improve language, formatting, and legal arguments while keeping the same subject matter\n- Do NOT change the filing type (e.g. do not convert a Constitutional Petition/Writ Petition into a Power of Attorney or Civil Suit)\n- Keep all existing facts, dates, FIR numbers, section numbers intact",
                 skeleton: baseDraftText || "[Existing draft will be provided]",
               };
 
@@ -14581,8 +14594,7 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
 
             // Validation (only for recognized template types, skip for custom-input and full rewrite)
             // R3 optimization: log issues only, skip expensive repair AI call
-            const shouldValidateStream = selectedDocType && !useCustomDocType && !isFullLegalRewriteRequested(safePrompt);
-            if (shouldValidateStream) {
+            if (selectedDocType && !useCustomDocType && !isFullLegalRewriteRequested(safePrompt)) {
               const validation = validateDraftForSelectedType(draftedText, selectedDocType);
               if (!validation.ok) {
                 console.warn(`[LegalDrafting:Stream:Validate] type=${selectedDocType} issues=${JSON.stringify(validation.issues)}`);
@@ -14641,8 +14653,8 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             extractedRecs = extractCaseLawRecommendations(aiResult.text);
             draftedText = normalizeCourtReadyDraftingText(aiResult.text);
             // R3 optimization: log validation issues only, skip expensive repair AI call
-            const shouldValidate = selectedDocType && !useCustomDocType && !isFullLegalRewriteRequested(safePrompt);
-            if (shouldValidate) {
+            const shouldValidate = Boolean(selectedDocType) && !useCustomDocType && !isFullLegalRewriteRequested(safePrompt);
+            if (shouldValidate && selectedDocType) {
               const validation = validateDraftForSelectedType(draftedText, selectedDocType);
               if (!validation.ok) {
                 console.warn(`[LegalDrafting:Validate] type=${selectedDocType} issues=${JSON.stringify(validation.issues)}`);
