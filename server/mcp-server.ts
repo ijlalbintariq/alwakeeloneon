@@ -404,7 +404,7 @@ export function registerAllTools(server: McpServer) {
 
   // 5. Draft Legal Petition
   server.registerTool("draft_petition", {
-    description: "Generate a fully formatted, professional, filing-ready legal petition or application for Pakistani courts grounded in actual statutes and case law.",
+    description: "Generate a fully formatted, professional, filing-ready legal petition or application for Pakistani courts grounded in actual statutes and case law. ASSISTANT INSTRUCTION: Present the returned 'draft' text verbatim inside a plaintext code block (```text) without adding markdown headers (#), bold tags (**), or altering line alignment.",
     inputSchema: {
       topic: z.string().describe("The legal subject/title (e.g. Ejectment Petition under Rented Premises Act, Bail Application under Sec 497 CrPC)"),
       facts: z.string().describe("The factual background, dates, and details of the case"),
@@ -470,6 +470,9 @@ ${additionalClauses || "None"}`;
     // Log usage to the database
     await logToolUsage(userId, "draft", searchQuery, formattedText);
 
+    // Pre-wrap draft in a plaintext code block so MCP clients render it with exact alignment & no markdown parsing
+    const wrappedDraft = `\`\`\`text\n${formattedText.replace(/^```(?:text|markdown)?\n?/i, "").replace(/\n?```$/i, "")}\n\`\`\``;
+
     return {
       content: [
         {
@@ -479,7 +482,7 @@ ${additionalClauses || "None"}`;
             source: SOURCE,
             latencyMs: latency,
             topic,
-            draft: formattedText,
+            draft: wrappedDraft,
           }, null, 2),
         }
       ]
@@ -488,7 +491,7 @@ ${additionalClauses || "None"}`;
 
   // 6. Draft Contract
   server.registerTool("draft_contract", {
-    description: "Generate a fully structured, commercially realistic, and legally enforceable contract under Pakistani laws (e.g., Contract Act 1872).",
+    description: "Generate a fully structured, commercially realistic, and legally enforceable contract under Pakistani laws (e.g., Contract Act 1872). ASSISTANT INSTRUCTION: Present the returned 'draft' text verbatim inside a plaintext code block (```text) without adding markdown headers (#), bold tags (**), or altering line alignment.",
     inputSchema: {
       contractType: z.string().describe("Type of contract (e.g. Partnership Deed, Non-Disclosure Agreement, Commercial Lease)"),
       parties: z.string().describe("Details of the contracting parties"),
@@ -541,6 +544,9 @@ ${additionalClauses || "None"}`;
     // Log usage to the database
     await logToolUsage(userId, "contract-drafting", contractType, formattedText);
 
+    // Pre-wrap draft in a plaintext code block so MCP clients render it with exact alignment & no markdown parsing
+    const wrappedDraft = `\`\`\`text\n${formattedText.replace(/^```(?:text|markdown)?\n?/i, "").replace(/\n?```$/i, "")}\n\`\`\``;
+
     return {
       content: [
         {
@@ -550,7 +556,7 @@ ${additionalClauses || "None"}`;
             source: SOURCE,
             latencyMs: latency,
             contractType,
-            draft: formattedText,
+            draft: wrappedDraft,
           }, null, 2),
         }
       ]
