@@ -2651,10 +2651,11 @@ function LegalDraftingPageInner() {
       }
 
       // R2: Check for clarification response
+      let nonStreamJsonResponse: any = null;
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("application/json") && !contentType.includes("text/event-stream")) {
-        const jsonBody = await response.json();
-        if (jsonBody?.clarification === true) {
+        nonStreamJsonResponse = await response.json();
+        if (nonStreamJsonResponse?.clarification === true) {
           // Replace typing indicator with clarification message
           setDraftChatMessages((prev) => [
             ...prev.filter((msg) => msg.id !== typingMessageId && !(msg.role === "assistant" && msg.kind === "typing")),
@@ -2662,8 +2663,8 @@ function LegalDraftingPageInner() {
               id: `assistant-clarify-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
               role: "assistant",
               kind: "clarification",
-              content: String(jsonBody.message || "Could you clarify which document type you'd like me to draft?"),
-              suggestedTypes: Array.isArray(jsonBody.suggestedTypes) ? jsonBody.suggestedTypes : [],
+              content: String(nonStreamJsonResponse.message || "Could you clarify which document type you'd like me to draft?"),
+              suggestedTypes: Array.isArray(nonStreamJsonResponse.suggestedTypes) ? nonStreamJsonResponse.suggestedTypes : [],
               originalPrompt: prompt,
               createdAt: Date.now(),
             },
@@ -2801,7 +2802,7 @@ function LegalDraftingPageInner() {
         }
       } else {
         // ── Original JSON Path (file attachments or server doesn't support streaming) ──
-        const data = await response.json();
+        const data = nonStreamJsonResponse || (await response.json());
         const clause = (data?.clause || "").trim();
         if (!clause) throw new Error("No clause generated");
         streamedClause = clause;
