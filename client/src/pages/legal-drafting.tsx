@@ -2650,11 +2650,18 @@ function LegalDraftingPageInner() {
         throw new Error(t || "AI generation failed");
       }
 
-      // R2: Check for clarification response
+      // Check response type
       let nonStreamJsonResponse: any = null;
       const contentType = response.headers.get("content-type") || "";
-      if (contentType.includes("application/json") && !contentType.includes("text/event-stream")) {
-        nonStreamJsonResponse = await response.json();
+      const isEventStream = contentType.includes("text/event-stream");
+
+      if (!isEventStream) {
+        try {
+          nonStreamJsonResponse = await response.json();
+        } catch {
+          nonStreamJsonResponse = null;
+        }
+
         if (nonStreamJsonResponse?.clarification === true) {
           // Replace typing indicator with clarification message
           setDraftChatMessages((prev) => [
@@ -2682,7 +2689,7 @@ function LegalDraftingPageInner() {
       const assistantMessageId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       let streamedClause = ""; // Track final clause text across both paths
 
-      if (useStreaming && contentType.includes("text/event-stream")) {
+      if (useStreaming && isEventStream) {
         // ── SSE Streaming Path ──
         // Replace typing indicator with streaming message
         setDraftChatMessages((prev) => [
@@ -2802,7 +2809,8 @@ function LegalDraftingPageInner() {
         }
       } else {
         // ── Original JSON Path (file attachments or server doesn't support streaming) ──
-        const data = nonStreamJsonResponse || (await response.json());
+        const data = nonStreamJsonResponse;
+        if (!data) throw new Error("AI generation failed to return a valid response");
         const clause = (data?.clause || "").trim();
         if (!clause) throw new Error("No clause generated");
         streamedClause = clause;
