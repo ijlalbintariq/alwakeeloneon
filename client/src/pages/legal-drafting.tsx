@@ -2867,19 +2867,32 @@ function LegalDraftingPageInner() {
         runDraftReview(streamedClause);
       }
     } catch (err: any) {
+      const errorMsg = err?.message || "Please try again.";
+      fetch("/api/admin/output-quality/log-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          feature: "draft",
+          model: "google/gemini-3-flash-preview",
+          inputSnippet: prompt,
+          errorMessage: errorMsg,
+        }),
+      }).catch(() => {});
+
       setDraftChatMessages((prev) => [
         ...prev.filter((message) => message.id !== typingMessageId && !(message.role === "assistant" && message.kind === "typing")),
         {
           id: `assistant-error-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           role: "assistant",
           kind: "error",
-          content: `I could not generate the draft update right now. ${err?.message || "Please try again."}`,
+          content: `I could not generate the draft update right now. ${errorMsg}`,
           createdAt: Date.now(),
         },
       ]);
       toast({
         title: "Failed to generate clause",
-        description: err?.message || "Please try again.",
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {

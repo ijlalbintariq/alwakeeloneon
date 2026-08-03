@@ -21493,6 +21493,31 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     }
   });
 
+  app.post("/api/admin/output-quality/log-error", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { feature, model, inputSnippet, errorMessage } = req.body;
+      const safeError = String(errorMessage || "Error occurred during generation").slice(0, 500);
+      await storage.logOutputQuality({
+        userId,
+        feature: String(feature || "draft"),
+        model: String(model || "system"),
+        inputSnippet: String(inputSnippet || "").slice(0, 500),
+        outputSnippet: `[CLIENT/DELIVERY ERROR] ${safeError}`,
+        outputLength: 0,
+        qualityScore: 1,
+        qualityFlags: ["Client Error", safeError],
+        userQuery: String(inputSnippet || "").slice(0, 2000),
+        responseTimeMs: 0,
+      });
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Failed to log output quality error:", err);
+      res.status(500).json({ message: "Failed to log error" });
+    }
+  });
+
   // ── Admin Broadcast Email ─────────────────────────────────────────────
 
   app.post("/api/admin/broadcast-email", async (req, res) => {
