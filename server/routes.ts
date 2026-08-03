@@ -6224,6 +6224,7 @@ export function normalizeCourtReadyDraftingText(content: string): string {
 
 type LegalDraftCaseReference = {
   id: number;
+  judgmentId?: string;
   citation: string;
   court: string;
   title: string;
