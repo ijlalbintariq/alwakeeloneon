@@ -6824,17 +6824,18 @@ async function resolveStatuteMentionFromLibrary(mention: DraftStatuteMention): P
   for (const row of statuteRows) {
     const rowNameNorm = normalizeTextForMatch(row.shortTitle);
     const rowSectionNorm = normalizeSectionForMatch(row.section);
+    const nameMatch = rowNameNorm.includes(statuteNameNorm) || statuteNameNorm.includes(rowNameNorm);
     let score = 0;
-    if (rowNameNorm.includes(statuteNameNorm) || statuteNameNorm.includes(rowNameNorm)) score += 6;
-    if (sectionNorm && rowSectionNorm === sectionNorm) score += 7;
-    else if (sectionNorm && (rowSectionNorm.includes(sectionNorm) || sectionNorm.includes(rowSectionNorm))) score += 4;
+    if (nameMatch) score += 15;
+    if (sectionNorm && rowSectionNorm === sectionNorm) score += nameMatch ? 10 : 2;
+    else if (sectionNorm && (rowSectionNorm.includes(sectionNorm) || sectionNorm.includes(rowSectionNorm))) score += nameMatch ? 5 : 1;
     if (score > bestRowScore) {
       bestRowScore = score;
       bestRow = row;
     }
   }
 
-  const preferredStatuteName = bestRow?.shortTitle || mention.statuteName;
+  const preferredStatuteName = (bestRow && bestRowScore >= 15) ? bestRow.shortTitle : mention.statuteName;
   let statuteDocs = await storage.searchStatuteDocuments(preferredStatuteName, 20).catch(() => []);
   if (statuteDocs.length === 0 && preferredStatuteName !== mention.statuteName) {
     statuteDocs = await storage.searchStatuteDocuments(mention.statuteName, 20).catch(() => []);
@@ -13052,9 +13053,43 @@ ${headingOrder}`;
    * If missing, auto-generates one by scanning the draft for document references.
    */
   function ensureAnnexuresSection(draftText: string): string {
-    // If annexures table already exists, return as-is
-    if (/INDEX OF DOCUMENTS|S\.?\s*No\.?\s*\|\s*Description/i.test(draftText)) return draftText;
-    if (/^\s*ANNEXURES?\s*:?\s*$/im.test(draftText)) return draftText;
+    // If a proper HTML index table already exists (with markers), return as-is
+    if (/<!--\s*INDEX_TABLE_START\s*-->/.test(draftText)) return draftText;
+
+    // Strip AI-generated text-based INDEX OF DOCUMENTS sections
+    // The AI often generates these as plain text or markdown tables,
+    // which render broken in the editor. We replace with a proper HTML table.
+    let cleanedText = draftText;
+
+    // Strip text-based "INDEX OF DOCUMENTS" heading + any following text table
+    // The AI commonly outputs blank lines between the heading and table rows, so we allow \n* gaps
+    // Pattern: heading → optional blank lines → header/separator rows → data rows
+    cleanedText = cleanedText.replace(
+      /\n*\s*INDEX OF DOCUMENTS\s*:?\s*\n+(?:[^\n]*(?:S\.?\s*No|Description|Annexure|Page\s*No|---|\|)[^\n]*\n)*(?:\s*\n)*(?:\s*\d+\.?\s+(?!That the |That this |That he |That she |That it )(?:[^\n]{1,120})\n)*/gi,
+      "\n"
+    );
+    // Also strip markdown pipe tables that follow "INDEX OF DOCUMENTS" (with optional blank lines)
+    cleanedText = cleanedText.replace(
+      /\n*\s*INDEX OF DOCUMENTS\s*:?\s*\n+(?:\s*\n)*(?:\s*\|[^\n]+\|\s*\n)*/gi,
+      "\n"
+    );
+    // Catch-all: strip INDEX OF DOCUMENTS heading + ALL content until next major section heading
+    // This handles cases where the AI generates non-standard table formats (numbered lists, etc.)
+    // that the above regexes miss, leaving garbled text alongside the proper HTML table
+    // SAFETY: Only apply catch-all if a known boundary heading exists after the INDEX section,
+    // otherwise the lazy .*? can consume the entire document body when no boundary is found.
+    if (/INDEX OF DOCUMENTS/i.test(cleanedText) && /\n\s*(?:RESPECTFULLY SHEWETH|BRIEF FACTS|MEMO OF PETITION)/i.test(cleanedText)) {
+      cleanedText = cleanedText.replace(
+        /\n*\s*INDEX OF DOCUMENTS\s*:?\s*\n[\s\S]*?(?=\n\s*(?:RESPECTFULLY SHEWETH|BRIEF FACTS|MEMO OF PETITION|1\.\s+That the|Through\s*:|\.{3,}\s*(?:PETITIONER|APPLICANT|APPELLANT|RESPONDENT|DEFENDANT|ACCUSED|COMPLAINANT|PLAINTIFF)))/gi,
+        "\n"
+      );
+    }
+    // Strip standalone leftover "INDEX OF DOCUMENTS" heading (if the table was already removed)
+    cleanedText = cleanedText.replace(/^\s*INDEX OF DOCUMENTS\s*:?\s*$/gim, "");
+    // Strip standalone "ANNEXURES" heading without associated HTML table
+    cleanedText = cleanedText.replace(/^\s*ANNEXURES?\s*:?\s*$/gim, "");
+    // Clean up excessive blank lines from removals
+    cleanedText = cleanedText.replace(/\n{4,}/g, "\n\n\n");
 
     // Scan draft for document references to auto-generate annexure index
     const supportingDocs: string[] = [];
@@ -13066,7 +13101,7 @@ ${headingOrder}`;
 
     // Common document patterns in Pakistani filings
     const patterns: Array<{ regex: RegExp; label: string }> = [
-      { regex: /\b(?:FIR|First Information Report)\s*(?:No\.?)?\s*[\d\/_-]+/i, label: "Copy of FIR" },
+      { regex: /\b(?:FIR|First Information Report)(?:\s*(?:No\.?)?\s*[\d\/_-]+)?/i, label: "Copy of FIR" },
       { regex: /\bshow[- ]?cause\s+notice/i, label: "Copy of Show-Cause Notice" },
       { regex: /\binquiry\s+report/i, label: "Copy of Inquiry Report" },
       { regex: /\b(?:suspension|suspended)\s+(?:order|notification)/i, label: "Copy of Suspension Order" },
@@ -13100,9 +13135,8 @@ ${headingOrder}`;
       }
     }
 
-    if (supportingDocs.length === 0) return draftText;
-
     // Build HTML table matching Pakistani court INDEX OF DOCUMENTS format
+    // Always generate at least a base table (Petition + Affidavit) — every court filing has these
     const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     let sno = 1;
     let tableRows = '';
@@ -13118,9 +13152,10 @@ ${headingOrder}`;
       sno++;
     }
 
-    const indexBlock = `\n\n<!-- INDEX_TABLE_START -->\n<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin:16px 0;"><thead><tr style="background:#1a2332;color:#fff;"><th style="padding:8px 12px;text-align:left;font-weight:bold;">S.No.</th><th style="padding:8px 12px;text-align:left;font-weight:bold;">Description of Documents</th><th style="padding:8px 12px;text-align:center;font-weight:bold;">Annexures</th><th style="padding:8px 12px;text-align:center;font-weight:bold;">Page No.</th></tr></thead><tbody>${tableRows}</tbody></table>\n<!-- INDEX_TABLE_END -->\n\n`;
+    const indexBlock = `\n\nINDEX OF DOCUMENTS\n\n<!-- INDEX_TABLE_START -->\n<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin:16px 0;"><thead><tr style="background:#1a2332;color:#fff;"><th style="padding:8px 12px;text-align:left;font-weight:bold;">S.No.</th><th style="padding:8px 12px;text-align:left;font-weight:bold;">Description of Documents</th><th style="padding:8px 12px;text-align:center;font-weight:bold;">Annexures</th><th style="padding:8px 12px;text-align:center;font-weight:bold;">Page No.</th></tr></thead><tbody>${tableRows}</tbody></table>\n<!-- INDEX_TABLE_END -->\n\n`;
 
     // Insert AFTER the cause title heading but BEFORE "RESPECTFULLY SHEWETH"
+    // IMPORTANT: Use cleanedText (not draftText) so the AI's broken text/markdown tables are stripped
     const insertionPatterns = [
       /\n(\s*RESPECTFULLY SHEWETH\s*:?\s*\n)/i,
       /\n(\s*1\.\s+That the)/i,
@@ -13128,18 +13163,29 @@ ${headingOrder}`;
     ];
 
     for (const pattern of insertionPatterns) {
-      const match = draftText.match(pattern);
+      const match = cleanedText.match(pattern);
       if (match && match.index !== undefined) {
-        return draftText.slice(0, match.index) + indexBlock + draftText.slice(match.index);
+        return cleanedText.slice(0, match.index) + indexBlock + cleanedText.slice(match.index);
       }
     }
 
-    // Fallback: insert after first 15 lines (after heading block)
-    const lines = draftText.split("\n");
+    // Fallback: try to insert after the cause-title block (after last party role line)
+    // Look for the last occurrence of a party role label (... PETITIONER/RESPONDENT etc.)
+    const partyRoleFallback = cleanedText.match(/(\.{2,}\s*(?:PETITIONER|APPLICANT|APPELLANT|RESPONDENT|DEFENDANT|ACCUSED|COMPLAINANT|PLAINTIFF)S?\s*\n)/gi);
+    if (partyRoleFallback && partyRoleFallback.length > 0) {
+      const lastRole = partyRoleFallback[partyRoleFallback.length - 1];
+      const lastRoleIdx = cleanedText.lastIndexOf(lastRole);
+      if (lastRoleIdx >= 0) {
+        const insertAt = lastRoleIdx + lastRole.length;
+        return cleanedText.slice(0, insertAt) + indexBlock + cleanedText.slice(insertAt);
+      }
+    }
+    // Ultimate fallback: insert after first 15 lines (after heading block)
+    const lines = cleanedText.split("\n");
     if (lines.length > 15) {
       return lines.slice(0, 15).join("\n") + indexBlock + lines.slice(15).join("\n");
     }
-    return draftText + indexBlock;
+    return cleanedText + indexBlock;
   }
 
   /**
@@ -14111,6 +14157,11 @@ Rules:
         .replace(/&gt;/gi, ">")
         .replace(/&quot;/gi, '"')
         .replace(/\s{3,}/g, "\n\n") // Collapse excessive whitespace
+        // Strip garbled INDEX OF DOCUMENTS text from Tiptap getText() on follow-up turns.
+        // When the editor has an HTML table, getText() concatenates cell values into one
+        // garbled line like "S.No.Description of DocumentsAnnexuresPage No.1.Application---".
+        // This wastes tokens and confuses the AI into reproducing garbled text.
+        .replace(/\n*\s*INDEX OF DOCUMENTS\s*:?\s*\n+(?:\s*S\.?\s*No\.?[^\n]{10,}\n?)*/gi, "\n")
         .trim();
       const baseDraftText = trimTextToTokenBudget(cleanedDraftText, 12000);
       const draftContextForGeneration = trimTextToTokenBudget(`${baseDraftText}${attachmentContext}`, 12000);
