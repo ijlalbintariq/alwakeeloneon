@@ -20,6 +20,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type {
+  LegalDraftChatMessage,
+  LegalDraftMemoryItem,
+  LegalDraftRecommendation,
+  LegalDraftReferences,
+} from "@shared/legal-drafting";
 
 const STORAGE_KEY = "legal-drafting-tabs-v1";
 const MAX_TABS = 5;
@@ -37,6 +43,16 @@ export type DraftTab = {
   editorHtml: string;
   /** Plain text content */
   docText: string;
+  /** AI drafting conversation for this document */
+  chatMessages: LegalDraftChatMessage[];
+  /** User instructions and risks remembered for this document */
+  memoryItems: LegalDraftMemoryItem[];
+  /** Verified references resolved for this document */
+  draftReferences: LegalDraftReferences | null;
+  /** AI review recommendations for this document */
+  recommendations: LegalDraftRecommendation[];
+  /** Whether this tab currently contains a draft */
+  hasDraftInSession: boolean;
   /** Whether this tab has unsaved changes */
   isDirty: boolean;
   /** Timestamp of last activity */
@@ -77,18 +93,55 @@ function createDefaultTab(): DraftTab {
     title: "Untitled Draft",
     editorHtml: "",
     docText: "",
+    chatMessages: [],
+    memoryItems: [],
+    draftReferences: null,
+    recommendations: [],
+    hasDraftInSession: false,
     isDirty: false,
     lastActiveAt: Date.now(),
   };
+}
+
+export function normalizeStoredDraftTabs(value: unknown): { tabs: DraftTab[]; activeTabId: string } | null {
+    if (!value || typeof value !== "object") return null;
+    const parsed = value as Record<string, unknown>;
+    if (!Array.isArray(parsed.tabs) || typeof parsed.activeTabId !== "string") return null;
+    const tabs: DraftTab[] = parsed.tabs
+      .filter((tab: unknown): tab is Record<string, unknown> => !!tab && typeof tab === "object")
+      .slice(0, MAX_TABS)
+      .map((tab: Record<string, unknown>): DraftTab => ({
+        ...createDefaultTab(),
+        ...tab,
+        id: typeof tab.id === "string" && tab.id ? tab.id : generateTabId(),
+        draftId: typeof tab.draftId === "number" ? tab.draftId : null,
+        title: typeof tab.title === "string" && tab.title ? tab.title.slice(0, 240) : "Untitled Draft",
+        editorHtml: typeof tab.editorHtml === "string" ? tab.editorHtml.slice(0, 250_000) : "",
+        docText: typeof tab.docText === "string" ? tab.docText.slice(0, 250_000) : "",
+        chatMessages: Array.isArray(tab.chatMessages) ? tab.chatMessages.slice(-150) as LegalDraftChatMessage[] : [],
+        memoryItems: Array.isArray(tab.memoryItems) ? tab.memoryItems.slice(0, 60) as LegalDraftMemoryItem[] : [],
+        draftReferences: tab.draftReferences && typeof tab.draftReferences === "object"
+          ? tab.draftReferences as LegalDraftReferences
+          : null,
+        recommendations: Array.isArray(tab.recommendations) ? tab.recommendations.slice(0, 10) as LegalDraftRecommendation[] : [],
+        hasDraftInSession: typeof tab.hasDraftInSession === "boolean"
+          ? tab.hasDraftInSession
+          : Boolean(String(tab.editorHtml || tab.docText || "").trim()),
+        isDirty: Boolean(tab.isDirty),
+        lastActiveAt: typeof tab.lastActiveAt === "number" ? tab.lastActiveAt : Date.now(),
+      }));
+    if (tabs.length === 0) return null;
+    const activeTabId = tabs.some((tab) => tab.id === parsed.activeTabId)
+      ? parsed.activeTabId
+      : tabs[0].id;
+    return { tabs, activeTabId };
 }
 
 function loadTabsFromStorage(): { tabs: DraftTab[]; activeTabId: string } | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || !Array.isArray(parsed.tabs) || !parsed.activeTabId) return null;
-    return parsed;
+    return normalizeStoredDraftTabs(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -96,11 +149,16 @@ function loadTabsFromStorage(): { tabs: DraftTab[]; activeTabId: string } | null
 
 function saveTabsToStorage(tabs: DraftTab[], activeTabId: string) {
   try {
-    // Don't persist full content to avoid localStorage bloat — only persist metadata
     const lite = tabs.map((t) => ({
       ...t,
-      editorHtml: t.editorHtml.slice(0, 50000), // Cap at 50KB per tab
-      docText: t.docText.slice(0, 30000),
+      editorHtml: t.editorHtml.slice(0, 250_000),
+      docText: t.docText.slice(0, 250_000),
+      chatMessages: t.chatMessages.slice(-50).map((message) => ({
+        ...message,
+        content: message.content.slice(0, 10_000),
+      })),
+      memoryItems: t.memoryItems.slice(0, 30),
+      recommendations: t.recommendations.slice(0, 10),
     }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ tabs: lite, activeTabId }));
   } catch {

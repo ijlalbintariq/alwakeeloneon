@@ -58,12 +58,21 @@ import { LegalEditor, type LegalEditorHandle } from "@/components/legal-editor";
 import { plainTextToTiptapHTML, isHTMLContent } from "@/lib/plain-to-tiptap";
 import { generateLegalPDF } from "@/lib/generate-legal-pdf";
 import { generateLegalDocx } from "@/lib/generate-legal-docx";
+import {
+  DEFAULT_LEGAL_PAGE_PROFILE_ID,
+  resolveLegalPageProfile,
+  type LegalPageProfileId,
+} from "@/lib/legal-page-layout";
 import { useVoiceRecorder, formatDuration } from "@/hooks/use-voice-recorder";
 import { useDraftHistory } from "@/hooks/use-draft-history";
 import { DraftHistoryPanel } from "@/components/draft-history-panel";
-import { DraftTabsProvider, useDraftTabs } from "@/contexts/draft-tabs-context";
+import { DraftTabsProvider, useDraftTabs, type DraftTab } from "@/contexts/draft-tabs-context";
 import { useDocumentHead } from "@/hooks/use-document-head";
 import { TutorialCards } from "@/components/tutorial-cards";
+import {
+  LEGAL_DRAFTING_WORKSPACE_VERSION,
+  type LegalDraftWorkspaceState,
+} from "@shared/legal-drafting";
 
 type DraftRecommendation = {
   id: string;
@@ -180,18 +189,6 @@ type ChatSnippetPopover = {
   y: number;
 };
 
-type LegalDraftWorkspaceState = {
-  draftTitle: string;
-  docText: string;
-  selectedDraftId: number | null;
-  hasDraftInSession: boolean;
-  draftChatMessages: DraftChatMessage[];
-  memoryItems: MemoryItem[];
-  draftReferences?: LegalDraftReferencesPayload;
-  recommendations?: DraftRecommendation[];
-  savedAt?: string;
-};
-
 type StyleMemoryMeta = {
   applied: boolean;
   module: "legal-drafting" | "contract-drafting" | null;
@@ -203,6 +200,7 @@ type StyleMemoryMeta = {
 const AUTOSAVE_KEY = "legal-drafting-workspace-v3";
 const CONTEXT_MEMORY_KEY = "legal-drafting-context-memory-v1";
 const STYLE_MEMORY_BACKFILL_KEY = "legal-drafting-style-backfill-v1";
+const PAGE_PROFILE_KEY = "legal-drafting-page-profile-v1";
 const DRAFT_TITLE_PREFIX = "Legal Draft:";
 const WORKSPACE_STATE_SYNC_DEBOUNCE_MS = 1200;
 
@@ -210,22 +208,28 @@ const DEFAULT_DOC = "";
 const LEGACY_DEFAULT_DOC_PREFIX = "IN THE COURT OF THE CIVIL JUDGE";
 
 const DRAFT_ACTION_VERBS_REGEX =
-  /\b(draft|prepare|write|redraft|rewrite|revise|amend|edit|improve|finalize|generate|make|create|update|format|polish|convert|add|insert|expand|elaborate)\b/i;
+  /\b(redraft|rewrite|revise|amend|edit|improve|finalize|make|update|format|polish|convert|add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|enhance|correct|reword|rephrase|restructure|move|undo|revert)\b/i;
+const EXPLICIT_DRAFT_ACTION_REGEX =
+  /^(?:please\s+)?(?:draft|prepare|write|generate|create)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:draft|prepare|write|generate|create)\b/i;
 const DRAFTING_DOCUMENT_HINTS_REGEX =
   /\b(application|petition|plaint|suit|appeal|writ|bail|revision|cpla|affidavit|reply|written statement)\b/i;
 const LEGAL_REFERENCE_HINTS_REGEX =
   /\b(section|u\/s|under section|article|fir|cr\.?p\.?c|ppc|pld|scmr|mld|clc|cld|ylr|p\s*cr\.?\s*l\.?\s*j)\b/i;
 const LEGAL_ANALYSIS_HINTS_REGEX =
-  /\b(explain|clarify|opinion|advice|review|analyze|analysis|maintainable|jurisdiction|limitation|bail|conviction|grounds|prayer|verification|valuation|court fee|which court|forum|law|legal|draft)\b/i;
+  /\b(explain|clarify|opinion|advice|review|analyze|analysis|maintainable|valid|correct|wrong|risk|issue|problem|jurisdiction|limitation|conviction|valuation|court fee|which court|forum|law|legal)\b/i;
 const GREETING_ONLY_REGEX = /^\s*(hi|hello|hey|salam|assalamualaikum|aoa|ok|okay|thanks|thank you)\s*[.!?]*\s*$/i;
+const UNDO_LAST_EDIT_REGEX = /^\s*(?:undo|revert)(?:\s+(?:that|the\s+last\s+(?:change|edit)))?\s*[.!?]*\s*$/i;
 
-function classifyLegalDraftPrompt(prompt: string): "guidance" | "draft" | "analysis" {
+function classifyLegalDraftPrompt(prompt: string, hasDraft: boolean): "guidance" | "draft" | "analysis" {
   const normalized = String(prompt || "").trim();
   if (!normalized) return "guidance";
   if (GREETING_ONLY_REGEX.test(normalized)) return "guidance";
 
-  const hasDraftIntent = DRAFT_ACTION_VERBS_REGEX.test(normalized) || DRAFTING_DOCUMENT_HINTS_REGEX.test(normalized);
-  if (hasDraftIntent) return "draft";
+  const hasDraftAction = DRAFT_ACTION_VERBS_REGEX.test(normalized) || EXPLICIT_DRAFT_ACTION_REGEX.test(normalized);
+  const isPoliteDraftCommand = /\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:redraft|rewrite|revise|amend|edit|improve|make|update|add|insert|include|incorporate|apply|use|put|delete|remove|replace|change|shorten|expand|strengthen|correct|reword|move|draft|prepare|write|generate|create)\b/i.test(normalized);
+  const isDirectQuestion = /^(?:is|are|was|were|do|does|did|can|could|would|should|will|what|why|which|whether|how)\b/i.test(normalized);
+  if (isDirectQuestion && !isPoliteDraftCommand) return "analysis";
+  if (hasDraftAction) return "draft";
 
   const hasLegalAnalysisIntent =
     LEGAL_REFERENCE_HINTS_REGEX.test(normalized) ||
@@ -233,8 +237,22 @@ function classifyLegalDraftPrompt(prompt: string): "guidance" | "draft" | "analy
     /\?$/.test(normalized) ||
     normalized.length >= 60;
   if (hasLegalAnalysisIntent) return "analysis";
+  if (!hasDraft && DRAFTING_DOCUMENT_HINTS_REGEX.test(normalized)) return "draft";
 
-  return "guidance";
+  return hasDraft ? "analysis" : "guidance";
+}
+
+function buildLegalDraftConversationHistory(messages: DraftChatMessage[]): Array<{ role: "user" | "assistant"; content: string }> {
+  return messages
+    .filter((message) => !message.id.startsWith("assistant-intro-") && message.kind !== "typing" && message.kind !== "error" && message.kind !== "guidance")
+    .slice(-12)
+    .map((message) => ({
+      role: message.role,
+      content: message.role === "assistant" && message.content.length > 2000
+        ? "[The assistant updated the active draft during this turn.]"
+        : message.content.slice(0, 2000),
+    }))
+    .filter((message) => message.content.trim().length > 0);
 }
 
 function buildDraftingGuidanceMessage(): string {
@@ -893,8 +911,8 @@ Bar Council Enrollment No. _______
 CC: My Client.
 `;
 
-const NOTICE_138_NIA_TEMPLATE = `LEGAL NOTICE UNDER SECTION 138 OF THE NEGOTIABLE INSTRUMENTS ACT, 1881
-READ WITH SECTION 489-F OF THE PAKISTAN PENAL CODE, 1860
+const NOTICE_489F_PPC_TEMPLATE = `LEGAL NOTICE REGARDING DISHONOURED CHEQUE
+AND DISHONEST ISSUANCE UNDER SECTION 489-F OF THE PAKISTAN PENAL CODE, 1860
 
 Without Prejudice
 
@@ -911,8 +929,7 @@ Date: ____ ____________, 20__
 Sir,
 
 Under instructions from my client, [Payee Name], R/o ____________, CNIC
-_____________ (the "Holder in Due Course"), I serve upon you the following
-notice:
+_____________, I serve upon you the following notice:
 
 1. That you, in discharge of [state liability/transaction], issued cheque
    No. _________ dated ____ ____________, drawn on [Bank & Branch],
@@ -924,34 +941,36 @@ notice:
    "[Insufficient Funds / Account Closed / Stop Payment / Signature
    Mismatch]" dated ____ ____________.
 
-3. That under Section 138 of the Negotiable Instruments Act, 1881, the
-   issuance of a cheque that is dishonoured constitutes a statutory
-   offence punishable with imprisonment and/or fine. Further, under
-   Section 489-F of the Pakistan Penal Code, 1860, dishonest issuance of
-   a cheque without sufficient funds is punishable with imprisonment up
-   to three (3) years and fine.
+3. That the cheque was issued toward repayment of the above loan or
+   fulfilment of the above obligation, and its dishonour, read with the
+   surrounding facts, gives rise to civil remedies and may attract
+   Section 489-F of the Pakistan Penal Code, 1860 where dishonest intent
+   and the other statutory ingredients are established.
 
 DEMAND:
 
-You are hereby called upon, within FIFTEEN (15) DAYS of receipt of this
+You are hereby called upon, within [SEVEN (7) / FIFTEEN (15)] DAYS of receipt of this
 notice, to:
 
 (a) Pay the cheque amount of Rs. ____________ in full by demand draft or
     pay order in favour of my client; and
 (b) Reimburse Rs. ________ as costs of this notice and bank charges.
 
-Failing the above within fifteen (15) days, my client shall, without
-further notice, file:
+Failing the above within the stated period, my client shall be at liberty,
+without further notice, to initiate such proceedings as are available in
+law, including:
 
-(i) A private criminal complaint under Section 489-F PPC read with
-    Section 200 Cr.P.C. before the competent Magistrate;
-(ii) A civil suit for recovery under Order XXXVII of the Code of Civil
-     Procedure, 1908; and
+(i) Appropriate criminal proceedings under Section 489-F PPC in
+    accordance with law, subject to proof of its ingredients;
+(ii) A civil suit for recovery, including proceedings under Order XXXVII
+     of the Code of Civil Procedure, 1908 where maintainable; and
 (iii) Any other remedy available in law,
 
 at your sole risk, cost, and consequence.
 
-This notice serves as the statutory demand notice as required by law.
+This notice provides a final opportunity to resolve the matter before
+proceedings are initiated. It is not represented as a statutory
+prerequisite to proceedings under Pakistani law.
 
 Yours truly,
 
@@ -1411,11 +1430,11 @@ const TEMPLATES: DraftTemplate[] = [
     description: "Pre-litigation legal notice — recovery / breach / cease & desist.",
   },
   {
-    id: "notice-138-nia",
-    title: "Cheque Dishonour Notice (Section 138 NI Act)",
-    body: NOTICE_138_NIA_TEMPLATE,
+    id: "notice-489f-ppc",
+    title: "Cheque Dishonour Notice (Section 489-F PPC)",
+    body: NOTICE_489F_PPC_TEMPLATE,
     category: "Notices",
-    description: "Statutory 15-day demand notice before 489-F PPC complaint.",
+    description: "Pre-action payment demand preserving civil and Section 489-F PPC remedies.",
   },
   // ─── Contracts ───
   {
@@ -1559,6 +1578,10 @@ function LegalDraftingPageInner() {
   const chatListRef = useRef<HTMLDivElement | null>(null);
 
   const editorRef = useRef<LegalEditorHandle | null>(null);
+  const isRestoringTabRef = useRef(false);
+  const stateOwnerTabIdRef = useRef(draftTabs.activeTabId);
+  const activeTabIdRef = useRef(draftTabs.activeTabId);
+  activeTabIdRef.current = draftTabs.activeTabId;
 
   const [showTutorial, setShowTutorial] = useState(false);
   useEffect(() => {
@@ -1572,6 +1595,10 @@ function LegalDraftingPageInner() {
   const [editorHtml, setEditorHtml] = useState("");
   const [draftTitle, setDraftTitle] = useState("Untitled Draft");
   const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null);
+  const [pageProfileId, setPageProfileId] = useState<LegalPageProfileId>(() => {
+    const stored = localStorage.getItem(PAGE_PROFILE_KEY);
+    return resolveLegalPageProfile(stored).id;
+  });
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
@@ -1600,13 +1627,18 @@ function LegalDraftingPageInner() {
   const [chatSnippetPopover, setChatSnippetPopover] = useState<ChatSnippetPopover | null>(null);
   const [hasDraftInSession, setHasDraftInSession] = useState(false);
   const [workspaceStateHydrated, setWorkspaceStateHydrated] = useState(false);
+  const [workspaceSyncStatus, setWorkspaceSyncStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [feeCalcOpen, setFeeCalcOpen] = useState(false);
   const [caseFileImportOpen, setCaseFileImportOpen] = useState(false);
   const [chatState, setChatState] = useState<"default" | "minimized" | "expanded">("default");
   const voice = useVoiceRecorder();
-  const draftHistory = useDraftHistory(selectedDraftId ? `draft-${selectedDraftId}` : "workspace");
+  const draftHistory = useDraftHistory(selectedDraftId ? `draft-${selectedDraftId}` : `tab-${draftTabs.activeTabId}`);
   const [rightRailTab, setRightRailTab] = useState<"ai" | "history">("ai");
   const showDraftReviewPanel = hasDraftInSession || recommendLoading || recommendations.length > 0;
+
+  useEffect(() => {
+    localStorage.setItem(PAGE_PROFILE_KEY, pageProfileId);
+  }, [pageProfileId]);
 
   const leftRailVisible = leftRailOpen && !focusWritingMode;
   const rightRailVisible = rightRailOpen && !focusWritingMode;
@@ -1657,7 +1689,13 @@ function LegalDraftingPageInner() {
   const onEditorUpdate = useCallback((html: string, text: string) => {
     setEditorHtml(html);
     setDocText(text);
-  }, []);
+    draftTabs.updateTab(draftTabs.activeTabId, {
+      editorHtml: html,
+      docText: text,
+      isDirty: !isRestoringTabRef.current,
+      hasDraftInSession: Boolean(text.trim()),
+    });
+  }, [draftTabs.activeTabId, draftTabs.updateTab]);
 
   /** Helper: set content in both the editor (HTML) and keep docText synced */
   const setEditorContent = useCallback((content: string) => {
@@ -1678,8 +1716,78 @@ function LegalDraftingPageInner() {
     }
   }, []);
 
+  const snapshotActiveTab = useCallback(() => {
+    draftTabs.updateTab(draftTabs.activeTabId, {
+      draftId: selectedDraftId,
+      title: draftTitle,
+      editorHtml: editorRef.current?.getHTML() || editorHtml || docText,
+      docText: editorRef.current?.getText() || docText,
+      chatMessages: draftChatMessages,
+      memoryItems,
+      draftReferences,
+      recommendations,
+      hasDraftInSession,
+    });
+  }, [
+    draftTabs.activeTabId,
+    draftTabs.updateTab,
+    selectedDraftId,
+    draftTitle,
+    editorHtml,
+    docText,
+    draftChatMessages,
+    memoryItems,
+    draftReferences,
+    recommendations,
+    hasDraftInSession,
+  ]);
+
+  const restoreDraftTab = useCallback((tab: DraftTab | undefined) => {
+    if (!tab) return;
+    stateOwnerTabIdRef.current = tab.id;
+    isRestoringTabRef.current = true;
+    setDraftTitle(tab.title || "Untitled Draft");
+    setSelectedDraftId(tab.draftId);
+    setEditorContent(tab.editorHtml || tab.docText || "");
+    setDraftChatMessages(
+      tab.chatMessages.length > 0
+        ? tab.chatMessages.map((message) => normalizeDraftChatMessage(message)).filter((message): message is DraftChatMessage => !!message)
+        : [createDraftingIntroMessage()],
+    );
+    setMemoryItems(tab.memoryItems);
+    setDraftReferences(normalizeLegalDraftReferences(tab.draftReferences));
+    setRecommendations(tab.recommendations);
+    setHasDraftInSession(tab.hasDraftInSession);
+    setExpandedRecommendationId(null);
+    setStyleMemoryMeta(null);
+    setAiPrompt("");
+    setAiContextFiles([]);
+    if (aiContextInputRef.current) aiContextInputRef.current.value = "";
+    setCaseSourceDoc(null);
+    setActiveCaseSourceId(null);
+    setChatSnippetPopover(null);
+    clearSelectedDraftText();
+    queueMicrotask(() => {
+      isRestoringTabRef.current = false;
+    });
+  }, [setEditorContent]);
+
+  const initialActiveTabRef = useRef(draftTabs.activeTab);
+  const previousActiveTabIdRef = useRef(draftTabs.activeTabId);
+
   useEffect(() => {
-    // Try to load v3 autosave (HTML) first
+    if (previousActiveTabIdRef.current === draftTabs.activeTabId) return;
+    previousActiveTabIdRef.current = draftTabs.activeTabId;
+    restoreDraftTab(draftTabs.tabs.find((tab) => tab.id === draftTabs.activeTabId));
+  }, [draftTabs.activeTabId, draftTabs.tabs, restoreDraftTab]);
+
+  useEffect(() => {
+    const storedTab = initialActiveTabRef.current;
+    if (storedTab && (storedTab.editorHtml || storedTab.docText || storedTab.chatMessages.length > 0)) {
+      restoreDraftTab(storedTab);
+      return;
+    }
+    // Migrate the legacy single-workspace autosave into the active tab.
     const saved = localStorage.getItem(AUTOSAVE_KEY);
     if (saved) {
       setEditorContent(saved);
@@ -1697,7 +1805,7 @@ function LegalDraftingPageInner() {
       localStorage.removeItem("legal-drafting-workspace-v2");
       return;
     }
-  }, [setEditorContent]);
+  }, [restoreDraftTab, setEditorContent]);
 
   useEffect(() => {
     const raw = localStorage.getItem(CONTEXT_MEMORY_KEY);
@@ -1720,6 +1828,7 @@ function LegalDraftingPageInner() {
       return;
     }
     let cancelled = false;
+    const hydrationTabId = draftTabs.activeTabId;
     const loadWorkspaceState = async () => {
       try {
         const res = await fetch("/api/legal-drafting/workspace-state", {
@@ -1728,7 +1837,7 @@ function LegalDraftingPageInner() {
         if (!res.ok) return;
         const data = await res.json();
         const state = data?.state as Partial<LegalDraftWorkspaceState> | null;
-        if (!state || cancelled) return;
+        if (!state || cancelled || activeTabIdRef.current !== hydrationTabId) return;
 
         const nextDocText = typeof state.docText === "string" ? state.docText : "";
         const nextTitle = typeof state.draftTitle === "string" && state.draftTitle.trim()
@@ -1810,9 +1919,33 @@ function LegalDraftingPageInner() {
   }, [memoryItems]);
 
   useEffect(() => {
+    if (stateOwnerTabIdRef.current !== draftTabs.activeTabId) return;
+    draftTabs.updateTab(draftTabs.activeTabId, {
+      draftId: selectedDraftId,
+      title: draftTitle,
+      chatMessages: draftChatMessages,
+      memoryItems,
+      draftReferences,
+      recommendations,
+      hasDraftInSession,
+    });
+  }, [
+    draftTabs.activeTabId,
+    draftTabs.updateTab,
+    selectedDraftId,
+    draftTitle,
+    draftChatMessages,
+    memoryItems,
+    draftReferences,
+    recommendations,
+    hasDraftInSession,
+  ]);
+
+  useEffect(() => {
     if (!workspaceStateHydrated || !user?.id) return;
     const timeout = window.setTimeout(async () => {
       const payload: LegalDraftWorkspaceState = {
+        version: LEGAL_DRAFTING_WORKSPACE_VERSION,
         draftTitle: (draftTitle || "Untitled Draft").slice(0, 240),
         docText: editorHtml || docText || "",
         selectedDraftId,
@@ -1843,14 +1976,19 @@ function LegalDraftingPageInner() {
         })),
       };
       try {
-        await fetch("/api/legal-drafting/workspace-state", {
+        setWorkspaceSyncStatus("saving");
+        const response = await fetch("/api/legal-drafting/workspace-state", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify(payload),
         });
+        if (!response.ok) {
+          throw new Error(`Workspace autosave failed (${response.status})`);
+        }
+        setWorkspaceSyncStatus("saved");
       } catch {
-        // Silent autosave failure; local autosave remains fallback.
+        setWorkspaceSyncStatus("error");
       }
     }, WORKSPACE_STATE_SYNC_DEBOUNCE_MS);
 
@@ -1866,6 +2004,7 @@ function LegalDraftingPageInner() {
     memoryItems,
     draftReferences,
     recommendations,
+    editorHtml,
   ]);
 
   useEffect(() => {
@@ -1924,12 +2063,17 @@ function LegalDraftingPageInner() {
   };
 
   const startNewDraftingChat = () => {
+    if (isGenerating) {
+      toast({ title: "Wait for drafting to finish before starting another draft." });
+      return;
+    }
     setEditorContent(DEFAULT_DOC);
     setDraftTitle("Untitled Draft");
     setSelectedDraftId(null);
     setHasDraftInSession(false);
     setDraftReferences(createEmptyLegalDraftReferences());
     setDraftChatMessages([createDraftingIntroMessage()]);
+    setMemoryItems([]);
     setRecommendations([]);
     setExpandedRecommendationId(null);
     setStyleMemoryMeta(null);
@@ -2264,6 +2408,7 @@ function LegalDraftingPageInner() {
   };
 
   const runDraftRecommendations = async (contentOverride?: string) => {
+    const requestTabId = activeTabIdRef.current;
     const content = (contentOverride ?? docText).trim();
     if ((!hasDraftInSession && !contentOverride) || !content) {
       setRecommendations([]);
@@ -2290,6 +2435,7 @@ function LegalDraftingPageInner() {
       }
 
       const data = await response.json();
+      if (activeTabIdRef.current !== requestTabId) return;
       const editsRaw = Array.isArray(data?.edits) ? data.edits : [];
       const normalized: DraftRecommendation[] = editsRaw.slice(0, 10).map((edit: any, idx: number) => ({
         id: typeof edit?.id === "string" && edit.id.trim() ? edit.id : `edit-${idx + 1}`,
@@ -2340,6 +2486,7 @@ function LegalDraftingPageInner() {
       id: number | null;
       title: string;
       content: string;
+      tabId: string;
     }) => {
       const payload = {
         title: `${DRAFT_TITLE_PREFIX} ${title}`,
@@ -2352,11 +2499,18 @@ function LegalDraftingPageInner() {
       const res = await apiRequest("POST", "/api/documents", payload);
       return (await res.json()) as DraftDocument;
     },
-    onSuccess: (doc) => {
-      setSelectedDraftId(doc.id);
+    onSuccess: (doc, variables) => {
+      if (activeTabIdRef.current === variables.tabId) {
+        setSelectedDraftId(doc.id);
+        toast({ title: "Draft saved" });
+      }
+      draftTabs.updateTab(variables.tabId, {
+        draftId: doc.id,
+        title: variables.title.trim() || "Untitled Draft",
+        isDirty: false,
+      });
       queryClient.invalidateQueries({ queryKey: [api.documents.list.path] });
       queryClient.invalidateQueries({ queryKey: ["/api/activity/summary"] });
-      toast({ title: "Draft saved" });
     },
     onError: (err: any) => {
       toast({
@@ -2394,7 +2548,12 @@ function LegalDraftingPageInner() {
     const currentText = editorRef.current?.getText() || docText;
     // Auto-snapshot before saving
     draftHistory.addSnapshot(cleanTitle, currentHtml, currentText);
-    saveDraftMutation.mutate({ id: selectedDraftId, title: cleanTitle, content: currentHtml });
+    saveDraftMutation.mutate({
+      id: selectedDraftId,
+      title: cleanTitle,
+      content: currentHtml,
+      tabId: draftTabs.activeTabId,
+    });
   };
 
   // ── Auto-save: debounced server save 5s after last edit ──
@@ -2417,10 +2576,12 @@ function LegalDraftingPageInner() {
       const cleanTitle = draftTitle.trim() || `Draft ${new Date().toLocaleString()}`;
       lastAutoSavedContentRef.current = html;
       saveDraftMutation.mutate(
-        { id: selectedDraftId, title: cleanTitle, content: html },
+        { id: selectedDraftId, title: cleanTitle, content: html, tabId: draftTabs.activeTabId },
         {
-          onSuccess: () => {
-            setIsSavedLocal(true);
+          onSuccess: (_doc, variables) => {
+            if (activeTabIdRef.current === variables.tabId) {
+              setIsSavedLocal(true);
+            }
           },
         }
       );
@@ -2429,23 +2590,70 @@ function LegalDraftingPageInner() {
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [docText, editorHtml, hasDraftInSession, isGenerating, draftTitle, selectedDraftId]);
+  }, [docText, editorHtml, hasDraftInSession, isGenerating, draftTitle, selectedDraftId, draftTabs.activeTabId]);
 
   const loadDraft = (doc: DraftDocument) => {
+    if (isGenerating) {
+      toast({ title: "Wait for drafting to finish before opening another draft." });
+      return;
+    }
+    const title = doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "") || "Draft";
+    const content = doc.content || "";
+    const existingTab = draftTabs.findTabByDraftId(doc.id);
+    if (existingTab && existingTab.id !== draftTabs.activeTabId) {
+      snapshotActiveTab();
+      draftTabs.switchTab(existingTab.id);
+      toast({ title: "Draft loaded" });
+      return;
+    } else if (!existingTab && hasDraftInSession) {
+      snapshotActiveTab();
+      draftTabs.addTab({
+        draftId: doc.id,
+        title,
+        editorHtml: content,
+        docText: content,
+        chatMessages: [createDraftingIntroMessage()],
+        memoryItems: [],
+        recommendations: [],
+        draftReferences: null,
+        hasDraftInSession: Boolean(content.trim()),
+        isDirty: false,
+      });
+      toast({ title: "Draft loaded" });
+      if (content.trim()) {
+        window.setTimeout(() => runDraftReview(content), 0);
+      }
+      return;
+    } else {
+      draftTabs.updateTab(draftTabs.activeTabId, {
+        draftId: doc.id,
+        title,
+        editorHtml: content,
+        docText: content,
+        recommendations: [],
+        draftReferences: null,
+        hasDraftInSession: Boolean(content.trim()),
+        isDirty: false,
+      });
+    }
     setSelectedDraftId(doc.id);
-    setDraftTitle(doc.title.replace(`${DRAFT_TITLE_PREFIX} `, "") || "Draft");
-    setEditorContent(doc.content || "");
-    setHasDraftInSession(!!(doc.content || "").trim());
+    setDraftTitle(title);
+    setEditorContent(content);
+    setHasDraftInSession(Boolean(content.trim()));
     clearSelectedDraftText();
     setRecommendations([]);
     setDraftReferences(createEmptyLegalDraftReferences());
     toast({ title: "Draft loaded" });
-    if ((doc.content || "").trim()) {
-      runDraftReview(doc.content || "");
+    if (content.trim()) {
+      runDraftReview(content);
     }
   };
 
   const applyTemplate = (template: DraftTemplate) => {
+    if (isGenerating) {
+      toast({ title: "Wait for drafting to finish before applying a template." });
+      return;
+    }
     setDraftTitle(template.title);
     setEditorContent(template.body);
     setHasDraftInSession(!!template.body.trim());
@@ -2539,14 +2747,25 @@ function LegalDraftingPageInner() {
     setChatSnippetPopover(null);
     clearBrowserSelection();
 
-    const selectedSnippet = selectedDraftSnippet.trim() ? selectedDraftSnippet.slice(0, 8000) : "";
+    const liveDraftText = editorRef.current?.getText() || docText || "";
+    const liveDraftHtml = editorRef.current?.getHTML() || editorHtml || liveDraftText;
+    const selectedSnippet = selectedDraftSnippet.trim() ? selectedDraftSnippet : "";
     const selectedSnippetStart = selectedDraftRange?.start;
     const selectedSnippetEnd = selectedDraftRange?.end;
+    if (selectedSnippet.length > 50_000) {
+      toast({
+        title: "Select a smaller passage",
+        description: "Bounded AI edits support selections up to 50,000 characters. No draft changes were applied.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (selectedSnippet) {
       // One-time selection: consume snippet for this single command only.
       clearSelectedDraftText();
     }
 
+    const conversationHistory = buildLegalDraftConversationHistory(draftChatMessages);
     const queuedAttachments = aiContextFiles.map((file) => file.name);
     setDraftChatMessages((prev) => [
       ...prev,
@@ -2560,7 +2779,32 @@ function LegalDraftingPageInner() {
     ]);
     setAiPrompt("");
 
-    const promptMode = classifyLegalDraftPrompt(prompt);
+    if (UNDO_LAST_EDIT_REGEX.test(prompt)) {
+      const snapshot = draftHistory.snapshots.find((item) => item.title.startsWith("Before AI:"));
+      const message = snapshot
+        ? `Restored the draft to its state before the last AI edit (“${snapshot.title.replace(/^Before AI:\s*/, "") || "previous version"}”).`
+        : "There is no earlier AI-edit snapshot to restore in this tab.";
+      if (snapshot) {
+        if (liveDraftText.trim()) {
+          draftHistory.addSnapshot("Before undo", liveDraftHtml, liveDraftText);
+        }
+        setEditorContent(snapshot.html || snapshot.text);
+        setHasDraftInSession(Boolean(snapshot.text.trim()));
+        draftHistory.deleteSnapshot(snapshot.id);
+      }
+      setDraftChatMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-undo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role: "assistant",
+          content: message,
+          createdAt: Date.now(),
+        },
+      ]);
+      return;
+    }
+
+    const promptMode = classifyLegalDraftPrompt(prompt, Boolean(liveDraftText.trim()));
     if (promptMode === "guidance") {
       setDraftChatMessages((prev) => [
         ...prev,
@@ -2585,7 +2829,7 @@ function LegalDraftingPageInner() {
         id: typingMessageId,
         role: "assistant",
         kind: "typing",
-        content: "AI is drafting your pleading...",
+        content: assistantMode === "draft" ? "AI is preparing and validating the requested update..." : "AI is reviewing the active draft...",
         createdAt: Date.now(),
       },
     ]);
@@ -2598,9 +2842,16 @@ function LegalDraftingPageInner() {
       setGenerationElapsed((prev) => prev + 1);
     }, 1000);
     try {
-      // Use getText() directly from editor ref — docText may be stale or empty after page refresh
-      const liveDraftText = editorRef.current?.getText() || docText || "";
-      const draftTextForAi = liveDraftText.slice(0, 12000);
+      const draftTextForAi = liveDraftText;
+      let didSnapshotBeforeApply = false;
+      const applyValidatedDraft = (nextDraft: string) => {
+        if (!didSnapshotBeforeApply && liveDraftText.trim() && nextDraft !== liveDraftText) {
+          draftHistory.addSnapshot(`Before AI: ${prompt.slice(0, 80)}`, liveDraftHtml, liveDraftText);
+          didSnapshotBeforeApply = true;
+        }
+        setEditorContent(nextDraft);
+        setHasDraftInSession(Boolean(nextDraft.trim()));
+      };
       let response: Response;
       const useStreaming = aiContextFiles.length === 0; // SSE streaming only for non-attachment requests
       if (aiContextFiles.length > 0) {
@@ -2610,6 +2861,7 @@ function LegalDraftingPageInner() {
         form.append("jurisdiction", "Lahore");
         form.append("module", "legal-drafting");
         form.append("assistantMode", assistantMode);
+        form.append("conversationHistory", JSON.stringify(conversationHistory));
         if (selectedSnippet) {
           form.append("selectedSnippet", selectedSnippet);
           if (typeof selectedSnippetStart === "number") form.append("selectedSnippetStart", String(selectedSnippetStart));
@@ -2634,6 +2886,7 @@ function LegalDraftingPageInner() {
           jurisdiction: "Lahore",
           module: "legal-drafting",
           assistantMode,
+          conversationHistory,
           stream: true, // Enable SSE streaming
           documentTypeOverride: documentTypeOverride || undefined,
         };
@@ -2646,8 +2899,27 @@ function LegalDraftingPageInner() {
       }
 
       if (!response.ok) {
-        const t = await response.text();
-        throw new Error(t || "AI generation failed");
+        const responseText = await response.text();
+        let errorPayload: any = null;
+        try {
+          errorPayload = JSON.parse(responseText);
+        } catch {}
+        if (errorPayload?.clarification === true) {
+          setDraftChatMessages((prev) => [
+            ...prev.filter((message) => message.id !== typingMessageId && !(message.role === "assistant" && message.kind === "typing")),
+            {
+              id: `assistant-clarify-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              role: "assistant",
+              kind: "clarification",
+              content: String(errorPayload.message || "Select the exact passage or name the section you want changed."),
+              suggestedTypes: Array.isArray(errorPayload.suggestedTypes) ? errorPayload.suggestedTypes : [],
+              originalPrompt: prompt,
+              createdAt: Date.now(),
+            },
+          ]);
+          return;
+        }
+        throw new Error(errorPayload?.message || responseText || "AI generation failed");
       }
 
       // Check response type
@@ -2688,6 +2960,7 @@ function LegalDraftingPageInner() {
 
       const assistantMessageId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       let streamedClause = ""; // Track final clause text across both paths
+      let completedAssistantMode: "draft" | "analysis" = assistantMode;
 
       if (useStreaming && isEventStream) {
         // ── SSE Streaming Path ──
@@ -2698,7 +2971,7 @@ function LegalDraftingPageInner() {
             id: assistantMessageId,
             role: "assistant",
             kind: "typing",
-            content: "",
+            content: "Preparing and validating the requested update...",
             createdAt: Date.now(),
           },
         ]);
@@ -2736,19 +3009,14 @@ function LegalDraftingPageInner() {
 
                 if (parsed.text) {
                   accumulated += parsed.text;
-                  // Update chat message AND editor in real-time
-                  const currentText = accumulated;
+                  // Keep the editor unchanged until the server validates the complete result.
                   setDraftChatMessages((prev) =>
                     prev.map((message) =>
                       message.id === assistantMessageId
-                        ? { ...message, content: currentText, kind: "typing" as const }
+                        ? { ...message, content: `Preparing and validating the requested update... (${accumulated.length.toLocaleString()} characters)`, kind: "typing" as const }
                         : message,
                     ),
                   );
-                  // Update editor content live for draft mode
-                  if (assistantMode === "draft") {
-                    setEditorContent(currentText);
-                  }
                 }
 
                 if (parsed.done) {
@@ -2768,6 +3036,10 @@ function LegalDraftingPageInner() {
         const clause = doneData?.clause || accumulated;
         if (!clause.trim()) throw new Error("No draft generated");
         streamedClause = clause;
+        completedAssistantMode = doneData?.assistantMode === "analysis" ? "analysis" : "draft";
+        const assistantSummary = completedAssistantMode === "draft"
+          ? String(doneData?.assistantMessage || "Updated the legal draft after validation.")
+          : clause;
 
         // Apply metadata from done event
         if (doneData) {
@@ -2797,23 +3069,26 @@ function LegalDraftingPageInner() {
         setDraftChatMessages((prev) =>
           prev.map((message) =>
             message.id === assistantMessageId
-              ? { ...message, content: clause, kind: undefined }
+              ? { ...message, content: assistantSummary, kind: undefined }
               : message,
           ),
         );
         addMemoryItem("instruction", prompt);
-        if (assistantMode === "draft") {
-          setEditorContent(clause);
-          setHasDraftInSession(!!clause.trim());
+        if (completedAssistantMode === "draft") {
+          applyValidatedDraft(clause);
           addMemoryItem("clause", clause);
         }
       } else {
         // ── Original JSON Path (file attachments or server doesn't support streaming) ──
         const data = nonStreamJsonResponse;
         if (!data) throw new Error("AI generation failed to return a valid response");
-        const clause = (data?.clause || "").trim();
-        if (!clause) throw new Error("No clause generated");
+        const clause = String(data?.clause || "");
+        if (!clause.trim()) throw new Error("No clause generated");
         streamedClause = clause;
+        completedAssistantMode = data?.assistantMode === "analysis" ? "analysis" : "draft";
+        const assistantSummary = completedAssistantMode === "draft"
+          ? String(data?.assistantMessage || "Updated the requested portion of the legal draft.")
+          : clause;
         setStyleMemoryMeta((data?.styleMemory || null) as StyleMemoryMeta | null);
         setDraftReferences(normalizeLegalDraftReferences(data?.references));
         if (Array.isArray(data?.recommendations) && data.recommendations.length > 0) {
@@ -2846,17 +3121,16 @@ function LegalDraftingPageInner() {
           },
         ]);
         await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
-        await streamAssistantDraftMessage(assistantMessageId, clause);
+        await streamAssistantDraftMessage(assistantMessageId, assistantSummary);
         addMemoryItem("instruction", prompt);
-        if (assistantMode === "draft") {
-          setEditorContent(clause);
-          setHasDraftInSession(!!clause.trim());
+        if (completedAssistantMode === "draft") {
+          applyValidatedDraft(clause);
           addMemoryItem("clause", clause);
         }
         setDraftChatMessages((prev) =>
           prev.map((message) =>
             message.id === assistantMessageId
-              ? { ...message, content: clause, kind: undefined }
+              ? { ...message, content: assistantSummary, kind: undefined }
               : message,
           ),
         );
@@ -2864,14 +3138,14 @@ function LegalDraftingPageInner() {
 
       setAiContextFiles([]);
       if (aiContextInputRef.current) aiContextInputRef.current.value = "";
-      toast({ title: assistantMode === "draft" ? "Legal draft updated" : "Legal analysis ready" });
+      toast({ title: completedAssistantMode === "draft" ? "Legal draft updated" : "Legal analysis ready" });
 
       await apiRequest("POST", "/api/search-history", {
         type: "draft",
         query: prompt.slice(0, 120),
       }).catch(() => {});
 
-      if (assistantMode === "draft") {
+      if (completedAssistantMode === "draft") {
         runDraftReview(streamedClause);
       }
     } catch (err: any) {
@@ -2894,7 +3168,7 @@ function LegalDraftingPageInner() {
           id: `assistant-error-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           role: "assistant",
           kind: "error",
-          content: `I could not generate the draft update right now. ${errorMsg}`,
+          content: `I could not complete the legal ${assistantMode === "draft" ? "draft update" : "analysis"} right now. ${errorMsg}`,
           createdAt: Date.now(),
         },
       ]);
@@ -2926,21 +3200,22 @@ function LegalDraftingPageInner() {
   };
 
   const exportAsPdf = () => {
-    const html = editorRef.current?.getHTML() || editorHtml || docText;
+    const html = editorRef.current?.getPaginatedHTML() || editorHtml || docText;
     generateLegalPDF({
       html,
       title: draftTitle || "Untitled Draft",
-      isDraft: !selectedDraftId,
+      pageProfileId,
     });
     toast({ title: "Exported as PDF" });
   };
 
   const exportAsDoc = async () => {
-    const content = editorRef.current?.getHTML() || editorHtml || docText;
+    const content = editorRef.current?.getPaginatedHTML() || editorHtml || docText;
     try {
       await generateLegalDocx({
         html: content,
         title: draftTitle || "Untitled Draft",
+        pageProfileId,
       });
       toast({ title: "Exported as Word (.docx)" });
     } catch (err: any) {
@@ -3100,17 +3375,12 @@ function LegalDraftingPageInner() {
                   }`}
                   onClick={() => {
                     if (!isActive) {
-                      draftTabs.updateTab(draftTabs.activeTabId, {
-                        editorHtml: editorRef.current?.getHTML() || editorHtml || docText,
-                        docText: editorRef.current?.getText() || docText,
-                        title: draftTitle,
-                        draftId: selectedDraftId,
-                      });
+                      if (isGenerating) {
+                        toast({ title: "Wait for drafting to finish before switching tabs." });
+                        return;
+                      }
+                      snapshotActiveTab();
                       draftTabs.switchTab(tab.id);
-                      setDraftTitle(tab.title);
-                      setSelectedDraftId(tab.draftId);
-                      setEditorContent(tab.editorHtml || "");
-                      if (tab.editorHtml) setHasDraftInSession(true);
                     }
                   }}
                 >
@@ -3118,7 +3388,14 @@ function LegalDraftingPageInner() {
                   <span className="truncate">{tab.title || "Untitled"}</span>
                   {draftTabs.tabs.length > 1 && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); draftTabs.closeTab(tab.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isGenerating) {
+                          toast({ title: "Wait for drafting to finish before closing tabs." });
+                          return;
+                        }
+                        draftTabs.closeTab(tab.id);
+                      }}
                       className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 shrink-0 transition-opacity"
                     >
                       <Trash2 size={8} />
@@ -3130,18 +3407,12 @@ function LegalDraftingPageInner() {
             {draftTabs.tabs.length < 5 && (
               <button
                 onClick={() => {
-                  draftTabs.updateTab(draftTabs.activeTabId, {
-                    editorHtml: editorRef.current?.getHTML() || editorHtml || docText,
-                    docText: editorRef.current?.getText() || docText,
-                    title: draftTitle,
-                    draftId: selectedDraftId,
-                  });
+                  if (isGenerating) {
+                    toast({ title: "Wait for drafting to finish before opening another tab." });
+                    return;
+                  }
+                  snapshotActiveTab();
                   draftTabs.addTab({ title: "Untitled Draft" });
-                  setDraftTitle("Untitled Draft");
-                  setSelectedDraftId(null);
-                  setEditorContent("");
-                  setHasDraftInSession(false);
-                  setDraftChatMessages([createDraftingIntroMessage()]);
                 }}
                 className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all shrink-0"
                 title="New draft tab (max 5)"
@@ -3151,9 +3422,13 @@ function LegalDraftingPageInner() {
             )}
           </div>
           {/* Save status badge */}
-          <div className="hidden md:flex items-center gap-1 px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 text-[7px] uppercase font-bold tracking-wider shrink-0">
+          <div className={`hidden md:flex items-center gap-1 px-1 py-0.5 rounded text-[7px] uppercase font-bold tracking-wider shrink-0 ${workspaceSyncStatus === "error" ? "bg-red-500/10 text-red-500" : "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"}`}>
             <Sparkles size={7} />
-            {isSavedLocal ? "✓ Auto-saved" : "Saving..."}
+            {workspaceSyncStatus === "error"
+              ? "Cloud sync failed"
+              : workspaceSyncStatus === "saving" || !isSavedLocal
+                ? "Saving..."
+                : "✓ Auto-saved"}
           </div>
         </div>
 
@@ -3429,6 +3704,8 @@ function LegalDraftingPageInner() {
                 onUpdate={onEditorUpdate}
                 placeholder="Begin drafting or load a template…"
                 className="flex-1 min-h-0 flex flex-col"
+                pageProfileId={pageProfileId || DEFAULT_LEGAL_PAGE_PROFILE_ID}
+                onPageProfileChange={setPageProfileId}
               />
             </div>
 
@@ -3757,7 +4034,7 @@ function LegalDraftingPageInner() {
             <section>
               <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Controls</label>
               <p className="text-[10px] text-muted-foreground leading-relaxed">
-                Use the chat below to send instructions. AI returns full drafts in chat.
+                Ask questions without changing the draft, or name/select an exact part for a bounded edit. Full rewrites happen only when explicitly requested.
               </p>
               {styleMemoryMeta && (
                 <div className="mt-2 rounded-lg border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] text-foreground">

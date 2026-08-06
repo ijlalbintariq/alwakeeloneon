@@ -2,29 +2,24 @@
  * generate-legal-pdf.ts
  *
  * Court-compliant PDF generator for the Al Wakeelo Legal Drafting module.
- * Converts Tiptap editor HTML into a properly formatted A4 PDF using jsPDF.
+ * Converts Tiptap editor HTML into a properly paginated court PDF using jsPDF.
  *
  * Typography standards:
  *  - Font: Times New Roman (jsPDF built-in "times")
- *  - Body: 12pt, H1: 15pt, H2: 13pt, H3: 12pt
- *  - Page: A4 (210×297mm) with 25mm margins
- *  - Line height: 1.6x
- *  - Footer: page numbering + Al Wakeelo branding
+ *  - Body: 13pt, H1/H2: 14pt, H3: 13pt
+ *  - Page: selectable Legal or A4 court profile
+ *  - Line height: 1.3x
+ *  - Footer: page numbering
  */
 
 import jsPDF from "jspdf";
+import {
+  DEFAULT_LEGAL_PAGE_PROFILE_ID,
+  resolveLegalPageProfile,
+  type LegalPageProfileId,
+} from "./legal-page-layout";
 
 // ── Configuration (must match generate-legal-docx.ts) ────────────────────
-
-// Legal page: 8.5" × 14" (215.9mm × 355.6mm)
-const PAGE_WIDTH = 215.9;
-const PAGE_HEIGHT = 355.6;
-const MARGIN_LEFT = 31.75;   // 1.25" binding margin
-const MARGIN_RIGHT = 25.4;   // 1"
-const MARGIN_TOP = 25.4;     // 1"
-const MARGIN_BOTTOM = 25.4;  // 1"
-const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
-const FOOTER_Y = PAGE_HEIGHT - 12;
 
 const FONT_BODY = 13;
 const FONT_H1 = 14;
@@ -37,7 +32,7 @@ const LINE_HEIGHT_FACTOR = 1.3; // match DOCX default
 export type LegalPDFOptions = {
   /** Tiptap editor HTML content */
   html: string;
-  /** Document title (used in header and filename) */
+  /** Document title (used for the filename) */
   title: string;
   /** Draft type, e.g. "Bail Application", "Writ Petition" */
   draftType?: string;
@@ -49,6 +44,8 @@ export type LegalPDFOptions = {
   parties?: string;
   /** Show a DRAFT watermark */
   isDraft?: boolean;
+  /** Paper size and court margin profile */
+  pageProfileId?: LegalPageProfileId;
 };
 
 // ── Parsed node types ────────────────────────────────────────────────────
@@ -71,8 +68,8 @@ type TableRow = {
 };
 
 type ParsedNode =
-  | { type: "heading"; level: 1 | 2 | 3; runs: TextRun[]; lineHeight?: number }
-  | { type: "paragraph"; runs: TextRun[]; align?: "left" | "center" | "right" | "justify"; lineHeight?: number }
+  | { type: "heading"; level: 1 | 2 | 3; runs: TextRun[]; align?: "left" | "center" | "right" | "justify"; lineHeight?: number }
+  | { type: "paragraph"; runs: TextRun[]; align?: "left" | "center" | "right" | "justify"; lineHeight?: number; indentMm?: number }
   | { type: "list-item"; runs: TextRun[]; ordered: boolean; index: number }
   | { type: "blockquote"; runs: TextRun[] }
   | { type: "table"; rows: TableRow[] }
@@ -126,8 +123,25 @@ function parseHTML(html: string): ParsedNode[] {
     const style = el.getAttribute("style") || "";
     if (style.includes("text-align: center") || style.includes("text-align:center")) return "center";
     if (style.includes("text-align: right") || style.includes("text-align:right")) return "right";
+    if (style.includes("text-align: left") || style.includes("text-align:left")) return "left";
     if (style.includes("text-align: justify") || style.includes("text-align:justify")) return "justify";
     return undefined;
+  }
+
+  function getTextIndentMm(el: Element): number | undefined {
+    const style = el.getAttribute("style") || "";
+    const match = style.match(/text-indent:\s*(-?[\d.]+)\s*(in|mm|cm|pt|px|em)?/i);
+    if (!match) return undefined;
+    const value = Number.parseFloat(match[1]);
+    if (!Number.isFinite(value)) return undefined;
+    switch ((match[2] || "px").toLowerCase()) {
+      case "in": return value * 25.4;
+      case "mm": return value;
+      case "cm": return value * 10;
+      case "pt": return value * (25.4 / 72);
+      case "em": return value * 13 * (25.4 / 72);
+      default: return value * (25.4 / 96);
+    }
   }
 
   function getElementLineHeight(el: Element): number | undefined {
@@ -154,18 +168,25 @@ function parseHTML(html: string): ParsedNode[] {
       const style = el.getAttribute("style") || "";
       if (className.includes("page-break") || el.hasAttribute("data-page-break") || style.includes("page-break-before: always")) {
         nodes.push({ type: "page-break" });
+        if (el.getAttribute("data-type") === "legal-page-break") return;
       }
 
       if (tag === "h1") {
-        nodes.push({ type: "heading", level: 1, runs: extractTextRuns(el), lineHeight: getElementLineHeight(el) });
+        nodes.push({ type: "heading", level: 1, runs: extractTextRuns(el), align: getAlignment(el), lineHeight: getElementLineHeight(el) });
       } else if (tag === "h2") {
-        nodes.push({ type: "heading", level: 2, runs: extractTextRuns(el), lineHeight: getElementLineHeight(el) });
+        nodes.push({ type: "heading", level: 2, runs: extractTextRuns(el), align: getAlignment(el), lineHeight: getElementLineHeight(el) });
       } else if (tag === "h3") {
-        nodes.push({ type: "heading", level: 3, runs: extractTextRuns(el), lineHeight: getElementLineHeight(el) });
+        nodes.push({ type: "heading", level: 3, runs: extractTextRuns(el), align: getAlignment(el), lineHeight: getElementLineHeight(el) });
       } else if (tag === "p") {
         const runs = extractTextRuns(el);
         if (runs.length > 0 && runs.some((r) => r.text.trim())) {
-          nodes.push({ type: "paragraph", runs, align: getAlignment(el), lineHeight: getElementLineHeight(el) });
+          nodes.push({
+            type: "paragraph",
+            runs,
+            align: getAlignment(el),
+            lineHeight: getElementLineHeight(el),
+            indentMm: getTextIndentMm(el),
+          });
         } else {
           nodes.push({ type: "spacer" });
         }
@@ -234,7 +255,25 @@ function runsToPlainText(runs: TextRun[]): string {
 // ── PDF Renderer ─────────────────────────────────────────────────────────
 
 export function generateLegalPDF(options: LegalPDFOptions): void {
-  const { html, title, draftType, court, caseNumber, parties, isDraft } = options;
+  const {
+    html,
+    title,
+    draftType,
+    court,
+    caseNumber,
+    parties,
+    isDraft,
+    pageProfileId = DEFAULT_LEGAL_PAGE_PROFILE_ID,
+  } = options;
+  const pageProfile = resolveLegalPageProfile(pageProfileId);
+  const PAGE_WIDTH = pageProfile.widthMm;
+  const PAGE_HEIGHT = pageProfile.heightMm;
+  const MARGIN_LEFT = pageProfile.marginLeftMm;
+  const MARGIN_RIGHT = pageProfile.marginRightMm;
+  const MARGIN_TOP = pageProfile.marginTopMm;
+  const MARGIN_BOTTOM = pageProfile.marginBottomMm;
+  const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+  const FOOTER_Y = PAGE_HEIGHT - Math.min(12, MARGIN_BOTTOM / 2);
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: [PAGE_WIDTH, PAGE_HEIGHT] });
   const nodes = parseHTML(html);
@@ -244,31 +283,23 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
   // ── Helper: check page break ──────────────────────────────────────────
   const maxY = PAGE_HEIGHT - MARGIN_BOTTOM;
 
-  function ensureSpace(needed: number) {
-    if (y + needed > maxY) {
-      addPageFooter();
-      doc.addPage();
-      pageNum++;
-      y = MARGIN_TOP;
-      addPageHeader();
-    }
+  function startNewPage() {
+    addPageFooter();
+    doc.addPage([PAGE_WIDTH, PAGE_HEIGHT], "portrait");
+    pageNum++;
+    y = MARGIN_TOP;
   }
 
-  // ── Page header ───────────────────────────────────────────────────────
-  function addPageHeader() {
-    // Thin separator line at top
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
-    doc.line(MARGIN_LEFT, 18, PAGE_WIDTH - MARGIN_RIGHT, 18);
+  function ensureSpace(needed: number): boolean {
+    if (y + needed > maxY) {
+      startNewPage();
+      return true;
+    }
+    return false;
   }
 
   // ── Page footer ───────────────────────────────────────────────────────
   function addPageFooter() {
-    // Thin line above footer
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
-    doc.line(MARGIN_LEFT, FOOTER_Y - 3, PAGE_WIDTH - MARGIN_RIGHT, FOOTER_Y - 3);
-
     // Page number only
     doc.setFont("times", "normal");
     doc.setFontSize(8);
@@ -345,25 +376,41 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
       }
 
       const lines = doc.splitTextToSize(para, effectiveWidth) as string[];
+      let lineIndex = 0;
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        ensureSpace(lineSpacing);
-
-        const xPos = MARGIN_LEFT + indent;
-        const isLastLine = i === lines.length - 1;
-
-        if (align === "center") {
-          doc.text(line, PAGE_WIDTH / 2, y, { align: "center" });
-        } else if (align === "right") {
-          doc.text(line, PAGE_WIDTH - MARGIN_RIGHT, y, { align: "right" });
-        } else if (align === "justify" && !isLastLine) {
-          doc.text(line, xPos, y, { align: "justify", maxWidth: effectiveWidth });
-        } else {
-          doc.text(line, xPos, y);
+      while (lineIndex < lines.length) {
+        let availableLines = Math.floor((maxY - y) / lineSpacing);
+        const remainingLines = lines.length - lineIndex;
+        if (availableLines < 2 && remainingLines > availableLines && y > MARGIN_TOP + 1) {
+          startNewPage();
+          availableLines = Math.floor((maxY - y) / lineSpacing);
+        }
+        let linesOnPage = Math.min(remainingLines, Math.max(1, availableLines));
+        if (remainingLines > linesOnPage && remainingLines - linesOnPage === 1 && linesOnPage > 1) {
+          linesOnPage -= 1;
         }
 
-        y += lineSpacing;
+        for (let offset = 0; offset < linesOnPage; offset++) {
+          const currentLineIndex = lineIndex + offset;
+          const line = lines[currentLineIndex];
+
+          const xPos = MARGIN_LEFT + indent;
+          const isLastLine = currentLineIndex === lines.length - 1;
+
+          if (align === "center") {
+            doc.text(line, PAGE_WIDTH / 2, y, { align: "center" });
+          } else if (align === "right") {
+            doc.text(line, PAGE_WIDTH - MARGIN_RIGHT, y, { align: "right" });
+          } else if (align === "justify" && !isLastLine) {
+            doc.text(line, xPos, y, { align: "justify", maxWidth: effectiveWidth });
+          } else {
+            doc.text(line, xPos, y);
+          }
+
+          y += lineSpacing;
+        }
+        lineIndex += linesOnPage;
+        if (lineIndex < lines.length) startNewPage();
       }
     }
   }
@@ -386,19 +433,6 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
       y += 6;
     }
 
-    // Document title
-    if (title && title !== "Untitled Draft") {
-      doc.setFont("times", "bold");
-      doc.setFontSize(FONT_H1);
-      const titleLines = doc.splitTextToSize(title.toUpperCase(), CONTENT_WIDTH) as string[];
-      for (const line of titleLines) {
-        ensureSpace(8);
-        doc.text(line, PAGE_WIDTH / 2, y, { align: "center" });
-        y += 7;
-      }
-      y += 2;
-    }
-
     // Draft type
     if (draftType) {
       doc.setFont("times", "italic");
@@ -415,19 +449,11 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
       y += 6;
     }
 
-    // Separator line
-    if (court || caseNumber || (title && title !== "Untitled Draft")) {
-      y += 2;
-      doc.setDrawColor(0, 0, 0);
-      doc.setLineWidth(0.5);
-      doc.line(MARGIN_LEFT, y, PAGE_WIDTH - MARGIN_RIGHT, y);
-      y += 8;
-    }
+    if (court || caseNumber || draftType || parties) y += 4;
   }
 
   // ── Main render loop ──────────────────────────────────────────────────
 
-  addPageHeader();
   addDraftWatermark();
   renderTitleBlock();
 
@@ -441,13 +467,20 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
         ensureSpace(spacing + 12);
         y += node.level === 1 ? 4 : 2;
 
-        renderRuns(node.runs, fontSize, "bold", 0, node.level === 1 ? "center" : "left", node.lineHeight);
+        renderRuns(
+          node.runs,
+          fontSize,
+          "bold",
+          0,
+          node.align || (node.level === 1 ? "center" : "left"),
+          node.lineHeight,
+        );
         y += node.level === 1 ? 4 : 2;
         break;
       }
 
       case "paragraph": {
-        renderRuns(node.runs, FONT_BODY, "normal", 0, node.align, node.lineHeight);
+        renderRuns(node.runs, FONT_BODY, "normal", node.indentMm || 0, node.align || "justify", node.lineHeight);
         y += 2; // paragraph spacing
         break;
       }
@@ -456,7 +489,7 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
         const bullet = node.ordered ? `${node.index}.` : "•";
         const bulletWidth = 8;
 
-        ensureSpace(6);
+        ensureSpace(FONT_BODY * 0.353 * LINE_HEIGHT_FACTOR * 2);
         doc.setFont("times", "normal");
         doc.setFontSize(FONT_BODY);
         doc.text(bullet, MARGIN_LEFT + 4, y);
@@ -467,14 +500,8 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
       }
 
       case "blockquote": {
-        // Draw left border
         ensureSpace(8);
-        const startY = y;
         renderRuns(node.runs, FONT_BODY - 1, "italic", 10);
-
-        doc.setDrawColor(180, 180, 180);
-        doc.setLineWidth(0.8);
-        doc.line(MARGIN_LEFT + 4, startY - 3, MARGIN_LEFT + 4, y);
         y += 3;
         break;
       }
@@ -572,11 +599,7 @@ export function generateLegalPDF(options: LegalPDFOptions): void {
 
       case "page-break": {
         if (y > MARGIN_TOP + 1) { // Only break if not already at the top of a new page
-          addPageFooter();
-          doc.addPage();
-          pageNum++;
-          y = MARGIN_TOP;
-          addPageHeader();
+          startNewPage();
         }
         break;
       }

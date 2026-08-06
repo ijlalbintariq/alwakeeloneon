@@ -71,6 +71,10 @@ export function useDraftHistory(initialDraftKey = "workspace"): UseDraftHistoryR
   const [draftKey, setDraftKey] = useState(initialDraftKey);
   const [snapshots, setSnapshots] = useState<DraftSnapshot[]>(() => loadSnapshots(initialDraftKey));
 
+  useEffect(() => {
+    setDraftKey(initialDraftKey);
+  }, [initialDraftKey]);
+
   // Reload when draft key changes
   useEffect(() => {
     setSnapshots(loadSnapshots(draftKey));

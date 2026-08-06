@@ -3,6 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { isMetadataOnlySummary, extractSubstantiveSummary } from "./storage";
 import { api } from "@shared/routes";
+import { legalDraftWorkspaceStateSchema } from "@shared/legal-drafting";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import {
@@ -113,6 +114,16 @@ import {
 } from "./extraction-guard";
 import { isSearchCrawler } from "./middleware/rate-limiter";
 import { resolveRequestIp } from "./replit_integrations/auth/ip";
+import { escapeHtml, LEGAL_DRAFT_PREVIEW_CSP, sanitizeLegalDraftHtml } from "./legal-drafting-security";
+import { LEGAL_DRAFT_MAX_INPUT_CHARS, prepareLegalDraftInput } from "./legal-drafting-context";
+import {
+  applyLegalDraftEdit,
+  buildLegalDraftEditSummary,
+  classifyLegalDraftFollowUp,
+  findLegalDraftEditTarget,
+  resolveExplicitSelectionTarget,
+  type LegalDraftEditTarget,
+} from "./legal-drafting-followup";
 
 
 const TOKEN_LIMITS = {
@@ -13027,11 +13038,11 @@ ${headingOrder}`;
       if (!/^\s*VERSUS\s*$/im.test(text) && !/^\s*IN RE:\s*$/im.test(text)) {
         issues.push("Missing party separator line: VERSUS (or IN RE where appropriate).");
       }
+      if (!/(^|\n)\s*1\.\s+/m.test(text)) issues.push("Facts/grounds are not in numbered court format.");
     }
-    if (!/(^|\n)\s*1\.\s+/m.test(text)) issues.push("Facts/grounds are not in numbered court format.");
 
     // --- Grounds depth check ---
-    // Each lettered ground (A., B., C., etc.) must be at least 4 sentences.
+    // Each lettered ground must explain both the legal point and its application.
     const groundsMatch = text.match(/GROUNDS?(?:\s+OF\s+(?:APPEAL|PETITION|APPLICATION))?\s*:?\s*\n([\s\S]*?)(?=\n\s*(?:PRAYER|INTERIM|ANNEXURE|INDEX OF DOCUMENTS))/i);
     if (groundsMatch) {
       const groundsText = groundsMatch[1];
@@ -13039,14 +13050,45 @@ ${headingOrder}`;
       let thinGrounds = 0;
       for (const block of groundBlocks) {
         const sentences = block.split(/\.\s+|\.$/).filter(s => s.trim().length > 15);
-        if (sentences.length < 4) thinGrounds++;
+        if (sentences.length < 2) thinGrounds++;
       }
       if (thinGrounds > 0 && groundBlocks.length > 0) {
-        issues.push(`${thinGrounds} of ${groundBlocks.length} legal ground(s) have fewer than 4 sentences. Each ground MUST be a detailed paragraph of 5-10 sentences with legal principle, factual application, and case law citation as required by Pakistani court practice.`);
+        issues.push(`${thinGrounds} of ${groundBlocks.length} legal ground(s) are under-developed. Each ground must explain the legal principle and apply it to the pleaded facts.`);
       }
     }
 
     return { ok: issues.length === 0, issues };
+  }
+
+  async function repairInvalidLegalDraft(
+    content: string,
+    docType: LegalDraftingDocType,
+    issues: string[],
+  ): Promise<{ text: string; model: string; prompt: string }> {
+    const profile = LEGAL_DRAFTING_DOC_TYPES[docType];
+    const systemInstruction = `You are a Pakistani court-drafting quality-control editor.
+Repair the supplied draft so it satisfies the locked filing type and every validation issue.
+Preserve all pleaded facts, party names, dates, amounts, relief, and verified citations.
+Do not invent facts, citations, statutes, or evidence. Use [______] for missing details.
+Return only the complete repaired draft in plain court-ready text, without markdown or commentary.`;
+    const repairPrompt = `${buildStrictTypeLockInstruction(docType, profile.label)}
+
+VALIDATION FAILURES TO REPAIR:
+${issues.map((issue, index) => `${index + 1}. ${issue}`).join("\n")}
+
+COMPLETE DRAFT TO REPAIR:
+${content}`;
+    const result = await callLegalDraftingAI(
+      systemInstruction,
+      repairPrompt,
+      TOKEN_LIMITS.draft,
+      { timeoutProfile: "analysis", temperature: 0.1 },
+    );
+    return {
+      text: normalizeCourtReadyDraftingText(result.text || ""),
+      model: result.model,
+      prompt: `${systemInstruction}\n${repairPrompt}`,
+    };
   }
 
   /**
@@ -13853,15 +13895,8 @@ Rules:
 
   const FULL_REWRITE_PROMPT_PATTERN =
     /\b(full|complete|entire|whole)\s+(rewrite|redraft|regenerate|draft|version)\b|\bfrom\s+scratch\b|\bstart\s+over\b|\brewrite\s+everything\b|\bregenerate\s+everything\b|\bfresh\s+draft\b/i;
-  const GROUNDS_EXPANSION_PROMPT_PATTERN =
-    /\b(add|include|insert|expand|elaborate|improve|enhance|provide|give)\b[\s\S]{0,40}\b(additional|extra|more|new)?\s*grounds?\b|\bmore\s+grounds?\b|\badditional\s+grounds?\b/i;
-
   function isFullLegalRewriteRequested(prompt: string): boolean {
     return FULL_REWRITE_PROMPT_PATTERN.test(String(prompt || ""));
-  }
-
-  function isGroundsExpansionRequest(prompt: string): boolean {
-    return GROUNDS_EXPANSION_PROMPT_PATTERN.test(String(prompt || ""));
   }
 
   const MODIFICATION_PROMPT_PATTERN =
@@ -13935,74 +13970,34 @@ Rules:
     };
   }
 
-  function extractGroundsSectionFromDraft(draftText: string): { start: number; end: number; text: string } | null {
-    const source = String(draftText || "");
-    if (!source.trim()) return null;
-
-    const headingMatch = source.match(/(^|\n)\s*GROUNDS\s*:?\s*(?:\n|$)/i);
-    if (!headingMatch || typeof headingMatch.index !== "number") return null;
-
-    const headingStart = headingMatch.index + (headingMatch[1] ? headingMatch[1].length : 0);
-    const remainder = source.slice(headingStart);
-    const nextHeading = remainder.match(
-      /\n\s*(PRAYER|INTERIM RELIEF|VERIFICATION|ANNEXURES|RELIEF SOUGHT)\s*:?\s*(?:\n|$)/i,
-    );
-    const sectionEnd = nextHeading && typeof nextHeading.index === "number"
-      ? headingStart + nextHeading.index
-      : source.length;
-    const sectionText = source.slice(headingStart, sectionEnd).trimEnd();
-    if (!sectionText.trim()) return null;
-
-    return {
-      start: headingStart,
-      end: sectionEnd,
-      text: sectionText,
-    };
-  }
-
   function parseOptionalSelectionIndex(value: unknown): number | null {
     const parsed = Number.parseInt(String(value ?? ""), 10);
     return Number.isFinite(parsed) ? parsed : null;
   }
 
-  function parseOptionalBoolean(value: unknown): boolean {
-    const normalized = String(value ?? "").trim().toLowerCase();
-    return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+  function parseLegalDraftConversationHistory(value: unknown): Array<{ role: "user" | "assistant"; content: string }> {
+    let candidate = value;
+    if (typeof candidate === "string") {
+      try {
+        candidate = JSON.parse(candidate);
+      } catch {
+        return [];
+      }
+    }
+    if (!Array.isArray(candidate)) return [];
+    return candidate
+      .slice(-12)
+      .map((turn) => {
+        const role = turn?.role === "user" || turn?.role === "assistant" ? turn.role : null;
+        const content = String(turn?.content || "").replace(/\0/g, "").trim().slice(0, 4000);
+        return role && content ? { role, content } : null;
+      })
+      .filter((turn): turn is { role: "user" | "assistant"; content: string } => !!turn);
   }
 
-  function applyTargetedLegalDraftEdit(params: {
-    draftText: string;
-    selectedSnippet: string;
-    selectedStart: number | null;
-    selectedEnd: number | null;
-    replacementText: string;
-  }): { ok: true; text: string } | { ok: false; reason: string } {
-    const source = String(params.draftText || "");
-    const replacement = String(params.replacementText || "").trim();
-    if (!source.trim()) return { ok: false, reason: "Current draft is empty." };
-    if (!replacement) return { ok: false, reason: "AI returned empty replacement text." };
-
-    const start = params.selectedStart;
-    const end = params.selectedEnd;
-    if (typeof start === "number" && typeof end === "number" && start >= 0 && end > start && end <= source.length) {
-      return {
-        ok: true,
-        text: `${source.slice(0, start)}${replacement}${source.slice(end)}`,
-      };
-    }
-
-    const snippet = String(params.selectedSnippet || "");
-    if (!snippet.trim()) {
-      return { ok: false, reason: "No selected snippet was provided for targeted editing." };
-    }
-    const index = source.indexOf(snippet);
-    if (index < 0) {
-      return { ok: false, reason: "Selected snippet was not found in current draft." };
-    }
-    return {
-      ok: true,
-      text: `${source.slice(0, index)}${replacement}${source.slice(index + snippet.length)}`,
-    };
+  function buildLegalDraftConversationBlock(turns: Array<{ role: "user" | "assistant"; content: string }>): string {
+    if (turns.length === 0) return "[No prior follow-up turns provided]";
+    return turns.map((turn) => `${turn.role === "user" ? "User" : "Assistant"}: ${turn.content}`).join("\n\n");
   }
 
   function extractCaseLawRecommendations(content: string): any[] {
@@ -14036,6 +14031,7 @@ Rules:
         selectedSnippetEnd?: string | number;
         forceTargetedEdit?: string | boolean | number;
         assistantMode?: "draft" | "analysis" | string;
+        conversationHistory?: string | Array<{ role?: string; content?: string }>;
       };
       const safePrompt = (prompt || "").trim();
       const wantStream = req.body?.stream === true || req.body?.stream === "true";
@@ -14144,28 +14140,14 @@ Rules:
         }
       }
 
-      // Strip HTML tags, index tables, and comment blocks from draft text before AI processing
-      const rawDraftText = (draftText || "").trim();
-      const cleanedDraftText = rawDraftText
-        .replace(/<!--\s*INDEX_TABLE_START\s*-->[\s\S]*?<!--\s*INDEX_TABLE_END\s*-->/gi, "") // Remove index tables
-        .replace(/<table[\s\S]*?<\/table>/gi, "") // Remove HTML tables
-        .replace(/<style[\s\S]*?<\/style>/gi, "") // Remove style blocks
-        .replace(/<script[\s\S]*?<\/script>/gi, "") // Remove scripts
-        .replace(/<[^>]+>/g, " ") // Strip remaining HTML tags
-        .replace(/&nbsp;/gi, " ")
-        .replace(/&amp;/gi, "&")
-        .replace(/&lt;/gi, "<")
-        .replace(/&gt;/gi, ">")
-        .replace(/&quot;/gi, '"')
-        .replace(/\s{3,}/g, "\n\n") // Collapse excessive whitespace
-        // Strip garbled INDEX OF DOCUMENTS text from Tiptap getText() on follow-up turns.
-        // When the editor has an HTML table, getText() concatenates cell values into one
-        // garbled line like "S.No.Description of DocumentsAnnexuresPage No.1.Application---".
-        // This wastes tokens and confuses the AI into reproducing garbled text.
-        .replace(/\n*\s*INDEX OF DOCUMENTS\s*:?\s*\n+(?:\s*S\.?\s*No\.?[^\n]{10,}\n?)*/gi, "\n")
-        .trim();
-      const baseDraftText = trimTextToTokenBudget(cleanedDraftText, 12000);
-      const draftContextForGeneration = trimTextToTokenBudget(`${baseDraftText}${attachmentContext}`, 12000);
+      const { rawText: rawDraftText, cleanedText: cleanedDraftText } = prepareLegalDraftInput(draftText);
+      if (rawDraftText.length > LEGAL_DRAFT_MAX_INPUT_CHARS) {
+        return res.status(413).json({
+          message: `Draft exceeds the ${LEGAL_DRAFT_MAX_INPUT_CHARS.toLocaleString()} character processing limit. Shorten the document before retrying.`,
+        });
+      }
+      const baseDraftText = cleanedDraftText;
+      const draftContextForGeneration = `${baseDraftText}${attachmentContext}`;
 
       let styleMemoryMeta: {
         applied: boolean;
@@ -14210,13 +14192,64 @@ Rules:
         const customDocType = String((req.body as any)?.customDocumentType || "").trim();
         const documentTypeOverride = String((req.body as any)?.documentTypeOverride || "").trim().toLowerCase();
         const useCustomDocType = rawDocType === "custom-input" && customDocType.length > 0;
+        const requestedAssistantMode = String((req.body as any)?.assistantMode || "").trim().toLowerCase();
+        const selectedSnippet = String((req.body as any)?.selectedSnippet || "");
+        const selectedSnippetStart = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetStart);
+        const selectedSnippetEnd = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetEnd);
+        const conversationHistory = parseLegalDraftConversationHistory((req.body as any)?.conversationHistory);
+        const conversationHistoryBlock = buildLegalDraftConversationBlock(conversationHistory);
+        const followUpOperation = classifyLegalDraftFollowUp({
+          prompt: safePrompt,
+          hasDraft: rawDraftText.trim().length > 0,
+          hasSelection: selectedSnippet.trim().length > 0,
+          requestedMode: requestedAssistantMode,
+        });
+
+        if (followUpOperation === "clarify") {
+          return res.json({
+            clarification: true,
+            message: "Which exact part should I change? Select the text or name a section or paragraph (for example, ‘strengthen the prayer’ or ‘delete paragraph 5’). I will rewrite the full document only if you explicitly ask for a complete rewrite.",
+            suggestedTypes: [],
+            operation: followUpOperation,
+          });
+        }
+
+        let editTarget: LegalDraftEditTarget | null = null;
+        if (followUpOperation === "targeted-edit") {
+          editTarget = resolveExplicitSelectionTarget({
+            draftText: rawDraftText,
+            selectedSnippet,
+            selectedStart: selectedSnippetStart,
+            selectedEnd: selectedSnippetEnd,
+            prompt: safePrompt,
+          });
+        } else if (followUpOperation === "section-edit") {
+          editTarget = findLegalDraftEditTarget(safePrompt, rawDraftText);
+        }
+        if ((followUpOperation === "targeted-edit" || followUpOperation === "section-edit") && !editTarget) {
+          return res.status(409).json({
+            clarification: true,
+            message: "I could not identify that exact text in the current draft. Select the passage again or name an existing section or paragraph; no draft changes were applied.",
+            suggestedTypes: [],
+            operation: "clarify",
+          });
+        }
+        if (editTarget && editTarget.text.length > 50_000) {
+          return res.status(413).json({
+            clarification: true,
+            message: "That edit target is too large for a safe bounded update. Select a smaller section or explicitly request a complete rewrite; no draft changes were applied.",
+            suggestedTypes: [],
+            operation: "clarify",
+          });
+        }
+        const isLocalizedEdit = followUpOperation === "targeted-edit" || followUpOperation === "section-edit";
 
         // R2: If client sends a documentTypeOverride or valid documentType, identify it
         const effectiveDocTypeRaw = (documentTypeOverride && documentTypeOverride in LEGAL_DRAFTING_DOC_TYPES)
           ? documentTypeOverride
           : (documentType && documentType in LEGAL_DRAFTING_DOC_TYPES ? documentType : undefined);
 
-        const isConversionRequest = /(convert|change|turn|transform|make)\s+(this\s+|it\s+)?(in\s*t?\s*o|to|in)\s/i.test(safePrompt);
+        const isConversionRequest = followUpOperation === "conversion";
 
         let selectedDocType: LegalDraftingDocType | null = null;
         if (!useCustomDocType) {
@@ -14242,7 +14275,12 @@ Rules:
         }
 
         // R2: Ambiguity check — if no doc type inferred and prompt is vague, return clarification
-        if (!useCustomDocType && !selectedDocType && isAmbiguousLegalPrompt(safePrompt, selectedDocType, baseDraftText.trim().length > 0)) {
+        if (
+          followUpOperation !== "answer" &&
+          !useCustomDocType &&
+          !selectedDocType &&
+          isAmbiguousLegalPrompt(safePrompt, selectedDocType, baseDraftText.trim().length > 0)
+        ) {
           const clarification = buildClarificationResponse(safePrompt);
           console.log(`[AI Routing][legal-drafting] Ambiguous prompt detected, returning clarification. prompt="${safePrompt.slice(0, 60)}"`);
           return res.json({
@@ -14409,8 +14447,7 @@ Rules:
 - Do not change the selected filing type.
 - Keep proper Pakistani court forum heading, cause title, numbered facts, legal grounds, prayer, verification, and annexures (if needed).`;
 
-        const requestedAssistantMode = String((req.body as any)?.assistantMode || "").trim().toLowerCase();
-        const assistantMode: "draft" | "analysis" = requestedAssistantMode === "analysis" ? "analysis" : "draft";
+        const assistantMode: "draft" | "analysis" = followUpOperation === "answer" ? "analysis" : "draft";
 
         const sysInstruction = PAKISTANI_JUDICIAL_FORMAT_GUIDANCE;
         if (assistantMode === "analysis") {
@@ -14430,6 +14467,13 @@ ${safePrompt}
 
 ACTIVE DRAFT (this is the ONLY draft you are working on — do NOT switch to any other case or matter):
 ${baseDraftText || "[No draft provided]"}
+
+RECENT FOLLOW-UP CONVERSATION:
+${conversationHistoryBlock}
+
+Conversation rules:
+- Use prior turns only to resolve references such as “that paragraph” or “the last change”.
+- The ACTIVE DRAFT above is authoritative. Never restore an older draft version from conversation history.
 
 Context files (if any):
 ${attachmentContext || "[No context attachments provided]"}
@@ -14467,6 +14511,7 @@ Response format:
             confidence: 0.84,
             method: "ai-legal-analysis",
             assistantMode: "analysis",
+            operation: followUpOperation,
             documentType: selectedDocType || "custom-input",
             customDocumentType: useCustomDocType ? customDocType : undefined,
             attachmentsUsed: files?.length || 0,
@@ -14474,32 +14519,14 @@ Response format:
             styleMemory: styleMemoryMeta || undefined,
           });
         }
-        const selectedSnippetRaw = String((req.body as any)?.selectedSnippet || "");
-        let selectedSnippet = selectedSnippetRaw.slice(0, 8000);
-        let selectedSnippetStart = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetStart);
-        let selectedSnippetEnd = parseOptionalSelectionIndex((req.body as any)?.selectedSnippetEnd);
-        const forceTargetedEdit = parseOptionalBoolean((req.body as any)?.forceTargetedEdit);
-        const autoGroundsTargetMode =
-          !selectedSnippet.trim() &&
-          baseDraftText.trim().length > 0 &&
-          !isFullLegalRewriteRequested(safePrompt) &&
-          isGroundsExpansionRequest(safePrompt);
-        if (autoGroundsTargetMode) {
-          const groundsSection = extractGroundsSectionFromDraft(baseDraftText);
-          if (groundsSection) {
-            selectedSnippet = groundsSection.text.slice(0, 8000);
-            selectedSnippetStart = groundsSection.start;
-            selectedSnippetEnd = groundsSection.end;
-          }
-        }
-        const targetedEditMode =
-          selectedSnippet.trim().length > 0 &&
-          baseDraftText.trim().length > 0 &&
-          (forceTargetedEdit || !isFullLegalRewriteRequested(safePrompt));
-
         let draftedText = "";
         extractedRecs = [];
-        if (targetedEditMode) {
+        if (isLocalizedEdit && editTarget) {
+          const actionInstruction = editTarget.action === "insert-before"
+            ? "Return only the new text to insert BEFORE the target. Do not repeat the target text."
+            : editTarget.action === "insert-after"
+              ? "Return only the new text to insert AFTER the target. Do not repeat the target text."
+              : "Return the complete replacement for the target, including its heading or paragraph number when present.";
           const targetedInput = `User instruction:
 ${safePrompt}
 
@@ -14509,22 +14536,28 @@ ${profile.label}
 ${typeLockInstruction}
 
 Targeted edit mode (strict):
-- Edit ONLY the selected excerpt.
+- Edit ONLY the identified target: ${editTarget.label}.
 - Keep all other draft text unchanged.
-- Return only the replacement text for the selected excerpt.
+- ${actionInstruction}
 - Do not repeat the full pleading.
 - No markdown symbols, no bullets, no JSON, no explanations.
 - Keep Pakistani court drafting language and formatting.
 - Do not invent facts, citations, or statutory sections.
 - Case law citation lock (absolute): use only citations found in the INTERNAL DATABASE REFERENCES block below.
 - If an internal citation is unavailable, omit the citation (no placeholders).
-${autoGroundsTargetMode ? "- Scope hint: selected excerpt is the GROUNDS section. Add/expand grounds as requested while preserving existing valid grounds and drafting style.\n- Each ground must include brief explanation (2 to 4 sentences) tied to facts and law." : ""}
 
-Selected excerpt to replace:
-${selectedSnippet}
+IDENTIFIED TARGET (${editTarget.label}):
+${editTarget.text}
 
 ACTIVE DRAFT (this is the ONLY draft — do NOT switch case/matter):
 ${baseDraftText}
+
+RECENT FOLLOW-UP CONVERSATION:
+${conversationHistoryBlock}
+
+Conversation rules:
+- Use prior turns only to resolve references in the current instruction.
+- The ACTIVE DRAFT is authoritative. Never restore older draft text from the conversation.
 
 Additional context files (if any):
 ${attachmentContext || "[No attachment context provided]"}
@@ -14532,25 +14565,31 @@ ${attachmentContext || "[No attachment context provided]"}
 INTERNAL DATABASE REFERENCES (AUTO-LOADED):
 ${legalKnowledgeContextBlock}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
 
-          const targetedResult = await callLegalDraftingAI(sysInstruction, targetedInput, Math.min(TOKEN_LIMITS.draft, 3500), {
-            timeoutProfile: "analysis",
-            temperature: 0.2,
-          });
-          await logUsageCost(userId, "draft", targetedResult.model, sysInstruction + targetedInput, targetedResult.text, { userQuery: safePrompt });
-          const replacementText = normalizeCourtReadyDraftingText(targetedResult.text);
-          const patched = applyTargetedLegalDraftEdit({
-            draftText: baseDraftText,
-            selectedSnippet,
-            selectedStart: selectedSnippetStart,
-            selectedEnd: selectedSnippetEnd,
+          let replacementText = "";
+          if (editTarget.action !== "delete") {
+            const targetedResult = await callLegalDraftingAI(sysInstruction, targetedInput, Math.min(TOKEN_LIMITS.draft, 3500), {
+              timeoutProfile: "analysis",
+              temperature: 0.2,
+            });
+            await logUsageCost(userId, "draft", targetedResult.model, sysInstruction + targetedInput, targetedResult.text, { userQuery: safePrompt });
+            replacementText = normalizeDraftingText(targetedResult.text);
+            const replacementReferences = await resolveLegalDraftReferences(replacementText, {
+              stripUnverifiedCaseCitations: true,
+              unresolvedCaseCitationPlaceholder: "",
+            });
+            replacementText = normalizeDraftingText(replacementReferences.cleanedText || replacementText);
+          }
+          const patched = applyLegalDraftEdit({
+            draftText: rawDraftText,
+            target: editTarget,
             replacementText,
           });
           if (!patched.ok) {
-            return res.status(400).json({
-              message: `Could not apply targeted AI edit. ${patched.reason} Select the exact section and try again, or request a full rewrite.`,
+            return res.status(409).json({
+              message: `Could not apply the bounded edit. ${patched.reason} No draft changes were applied. Select the exact section and try again.`,
             });
           }
-          draftedText = normalizeCourtReadyDraftingText(patched.text);
+          draftedText = patched.text;
         } else {
           // When conversion is requested, add explicit override instruction
           const conversionOverride = isConversionRequest && selectedDocType
@@ -14610,6 +14649,13 @@ Jurisdiction/Forum (if provided): ${jurisdiction || "Pakistan"}
 
 ACTIVE DRAFT (this is the ONLY draft you are working on — do NOT switch to any other case or matter):
 ${draftContextForGeneration || "[No draft/context provided]"}
+
+RECENT FOLLOW-UP CONVERSATION:
+${conversationHistoryBlock}
+
+Conversation rules:
+- Use prior turns only to resolve references in the current instruction.
+- The ACTIVE DRAFT is authoritative. Never restore an older draft version from conversation history.
 
 INTERNAL DATABASE REFERENCES (STATUTES & KNOWLEDGE):
 ${legalKnowledgeContextBlock}
@@ -14705,15 +14751,6 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             extractedRecs = extractCaseLawRecommendations(fullContent);
             draftedText = normalizeCourtReadyDraftingText(fullContent);
 
-            // Validation (only for recognized template types, skip for custom-input and full rewrite)
-            // R3 optimization: log issues only, skip expensive repair AI call
-            if (selectedDocType && !useCustomDocType && !isFullLegalRewriteRequested(safePrompt)) {
-              const validation = validateDraftForSelectedType(draftedText, selectedDocType);
-              if (!validation.ok) {
-                console.warn(`[LegalDrafting:Stream:Validate] type=${selectedDocType} issues=${JSON.stringify(validation.issues)}`);
-              }
-            }
-
             // Post-processing — skip court-specific blocks for non-court doc types
             const NON_COURT_TYPES_POST = new Set(["application-to-police", "legal-notice", "affidavit", "power-of-attorney", "authority-letter", "nikah-nama-divorce"]);
             const isCourtFiling = !selectedDocType || !NON_COURT_TYPES_POST.has(selectedDocType);
@@ -14727,16 +14764,51 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             }
 
             // Citation resolution
-            const streamRefResolution = await resolveLegalDraftReferences(draftedText, {
+            let streamRefResolution = await resolveLegalDraftReferences(draftedText, {
               stripUnverifiedCaseCitations: true,
               unresolvedCaseCitationPlaceholder: '',
             });
             draftedText = streamRefResolution.cleanedText || draftedText;
 
+            let streamValidation = { ok: true, issues: [] as string[] };
+            if (selectedDocType && !useCustomDocType) {
+              streamValidation = validateDraftForSelectedType(draftedText, selectedDocType);
+              if (!streamValidation.ok) {
+                try {
+                  const repaired = await repairInvalidLegalDraft(draftedText, selectedDocType, streamValidation.issues);
+                  await logUsageCost(userId, 'draft', repaired.model, repaired.prompt, repaired.text, { userQuery: safePrompt });
+                  if (repaired.text) draftedText = repaired.text;
+                  if (draftedText && isCourtFiling) draftedText = ensureAnnexuresSection(draftedText);
+                  if (draftedText && isCourtFiling) draftedText = ensurePetitionerBlock(draftedText);
+                  streamRefResolution = await resolveLegalDraftReferences(draftedText, {
+                    stripUnverifiedCaseCitations: true,
+                    unresolvedCaseCitationPlaceholder: '',
+                  });
+                  draftedText = streamRefResolution.cleanedText || draftedText;
+                  streamValidation = validateDraftForSelectedType(draftedText, selectedDocType);
+                } catch (repairError) {
+                  console.error('[LegalDrafting:Stream:Repair] failed:', getErrorMessage(repairError));
+                  streamValidation = {
+                    ok: false,
+                    issues: [...streamValidation.issues, 'Automatic structural repair failed.'],
+                  };
+                }
+              }
+            }
+
             // Send reset + final text if post-processing changed the output
             if (draftedText !== fullContent) {
               res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
               res.write(`data: ${JSON.stringify({ text: draftedText })}\n\n`);
+            }
+
+            if (!streamValidation.ok) {
+              res.write(`data: ${JSON.stringify({
+                error: `Draft failed filing validation: ${streamValidation.issues.join(' ')}`,
+                validationIssues: streamValidation.issues,
+              })}\n\n`);
+              res.end();
+              return;
             }
 
             // Send done event with all metadata
@@ -14747,12 +14819,21 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
               confidence: 0.86,
               method: 'ai-legal-drafting',
               assistantMode: 'draft',
+              operation: followUpOperation,
+              assistantMessage: buildLegalDraftEditSummary(followUpOperation),
               documentType: selectedDocType || 'custom-input',
               customDocumentType: useCustomDocType ? customDocType : undefined,
               attachmentsUsed: files?.length || 0,
               references: streamRefResolution.references,
               styleMemory: styleMemoryMeta || undefined,
               recommendations: extractedRecs || [],
+              courtReady: true,
+              validation: streamValidation,
+              contextCoverage: {
+                receivedChars: rawDraftText.length,
+                processedChars: baseDraftText.length,
+                complete: true,
+              },
             })}\n\n`);
             res.end();
             return;
@@ -14765,26 +14846,18 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
             await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: safePrompt });
             extractedRecs = extractCaseLawRecommendations(aiResult.text);
             draftedText = normalizeCourtReadyDraftingText(aiResult.text);
-            // R3 optimization: log validation issues only, skip expensive repair AI call
-            const shouldValidate = Boolean(selectedDocType) && !useCustomDocType && !isFullLegalRewriteRequested(safePrompt);
-            if (shouldValidate && selectedDocType) {
-              const validation = validateDraftForSelectedType(draftedText, selectedDocType);
-              if (!validation.ok) {
-                console.warn(`[LegalDrafting:Validate] type=${selectedDocType} issues=${JSON.stringify(validation.issues)}`);
-              }
-            }
           }
         }
 
         // --- Post-generation: ensure Annexures section (court filings only) ---
         const NON_COURT_TYPES_POST2 = new Set(["application-to-police", "legal-notice", "affidavit", "power-of-attorney", "authority-letter", "nikah-nama-divorce"]);
         const isCourtFiling2 = !selectedDocType || !NON_COURT_TYPES_POST2.has(selectedDocType);
-        if (draftedText && isCourtFiling2) {
+        if (!isLocalizedEdit && draftedText && isCourtFiling2) {
           draftedText = ensureAnnexuresSection(draftedText);
         }
 
         // --- Post-generation: ensure Petitioner/Through block after Prayer (court filings only) ---
-        if (draftedText && isCourtFiling2) {
+        if (!isLocalizedEdit && draftedText && isCourtFiling2) {
           draftedText = ensurePetitionerBlock(draftedText);
         }
 
@@ -14792,13 +14865,74 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
           return res.status(502).json({ message: "AI returned empty legal draft text" });
         }
 
-        const referenceResolution = await resolveLegalDraftReferences(draftedText, {
-          stripUnverifiedCaseCitations: true,
-          unresolvedCaseCitationPlaceholder: "",
-        });
-        draftedText = referenceResolution.cleanedText;
+        let referenceResolution = {
+          cleanedText: draftedText,
+          references: createEmptyLegalDraftReferencePayload(),
+        };
+        if (isLocalizedEdit) {
+          const preservedDraftReferences = await resolveLegalDraftReferences(draftedText);
+          referenceResolution = {
+            cleanedText: draftedText,
+            references: preservedDraftReferences.references,
+          };
+        } else {
+          referenceResolution = await resolveLegalDraftReferences(draftedText, {
+            stripUnverifiedCaseCitations: true,
+            unresolvedCaseCitationPlaceholder: "",
+          });
+          draftedText = referenceResolution.cleanedText;
+        }
         if (!draftedText) {
           return res.status(502).json({ message: "AI draft failed citation integrity checks" });
+        }
+
+        let validation = { ok: true, issues: [] as string[] };
+        if (selectedDocType && !useCustomDocType) {
+          validation = validateDraftForSelectedType(draftedText, selectedDocType);
+          if (isLocalizedEdit) {
+            const baselineValidation = validateDraftForSelectedType(rawDraftText, selectedDocType);
+            const issueKey = (issue: string) => issue.replace(/^\d+\s+of\s+\d+\s+(legal ground\(s\) are under-developed\.)[\s\S]*$/i, "$1");
+            const baselineIssues = new Set(baselineValidation.issues.map(issueKey));
+            const introducedIssues = validation.issues.filter((issue) => !baselineIssues.has(issueKey(issue)));
+            if (introducedIssues.length > 0) {
+              return res.status(422).json({
+                message: `The requested edit introduced a filing validation problem, so no draft changes were applied: ${introducedIssues.join(" ")}`,
+                clause: rawDraftText,
+                validation: { ok: false, issues: introducedIssues },
+                courtReady: baselineValidation.ok,
+                operation: followUpOperation,
+              });
+            }
+          } else if (!validation.ok) {
+            try {
+              const repaired = await repairInvalidLegalDraft(draftedText, selectedDocType, validation.issues);
+              await logUsageCost(userId, "draft", repaired.model, repaired.prompt, repaired.text, { userQuery: safePrompt });
+              if (repaired.text) draftedText = repaired.text;
+              if (draftedText && isCourtFiling2) draftedText = ensureAnnexuresSection(draftedText);
+              if (draftedText && isCourtFiling2) draftedText = ensurePetitionerBlock(draftedText);
+              referenceResolution = await resolveLegalDraftReferences(draftedText, {
+                stripUnverifiedCaseCitations: true,
+                unresolvedCaseCitationPlaceholder: "",
+              });
+              draftedText = referenceResolution.cleanedText || draftedText;
+              validation = validateDraftForSelectedType(draftedText, selectedDocType);
+            } catch (repairError) {
+              console.error("[LegalDrafting:Repair] failed:", getErrorMessage(repairError));
+              validation = {
+                ok: false,
+                issues: [...validation.issues, "Automatic structural repair failed."],
+              };
+            }
+          }
+        }
+
+        if (!isLocalizedEdit && !validation.ok) {
+          return res.status(422).json({
+            message: `Draft requires review and was not marked court-ready: ${validation.issues.join(" ")}`,
+            clause: draftedText,
+            validation,
+            courtReady: false,
+          });
         }
 
         return res.json({
@@ -14807,12 +14941,22 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
           confidence: 0.86,
           method: "ai-legal-drafting",
           assistantMode: "draft",
+          operation: followUpOperation,
+          assistantMessage: buildLegalDraftEditSummary(followUpOperation, editTarget?.label),
+          changedTarget: editTarget?.label,
           documentType: selectedDocType || "custom-input",
           customDocumentType: useCustomDocType ? customDocType : undefined,
           attachmentsUsed: files?.length || 0,
           references: referenceResolution.references,
           styleMemory: styleMemoryMeta || undefined,
           recommendations: typeof extractedRecs !== "undefined" ? extractedRecs : [],
+          courtReady: validation.ok,
+          validation,
+          contextCoverage: {
+            receivedChars: rawDraftText.length,
+            processedChars: baseDraftText.length,
+            complete: true,
+          },
         });
       }
 
@@ -14915,9 +15059,10 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         return res.json({ ok: true, state: null });
       }
 
+      const validatedState = legalDraftWorkspaceStateSchema.safeParse(parsed);
       return res.json({
         ok: true,
-        state: parsed && typeof parsed === "object" ? parsed : null,
+        state: validatedState.success ? validatedState.data : null,
       });
     } catch (err) {
       console.error("Error loading legal drafting workspace state:", err);
@@ -14929,82 +15074,18 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
     try {
-      const schema = z.object({
-        draftTitle: z.string().trim().max(240).default("Untitled Draft"),
-        docText: z.string().max(250_000).default(""),
-        selectedDraftId: z.number().int().positive().nullable().optional(),
-        hasDraftInSession: z.boolean().optional().default(false),
-        draftChatMessages: z.array(
-          z.object({
-            id: z.string().trim().max(120),
-            role: z.enum(["user", "assistant"]),
-            content: z.string().max(80_000),
-            attachments: z.array(z.string().max(260)).optional(),
-            kind: z.enum(["guidance", "typing", "error"]).optional(),
-            createdAt: z.number().int().nonnegative().optional(),
-          }),
-        ).max(250).optional().default([]),
-        memoryItems: z.array(
-          z.object({
-            id: z.string().trim().max(120),
-            kind: z.enum(["instruction", "clause", "risk"]),
-            text: z.string().max(2000),
-            ts: z.number().int().nonnegative(),
-          }),
-        ).max(200).optional().default([]),
-      });
-
-      // draftReferences and recommendations are passthrough — validated loosely
-      // to avoid breaking schema changes while still persisting them.
-      const rawBody = req.body || {};
-      const parsed = schema.parse(rawBody);
-
-      // Preserve draftReferences (case law, statutes) from client
-      let draftReferences: any = undefined;
-      if (rawBody.draftReferences && typeof rawBody.draftReferences === "object") {
-        draftReferences = {
-          caseLaw: Array.isArray(rawBody.draftReferences.caseLaw)
-            ? rawBody.draftReferences.caseLaw.slice(0, 50)
-            : [],
-          statutes: Array.isArray(rawBody.draftReferences.statutes)
-            ? rawBody.draftReferences.statutes.slice(0, 50)
-            : [],
-          removedCaseCitations: Array.isArray(rawBody.draftReferences.removedCaseCitations)
-            ? rawBody.draftReferences.removedCaseCitations.slice(0, 30)
-            : [],
-          unresolvedStatutes: Array.isArray(rawBody.draftReferences.unresolvedStatutes)
-            ? rawBody.draftReferences.unresolvedStatutes.slice(0, 30)
-            : [],
-        };
-      }
-
-      // Preserve AI recommendations from client
-      let recommendations: any[] | undefined = undefined;
-      if (Array.isArray(rawBody.recommendations) && rawBody.recommendations.length > 0) {
-        recommendations = rawBody.recommendations
-          .filter((r: any) => r && typeof r.id === "string" && typeof r.suggestedText === "string")
-          .slice(0, 10)
-          .map((r: any) => ({
-            id: String(r.id || ""),
-            title: String(r.title || "").slice(0, 200),
-            reason: String(r.reason || "").slice(0, 1000),
-            originalSnippet: String(r.originalSnippet || "").slice(0, 5000),
-            suggestedText: String(r.suggestedText || "").slice(0, 5000),
-            impact: ["high", "medium", "low"].includes(r.impact) ? r.impact : "medium",
-          }));
-      }
-
-      const statePayload: Record<string, any> = {
+      const parsed = legalDraftWorkspaceStateSchema.parse(req.body || {});
+      const statePayload = {
+        ...parsed,
         draftTitle: parsed.draftTitle || "Untitled Draft",
         docText: parsed.docText || "",
         selectedDraftId: parsed.selectedDraftId ?? null,
         hasDraftInSession: !!parsed.hasDraftInSession,
         draftChatMessages: parsed.draftChatMessages.slice(-150),
         memoryItems: parsed.memoryItems.slice(0, 60),
+        recommendations: parsed.recommendations?.slice(0, 10),
         savedAt: new Date().toISOString(),
       };
-      if (draftReferences) statePayload.draftReferences = draftReferences;
-      if (recommendations && recommendations.length > 0) statePayload.recommendations = recommendations;
 
       const serialized = JSON.stringify(statePayload);
 
@@ -15063,13 +15144,13 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
   });
   // ── Shareable Draft Preview (in-memory, 24h TTL) ──────────────────────
   const sharedDrafts = new Map<string, { title: string; content: string; createdAt: number; userId: string }>();
-  // Cleanup stale shares every hour
-  setInterval(() => {
+  const sharedDraftCleanupTimer = setInterval(() => {
     const now = Date.now();
     for (const [token, data] of sharedDrafts) {
       if (now - data.createdAt > 24 * 60 * 60 * 1000) sharedDrafts.delete(token);
     }
   }, 60 * 60 * 1000);
+  sharedDraftCleanupTimer.unref();
 
   app.post("/api/legal-drafting/share", async (req, res) => {
     const userId = getUserId(req);
@@ -15079,11 +15160,15 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       if (!content || typeof content !== "string") {
         return res.status(400).json({ message: "Draft content is required" });
       }
+      const sanitizedContent = sanitizeLegalDraftHtml(content.slice(0, 500_000));
+      if (!sanitizedContent.trim()) {
+        return res.status(400).json({ message: "Draft content is empty after security filtering" });
+      }
       const crypto = await import("crypto");
       const shareToken = crypto.randomBytes(24).toString("hex");
       sharedDrafts.set(shareToken, {
-        title: String(title || "Untitled Draft"),
-        content: String(content).slice(0, 500000),
+        title: String(title || "Untitled Draft").slice(0, 240),
+        content: sanitizedContent,
         createdAt: Date.now(),
         userId,
       });
@@ -15095,6 +15180,10 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
   });
 
   app.get("/api/draft-preview/:token", async (req, res) => {
+    res.setHeader("Content-Security-Policy", LEGAL_DRAFT_PREVIEW_CSP);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    res.setHeader("Cache-Control", "private, no-store");
     const token = String(req.params.token || "").trim();
     if (!token || !sharedDrafts.has(token)) {
       return res.status(404).send(`<!doctype html><html><head><title>Draft Not Found | Al Wakeelo</title>
@@ -15104,7 +15193,8 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         <body><div class="box"><div class="logo">AL WAKEELO</div><h2>Draft Not Found</h2><p style="color:#94a3b8">This preview link has expired or is invalid.</p></div></body></html>`);
     }
     const draft = sharedDrafts.get(token)!;
-    const safeTitle = draft.title.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const safeTitle = escapeHtml(draft.title);
+    const safeContent = sanitizeLegalDraftHtml(draft.content);
     return res.send(`<!doctype html>
 <html lang="en">
 <head>
@@ -15151,7 +15241,7 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
     .print-blocked{display:none}
   </style>
 </head>
-<body oncontextmenu="return false">
+<body>
   <div class="header">
     <div class="logo-wrap">
       <img src="/icon-192.png" alt="Al Wakeelo" class="logo-img" />
@@ -15167,19 +15257,13 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       <div class="watermark-big">AL WAKEELO</div>
       <div class="watermark-grid">${'<span>AL WAKEELO</span><span>CONFIDENTIAL</span>'.repeat(25)}</div>
     </div>
-    <div class="doc-content">${draft.content}</div>
+    <div class="doc-content">${safeContent}</div>
   </div>
   <div class="footer">
     <p>Confidential legal draft shared via Al Wakeelo &middot; View only &middot; Link expires in 24 hours</p>
     <p style="margin-top:0.4rem">&copy; ${new Date().getFullYear()} Al Wakeelo &middot; Legal Intelligence Platform</p>
   </div>
   <div class="print-blocked">&#x1f6ab; Printing is disabled for this confidential document. Contact your lawyer for a printed copy.</div>
-<script>
-window.print=function(){};
-document.addEventListener('keydown',function(e){
-  if((e.ctrlKey||e.metaKey)&&e.key==='p'){e.preventDefault();e.stopImmediatePropagation();alert('Printing is disabled for this confidential document. Please contact your lawyer for a copy.');}
-},true);
-</script>
 </body>
 </html>`);
   });

@@ -284,26 +284,25 @@
   line-height: 1.3;
   color: hsl(var(--foreground));
   text-align: justify;
-  padding: 1in 1in 1in 1.25in;
-  min-height: 1344px; /* Exact Legal height (14 inches = 1344px) */
-  width: 8.5in;      /* Exact Legal width (8.5 inches = 816px) */
-  margin: 2rem auto;  /* Floating document margin top/bottom, auto left/right */
-  background-color: hsl(var(--background));
-  box-shadow: 0 4px 24px hsl(var(--foreground) / 0.08);
-  border-radius: 8px;
-  border: 1px solid hsl(var(--border) / 0.5);
+  box-sizing: border-box;
+  padding: var(--legal-margin-top) var(--legal-margin-right) var(--legal-margin-bottom) var(--legal-margin-left);
+  min-height: var(--legal-document-height, var(--legal-page-height));
+  width: var(--legal-page-width);
+  margin: 2rem auto;
+  border: 0;
+  border-radius: 2px;
   cursor: text;
-  /* Legal page break ruler: 14in page - 2in margins = 12in = 1152px content */
-  background-image: repeating-linear-gradient(
+  background-image: linear-gradient(
     to bottom,
-    transparent 0px,
-    transparent 1150px,
-    hsl(var(--border) / 0.5) 1150px,
-    hsl(var(--border) / 0.5) 1152px,
-    transparent 1152px
+    hsl(var(--background)) 0,
+    hsl(var(--background)) var(--legal-page-height),
+    transparent var(--legal-page-height),
+    transparent calc(var(--legal-page-height) + var(--legal-page-gap))
   );
-  background-size: 100% 1152px;
+  background-size: 100% calc(var(--legal-page-height) + var(--legal-page-gap));
+  background-repeat: repeat-y;
   background-position: top;
+  filter: drop-shadow(0 4px 12px hsl(var(--foreground) / 0.1));
 }
 
 /* Page break label */
@@ -476,13 +475,33 @@
   border-radius: 2px;
 }
 
-/* Page break marker */
-.legal-draft-editor .page-break {
-  page-break-before: always;
+.legal-draft-editor .legal-auto-page-break {
+  margin-top: var(--legal-page-break-gap) !important;
 }
 
-.legal-draft-editor [data-page-break] {
-  page-break-before: always;
+.legal-draft-editor .legal-page-break {
+  box-sizing: border-box;
+  height: var(--legal-page-break-gap, 0px);
+  margin: 0;
+  position: relative;
+  user-select: none;
+}
+
+.legal-draft-editor .legal-page-break-label {
+  position: absolute;
+  top: calc(var(--legal-page-break-gap) - var(--legal-margin-top) - var(--legal-page-gap-half));
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 2px 8px;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 999px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
 /* Placeholder text */
@@ -505,13 +524,8 @@
   border-top-color: hsl(var(--primary));
 }
 
-/* ── Print / PDF Export — Legal Paper (8.5 × 14 in) ── */
+/* ── Print / PDF Export — court paper profiles ── */
 @media print {
-  @page {
-    size: Legal;
-    margin: 1in 1in 1in 1.25in;
-  }
-
   body {
     font-family: 'Times New Roman', serif;
     font-size: 13pt;
@@ -528,6 +542,7 @@
     box-shadow: none !important;
     border: none !important;
     background: transparent !important;
+    filter: none !important;
     color: #000;
   }
 
@@ -544,10 +559,16 @@
     print-color-adjust: exact;
   }
 
-  /* Page break before affidavit / verification sections */
-  .legal-draft-editor .page-break,
-  .legal-draft-editor [data-page-break] {
-    page-break-before: always;
+  .legal-draft-editor .legal-auto-page-break,
+  .legal-draft-editor .legal-page-break {
+    break-before: page !important;
+    page-break-before: always !important;
+    margin-top: 0 !important;
+    height: 0 !important;
+  }
+
+  .legal-draft-editor .legal-page-break-label {
+    display: none !important;
   }
 }
 
@@ -1084,6 +1105,8 @@
   [class*="chat-panel"],
   [data-testid*="button-"],
   button,
+  .legal-editor-toolbar,
+  [data-tutorial="ai-engine"],
   .toaster {
     display: none !important;
   }
@@ -1096,14 +1119,23 @@
     padding: 0 !important;
   }
 
+  [data-tutorial="editor"],
+  .legal-editor-page-shell,
+  .legal-editor-page-shell > div {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
   /* Editor content area — full width, court typography */
   .legal-draft-editor {
     font-family: 'Times New Roman', 'TimesNewRomanPSMT', serif !important;
     font-size: 13pt !important;
-    line-height: 1.8 !important;
+    line-height: 1.3 !important;
     color: black !important;
     padding: 0 !important;
-    margin: 25mm !important;
+    margin: 0 !important;
     width: auto !important;
     max-width: none !important;
     min-height: auto !important;
@@ -1150,11 +1182,23 @@
     margin: 0 !important;
   }
 
-  /* Page setup */
-  @page {
-    size: A4;
-    margin: 25mm;
+  .legal-editor-page-shell[data-page-profile="court-legal"] .legal-draft-editor {
+    page: legal-court;
   }
+
+  .legal-editor-page-shell[data-page-profile="a4"] .legal-draft-editor {
+    page: legal-a4;
+  }
+}
+
+@page legal-court {
+  size: 8.5in 14in;
+  margin: 1in 1in 1in 1.25in;
+}
+
+@page legal-a4 {
+  size: A4;
+  margin: 25mm 25mm 25mm 31.75mm;
 }
 
 /* ── Legal Drafting Zen Mode ─────────────────────────────────────────────── */

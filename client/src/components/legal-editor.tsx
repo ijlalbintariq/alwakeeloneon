@@ -18,6 +18,7 @@ import {
   useEffect,
   useImperativeHandle,
   useState,
+  type CSSProperties,
   type Ref,
 } from "react";
 import { useEditor, EditorContent, ReactRenderer } from "@tiptap/react";
@@ -67,8 +68,20 @@ import {
   Type,
   CaseSensitive,
   ChevronDown,
+  BetweenHorizontalStart,
 } from "lucide-react";
 import { Pilcrow } from "lucide-react";
+import { LegalPageBreak } from "@/lib/legal-page-break";
+import {
+  LegalPaginationExtension,
+  getPaginatedEditorHTML,
+} from "@/lib/legal-pagination";
+import {
+  buildLegalPageCssVariables,
+  DEFAULT_LEGAL_PAGE_PROFILE_ID,
+  LEGAL_PAGE_PROFILES,
+  type LegalPageProfileId,
+} from "@/lib/legal-page-layout";
 
 // ── Public imperative handle ─────────────────────────────────────────────
 
@@ -77,6 +90,8 @@ export type LegalEditorHandle = {
   getHTML: () => string;
   /** Get the editor's content as plain text */
   getText: () => string;
+  /** Get HTML with calculated page breaks included for export */
+  getPaginatedHTML: () => string;
   /** Replace the entire editor content */
   setContent: (html: string) => void;
   /** Insert content at the current cursor position (or at the end) */
@@ -102,6 +117,10 @@ type LegalEditorProps = {
   placeholder?: string;
   /** Extra CSS classes on the wrapper */
   className?: string;
+  /** Active paper and margin profile */
+  pageProfileId?: LegalPageProfileId;
+  /** Change the active paper and margin profile */
+  onPageProfileChange?: (profileId: LegalPageProfileId) => void;
 };
 
 // ── Toolbar button ───────────────────────────────────────────────────────
@@ -461,7 +480,14 @@ const CustomHeading = HeadingExtension.extend({
 // ── Component ────────────────────────────────────────────────────────────
 
 function LegalEditorInner(
-  { initialContent, onUpdate, placeholder, className }: LegalEditorProps,
+  {
+    initialContent,
+    onUpdate,
+    placeholder,
+    className,
+    pageProfileId = DEFAULT_LEGAL_PAGE_PROFILE_ID,
+    onPageProfileChange,
+  }: LegalEditorProps,
   ref: Ref<LegalEditorHandle>,
 ) {
   const editor = useEditor({
@@ -489,6 +515,8 @@ function LegalEditorInner(
       TableRow,
       TableCell,
       TableHeader,
+      LegalPageBreak,
+      LegalPaginationExtension,
       CitationNode,
       CitationSuggestion.configure({
         suggestion: {
@@ -570,6 +598,7 @@ function LegalEditorInner(
     () => ({
       getHTML: () => editor?.getHTML() ?? "",
       getText: () => editor?.getText() ?? "",
+      getPaginatedHTML: () => editor ? getPaginatedEditorHTML(editor) : "",
       setContent: (html: string) => {
         editor?.commands.setContent(html, { emitUpdate: false });
       },
@@ -621,12 +650,18 @@ function LegalEditorInner(
 
   if (!editor) return null;
 
+  const pageStyle = buildLegalPageCssVariables(pageProfileId) as CSSProperties;
+
   // ── Toolbar ───────────────────────────────────────────────────────
 
   return (
-    <div className={`${className} overflow-y-auto`}>
+    <div
+      className={`${className || ""} legal-editor-page-shell overflow-y-auto`}
+      data-page-profile={pageProfileId}
+      style={pageStyle}
+    >
       {/* Formatting toolbar — MS Word–style (sticky while scrolling) */}
-      <div className="sticky top-0 flex items-center gap-1 flex-wrap px-3 py-2 border-b border-[hsl(var(--preview-border))] bg-background/95 backdrop-blur-xl z-50 shrink-0">
+      <div className="legal-editor-toolbar sticky top-0 flex items-center gap-1 flex-wrap px-3 py-2 border-b border-[hsl(var(--preview-border))] bg-background/95 backdrop-blur-xl z-50 shrink-0">
         {/* Undo / Redo */}
         <ToolbarBtn
           disabled={!editor.can().undo()}
@@ -802,6 +837,19 @@ function LegalEditorInner(
         {/* Line Spacing */}
         <LineSpacingSelect editor={editor} />
 
+        {onPageProfileChange && (
+          <select
+            value={pageProfileId}
+            onChange={(event) => onPageProfileChange(event.target.value as LegalPageProfileId)}
+            title="Paper size and court margins"
+            className="h-7 max-w-[112px] rounded border border-border/60 bg-transparent px-1 text-[10px] text-foreground focus:outline-none focus:border-primary/50"
+          >
+            {Object.values(LEGAL_PAGE_PROFILES).map((profile) => (
+              <option key={profile.id} value={profile.id}>{profile.shortLabel}</option>
+            ))}
+          </select>
+        )}
+
         {/* Text Case */}
         <TextCaseMenu editor={editor} />
 
@@ -813,6 +861,13 @@ function LegalEditorInner(
           title="Horizontal Line"
         >
           <Minus size={18} />
+        </ToolbarBtn>
+
+        <ToolbarBtn
+          onClick={() => editor.chain().focus().insertLegalPageBreak().run()}
+          title="Insert Page Break (Ctrl/Cmd+Enter)"
+        >
+          <BetweenHorizontalStart size={18} />
         </ToolbarBtn>
 
         {/* Insert Table */}

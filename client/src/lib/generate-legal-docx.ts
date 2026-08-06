@@ -5,7 +5,7 @@
  * Uses the `docx` npm package to produce a real OOXML document that opens
  * perfectly in Microsoft Word with preserved formatting.
  *
- * Page: Legal size (8.5" × 14") — standard for Pakistani courts
+ * Page: selectable Legal or A4 court profile
  * Font: Times New Roman, 13pt body, justified
  * Margins: 1" top/right/bottom, 1.25" left (binding margin)
  */
@@ -25,6 +25,7 @@ import {
   ShadingType,
   PageOrientation,
   convertInchesToTwip,
+  convertMillimetersToTwip,
   Footer,
   PageNumber,
   NumberFormat,
@@ -34,16 +35,13 @@ import {
   PageBreak,
 } from "docx";
 import { saveAs } from "file-saver";
+import {
+  DEFAULT_LEGAL_PAGE_PROFILE_ID,
+  resolveLegalPageProfile,
+  type LegalPageProfileId,
+} from "./legal-page-layout";
 
 // ── Configuration ────────────────────────────────────────────────────────
-
-// Legal page: 8.5" × 14"
-const PAGE_W = convertInchesToTwip(8.5);
-const PAGE_H = convertInchesToTwip(14);
-const MARGIN_TOP = convertInchesToTwip(1);
-const MARGIN_BOTTOM = convertInchesToTwip(1);
-const MARGIN_LEFT = convertInchesToTwip(1.25); // binding margin
-const MARGIN_RIGHT = convertInchesToTwip(1);
 
 const FONT = "Times New Roman";
 const FONT_BODY = 26; // half-points (13pt × 2)
@@ -117,12 +115,30 @@ function extractRuns(el: Node, parentStyle: InlineStyle, fontSize = FONT_BODY): 
   return runs;
 }
 
-function getAlignment(el: Element): (typeof AlignmentType)[keyof typeof AlignmentType] {
+function getAlignment(
+  el: Element,
+  fallback: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.JUSTIFIED,
+): (typeof AlignmentType)[keyof typeof AlignmentType] {
   const style = el.getAttribute("style") || "";
   if (style.includes("text-align: center") || style.includes("text-align:center")) return AlignmentType.CENTER;
   if (style.includes("text-align: right") || style.includes("text-align:right")) return AlignmentType.RIGHT;
   if (style.includes("text-align: left") || style.includes("text-align:left")) return AlignmentType.LEFT;
-  return AlignmentType.JUSTIFIED; // court default
+  return fallback;
+}
+
+function getFirstLineIndent(el: Element): number | undefined {
+  const style = el.getAttribute("style") || "";
+  const match = style.match(/text-indent:\s*(-?[\d.]+)\s*(in|mm|cm|pt|px|em)?/i);
+  if (!match) return undefined;
+  const value = Number.parseFloat(match[1]);
+  const unit = (match[2] || "px").toLowerCase();
+  if (!Number.isFinite(value)) return undefined;
+  if (unit === "in") return convertInchesToTwip(value);
+  if (unit === "mm") return convertMillimetersToTwip(value);
+  if (unit === "cm") return convertMillimetersToTwip(value * 10);
+  if (unit === "pt") return Math.round(value * 20);
+  if (unit === "em") return Math.round(value * 13 * 20);
+  return Math.round(value * 15);
 }
 
 /** Read line-height from inline style and convert to Word's 240ths-of-a-line */
@@ -140,9 +156,27 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
   container.innerHTML = html;
   const children: (Paragraph | Table)[] = [];
   const defaultStyle: InlineStyle = { bold: false, italic: false, underline: false };
+  let lastWasPageBreak = false;
 
   function processElement(el: Element) {
     const tag = el.tagName.toLowerCase();
+
+    // ── Page Breaks ──
+    const className = el.getAttribute("class") || "";
+    const style = el.getAttribute("style") || "";
+    const isPageBreak =
+      className.includes("page-break") ||
+      el.hasAttribute("data-page-break") ||
+      style.includes("page-break-before: always");
+    if (isPageBreak) {
+      if (children.length > 0 && !lastWasPageBreak) {
+        children.push(new Paragraph({ children: [new PageBreak()] }));
+      }
+      lastWasPageBreak = true;
+      if (el.getAttribute("data-type") === "legal-page-break") return;
+    } else {
+      lastWasPageBreak = false;
+    }
 
     // ── Headings ──
     if (tag === "h1" || tag === "h2" || tag === "h3") {
@@ -155,7 +189,10 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
         new Paragraph({
           children: runs,
           heading: level,
-          alignment: tag === "h1" ? AlignmentType.CENTER : AlignmentType.LEFT,
+          alignment: getAlignment(el, tag === "h1" ? AlignmentType.CENTER : AlignmentType.LEFT),
+          keepNext: true,
+          keepLines: true,
+          widowControl: true,
           spacing: {
             before: tag === "h1" ? 240 : 160,
             after: tag === "h1" ? 120 : 80,
@@ -164,15 +201,8 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
           },
         }),
       );
+      lastWasPageBreak = false;
       return;
-    }
-
-    // ── Page Breaks ──
-    const className = el.getAttribute("class") || "";
-    const style = el.getAttribute("style") || "";
-    if (className.includes("page-break") || el.hasAttribute("data-page-break") || style.includes("page-break-before: always")) {
-       children.push(new Paragraph({ children: [new PageBreak()] }));
-       // Don't return, as the element might contain text that we still need to process
     }
 
     // ── Paragraphs ──
@@ -184,10 +214,13 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
         return;
       }
       const lineSpacing = getLineSpacing(el);
+      const firstLineIndent = getFirstLineIndent(el);
       children.push(
         new Paragraph({
           children: runs,
           alignment: getAlignment(el),
+          indent: firstLineIndent === undefined ? undefined : { firstLine: firstLineIndent },
+          widowControl: true,
           spacing: { after: 60, line: lineSpacing, lineRule: LineRuleType.AUTO },
         }),
       );
@@ -211,6 +244,7 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
             indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) },
             spacing: { after: 40, line: LINE_SPACING, lineRule: LineRuleType.AUTO },
             alignment: AlignmentType.JUSTIFIED,
+            widowControl: true,
           }),
         );
       });
@@ -248,7 +282,11 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
         });
 
         if (cells.length > 0) {
-          tableRows.push(new TableRow({ children: cells }));
+          tableRows.push(new TableRow({
+            children: cells,
+            cantSplit: true,
+            tableHeader: isHeaderRow,
+          }));
         }
       });
 
@@ -274,6 +312,7 @@ function buildDocxChildren(html: string): (Paragraph | Table)[] {
           indent: { left: convertInchesToTwip(0.5) },
           spacing: { before: 80, after: 80, line: LINE_SPACING, lineRule: LineRuleType.AUTO },
           alignment: AlignmentType.JUSTIFIED,
+          widowControl: true,
         }),
       );
       return;
@@ -353,10 +392,13 @@ export interface LegalDocxOptions {
   html: string;
   /** Document title (used in filename) */
   title: string;
+  /** Paper size and court margin profile */
+  pageProfileId?: LegalPageProfileId;
 }
 
 export async function generateLegalDocx(options: LegalDocxOptions): Promise<void> {
-  const { html, title } = options;
+  const { html, title, pageProfileId = DEFAULT_LEGAL_PAGE_PROFILE_ID } = options;
+  const pageProfile = resolveLegalPageProfile(pageProfileId);
 
   const docChildren = buildDocxChildren(html);
 
@@ -413,15 +455,15 @@ export async function generateLegalDocx(options: LegalDocxOptions): Promise<void
         properties: {
           page: {
             size: {
-              width: PAGE_W,
-              height: PAGE_H,
+              width: convertMillimetersToTwip(pageProfile.widthMm),
+              height: convertMillimetersToTwip(pageProfile.heightMm),
               orientation: PageOrientation.PORTRAIT,
             },
             margin: {
-              top: MARGIN_TOP,
-              bottom: MARGIN_BOTTOM,
-              left: MARGIN_LEFT,
-              right: MARGIN_RIGHT,
+              top: convertMillimetersToTwip(pageProfile.marginTopMm),
+              bottom: convertMillimetersToTwip(pageProfile.marginBottomMm),
+              left: convertMillimetersToTwip(pageProfile.marginLeftMm),
+              right: convertMillimetersToTwip(pageProfile.marginRightMm),
             },
             pageNumbers: {
               start: 1,

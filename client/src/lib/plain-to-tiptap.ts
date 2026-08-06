@@ -165,13 +165,14 @@ export function plainTextToTiptapHTML(raw: string): string {
 
     // AFFIDAVIT → page break heading
     if (/^AFFIDAVIT\s*:?\s*$/i.test(trimmed)) {
-      blocks.push(`<h2 data-page-break="true" class="page-break">${esc(trimmed)}</h2>`);
+      blocks.push(`<div data-type="legal-page-break" data-page-break="true"></div>`);
+      blocks.push(`<h2>${esc(trimmed)}</h2>`);
       i++; continue;
     }
 
-    // RESPECTFULLY SHEWETH → page break (marks start of Page 2 body)
+    // RESPECTFULLY SHEWETH → section heading; measured pagination decides placement
     if (/^RESPECTFULLY SHEWETH\s*:?\s*$/i.test(trimmed)) {
-      blocks.push(`<h2 data-page-break="true" class="page-break">${esc(trimmed)}</h2>`);
+      blocks.push(`<h2>${esc(trimmed)}</h2>`);
       i++; continue;
     }
 
