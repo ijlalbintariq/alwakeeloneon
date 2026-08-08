@@ -30,6 +30,8 @@ import {
   Palette,
   Send,
   Paperclip,
+  Mic,
+  Square,
   X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -69,6 +71,7 @@ import { StyleMemoryPanel } from "@/components/style-memory-panel";
 import { generateLegalPDF } from "@/lib/generate-legal-pdf";
 import { useDocumentHead } from "@/hooks/use-document-head";
 import { TutorialCards } from "@/components/tutorial-cards";
+import { formatDuration, useVoiceRecorder } from "@/hooks/use-voice-recorder";
 
 type ComplianceRisk = {
   id: string;
@@ -678,6 +681,14 @@ export default function ContractDraftingPage() {
   const [contractText, setContractText] = useState("");
   const [editorHtml, setEditorHtml] = useState("");
   const [showTutorial, setShowTutorial] = useState(false);
+  const appendVoiceTranscription = useCallback((text: string) => {
+    setForm((previous) => ({
+      ...previous,
+      obligations: previous.obligations ? `${previous.obligations}\n${text}` : text,
+    }));
+    toast({ title: "Voice transcribed successfully" });
+  }, [toast]);
+  const voice = useVoiceRecorder({ onAutoTranscription: appendVoiceTranscription });
 
   useEffect(() => {
     if (!localStorage.getItem("hasSeenDraftingTutorial")) {
@@ -1871,6 +1882,41 @@ export default function ContractDraftingPage() {
                             rows={3}
                           />
                           <div className="flex flex-col gap-1 shrink-0 pt-0.5" data-tutorial="attach-reference-files">
+                            {voice.isRecording ? (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    const text = await voice.stopAndTranscribe();
+                                    if (text) appendVoiceTranscription(text);
+                                  } catch (error) {
+                                    toast({
+                                      title: "Transcription failed",
+                                      description: error instanceof Error ? error.message : undefined,
+                                      variant: "destructive",
+                                    });
+                                  }
+                                }}
+                                className="p-1.5 border border-red-500/50 bg-red-500/15 text-red-500 hover:bg-red-500/25 rounded-lg transition-all animate-pulse flex items-center justify-center"
+                                title={`Stop recording · ${formatDuration(voice.duration)}`}
+                              >
+                                <Square size={13} fill="currentColor" />
+                              </button>
+                            ) : voice.isTranscribing ? (
+                              <span className="p-1.5 border border-primary/35 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
+                                <Loader2 size={15} className="animate-spin" />
+                              </span>
+                            ) : voice.isSupported ? (
+                              <button
+                                type="button"
+                                onClick={() => voice.startRecording()}
+                                disabled={isGenerating}
+                                className="p-1.5 border border-primary/35 bg-primary/10 text-primary hover:bg-primary/15 hover:border-primary/50 hover:scale-105 active:scale-95 rounded-lg transition-all duration-150 disabled:opacity-40 flex items-center justify-center"
+                                title="Record contract drafting instructions"
+                              >
+                                <Mic size={15} className="stroke-[2.2]" />
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => fileInputRef.current?.click()}
@@ -1895,6 +1941,9 @@ export default function ContractDraftingPage() {
                             />
                           </div>
                         </div>
+                        {voice.error && (
+                          <p className="mt-1 text-[10px] text-red-500">{voice.error}</p>
+                        )}
                       </div>
                       <button
                         type="button"

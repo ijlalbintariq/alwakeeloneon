@@ -7,6 +7,7 @@ import { LegalMarkdown } from "@/components/legal-markdown";
 import { parseReferences, ReferenceCards } from "@/components/reference-cards";
 import { CaseLawCard, type CaseLawCardData } from "@/components/case-law-card";
 import { useDocumentHead } from "@/hooks/use-document-head";
+import { formatDuration, useVoiceRecorder } from "@/hooks/use-voice-recorder";
 
 interface ApexModelInfo {
   id: string;
@@ -195,7 +196,12 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const [shareError, setShareError] = useState<string | null>(null);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const appendVoiceTranscription = useCallback((text: string) => {
+    setInput((previous) => previous ? `${previous}\n\n[Transcribed Audio]: ${text}` : text);
+    setApiError(null);
+  }, []);
+  const voice = useVoiceRecorder({ onAutoTranscription: appendVoiceTranscription });
+  const isTranscribing = voice.isTranscribing;
   const [ragEnabled, setRagEnabled] = useState(false);
   const [ragCaseFileId, setRagCaseFileId] = useState<number | null>(null);
   // Tool-search status: shown as a timer while AI searches case law DB
@@ -219,6 +225,10 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (voice.error) setApiError(voice.error);
+  }, [voice.error]);
 
   const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
   const { data: threads = [] } = useQuery<ThreadSummary[]>({
@@ -411,29 +421,31 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     if (!file) return;
     if (audioInputRef.current) audioInputRef.current.value = "";
 
-    setIsTranscribing(true);
     setApiError(null);
     try {
-      const formData = new FormData();
-      formData.append("audio", file);
-      formData.append("mode", aiMode);
-      const response = await fetch("/api/ai/transcribe", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ message: "Transcription failed" }));
-        throw new Error(err.message || "Transcription failed");
-      }
-      const data = await response.json();
-      if (data.transcription) {
-        setInput(prev => prev ? `${prev}\n\n[Transcribed Audio]: ${data.transcription}` : data.transcription);
-      }
+      const text = await voice.transcribe(file);
+      appendVoiceTranscription(text);
     } catch (err: any) {
       setApiError(err.message || "Failed to transcribe audio");
-    } finally {
-      setIsTranscribing(false);
+    }
+  };
+
+  const handleVoiceRecording = async () => {
+    setApiError(null);
+    if (!voice.isSupported) {
+      audioInputRef.current?.click();
+      return;
+    }
+
+    try {
+      if (!voice.isRecording) {
+        await voice.startRecording();
+        return;
+      }
+      const text = await voice.stopAndTranscribe();
+      if (text) appendVoiceTranscription(text);
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Failed to transcribe audio");
     }
   };
 
@@ -1728,16 +1740,29 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             </button>
 
             <button
-              onClick={() => audioInputRef.current?.click()}
+              onClick={handleVoiceRecording}
               disabled={isLoading || isTranscribing}
               className={`min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2 rounded-lg transition-all duration-150 ${
-                isTranscribing
-                  ? "text-primary bg-primary/10"
+                voice.isRecording
+                  ? "text-red-500 bg-red-500/10 animate-pulse"
+                  : isTranscribing
+                    ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-primary hover:bg-primary/10"
               } disabled:opacity-30 disabled:cursor-not-allowed`}
-              title="Transcribe audio file (MP3, WAV, M4A)"
+              title={voice.isRecording ? `Stop recording · ${formatDuration(voice.duration)}` : "Record voice message"}
             >
-              <Mic size={16} className="sm:w-[18px] sm:h-[18px]" />
+              {voice.isRecording
+                ? <Square size={15} fill="currentColor" />
+                : <Mic size={16} className="sm:w-[18px] sm:h-[18px]" />}
+            </button>
+
+            <button
+              onClick={() => audioInputRef.current?.click()}
+              disabled={isLoading || isTranscribing || voice.isRecording}
+              className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Upload audio file (MP3, WAV, M4A, WebM)"
+            >
+              <File size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
 
             <textarea
@@ -1760,7 +1785,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
             />
             <button
               onClick={() => handleSend()}
-              disabled={isLoading || isTranscribing}
+              disabled={isLoading || isTranscribing || voice.isRecording}
               data-testid="button-send"
               className="min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center p-1.5 sm:p-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 shadow-sm transition-all duration-150 active:scale-95 disabled:opacity-50 font-semibold flex-shrink-0"
             >
@@ -2317,8 +2342,25 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                 <button onClick={() => fileInputRef.current?.click()} disabled={isLoading || attachedFiles.length >= 5} className="p-2 text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg">
                   <Paperclip size={18} />
                 </button>
-                <button onClick={() => audioInputRef.current?.click()} disabled={isLoading || isTranscribing} className="p-2.5 text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg transition-colors">
-                  {isTranscribing ? <Loader2 size={18} className="animate-spin text-primary" /> : <Mic size={18} />}
+                <button
+                  onClick={handleVoiceRecording}
+                  disabled={isLoading || isTranscribing}
+                  className={`p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg transition-colors ${voice.isRecording ? "text-red-500 bg-red-500/10 animate-pulse" : "text-muted-foreground hover:text-primary"}`}
+                  title={voice.isRecording ? `Stop recording · ${formatDuration(voice.duration)}` : "Record voice message"}
+                >
+                  {isTranscribing
+                    ? <Loader2 size={18} className="animate-spin text-primary" />
+                    : voice.isRecording
+                      ? <Square size={17} fill="currentColor" />
+                      : <Mic size={18} />}
+                </button>
+                <button
+                  onClick={() => audioInputRef.current?.click()}
+                  disabled={isLoading || isTranscribing || voice.isRecording}
+                  className="p-2.5 text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg transition-colors disabled:opacity-40"
+                  title="Upload audio file (MP3, WAV, M4A, WebM)"
+                >
+                  <File size={18} />
                 </button>
 
                 <textarea
@@ -2344,7 +2386,7 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
                     <Square size={18} fill="currentColor" />
                   </button>
                 ) : (
-                  <button onClick={() => handleSend()} disabled={isTranscribing} data-testid="button-send" className="bg-gradient-to-br from-primary to-primary hover:from-primary hover:to-primary disabled:from-primary/50 disabled:to-primary/50 text-primary-foreground h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 flex-shrink-0">
+                  <button onClick={() => handleSend()} disabled={isTranscribing || voice.isRecording} data-testid="button-send" className="bg-gradient-to-br from-primary to-primary hover:from-primary hover:to-primary disabled:from-primary/50 disabled:to-primary/50 text-primary-foreground h-12 w-12 rounded-xl flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 flex-shrink-0">
                     <Send size={20} />
                   </button>
                 )}

@@ -1631,7 +1631,11 @@ function LegalDraftingPageInner() {
   const [feeCalcOpen, setFeeCalcOpen] = useState(false);
   const [caseFileImportOpen, setCaseFileImportOpen] = useState(false);
   const [chatState, setChatState] = useState<"default" | "minimized" | "expanded">("default");
-  const voice = useVoiceRecorder();
+  const appendVoiceTranscription = useCallback((text: string) => {
+    setAiPrompt((previous) => previous ? `${previous}\n${text}` : text);
+    toast({ title: "Voice transcribed successfully" });
+  }, [toast]);
+  const voice = useVoiceRecorder({ onAutoTranscription: appendVoiceTranscription });
   const draftHistory = useDraftHistory(selectedDraftId ? `draft-${selectedDraftId}` : `tab-${draftTabs.activeTabId}`);
   const [rightRailTab, setRightRailTab] = useState<"ai" | "history">("ai");
   const showDraftReviewPanel = hasDraftInSession || recommendLoading || recommendations.length > 0;
@@ -3854,15 +3858,15 @@ function LegalDraftingPageInner() {
                             <button
                               type="button"
                               onClick={async () => {
-                                const blob = await voice.stopRecording();
-                                if (blob) {
-                                  try {
-                                    const text = await voice.transcribe(blob);
-                                    setAiPrompt((prev) => prev ? `${prev}\n${text}` : text);
-                                    toast({ title: "Voice transcribed successfully" });
-                                  } catch {
-                                    toast({ title: "Transcription failed", variant: "destructive" });
-                                  }
+                                try {
+                                  const text = await voice.stopAndTranscribe();
+                                  if (text) appendVoiceTranscription(text);
+                                } catch (error) {
+                                  toast({
+                                    title: "Transcription failed",
+                                    description: error instanceof Error ? error.message : undefined,
+                                    variant: "destructive",
+                                  });
                                 }
                               }}
                               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-red-500/50 bg-red-500/15 text-[11px] text-red-400 hover:bg-red-500/25 animate-pulse"

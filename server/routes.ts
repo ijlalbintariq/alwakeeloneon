@@ -41,14 +41,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import multer from "multer";
-import { isApexAvailable, getApexModelsForTier, chatWithApex, transcribeWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
+import { isApexAvailable, getApexModelsForTier, chatWithApex, chatWithApexAgent, type ApexModel, type ApexAgentResponse } from "./apex-ai";
 import { mcpServer, mcpUserContext, createMcpServer } from "./mcp-server";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import { runRetrieval } from "./pipeline/retrieval-engine";
 // DEPRECATED: Groq integration removed - using DeepSeek only (2026-04-16)
 // import { chatWithGroq, streamWithGroq, isGroqAvailable, getGroqModelName, transcribeWithGroq } from "./groq-ai";
-import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, transcribeWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, runToolJudgmentSearch, repairReferencesJson } from "./deepseek-ai";
+import { chatWithDeepSeek, chatWithDeepSeekPro, streamWithDeepSeek, isDeepSeekAvailable, getDeepSeekProModelName, runToolJudgmentSearch, repairReferencesJson } from "./deepseek-ai";
 import { runToolJudgmentSearchOR, isOpenRouterAvailable } from "./openrouter-ai";
 import { streamWithOpenRouter } from "./openrouter";
 import { getMoonshotModelName } from "./moonshot";
@@ -92,6 +92,7 @@ import {
 import { isPdfOcrAvailable } from "./ocr";
 import { isCloudPdfOcrAvailable, ocrPdfWithCloud } from "./cloud-ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
+import { isOpenRouterTranscriptionAvailable, resolveOpenRouterAudioFormat, transcribeWithOpenRouter } from "./openrouter-transcription";
 import { deleteR2Object, getR2ObjectBinary, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
 import { getEmailProviderStatus, sendResendTestEmail, sendBroadcastEmail, sendCaseLeadNotification } from "./email";
 import { verifyCaptchaToken } from "./captcha";
@@ -15301,9 +15302,9 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
       if (!file) return res.status(400).json({ message: "No audio file provided" });
       const stableFile = cloneUploadFile(file);
 
-      const allowedAudio = ["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a", "audio/webm", "audio/ogg", "audio/mp3"];
-      if (!allowedAudio.some(t => file.mimetype.startsWith("audio/") || allowedAudio.includes(file.mimetype))) {
-        return res.status(400).json({ message: "Unsupported audio format. Use MP3, WAV, M4A, or WebM." });
+      const audioFormat = resolveOpenRouterAudioFormat(file.mimetype, file.originalname);
+      if (!audioFormat) {
+        return res.status(400).json({ message: "Unsupported audio format. Use MP3, WAV, M4A, WebM, OGG, FLAC, or AAC." });
       }
       const transcribeMalwareCheck = await passesMalwareScan(stableFile);
       if (!transcribeMalwareCheck.ok) {
@@ -15333,176 +15334,66 @@ ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\n
         return res.status(403).json({ message: "Apex transcription requires Chamber or Enterprise." });
       }
 
-      const resolveAudioFormat = (mimeType: string, filename: string): "wav" | "mp3" | "m4a" | "webm" | "ogg" => {
-        const type = (mimeType || "").toLowerCase();
-        const ext = filename.toLowerCase();
-        if (type.includes("wav") || ext.endsWith(".wav")) return "wav";
-        if (type.includes("webm") || ext.endsWith(".webm")) return "webm";
-        if (type.includes("ogg") || ext.endsWith(".ogg")) return "ogg";
-        if (type.includes("m4a") || type.includes("mp4") || ext.endsWith(".m4a") || ext.endsWith(".mp4")) return "m4a";
-        return "mp3";
-      };
-
-      const commonPrompt =
-        "Transcribe this audio accurately. Return only the transcription text. If the audio is in Urdu or another language, transcribe it in that language.";
-      const audioFormat = resolveAudioFormat(file.mimetype, file.originalname);
-      const base64Audio = stableFile.buffer.toString("base64");
-
       let transcription = "";
-      let provider = "deepseek"; // UPDATED: Default changed from groq to deepseek (Groq deprecated 2026-04-16)
-      let model = "whisper-large-v3-turbo";
+      let provider = "openrouter";
+      let model = "";
       let fallbackUsed = false;
-      let fallbackFrom: "deepseek" | "apex" | null = null;
+      let fallbackFrom: string | null = null;
       let localFallbackUsed = false;
 
-      if (requestedMode === "turbo") {
-        if (isDeepSeekAvailable()) {
-          try {
-            const result = await transcribeWithDeepSeek({
-              audioBase64: base64Audio,
-              audioFormat,
-              prompt: commonPrompt,
-            });
-            transcription = (result.content || "").trim();
-            provider = "deepseek";
-            model = result.model || "deepseek-chat";
-          } catch (deepseekErr) {
-            console.warn("[Transcription] DeepSeek transcription failed:", getErrorMessage(deepseekErr));
-          }
-        } else {
-          console.warn("[Transcription] DeepSeek not configured for turbo mode; trying Groq fallback.");
-        }
-
-        if (!transcription.trim()) {
-          // UPDATED: Removed Groq fallback (deprecated 2026-04-16), using whisper.cpp instead
-          if (isWhisperCppConfigured()) {
-            try {
-              const localResult = await transcribeWithWhisperCpp({
-                audioBuffer: stableFile.buffer,
-                filename: file.originalname,
-              });
-              const text = (localResult.text || "").trim();
-              if (text) {
-                transcription = text;
-                provider = "local";
-                model = localResult.model || "whisper.cpp";
-                fallbackUsed = true;
-                fallbackFrom = "deepseek";
-                localFallbackUsed = true;
-              }
-            } catch (localErr) {
-              console.warn(
-                "[Transcription] whisper.cpp fallback failed after deepseek path failure:",
-                getErrorMessage(localErr),
-              );
-            }
-          }
-          if (!transcription.trim()) {
-            return res.status(503).json({
-              message: isDeepSeekAvailable()
-                ? "Turbo transcription failed and no fallback is available."
-                : "Turbo transcription is unavailable because DeepSeek is not configured and no fallback is available.",
-            });
-          }
-        }
-      } else if (requestedMode === "apex-pro" || requestedMode === "apex-agent") {
-        if (isApexAvailable()) {
-          try {
-            const result = await transcribeWithApex({
-              model: requestedMode,
-              audioBase64: base64Audio,
-              audioFormat,
-              prompt: commonPrompt,
-            });
-            transcription = (result.content || "").trim();
-            provider = "apex";
-            model = result.model || requestedMode;
-          } catch (apexErr) {
-            console.warn("[Transcription] Apex transcription failed:", getErrorMessage(apexErr));
-          }
-        }
-
-        if (!transcription.trim()) {
-          // UPDATED: Removed Groq fallback (deprecated 2026-04-16), using whisper.cpp instead
-          if (isWhisperCppConfigured()) {
-            try {
-              const localResult = await transcribeWithWhisperCpp({
-                audioBuffer: stableFile.buffer,
-                filename: file.originalname,
-              });
-              const text = (localResult.text || "").trim();
-              if (text) {
-                transcription = text;
-                provider = "local";
-                model = localResult.model || "whisper.cpp";
-                fallbackUsed = true;
-                fallbackFrom = "apex";
-                localFallbackUsed = true;
-              }
-            } catch (localErr) {
-              console.warn(
-                "[Transcription] whisper.cpp fallback failed after apex path failure:",
-                getErrorMessage(localErr),
-              );
-            }
-          }
-          if (!transcription.trim()) {
-            return res.status(503).json({
-              message: isApexAvailable()
-                ? "Apex transcription failed and no fallback is available."
-                : "Apex transcription is unavailable because Kimi is not configured and no fallback is available.",
-            });
-          }
+      const startedAt = Date.now();
+      if (isOpenRouterTranscriptionAvailable()) {
+        try {
+          const result = await transcribeWithOpenRouter({
+            audioBuffer: stableFile.buffer,
+            audioFormat,
+          });
+          transcription = result.text.trim();
+          model = result.model;
+          fallbackUsed = result.fallbackUsed;
+          fallbackFrom = result.fallbackFrom;
+        } catch (openRouterError) {
+          console.warn("[Transcription] OpenRouter transcription failed:", getErrorMessage(openRouterError));
         }
       } else {
-        // UPDATED: Using DeepSeek instead of Groq for standard transcription (Groq deprecated 2026-04-16)
-        if (isDeepSeekAvailable()) {
-          try {
-            const result = await transcribeWithDeepSeek({
-              audioBase64: base64Audio,
-              audioFormat,
-              prompt: commonPrompt,
-            });
-            transcription = (result.content || "").trim();
-            provider = "deepseek";
-            model = result.model || "deepseek-chat";
-          } catch (deepseekErr) {
-            console.warn("[Transcription] DeepSeek standard transcription failed:", getErrorMessage(deepseekErr));
+        console.warn("[Transcription] OPENROUTER_API_KEY is not configured; trying local fallback.");
+      }
+
+      if (!transcription.trim() && isWhisperCppConfigured()) {
+        try {
+          const localResult = await transcribeWithWhisperCpp({
+            audioBuffer: stableFile.buffer,
+            filename: file.originalname,
+          });
+          const text = (localResult.text || "").trim();
+          if (text) {
+            transcription = text;
+            provider = "local";
+            model = localResult.model || "whisper.cpp";
+            fallbackUsed = true;
+            fallbackFrom = fallbackFrom || "openrouter";
+            localFallbackUsed = true;
           }
-        }
-        if (!transcription.trim()) {
-          if (isWhisperCppConfigured()) {
-            try {
-              const localResult = await transcribeWithWhisperCpp({
-                audioBuffer: stableFile.buffer,
-                filename: file.originalname,
-              });
-              const text = (localResult.text || "").trim();
-              if (text) {
-                transcription = text;
-                provider = "local";
-                model = localResult.model || "whisper.cpp";
-                localFallbackUsed = true;
-              }
-            } catch (localErr) {
-              console.warn(
-                "[Transcription] whisper.cpp fallback failed after deepseek path failure:",
-                getErrorMessage(localErr),
-              );
-            }
-          }
-          if (!transcription.trim()) {
-            return res.status(503).json({
-              message:
-                "Standard transcription is unavailable because DeepSeek failed/unconfigured and whisper.cpp fallback is unavailable.",
-            });
-          }
+        } catch (localError) {
+          console.warn("[Transcription] whisper.cpp fallback failed:", getErrorMessage(localError));
         }
       }
 
       if (!transcription.trim()) {
-        return res.status(400).json({ message: "Could not transcribe audio. The audio may be too short or unclear." });
+        return res.status(503).json({
+          message: "Voice transcription is temporarily unavailable. Please try again.",
+        });
       }
+
+      console.info("[Transcription] completed", {
+        provider,
+        model,
+        mode: requestedMode,
+        fallbackUsed,
+        localFallbackUsed,
+        audioBytes: stableFile.size,
+        durationMs: Date.now() - startedAt,
+      });
 
       res.json({
         transcription: transcription.trim(),

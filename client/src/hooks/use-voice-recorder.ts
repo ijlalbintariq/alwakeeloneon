@@ -33,13 +33,19 @@ export type UseVoiceRecorderReturn = {
   cancelRecording: () => void;
   /** Send an audio blob to the transcription API */
   transcribe: (blob: Blob) => Promise<string>;
-  /** Start recording, stop, and transcribe in one call */
-  recordAndTranscribe: () => void;
+  /** Stop the current recording and transcribe it */
+  stopAndTranscribe: () => Promise<string | null>;
+  /** Toggle recording; stopping also transcribes */
+  recordAndTranscribe: () => Promise<string | null>;
   /** Last error message */
   error: string | null;
 };
 
-export function useVoiceRecorder(): UseVoiceRecorderReturn {
+export type UseVoiceRecorderOptions = {
+  onAutoTranscription?: (text: string) => void | Promise<void>;
+};
+
+export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoiceRecorderReturn {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -50,6 +56,8 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
+  const autoStopTriggeredRef = useRef(false);
+  const onAutoTranscriptionRef = useRef(options.onAutoTranscription);
 
   const isSupported =
     typeof window !== "undefined" &&
@@ -66,12 +74,9 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
     };
   }, []);
 
-  // Auto-stop after MAX_RECORDING_SECONDS
   useEffect(() => {
-    if (isRecording && duration >= MAX_RECORDING_SECONDS) {
-      stopRecording();
-    }
-  }, [isRecording, duration]);
+    onAutoTranscriptionRef.current = options.onAutoTranscription;
+  }, [options.onAutoTranscription]);
 
   const startTimer = useCallback(() => {
     startTimeRef.current = Date.now();
@@ -97,6 +102,7 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
     try {
       setError(null);
       chunksRef.current = [];
+      autoStopTriggeredRef.current = false;
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -193,8 +199,16 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
 
     try {
       const formData = new FormData();
-      // Determine file extension from MIME type
-      const ext = blob.type.includes("mp4") ? "m4a" : "webm";
+      const sourceName = blob instanceof File ? blob.name.toLowerCase() : "";
+      const ext = blob.type.includes("wav") || sourceName.endsWith(".wav")
+        ? "wav"
+        : blob.type.includes("mpeg") || blob.type.includes("mp3") || sourceName.endsWith(".mp3")
+          ? "mp3"
+          : blob.type.includes("ogg") || sourceName.endsWith(".ogg")
+            ? "ogg"
+            : blob.type.includes("mp4") || blob.type.includes("m4a") || sourceName.endsWith(".m4a") || sourceName.endsWith(".mp4")
+              ? "m4a"
+              : "webm";
       formData.append("audio", blob, `recording.${ext}`);
 
       const response = await fetch("/api/ai/transcribe", {
@@ -223,11 +237,28 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
     }
   }, []);
 
-  // Convenience: used when the user clicks to stop — auto-transcribes
-  const recordAndTranscribe = useCallback(() => {
-    // This is a toggle — if recording, stop; if not, start
-    // The actual transcription is handled by the caller after stopRecording
-  }, []);
+  const stopAndTranscribe = useCallback(async (): Promise<string | null> => {
+    const blob = await stopRecording();
+    if (!blob || blob.size === 0) return null;
+    return transcribe(blob);
+  }, [stopRecording, transcribe]);
+
+  useEffect(() => {
+    if (!isRecording || duration < MAX_RECORDING_SECONDS || autoStopTriggeredRef.current) return;
+    autoStopTriggeredRef.current = true;
+
+    void stopAndTranscribe()
+      .then(async (text) => {
+        if (text) await onAutoTranscriptionRef.current?.(text);
+      })
+      .catch(() => undefined);
+  }, [duration, isRecording, stopAndTranscribe]);
+
+  const recordAndTranscribe = useCallback(async (): Promise<string | null> => {
+    if (isRecording) return stopAndTranscribe();
+    await startRecording();
+    return null;
+  }, [isRecording, startRecording, stopAndTranscribe]);
 
   return {
     isSupported,
@@ -238,6 +269,7 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
     stopRecording,
     cancelRecording,
     transcribe,
+    stopAndTranscribe,
     recordAndTranscribe,
     error,
   };
