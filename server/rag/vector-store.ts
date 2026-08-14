@@ -83,20 +83,12 @@ export async function ensureRagSchema(): Promise<void> {
   // Ensure embedding is nullable in existing databases
   await pool.query("ALTER TABLE rag_chunks ALTER COLUMN embedding DROP NOT NULL");
 
-  // Add parent_chunk_id column and index for Parent-Child relationships
+  // Add parent_chunk_id column for Parent-Child relationships
   await pool.query("ALTER TABLE rag_chunks ADD COLUMN IF NOT EXISTS parent_chunk_id BIGINT NULL REFERENCES rag_chunks(id) ON DELETE CASCADE");
-  await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_chunks_parent ON rag_chunks (parent_chunk_id)");
 
-  await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_documents_user_source ON rag_documents (user_id, source_document_id)");
-  await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_chunks_user_doc ON rag_chunks (user_id, source_document_id)");
-  await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_chunks_tsv_simple ON rag_chunks USING gin (to_tsvector('simple', chunk_text))");
-
-  // IVFFLAT can fail before enough rows exist; keep startup resilient.
-  try {
-    await pool.query("CREATE INDEX IF NOT EXISTS idx_rag_chunks_embedding_cosine ON rag_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)");
-  } catch (err: any) {
-    console.warn("[RAG] Could not ensure ivfflat index:", err?.message || err);
-  }
+  // Note: Indexes idx_rag_chunks_v2_parent, idx_rag_chunks_v2_user_doc, idx_rag_chunks_v2_tsv
+  // already exist from the Voyage migration and cover these columns.
+  // The HNSW index on embedding (halfvec) is managed separately.
 }
 
 export async function upsertRagDocument(args: {
