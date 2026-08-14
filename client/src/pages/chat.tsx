@@ -276,12 +276,25 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
       "deepseek-v4-pro": "DeepSeek Pro",
       "apex-pro": "Apex",
       "apex-apex-pro": "Apex",
+      "apex-agent": "Apex Pro",
+      "claude sonnet 5": "Apex",
+      "kimi-k2.6": "Turbo",
+      "kimi-k2.5": "Turbo",
+      "moonshot-v1-128k": "Turbo",
+      "google/gemini-3-flash-preview": "Standard",
+      "gemini-3-flash-preview": "Standard",
+      "google/gemini-3-pro-preview": "Standard",
+      "gemini-3-flash": "Standard",
     };
     if (modelNames[modelKey]) return modelNames[modelKey];
+    if (modelKey.includes("claude")) return "Apex";
     if (modelKey.includes("deepseek")) return "DeepSeek";
+    if (modelKey.includes("kimi") || modelKey.includes("moonshot")) return "Turbo";
+    if (modelKey.includes("gemini")) return "Standard";
     const apexModel = apexData?.models.find(m => m.id.toLowerCase() === modelKey);
     if (apexModel) return apexModel.name;
     if (modelKey.includes("apex-pro") || modelKey.includes("apex pro")) return "Apex";
+    if (modelKey.includes("apex-agent") || modelKey.includes("apex agent")) return "Apex Pro";
     return "Standard";
   }, [apexData]);
 
@@ -293,8 +306,17 @@ export function ChatModule({ type, title, initialMessage }: { type: string; titl
     if (id.includes("deepseek")) {
       return "Turbo legal analysis optimized for speed and quality.";
     }
-    if (id.includes("apex-pro")) {
-      return "Claude Sonnet 5 mode for fast, high-quality legal drafting and analysis.";
+    if (id.includes("claude") || id.includes("apex-pro") || id.includes("apex pro")) {
+      return "Claude Sonnet 5 mode for advanced legal research & analysis.";
+    }
+    if (id.includes("apex-agent") || id.includes("apex agent")) {
+      return "Claude Sonnet 5 mode with deep reasoning.";
+    }
+    if (id.includes("kimi") || id.includes("moonshot")) {
+      return "Turbo legal analysis optimized for speed and quality.";
+    }
+    if (id.includes("gemini")) {
+      return "Default legal chat mode with reliable fast responses.";
     }
     if (id.includes("groq") || id.includes("standard")) {
       return "Default legal chat mode with reliable fast responses.";

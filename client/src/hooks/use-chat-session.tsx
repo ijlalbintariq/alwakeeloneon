@@ -42,14 +42,17 @@ const ChatSessionContext = createContext<ChatSession | null>(null);
 
 function getModelDisplayName(modelId: string): string {
   const id = modelId.toLowerCase();
+  if (id.includes("claude")) return "Apex";
   if (id.includes("deepseek-v4-pro") || id.includes("deepseek-reasoner")) return "DeepSeek Pro";
   if (id.includes("deepseek")) return "Turbo";
   if (id.includes("openai/gpt-oss-120b")) return "GPT OSS 120B";
   if (id.includes("openai/gpt-oss-20b")) return "GPT OSS 20B";
   if (id.includes("llama-3.1-8b-instant")) return "Llama 3.1 8B";
   if (id.includes("apex-agent")) return "Apex Pro";
-  if (id.includes("apex-pro")) return "Apex";
+  if (id.includes("apex-pro") || id.includes("apex pro")) return "Apex";
   if (id.includes("apex")) return "Apex";
+  if (id.includes("kimi") || id.includes("moonshot")) return "Turbo";
+  if (id.includes("gemini")) return "Standard";
   if (id.includes("groq")) return "Standard";
   return "Standard";
 }
@@ -61,9 +64,11 @@ function getModelFunctionDescription(modelId: string): string {
   if (id.includes("llama-3.1-8b-instant")) return "Low-latency responses for quick legal guidance.";
   if (id.includes("deepseek-v4-pro") || id.includes("deepseek-reasoner")) return "Advanced multi-step reasoning for complex legal problems.";
   if (id.includes("deepseek")) return "Turbo legal analysis optimized for speed and quality.";
-  if (id.includes("apex-agent")) return "Kimi-K2-Thinking mode for deeper legal reasoning in non-web internal context.";
-  if (id.includes("apex-pro")) return "Kimi-K2.5 mode for fast, high-quality legal drafting and analysis.";
-  if (id.includes("apex")) return "Kimi-based legal assistant focused on high-quality responses.";
+  if (id.includes("claude") || id.includes("apex-pro") || id.includes("apex pro")) return "Claude Sonnet 5 mode for advanced legal research & analysis.";
+  if (id.includes("apex-agent") || id.includes("apex agent")) return "Claude Sonnet 5 mode with deep reasoning.";
+  if (id.includes("apex")) return "Claude Sonnet 5 mode for advanced legal research & analysis.";
+  if (id.includes("kimi") || id.includes("moonshot")) return "Turbo legal analysis optimized for speed and quality.";
+  if (id.includes("gemini")) return "Default legal chat mode with reliable fast responses.";
   return "Default legal chat mode with reliable fast responses.";
 }
 
