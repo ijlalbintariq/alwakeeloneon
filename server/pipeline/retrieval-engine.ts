@@ -345,7 +345,7 @@ function scoreCaseLawRowForCitationLookup(row: CaseLaw, intent: QueryIntent): nu
 // Case law retrieval
 // ---------------------------------------------------------------------------
 
-async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number): Promise<RetrievedCaseLaw[]> {
+async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, focusedQueries?: string[]): Promise<RetrievedCaseLaw[]> {
   const expandedQuery = intent.expandedQuery || intent.normalized;
 
   // Path 1 (PRIMARY): Direct judgment table search — 223k verified, structured records.
@@ -456,16 +456,97 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number):
         })
     : Promise.resolve({ adminCaseLaw: [] as CaseLaw[], judgmentCaseLaw: [] as CaseLaw[] });
 
-  const [judgmentRaw, keywordRaw, ragResult] = await Promise.all([
+  // Path 3b (FOCUSED MULTI-QUERY): When focused queries are available, run separate
+  // RAG vector searches for each sub-query in parallel. This produces higher-precision
+  // results for long narratives. Results are merged + deduped with Path 3 results.
+  // Each sub-query is retrieved independently, preserving its query provenance.
+  const focusedRagPromise: Promise<{ adminCaseLaw: CaseLaw[]; judgmentCaseLaw: CaseLaw[] }> =
+    (userId && focusedQueries && focusedQueries.length > 0)
+      ? (async () => {
+          const perQueryTopK = Math.ceil((limit * 3) / focusedQueries.length);
+          const subResults = await Promise.all(
+            focusedQueries.map(fq =>
+              retrieveForQuery({
+                userId,
+                query: fq,
+                expandedQueryText: fq, // focused query IS the expanded query
+                topK: perQueryTopK,
+              }).catch(() => ({ matches: [] as any[] }))
+            ),
+          );
+
+          // Merge all sub-query matches, preserving provenance for logging
+          const allMatches: any[] = [];
+          for (let i = 0; i < subResults.length; i++) {
+            for (const match of subResults[i].matches) {
+              allMatches.push(match);
+            }
+            console.log(`[Retrieval:FocusedRAG] q${i + 1}="${focusedQueries[i].slice(0, 50)}" matches=${subResults[i].matches.length}`);
+          }
+
+          // Process merged matches (same logic as Path 3)
+          const adminDocIds: number[] = [];
+          const seenAdmin = new Set<number>();
+          const judgmentCaseLaw: CaseLaw[] = [];
+          const seenJudgmentIds = new Set<string>();
+
+          for (const match of allMatches) {
+            const sType = String((match.metadata || {}).sourceType || "").toLowerCase();
+            if (sType === "admin-case-law") {
+              const docId = Number(match.sourceDocumentId);
+              if (!Number.isInteger(docId) || docId <= 0 || seenAdmin.has(docId)) continue;
+              seenAdmin.add(docId);
+              adminDocIds.push(docId);
+            } else if (sType === "judgment") {
+              const judgmentId = String((match.metadata || {}).judgmentId || "");
+              if (!judgmentId || seenJudgmentIds.has(judgmentId)) continue;
+              seenJudgmentIds.add(judgmentId);
+              const numericId = Math.abs(parseInt(judgmentId.replace(/-/g, "").slice(0, 8), 16)) || 0;
+              judgmentCaseLaw.push({
+                id: numericId,
+                judgmentId,
+                citation: String((match.metadata || {}).citationString || ""),
+                citationYear: (() => { const m = String((match.metadata || {}).citationString || "").match(/\b(19|20)\d{2}\b/); return m ? parseInt(m[0], 10) : null; })(),
+                citationReport: null,
+                citationPage: null,
+                citationRole: "primary" as const,
+                court: String((match.metadata || {}).court || ""),
+                title: String((match.metadata || {}).title || match.title || ""),
+                summary: match.chunkText?.slice(0, 600) || "",
+                keywords: [] as string[],
+                sourceDocId: null,
+                sourceType: "judgment",
+                sourceFilename: null,
+                documentClassification: null,
+                fallbackExtraction: false,
+                statuteReferences: [] as string[],
+              } as unknown as CaseLaw);
+            }
+          }
+
+          const adminCaseLaw = adminDocIds.length > 0
+            ? await storage.getCaseLawBySourceDocuments(adminDocIds, "admin").catch(() => [] as CaseLaw[])
+            : [] as CaseLaw[];
+
+          return { adminCaseLaw, judgmentCaseLaw };
+        })()
+      : Promise.resolve({ adminCaseLaw: [] as CaseLaw[], judgmentCaseLaw: [] as CaseLaw[] });
+
+  const [judgmentRaw, keywordRaw, ragResult, focusedRagResult] = await Promise.all([
     judgmentKeywordPromise,
     withTimeout(keywordPromise, CASELAW_TIMEOUT_MS, [] as CaseLaw[]),
     withTimeout(ragPromise, RAG_TIMEOUT_MS, { adminCaseLaw: [] as CaseLaw[], judgmentCaseLaw: [] as CaseLaw[] }),
+    withTimeout(focusedRagPromise, RAG_TIMEOUT_MS, { adminCaseLaw: [] as CaseLaw[], judgmentCaseLaw: [] as CaseLaw[] }),
   ]);
   const ragAdminRaw = ragResult.adminCaseLaw;
   const ragJudgmentRaw = ragResult.judgmentCaseLaw;
-  const ragRaw = [...ragAdminRaw, ...ragJudgmentRaw];
+  // Merge standard RAG + focused multi-query RAG results
+  const focusedAdminRaw = focusedRagResult.adminCaseLaw;
+  const focusedJudgmentRaw = focusedRagResult.judgmentCaseLaw;
+  const ragRaw = [...ragAdminRaw, ...ragJudgmentRaw, ...focusedAdminRaw, ...focusedJudgmentRaw];
 
-  console.log(`[Retrieval:Paths] judgment=${judgmentRaw.length} caseLaw=${keywordRaw.length} ragAdmin=${ragAdminRaw.length} ragJudgment=${ragJudgmentRaw.length}`);
+  const focusedLabel = focusedQueries && focusedQueries.length > 0 ? ` focusedRagAdmin=${focusedAdminRaw.length} focusedRagJudgment=${focusedJudgmentRaw.length}` : "";
+  console.log(`[Retrieval:Paths] judgment=${judgmentRaw.length} caseLaw=${keywordRaw.length} ragAdmin=${ragAdminRaw.length} ragJudgment=${ragJudgmentRaw.length}${focusedLabel}`);
 
   // Tag DB-sourced rows so hasTrustedCitation doesn't discard them.
   // These rows came from the structured case_law table and are real records,
@@ -1003,7 +1084,7 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
   caseLaw?: number;
   statutes?: number;
   adminDocs?: number;
-} = {}): Promise<RetrievalResult> {
+} = {}, focusedQueries?: string[]): Promise<RetrievalResult> {
   const t0 = Date.now();
   const caseLawLimit = limits.caseLaw ?? 10;
   const statuteLimit = limits.statutes ?? 8;
@@ -1011,7 +1092,7 @@ export async function runRetrieval(intent: QueryIntent, userId: string, limits: 
 
   const [caseLawResults, statuteResults, adminDocResults] = await Promise.all([
     intent.needsCaseLaw
-      ? fetchCaseLaw(intent, userId, caseLawLimit)
+      ? fetchCaseLaw(intent, userId, caseLawLimit, focusedQueries)
       : Promise.resolve([] as RetrievedCaseLaw[]),
     intent.needsStatutes
       ? fetchStatutes(intent, statuteLimit)

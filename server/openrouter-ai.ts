@@ -22,7 +22,7 @@ function resolveOpenRouterApiKey(): string | undefined {
   return process.env.OPENROUTER_API_KEY || process.env.OpenRouter_API_KEY;
 }
 
-function getClient(): OpenAI {
+export function getClient(): OpenAI {
   if (client) return client;
   const apiKey = resolveOpenRouterApiKey();
   if (!apiKey) {
@@ -99,6 +99,7 @@ export async function runToolJudgmentSearchOR(
         "\n\nPAKISTANI LEGAL TERMINOLOGY MAP (use BOTH English AND Urdu/Arabic terms):" +
         "\n--- FAMILY LAW ---" +
         "\nDower/Mahr: 'mehr recovery', 'haq mehr', 'mahr', 'deferred dower', 'prompt dower', 'dower suit', 'mehr nikahnama'" +
+        "\nDowry/Jahez: 'dowry recovery', 'jahez return', 'dowry articles', 'bridal gifts', 'recovery dowry articles family court', 'gold ornaments wife', 'dowry articles list nikahnama'" +
         "\nMarriage: 'nikahnama', 'nikah', 'marriage contract', 'valima', 'rukhsati'" +
         "\nDivorce: 'talaq', 'khula', 'dissolution marriage', 'talaq-e-tafweez', 'mubarat', 'faskh'" +
         "\nMaintenance: 'nafaqa', 'maintenance wife', 'maintenance children', 'iddat maintenance'" +
@@ -148,6 +149,8 @@ export async function runToolJudgmentSearchOR(
         "\n  call 1 → 'mehr recovery suit'  call 2 → 'hiba wife property'  call 3 → 'bona fide purchaser Section 41'" +
         "\n  call 4 → 'lis pendens Section 52'  call 5 → 'nikahnama dower enforceable'  call 6 → 'mesne profits'" +
         "\n  call 7 → 'settlement waiver mehr'  call 8 → 'family court jurisdiction property'" +
+        "\nFor dowry/jahez recovery from husband query:" +
+        "\n  call 1 → 'recovery dowry articles'  call 2 → 'jahez return family court'  call 3 → 'gold ornaments wife'" +
         "\nFor murder/bail query:" +
         "\n  call 1 → 'qatl-e-amd Section 302'  call 2 → 'bail murder'  call 3 → 'ocular evidence'" +
         "\n\nRULES:" +

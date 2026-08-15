@@ -16203,6 +16203,9 @@ The user has attached the following documents for your reference. Analyze them c
             `\nTOPIC RELEVANCE CHECK (MANDATORY before citing):\n` +
             `- For EACH case in the list, verify it is DIRECTLY relevant to the legal domain being discussed.\n` +
             `- SKIP any case that belongs to a different legal domain (e.g. criminal case in a property dispute, prisoner rights case in a contract matter).\n` +
+            `- Match the SPECIFIC LEGAL REMEDY, not just the broad topic. For recovery of dowry/jahez, cite cases about recovery of dowry articles — NOT cases about Khula, Iddat, or general marriage law.\n` +
+            `- A case about divorce/Khula is NOT relevant to a query about recovery of gold/cash/dowry articles, even though both are "family law".\n` +
+            `- A case about land possession is NOT relevant to recovery of matrimonial property, even though both involve "property rights".\n` +
             `- PCRLJ/Criminal citations in a civil/property/family query = SKIP IT.\n` +
             `- A topically irrelevant citation DESTROYS credibility — skip off-topic cases entirely.\n` +
             `- If a case is about a completely different legal topic (e.g., landlord-tenant in a CrPC FIR query), DO NOT CITE IT.\n` +

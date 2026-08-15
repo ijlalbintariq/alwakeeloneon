@@ -142,6 +142,9 @@ function cacheSet(key: string, payload: string): void {
 const PAKISTANI_LEGAL_SYNONYMS: string[][] = [
   // Family Law
   ["mehr", "mahr", "dower", "haq mehr", "mahar"],
+  ["dowry", "jahez", "dowry articles", "articles of dowry", "bridal gifts", "bridal articles", "jahez articles", "dowry property"],
+  ["gold ornaments", "gold jewellery", "gold jewelry", "ornaments", "jewellery", "jewelry", "personal ornaments", "tola", "tolas"],
+  ["wife property", "matrimonial property", "personal property wife", "property entrusted"],
   ["nikahnama", "nikah", "marriage contract", "marriage deed"],
   ["talaq", "divorce", "dissolution marriage"],
   ["khula", "khul", "dissolution suit wife"],
