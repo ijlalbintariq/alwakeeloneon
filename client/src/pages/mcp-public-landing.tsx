@@ -117,7 +117,7 @@ export default function McpPublicLandingPage() {
           </TabsTrigger>
           <TabsTrigger value="chatgpt" className="text-xs md:text-sm flex items-center gap-2">
             <Compass size={14} />
-            ChatGPT Actions
+            ChatGPT Plugin
           </TabsTrigger>
           <TabsTrigger value="gemini" className="text-xs md:text-sm flex items-center gap-2">
             <Terminal size={14} />
@@ -208,38 +208,46 @@ export default function McpPublicLandingPage() {
               <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-2">
                 <Compass size={16} />
               </div>
-              <CardTitle className="text-base font-bold">Integrating with ChatGPT (Custom GPT Actions)</CardTitle>
-              <CardDescription className="text-xs">Expose AL WAKEELO legal research tools to custom GPTs.</CardDescription>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base font-bold">Official ChatGPT Plugin Integration</CardTitle>
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full">Official Plugin</span>
+              </div>
+              <CardDescription className="text-xs">Connect AL WAKEELO's official plugin directly inside ChatGPT.</CardDescription>
             </CardHeader>
             <CardContent className="px-5 pb-5 space-y-4 text-xs text-muted-foreground leading-relaxed">
-              <p>
-                Since ChatGPT does not support custom remote MCP endpoints directly, you can import AL WAKEELO as a **Custom Action** inside your Custom GPT with our public OpenAPI configuration:
-              </p>
+              <div className="p-3 rounded-xl bg-background border border-border/60 space-y-1">
+                <span className="text-[10.5px] font-bold text-foreground block">Official Integration URL:</span>
+                <div className="flex items-center justify-between gap-2 bg-muted/50 p-2 rounded-lg font-mono text-[10.5px] text-primary select-all">
+                  <span>https://www.alwakeelo.com/mcp</span>
+                  <Button 
+                    onClick={() => handleCopy("https://www.alwakeelo.com/mcp", "chatgpt-url")} 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                  >
+                    {copiedText === "chatgpt-url" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                  </Button>
+                </div>
+              </div>
+
               <ol className="list-decimal list-inside space-y-3 pl-1">
                 <li>
-                  Open <a href="https://chatgpt.com" target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">chatgpt.com <ExternalLink size={10} /></a>, click **Explore GPTs**, and select **Create GPT**.
+                  Open <a href="https://chatgpt.com" target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">chatgpt.com <ExternalLink size={10} /></a> and log in to your account.
                 </li>
                 <li>
-                  Go to the **Configure** tab, scroll down, and click **Create new action**.
+                  Go to **Settings** → **Apps & Plugins** (or click **Explore GPTs / Plugins**).
                 </li>
                 <li>
-                  Under **Authentication**, select **API Key**:
-                  <ul className="list-disc list-inside pl-4 mt-1 space-y-1 text-muted-foreground">
-                    <li>Auth Type: **Bearer**</li>
-                    <li>API Key: Paste your AL WAKEELO API Key (e.g. `aw_live_xxx`)</li>
-                  </ul>
+                  Search for **"AL WAKEELO"** in the plugin search bar.
                 </li>
                 <li>
-                  Under **Schema**, click **Import from URL** and paste this link:
-                  <div className="flex items-center gap-1.5 mt-1.5 bg-background border rounded px-2 py-1 font-mono text-[10px] text-foreground truncate select-all">
-                    <span>https://alwakeelo.com/api/mcp/openapi.json</span>
-                  </div>
+                  Click **Connect / Install** on the official AL WAKEELO plugin. Complete the quick OAuth login authorization if prompted.
                 </li>
                 <li>
-                  Click **Import**. ChatGPT will auto-configure all 4 legal search tools!
+                  Start a conversation in ChatGPT, type <kbd className="px-1.5 py-0.5 bg-muted rounded border text-[10px] font-bold text-foreground">@</kbd> in the chat box, and select **AL WAKEELO**.
                 </li>
                 <li>
-                  Save your Custom GPT. You can now prompt ChatGPT to query case law and statutes!
+                  You can now ask ChatGPT to search 600,000+ judgments, draft legal petitions, or manage your court diary directly!
                 </li>
               </ol>
             </CardContent>

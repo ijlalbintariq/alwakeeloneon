@@ -321,7 +321,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
               Connect our massive database of 600,000+ judgments and laws directly to your own AI chatbot app. 
-              No more copying and pasting—simply generate a secure API Key and start searching Pakistan laws inside Claude Desktop, Claude Connectors, or ChatGPT Custom GPTs.
+              No more copying and pasting—simply generate a secure API Key and start searching Pakistan laws inside Claude Desktop, Claude Connectors, or Official ChatGPT Plugin.
             </p>
             <div className="flex flex-wrap gap-4 pt-2">
               <button
@@ -353,9 +353,9 @@ export default function LandingPage() {
                   <Compass size={18} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-foreground text-sm">ChatGPT Custom Actions</h3>
+                  <h3 className="font-bold text-foreground text-sm">Official ChatGPT Plugin</h3>
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    Import our OpenAPI schema URL into your Custom GPT Actions to instantly integrate statutory search.
+                    Search for AL WAKEELO in ChatGPT Plugins, connect your account, and mention @AL WAKEELO directly in chat.
                   </p>
                 </div>
               </div>
