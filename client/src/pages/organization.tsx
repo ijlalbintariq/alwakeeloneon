@@ -279,6 +279,21 @@ export default function OrganizationPage() {
     },
   });
 
+  const cancelOrgInvite = useMutation({
+    mutationFn: async (inviteId: number) => {
+      if (!org?.id) throw new Error("Organization not available");
+      await apiRequest("DELETE", `/api/org/${org.id}/invites/${inviteId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Invitation canceled" });
+      queryClient.invalidateQueries({ queryKey: ["/api/org/invites"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/org/seats"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Cancel failed", description: err?.message || "Could not cancel invite.", variant: "destructive" });
+    },
+  });
+
   const removeMember = useMutation({
     mutationFn: async (memberId: string) => {
       if (!org?.id) throw new Error("Organization not available");
@@ -840,13 +855,26 @@ export default function OrganizationPage() {
                                 </div>
                               </td>
                               <td className="px-6 py-4 text-right">
-                                <button
-                                  onClick={() => inviteMember.mutate(inv.email)}
-                                  className="text-primary hover:text-primary text-sm font-semibold"
-                                  data-testid={`button-resend-invite-${inv.id}`}
-                                >
-                                  Resend
-                                </button>
+                                <div className="flex items-center justify-end gap-3">
+                                  <button
+                                    onClick={() => inviteMember.mutate(inv.email)}
+                                    disabled={inviteMember.isPending}
+                                    className="text-primary hover:text-primary/80 text-sm font-semibold inline-flex items-center gap-1 transition-colors disabled:opacity-50"
+                                    data-testid={`button-resend-invite-${inv.id}`}
+                                  >
+                                    <Send size={13} />
+                                    Resend
+                                  </button>
+                                  <button
+                                    onClick={() => cancelOrgInvite.mutate(inv.id)}
+                                    disabled={cancelOrgInvite.isPending}
+                                    className="text-red-400 hover:text-red-300 text-sm font-semibold inline-flex items-center gap-1 transition-colors disabled:opacity-50"
+                                    data-testid={`button-cancel-invite-${inv.id}`}
+                                  >
+                                    <Trash2 size={13} />
+                                    Cancel
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}

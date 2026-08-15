@@ -638,6 +638,8 @@ export interface IStorage {
   removeOrgMember(orgId: number, userId: string): Promise<void>;
   isOrgMember(orgId: number, userId: string): Promise<boolean>;
   createOrgInvite(invite: InsertOrgInvite): Promise<OrgInvite>;
+  updateOrgInviteTimestamp(inviteId: number): Promise<OrgInvite>;
+  cancelOrgInvite(orgId: number, inviteId: number): Promise<void>;
   getOrgInvites(orgId: number): Promise<OrgInvite[]>;
   getPendingInvitesForUser(email: string): Promise<(OrgInvite & { orgName: string })[]>;
   acceptOrgInvite(inviteId: number, userId: string): Promise<void>;
@@ -3796,6 +3798,18 @@ export class DatabaseStorage implements IStorage {
   async createOrgInvite(invite: InsertOrgInvite): Promise<OrgInvite> {
     const [created] = await db.insert(orgInvites).values(invite).returning();
     return created;
+  }
+
+  async updateOrgInviteTimestamp(inviteId: number): Promise<OrgInvite> {
+    const [updated] = await db.update(orgInvites)
+      .set({ createdAt: new Date() })
+      .where(eq(orgInvites.id, inviteId))
+      .returning();
+    return updated;
+  }
+
+  async cancelOrgInvite(orgId: number, inviteId: number): Promise<void> {
+    await db.delete(orgInvites).where(and(eq(orgInvites.id, inviteId), eq(orgInvites.orgId, orgId)));
   }
 
   async getOrgInvites(orgId: number): Promise<OrgInvite[]> {

@@ -21095,20 +21095,32 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     if (!org) return res.status(404).json({ message: "Organization not found" });
     if (org.ownerId !== userId) return res.status(403).json({ message: "Only the owner can invite members" });
 
-    // Enforce seat limit
+    // Fetch owner details
     const owner = await storage.getUserProfile(org.ownerId);
-    const currentMembers = await storage.getOrgMembers(orgId);
-    const maxSeats = getMaxSeats(owner?.subscriptionTier, owner?.isAdmin);
-    if (currentMembers.length >= maxSeats) {
-      return res.status(403).json({
-        message: `Seat limit reached (${currentMembers.length}/${maxSeats}). Upgrade your plan to add more members.`,
-      });
-    }
 
     const { email } = req.body;
     if (!email || typeof email !== "string") return res.status(400).json({ message: "Email is required" });
     const targetEmail = email.trim().toLowerCase();
-    const invite = await storage.createOrgInvite({ orgId, email: targetEmail, invitedBy: userId });
+
+    // Check if pending invite already exists for this email in this org
+    const existingInvites = await storage.getOrgInvites(orgId);
+    const existingPending = existingInvites.find(i => i.email.toLowerCase() === targetEmail && i.status === "pending");
+
+    let invite;
+    if (existingPending) {
+      // Reuse existing invite & refresh timestamp instead of creating duplicate
+      invite = await storage.updateOrgInviteTimestamp(existingPending.id);
+    } else {
+      // Enforce seat limit before creating new invite
+      const currentMembers = await storage.getOrgMembers(orgId);
+      const maxSeats = getMaxSeats(owner?.subscriptionTier, owner?.isAdmin);
+      if (currentMembers.length >= maxSeats) {
+        return res.status(403).json({
+          message: `Seat limit reached (${currentMembers.length}/${maxSeats}). Upgrade your plan to add more members.`,
+        });
+      }
+      invite = await storage.createOrgInvite({ orgId, email: targetEmail, invitedBy: userId });
+    }
 
     const inviterName = `${owner?.firstName || ""} ${owner?.lastName || ""}`.trim() || owner?.email || "An advocate";
     sendOrgInviteEmail({
@@ -21130,6 +21142,17 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     if (!org || org.ownerId !== userId) return res.status(403).json({ message: "Only the owner can view invites" });
     const invites = await storage.getOrgInvites(orgId);
     res.json(invites);
+  });
+
+  app.delete("/api/org/:orgId/invites/:inviteId", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const orgId = parseInt(String(req.params.orgId));
+    const inviteId = parseInt(String(req.params.inviteId));
+    const org = await storage.getOrganization(orgId);
+    if (!org || org.ownerId !== userId) return res.status(403).json({ message: "Only the owner can cancel invites" });
+    await storage.cancelOrgInvite(orgId, inviteId);
+    res.json({ message: "Invitation canceled" });
   });
 
   app.delete("/api/org/:orgId/members/:memberId", async (req, res) => {
