@@ -94,7 +94,7 @@ import { isCloudPdfOcrAvailable, ocrPdfWithCloud } from "./cloud-ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 import { isOpenRouterTranscriptionAvailable, resolveOpenRouterAudioFormat, transcribeWithOpenRouter } from "./openrouter-transcription";
 import { deleteR2Object, getR2ObjectBinary, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
-import { getEmailProviderStatus, sendResendTestEmail, sendBroadcastEmail, sendCaseLeadNotification } from "./email";
+import { getEmailProviderStatus, sendResendTestEmail, sendBroadcastEmail, sendCaseLeadNotification, sendOrgInviteEmail } from "./email";
 import { verifyCaptchaToken } from "./captcha";
 import {
   backfillStyleMemoryFromSavedDrafts,
@@ -21107,7 +21107,18 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
     const { email } = req.body;
     if (!email || typeof email !== "string") return res.status(400).json({ message: "Email is required" });
-    const invite = await storage.createOrgInvite({ orgId, email: email.toLowerCase(), invitedBy: userId });
+    const targetEmail = email.trim().toLowerCase();
+    const invite = await storage.createOrgInvite({ orgId, email: targetEmail, invitedBy: userId });
+
+    const inviterName = `${owner?.firstName || ""} ${owner?.lastName || ""}`.trim() || owner?.email || "An advocate";
+    sendOrgInviteEmail({
+      to: targetEmail,
+      orgName: org.name,
+      inviterName,
+    }).catch((err) => {
+      console.error("[OrgInviteEmail] Failed to send email via Resend:", err);
+    });
+
     res.json(invite);
   });
 

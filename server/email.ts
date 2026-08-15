@@ -957,3 +957,70 @@ export async function sendSubscriptionExpiryWarningEmail(args: {
     text,
   });
 }
+
+export async function sendOrgInviteEmail(args: {
+  to: string;
+  orgName: string;
+  inviterName: string;
+}): Promise<EmailSendResult> {
+  const safeOrgName = escapeHtml(args.orgName);
+  const safeInviterName = escapeHtml(args.inviterName);
+  const logoUrl = escapeHtml(resolveBrandLogoUrl());
+  const siteUrl = process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "https://alwakeelo.com";
+  const inviteUrl = `${siteUrl}/organization`;
+  const safeInviteUrl = escapeHtml(inviteUrl);
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#0f172a;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:28px 14px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#111827;border:1px solid #1f2937;border-radius:18px;overflow:hidden;">
+          <tr>
+            <td style="padding:32px 28px 18px 28px;text-align:center;background:linear-gradient(180deg,#111827 0%,#0b1220 100%);">
+              <img src="${logoUrl}" alt="Al Wakeelo" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:14px;margin:0 auto 16px;border:1px solid rgba(245,158,11,0.35);" />
+              <h1 style="margin:0;color:#f8fafc;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-0.3px;">Al Wakeelo</h1>
+              <p style="margin:8px 0 0;color:#f59e0b;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Team Collaboration Invitation</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 14px;color:#e2e8f0;font-size:15px;line-height:1.6;">Assalam-o-Alaikum,</p>
+              <p style="margin:0 0 20px;color:#94a3b8;font-size:14px;line-height:1.7;">
+                <strong style="color:#f8fafc;">${safeInviterName}</strong> has invited you to join <strong style="color:#f59e0b;">${safeOrgName}</strong> on Al Wakeelo — Pakistan's AI-Powered Digital Lawyer & Case Law Platform.
+              </p>
+              <div style="margin:24px 0;text-align:center;">
+                <a href="${safeInviteUrl}" style="display:inline-block;padding:14px 32px;background:#f59e0b;color:#0f172a;text-decoration:none;font-size:14px;font-weight:800;border-radius:12px;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(245,158,11,0.3);">Accept Invitation</a>
+              </div>
+              <p style="margin:20px 0 0;color:#64748b;font-size:13px;line-height:1.6;">
+                Log in or sign up with <strong style="color:#cbd5e1;">${escapeHtml(args.to)}</strong> to accept the invitation and access shared chamber documents and features.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px;background:#0b1427;border-top:1px solid #1f2937;text-align:center;">
+              <p style="margin:0;color:#64748b;font-size:11px;line-height:1.6;">Need help? <a href="mailto:support@alwakeelo.com" style="color:#f59e0b;text-decoration:none;font-weight:700;">support@alwakeelo.com</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Assalam-o-Alaikum,\n\n${args.inviterName} has invited you to join ${args.orgName} on Al Wakeelo.\n\nAccept your invitation by visiting:\n${inviteUrl}\n\nLog in or sign up with ${args.to} to get started.\n\nNeed help? support@alwakeelo.com\n\n- Al Wakeelo`;
+
+  return sendEmailViaResend({
+    to: args.to,
+    subject: `📩 You're invited to join ${args.orgName} on Al Wakeelo`,
+    html,
+    text,
+  });
+}
+
