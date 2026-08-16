@@ -398,3 +398,52 @@ export async function runKnowledgePipeline(
     ),
   ]);
 }
+
+/**
+ * Drop-in replacement for gatherKnowledgeContext(query, userId).
+ * Returns only the context string — same signature as the old function.
+ */
+export async function gatherKnowledgeContextV2(
+  query: string,
+  userId?: string,
+  conversationHistory?: ConversationTurn[],
+  context?: { module?: string },
+): Promise<string> {
+  try {
+    const result = await runKnowledgePipeline(query, userId, conversationHistory, context);
+    return result.contextString;
+  } catch (err) {
+    console.error("[Pipeline:Error]", err instanceof Error ? err.message : String(err));
+    return "\n\n[SYSTEM SAFETY GATE — KNOWLEDGE PIPELINE ERROR]\n" +
+      "CRITICAL: Do NOT cite ANY specific section numbers, article numbers, or case citations from memory. " +
+      "Provide general legal guidance only.";
+  }
+}
+
+/**
+ * Same as gatherKnowledgeContextV2 but returns the full pipeline result
+ * including caseLawHits for the Case Law Card.
+ */
+export async function gatherKnowledgeWithHits(
+  query: string,
+  userId?: string,
+  conversationHistory?: ConversationTurn[],
+  context?: { module?: string },
+): Promise<PipelineRunResult> {
+  try {
+    return await runKnowledgePipeline(query, userId, conversationHistory, context);
+  } catch (err) {
+    console.error("[Pipeline:Error]", err instanceof Error ? err.message : String(err));
+    return {
+      contextString: "\n\n[SYSTEM SAFETY GATE — KNOWLEDGE PIPELINE ERROR]\n" +
+        "CRITICAL: Do NOT cite ANY specific section numbers, article numbers, or case citations from memory. " +
+        "Provide general legal guidance only.",
+      hasCaseLaw: false,
+      hasStatutes: false,
+      topics: [],
+      durationMs: 0,
+      caseLawHits: [],
+    };
+  }
+}
+
