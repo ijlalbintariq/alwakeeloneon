@@ -48,8 +48,10 @@ export async function generateSemanticRetrievalQueries(narrative: string): Promi
     syntheticHeadnote: "",
   };
 
+  const LLM_TIMEOUT_MS = 4000;
+
   try {
-    const response = await client.chat.completions.create({
+    const llmCall = client.chat.completions.create({
       model,
       response_format: { type: "json_object" },
       messages: [
@@ -80,6 +82,14 @@ Translate Roman Urdu concepts to official Pakistani legal terminology. Output va
         },
       ],
     });
+
+    const timeoutTimer = new Promise<null>((resolve) => setTimeout(() => resolve(null), LLM_TIMEOUT_MS));
+    const response = await Promise.race([llmCall, timeoutTimer]);
+
+    if (!response) {
+      console.warn(`[generateSemanticRetrievalQueries] LLM call timed out after ${LLM_TIMEOUT_MS}ms. Falling back to regex extraction.`);
+      return emptyFallback;
+    }
 
     const content = response.choices[0]?.message?.content || "{}";
     const parsed = JSON.parse(content);
