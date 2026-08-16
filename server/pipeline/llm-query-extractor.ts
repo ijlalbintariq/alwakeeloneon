@@ -4,6 +4,8 @@ export interface SemanticQueries {
   legal_domains: string[];
   issues: string[];
   queries: string[];
+  /** HyDE: 2-sentence synthetic court headnote for high vector similarity against real judgments */
+  syntheticHeadnote: string;
 }
 
 /**
@@ -31,7 +33,8 @@ Analyze the user's narrative (which may be in English, Urdu, or Roman Urdu like 
     // Query 1: Conceptual (what happened?) e.g. "husband retained wife property"
     // Query 2: Terminology (what terms do judges use?) e.g. "dowry stridhan articles recovery"
     // Query 3: Remedy (what is the procedural remedy?) e.g. "suit for recovery dowry section 406"
-  ]
+  ],
+  "syntheticHeadnote": "A 2-sentence hypothetical Pakistani court headnote (starting with 'Held:' or 'The petitioner...') that would appear in a judgment resolving this issue. Use formal Pakistani legal language with specific section/act references. Example: 'Held: The petitioner wife is entitled to recovery of dowry articles under Section 406 PPC. The respondent husband failed to discharge the burden of proof regarding return of gold ornaments.'"
 }
 Translate Roman Urdu concepts to official Pakistani legal terms. Output valid JSON only.`
         },
@@ -48,11 +51,12 @@ Translate Roman Urdu concepts to official Pakistani legal terms. Output valid JS
     return {
       legal_domains: Array.isArray(parsed.legal_domains) ? parsed.legal_domains : [],
       issues: Array.isArray(parsed.issues) ? parsed.issues : [],
-      queries: Array.isArray(parsed.queries) ? parsed.queries : []
+      queries: Array.isArray(parsed.queries) ? parsed.queries : [],
+      syntheticHeadnote: typeof parsed.syntheticHeadnote === "string" ? parsed.syntheticHeadnote : "",
     };
   } catch (error) {
     console.error("[generateSemanticRetrievalQueries] LLM Extraction Failed:", error);
-    return { legal_domains: [], issues: [], queries: [] };
+    return { legal_domains: [], issues: [], queries: [], syntheticHeadnote: "" };
   }
 }
 
