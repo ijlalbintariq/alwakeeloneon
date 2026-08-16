@@ -604,7 +604,7 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
 
   for (const stream of rrfStreams) {
     stream.items.forEach((row, rank) => {
-      const key = normalizeCitationKey(String(row.citation || row.judgmentId || row.id || ""));
+      const key = normalizeCitationKey(String(row.citation || (row as any).judgmentId || row.id || ""));
       if (!key) return;
       const rankContribution = stream.weight / (kRrf + (rank + 1));
       rrfScores.set(key, (rrfScores.get(key) || 0) + rankContribution);

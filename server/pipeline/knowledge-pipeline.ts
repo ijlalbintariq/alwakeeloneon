@@ -447,3 +447,5 @@ export async function gatherKnowledgeWithHits(
   }
 }
 
+export type { ConversationTurn };
+
