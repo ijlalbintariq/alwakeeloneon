@@ -591,12 +591,38 @@ async function fetchCaseLaw(intent: QueryIntent, userId: string, limit: number, 
   // Use a flat low threshold of 5 — just enough to exclude truly unrelated rows.
   const rawMinScore = isCitationLookup ? 0 : 2;
 
+  // ── Reciprocal Rank Fusion (RRF) Multi-Stream Rank Scoring ─────────────────
+  const rrfScores = new Map<string, number>();
+  const kRrf = 60;
+
+  const rrfStreams: Array<{ items: CaseLaw[]; weight: number }> = [
+    { items: judgmentRaw, weight: 1.0 },
+    { items: taggedKeywordRaw, weight: 0.95 },
+    { items: ragJudgmentRaw, weight: 1.0 },
+    { items: focusedJudgmentRaw, weight: 0.90 },
+  ];
+
+  for (const stream of rrfStreams) {
+    stream.items.forEach((row, rank) => {
+      const key = normalizeCitationKey(String(row.citation || row.judgmentId || row.id || ""));
+      if (!key) return;
+      const rankContribution = stream.weight / (kRrf + (rank + 1));
+      rrfScores.set(key, (rrfScores.get(key) || 0) + rankContribution);
+    });
+  }
+
   // Apply a floor to not over-filter judgment-sourced rows which are already verified
   const scored = withCitation
     .map((row) => {
-      const relevanceScore = scoreFn(row, intent);
-      // Judgment DB rows get a 5-point bonus — they are pre-verified, full-text indexed
-      const adjustedScore = row.sourceType === "judgment" ? relevanceScore + 5 : relevanceScore;
+      const citKey = normalizeCitationKey(String(row.citation || ""));
+      const rrfScore = rrfScores.get(citKey) || 0;
+      const baseRelevance = scoreFn(row, intent);
+
+      // Combine base relevance + RRF rank fusion score (scaled 0-100)
+      const rrfBoost = Math.round(rrfScore * 500);
+      const judgmentBonus = row.sourceType === "judgment" ? 5 : 0;
+      const adjustedScore = Math.min(100, baseRelevance + rrfBoost + judgmentBonus);
+
       return { row, relevanceScore: adjustedScore };
     })
     .filter((item) => item.relevanceScore >= rawMinScore)

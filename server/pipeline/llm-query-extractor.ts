@@ -1,20 +1,52 @@
 import { getClient, getOpenRouterToolModelName } from "../openrouter-ai";
 
-export interface SemanticQueries {
-  legal_domains: string[];
+export interface MultiAngleQueries {
+  hydeHeadnote: string;
+  issueQuery: string;
+  statutoryQuery: string;
+  terminologyQuery: string;
+}
+
+export interface StructuredLegalResearch {
+  jurisdiction: string;
+  domains: string[];
   issues: string[];
+  entities: string[];
+  statuteCandidates: string[];
+  proceduralContext: string;
+  multiAngleQueries: MultiAngleQueries;
+  confidence: number; // 0.0 to 1.0
+  // Backward compatibility fields
+  legal_domains: string[];
   queries: string[];
-  /** HyDE: 2-sentence synthetic court headnote for high vector similarity against real judgments */
   syntheticHeadnote: string;
 }
 
 /**
- * Extracts structured semantic queries from a complex narrative using gpt-4o-mini.
- * The JSON schema enforces conceptual, terminology, and remedy queries.
+ * Extracts structured legal research representation from a narrative query using gpt-4o-mini / OpenRouter tool model.
  */
-export async function generateSemanticRetrievalQueries(narrative: string): Promise<SemanticQueries> {
+export async function generateSemanticRetrievalQueries(narrative: string): Promise<StructuredLegalResearch> {
   const client = getClient();
   const model = getOpenRouterToolModelName(); // defaults to openai/gpt-4o-mini
+
+  const emptyFallback: StructuredLegalResearch = {
+    jurisdiction: "Pakistan",
+    domains: [],
+    issues: [],
+    entities: [],
+    statuteCandidates: [],
+    proceduralContext: "",
+    multiAngleQueries: {
+      hydeHeadnote: "",
+      issueQuery: "",
+      statutoryQuery: "",
+      terminologyQuery: "",
+    },
+    confidence: 0,
+    legal_domains: [],
+    queries: [],
+    syntheticHeadnote: "",
+  };
 
   try {
     const response = await client.chat.completions.create({
@@ -23,40 +55,86 @@ export async function generateSemanticRetrievalQueries(narrative: string): Promi
       messages: [
         {
           role: "system",
-          content: `You are an expert Pakistani Legal Researcher.
-Analyze the user's narrative (which may be in English, Urdu, or Roman Urdu like "shohar ne jahez rakh liya") and generate a JSON object with:
+          content: `You are a senior Pakistani Legal Research Agent.
+Analyze the user's query (which may be in English, Urdu, or Roman Urdu like "shohar ne jahez rakh liya") and output a JSON object:
 {
-  "legal_domains": ["family", "criminal"], // e.g. tax, banking, corporate, family, constitutional
-  "issues": ["retention of wife's property", "criminal breach of trust"], // Core legal disputes
-  "queries": [
-    // Exactly 3 short English search queries (max 5-6 words each) for a vector database:
-    // Query 1: Conceptual (what happened?) e.g. "husband retained wife property"
-    // Query 2: Terminology (what terms do judges use?) e.g. "dowry stridhan articles recovery"
-    // Query 3: Remedy (what is the procedural remedy?) e.g. "suit for recovery dowry section 406"
-  ],
-  "syntheticHeadnote": "A 2-sentence hypothetical Pakistani court headnote (starting with 'Held:' or 'The petitioner...') that would appear in a judgment resolving this issue. Use formal Pakistani legal language with specific section/act references. Example: 'Held: The petitioner wife is entitled to recovery of dowry articles under Section 406 PPC. The respondent husband failed to discharge the burden of proof regarding return of gold ornaments.'"
+  "jurisdiction": "Pakistan",
+  "domains": ["family law", "criminal law"],
+  "issues": ["retention of wife property", "criminal breach of trust"],
+  "entities": ["wife", "husband", "dowry articles", "gold ornaments"],
+  "statuteCandidates": ["PPC Section 406", "Muslim Family Laws Ordinance 1961 Section 9", "Family Courts Act 1964"],
+  "proceduralContext": "suit for recovery / criminal complaint",
+  "multiAngleQueries": {
+    "hydeHeadnote": "A 2-sentence hypothetical Pakistani court headnote (starting with 'Held:' or 'The petitioner...') that would appear in a judgment resolving this issue. Use formal Pakistani legal language with specific section/act references. Example: 'Held: The petitioner wife is entitled to recovery of dowry articles under Section 406 PPC. The respondent husband failed to discharge the burden of proof regarding return of gold ornaments.'",
+    "issueQuery": "husband retained wife property dowry recovery",
+    "statutoryQuery": "Section 406 PPC Family Courts Act Section 9",
+    "terminologyQuery": "dowry stridhan articles recovery"
+  },
+  "confidence": 0.95
 }
-Translate Roman Urdu concepts to official Pakistani legal terms. Output valid JSON only.`
+Translate Roman Urdu concepts to official Pakistani legal terminology. Output valid JSON only.`,
         },
         {
           role: "user",
-          content: narrative
-        }
-      ]
+          content: narrative,
+        },
+      ],
     });
 
     const content = response.choices[0]?.message?.content || "{}";
-    const parsed = JSON.parse(content) as SemanticQueries;
-    
+    const parsed = JSON.parse(content);
+
+    const domains: string[] = Array.isArray(parsed.domains)
+      ? parsed.domains
+      : Array.isArray(parsed.legal_domains)
+      ? parsed.legal_domains
+      : [];
+    const issues: string[] = Array.isArray(parsed.issues) ? parsed.issues : [];
+    const entities: string[] = Array.isArray(parsed.entities) ? parsed.entities : [];
+    const statuteCandidates: string[] = Array.isArray(parsed.statuteCandidates) ? parsed.statuteCandidates : [];
+    const proceduralContext: string = typeof parsed.proceduralContext === "string" ? parsed.proceduralContext : "";
+    const confidence: number = typeof parsed.confidence === "number" ? parsed.confidence : 0.8;
+
+    const maq = parsed.multiAngleQueries || {};
+    const hydeHeadnote = typeof maq.hydeHeadnote === "string"
+      ? maq.hydeHeadnote
+      : typeof parsed.syntheticHeadnote === "string"
+      ? parsed.syntheticHeadnote
+      : "";
+    const issueQuery = typeof maq.issueQuery === "string" ? maq.issueQuery : "";
+    const statutoryQuery = typeof maq.statutoryQuery === "string" ? maq.statutoryQuery : "";
+    const terminologyQuery = typeof maq.terminologyQuery === "string" ? maq.terminologyQuery : "";
+
+    // Assemble queries list for backward compatibility
+    const queries: string[] = [];
+    if (issueQuery) queries.push(issueQuery);
+    if (terminologyQuery) queries.push(terminologyQuery);
+    if (statutoryQuery) queries.push(statutoryQuery);
+    if (queries.length === 0 && Array.isArray(parsed.queries)) {
+      parsed.queries.forEach((q: any) => { if (typeof q === "string") queries.push(q); });
+    }
+
     return {
-      legal_domains: Array.isArray(parsed.legal_domains) ? parsed.legal_domains : [],
-      issues: Array.isArray(parsed.issues) ? parsed.issues : [],
-      queries: Array.isArray(parsed.queries) ? parsed.queries : [],
-      syntheticHeadnote: typeof parsed.syntheticHeadnote === "string" ? parsed.syntheticHeadnote : "",
+      jurisdiction: typeof parsed.jurisdiction === "string" ? parsed.jurisdiction : "Pakistan",
+      domains,
+      issues,
+      entities,
+      statuteCandidates,
+      proceduralContext,
+      multiAngleQueries: {
+        hydeHeadnote,
+        issueQuery,
+        statutoryQuery,
+        terminologyQuery,
+      },
+      confidence,
+      legal_domains: domains,
+      queries,
+      syntheticHeadnote: hydeHeadnote,
     };
   } catch (error) {
     console.error("[generateSemanticRetrievalQueries] LLM Extraction Failed:", error);
-    return { legal_domains: [], issues: [], queries: [], syntheticHeadnote: "" };
+    return emptyFallback;
   }
 }
 
@@ -66,18 +144,18 @@ Translate Roman Urdu concepts to official Pakistani legal terms. Output valid JS
  */
 export function extractDeterministicFacts(narrative: string): string[] {
   const facts = new Set<string>();
-  
+
   // Pattern 1: Section/Article references (e.g. "Section 489-F", "Article 199")
   const secMatch = narrative.match(/\b(?:section|sec\.|article|art\.)\s+\d+[A-Z\-]*\b(?:\s+(?:PPC|CrPC|CPC|Constitution))?/gi);
-  if (secMatch) secMatch.forEach(m => facts.add(m.trim()));
+  if (secMatch) secMatch.forEach((m) => facts.add(m.trim()));
 
   // Pattern 2: Specific law bodies or procedural terms (e.g. "FBR", "SECP", "PECA", "NAB", "FIR")
   const abbrMatch = narrative.match(/\b(?:PPC|CrPC|CPC|FBR|SECP|PECA|NAB|FIA|ATC|FST|ATA|FIR|Qanun-e-Shahadat|Khula|Iddat|Hizanat)\b/gi);
-  if (abbrMatch) abbrMatch.forEach(m => facts.add(m.trim()));
+  if (abbrMatch) abbrMatch.forEach((m) => facts.add(m.trim()));
 
   // Pattern 3: Case Citations (e.g. "PLD 2020 SC 123", "2024 SCMR 45")
   const citMatch = narrative.match(/\b(?:19|20)\d{2}\s+(?:SCMR|PLD|YLR|CLC|MLD|PCrLJ|PLC|PTD)\s+(?:SC|LHC|SHC|IHC|PHC|BHC)?\s*\d+\b/gi);
-  if (citMatch) citMatch.forEach(m => facts.add(m.trim()));
+  if (citMatch) citMatch.forEach((m) => facts.add(m.trim()));
 
   // Deduplicate: If an item (like "PPC") is a substring of a longer section reference (like "Section 406 PPC"), remove the redundant standalone item.
   const allFacts = Array.from(facts);
@@ -85,7 +163,7 @@ export function extractDeterministicFacts(narrative: string): string[] {
 
   for (const item of allFacts) {
     const isRedundantSubstring = allFacts.some(
-      other => other !== item && other.toLowerCase().includes(item.toLowerCase())
+      (other) => other !== item && other.toLowerCase().includes(item.toLowerCase())
     );
     if (!isRedundantSubstring) {
       result.push(item);

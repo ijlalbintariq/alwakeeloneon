@@ -40,6 +40,10 @@ export interface QueryIntent {
   type: IntentType;
   /** Detected topics, ordered by confidence */
   topics: LegalTopic[];
+  /** Highest topic score achieved during classification */
+  topTopicScore?: number;
+  /** Routing tier: Tier 1 (citation/section), Tier 1.5 (explicit short), Tier 2 (narrative) */
+  tier?: "tier1_citation" | "tier1_section" | "tier1.5_explicit" | "tier2_narrative";
   /** The query terms expanded with legal synonyms — used as the retrieval query */
   expandedQuery: string;
   /** Individual expanded terms (for scoring retrieved results) */
@@ -3655,27 +3659,34 @@ export function classifyQueryIntent(rawQuery: string, context?: { module?: strin
   type ScoredTopic = { topic: LegalTopic; score: number };
   const scored: ScoredTopic[] = [];
 
+  // Helper: Exact word boundary match to prevent "fired" matching "fir" or "nikaal" matching "murder"
+  function matchesWordBoundary(text: string, term: string): boolean {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`, "i").test(text);
+  }
+
   for (const topic of LEGAL_TOPICS) {
     let score = 0;
-    // Primary term hit — strong signal
+    // Primary term hit — strong signal (exact word boundary match)
     for (const term of topic.primary) {
-      if (normalized.includes(term)) score += 12;
+      if (matchesWordBoundary(normalized, term)) score += 12;
     }
-    // Synonym hit — weaker signal
+    // Synonym hit — weaker signal (exact word boundary match)
     for (const term of topic.synonyms) {
-      if (normalized.includes(term)) score += 4;
+      if (matchesWordBoundary(normalized, term)) score += 4;
     }
-    // Partial word match against primary terms
+    // Partial word match against primary terms (only if length >= 4)
     for (const word of words) {
-      if (word.length < 3) continue;
+      if (word.length < 4) continue;
       for (const term of topic.primary) {
-        if (term !== word && (term.includes(word) || word.includes(term))) score += 2;
+        if (term !== word && term.length >= 4 && (term.includes(word) || word.includes(term))) score += 2;
       }
     }
     if (score > 0) scored.push({ topic, score });
   }
 
   scored.sort((a, b) => b.score - a.score);
+  const topTopicScore = scored.length > 0 ? scored[0].score : 0;
   let topTopics = scored.slice(0, 3).map((s) => s.topic);
 
   // If in contract or legal drafting context, force contract and property topics
@@ -3727,12 +3738,33 @@ export function classifyQueryIntent(rawQuery: string, context?: { module?: strin
     normalized,
     type,
     topics: topTopics,
+    topTopicScore,
     expandedQuery,
     expandedTerms,
     needsCaseLaw: needsCase,
     needsStatutes: needsStats,
     needsAdminDocs: needsAdmin,
   };
+}
+
+/**
+ * Cheap Query Analyzer for 3-Tier Pipeline Routing.
+ * Evaluates legal explicitness + ambiguity (not character length alone).
+ */
+export function analyzeQueryExplicitness(query: string, intent: QueryIntent): "tier1_citation" | "tier1_section" | "tier1.5_explicit" | "tier2_narrative" {
+  if (intent.type === "citation-lookup") return "tier1_citation";
+  if (intent.statuteRef) return "tier1_section";
+
+  // Tier 1.5: High legal explicitness + low ambiguity (e.g. "bail 302", "PPC 489-F cheque bounce")
+  const hasHighConfidenceTopic = (intent.topTopicScore ?? 0) >= 12;
+  const isShortExplicit = query.trim().length <= 150 && hasHighConfidenceTopic;
+
+  if (isShortExplicit) {
+    return "tier1.5_explicit";
+  }
+
+  // Default: Narrative / ambiguous query requiring Tier 2 LLM Research Agent
+  return "tier2_narrative";
 }
 
 // ---------------------------------------------------------------------------
