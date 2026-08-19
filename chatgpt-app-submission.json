@@ -70,26 +70,26 @@
     },
     "draft_petition": {
       "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Generates court petition drafts in text form and saves a copy to the authenticated lawyer's documents workspace.",
+        "read_only_justification": "Generates court petition drafts in text form based on grounded legal precedents without deleting or modifying existing records.",
         "open_world_justification": "Runs legal drafting AI inference and uses local vectors to formulate legal drafts.",
-        "destructive_justification": "Creates new document records; does not delete or overwrite existing records."
+        "destructive_justification": "Does not perform any destructive operations or delete user records."
       }
     },
     "draft_contract": {
       "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Generates agreement draft text and saves a copy to the authenticated lawyer's documents workspace.",
+        "read_only_justification": "Generates agreement draft text for user convenience based on statutory contract templates.",
         "open_world_justification": "Processes inputs using Contract Act 1872 legal templates.",
-        "destructive_justification": "Creates new agreement draft records; does not modify or delete existing contracts."
+        "destructive_justification": "Does not modify or delete existing contracts or database registries."
       }
     },
     "list_case_files": {
