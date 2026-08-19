@@ -17,6 +17,7 @@ import {
   lawJournals,
   threads,
   documents,
+  documentFiles,
   adminKnowledge,
   adminKnowledgeFiles,
   TIER_LIMITS,
