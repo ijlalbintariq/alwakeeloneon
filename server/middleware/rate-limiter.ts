@@ -194,34 +194,60 @@ export const authRateLimiter = createRateLimiter({
   },
 });
 
-// 2. AI chat/queries rate limiter: 30 attempts per 15 minutes
+// 2. AI chat/queries rate limiter (for anonymous/public endpoints): 120 attempts per 15 minutes
+// Logged-in users are governed by their account subscription tier limits (checkUsageLimit)
 export const aiRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 120,
   message: "Too many AI requests. Please try again in 15 minutes.",
   keyPrefix: "ai-limit",
+  skip: (req: Request) => {
+    // Authenticated users have their own plan quotas and burst limiter
+    if ((req.session as any)?.userId) {
+      return true;
+    }
+    return false;
+  },
 });
 
-// 3. Global standard API rate limiter: 100 attempts per 15 minutes
+// 3. Global standard API rate limiter: 1,000 attempts per 15 minutes for public traffic
+// Logged-in lawyers and workspace operations are exempt so typing and autosaves never trigger 429
 export const globalApiRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000,
   message: "Too many requests to our API. Please try again in 15 minutes.",
   keyPrefix: "global-api-limit",
   skip: (req: Request) => {
+    // 1. All authenticated user sessions are exempt from IP-level autosave blocking
+    if ((req.session as any)?.userId) {
+      return true;
+    }
+
     const url = req.originalUrl;
+    // 2. Exempt core application and drafting endpoints
     if (
       url.startsWith("/api/auth") ||
       url.startsWith("/api/ai") ||
       url.startsWith("/api/apex") ||
-      url.startsWith("/api/admin")
+      url.startsWith("/api/admin") ||
+      url.startsWith("/api/documents") ||
+      url.startsWith("/api/retrieval") ||
+      url.startsWith("/api/user") ||
+      url.startsWith("/api/bookmarks") ||
+      url.startsWith("/api/style-memory") ||
+      url.startsWith("/api/case-files") ||
+      url.startsWith("/api/daily-diary") ||
+      url.startsWith("/api/judgments") ||
+      url.startsWith("/api/statutes")
     ) {
       return true;
     }
-    // Skip standard search crawlers on public routes to allow indexing of public judgments/directory listing.
+
+    // 3. Skip standard search crawlers on public routes to allow indexing
     if (url.startsWith("/api/public") && isSearchCrawler(req)) {
       return true;
     }
+
     return false;
   },
 });
