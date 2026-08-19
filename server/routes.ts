@@ -21,6 +21,7 @@ import {
   adminKnowledgeFiles,
   TIER_LIMITS,
   caseClients,
+  caseFiles,
   caseDocuments,
   caseCompliance,
   type CaseLaw,
@@ -93,7 +94,39 @@ import { isPdfOcrAvailable } from "./ocr";
 import { isCloudPdfOcrAvailable, ocrPdfWithCloud } from "./cloud-ocr";
 import { isWhisperCppConfigured, transcribeWithWhisperCpp } from "./whisper-local";
 import { isOpenRouterTranscriptionAvailable, resolveOpenRouterAudioFormat, transcribeWithOpenRouter } from "./openrouter-transcription";
-import { deleteR2Object, getR2ObjectBinary, getR2ObjectText, uploadBufferToR2 } from "./r2-storage";
+import { deleteR2Object, getR2ObjectBinary, getR2ObjectText, uploadBufferToR2, uploadBufferToR2WithRetry } from "./r2-storage";
+
+export type UploadSessionRecord = {
+  sessionId: string;
+  userId: string;
+  caseId: number;
+  caseTitle: string;
+  label?: string;
+  expiresAt: number;
+  isUsed: boolean;
+};
+
+export const signedUploadSessions = new Map<string, UploadSessionRecord>();
+
+export async function createSignedUploadSession(userId: string, caseId: number, label?: string): Promise<string> {
+  const [caseFile] = await db.select({ id: caseFiles.id, title: caseFiles.title }).from(caseFiles)
+    .where(and(eq(caseFiles.id, caseId), eq(caseFiles.userId, userId)))
+    .limit(1);
+  if (!caseFile) throw new Error(`Case #${caseId} not found or access denied.`);
+
+  const sessionId = `ul_sess_${crypto.randomBytes(16).toString("hex")}`;
+  const expiresAt = Date.now() + 15 * 60 * 1000; // 15-minute expiration
+  signedUploadSessions.set(sessionId, {
+    sessionId,
+    userId,
+    caseId: caseFile.id,
+    caseTitle: caseFile.title,
+    label,
+    expiresAt,
+    isUsed: false,
+  });
+  return sessionId;
+}
 import { getEmailProviderStatus, sendResendTestEmail, sendBroadcastEmail, sendCaseLeadNotification, sendOrgInviteEmail } from "./email";
 import { verifyCaptchaToken } from "./captcha";
 import {
@@ -21472,6 +21505,118 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     } catch (err: any) {
       console.error("[Safepay Webhook] Error:", err?.message || err);
       res.status(500).json({ message: "Webhook processing failed" });
+    }
+  });
+
+  // ── Signed Upload Session Protocol ─────────────────────────────────────────
+  app.get("/api/upload/session/:sessionId", (req, res) => {
+    const { sessionId } = req.params;
+    const session = signedUploadSessions.get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ message: "Upload session not found or invalid." });
+    }
+
+    if (session.isUsed) {
+      return res.status(410).json({ message: "This upload link has already been used." });
+    }
+
+    if (Date.now() > session.expiresAt) {
+      signedUploadSessions.delete(sessionId);
+      return res.status(410).json({ message: "Upload link has expired." });
+    }
+
+    const expiresInMinutes = Math.max(1, Math.ceil((session.expiresAt - Date.now()) / 60000));
+    res.json({
+      valid: true,
+      caseId: session.caseId,
+      caseTitle: session.caseTitle,
+      label: session.label,
+      expiresInMinutes,
+    });
+  });
+
+  app.post("/api/upload/session/:sessionId/upload", upload.single("file"), async (req, res) => {
+    const { sessionId } = req.params;
+    const session = signedUploadSessions.get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ message: "Upload session not found or invalid." });
+    }
+
+    if (session.isUsed) {
+      return res.status(410).json({ message: "This upload link has already been used." });
+    }
+
+    if (Date.now() > session.expiresAt) {
+      signedUploadSessions.delete(sessionId);
+      return res.status(410).json({ message: "Upload link has expired." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file attached to upload." });
+    }
+
+    try {
+      const file = req.file;
+      const label = String(req.body.label || session.label || file.originalname).trim();
+      const ext = path.extname(file.originalname).toLowerCase();
+      const isImage = file.mimetype.startsWith("image/");
+      const sourceType = isImage ? "image" : "upload";
+
+      // 1. Create document in PostgreSQL
+      const [doc] = await db.insert(documents).values({
+        userId: session.userId,
+        title: label,
+        sourceType,
+        mimeType: file.mimetype,
+        fileExtension: ext,
+        detectedDomain: "legal",
+        detectedDomainLabel: "Legal Document",
+        classificationMethod: "session-upload",
+      }).returning();
+
+      // 2. Upload to Cloudflare R2
+      const r2Result = await uploadBufferToR2WithRetry({
+        buffer: file.buffer,
+        fileName: file.originalname,
+        contentType: file.mimetype,
+        prefix: `case-docs/${session.userId}`,
+      });
+
+      if (r2Result) {
+        await db.insert(documentFiles).values({
+          documentId: doc.id,
+          userId: session.userId,
+          provider: r2Result.provider,
+          bucket: r2Result.bucket,
+          objectKey: r2Result.objectKey,
+          originalFilename: file.originalname,
+          mimeType: file.mimetype,
+          sizeBytes: file.size,
+          etag: r2Result.etag,
+          publicUrl: r2Result.publicUrl,
+        }).catch((err) => console.error("[Session Upload] Failed to save documentFiles:", err));
+      }
+
+      // 3. Link to Case File
+      await db.insert(caseDocuments).values({
+        caseId: session.caseId,
+        documentId: doc.id,
+        label,
+      });
+
+      // Mark session as used
+      session.isUsed = true;
+
+      res.json({
+        success: true,
+        message: `File "${file.originalname}" uploaded and linked to case #${session.caseId}.`,
+        documentId: doc.id,
+      });
+    } catch (err: any) {
+      console.error("[Session Upload] Error during upload:", err?.message || err);
+      res.status(500).json({ message: "Failed to upload document." });
     }
   });
 

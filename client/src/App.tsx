@@ -33,6 +33,7 @@ const AdminSetupPage = lazy(() => import("@/pages/admin-setup"));
 const UserPanelPage = lazy(() => import("@/pages/user-panel"));
 const McpTutorialPage = lazy(() => import("@/pages/mcp-tutorial"));
 const OauthConsentPage = lazy(() => import("@/pages/oauth-consent"));
+const UploadSessionPage = lazy(() => import("@/pages/upload-session"));
 const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
 const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
 const SharedConversationPage = lazy(() => import("@/pages/shared-conversation"));
@@ -130,6 +131,10 @@ function Router({ onReady }: { onReady?: () => void }) {
   if (location.startsWith("/reset-password")) {
     if (user) return <Redirect to="/dashboard" />;
     return <ResetPasswordPage />;
+  }
+
+  if (location.startsWith("/upload/session/")) {
+    return <UploadSessionPage />;
   }
 
   if (location.startsWith("/share/")) {

@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { retrieveLegalCaseLaw } from "./legal-retrieval";
 import { gatherKnowledgeContextV2 } from "./pipeline/knowledge-pipeline";
 import { runRetrieval } from "./pipeline/retrieval-engine";
-import { checkUsageLimit, logUsageCost, normalizeCourtReadyDraftingText, normalizeDraftingText } from "./routes";
+import { checkUsageLimit, createSignedUploadSession, logUsageCost, normalizeCourtReadyDraftingText, normalizeDraftingText } from "./routes";
 import { PAKISTANI_JUDICIAL_FORMAT_GUIDANCE, CONTRACT_LAW_ADDON } from "./legal-drafting-template";
 import { chatWithDeepSeek } from "./deepseek-ai";
 import { isOpenRouterAvailable, chatWithOpenRouter } from "./openrouter";
@@ -820,9 +820,9 @@ ${additionalClauses || "None"}`;
 
   // ── CATEGORY: Document Upload ─────────────────────────────────────────────
 
-  // 14. Upload Case Document
+  // 14. Upload Case Document (Inline Snippets & Base64)
   server.registerTool("upload_case_document", {
-    description: "Upload a document or image to a specific case file. Accepts base64-encoded file data. Supports PDF, DOCX, JPG, PNG, and other common formats.",
+    description: "Upload small inline text snippets or notes to a case file. NOTE FOR ASSISTANT: For local PDFs, scans, photos, or physical files, call request_document_upload instead to generate a free 1-click upload link (<30 tokens).",
     inputSchema: {
       caseId: z.number().describe("The case file ID to attach the document to"),
       fileName: z.string().describe("Original filename with extension (e.g. 'court_order.pdf', 'evidence_photo.jpg')"),
@@ -856,7 +856,7 @@ ${additionalClauses || "None"}`;
     if (buffer.length > MAX_BINARY_SIZE_BYTES) {
       throw new McpError(
         ErrorCode.InvalidRequest,
-        `File size (${(buffer.length / (1024 * 1024)).toFixed(1)}MB) exceeds the 25MB inline MCP limit. Please upload directly via the Web UI.`
+        `File size (${(buffer.length / (1024 * 1024)).toFixed(1)}MB) exceeds 25MB inline limit. Call request_document_upload instead to get a free 1-click upload link.`
       );
     }
 
@@ -951,6 +951,30 @@ ${additionalClauses || "None"}`;
         case: { id: caseFile.id, title: caseFile.title },
       }, null, 2) }],
     };
+  });
+
+  // 15. Request Document Upload Link (Zero Token Waste 1-Click Upload)
+  server.registerTool("request_document_upload", {
+    description: "PRIMARY DOCUMENT TOOL FOR ALL FILES & PDFs: Generates a secure, 1-click signed upload link for the user to upload any document, PDF, scan, or photo to a case file without consuming LLM quota (<30 tokens). ASSISTANT INSTRUCTION: Always present the returned uploadUrl to the user as a clear markdown link: '[Click here to upload document](uploadUrl)'.",
+    inputSchema: {
+      caseId: z.number().describe("The target case file ID to attach the document to"),
+      label: z.string().optional().describe("Document label (e.g. 'FIR Copy', 'Medical Report', 'Power of Attorney')"),
+    },
+    annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  }, async ({ caseId, label }) => {
+    const userId = getAuthenticatedUserId();
+    try {
+      const sessionId = await createSignedUploadSession(userId, caseId, label);
+      const uploadUrl = `https://www.alwakeelo.com/upload/session/${sessionId}`;
+      return {
+        content: [{ type: "text", text: JSON.stringify({
+          version: VERSION,
+          uploadUrl,
+        }, null, 2) }],
+      };
+    } catch (err: any) {
+      throw new McpError(ErrorCode.InvalidRequest, err?.message || "Failed to create upload session.");
+    }
   });
 }
 
