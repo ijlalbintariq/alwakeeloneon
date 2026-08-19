@@ -13374,8 +13374,9 @@ Generate the following elements in this exact order with these exact formatting 
    - Alignment: Center-aligned
    - Typography: Title Case (NOT all caps) and Bold
    - Include generous underscore line for missing number
-   - Format: "Criminal Misc. (Bail) No. ________________ of 2025"
-   - Other examples: "Civil Suit No. ________________ of 2025", "Writ Petition No. ________________ of 2025"
+   - Current Year: Always use the current calendar year (${new Date().getFullYear()}) for new case filing numbers, verification clauses, and date lines unless a specific historical year is explicitly stated in the facts.
+   - Format: "Criminal Misc. (Bail) No. ________________ of ${new Date().getFullYear()}"
+   - Other examples: "Civil Suit No. ________________ of ${new Date().getFullYear()}", "Writ Petition No. ________________ of ${new Date().getFullYear()}"
 
 3. PETITIONER/APPLICANT NAME
    - Alignment: Center-aligned
@@ -14574,6 +14575,7 @@ Targeted edit mode (strict):
 - Edit ONLY the identified target: ${editTarget.label}.
 - Keep all other draft text unchanged.
 - ${actionInstruction}
+- Sequential numbering integrity: If editing GROUNDS, maintain clean sequential lettering (A., B., C., D...) without duplicating previous grounds or resetting numbering. If editing paragraphs, maintain continuous numbering (1., 2., 3...).
 - Do not repeat the full pleading.
 - No markdown symbols, no bullets, no JSON, no explanations.
 - Keep Pakistani court drafting language and formatting.
@@ -14887,12 +14889,12 @@ ${profile.skeleton}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}
         // --- Post-generation: ensure Annexures section (court filings only) ---
         const NON_COURT_TYPES_POST2 = new Set(["application-to-police", "legal-notice", "affidavit", "power-of-attorney", "authority-letter", "nikah-nama-divorce"]);
         const isCourtFiling2 = !selectedDocType || !NON_COURT_TYPES_POST2.has(selectedDocType);
-        if (!isLocalizedEdit && draftedText && isCourtFiling2) {
+        if (draftedText && isCourtFiling2) {
           draftedText = ensureAnnexuresSection(draftedText);
         }
 
         // --- Post-generation: ensure Petitioner/Through block after Prayer (court filings only) ---
-        if (!isLocalizedEdit && draftedText && isCourtFiling2) {
+        if (draftedText && isCourtFiling2) {
           draftedText = ensurePetitionerBlock(draftedText);
         }
 

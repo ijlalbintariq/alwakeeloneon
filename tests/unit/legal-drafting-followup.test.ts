@@ -122,3 +122,15 @@ test("narrative facts with embedded drafting command classifies as fresh draft",
   }), "full-rewrite");
 });
 
+test("adding case law or citations into grounds is treated as in-place replacement", () => {
+  const target1 = findLegalDraftEditTarget("add case law in grounds", DRAFT);
+  assert.ok(target1);
+  assert.equal(target1!.label, "GROUNDS");
+  assert.equal(target1!.action, "replace");
+
+  const target2 = findLegalDraftEditTarget("include citations in grounds", DRAFT);
+  assert.ok(target2);
+  assert.equal(target2!.action, "replace");
+});
+
+

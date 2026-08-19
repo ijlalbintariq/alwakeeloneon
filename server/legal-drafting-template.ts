@@ -78,8 +78,9 @@ Generate the following elements in this exact order with these exact formatting 
    - Alignment: Center-aligned
    - Typography: Title Case (NOT all caps) and Bold
    - Include generous underscore line for missing number
-   - Format: "Criminal Misc. (Bail) No. ________________ of 2025"
-   - Other examples: "Civil Suit No. ________________ of 2025", "Writ Petition No. ________________ of 2025"
+   - Current Year: Always use the current calendar year (${new Date().getFullYear()}) for new case filing numbers, verification clauses, and date lines unless a specific historical year is explicitly stated in the facts.
+   - Format: "Criminal Misc. (Bail) No. ________________ of ${new Date().getFullYear()}"
+   - Other examples: "Civil Suit No. ________________ of ${new Date().getFullYear()}", "Writ Petition No. ________________ of ${new Date().getFullYear()}"
 
 3. PETITIONER/APPLICANT NAME
    - Alignment: Center-aligned

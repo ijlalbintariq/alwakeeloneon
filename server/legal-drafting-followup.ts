@@ -92,6 +92,13 @@ function resolveAction(prompt: string): LegalDraftEditAction {
   if (/\b(delete|remove|omit)\b/i.test(prompt)) return "delete";
   if (/\b(?:add|insert|include|incorporate|put|move)\b[\s\S]{0,50}\bbefore\b/i.test(prompt)) return "insert-before";
   if (/\b(?:add|insert|include|incorporate|put|move)\b[\s\S]{0,50}\bafter\b/i.test(prompt)) return "insert-after";
+  // Section enrichment: "add case law in grounds", "include citations in prayer", "add references in facts"
+  if (/\b(?:add|insert|include|incorporate|cite|mention)\b[\s\S]{0,50}\b(?:case\s*law|citations?|precedents?|judgments?|rulings?|references?|sections?|articles?|statutes?|provisions?|grounds?)\b[\s\S]{0,50}\b(?:in|into|to|under|inside)\b/i.test(prompt)) {
+    return "replace";
+  }
+  if (/\b(?:in|into|within)\s+(?:the\s+)?(?:grounds?|facts?|prayer|preliminary\s+objections?|verification|affidavit)\b/i.test(prompt)) {
+    return "replace";
+  }
   if (/\b(?:add|insert|include|incorporate)\b/i.test(prompt)) return "insert-after";
   return "replace";
 }
