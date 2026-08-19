@@ -3,11 +3,11 @@
   "schema_version": 1,
   "app_info": {
     "display_name": "AL WAKEELO",
-    "subtitle": "Pakistani Legal Assistant",
-    "description": "AL WAKEELO is your digital legal assistant that searches 600,000+ Pakistani case laws and statutes, drafts CPC-compliant petitions and commercial contracts, and conducts deep legal research.",
-    "category": "EDUCATION",
+    "subtitle": "Pakistani Legal Assistant & Practice Management",
+    "description": "AL WAKEELO is your digital legal assistant that searches 600,000+ Pakistani case laws and statutes, drafts court petitions and commercial contracts, manages case files, tracks hearing diaries, and enables 1-click token-saving document uploads.",
+    "category": "PRODUCTIVITY",
     "website_url": "https://alwakeelo.com",
-    "support_url": "https://alwakeelo.com/support",
+    "support_url": "https://alwakeelo.com/contact",
     "privacy_policy_url": "https://alwakeelo.com/privacy",
     "terms_of_service_url": "https://alwakeelo.com/terms"
   },
@@ -27,8 +27,8 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Queries the database for matching court judgments. Does not create or update state.",
-        "open_world_justification": "Query is processed internally and results are served entirely from local database indexes.",
+        "read_only_justification": "Queries the database for matching Pakistani court judgments. Does not create or update state.",
+        "open_world_justification": "Query is processed internally and results are served from local database indexes.",
         "destructive_justification": "Does not perform any deletions, database edits, or mutations."
       }
     },
@@ -39,7 +39,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Queries the database for matching statutory sections. Does not modify state.",
+        "read_only_justification": "Queries the database for matching statutory provisions and sections. Does not modify state.",
         "open_world_justification": "Searches only localized indexes of statutory files stored inside database.",
         "destructive_justification": "Does not delete, modify, or overwrite any statute documents."
       }
@@ -51,7 +51,7 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Retrieves the full-text detail of a specific judgment. No modifications to data.",
+        "read_only_justification": "Retrieves the full-text detail and headnotes of a specific judgment. No modifications to data.",
         "open_world_justification": "The document is loaded directly from local server records.",
         "destructive_justification": "Does not delete or alter the requested judgment data."
       }
@@ -63,61 +63,189 @@
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Retrieves knowledge files and formats summaries for analysis. Does not modify state.",
+        "read_only_justification": "Retrieves knowledge files and formats summaries for analysis across RAG context. Does not modify state.",
         "open_world_justification": "Fetches grounded details from internal indexes.",
         "destructive_justification": "Does not execute state transitions or destructive operations."
       }
     },
     "draft_petition": {
       "annotations": {
-        "readOnlyHint": true,
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Generates court petition drafts in text form. No changes are saved to server state.",
-        "open_world_justification": "Runs Deepseek inference and uses local vectors to formulate legal drafts.",
-        "destructive_justification": "Does not delete or change any records."
+        "read_only_justification": "Generates court petition drafts in text form and saves a copy to the authenticated lawyer's documents workspace.",
+        "open_world_justification": "Runs legal drafting AI inference and uses local vectors to formulate legal drafts.",
+        "destructive_justification": "Creates new document records; does not delete or overwrite existing records."
       }
     },
     "draft_contract": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Generates agreement draft text and saves a copy to the authenticated lawyer's documents workspace.",
+        "open_world_justification": "Processes inputs using Contract Act 1872 legal templates.",
+        "destructive_justification": "Creates new agreement draft records; does not modify or delete existing contracts."
+      }
+    },
+    "list_case_files": {
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Generates agreement draft text for user convenience. Does not alter server state.",
-        "open_world_justification": "Processes inputs using deep learning templates.",
-        "destructive_justification": "No modifications to existing contract registries or user databases."
+        "read_only_justification": "Retrieves list of case files belonging to the authenticated lawyer. Read-only operation.",
+        "open_world_justification": "Queries the internal case management database.",
+        "destructive_justification": "Does not delete or alter any case records."
+      }
+    },
+    "get_case_details": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Fetches comprehensive details, clients, notes, and compliance items for a specific case file.",
+        "open_world_justification": "Queries internal practice management tables.",
+        "destructive_justification": "Does not modify or delete any case details."
+      }
+    },
+    "create_case_file": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Creates a new case file record in the lawyer's case management workspace.",
+        "open_world_justification": "Stores case file data in the application's PostgreSQL database.",
+        "destructive_justification": "Performs an insert operation; does not overwrite or delete existing records."
+      }
+    },
+    "add_case_note": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Appends a new progress note or hearing remark to an existing case file.",
+        "open_world_justification": "Saves note content directly to the case file notes repository.",
+        "destructive_justification": "Appends new note records without mutating or deleting prior notes."
+      }
+    },
+    "list_diary_entries": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Fetches scheduled court hearings and diary tasks for a specific date range.",
+        "open_world_justification": "Queries lawyer's court diary entries from internal database.",
+        "destructive_justification": "Read-only query that does not modify diary state."
+      }
+    },
+    "add_diary_entry": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Schedules a new court hearing date or compliance deadline in the lawyer's diary.",
+        "open_world_justification": "Inserts hearing records into the court diary calendar.",
+        "destructive_justification": "Adds a new calendar entry without deleting existing hearings."
+      }
+    },
+    "update_diary_status": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Updates the completion status and outcome of a court hearing and optionally schedules an adjourned date.",
+        "open_world_justification": "Updates specific diary entry status and creates follow-up entry if adjourned.",
+        "destructive_justification": "Updates hearing outcome fields without deleting hearing history."
+      }
+    },
+    "request_document_upload": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Generates a secure, temporary, single-use upload session link for client-side direct file uploads.",
+        "open_world_justification": "Creates a cryptographically signed upload session token on the server.",
+        "destructive_justification": "Creates temporary upload metadata; does not delete or overwrite files."
+      }
+    },
+    "upload_case_document": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Saves small base64 file payloads or notes as document attachments linked to a case file.",
+        "open_world_justification": "Stores document records in database and uploads payload to storage.",
+        "destructive_justification": "Creates new document records without deleting existing case files."
       }
     }
   },
   "test_cases": [
     {
-      "description": "Ensure the assistant can search Supreme Court bail decisions.",
+      "description": "Search Supreme Court bail precedents under Section 497 CrPC.",
       "user_prompt": "Find Supreme Court cases related to bail under Section 497 CrPC for murder charges.",
       "tools_triggered": "search_case_law"
     },
     {
-      "description": "Ensure commercial lease agreements can be drafted properly.",
+      "description": "Search Pakistan Penal Code provisions for statutory ingredients.",
+      "user_prompt": "What are the punishment and statutory ingredients of criminal breach of trust under PPC 406?",
+      "tools_triggered": "search_statutes"
+    },
+    {
+      "description": "Draft a Constitutional Writ Petition before Lahore High Court.",
+      "user_prompt": "Draft a Constitutional Petition under Article 199 before Lahore High Court challenging an arbitrary ECL travel ban without notice for petitioner Ali Khan against Ministry of Interior.",
+      "tools_triggered": "draft_petition"
+    },
+    {
+      "description": "Draft a commercial lease agreement under Pakistani Contract Act.",
       "user_prompt": "Draft a commercial lease agreement between landlord Malik Ahmed and tenant Bilal Khan for commercial shop 4B in Lahore.",
       "tools_triggered": "draft_contract"
     },
     {
-      "description": "Ensure judgment content can be fetched using document IDs.",
-      "user_prompt": "Get the full judgment details for case UUID 12345.",
+      "description": "Fetch full text and headnotes of a reported judgment.",
+      "user_prompt": "Get the full judgment details for case citation 2023 SCMR 115.",
       "tools_triggered": "get_judgment"
     },
     {
-      "description": "Verify high court case law searches function normally.",
-      "user_prompt": "Search for Lahore High Court judgments on tenancy eviction default.",
-      "tools_triggered": "search_case_law"
+      "description": "List active case files from the lawyer's CRM dashboard.",
+      "user_prompt": "Show me my active case files in the court dashboard.",
+      "tools_triggered": "list_case_files"
     },
     {
-      "description": "Verify contract drafting can handle partnership deeds.",
-      "user_prompt": "Draft a partnership deed between three partners setting up a law firm.",
-      "tools_triggered": "draft_contract"
+      "description": "Create a new legal case file in practice management.",
+      "user_prompt": "Create a new civil litigation case file titled 'Malik Ahmed vs Bilal Khan' in Rent Controller Lahore.",
+      "tools_triggered": "create_case_file"
+    },
+    {
+      "description": "Schedule a court hearing in the litigation diary.",
+      "user_prompt": "Schedule a court hearing for 2026-09-15 titled 'Arguments on Stay Application' for case ID 12.",
+      "tools_triggered": "add_diary_entry"
+    },
+    {
+      "description": "Generate a 1-click token-free upload link for evidence documents.",
+      "user_prompt": "I have an FIR copy and court order PDF to attach to case ID 12. Give me an upload link.",
+      "tools_triggered": "request_document_upload"
     }
   ],
   "negative_test_cases": [
@@ -130,8 +258,12 @@
       "user_prompt": "Try to draft a petition without providing court name, petitioner name, or facts."
     },
     {
-      "description": "Handle lookup for non-existent judgment UUID gracefully.",
-      "user_prompt": "Get judgment for non-existent ID 99999."
+      "description": "Handle lookup for non-existent judgment UUID or invalid ID gracefully.",
+      "user_prompt": "Get judgment for non-existent ID 9999999."
+    },
+    {
+      "description": "Handle case details lookup for unauthorized or non-existent case ID.",
+      "user_prompt": "Get case details for case ID -1."
     }
   ]
 }
