@@ -8031,9 +8031,13 @@ export async function registerRoutes(
 
       console.log(`[OAuth DCR] Registered client: ${safeName} (${clientId})`);
 
+      const nowSeconds = Math.floor(Date.now() / 1000);
+
       res.status(201).json({
         client_id: clientId,
         client_secret: clientSecret,
+        client_id_issued_at: nowSeconds,
+        client_secret_expires_at: 0,
         client_name: safeName,
         redirect_uris: safeRedirects,
         grant_types: grant_types || ["authorization_code"],
