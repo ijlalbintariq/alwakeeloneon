@@ -140,6 +140,21 @@ export function registerAllTools(server: McpServer) {
       query: z.string().describe("The search query containing legal topics or case details"),
       limit: z.number().optional().default(5).describe("Maximum number of records to return (default 5, max 10)"),
     },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      retrieval_version: z.string(),
+      query: z.string(),
+      latencyMs: z.number(),
+      judgments: z.array(z.object({
+        id: z.string(),
+        citation: z.string(),
+        court: z.string().optional(),
+        title: z.string().optional(),
+        summary: z.string().optional(),
+        decisionYear: z.number().optional(),
+      })),
+    },
     annotations: {
       readOnlyHint: true,
       openWorldHint: false,
@@ -180,27 +195,30 @@ export function registerAllTools(server: McpServer) {
       }
     }
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      retrieval_version: RETRIEVAL_VERSION,
+      query,
+      latencyMs: latency,
+      judgments: result.rows.map((j) => ({
+        id: judgmentMap.get(j.citation) || String(j.id),
+        citation: j.citation,
+        court: j.court,
+        title: j.title,
+        summary: j.summary,
+        decisionYear: j.citationYear,
+      })),
+    };
+
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify({
-            version: VERSION,
-            source: SOURCE,
-            retrieval_version: RETRIEVAL_VERSION,
-            query,
-            latencyMs: latency,
-            judgments: result.rows.map((j) => ({
-              id: judgmentMap.get(j.citation) || String(j.id),
-              citation: j.citation,
-              court: j.court,
-              title: j.title,
-              summary: j.summary,
-              decisionYear: j.citationYear,
-            })),
-          }, null, 2),
+          text: JSON.stringify(payload, null, 2),
         }
-      ]
+      ],
+      structuredContent: payload,
     };
   });
 
@@ -210,6 +228,20 @@ export function registerAllTools(server: McpServer) {
     inputSchema: {
       query: z.string().describe("Keywords, section numbers, or act names (e.g. PPC 302)"),
       limit: z.number().optional().default(5).describe("Maximum sections to return (default 5, max 10)"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      retrieval_version: z.string(),
+      query: z.string(),
+      latencyMs: z.number(),
+      statutes: z.array(z.object({
+        shortTitle: z.string().optional(),
+        section: z.string().optional(),
+        description: z.string().optional(),
+        punishment: z.string().optional(),
+        statuteDocumentTitle: z.string().optional(),
+      })),
     },
     annotations: {
       readOnlyHint: true,
@@ -243,26 +275,29 @@ export function registerAllTools(server: McpServer) {
     // Track usage metrics
     await logToolUsage(userId, "search-statutes", query);
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      retrieval_version: RETRIEVAL_VERSION,
+      query,
+      latencyMs: latency,
+      statutes: retrievalResult.statutes.map((s) => ({
+        shortTitle: s.shortTitle,
+        section: s.section,
+        description: s.description,
+        punishment: s.punishment,
+        statuteDocumentTitle: s.statuteDocumentTitle,
+      })),
+    };
+
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify({
-            version: VERSION,
-            source: SOURCE,
-            retrieval_version: RETRIEVAL_VERSION,
-            query,
-            latencyMs: latency,
-            statutes: retrievalResult.statutes.map((s) => ({
-              shortTitle: s.shortTitle,
-              section: s.section,
-              description: s.description,
-              punishment: s.punishment,
-              statuteDocumentTitle: s.statuteDocumentTitle,
-            })),
-          }, null, 2),
+          text: JSON.stringify(payload, null, 2),
         }
-      ]
+      ],
+      structuredContent: payload,
     };
   });
 
@@ -271,6 +306,18 @@ export function registerAllTools(server: McpServer) {
     description: "Retrieve the full text and headnotes of a specific judgment by its unique UUID or numeric ID.",
     inputSchema: {
       id: z.string().describe("The judgment UUID, numeric ID, or citation"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      id: z.string(),
+      citation: z.string(),
+      title: z.string().optional(),
+      courtName: z.string().optional(),
+      decisionDate: z.string().optional(),
+      headnotes: z.string().optional(),
+      fullText: z.string().optional(),
+      pdfUrl: z.string().optional(),
     },
     annotations: {
       readOnlyHint: true,
@@ -339,24 +386,27 @@ export function registerAllTools(server: McpServer) {
     // Track usage
     await logToolUsage(userId, "search-judgments", `get_judgment:${targetId}`);
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      id: detail.id,
+      citation: detail.citation,
+      title: detail.title,
+      courtName: detail.court || "Pakistani Court",
+      decisionDate: detail.decisionDate,
+      headnotes: detail.headnotes,
+      fullText: detail.fullText,
+      pdfUrl: detail.pdfUrl,
+    };
+
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify({
-            version: VERSION,
-            source: SOURCE,
-            id: detail.id,
-            citation: detail.citation,
-            title: detail.title,
-            courtName: detail.court || "Pakistani Court",
-            decisionDate: detail.decisionDate,
-            headnotes: detail.headnotes,
-            fullText: detail.fullText,
-            pdfUrl: detail.pdfUrl,
-          }, null, 2),
+          text: JSON.stringify(payload, null, 2),
         }
-      ]
+      ],
+      structuredContent: payload,
     };
   });
 
@@ -365,6 +415,14 @@ export function registerAllTools(server: McpServer) {
     description: "Perform deep, multi-stage legal research across AlWakeelo's full RAG context (intent analysis, Voyage Law-2 embeddings, reranker, citation validation, and parent-child chunk resolution). Returns the exact grounded text context injected into LLM system prompts.",
     inputSchema: {
       query: z.string().describe("The legal query, scenario description, or question to research"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      retrieval_version: z.string(),
+      query: z.string(),
+      latencyMs: z.number(),
+      context: z.string(),
     },
     annotations: {
       readOnlyHint: true,
@@ -385,20 +443,23 @@ export function registerAllTools(server: McpServer) {
     // Track usage metrics (log token count and costs for AI billing)
     await logToolUsage(userId, "legal-research", query, contextString);
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      retrieval_version: RETRIEVAL_VERSION,
+      query,
+      latencyMs: latency,
+      context: contextString,
+    };
+
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify({
-            version: VERSION,
-            source: SOURCE,
-            retrieval_version: RETRIEVAL_VERSION,
-            query,
-            latencyMs: latency,
-            context: contextString,
-          }, null, 2),
+          text: JSON.stringify(payload, null, 2),
         }
-      ]
+      ],
+      structuredContent: payload,
     };
   });
 
@@ -412,6 +473,13 @@ export function registerAllTools(server: McpServer) {
       petitionerName: z.string().describe("Name of the petitioner/plaintiff"),
       respondentName: z.string().describe("Name of the respondent/defendant"),
       additionalClauses: z.string().optional().describe("Any additional specific grounds or instructions to include"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      latencyMs: z.number(),
+      topic: z.string(),
+      draft: z.string(),
     },
     annotations: {
       readOnlyHint: true,
@@ -485,19 +553,22 @@ ${additionalClauses || "None"}`;
     // Pre-wrap draft in a plaintext code block so MCP clients render it with exact alignment & no markdown parsing
     const wrappedDraft = `\`\`\`text\n${formattedText.replace(/^```(?:text|markdown)?\n?/i, "").replace(/\n?```$/i, "")}\n\`\`\``;
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      latencyMs: latency,
+      topic,
+      draft: wrappedDraft,
+    };
+
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify({
-            version: VERSION,
-            source: SOURCE,
-            latencyMs: latency,
-            topic,
-            draft: wrappedDraft,
-          }, null, 2),
+          text: JSON.stringify(payload, null, 2),
         }
-      ]
+      ],
+      structuredContent: payload,
     };
   });
 
@@ -510,6 +581,13 @@ ${additionalClauses || "None"}`;
       terms: z.string().describe("Core terms, duration, financial considerations, and obligations"),
       governingLaw: z.string().optional().default("Pakistan").describe("Governing provincial law or jurisdiction (e.g. Punjab, Sindh)"),
       additionalClauses: z.string().optional().describe("Optional custom terms, dispute resolution, or terminations details"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      latencyMs: z.number(),
+      contractType: z.string(),
+      draft: z.string(),
     },
     annotations: {
       readOnlyHint: true,
@@ -571,19 +649,22 @@ ${additionalClauses || "None"}`;
     // Pre-wrap draft in a plaintext code block so MCP clients render it with exact alignment & no markdown parsing
     const wrappedDraft = `\`\`\`text\n${formattedText.replace(/^```(?:text|markdown)?\n?/i, "").replace(/\n?```$/i, "")}\n\`\`\``;
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      latencyMs: latency,
+      contractType,
+      draft: wrappedDraft,
+    };
+
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify({
-            version: VERSION,
-            source: SOURCE,
-            latencyMs: latency,
-            contractType,
-            draft: wrappedDraft,
-          }, null, 2),
+          text: JSON.stringify(payload, null, 2),
         }
-      ]
+      ],
+      structuredContent: payload,
     };
   });
 
@@ -595,6 +676,22 @@ ${additionalClauses || "None"}`;
     inputSchema: {
       status: z.enum(["active", "pending", "closed", "archived"]).optional().describe("Filter by case status"),
       limit: z.number().optional().default(10).describe("Max records to return (default 10, max 25)"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      totalResults: z.number(),
+      cases: z.array(z.object({
+        id: z.number(),
+        title: z.string(),
+        caseType: z.string(),
+        court: z.string().nullable().optional(),
+        caseNumber: z.string().nullable().optional(),
+        status: z.string(),
+        priority: z.string(),
+        referenceNo: z.string().nullable().optional(),
+        createdAt: z.any().optional(),
+      })),
     },
     annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   }, async ({ status, limit }) => {
@@ -610,18 +707,26 @@ ${additionalClauses || "None"}`;
       .orderBy(desc(caseFiles.updatedAt))
       .limit(safeLimit);
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      totalResults: rows.length,
+      cases: rows.map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        caseType: c.caseType,
+        court: c.court,
+        caseNumber: c.caseNumber,
+        status: c.status,
+        priority: c.priority,
+        referenceNo: c.referenceNo,
+        createdAt: c.createdAt,
+      })),
+    };
+
     return {
-      content: [{ type: "text", text: JSON.stringify({
-        version: VERSION, source: SOURCE,
-        totalResults: rows.length,
-        cases: rows.map((c: any) => ({
-          id: c.id, title: c.title, caseType: c.caseType,
-          court: c.court, caseNumber: c.caseNumber,
-          status: c.status, priority: c.priority,
-          referenceNo: c.referenceNo,
-          createdAt: c.createdAt,
-        })),
-      }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
     };
   });
 
@@ -630,6 +735,26 @@ ${additionalClauses || "None"}`;
     description: "Get complete details of a specific case file including clients, notes, and compliance checklist items.",
     inputSchema: {
       caseId: z.number().describe("The case file ID"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      case: z.object({
+        id: z.number(),
+        title: z.string(),
+        caseType: z.string(),
+        court: z.string().nullable().optional(),
+        caseNumber: z.string().nullable().optional(),
+        status: z.string(),
+        priority: z.string(),
+        referenceNo: z.string().nullable().optional(),
+        description: z.string().nullable().optional(),
+        createdAt: z.any().optional(),
+        updatedAt: z.any().optional(),
+      }),
+      clients: z.array(z.any()),
+      notes: z.array(z.any()),
+      compliance: z.array(z.any()),
     },
     annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   }, async ({ caseId }) => {
@@ -646,23 +771,38 @@ ${additionalClauses || "None"}`;
       db.select().from(caseCompliance).where(eq(caseCompliance.caseId, caseId)).orderBy(desc(caseCompliance.dueDate)),
     ]);
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      case: {
+        id: caseFile.id,
+        title: caseFile.title,
+        caseType: caseFile.caseType,
+        court: caseFile.court,
+        caseNumber: caseFile.caseNumber,
+        status: caseFile.status,
+        priority: caseFile.priority,
+        referenceNo: caseFile.referenceNo,
+        description: caseFile.description,
+        createdAt: caseFile.createdAt,
+        updatedAt: caseFile.updatedAt,
+      },
+      clients: clients.map((c: any) => ({ id: c.id, role: c.role, name: c.name, phone: c.phone, cnic: c.cnic })),
+      notes: notes.map((n: any) => ({ id: n.id, content: n.content, createdAt: n.createdAt })),
+      compliance: compliance.map((c: any) => ({
+        id: c.id,
+        type: c.type,
+        title: c.title,
+        dueDate: c.dueDate,
+        status: c.status,
+        court: c.court,
+        judge: c.judge,
+      })),
+    };
+
     return {
-      content: [{ type: "text", text: JSON.stringify({
-        version: VERSION, source: SOURCE,
-        case: {
-          id: caseFile.id, title: caseFile.title, caseType: caseFile.caseType,
-          court: caseFile.court, caseNumber: caseFile.caseNumber,
-          status: caseFile.status, priority: caseFile.priority,
-          referenceNo: caseFile.referenceNo, description: caseFile.description,
-          createdAt: caseFile.createdAt, updatedAt: caseFile.updatedAt,
-        },
-        clients: clients.map((c: any) => ({ id: c.id, role: c.role, name: c.name, phone: c.phone, cnic: c.cnic })),
-        notes: notes.map((n: any) => ({ id: n.id, content: n.content, createdAt: n.createdAt })),
-        compliance: compliance.map((c: any) => ({
-          id: c.id, type: c.type, title: c.title,
-          dueDate: c.dueDate, status: c.status, court: c.court, judge: c.judge,
-        })),
-      }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
     };
   });
 
@@ -677,6 +817,18 @@ ${additionalClauses || "None"}`;
       priority: z.enum(["low", "normal", "high", "urgent"]).optional().default("normal"),
       description: z.string().optional().describe("Brief case description or background facts"),
     },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      message: z.string(),
+      case: z.object({
+        id: z.number(),
+        title: z.string(),
+        caseType: z.string(),
+        court: z.string().nullable().optional(),
+        status: z.string(),
+      }),
+    },
     annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   }, async ({ title, caseType, court, caseNumber, priority, description }) => {
     const userId = getAuthenticatedUserId();
@@ -685,12 +837,16 @@ ${additionalClauses || "None"}`;
       userId, title, caseType, court, caseNumber, priority, description,
     }).returning();
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      message: `Case file "${title}" created successfully.`,
+      case: { id: created.id, title: created.title, caseType: created.caseType, court: created.court, status: created.status },
+    };
+
     return {
-      content: [{ type: "text", text: JSON.stringify({
-        version: VERSION, source: SOURCE,
-        message: `Case file "${title}" created successfully.`,
-        case: { id: created.id, title: created.title, caseType: created.caseType, court: created.court, status: created.status },
-      }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
     };
   });
 
@@ -700,6 +856,17 @@ ${additionalClauses || "None"}`;
     inputSchema: {
       caseId: z.number().describe("The case file ID to add the note to"),
       content: z.string().describe("The note content (e.g. 'Opponent requested adjournment. Next hearing fixed for arguments.')"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      message: z.string(),
+      note: z.object({
+        id: z.number(),
+        caseId: z.number(),
+        content: z.string(),
+        createdAt: z.any().optional(),
+      }),
     },
     annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   }, async ({ caseId, content }) => {
@@ -713,12 +880,16 @@ ${additionalClauses || "None"}`;
 
     const [note] = await db.insert(caseNotes).values({ caseId, userId, content }).returning();
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      message: "Note added successfully.",
+      note: { id: note.id, caseId, content: note.content, createdAt: note.createdAt },
+    };
+
     return {
-      content: [{ type: "text", text: JSON.stringify({
-        version: VERSION, source: SOURCE,
-        message: "Note added successfully.",
-        note: { id: note.id, caseId, content: note.content, createdAt: note.createdAt },
-      }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
     };
   });
 
@@ -730,6 +901,24 @@ ${additionalClauses || "None"}`;
     inputSchema: {
       startDate: z.string().describe("Start date (YYYY-MM-DD)"),
       endDate: z.string().describe("End date (YYYY-MM-DD)"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      dateRange: z.object({ from: z.string(), to: z.string() }),
+      totalEntries: z.number(),
+      entries: z.array(z.object({
+        id: z.number(),
+        date: z.string(),
+        time: z.string().nullable().optional(),
+        title: z.string(),
+        description: z.string().nullable().optional(),
+        caseId: z.number().nullable().optional(),
+        priority: z.string(),
+        completed: z.boolean().nullable().optional(),
+        outcome: z.string().nullable().optional(),
+        nextDate: z.string().nullable().optional(),
+      })),
     },
     annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   }, async ({ startDate, endDate }) => {
@@ -743,18 +932,28 @@ ${additionalClauses || "None"}`;
       ))
       .orderBy(diaryEntries.date);
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      dateRange: { from: startDate, to: endDate },
+      totalEntries: rows.length,
+      entries: rows.map((e: any) => ({
+        id: e.id,
+        date: e.date,
+        time: e.time,
+        title: e.title,
+        description: e.description,
+        caseId: e.caseId,
+        priority: e.priority,
+        completed: e.completed,
+        outcome: e.outcome,
+        nextDate: e.nextDate,
+      })),
+    };
+
     return {
-      content: [{ type: "text", text: JSON.stringify({
-        version: VERSION, source: SOURCE,
-        dateRange: { from: startDate, to: endDate },
-        totalEntries: rows.length,
-        entries: rows.map((e: any) => ({
-          id: e.id, date: e.date, time: e.time,
-          title: e.title, description: e.description,
-          caseId: e.caseId, priority: e.priority,
-          completed: e.completed, outcome: e.outcome, nextDate: e.nextDate,
-        })),
-      }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
     };
   });
 
@@ -768,6 +967,18 @@ ${additionalClauses || "None"}`;
       description: z.string().optional().describe("Additional details or notes"),
       caseId: z.number().optional().describe("Link to an existing case file ID"),
       priority: z.enum(["low", "normal", "high", "urgent"]).optional().default("normal"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      message: z.string(),
+      entry: z.object({
+        id: z.number(),
+        date: z.string(),
+        time: z.string().nullable().optional(),
+        title: z.string(),
+        priority: z.string(),
+      }),
     },
     annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   }, async ({ date, title, time, description, caseId, priority }) => {
@@ -785,12 +996,16 @@ ${additionalClauses || "None"}`;
       userId, date, title, time, description, caseId, priority,
     }).returning();
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      message: `Diary entry "${title}" scheduled for ${date}.`,
+      entry: { id: entry.id, date: entry.date, time: entry.time, title: entry.title, priority: entry.priority },
+    };
+
     return {
-      content: [{ type: "text", text: JSON.stringify({
-        version: VERSION, source: SOURCE,
-        message: `Diary entry "${title}" scheduled for ${date}.`,
-        entry: { id: entry.id, date: entry.date, time: entry.time, title: entry.title, priority: entry.priority },
-      }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
     };
   });
 
@@ -802,6 +1017,22 @@ ${additionalClauses || "None"}`;
       completed: z.boolean().describe("Whether the hearing/task is completed"),
       outcome: z.string().optional().describe("Court outcome (e.g. 'Defendant filed reply. Case adjourned.')"),
       nextDate: z.string().optional().describe("Next hearing date if adjourned (YYYY-MM-DD)"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      message: z.string(),
+      updated: z.object({
+        id: z.number(),
+        completed: z.boolean().nullable().optional(),
+        outcome: z.string().nullable().optional(),
+        nextDate: z.string().nullable().optional(),
+      }),
+      followUpEntry: z.object({
+        id: z.number(),
+        date: z.string(),
+        title: z.string(),
+      }).nullable().optional(),
     },
     annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   }, async ({ entryId, completed, outcome, nextDate }) => {
@@ -832,13 +1063,17 @@ ${additionalClauses || "None"}`;
       followUp = { id: newEntry.id, date: newEntry.date, title: newEntry.title };
     }
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      message: `Diary entry #${entryId} updated.`,
+      updated: { id: updated.id, completed: updated.completed, outcome: updated.outcome, nextDate: updated.nextDate },
+      followUpEntry: followUp,
+    };
+
     return {
-      content: [{ type: "text", text: JSON.stringify({
-        version: VERSION, source: SOURCE,
-        message: `Diary entry #${entryId} updated.`,
-        updated: { id: updated.id, completed: updated.completed, outcome: updated.outcome, nextDate: updated.nextDate },
-        followUpEntry: followUp,
-      }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
     };
   });
 
@@ -853,6 +1088,22 @@ ${additionalClauses || "None"}`;
       fileData: z.string().describe("Base64-encoded file content"),
       label: z.string().optional().describe("Document label (e.g. 'FIR Copy', 'Medical Report', 'Power of Attorney')"),
       mode: z.enum(["base64", "direct"]).optional().default("base64").describe("Upload mode: 'base64' for inline files (<=25MB), 'direct' for presigned URL mode"),
+    },
+    outputSchema: {
+      version: z.string(),
+      source: z.string(),
+      message: z.string(),
+      status: z.string(),
+      document: z.object({
+        id: z.number(),
+        fileName: z.string(),
+        label: z.string(),
+        mimeType: z.string(),
+        sizeBytes: z.number(),
+        storedInR2: z.boolean(),
+        status: z.string(),
+      }),
+      case: z.object({ id: z.number(), title: z.string() }),
     },
     annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   }, async ({ caseId, fileName, fileData, label, mode }) => {
@@ -957,23 +1208,27 @@ ${additionalClauses || "None"}`;
       }
     })();
 
+    const payload = {
+      version: VERSION,
+      source: SOURCE,
+      message: `Document "${fileName}" created and linked to case "${caseFile.title}". Storage sync is in progress.`,
+      status: "pending",
+      document: {
+        id: doc.id,
+        fileName,
+        label: label || fileName,
+        mimeType,
+        sizeBytes: buffer.length,
+        storedInR2: false,
+        status: "pending",
+      },
+      case: { id: caseFile.id, title: caseFile.title },
+    };
+
     // 4. Return instant HTTP response (<200ms) to MCP client
     return {
-      content: [{ type: "text", text: JSON.stringify({
-        version: VERSION, source: SOURCE,
-        message: `Document "${fileName}" created and linked to case "${caseFile.title}". Storage sync is in progress.`,
-        status: "pending",
-        document: {
-          id: doc.id,
-          fileName,
-          label: label || fileName,
-          mimeType,
-          sizeBytes: buffer.length,
-          storedInR2: false,
-          status: "pending",
-        },
-        case: { id: caseFile.id, title: caseFile.title },
-      }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
     };
   });
 
@@ -984,17 +1239,23 @@ ${additionalClauses || "None"}`;
       caseId: z.number().describe("The target case file ID to attach the document to"),
       label: z.string().optional().describe("Document label (e.g. 'FIR Copy', 'Medical Report', 'Power of Attorney')"),
     },
+    outputSchema: {
+      version: z.string(),
+      uploadUrl: z.string(),
+    },
     annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
   }, async ({ caseId, label }) => {
     const userId = getAuthenticatedUserId();
     try {
       const sessionId = await createSignedUploadSession(userId, caseId, label);
       const uploadUrl = `https://www.alwakeelo.com/upload/session/${sessionId}`;
+      const payload = {
+        version: VERSION,
+        uploadUrl,
+      };
       return {
-        content: [{ type: "text", text: JSON.stringify({
-          version: VERSION,
-          uploadUrl,
-        }, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+        structuredContent: payload,
       };
     } catch (err: any) {
       throw new McpError(ErrorCode.InvalidRequest, err?.message || "Failed to create upload session.");
