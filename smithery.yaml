@@ -1,0 +1,20 @@
+name: alwakeelo
+displayName: AL WAKEELO
+description: Complete Pakistani Legal Assistant — searches 600,000+ Supreme Court and High Court judgments, statutory provisions, drafts court petitions and commercial contracts, and manages lawyer case files and diaries.
+version: 2.0.0
+type: remote
+url: https://www.alwakeelo.com/api/mcp
+transport: streamable-http
+oauth:
+  enabled: true
+  authorizationUrl: https://www.alwakeelo.com/api/oauth/authorize
+  tokenUrl: https://www.alwakeelo.com/api/oauth/token
+  registrationUrl: https://www.alwakeelo.com/api/oauth/register
+tags:
+  - legal
+  - law
+  - pakistan
+  - legal-research
+  - drafting
+  - case-management
+  - court-diary
