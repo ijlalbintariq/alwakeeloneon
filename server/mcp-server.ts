@@ -470,6 +470,18 @@ ${additionalClauses || "None"}`;
     // Log usage to the database
     await logToolUsage(userId, "draft", searchQuery, formattedText);
 
+    // Save draft directly to the documents table so it appears in the Editor and Word Add-in
+    await db.insert(documents).values({
+      userId,
+      title: `Draft: ${topic}`,
+      content: formattedText,
+      sourceType: "mcp-draft",
+      mimeType: "text/plain",
+      detectedDomain: "legal",
+      detectedDomainLabel: "Legal Draft",
+      classificationMethod: "mcp-draft",
+    });
+
     // Pre-wrap draft in a plaintext code block so MCP clients render it with exact alignment & no markdown parsing
     const wrappedDraft = `\`\`\`text\n${formattedText.replace(/^```(?:text|markdown)?\n?/i, "").replace(/\n?```$/i, "")}\n\`\`\``;
 
@@ -543,6 +555,18 @@ ${additionalClauses || "None"}`;
 
     // Log usage to the database
     await logToolUsage(userId, "contract-drafting", contractType, formattedText);
+
+    // Save draft directly to the documents table so it appears in the Editor and Word Add-in
+    await db.insert(documents).values({
+      userId,
+      title: `Contract: ${contractType}`,
+      content: formattedText,
+      sourceType: "mcp-draft",
+      mimeType: "text/plain",
+      detectedDomain: "legal",
+      detectedDomainLabel: "Legal Draft",
+      classificationMethod: "mcp-draft",
+    });
 
     // Pre-wrap draft in a plaintext code block so MCP clients render it with exact alignment & no markdown parsing
     const wrappedDraft = `\`\`\`text\n${formattedText.replace(/^```(?:text|markdown)?\n?/i, "").replace(/\n?```$/i, "")}\n\`\`\``;
