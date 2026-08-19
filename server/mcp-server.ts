@@ -947,7 +947,7 @@ ${additionalClauses || "None"}`;
             sizeBytes: buffer.length,
             etag: r2Result.etag,
             publicUrl: r2Result.publicUrl,
-          }).catch((err) => console.error(`[MCP Upload Background] Failed to save documentFiles for Doc #${doc.id}:`, err));
+          }).catch((err: any) => console.error(`[MCP Upload Background] Failed to save documentFiles for Doc #${doc.id}:`, err));
           console.log(`[MCP Upload Background] Successfully synced Doc #${doc.id} (${fileName}) to R2.`);
         } else {
           console.warn(`[MCP Upload Background] R2 upload retries exhausted for Doc #${doc.id}. Document saved in DB only.`);

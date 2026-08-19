@@ -107,3 +107,18 @@ test("an explicit whole rewrite overrides an incidental selection", () => {
     hasSelection: true,
   }), "full-rewrite");
 });
+
+test("narrative facts with embedded drafting command classifies as fresh draft", () => {
+  const prompt = "Ali's name was placed on the ECL by the Ministry of Interior without giving him any notice or opportunity of hearing. He has no conviction and no court order restricting his travel. When he approaches the authorities for removal of his name, they refuse to provide reasons.\n\nTask: Draft a Constitutional Petition under Article 199 before the Lahore High Court seeking:\n\nRemoval of his name from the ECL.\nDeclaration that the impugned action is unlawful.\nInterim permission to travel abroad.";
+  assert.equal(classifyLegalDraftFollowUp({
+    prompt,
+    hasDraft: false,
+    hasSelection: false,
+  }), "initial-draft");
+  assert.equal(classifyLegalDraftFollowUp({
+    prompt,
+    hasDraft: true,
+    hasSelection: false,
+  }), "full-rewrite");
+});
+

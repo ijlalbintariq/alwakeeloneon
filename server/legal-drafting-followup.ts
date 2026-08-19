@@ -24,7 +24,9 @@ const CONVERSION_PATTERN =
 const MUTATION_PATTERN =
   /\b(add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|improve|enhance|rewrite|redraft|revise|amend|edit|update|polish|format|finalize|fix|correct|reword|rephrase|restructure|move|make|undo|revert)\b/i;
 const EXPLICIT_DRAFT_ACTION_PATTERN =
-  /^(?:please\s+)?(?:draft|prepare|write|generate|create)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:draft|prepare|write|generate|create)\b/i;
+  /\b(?:task\s*:?\s*)?(?:draft|prepare|write|generate|create)\s+(?:a|an|the|this|new|fresh|court|constitutional|writ|bail|plaint|suit|petition|application|pleading|affidavit|notice|agreement|contract)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:draft|prepare|write|generate|create)\b|^(?:please\s+)?(?:draft|prepare|write|generate|create)\b/i;
+const EXPLICIT_NEW_FILING_PATTERN =
+  /\b(?:task\s*:?\s*)?(?:draft|prepare|write|generate|create)\b[\s\S]{0,60}\b(?:petition|writ|suit|plaint|bail|application|affidavit|appeal|revision|reply|statement|notice|contract|agreement|power\s+of\s+attorney|constitutional\s+petition)\b/i;
 const ANSWER_PATTERN =
   /\b(review|explain|analyse|analyze|check|identify|tell|compare|opinion|advice|why|what|which|whether|maintainable|valid|correct|wrong|risk|issue|problem|contradict)\b|\?\s*$/i;
 const DIRECT_QUESTION_PATTERN = /^(?:is|are|was|were|do|does|did|can|could|would|should|will|what|why|which|whether|how)\b/i;
@@ -101,22 +103,23 @@ export function classifyLegalDraftFollowUp(input: {
   requestedMode?: string;
 }): LegalDraftFollowUpOperation {
   const prompt = String(input.prompt || "").trim();
+  const isNewFiling = EXPLICIT_NEW_FILING_PATTERN.test(prompt);
   const hasMutation = MUTATION_PATTERN.test(prompt) || EXPLICIT_DRAFT_ACTION_PATTERN.test(prompt);
   const asksForAnswer = ANSWER_PATTERN.test(prompt);
   const asksAboutPriorAction = /\b(?:what|which)\s+(?:did\s+you|was)\s+(?:change|changed|edit|edited|do|done)\b/i.test(prompt);
-  const isDirectQuestion = DIRECT_QUESTION_PATTERN.test(prompt) && !EXPLICIT_MUTATION_COMMAND_PATTERN.test(prompt) && !EXPLICIT_DRAFT_ACTION_PATTERN.test(prompt);
+  const isDirectQuestion = DIRECT_QUESTION_PATTERN.test(prompt) && !EXPLICIT_MUTATION_COMMAND_PATTERN.test(prompt) && !isNewFiling;
 
-  if (FULL_REWRITE_PATTERN.test(prompt)) return input.hasDraft ? "full-rewrite" : "initial-draft";
+  if (FULL_REWRITE_PATTERN.test(prompt) || isNewFiling) return input.hasDraft ? "full-rewrite" : "initial-draft";
   if (CONVERSION_PATTERN.test(prompt)) return input.hasDraft ? "conversion" : "initial-draft";
   if (input.hasSelection) {
     return hasMutation && !asksAboutPriorAction ? "targeted-edit" : "answer";
   }
   if (!input.hasDraft) {
-    return input.requestedMode === "analysis" || (asksForAnswer && !hasMutation)
+    return input.requestedMode === "analysis" || (asksForAnswer && !hasMutation && !isNewFiling)
       ? "answer"
       : "initial-draft";
   }
-  if (asksAboutPriorAction || isDirectQuestion || (asksForAnswer && !hasMutation)) return "answer";
+  if (asksAboutPriorAction || isDirectQuestion || (asksForAnswer && !hasMutation && !isNewFiling)) return "answer";
   if (hasMutation) {
     if (
       findLegalDraftEditTarget(input.prompt, "") ||

@@ -21538,7 +21538,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
   });
 
   app.post("/api/upload/session/:sessionId/upload", upload.single("file"), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
-    const { sessionId } = req.params;
+    const sessionId = String(req.params.sessionId);
     const session = signedUploadSessions.get(sessionId);
 
     if (!session) {
@@ -21598,7 +21598,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
           sizeBytes: file.size,
           etag: r2Result.etag,
           publicUrl: r2Result.publicUrl,
-        }).catch((err) => console.error("[Session Upload] Failed to save documentFiles:", err));
+        }).catch((err: any) => console.error("[Session Upload] Failed to save documentFiles:", err));
       }
 
       // 3. Link to Case File

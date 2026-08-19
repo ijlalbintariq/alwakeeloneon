@@ -208,15 +208,15 @@ const DEFAULT_DOC = "";
 const LEGACY_DEFAULT_DOC_PREFIX = "IN THE COURT OF THE CIVIL JUDGE";
 
 const DRAFT_ACTION_VERBS_REGEX =
-  /\b(redraft|rewrite|revise|amend|edit|improve|finalize|make|update|format|polish|convert|add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|enhance|correct|reword|rephrase|restructure|move|undo|revert)\b/i;
+  /\b(draft|drafting|prepare|write|generate|create|file|redraft|rewrite|revise|amend|edit|improve|finalize|make|update|format|polish|convert|add|insert|include|incorporate|apply|use|put|delete|remove|omit|replace|change|shorten|condense|expand|elaborate|strengthen|enhance|correct|reword|rephrase|restructure|move|undo|revert)\b/i;
 const EXPLICIT_DRAFT_ACTION_REGEX =
-  /^(?:please\s+)?(?:draft|prepare|write|generate|create)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:draft|prepare|write|generate|create)\b/i;
+  /\b(?:task\s*:?\s*)?(?:draft|prepare|write|generate|create)\b|\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:draft|prepare|write|generate|create)\b/i;
 const DRAFTING_DOCUMENT_HINTS_REGEX =
-  /\b(application|petition|plaint|suit|appeal|writ|bail|revision|cpla|affidavit|reply|written statement)\b/i;
+  /\b(application|petition|plaint|suit|appeal|writ|bail|revision|cpla|affidavit|reply|written statement|constitutional petition)\b/i;
 const LEGAL_REFERENCE_HINTS_REGEX =
   /\b(section|u\/s|under section|article|fir|cr\.?p\.?c|ppc|pld|scmr|mld|clc|cld|ylr|p\s*cr\.?\s*l\.?\s*j)\b/i;
 const LEGAL_ANALYSIS_HINTS_REGEX =
-  /\b(explain|clarify|opinion|advice|review|analyze|analysis|maintainable|valid|correct|wrong|risk|issue|problem|jurisdiction|limitation|conviction|valuation|court fee|which court|forum|law|legal)\b/i;
+  /\b(explain|clarify|opinion|advice|review|analyze|analysis|maintainable|valid|correct|wrong|risk|issue|problem|jurisdiction|limitation|conviction|valuation|court fee|which court|forum)\b/i;
 const GREETING_ONLY_REGEX = /^\s*(hi|hello|hey|salam|assalamualaikum|aoa|ok|okay|thanks|thank you)\s*[.!?]*\s*$/i;
 const UNDO_LAST_EDIT_REGEX = /^\s*(?:undo|revert)(?:\s+(?:that|the\s+last\s+(?:change|edit)))?\s*[.!?]*\s*$/i;
 
@@ -228,16 +228,19 @@ function classifyLegalDraftPrompt(prompt: string, hasDraft: boolean): "guidance"
   const hasDraftAction = DRAFT_ACTION_VERBS_REGEX.test(normalized) || EXPLICIT_DRAFT_ACTION_REGEX.test(normalized);
   const isPoliteDraftCommand = /\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:redraft|rewrite|revise|amend|edit|improve|make|update|add|insert|include|incorporate|apply|use|put|delete|remove|replace|change|shorten|expand|strengthen|correct|reword|move|draft|prepare|write|generate|create)\b/i.test(normalized);
   const isDirectQuestion = /^(?:is|are|was|were|do|does|did|can|could|would|should|will|what|why|which|whether|how)\b/i.test(normalized);
-  if (isDirectQuestion && !isPoliteDraftCommand) return "analysis";
+  
+  // Direct questions without drafting commands are analysis
+  if (isDirectQuestion && !isPoliteDraftCommand && !hasDraftAction) return "analysis";
+
+  // Explicit drafting actions (e.g. "Task: Draft a petition", "Ali on ECL... Draft Article 199 writ") take highest priority
   if (hasDraftAction) return "draft";
+  if (DRAFTING_DOCUMENT_HINTS_REGEX.test(normalized)) return "draft";
 
   const hasLegalAnalysisIntent =
-    LEGAL_REFERENCE_HINTS_REGEX.test(normalized) ||
     LEGAL_ANALYSIS_HINTS_REGEX.test(normalized) ||
     /\?$/.test(normalized) ||
     normalized.length >= 60;
   if (hasLegalAnalysisIntent) return "analysis";
-  if (!hasDraft && DRAFTING_DOCUMENT_HINTS_REGEX.test(normalized)) return "draft";
 
   return hasDraft ? "analysis" : "guidance";
 }
@@ -3785,6 +3788,38 @@ function LegalDraftingPageInner() {
                               {name}
                             </span>
                           ))}
+                        </div>
+                      )}
+                      {message.role === "assistant" && !message.kind && message.content.trim().length > 0 && (
+                        <div className="mt-2 flex items-center gap-2 pt-1 border-t border-border/40">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentHtml = editorRef.current?.getHTML() || editorHtml || docText;
+                              const currentText = editorRef.current?.getText() || docText;
+                              draftHistory.addSnapshot(`Before Apply: Chat response`, currentHtml, currentText);
+                              setEditorContent(message.content);
+                              setHasDraftInSession(true);
+                              toast({ title: "Applied to Legal Editor" });
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors"
+                            title="Replace editor content with this draft"
+                          >
+                            <FileText size={11} />
+                            Apply to Editor
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              editorRef.current?.insertContent(`\n\n${message.content}\n\n`);
+                              toast({ title: "Inserted at cursor" });
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-border bg-card/60 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                            title="Insert this text at the current cursor position in the editor"
+                          >
+                            <Plus size={11} />
+                            Insert at Cursor
+                          </button>
                         </div>
                       )}
                       {/* R2: Clarification buttons */}
