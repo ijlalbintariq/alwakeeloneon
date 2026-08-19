@@ -7821,6 +7821,23 @@ export async function registerRoutes(
     res.json(OAUTH_METADATA);
   });
 
+  // ── Smithery & MCP Registry Server Card ─────────────────────────────────
+  const MCP_SERVER_CARD = {
+    name: "alwakeelo",
+    displayName: "AL WAKEELO",
+    description: "Complete Pakistani Legal Assistant — searches 600,000+ Supreme Court & High Court judgments, statutory provisions, drafts court petitions and commercial contracts, and manages lawyer case files and diaries.",
+    version: "2.0.0",
+    url: "https://www.alwakeelo.com/api/mcp",
+    transport: "streamable-http",
+    toolsCount: 15,
+    website: "https://www.alwakeelo.com",
+    oauth: OAUTH_METADATA,
+  };
+
+  app.get(["/.well-known/mcp/server-card.json", "/.well-known/mcp.json"], (req, res) => {
+    res.json(MCP_SERVER_CARD);
+  });
+
   // ── AI Discovery Endpoints (GEO Optimization) ──────────────────────────
   // These endpoints help AI answer engines (ChatGPT, Perplexity, Gemini)
   // discover, understand, and cite Alwakeelo content.
