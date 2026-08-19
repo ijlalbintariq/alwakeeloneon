@@ -168,11 +168,23 @@ async function signedR2Request(args: {
   }
   requestHeaders.set("Authorization", authorization);
 
-  return fetch(requestUrl, {
-    method: args.method,
-    headers: requestHeaders,
-    body: args.method === "PUT" ? payload : undefined,
-  });
+  const timeoutMs = Number(process.env.R2_UPLOAD_TIMEOUT_MS ?? 15000);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(requestUrl, {
+      method: args.method,
+      headers: requestHeaders,
+      body: args.method === "PUT" ? payload : undefined,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
 }
 
 export async function uploadBufferToR2(args: UploadArgs): Promise<UploadedObject | null> {
@@ -204,6 +216,20 @@ export async function uploadBufferToR2(args: UploadArgs): Promise<UploadedObject
     console.error("[R2] Upload failed; continuing with DB-only fallback:", err?.message || err);
     return null;
   }
+}
+
+export async function uploadBufferToR2WithRetry(args: UploadArgs, maxRetries = 3): Promise<UploadedObject | null> {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    attempt++;
+    const result = await uploadBufferToR2(args);
+    if (result) return result;
+    if (attempt < maxRetries) {
+      const delayMs = Math.pow(2, attempt - 1) * 500; // 500ms, 1000ms, 2000ms
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  return null;
 }
 
 export async function deleteR2Object(objectKey: string): Promise<boolean> {

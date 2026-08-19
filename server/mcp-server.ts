@@ -13,7 +13,7 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "./db";
 import { caseLaw, judgments, caseFiles, caseNotes, caseClients, caseCompliance, diaryEntries, documents, documentFiles, caseDocuments } from "@shared/schema";
 import { eq, inArray, like, sql, and, gte, lte, desc } from "drizzle-orm";
-import { uploadBufferToR2 } from "./r2-storage";
+import { uploadBufferToR2, uploadBufferToR2WithRetry } from "./r2-storage";
 import path from "node:path";
 
 // Request-scoped storage to track the authenticated user's ID across JSON-RPC calls
@@ -828,9 +828,10 @@ ${additionalClauses || "None"}`;
       fileName: z.string().describe("Original filename with extension (e.g. 'court_order.pdf', 'evidence_photo.jpg')"),
       fileData: z.string().describe("Base64-encoded file content"),
       label: z.string().optional().describe("Document label (e.g. 'FIR Copy', 'Medical Report', 'Power of Attorney')"),
+      mode: z.enum(["base64", "direct"]).optional().default("base64").describe("Upload mode: 'base64' for inline files (<=25MB), 'direct' for presigned URL mode"),
     },
     annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  }, async ({ caseId, fileName, fileData, label }) => {
+  }, async ({ caseId, fileName, fileData, label, mode }) => {
     const userId = getAuthenticatedUserId();
 
     // Verify case ownership
@@ -849,6 +850,14 @@ ${additionalClauses || "None"}`;
 
     if (buffer.length === 0) {
       throw new McpError(ErrorCode.InvalidRequest, "File data is empty.");
+    }
+
+    const MAX_BINARY_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB binary payload
+    if (buffer.length > MAX_BINARY_SIZE_BYTES) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `File size (${(buffer.length / (1024 * 1024)).toFixed(1)}MB) exceeds the 25MB inline MCP limit. Please upload directly via the Web UI.`
+      );
     }
 
     // Determine MIME type from extension
@@ -872,7 +881,7 @@ ${additionalClauses || "None"}`;
     const isImage = mimeType.startsWith("image/");
     const sourceType = isImage ? "image" : "upload";
 
-    // 1. Create a document record in the database
+    // 1. Create a document record in PostgreSQL immediately
     const [doc] = await db.insert(documents).values({
       userId,
       title: label || fileName,
@@ -884,49 +893,60 @@ ${additionalClauses || "None"}`;
       classificationMethod: "mcp-upload",
     }).returning();
 
-    // 2. Upload to Cloudflare R2
-    const r2Result = await uploadBufferToR2({
-      buffer,
-      fileName,
-      contentType: mimeType,
-      prefix: `case-docs/${userId}`,
-    });
-
-    // 3. Create document_files record (R2 reference)
-    if (r2Result) {
-      await db.insert(documentFiles).values({
-        documentId: doc.id,
-        userId,
-        provider: r2Result.provider,
-        bucket: r2Result.bucket,
-        objectKey: r2Result.objectKey,
-        originalFilename: fileName,
-        mimeType,
-        sizeBytes: buffer.length,
-        etag: r2Result.etag,
-        publicUrl: r2Result.publicUrl,
-      });
-    }
-
-    // 4. Link document to the case file
+    // 2. Link document to the case file immediately
     await db.insert(caseDocuments).values({
       caseId,
       documentId: doc.id,
       label: label || fileName,
     });
 
+    // 3. Dispatch Cloudflare R2 upload asynchronously in background (non-blocking)
+    const uploadPrefix = `case-docs/${userId}`;
+    (async () => {
+      try {
+        const r2Result = await uploadBufferToR2WithRetry({
+          buffer,
+          fileName,
+          contentType: mimeType,
+          prefix: uploadPrefix,
+        });
+
+        if (r2Result) {
+          await db.insert(documentFiles).values({
+            documentId: doc.id,
+            userId,
+            provider: r2Result.provider,
+            bucket: r2Result.bucket,
+            objectKey: r2Result.objectKey,
+            originalFilename: fileName,
+            mimeType,
+            sizeBytes: buffer.length,
+            etag: r2Result.etag,
+            publicUrl: r2Result.publicUrl,
+          }).catch((err) => console.error(`[MCP Upload Background] Failed to save documentFiles for Doc #${doc.id}:`, err));
+          console.log(`[MCP Upload Background] Successfully synced Doc #${doc.id} (${fileName}) to R2.`);
+        } else {
+          console.warn(`[MCP Upload Background] R2 upload retries exhausted for Doc #${doc.id}. Document saved in DB only.`);
+        }
+      } catch (err) {
+        console.error(`[MCP Upload Background] Error during R2 sync for Doc #${doc.id}:`, err);
+      }
+    })();
+
+    // 4. Return instant HTTP response (<200ms) to MCP client
     return {
       content: [{ type: "text", text: JSON.stringify({
         version: VERSION, source: SOURCE,
-        message: `Document "${fileName}" uploaded and linked to case "${caseFile.title}".`,
+        message: `Document "${fileName}" created and linked to case "${caseFile.title}". Storage sync is in progress.`,
+        status: "pending",
         document: {
           id: doc.id,
           fileName,
           label: label || fileName,
           mimeType,
           sizeBytes: buffer.length,
-          storedInR2: !!r2Result,
-          publicUrl: r2Result?.publicUrl || null,
+          storedInR2: false,
+          status: "pending",
         },
         case: { id: caseFile.id, title: caseFile.title },
       }, null, 2) }],
