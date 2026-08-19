@@ -17546,6 +17546,8 @@ RULES:
 - Use Pakistani legal references only (for example: PPC, Cr.P.C., Constitution of Islamic Republic of Pakistan 1973, PLD, SCMR, YLR, MLD, CLC, CLD, PCRLJ).
 - If a safe Pakistani equivalent is unclear, use a neutral placeholder like [Pakistani legal provision required] instead of inventing or using Indian citations.
 - IMPORTANT: Do NOT flag any case citation as "unverified" or suggest removing/replacing citations. Citation verification is handled separately by an automated system. Never recommend changes related to citation verification.
+- Do NOT suggest changes that alter, replace, or disturb the Index of Documents table, court header, party titles, or overall numbering structure.
+- When improving a numbered paragraph or lettered ground, strictly preserve the exact paragraph number (e.g., "3. That...") or ground letter (e.g., "C. That...") in suggestedText.
 - Do NOT suggest changes that merely rephrase the same idea. Focus only on substantive legal improvements.
 - Do not include markdown, code fences, or extra keys.${knowledgeContext}`;
 
