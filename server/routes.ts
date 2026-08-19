@@ -21536,7 +21536,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     });
   });
 
-  app.post("/api/upload/session/:sessionId/upload", upload.single("file"), async (req, res) => {
+  app.post("/api/upload/session/:sessionId/upload", upload.single("file"), cleanupDiskUploadFilesAfterResponse, async (req, res) => {
     const { sessionId } = req.params;
     const session = signedUploadSessions.get(sessionId);
 
@@ -21559,6 +21559,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
     try {
       const file = req.file;
+      const buffer = getUploadBufferOrThrow(file);
       const label = String(req.body.label || session.label || file.originalname).trim();
       const ext = path.extname(file.originalname).toLowerCase();
       const isImage = file.mimetype.startsWith("image/");
@@ -21578,7 +21579,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       // 2. Upload to Cloudflare R2
       const r2Result = await uploadBufferToR2WithRetry({
-        buffer: file.buffer,
+        buffer,
         fileName: file.originalname,
         contentType: file.mimetype,
         prefix: `case-docs/${session.userId}`,
