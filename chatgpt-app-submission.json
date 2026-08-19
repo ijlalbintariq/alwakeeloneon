@@ -226,26 +226,6 @@
       "description": "Fetch full text and headnotes of a reported judgment.",
       "user_prompt": "Get the full judgment details for case citation 2023 SCMR 115.",
       "tools_triggered": "get_judgment"
-    },
-    {
-      "description": "List active case files from the lawyer's CRM dashboard.",
-      "user_prompt": "Show me my active case files in the court dashboard.",
-      "tools_triggered": "list_case_files"
-    },
-    {
-      "description": "Create a new legal case file in practice management.",
-      "user_prompt": "Create a new civil litigation case file titled 'Malik Ahmed vs Bilal Khan' in Rent Controller Lahore.",
-      "tools_triggered": "create_case_file"
-    },
-    {
-      "description": "Schedule a court hearing in the litigation diary.",
-      "user_prompt": "Schedule a court hearing for 2026-09-15 titled 'Arguments on Stay Application' for case ID 12.",
-      "tools_triggered": "add_diary_entry"
-    },
-    {
-      "description": "Generate a 1-click token-free upload link for evidence documents.",
-      "user_prompt": "I have an FIR copy and court order PDF to attach to case ID 12. Give me an upload link.",
-      "tools_triggered": "request_document_upload"
     }
   ],
   "negative_test_cases": [
@@ -260,10 +240,6 @@
     {
       "description": "Handle lookup for non-existent judgment UUID or invalid ID gracefully.",
       "user_prompt": "Get judgment for non-existent ID 9999999."
-    },
-    {
-      "description": "Handle case details lookup for unauthorized or non-existent case ID.",
-      "user_prompt": "Get case details for case ID -1."
     }
   ]
 }
