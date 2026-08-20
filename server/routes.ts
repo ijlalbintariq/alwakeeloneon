@@ -11392,6 +11392,18 @@ RAG POLICY (STRICT):
     }
   });
 
+  app.get("/api/courts-ref", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const courts = await storage.getCourtsRef();
+      res.json(courts);
+    } catch (err) {
+      console.error("Error fetching courts:", err);
+      res.status(500).json({ message: "Failed to fetch courts" });
+    }
+  });
+
   app.get("/api/citation-search", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);

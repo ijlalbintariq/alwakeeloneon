@@ -173,6 +173,7 @@ export default function JudgmentSearchPage() {
 
   const [journals, setJournals] = useState<Journal[]>([]);
   const [loadingJournals, setLoadingJournals] = useState<boolean>(true);
+  const [courts, setCourts] = useState<Array<{ id: number; code: string; name: string; level: string }>>([]);
   const [citationSearching, setCitationSearching] = useState<boolean>(false);
   const [citationError, setCitationError] = useState<string | null>(null);
   const [citationResults, setCitationResults] = useState<CitationResult[]>([]);
@@ -357,7 +358,20 @@ export default function JudgmentSearchPage() {
       }
     }
 
+    async function loadCourts() {
+      try {
+        const res = await fetch("/api/courts-ref", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setCourts(data);
+        }
+      } catch {
+        /* non-fatal */
+      }
+    }
+
     void loadJournals();
+    void loadCourts();
   }, []);
 
   useEffect(() => {
@@ -527,12 +541,16 @@ export default function JudgmentSearchPage() {
 
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Court</span>
-                <input
+                <select
                   value={keywordCourt}
                   onChange={(e) => setKeywordCourt(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  placeholder="All Courts"
-                />
+                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                >
+                  <option value="">All Courts</option>
+                  {courts.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
               </label>
 
               <label className="space-y-1">
@@ -618,13 +636,17 @@ export default function JudgmentSearchPage() {
 
               <label className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Court (Optional)</span>
-                <input
+                <select
                   value={citationCourt}
                   onChange={(e) => setCitationCourt(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  placeholder="All Courts"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   data-testid="input-citation-court"
-                />
+                >
+                  <option value="">All Courts</option>
+                  {courts.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
               </label>
 
               <button
