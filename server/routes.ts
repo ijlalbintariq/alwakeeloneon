@@ -11042,12 +11042,21 @@ RAG POLICY (STRICT):
         });
 
       // Merge + dedup: primary caseLaw results first, headnotes fill gaps, then vector results
-      const seen = new Set<string>();
+      // Normalize key aggressively (strip ALL whitespace) to catch "2025LHC639" vs "2025 LHC 639"
+      const seenMap = new Map<string, number>(); // normalized key → index in results
       const results: typeof caseLawResults = [];
       for (const r of [...primaryCaseLaw, ...headnoteResults, ...vectorResults]) {
-        const key = String(r.citation || "").toLowerCase().replace(/\s+/g, " ").trim();
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
+        const key = String(r.citation || "").toLowerCase().replace(/\s+/g, "").trim();
+        if (!key) continue;
+        if (seenMap.has(key)) {
+          // Transfer judgmentId from headnoteResults to already-added caseLaw result
+          const existingIdx = seenMap.get(key)!;
+          if (!(results[existingIdx] as any).judgmentId && (r as any).judgmentId) {
+            (results[existingIdx] as any).judgmentId = (r as any).judgmentId;
+          }
+          continue;
+        }
+        seenMap.set(key, results.length);
         results.push(r);
         if (results.length >= limit) break;
       }
@@ -11059,6 +11068,8 @@ RAG POLICY (STRICT):
       const judgmentDetailsMap = new Map<string, { headnotes: string | null; fullTextHead: string }>();
 
       if (citations.length > 0) {
+        // Normalized citations (strip all whitespace) for fuzzy matching
+        const normalizedCitations = [...new Set(citations.map(c => c.replace(/\s+/g, "").toLowerCase()))];
         try {
           const rows = await db
             .select({
@@ -11068,10 +11079,22 @@ RAG POLICY (STRICT):
               fullTextHead: sql<string>`LEFT(${judgments.fullText}, 2000)`
             })
             .from(judgments)
-            .where(inArray(judgments.citationString, citations));
+            .where(
+              or(
+                inArray(judgments.citationString, citations),
+                inArray(sql`REPLACE(LOWER(${judgments.citationString}), ' ', '')`, normalizedCitations)
+              )
+            );
           for (const row of rows) {
+            const normalizedKey = row.citationString.replace(/\s+/g, "").toLowerCase();
+            // Set by exact citation string AND normalized key
             judgmentIdMap.set(row.citationString, row.id);
+            judgmentIdMap.set(normalizedKey, row.id);
             judgmentDetailsMap.set(row.citationString, {
+              headnotes: row.headnotes,
+              fullTextHead: row.fullTextHead || ""
+            });
+            judgmentDetailsMap.set(normalizedKey, {
               headnotes: row.headnotes,
               fullTextHead: row.fullTextHead || ""
             });
@@ -11084,12 +11107,13 @@ RAG POLICY (STRICT):
 
       const enriched = results.map((r) => {
         const citationStr = String(r.citation || "").trim();
-        const judgmentId = judgmentIdMap.get(citationStr) || (r as any).judgmentId || null;
+        const normalizedCit = citationStr.replace(/\s+/g, "").toLowerCase();
+        const judgmentId = judgmentIdMap.get(citationStr) || judgmentIdMap.get(normalizedCit) || (r as any).judgmentId || null;
         let finalSummary = r.summary;
 
         // Perform the headnote fallback if the current summary is metadata-only
         if (isMetadataOnlySummary(finalSummary)) {
-          const details = judgmentDetailsMap.get(citationStr);
+          const details = judgmentDetailsMap.get(citationStr) || judgmentDetailsMap.get(normalizedCit);
           if (details) {
             const extracted = extractSubstantiveSummary(details.fullTextHead);
             if (extracted) {
