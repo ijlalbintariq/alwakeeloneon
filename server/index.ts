@@ -190,7 +190,7 @@ app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(self), geolocation=()");
   // Google Identity Services popup flow can fail with strict same-origin COOP.
   // Allow popups on auth page while keeping stricter policy elsewhere.
   res.setHeader("Cross-Origin-Opener-Policy", isAuthPage ? "same-origin-allow-popups" : "same-origin");
@@ -346,6 +346,13 @@ app.use((req, res, next) => {
       startDiaryEmailScheduler();
     } catch (err: any) {
       console.warn("[Startup] Could not start diary email scheduler:", err?.message);
+    }
+
+    try {
+      const { startCauseListScheduler } = await import("./services/causelist/causelist-cron");
+      startCauseListScheduler();
+    } catch (err: any) {
+      console.warn("[Startup] Could not start cause list scheduler:", err?.message);
     }
   }
 

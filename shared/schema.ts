@@ -516,6 +516,109 @@ export const caseNotes = pgTable("case_notes", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ── Court Cause Lists System ──────────────────────────────────────────────────
+
+export const causeListScrapeRuns = pgTable(
+  "cause_list_scrape_runs",
+  {
+    id: serial("id").primaryKey(),
+    court: text("court").notNull(), // 'LHC', 'IHC', 'SHC', 'SCP'
+    bench: text("bench").notNull(), // 'Principal Seat', 'Rawalpindi', 'Multan', 'Bahawalpur'
+    targetDate: text("target_date").notNull(), // 'YYYY-MM-DD'
+    startedAt: timestamp("started_at").defaultNow().notNull(),
+    finishedAt: timestamp("finished_at"),
+    status: text("status", { enum: ["running", "success", "partial", "failed"] }).default("running").notNull(),
+    httpStatus: integer("http_status"),
+    sourceUrl: text("source_url"),
+    documentsFound: integer("documents_found").default(0).notNull(),
+    documentsParsed: integer("documents_parsed").default(0).notNull(),
+    itemsExtracted: integer("items_extracted").default(0).notNull(),
+    itemsInserted: integer("items_inserted").default(0).notNull(),
+    itemsUpdated: integer("items_updated").default(0).notNull(),
+    errorMessage: text("error_message"),
+    rawMetadata: jsonb("raw_metadata"),
+  }
+);
+
+export const courtCauseLists = pgTable(
+  "court_cause_lists",
+  {
+    id: serial("id").primaryKey(),
+    court: text("court").notNull(), // 'LHC', 'IHC', 'SHC', 'SCP'
+    bench: text("bench").notNull(), // 'Principal Seat', 'Multan', 'Rawalpindi', 'Bahawalpur'
+    courtNumber: text("court_number"), // 'Court No. 1', 'DB-II'
+    judgeName: text("judge_name").notNull(), // 'Mr. Justice Muhammad Ameer Bhatti'
+    listType: text("list_type").default("regular").notNull(), // 'regular', 'urgent', 'supplementary', 'motion'
+    hearingDate: timestamp("hearing_date").notNull(),
+    sourceHash: varchar("source_hash", { length: 64 }), // SHA-256
+    revisionNumber: integer("revision_number").default(1).notNull(),
+    rawPdfUrl: text("raw_pdf_url"),
+    storageKey: text("storage_key"), // Cloudflare R2 backup key
+    status: text("status", { enum: ["active", "superseded", "cancelled"] }).default("active").notNull(),
+    supersedesListId: integer("supersedes_list_id"),
+    itemCount: integer("item_count").default(0).notNull(),
+    scrapedAt: timestamp("scraped_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    rosterUniqueIdx: uniqueIndex("court_cause_lists_roster_unique_idx").on(
+      table.court,
+      table.bench,
+      table.hearingDate,
+      table.courtNumber,
+      table.listType,
+      table.revisionNumber
+    ),
+  })
+);
+
+export const courtCauseListItems = pgTable(
+  "court_cause_list_items",
+  {
+    id: serial("id").primaryKey(),
+    causeListId: integer("cause_list_id")
+      .references(() => courtCauseLists.id, { onDelete: "cascade" })
+      .notNull(),
+    serialNumber: integer("serial_number"), // 1, 2, 3...
+    caseNumber: text("case_number").notNull(), // 'W.P. No. 12345/2024'
+    caseType: text("case_type"), // 'Writ Petition'
+    caseYear: integer("case_year"), // 2024
+    caseTitle: text("case_title").notNull(), // 'Muhammad Aslam VS State'
+    petitioner: text("petitioner"),
+    respondent: text("respondent"),
+    petitionerAdvocate: text("petitioner_advocate"),
+    respondentAdvocate: text("respondent_advocate"),
+    fixationPurpose: text("fixation_purpose"), // 'For Arguments', 'For Notice'
+    isRedList: boolean("is_red_list").default(false).notNull(),
+    rawText: text("raw_text"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    caseItemUniqueIdx: uniqueIndex("court_cause_list_items_unique_idx").on(
+      table.causeListId,
+      table.serialNumber,
+      table.caseNumber
+    ),
+  })
+);
+
+export const causeListTrackers = pgTable(
+  "cause_list_trackers",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    trackType: text("track_type", { enum: ["case_number", "advocate_name"] }).notNull(),
+    query: text("query").notNull(), // e.g. "W.P. 12345/2024" or "Aitzaz Ahsan"
+    court: text("court"), // optional filter (e.g. 'LHC')
+    notifyEmail: boolean("notify_email").default(true).notNull(),
+    notifyDailyDiary: boolean("notify_daily_diary").default(true).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  }
+);
+
 export const diaryEntries = pgTable("diary_entries", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
@@ -525,11 +628,28 @@ export const diaryEntries = pgTable("diary_entries", {
   description: text("description"),
   caseId: integer("case_id").references(() => caseFiles.id, { onDelete: "set null" }),
   complianceId: integer("compliance_id").references(() => caseCompliance.id, { onDelete: "set null" }),
+  causeListItemId: integer("cause_list_item_id").references(() => courtCauseListItems.id, { onDelete: "set null" }),
   priority: text("priority", { enum: ["low", "normal", "high", "urgent"] }).notNull().default("normal"),
   completed: boolean("completed").notNull().default(false),
   outcome: text("outcome"),
   nextDate: text("next_date"),
+  googleEventId: text("google_event_id"),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userGoogleCalendarConnections = pgTable("user_google_calendar_connections", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  email: text("email"),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  tokenExpiry: timestamp("token_expiry"),
+  scope: text("scope"),
+  calendarId: text("calendar_id").notNull().default("primary"),
+  autoSyncEnabled: boolean("auto_sync_enabled").notNull().default(true),
+  syncRemindersMinutes: integer("sync_reminders_minutes").notNull().default(60),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const notificationPreferences = pgTable("notification_preferences", {
@@ -600,6 +720,10 @@ export const insertCaseClientSchema = createInsertSchema(caseClients).omit({ id:
 export const insertCaseComplianceSchema = createInsertSchema(caseCompliance).omit({ id: true, createdAt: true });
 export const insertCaseDocumentSchema = createInsertSchema(caseDocuments).omit({ id: true, addedAt: true });
 export const insertCaseNoteSchema = createInsertSchema(caseNotes).omit({ id: true, createdAt: true });
+export const insertCauseListScrapeRunSchema = createInsertSchema(causeListScrapeRuns).omit({ id: true, startedAt: true });
+export const insertCourtCauseListSchema = createInsertSchema(courtCauseLists).omit({ id: true, scrapedAt: true, updatedAt: true });
+export const insertCourtCauseListItemSchema = createInsertSchema(courtCauseListItems).omit({ id: true, createdAt: true });
+export const insertCauseListTrackerSchema = createInsertSchema(causeListTrackers).omit({ id: true, createdAt: true });
 export const insertDiaryEntrySchema = createInsertSchema(diaryEntries).omit({ id: true, createdAt: true });
 export const insertPaymentRecordSchema = createInsertSchema(paymentRecords).omit({ id: true, createdAt: true, completedAt: true });
 
@@ -682,6 +806,14 @@ export type CaseDocument = typeof caseDocuments.$inferSelect;
 export type InsertCaseDocument = z.infer<typeof insertCaseDocumentSchema>;
 export type CaseNote = typeof caseNotes.$inferSelect;
 export type InsertCaseNote = z.infer<typeof insertCaseNoteSchema>;
+export type CauseListScrapeRun = typeof causeListScrapeRuns.$inferSelect;
+export type InsertCauseListScrapeRun = z.infer<typeof insertCauseListScrapeRunSchema>;
+export type CourtCauseList = typeof courtCauseLists.$inferSelect;
+export type InsertCourtCauseList = z.infer<typeof insertCourtCauseListSchema>;
+export type CourtCauseListItem = typeof courtCauseListItems.$inferSelect;
+export type InsertCourtCauseListItem = z.infer<typeof insertCourtCauseListItemSchema>;
+export type CauseListTracker = typeof causeListTrackers.$inferSelect;
+export type InsertCauseListTracker = z.infer<typeof insertCauseListTrackerSchema>;
 
 export type TierPlanConfig = {
   monthlyQueries: number;
@@ -806,5 +938,6 @@ export type ChatRequest = {
 
 export type DiaryEntry = typeof diaryEntries.$inferSelect;
 export type InsertDiaryEntry = z.infer<typeof insertDiaryEntrySchema>;
+export type UserGoogleCalendarConnection = typeof userGoogleCalendarConnections.$inferSelect;
 export type PaymentRecord = typeof paymentRecords.$inferSelect;
 export type InsertPaymentRecord = z.infer<typeof insertPaymentRecordSchema>;

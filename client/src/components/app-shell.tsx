@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
-  History, FileBadge, Sparkles, Database, LogOut, Briefcase, CalendarDays,
+  History, FileBadge, Sparkles, Database, LogOut, Briefcase, CalendarDays, ListOrdered,
   User as UserIcon, Shield, Settings, Building2, Sun, Moon
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
@@ -122,6 +122,13 @@ const NAVIGATION_GROUPS: NavigationGroup[] = [
         description: "Your schedule and tasks",
         icon: CalendarDays,
         href: "/daily-diary",
+      },
+      {
+        id: "cause-lists",
+        label: "Daily Cause Lists",
+        description: "Court rosters and case fixations",
+        icon: ListOrdered,
+        href: "/cause-lists",
       },
       {
         id: "case-documents",

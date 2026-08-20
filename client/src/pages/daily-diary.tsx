@@ -1,9 +1,37 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CalendarDays, Plus, ChevronLeft, ChevronRight, Trash2, Loader2, Briefcase, Clock, CheckCircle2, Circle, Gavel, FileText, AlertTriangle, ArrowRight, Pencil, Save, X } from "lucide-react";
+import {
+  CalendarDays,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Loader2,
+  Briefcase,
+  Clock,
+  CheckCircle2,
+  Circle,
+  Gavel,
+  FileText,
+  AlertTriangle,
+  ArrowRight,
+  Pencil,
+  Save,
+  X,
+  Calendar,
+  RefreshCw,
+  Check,
+  Link2,
+  ExternalLink,
+  Power,
+  Sparkles,
+} from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { GoogleCalendarButton } from "@/components/google-calendar-button";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 type DiaryItem = {
   id: number | string;
@@ -65,6 +93,25 @@ export default function DailyDiaryPage() {
   const [newOutcome, setNewOutcome] = useState("");
   const [newNextDate, setNewNextDate] = useState("");
 
+  // Check URL query parameters for OAuth callbacks
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("calendar_connected") === "true") {
+      toast({
+        title: "Google Calendar Connected! 📅",
+        description: "Your court hearings and diary events will automatically sync.",
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get("calendar_error")) {
+      toast({
+        title: "Google Calendar Connection Failed",
+        description: urlParams.get("calendar_error") || "Authentication was cancelled.",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
+
   const weekDates = useMemo(() => getWeekDates(weekBase), [weekBase]);
   const weekFrom = weekDates[0];
   const weekTo = weekDates[6];
@@ -77,6 +124,79 @@ export default function DailyDiaryPage() {
     },
   });
   const { data: caseFiles = [] } = useQuery<Array<{ id: number; title: string; status: string }>>({ queryKey: ["/api/case-files"] });
+
+  // Google Calendar Integration Status Query
+  const { data: calStatus, refetch: refetchCalStatus, isLoading: isCalLoading } = useQuery<{
+    isConnected: boolean;
+    email?: string;
+    autoSyncEnabled?: boolean;
+  }>({
+    queryKey: ["/api/calendar/google/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/calendar/google/status", { credentials: "include" });
+      if (!res.ok) return { isConnected: false };
+      return res.json();
+    },
+  });
+
+  const connectGoogleMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/calendar/google/auth-url", { credentials: "include" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to generate Google auth URL");
+      }
+      const data = await res.json();
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: (e: any) =>
+      toast({
+        title: "Connection Error",
+        description: e.message || "Could not start Google OAuth",
+        variant: "destructive",
+      }),
+  });
+
+  const syncAllMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/calendar/google/sync-all", {});
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Synced to Google Calendar",
+        description: `Successfully pushed upcoming hearings to your Google Calendar.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/diary"] });
+    },
+    onError: (e: any) =>
+      toast({
+        title: "Sync Failed",
+        description: e.message,
+        variant: "destructive",
+      }),
+  });
+
+  const toggleAutoSyncMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      return apiRequest("POST", "/api/calendar/google/toggle-auto-sync", { enabled });
+    },
+    onSuccess: () => {
+      refetchCalStatus();
+      toast({ title: "Auto-sync preference updated" });
+    },
+  });
+
+  const disconnectGoogleMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", "/api/calendar/google/disconnect", {});
+    },
+    onSuccess: () => {
+      refetchCalStatus();
+      toast({ title: "Google Calendar Disconnected" });
+    },
+  });
 
   const dayItems = items.filter(i => i.date === selectedDate);
   const dayCounts = useMemo(() => {
@@ -123,9 +243,8 @@ export default function DailyDiaryPage() {
     mutationFn: async ({ id, data }: { id: number; data: Record<string, any> }) => {
       await apiRequest("PATCH", `/api/diary/${id}`, data);
     },
-    onSuccess: (_data, vars) => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["/api/diary"] });
-      // If next date was set, auto-create a follow-up entry on that date
       if (editNextDate) {
         const editingItem = dayItems.find(i => i.id === vars.id);
         if (editingItem) {
@@ -194,6 +313,72 @@ export default function DailyDiaryPage() {
           </button>
         </div>
 
+        {/* Google Calendar Integration Plugin Banner */}
+        <div className="bg-card/40 border border-border/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground">Google Calendar Integration</h3>
+                {calStatus?.isConnected ? (
+                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1">
+                    <Check className="w-3 h-3" /> Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                    Available
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {calStatus?.isConnected
+                  ? `Synced to ${calStatus.email || "Google Account"} — auto-syncing hearings with 60m reminders`
+                  : "Connect your Google account to automatically sync court hearings directly to your phone"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {calStatus?.isConnected ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5"
+                  onClick={() => syncAllMutation.mutate()}
+                  disabled={syncAllMutation.isPending}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncAllMutation.isPending ? "animate-spin" : ""}`} />
+                  Sync All
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-muted-foreground hover:text-red-500"
+                  onClick={() => disconnectGoogleMutation.mutate()}
+                  disabled={disconnectGoogleMutation.isPending}
+                  title="Disconnect Google Calendar"
+                >
+                  <Power className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5 border-emerald-600/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+                onClick={() => connectGoogleMutation.mutate()}
+                disabled={connectGoogleMutation.isPending}
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                Connect Google Calendar
+              </Button>
+            )}
+          </div>
+        </div>
+
         {/* Week Strip */}
         <div className="bg-card/50 border border-border rounded-2xl p-3">
           <div className="flex items-center justify-between mb-3">
@@ -260,32 +445,37 @@ export default function DailyDiaryPage() {
                 {!newNextDate && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">Next Date</span>}
               </div>
             </div>
-            <textarea placeholder="Description / Order notes (optional)" value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none" />
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground">Cancel</button>
-              <button onClick={() => addEntry.mutate()} disabled={!newTitle.trim() || addEntry.isPending} className="px-5 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold disabled:opacity-50">
-                {addEntry.isPending ? <Loader2 size={14} className="animate-spin" /> : "Add"}
+            <textarea placeholder="Notes or instructions..." value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2} className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none" />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-xl text-xs text-muted-foreground hover:bg-accent transition">Cancel</button>
+              <button onClick={() => addEntry.mutate()} disabled={!newTitle.trim() || addEntry.isPending} className="px-5 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold hover:bg-primary/90 transition disabled:opacity-50 flex items-center gap-1.5">
+                {addEntry.isPending && <Loader2 size={12} className="animate-spin" />} Save Entry
               </button>
             </div>
           </div>
         )}
 
-        {/* Day View */}
-        <div>
-          <h2 className="text-xl font-bold text-foreground mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
-            {formatDateLabel(selectedDate)}
-            <span className="text-sm font-normal text-muted-foreground ml-2">
-              {dayItems.length} {dayItems.length === 1 ? "item" : "items"}
-            </span>
-          </h2>
+        {/* Selected Day View */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              {formatDateLabel(selectedDate)}
+              <span className="text-xs font-normal text-muted-foreground">({dayItems.length} {dayItems.length === 1 ? "item" : "items"})</span>
+            </h2>
+            {selectedDate !== today && (
+              <button onClick={() => setSelectedDate(today)} className="text-xs text-primary hover:underline font-bold">Jump to Today</button>
+            )}
+          </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-16"><Loader2 className="animate-spin text-primary" size={24} /></div>
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading diary...
+            </div>
           ) : dayItems.length === 0 ? (
-            <div className="text-center py-16 space-y-3 bg-card/30 border border-border rounded-2xl">
-              <CalendarDays size={48} className="mx-auto text-muted-foreground/30" />
-              <p className="text-lg font-bold text-foreground">Nothing scheduled</p>
-              <p className="text-sm text-muted-foreground">Click "Add Entry" to plan your day</p>
+            <div className="text-center py-12 border border-dashed border-border rounded-2xl space-y-2">
+              <CalendarDays className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+              <p className="text-sm font-semibold text-muted-foreground">No entries for {formatDateLabel(selectedDate)}</p>
+              <button onClick={() => setShowAdd(true)} className="text-xs text-primary font-bold hover:underline">Add something</button>
             </div>
           ) : (
             <div className="space-y-2">
@@ -354,6 +544,20 @@ export default function DailyDiaryPage() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-1">
+                      <GoogleCalendarButton
+                        event={{
+                          title: item.title,
+                          caseTitle: item.caseTitle,
+                          fixationPurpose: item.description || item.outcome,
+                          date: item.date,
+                          time: item.time,
+                          isRedList: item.priority === "urgent",
+                        }}
+                        size="icon"
+                        variant="ghost"
+                        showLabel={false}
+                        className="h-7 w-7 text-muted-foreground/50 hover:text-emerald-600"
+                      />
                       {item.source === "manual" && typeof item.id === "number" && editingId !== item.id && (
                         <button
                           onClick={() => startEditing(item)}
@@ -378,49 +582,52 @@ export default function DailyDiaryPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <select
                           value={editOutcome}
-                          onChange={e => setEditOutcome(e.target.value)}
-                          className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50"
+                          onChange={(e) => setEditOutcome(e.target.value)}
+                          className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground outline-none"
                         >
                           <option value="">Outcome / Result</option>
-                          {OUTCOME_OPTIONS.map(o => <option key={o} value={o}>{o.replace(/_/g, " ").replace(/dnp/i, "DNP (Dismissed for Non-Prosecution)")}</option>)}
+                          {OUTCOME_OPTIONS.map((o) => (
+                            <option key={o} value={o}>
+                              {o.replace(/_/g, " ").replace(/\bdnp\b/i, "DNP (Dismissed for Non-Prosecution)")}
+                            </option>
+                          ))}
                         </select>
-                        <div className="relative">
-                          <input
-                            type="date"
-                            value={editNextDate}
-                            onChange={e => setEditNextDate(e.target.value)}
-                            className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none w-full focus:border-primary/50"
-                          />
-                          {!editNextDate && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">Next Hearing Date</span>}
-                        </div>
+                        <input
+                          type="date"
+                          value={editNextDate}
+                          onChange={(e) => setEditNextDate(e.target.value)}
+                          className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground outline-none"
+                        />
                       </div>
                       <textarea
-                        placeholder="Order notes / description (optional)"
+                        placeholder="Court notes, order summary, or judge directions..."
                         value={editDesc}
-                        onChange={e => setEditDesc(e.target.value)}
+                        onChange={(e) => setEditDesc(e.target.value)}
                         rows={2}
-                        className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-primary/50"
+                        className="w-full bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none resize-none"
                       />
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => { setEditingId(null); setEditOutcome(""); setEditNextDate(""); setEditDesc(""); }}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => setEditingId(null)}
+                          className="px-3 py-1 rounded-lg text-xs text-muted-foreground hover:bg-accent transition"
                         >
-                          <X size={12} /> Cancel
+                          Cancel
                         </button>
                         <button
-                          onClick={() => updateEntry.mutate({
-                            id: item.id as number,
-                            data: {
-                              ...(editOutcome ? { outcome: editOutcome } : {}),
-                              ...(editNextDate ? { nextDate: editNextDate } : {}),
-                              ...(editDesc !== (item.description || "") ? { description: editDesc } : {}),
-                            },
-                          })}
+                          onClick={() =>
+                            updateEntry.mutate({
+                              id: item.id as number,
+                              data: {
+                                outcome: editOutcome || null,
+                                nextDate: editNextDate || null,
+                                description: editDesc || null,
+                              },
+                            })
+                          }
                           disabled={updateEntry.isPending}
-                          className="flex items-center gap-1 px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50"
+                          className="px-4 py-1 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 transition flex items-center gap-1"
                         >
-                          {updateEntry.isPending ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                          {updateEntry.isPending ? <Loader2 size={10} className="animate-spin" /> : <Save size={10} />}
                           Save
                         </button>
                       </div>

@@ -13,6 +13,9 @@ vite.config.ts.*
 
 # Agent audit scripts — may contain env context, never commit
 .agents/
+.claude/
+scratch/
+composio_tools.json
 *.bak*
 .env.bak*
 statute_docs_to_insert.json

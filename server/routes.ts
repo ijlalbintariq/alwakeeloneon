@@ -6,6 +6,8 @@ import { api } from "@shared/routes";
 import { legalDraftWorkspaceStateSchema } from "@shared/legal-drafting";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import causeListRouter from "./routes/causelist-routes";
+import calendarRouter from "./routes/calendar-routes";
 import {
   insertBookmarkSchema,
   insertSearchHistorySchema,
@@ -7758,6 +7760,8 @@ export async function registerRoutes(
   );
   await setupAuth(app);
   registerAuthRoutes(app);
+  app.use("/api", causeListRouter);
+  app.use("/api/calendar", calendarRouter);
 
   app.get(["/download/manifest.xml", "/word-addin/manifest.xml"], (_req, res) => {
     const manifestPath = path.resolve(process.cwd(), "word-addin/manifest.xml");

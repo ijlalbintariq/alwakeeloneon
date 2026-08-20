@@ -174,6 +174,7 @@ test("OpenRouter transcription returns the final provider error when both models
 
 test("voice recording is connected to engine, legal drafting, and contract drafting", () => {
   const helperSource = readFileSync(new URL("../../server/openrouter-transcription.ts", import.meta.url), "utf8");
+  const serverSource = readFileSync(new URL("../../server/index.ts", import.meta.url), "utf8");
   const routeSource = readFileSync(new URL("../../server/routes.ts", import.meta.url), "utf8");
   const hookSource = readFileSync(new URL("../../client/src/hooks/use-voice-recorder.ts", import.meta.url), "utf8");
   const engineSource = readFileSync(new URL("../../client/src/pages/chat.tsx", import.meta.url), "utf8");
@@ -182,6 +183,8 @@ test("voice recording is connected to engine, legal drafting, and contract draft
 
   assert.match(helperSource, /DEFAULT_PRIMARY_MODEL = "openai\/gpt-4o-transcribe"/);
   assert.match(helperSource, /DEFAULT_FALLBACK_MODEL = "openai\/whisper-large-v3"/);
+  assert.match(serverSource, /Permissions-Policy", "camera=\(\), microphone=\(self\), geolocation=\(\)"/);
+  assert.doesNotMatch(serverSource, /microphone=\(\)/);
   assert.match(routeSource, /transcribeWithOpenRouter\(\{/);
   assert.doesNotMatch(routeSource, /transcribeWithDeepSeek\(\{/);
   assert.doesNotMatch(routeSource, /transcribeWithApex\(\{/);
