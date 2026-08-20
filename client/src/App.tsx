@@ -256,18 +256,16 @@ function Router({ onReady }: { onReady?: () => void }) {
   }
 
   if (location === "/cause-lists" || location.startsWith("/cause-lists/")) {
-    if (user) {
+    // Feature gate: only accessible to the owner while polishing
+    if (user?.email === "ijlalbintariq420@gmail.com") {
       return (
         <AppShell>
           <CauseListsPage />
         </AppShell>
       );
     }
-    return (
-      <PublicPageShell>
-        <CauseListsPage />
-      </PublicPageShell>
-    );
+    // Redirect all other users to dashboard
+    return <Redirect to="/" />;
   }
 
   if (location.startsWith("/statute-view/")) {

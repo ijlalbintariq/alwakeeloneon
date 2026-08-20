@@ -167,9 +167,14 @@ function AppSidebar() {
   const { user, logout } = useAuth();
   const tier = String(user?.subscriptionTier || "").toLowerCase();
   const canSeeOrganization = !!user && (user.isAdmin || tier === "chamber" || tier === "enterprise");
+  const canSeeCauseLists = !!user && (user.email === "ijlalbintariq420@gmail.com");
   const visibleNavigationGroups = NAVIGATION_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => item.id !== "organization" || canSeeOrganization),
+    items: group.items.filter((item) => {
+      if (item.id === "organization") return canSeeOrganization;
+      if (item.id === "cause-lists") return canSeeCauseLists;
+      return true;
+    }),
   })).filter((group) => group.items.length > 0);
 
   return (
