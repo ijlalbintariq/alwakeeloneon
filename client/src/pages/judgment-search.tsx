@@ -28,6 +28,7 @@ interface CaseLawResult {
   keywords?: string[];
   uri?: string;
   source?: string;
+  judgmentId?: string | null;
 }
 
 
@@ -800,8 +801,12 @@ export default function JudgmentSearchPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => {
-                      setJudgmentForView(item);
-                      window.open("/judgment-view", "_blank", "noopener");
+                      if (item.judgmentId) {
+                        window.open(`/judgment/${item.judgmentId}`, "_blank", "noopener");
+                      } else {
+                        setJudgmentForView(item);
+                        window.open("/judgment-view", "_blank", "noopener");
+                      }
                     }}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-[11px] font-bold text-primary hover:bg-primary/20"
                     data-testid={`button-open-judgment-${idx}`}
