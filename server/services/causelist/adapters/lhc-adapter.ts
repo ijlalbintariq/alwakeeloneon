@@ -1,4 +1,4 @@
-import axios from "axios";
+import { proxyGet } from "../proxy-fetch";
 import { CourtAdapter, CourtAdapterHealth } from "../court-adapter";
 import {
   CourtCode,
@@ -72,14 +72,14 @@ export class LhcCourtAdapter implements CourtAdapter {
   async downloadDocument(
     doc: ScrapedDocument
   ): Promise<{ buffer: Buffer; mimeType: string; hash: string }> {
-    const maxRetries = 3;
+    const maxRetries = 2;
     let lastError: any = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const response = await axios.get(doc.sourceUrl, {
+        const response = await proxyGet(doc.sourceUrl, {
           headers: BROWSER_HEADERS,
-          timeout: 25000,
+          timeout: 60_000,
           responseType: "arraybuffer",
           validateStatus: (status) => status === 200 || status === 404,
         });
@@ -110,7 +110,7 @@ export class LhcCourtAdapter implements CourtAdapter {
           err.message
         );
         if (attempt < maxRetries) {
-          await new Promise((r) => setTimeout(r, 2000 * attempt));
+          await new Promise((r) => setTimeout(r, 3000 * attempt));
         }
       }
     }
@@ -176,9 +176,9 @@ export class LhcCourtAdapter implements CourtAdapter {
   async healthCheck(): Promise<CourtAdapterHealth> {
     const start = Date.now();
     try {
-      const res = await axios.get("https://data.lhc.gov.pk/case_management/regular_cause_list", {
+      const res = await proxyGet("https://data.lhc.gov.pk/case_management/regular_cause_list", {
         headers: BROWSER_HEADERS,
-        timeout: 10000,
+        timeout: 60_000,
         validateStatus: () => true,
       });
       const latencyMs = Date.now() - start;

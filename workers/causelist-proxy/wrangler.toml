@@ -1,0 +1,10 @@
+name = "causelist-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# This Worker runs on Cloudflare's global edge network
+# including nodes in Lahore, Islamabad, and Karachi.
+# It proxies court portal requests for the Render backend.
+
+[vars]
+# PROXY_SECRET is set via `wrangler secret put PROXY_SECRET`

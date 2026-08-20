@@ -175,18 +175,12 @@ async function checkScheduleAndRun(): Promise<void> {
  */
 export function startCauseListScheduler(): void {
   console.log("[CauseListCron] Multi-wave Cause List scheduler started (18:00, 20:30, 22:30, 07:30 PKT).");
+  console.log("[CauseListCron] Scraping will only fire at scheduled wave times — no startup scrape.");
 
-  // Check every 5 minutes
+  // Check every 10 minutes (wave windows are 15 min wide, so 10 min checks always catch them)
   setInterval(() => {
     checkScheduleAndRun().catch((err) =>
       console.error("[CauseListCron] Scheduler error:", err?.message || err)
     );
-  }, 5 * 60 * 1000);
-
-  // Initial check after 45 seconds startup delay
-  setTimeout(() => {
-    checkScheduleAndRun().catch((err) =>
-      console.error("[CauseListCron] Startup check error:", err?.message || err)
-    );
-  }, 45 * 1000);
+  }, 10 * 60 * 1000);
 }

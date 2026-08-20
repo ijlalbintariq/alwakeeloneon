@@ -1,4 +1,4 @@
-import axios from "axios";
+import { proxyGet } from "../proxy-fetch";
 import { CourtAdapter, CourtAdapterHealth } from "../court-adapter";
 import {
   CourtCode,
@@ -109,14 +109,14 @@ export class PunjabDistrictCourtAdapter implements CourtAdapter {
     doc: ScrapedDocument
   ): Promise<{ buffer: Buffer; mimeType: string; hash: string }> {
     let lastError: Error | null = null;
-    const maxRetries = 3;
+    const maxRetries = 2;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const response = await axios.get(doc.sourceUrl, {
+        const response = await proxyGet(doc.sourceUrl, {
           headers: BROWSER_HEADERS,
           responseType: "arraybuffer",
-          timeout: 15_000,
+          timeout: 60_000,
           validateStatus: (status) => status === 200 || status === 404,
         });
 
@@ -175,9 +175,9 @@ export class PunjabDistrictCourtAdapter implements CourtAdapter {
     const startTime = Date.now();
     const endpoint = "https://data.lhc.gov.pk/";
     try {
-      const response = await axios.get(endpoint, {
+      const response = await proxyGet(endpoint, {
         headers: BROWSER_HEADERS,
-        timeout: 10_000,
+        timeout: 60_000,
         validateStatus: () => true,
       });
 
