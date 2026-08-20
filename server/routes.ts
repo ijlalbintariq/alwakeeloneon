@@ -11084,7 +11084,7 @@ RAG POLICY (STRICT):
 
       const enriched = results.map((r) => {
         const citationStr = String(r.citation || "").trim();
-        const judgmentId = judgmentIdMap.get(citationStr) || null;
+        const judgmentId = judgmentIdMap.get(citationStr) || (r as any).judgmentId || null;
         let finalSummary = r.summary;
 
         // Perform the headnote fallback if the current summary is metadata-only
