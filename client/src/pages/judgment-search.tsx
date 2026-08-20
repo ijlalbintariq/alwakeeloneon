@@ -445,42 +445,18 @@ export default function JudgmentSearchPage() {
   }, [pendingAutoCitation, loadingJournals, journals]);
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 fade-in" data-testid="judgment-search-page">
-      <section className="relative overflow-hidden rounded-2xl border border-primary/20 bg-background p-3">
-        <div className="pointer-events-none absolute -top-12 right-5 h-24 w-24 rounded-full bg-primary/10 blur-3xl" />
-        <div className="max-w-2xl space-y-2">
-          <h2 className="text-xl md:text-2xl font-bold text-foreground tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+    <div className="h-full min-h-0 flex flex-col gap-2 fade-in" data-testid="judgment-search-page">
+      <section className="rounded-2xl border border-border/80 bg-background/90 shadow-2xl">
+        {/* Compact header: title + tabs on one row */}
+        <div className="flex flex-col items-center gap-1 px-3 pt-3 pb-1">
+          <h2 className="text-lg font-bold text-foreground tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
             Judgment <span className="text-primary">Vault</span>
           </h2>
-          <p className="text-xs md:text-sm text-muted-foreground leading-relaxed max-w-xl">
-            Access Pakistan case law with unified keyword and citation search, verified sources, and AI-assisted analysis for faster legal research.
-          </p>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-border/80 bg-background/90 shadow-2xl">
-        {/* Mobile toggle header — always visible */}
-        <button
-          type="button"
-          onClick={() => setSearchCollapsed((prev) => !prev)}
-          className="w-full flex items-center justify-between px-3 py-2.5 md:hidden"
-          data-testid="button-toggle-search-panel"
-        >
-          <span className="text-xs font-bold text-foreground flex items-center gap-2">
-            <Search size={14} className="text-primary" />
-            {searchCollapsed ? "Show Search Filters" : "Hide Search Filters"}
-          </span>
-          {searchCollapsed ? <ChevronDown size={16} className="text-muted-foreground" /> : <ChevronUp size={16} className="text-muted-foreground" />}
-        </button>
-
-        {/* Collapsible search body */}
-        <div className={`${searchCollapsed ? "hidden md:block" : "block"} p-3 pt-0 md:pt-3`}>
-        <div className="mb-3 flex justify-center">
-          <div className="inline-flex rounded-xl border border-border/90 bg-muted/40 p-1">
+          <div className="inline-flex rounded-xl border border-border/90 bg-muted/40 p-0.5">
             <button
               type="button"
               onClick={() => setSearchMode("keyword")}
-              className={`rounded-lg px-5 py-2 text-sm font-bold transition-all ${
+              className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
                 searchMode === "keyword"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -491,7 +467,7 @@ export default function JudgmentSearchPage() {
             <button
               type="button"
               onClick={() => setSearchMode("citation")}
-              className={`rounded-lg px-5 py-2 text-sm font-bold transition-all ${
+              className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
                 searchMode === "citation"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -502,13 +478,30 @@ export default function JudgmentSearchPage() {
           </div>
         </div>
 
+        {/* Mobile toggle */}
+        <button
+          type="button"
+          onClick={() => setSearchCollapsed((prev) => !prev)}
+          className="w-full flex items-center justify-between px-3 py-1.5 md:hidden"
+          data-testid="button-toggle-search-panel"
+        >
+          <span className="text-xs font-bold text-foreground flex items-center gap-2">
+            <Search size={14} className="text-primary" />
+            {searchCollapsed ? "Show Search Filters" : "Hide Search Filters"}
+          </span>
+          {searchCollapsed ? <ChevronDown size={16} className="text-muted-foreground" /> : <ChevronUp size={16} className="text-muted-foreground" />}
+        </button>
+
+        {/* Collapsible search body */}
+        <div className={`${searchCollapsed ? "hidden md:block" : "block"} px-3 pb-3 pt-1`}>
+
         {searchMode === "keyword" ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2.5">
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-end">
               <div className="relative">
                 <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
-                  className="w-full rounded-xl border border-border bg-muted/50 pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 focus:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all duration-200"
+                  className="w-full rounded-xl border border-border bg-muted/50 pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-all duration-200"
                   placeholder="Search with Keywords, Booleans or Sentences"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -516,54 +509,33 @@ export default function JudgmentSearchPage() {
                   data-testid="input-judgment-search"
                 />
               </div>
+              <select
+                value={keywordCourt}
+                onChange={(e) => setKeywordCourt(e.target.value)}
+                className="rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">All Courts</option>
+                {courts.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+              <select
+                value={keywordSort}
+                onChange={(e) => setKeywordSort(e.target.value as "relevance" | "latest")}
+                className="rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="relevance">Relevance</option>
+                <option value="latest">Latest</option>
+              </select>
               <button
                 onClick={() => void handleSearch()}
                 disabled={isLoading || isExternalLoading}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 text-base font-bold shadow-md shadow-primary/10 hover:shadow-primary/20 hover:brightness-110 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-60 transition-all duration-200"
+                className="inline-flex h-[42px] items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 text-sm font-bold shadow-md shadow-primary/10 hover:brightness-110 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-60 transition-all duration-200"
                 data-testid="button-judgment-search"
               >
-                {isLoading || isExternalLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={17} />}
+                {isLoading || isExternalLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
                 Search
               </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-              <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Jurisdiction</span>
-                <select
-                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  value="Pakistan"
-                  disabled
-                >
-                  <option value="Pakistan">Pakistan</option>
-                </select>
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Court</span>
-                <select
-                  value={keywordCourt}
-                  onChange={(e) => setKeywordCourt(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="">All Courts</option>
-                  {courts.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Filter By</span>
-                <select
-                  value={keywordSort}
-                  onChange={(e) => setKeywordSort(e.target.value as "relevance" | "latest")}
-                  className="w-full rounded-xl border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="relevance">Relevance</option>
-                  <option value="latest">Latest</option>
-                </select>
-              </label>
             </div>
 
             {searchError ? (
