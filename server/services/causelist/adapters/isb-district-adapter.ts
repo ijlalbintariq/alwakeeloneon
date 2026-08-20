@@ -65,10 +65,15 @@ export class IsbDistrictCourtAdapter implements CourtAdapter {
           headers: BROWSER_HEADERS,
           responseType: "arraybuffer",
           timeout: 60_000,
-          validateStatus: (status) => status === 200 || status === 404,
+          validateStatus: (status) =>
+            status === 200 ||
+            status === 404 ||
+            status === 403 ||
+            status === 502 ||
+            status === 530,
         });
 
-        if (response.status === 404) {
+        if (response.status !== 200) {
           return { buffer: Buffer.alloc(0), mimeType: "text/html", hash: "" };
         }
 

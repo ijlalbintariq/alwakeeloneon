@@ -80,10 +80,10 @@ export class ScpCourtAdapter implements CourtAdapter {
           headers: BROWSER_HEADERS,
           responseType: "arraybuffer",
           timeout: 60_000,
-          validateStatus: (status) => status === 200 || status === 404,
+          validateStatus: (status) => status === 200 || status === 404 || status === 403,
         });
 
-        if (response.status === 404) {
+        if (response.status === 404 || response.status === 403) {
           return { buffer: Buffer.alloc(0), mimeType: "text/html", hash: "" };
         }
 

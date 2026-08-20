@@ -4,9 +4,6 @@
  * Deploys on Cloudflare's edge (Lahore, Islamabad, Karachi nodes)
  * to fetch court cause lists with low latency and no IP blocking.
  *
- * The Render backend POSTs { url, headers } to this Worker,
- * which fetches the court portal and returns the raw response.
- *
  * Environment variable:
  *   PROXY_SECRET — shared secret token for authentication
  */
@@ -15,14 +12,21 @@ export interface Env {
   PROXY_SECRET: string;
 }
 
+const DEFAULT_BROWSER_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Cache-Control": "no-cache",
+};
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    // Only allow POST
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
     }
 
-    // Auth check
     const token = request.headers.get("x-proxy-token");
     if (!env.PROXY_SECRET || token !== env.PROXY_SECRET) {
       return new Response("Unauthorized", { status: 401 });
@@ -38,11 +42,16 @@ export default {
         return new Response("Missing url", { status: 400 });
       }
 
-      // Fetch the court portal from Cloudflare's edge
+      const requestHeaders = {
+        ...DEFAULT_BROWSER_HEADERS,
+        ...(body.headers || {}),
+      };
+
+      // Fetch from Cloudflare edge
       const response = await fetch(body.url, {
-        headers: body.headers || {},
+        headers: requestHeaders,
+        redirect: "follow",
         cf: {
-          // Cache responses for 5 minutes to reduce load on court portals
           cacheTtl: 300,
           cacheEverything: true,
         },

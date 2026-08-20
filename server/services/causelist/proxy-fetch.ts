@@ -9,9 +9,6 @@
  */
 import axios, { type AxiosResponse } from "axios";
 
-const PROXY_URL = process.env.CAUSELIST_PROXY_URL;
-const PROXY_SECRET = process.env.CAUSELIST_PROXY_SECRET;
-
 /**
  * Fetches a URL, optionally routing through the Cloudflare Worker proxy.
  * Drop-in replacement for axios.get() in court adapters.
@@ -25,16 +22,19 @@ export async function proxyGet(
     validateStatus?: (status: number) => boolean;
   } = {}
 ): Promise<AxiosResponse> {
-  if (PROXY_URL && PROXY_SECRET) {
+  const proxyUrl = process.env.CAUSELIST_PROXY_URL;
+  const proxySecret = process.env.CAUSELIST_PROXY_SECRET;
+
+  if (proxyUrl && proxySecret) {
     // Route through Cloudflare Worker proxy
     const resp = await axios.post(
-      PROXY_URL,
+      proxyUrl,
       { url, headers: opts.headers || {} },
       {
         timeout: opts.timeout || 60_000,
         responseType: (opts.responseType as any) || "arraybuffer",
         headers: {
-          "x-proxy-token": PROXY_SECRET,
+          "x-proxy-token": proxySecret,
           "content-type": "application/json",
         },
         validateStatus: (status) => {
@@ -65,5 +65,5 @@ export async function proxyGet(
  * Convenience: check if proxy is configured
  */
 export function isProxyConfigured(): boolean {
-  return !!(PROXY_URL && PROXY_SECRET);
+  return !!(process.env.CAUSELIST_PROXY_URL && process.env.CAUSELIST_PROXY_SECRET);
 }
