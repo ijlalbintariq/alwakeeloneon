@@ -227,63 +227,69 @@ export default function CauseListsPage() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Navigation & Filter States
+  // State Filters
   const [selectedCourt, setSelectedCourt] = useState<string>("LHC");
   const [selectedBench, setSelectedBench] = useState<string>("all");
-  const [selectedDate, setSelectedDate] = useState<string>(getTomorrowString());
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
   const [selectedListType, setSelectedListType] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeMainTab, setActiveMainTab] = useState<string>("roster");
 
-  // Expanded Courtroom Card State
+  // Expanded Accordion State for Courtrooms
   const [expandedRosters, setExpandedRosters] = useState<Record<number, boolean>>({});
+
+  // Tracker Modal State
+  const [isTrackerOpen, setIsTrackerOpen] = useState<boolean>(false);
+  const [trackerType, setTrackerType] = useState<"case_number" | "advocate_name">("case_number");
+  const [trackerQuery, setTrackerQuery] = useState<string>("");
+  const [trackerCourt, setTrackerCourt] = useState<string>("LHC");
+
+  // Manual Trigger Modal State
+  const [isManualSyncOpen, setIsManualSyncOpen] = useState<boolean>(false);
+  const [manualSyncCourt, setManualSyncCourt] = useState<string>("LHC");
+  const [manualSyncDate, setManualSyncDate] = useState<string>(getTomorrowString());
+
+  // Copy Feedback State
   const [copiedCase, setCopiedCase] = useState<string | null>(null);
 
-  // Tracker Dialog State
-  const [isTrackerOpen, setIsTrackerOpen] = useState(false);
-  const [trackerType, setTrackerType] = useState<"case_number" | "advocate_name">("case_number");
-  const [trackerQuery, setTrackerQuery] = useState("");
-  const [trackerCourt, setTrackerCourt] = useState("LHC");
+  const currentCourtConfig = useMemo(
+    () => COURTS_CONFIG.find((c) => c.code === selectedCourt) || COURTS_CONFIG[0],
+    [selectedCourt]
+  );
 
-  // Manual Ingestion Dialog State
-  const [isManualSyncOpen, setIsManualSyncOpen] = useState(false);
-  const [manualSyncDate, setManualSyncDate] = useState(selectedDate);
-  const [manualSyncCourt, setManualSyncCourt] = useState("LHC");
-
-  const currentCourtConfig = useMemo(() => {
-    return COURTS_CONFIG.find((c) => c.code === selectedCourt) || COURTS_CONFIG[0];
-  }, [selectedCourt]);
-
-  // 1. Query: Cause Lists for Date/Court/Bench
+  // Query: Get Cause Lists for selected filters
   const {
     data: causeListData,
     isLoading: isListsLoading,
     refetch: refetchLists,
   } = useQuery<{
     court: string;
-    bench: string;
-    targetDate: string;
-    count: number;
+    date: string;
+    totalRosters: number;
     causeLists: CourtCauseList[];
   }>({
-    queryKey: ["/api/cause-lists", selectedCourt, selectedBench, selectedDate, selectedListType],
+    queryKey: [
+      "/api/cause-lists",
+      selectedCourt,
+      selectedBench,
+      selectedDate,
+      selectedListType,
+    ],
     queryFn: async () => {
       const params = new URLSearchParams({
         court: selectedCourt,
-        bench: selectedBench,
         date: selectedDate,
       });
-      if (selectedListType !== "all") {
-        params.append("listType", selectedListType);
-      }
-      const res = await fetch(`/api/cause-lists?${params.toString()}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch cause lists");
+      if (selectedBench && selectedBench !== "all") params.append("bench", selectedBench);
+      if (selectedListType && selectedListType !== "all") params.append("listType", selectedListType);
+
+      const res = await fetch(`/api/cause-lists?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to load cause lists");
       return res.json();
     },
-    enabled: searchQuery.trim().length < 2,
   });
 
-  // 2. Query: Search Results (when searching)
+  // Query: Search Cause List Case Items
   const {
     data: searchData,
     isLoading: isSearchLoading,
@@ -292,35 +298,38 @@ export default function CauseListsPage() {
     total: number;
     items: CourtCauseListItem[];
   }>({
-    queryKey: ["/api/cause-lists/search", searchQuery, selectedCourt],
+    queryKey: ["/api/cause-lists/search", searchQuery, selectedCourt, selectedDate],
     queryFn: async () => {
+      if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+        return { query: "", total: 0, items: [] };
+      }
       const params = new URLSearchParams({
         q: searchQuery.trim(),
         court: selectedCourt,
+        date: selectedDate,
       });
-      const res = await fetch(`/api/cause-lists/search?${params.toString()}`, { credentials: "include" });
+      const res = await fetch(`/api/cause-lists/search?${params.toString()}`);
       if (!res.ok) throw new Error("Search failed");
       return res.json();
     },
     enabled: searchQuery.trim().length >= 2,
   });
 
-  // 3. Query: User Trackers
+  // Query: User Trackers
   const {
     data: trackersData,
     isLoading: isTrackersLoading,
-    refetch: refetchTrackers,
   } = useQuery<{ trackers: CauseListTracker[] }>({
     queryKey: ["/api/cause-lists/user/trackers"],
     queryFn: async () => {
-      const res = await fetch("/api/cause-lists/user/trackers", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch trackers");
+      const res = await fetch("/api/cause-lists/user/trackers");
+      if (!res.ok) return { trackers: [] };
       return res.json();
     },
     enabled: !!user,
   });
 
-  // 4. Query: Scrape Run Audit Logs
+  // Query: Scrape Run Telemetry
   const {
     data: runsData,
     isLoading: isRunsLoading,
@@ -328,20 +337,21 @@ export default function CauseListsPage() {
   } = useQuery<{ runs: ScrapeRun[] }>({
     queryKey: ["/api/admin/cause-lists/runs"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/cause-lists/runs", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch runs");
+      const res = await fetch("/api/admin/cause-lists/runs?limit=15");
+      if (!res.ok) return { runs: [] };
       return res.json();
     },
   });
 
-  // 5. Query: Health status across all national courts
+  // Query: Court System Health
   const { data: healthData } = useQuery<{
-    timestamp: string;
-    courts: Record<string, { healthy: boolean; latencyMs: number; message: string }>;
+    status: string;
+    courts: Record<string, { healthy: boolean; message: string; latencyMs: number }>;
   }>({
     queryKey: ["/api/admin/cause-lists/health"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/cause-lists/health", { credentials: "include" });
+      const res = await fetch("/api/admin/cause-lists/health");
+      if (!res.ok) return null;
       return res.json();
     },
   });
@@ -356,7 +366,7 @@ export default function CauseListsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/cause-lists/user/trackers"] });
       toast({
         title: "Tracker Activated",
-        description: `Now monitoring "${trackerQuery}". You will be notified when this appears in court rosters.`,
+        description: `Now monitoring "${trackerQuery}". You will be notified in Daily Diary when this appears.`,
       });
       setIsTrackerOpen(false);
       setTrackerQuery("");
@@ -388,7 +398,7 @@ export default function CauseListsPage() {
       const res = await apiRequest("POST", "/api/admin/cause-lists/trigger", payload);
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cause-lists"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/cause-lists/runs"] });
       toast({
@@ -456,20 +466,20 @@ export default function CauseListsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-16">
+    <div className="min-h-screen bg-slate-50 dark:bg-background text-slate-900 dark:text-foreground pb-16">
       {/* Top Header Banner */}
-      <div className="border-b bg-card/60 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-slate-200 dark:border-border bg-white dark:bg-card/95 backdrop-blur-md sticky top-0 z-10 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <Gavel className="w-6 h-6 text-teal-600 dark:text-teal-400" />
-                <h1 className="text-2xl font-bold tracking-tight">Court Cause Lists</h1>
-                <Badge variant="outline" className="border-teal-500/40 text-teal-600 dark:text-teal-400 bg-teal-500/10 text-xs">
+                <Gavel className="w-6 h-6 text-teal-700 dark:text-teal-400" />
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-foreground font-serif">Court Cause Lists</h1>
+                <Badge variant="outline" className="border-teal-600/40 text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 text-xs font-bold">
                   National Automated Sync
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1">
                 Live daily hearing schedules, courtroom rosters, judges, and case fixations across Pakistan
               </p>
             </div>
@@ -478,30 +488,30 @@ export default function CauseListsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5"
+                className="gap-1.5 bg-white dark:bg-card border-slate-300 dark:border-border text-slate-800 dark:text-foreground hover:bg-slate-100 shadow-xs"
                 onClick={() => setIsTrackerOpen(true)}
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 text-teal-700 dark:text-teal-400" />
                 Track Case / Lawyer
               </Button>
 
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5"
+                className="gap-1.5 bg-white dark:bg-card border-slate-300 dark:border-border text-slate-800 dark:text-foreground hover:bg-slate-100 shadow-xs"
                 onClick={() => {
                   refetchLists();
                   refetchRuns();
                 }}
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className="w-4 h-4 text-slate-600 dark:text-muted-foreground" />
                 Refresh
               </Button>
 
               <Button
                 variant="default"
                 size="sm"
-                className="gap-1.5 bg-teal-700 hover:bg-teal-800 text-white"
+                className="gap-1.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold shadow-xs"
                 onClick={() => setIsManualSyncOpen(true)}
               >
                 <Activity className="w-4 h-4" />
@@ -515,25 +525,25 @@ export default function CauseListsPage() {
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-6">
         {/* Court Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2 border-b">
+        <div className="flex gap-2 overflow-x-auto pb-2 border-b border-slate-200 dark:border-border">
           {COURTS_CONFIG.map((c) => (
             <button
               key={c.code}
               onClick={() => handleCourtChange(c.code)}
-              className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+              className={`px-4 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 shrink-0 ${
                 selectedCourt === c.code
-                  ? "bg-teal-700 text-white shadow-sm"
-                  : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  ? "bg-teal-700 text-white shadow-sm border border-teal-800"
+                  : "bg-white dark:bg-card border border-slate-200 dark:border-border/80 hover:bg-slate-100 dark:hover:bg-muted text-slate-700 dark:text-slate-300 shadow-xs"
               }`}
             >
               {c.code === "SCP" ? <Landmark className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
               {c.name}
               <Badge
                 variant="secondary"
-                className={`text-[10px] px-1.5 py-0.5 ${
+                className={`text-[10px] px-1.5 py-0.5 font-bold ${
                   selectedCourt === c.code
                     ? "bg-white/20 text-white"
-                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-transparent"
                 }`}
               >
                 Live Sync
@@ -546,21 +556,21 @@ export default function CauseListsPage() {
         <div className="mt-6">
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <TabsList className="grid grid-cols-3 max-w-md">
-                <TabsTrigger value="roster" className="gap-2 text-xs sm:text-sm">
+              <TabsList className="grid grid-cols-3 max-w-md bg-slate-200/80 dark:bg-muted p-1 border border-slate-300/80 dark:border-border rounded-xl">
+                <TabsTrigger value="roster" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
                   <FileText className="w-4 h-4" />
                   Court Rosters
                 </TabsTrigger>
-                <TabsTrigger value="trackers" className="gap-2 text-xs sm:text-sm">
+                <TabsTrigger value="trackers" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
                   <Bell className="w-4 h-4" />
                   My Trackers
                   {trackersData?.trackers && trackersData.trackers.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px]">
+                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px] bg-slate-200 dark:bg-muted text-slate-800 dark:text-foreground">
                       {trackersData.trackers.length}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="audit" className="gap-2 text-xs sm:text-sm">
+                <TabsTrigger value="audit" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
                   <Activity className="w-4 h-4" />
                   Scrape Audit
                 </TabsTrigger>
@@ -568,18 +578,18 @@ export default function CauseListsPage() {
 
               {/* Live Search Bar */}
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder={`Search ${selectedCourt} Cases (e.g. 12450/2024), Lawyer, or Party...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 text-sm"
+                  className="pl-9 pr-4 text-sm bg-white dark:bg-card border-slate-300 dark:border-border text-slate-900 dark:text-foreground placeholder:text-slate-400 shadow-xs"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-foreground"
                   >
                     Clear
                   </button>
@@ -590,17 +600,17 @@ export default function CauseListsPage() {
             {/* TAB 1: COURT ROSTERS */}
             <TabsContent value="roster" className="mt-6 space-y-6">
               {/* Filter Row */}
-              <Card>
+              <Card className="bg-white dark:bg-card border border-slate-200 dark:border-border shadow-xs">
                 <CardContent className="p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
                     {/* Bench Filter */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Select Bench / Registry</Label>
+                      <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Select Bench / Registry</Label>
                       <Select value={selectedBench} onValueChange={setSelectedBench}>
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground">
                           <SelectValue placeholder="Select Bench" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white dark:bg-card border-slate-200 dark:border-border">
                           {currentCourtConfig.benches.map((b) => (
                             <SelectItem key={b.value} value={b.value}>
                               {b.label}
@@ -612,25 +622,29 @@ export default function CauseListsPage() {
 
                     {/* Date Quick Buttons & Date Input */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Hearing Date</Label>
+                      <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Hearing Date</Label>
                       <div className="flex gap-2">
                         <Input
                           type="date"
                           value={selectedDate}
                           onChange={(e) => setSelectedDate(e.target.value)}
-                          className="flex-1 text-sm"
+                          className="flex-1 text-sm bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground"
                         />
                       </div>
                     </div>
 
                     {/* Quick Date Pills */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Quick Date</Label>
+                      <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Quick Date</Label>
                       <div className="flex gap-2">
                         <Button
                           variant={selectedDate === getTodayString() ? "default" : "outline"}
                           size="sm"
-                          className="flex-1 text-xs"
+                          className={`flex-1 text-xs font-bold ${
+                            selectedDate === getTodayString()
+                              ? "bg-teal-700 hover:bg-teal-800 text-white"
+                              : "bg-white dark:bg-background border-slate-300 dark:border-border text-slate-800 dark:text-foreground"
+                          }`}
                           onClick={() => setSelectedDate(getTodayString())}
                         >
                           Today
@@ -638,7 +652,11 @@ export default function CauseListsPage() {
                         <Button
                           variant={selectedDate === getTomorrowString() ? "default" : "outline"}
                           size="sm"
-                          className="flex-1 text-xs"
+                          className={`flex-1 text-xs font-bold ${
+                            selectedDate === getTomorrowString()
+                              ? "bg-teal-700 hover:bg-teal-800 text-white"
+                              : "bg-white dark:bg-background border-slate-300 dark:border-border text-slate-800 dark:text-foreground"
+                          }`}
                           onClick={() => setSelectedDate(getTomorrowString())}
                         >
                           Tomorrow
@@ -648,12 +666,12 @@ export default function CauseListsPage() {
 
                     {/* List Type Filter */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">List Category</Label>
+                      <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">List Category</Label>
                       <Select value={selectedListType} onValueChange={setSelectedListType}>
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground">
                           <SelectValue placeholder="All Lists" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white dark:bg-card border-slate-200 dark:border-border">
                           <SelectItem value="all">All Lists</SelectItem>
                           <SelectItem value="regular">Regular List</SelectItem>
                           <SelectItem value="urgent">Urgent List</SelectItem>
@@ -669,10 +687,12 @@ export default function CauseListsPage() {
               {searchQuery.trim().length >= 2 ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-foreground font-serif">
                       Search Results for "{searchQuery}" in {currentCourtConfig.name}
                     </h2>
-                    <Badge variant="outline">{searchData?.total || 0} cases found</Badge>
+                    <Badge variant="outline" className="bg-white dark:bg-card border-slate-300 dark:border-border font-bold">
+                      {searchData?.total || 0} cases found
+                    </Badge>
                   </div>
 
                   {isSearchLoading ? (
@@ -682,20 +702,20 @@ export default function CauseListsPage() {
                   ) : searchData?.items && searchData.items.length > 0 ? (
                     <div className="grid grid-cols-1 gap-3">
                       {searchData.items.map((item) => (
-                        <Card key={item.id} className="border-l-4 border-l-teal-600 hover:border-teal-500 transition-all">
+                        <Card key={item.id} className="bg-white dark:bg-card border border-slate-200 dark:border-border border-l-4 border-l-teal-600 hover:border-teal-500 transition-all shadow-xs">
                           <CardContent className="p-4 space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-base text-teal-700 dark:text-teal-400">
+                                <span className="font-mono font-bold text-base text-teal-800 dark:text-teal-400">
                                   {item.caseNumber}
                                 </span>
                                 {item.caseType && (
-                                  <Badge variant="secondary" className="text-xs">
+                                  <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-secondary text-slate-800 dark:text-secondary-foreground font-semibold">
                                     {item.caseType}
                                   </Badge>
                                 )}
                                 {item.isRedList && (
-                                  <Badge className="bg-red-500/10 text-red-500 border-red-500/30 text-xs">
+                                  <Badge className="bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-500/40 text-xs font-black">
                                     RED CAUSE LIST
                                   </Badge>
                                 )}
@@ -705,19 +725,19 @@ export default function CauseListsPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 gap-1 text-xs"
+                                  className="h-8 gap-1 text-xs text-slate-700 dark:text-foreground hover:bg-slate-100 dark:hover:bg-muted"
                                   onClick={() => copyToClipboard(item.caseNumber)}
                                 >
-                                  {copiedCase === item.caseNumber ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                  {copiedCase === item.caseNumber ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                                   Copy
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 gap-1 text-xs border-teal-600/40 text-teal-700 dark:text-teal-300"
+                                  className="h-8 gap-1 text-xs border-teal-600/50 bg-teal-50/50 dark:bg-transparent text-teal-800 dark:text-teal-300 hover:bg-teal-100 font-semibold"
                                   onClick={() => addToDiaryMutation.mutate(item)}
                                 >
-                                  <CalendarPlus className="w-3.5 h-3.5" />
+                                  <CalendarPlus className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400" />
                                   Add to Diary
                                 </Button>
                                 <GoogleCalendarButton
@@ -737,29 +757,29 @@ export default function CauseListsPage() {
                                   }}
                                   size="sm"
                                   variant="outline"
-                                  className="h-8"
+                                  className="h-8 bg-white dark:bg-card border-slate-300 dark:border-border"
                                 />
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 gap-1 text-xs"
+                                  className="h-8 gap-1 text-xs text-slate-700 dark:text-foreground hover:bg-slate-100 dark:hover:bg-muted"
                                   onClick={() => handleQuickAddTracker(item.caseNumber)}
                                 >
-                                  <Bell className="w-3.5 h-3.5" />
+                                  <Bell className="w-3.5 h-3.5 text-slate-600 dark:text-muted-foreground" />
                                   Track
                                 </Button>
                               </div>
                             </div>
 
-                            <p className="text-sm font-medium">{item.caseTitle}</p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-foreground">{item.caseTitle}</p>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-muted-foreground pt-1 border-t">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-600 dark:text-muted-foreground pt-2 border-t border-slate-200 dark:border-border">
                               <div>
-                                <span className="font-semibold text-foreground">Courtroom:</span>{" "}
+                                <span className="font-bold text-slate-900 dark:text-foreground">Courtroom:</span>{" "}
                                 {item.judgeName} {item.courtNumber ? `(${item.courtNumber})` : ""} &bull; Sr. #{item.serialNumber}
                               </div>
                               <div>
-                                <span className="font-semibold text-foreground">Advocates:</span>{" "}
+                                <span className="font-bold text-slate-900 dark:text-foreground">Advocates:</span>{" "}
                                 {item.petitionerAdvocate || item.respondentAdvocate || "Not Specified"}
                               </div>
                             </div>
@@ -768,11 +788,11 @@ export default function CauseListsPage() {
                       ))}
                     </div>
                   ) : (
-                    <Card className="text-center py-12">
+                    <Card className="bg-white dark:bg-card border border-slate-200 dark:border-border text-center py-12 shadow-xs">
                       <CardContent>
-                        <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                        <h3 className="text-base font-semibold">No Matching Court Cases Found</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                        <h3 className="text-base font-bold text-slate-900 dark:text-foreground">No Matching Court Cases Found</h3>
+                        <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1">
                           Try searching for a different case number (e.g. "12450/2024") or lawyer name.
                         </p>
                       </CardContent>
@@ -784,10 +804,10 @@ export default function CauseListsPage() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-lg font-semibold">
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-foreground font-serif">
                         {currentCourtConfig.name} Cause Lists &bull; {selectedDate}
                       </h2>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-slate-600 dark:text-muted-foreground">
                         {causeListData?.causeLists?.length || 0} courtrooms active
                       </p>
                     </div>
@@ -803,22 +823,22 @@ export default function CauseListsPage() {
                         const isExpanded = !!expandedRosters[roster.id];
 
                         return (
-                          <Card key={roster.id} className="border transition-all">
-                            <CardHeader className="p-4 cursor-pointer hover:bg-muted/40" onClick={() => toggleRoster(roster.id)}>
+                          <Card key={roster.id} className="bg-white dark:bg-card border border-slate-200 dark:border-border transition-all shadow-xs">
+                            <CardHeader className="p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-muted/40 transition-colors" onClick={() => toggleRoster(roster.id)}>
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">
-                                    <Gavel className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                                    <CardTitle className="text-base font-bold">
+                                    <Gavel className="w-4 h-4 text-teal-700 dark:text-teal-400" />
+                                    <CardTitle className="text-base font-bold text-slate-900 dark:text-foreground">
                                       {roster.judgeName}
                                     </CardTitle>
                                     {roster.courtNumber && (
-                                      <Badge variant="outline" className="text-xs bg-muted">
+                                      <Badge variant="outline" className="text-xs bg-slate-100 dark:bg-muted text-slate-800 dark:text-foreground font-bold border-slate-300 dark:border-border">
                                         {roster.courtNumber}
                                       </Badge>
                                     )}
                                   </div>
-                                  <CardDescription className="text-xs flex items-center gap-3">
+                                  <CardDescription className="text-xs flex items-center gap-3 text-slate-600 dark:text-muted-foreground">
                                     <span><strong>Bench:</strong> {roster.bench}</span>
                                     <span>&bull;</span>
                                     <span><strong>List:</strong> {roster.listType.toUpperCase()}</span>
@@ -828,7 +848,7 @@ export default function CauseListsPage() {
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-slate-700 dark:text-foreground hover:bg-slate-100 dark:hover:bg-muted">
                                     {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                     {isExpanded ? "Hide Cases" : `View ${roster.itemCount} Cases`}
                                   </Button>
@@ -837,7 +857,7 @@ export default function CauseListsPage() {
                             </CardHeader>
 
                             {isExpanded && (
-                              <CardContent className="p-4 pt-0 border-t">
+                              <CardContent className="p-4 pt-0 border-t border-slate-200 dark:border-border bg-slate-50/50 dark:bg-card">
                                 <RosterItemsList causeListId={roster.id} onAddToDiary={addToDiaryMutation.mutate} onTrack={handleQuickAddTracker} />
                               </CardContent>
                             )}
@@ -846,20 +866,20 @@ export default function CauseListsPage() {
                       })}
                     </div>
                   ) : (
-                    <Card className="text-center py-16">
+                    <Card className="bg-white dark:bg-card border border-slate-200 dark:border-border text-center py-16 shadow-xs">
                       <CardContent>
-                        <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                        <h3 className="text-base font-semibold">No Cause Lists Uploaded For This Date Yet</h3>
-                        <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+                        <Calendar className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                        <h3 className="text-base font-bold text-slate-900 dark:text-foreground">No Cause Lists Uploaded For This Date Yet</h3>
+                        <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1 max-w-md mx-auto">
                           Courts publish cause lists in the evening between 6:00 PM and 10:30 PM. Click "Admin Sync" to test or re-trigger.
                         </p>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="mt-4 gap-1.5"
+                          className="mt-4 gap-1.5 bg-white dark:bg-card border-slate-300 dark:border-border font-bold text-slate-800 dark:text-foreground hover:bg-slate-100 shadow-xs"
                           onClick={() => setIsManualSyncOpen(true)}
                         >
-                          <Activity className="w-4 h-4" />
+                          <Activity className="w-4 h-4 text-teal-700 dark:text-teal-400" />
                           Trigger Scraper Sync
                         </Button>
                       </CardContent>
@@ -873,13 +893,13 @@ export default function CauseListsPage() {
             <TabsContent value="trackers" className="mt-6 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-semibold">Active Case & Advocate Trackers</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Whenever these case numbers or advocate names appear in daily court rosters across Pakistan, Alwakeelo auto-alerts you and syncs to your Daily Diary.
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-foreground font-serif">Active Case & Advocate Trackers</h2>
+                  <p className="text-sm text-slate-600 dark:text-muted-foreground">
+                    Whenever these case numbers or advocate names appear in daily court rosters across Pakistan, Alwakeelo auto-syncs them to your Daily Diary.
                   </p>
                 </div>
 
-                <Button className="gap-1.5 bg-teal-700 hover:bg-teal-800 text-white" onClick={() => setIsTrackerOpen(true)}>
+                <Button className="gap-1.5 bg-teal-700 hover:bg-teal-800 text-white font-bold shadow-xs" onClick={() => setIsTrackerOpen(true)}>
                   <Plus className="w-4 h-4" />
                   Add Tracker
                 </Button>
@@ -892,10 +912,10 @@ export default function CauseListsPage() {
               ) : trackersData?.trackers && trackersData.trackers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {trackersData.trackers.map((tracker) => (
-                    <Card key={tracker.id} className="relative">
+                    <Card key={tracker.id} className="bg-white dark:bg-card border border-slate-200 dark:border-border relative shadow-xs">
                       <CardHeader className="p-4 pb-2">
                         <div className="flex items-center justify-between">
-                          <Badge variant="secondary" className="text-xs capitalize">
+                          <Badge variant="secondary" className="text-xs capitalize bg-slate-100 dark:bg-secondary text-slate-800 dark:text-secondary-foreground font-bold">
                             {tracker.trackType === "case_number" ? "Case Number" : "Advocate Name"}
                           </Badge>
                           <Button
@@ -907,39 +927,35 @@ export default function CauseListsPage() {
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
-                        <CardTitle className="text-base font-bold mt-2">{tracker.query}</CardTitle>
-                        <CardDescription className="text-xs">
+                        <CardTitle className="text-base font-bold text-slate-900 dark:text-foreground mt-2">{tracker.query}</CardTitle>
+                        <CardDescription className="text-xs text-slate-600 dark:text-muted-foreground">
                           {tracker.court ? `Court: ${tracker.court}` : "All Superior Courts"}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="p-4 pt-2 text-xs text-muted-foreground flex items-center gap-3">
-                        <span className="flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                          Email Alerts
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                          Daily Diary Sync
+                      <CardContent className="p-4 pt-2 text-xs text-slate-600 dark:text-muted-foreground flex items-center gap-3 border-t border-slate-100 dark:border-border mt-2">
+                        <span className="flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          Daily Diary Sync Active
                         </span>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               ) : (
-                <Card className="text-center py-12">
+                <Card className="bg-white dark:bg-card border border-slate-200 dark:border-border text-center py-12 shadow-xs">
                   <CardContent>
-                    <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                    <h3 className="text-base font-semibold">No Trackers Configured Yet</h3>
-                    <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                      Add your case numbers or lawyer name to receive automated morning digests whenever your cases are fixed.
+                    <Bell className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                    <h3 className="text-base font-bold text-slate-900 dark:text-foreground">No Trackers Configured Yet</h3>
+                    <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1 max-w-sm mx-auto">
+                      Add your case numbers or lawyer name to automatically populate your Daily Diary whenever your cases are fixed.
                     </p>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="mt-4 gap-1.5"
+                      className="mt-4 gap-1.5 bg-white dark:bg-card border-slate-300 dark:border-border font-bold text-slate-800 dark:text-foreground hover:bg-slate-100 shadow-xs"
                       onClick={() => setIsTrackerOpen(true)}
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-4 h-4 text-teal-700 dark:text-teal-400" />
                       Add Your First Tracker
                     </Button>
                   </CardContent>
@@ -951,8 +967,8 @@ export default function CauseListsPage() {
             <TabsContent value="audit" className="mt-6 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-semibold">Scraper Run Logs & Observability</h2>
-                  <p className="text-sm text-muted-foreground">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-foreground font-serif">Scraper Run Logs & Observability</h2>
+                  <p className="text-sm text-slate-600 dark:text-muted-foreground">
                     Live telemetry tracking automated multi-wave syncs across all superior courts in Pakistan.
                   </p>
                 </div>
@@ -964,7 +980,11 @@ export default function CauseListsPage() {
                       <Badge
                         key={courtCode}
                         variant={health.healthy ? "default" : "destructive"}
-                        className="gap-1 text-xs"
+                        className={`gap-1 text-xs font-bold ${
+                          health.healthy
+                            ? "bg-emerald-600 text-white"
+                            : "bg-red-600 text-white"
+                        }`}
                       >
                         <Activity className="w-3 h-3" />
                         {courtCode}: {health.healthy ? "Online" : "Down"} ({health.latencyMs}ms)
@@ -978,9 +998,9 @@ export default function CauseListsPage() {
                   <RefreshCw className="w-8 h-8 animate-spin text-teal-600" />
                 </div>
               ) : runsData?.runs && runsData.runs.length > 0 ? (
-                <div className="overflow-x-auto border rounded-lg">
+                <div className="overflow-x-auto border border-slate-200 dark:border-border rounded-xl bg-white dark:bg-card shadow-xs">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-muted text-xs uppercase text-muted-foreground border-b">
+                    <thead className="bg-slate-100 dark:bg-muted text-xs uppercase text-slate-700 dark:text-muted-foreground border-b border-slate-200 dark:border-border font-bold">
                       <tr>
                         <th className="p-3">Court / Bench</th>
                         <th className="p-3">Target Date</th>
@@ -991,12 +1011,12 @@ export default function CauseListsPage() {
                         <th className="p-3">Errors</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y">
+                    <tbody className="divide-y divide-slate-200 dark:divide-border text-slate-800 dark:text-foreground">
                       {runsData.runs.map((run) => (
-                        <tr key={run.id} className="hover:bg-muted/50">
-                          <td className="p-3 font-semibold">{run.court} ({run.bench})</td>
-                          <td className="p-3 font-mono text-xs">{run.targetDate}</td>
-                          <td className="p-3 text-xs text-muted-foreground">
+                        <tr key={run.id} className="hover:bg-slate-50 dark:hover:bg-muted/50">
+                          <td className="p-3 font-bold text-slate-900 dark:text-foreground">{run.court} ({run.bench})</td>
+                          <td className="p-3 font-mono text-xs text-slate-700 dark:text-muted-foreground">{run.targetDate}</td>
+                          <td className="p-3 text-xs text-slate-600 dark:text-muted-foreground">
                             {new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                           </td>
                           <td className="p-3">
@@ -1010,14 +1030,14 @@ export default function CauseListsPage() {
                                   ? "outline"
                                   : "destructive"
                               }
-                              className="text-[11px] capitalize"
+                              className="text-[11px] font-bold capitalize"
                             >
                               {run.status}
                             </Badge>
                           </td>
                           <td className="p-3 font-mono">{run.documentsParsed}/{run.documentsFound}</td>
-                          <td className="p-3 font-mono text-emerald-600 font-bold">+{run.itemsInserted}</td>
-                          <td className="p-3 text-xs text-muted-foreground max-w-xs truncate">
+                          <td className="p-3 font-mono text-emerald-700 dark:text-emerald-400 font-bold">+{run.itemsInserted}</td>
+                          <td className="p-3 text-xs text-slate-500 dark:text-muted-foreground max-w-xs truncate">
                             {run.errorMessage || "None"}
                           </td>
                         </tr>
@@ -1026,11 +1046,11 @@ export default function CauseListsPage() {
                   </table>
                 </div>
               ) : (
-                <Card className="text-center py-12">
+                <Card className="bg-white dark:bg-card border border-slate-200 dark:border-border text-center py-12 shadow-xs">
                   <CardContent>
-                    <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                    <h3 className="text-base font-semibold">No Scrape Runs Recorded Yet</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <Activity className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                    <h3 className="text-base font-bold text-slate-900 dark:text-foreground">No Scrape Runs Recorded Yet</h3>
+                    <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1">
                       Scrape runs will appear here as the multi-wave background scheduler runs.
                     </p>
                   </CardContent>
@@ -1043,28 +1063,28 @@ export default function CauseListsPage() {
 
       {/* DIALOG 1: ADD TRACKER */}
       <Dialog open={isTrackerOpen} onOpenChange={setIsTrackerOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-white dark:bg-card border border-slate-200 dark:border-border text-slate-900 dark:text-foreground shadow-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Bell className="w-5 h-5 text-teal-600" />
+            <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-foreground font-serif">
+              <Bell className="w-5 h-5 text-teal-700 dark:text-teal-400" />
               Add Case or Lawyer Tracker
             </DialogTitle>
-            <DialogDescription>
-              Subscribe to automated Daily Diary alerts when this case or lawyer appears in cause lists.
+            <DialogDescription className="text-slate-600 dark:text-muted-foreground">
+              Subscribe to automated Daily Diary alerts when this case or lawyer appears in court cause lists.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Tracking Type</Label>
+              <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Tracking Type</Label>
               <Select
                 value={trackerType}
                 onValueChange={(val: any) => setTrackerType(val)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-card border-slate-200 dark:border-border">
                   <SelectItem value="case_number">Case Number (e.g. W.P. 12345/2024)</SelectItem>
                   <SelectItem value="advocate_name">Advocate Name (e.g. Aitzaz Ahsan)</SelectItem>
                 </SelectContent>
@@ -1072,7 +1092,7 @@ export default function CauseListsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">
+              <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">
                 {trackerType === "case_number" ? "Enter Case Number" : "Enter Advocate Name"}
               </Label>
               <Input
@@ -1080,16 +1100,17 @@ export default function CauseListsPage() {
                 placeholder={trackerType === "case_number" ? "e.g. W.P. No. 12450/2024" : "e.g. Chaudhry Aitzaz Ahsan"}
                 value={trackerQuery}
                 onChange={(e) => setTrackerQuery(e.target.value)}
+                className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground placeholder:text-slate-400"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">Court Filter</Label>
+              <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Court Filter</Label>
               <Select value={trackerCourt} onValueChange={setTrackerCourt}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-card border-slate-200 dark:border-border">
                   <SelectItem value="LHC">Lahore High Court</SelectItem>
                   <SelectItem value="IHC">Islamabad High Court</SelectItem>
                   <SelectItem value="SHC">Sindh High Court</SelectItem>
@@ -1104,25 +1125,21 @@ export default function CauseListsPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTrackerOpen(false)}>
+            <Button variant="outline" className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-800 dark:text-foreground" onClick={() => setIsTrackerOpen(false)}>
               Cancel
             </Button>
             <Button
-              className="bg-teal-700 hover:bg-teal-800 text-white"
-              onClick={() => {
-                if (!trackerQuery.trim()) {
-                  toast({ title: "Query required", description: "Please enter a case number or name.", variant: "destructive" });
-                  return;
-                }
+              className="bg-teal-700 hover:bg-teal-800 text-white font-bold"
+              disabled={!trackerQuery.trim() || createTrackerMutation.isPending}
+              onClick={() =>
                 createTrackerMutation.mutate({
                   trackType: trackerType,
                   query: trackerQuery.trim(),
                   court: trackerCourt,
-                });
-              }}
-              disabled={createTrackerMutation.isPending}
+                })
+              }
             >
-              {createTrackerMutation.isPending ? "Saving..." : "Start Tracking"}
+              {createTrackerMutation.isPending ? "Activating..." : "Save Tracker"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1130,30 +1147,30 @@ export default function CauseListsPage() {
 
       {/* DIALOG 2: MANUAL SCRAPE TRIGGER */}
       <Dialog open={isManualSyncOpen} onOpenChange={setIsManualSyncOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-white dark:bg-card border border-slate-200 dark:border-border text-slate-900 dark:text-foreground shadow-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-teal-600" />
-              Manual Cause List Sync
+            <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-foreground font-serif">
+              <Activity className="w-5 h-5 text-teal-700 dark:text-teal-400" />
+              Trigger Live Court Scraper Sync
             </DialogTitle>
-            <DialogDescription>
-              Trigger on-demand scraping and roster parsing for a specific court and date.
+            <DialogDescription className="text-slate-600 dark:text-muted-foreground">
+              Manually trigger real-time scraping of official court portals and parse PDF/HTML rosters into Neon PostgreSQL.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Target Court</Label>
+              <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Target Court</Label>
               <Select value={manualSyncCourt} onValueChange={setManualSyncCourt}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="LHC">Lahore High Court (4 Benches)</SelectItem>
-                  <SelectItem value="IHC">Islamabad High Court</SelectItem>
-                  <SelectItem value="SHC">Sindh High Court (4 Benches)</SelectItem>
+                <SelectContent className="bg-white dark:bg-card border-slate-200 dark:border-border">
+                  <SelectItem value="LHC">Lahore High Court (All 4 Benches)</SelectItem>
+                  <SelectItem value="IHC">Islamabad High Court (Principal Seat)</SelectItem>
+                  <SelectItem value="SHC">Sindh High Court (4 Benches/Circuits)</SelectItem>
                   <SelectItem value="SCP">Supreme Court of Pakistan (5 Registries)</SelectItem>
-                  <SelectItem value="LHR_DIST">Lahore District Courts (Sessions & Civil)</SelectItem>
+                  <SelectItem value="LHR_DIST">Lahore District Courts (6 Complexes)</SelectItem>
                   <SelectItem value="ISB_DIST">Islamabad District Courts (East & West)</SelectItem>
                   <SelectItem value="RWP_DIST">Rawalpindi District Courts</SelectItem>
                   <SelectItem value="FSD_DIST">Faisalabad District Courts</SelectItem>
@@ -1162,30 +1179,31 @@ export default function CauseListsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">Target Date</Label>
+              <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Target Hearing Date</Label>
               <Input
                 type="date"
                 value={manualSyncDate}
                 onChange={(e) => setManualSyncDate(e.target.value)}
+                className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground"
               />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsManualSyncOpen(false)}>
+            <Button variant="outline" className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-800 dark:text-foreground" onClick={() => setIsManualSyncOpen(false)}>
               Cancel
             </Button>
             <Button
-              className="bg-teal-700 hover:bg-teal-800 text-white"
-              onClick={() => {
+              className="bg-teal-700 hover:bg-teal-800 text-white font-bold"
+              disabled={manualSyncMutation.isPending}
+              onClick={() =>
                 manualSyncMutation.mutate({
                   court: manualSyncCourt,
                   targetDate: manualSyncDate,
-                });
-              }}
-              disabled={manualSyncMutation.isPending}
+                })
+              }
             >
-              {manualSyncMutation.isPending ? "Syncing Court..." : "Trigger Sync"}
+              {manualSyncMutation.isPending ? "Scraping & Parsing..." : "Start Scraper Now"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1195,7 +1213,7 @@ export default function CauseListsPage() {
 }
 
 /**
- * Subcomponent to render individual cases for a specific courtroom cause list
+ * Sub-component: Renders individual courtroom cases when an accordion is expanded
  */
 function RosterItemsList({
   causeListId,
@@ -1210,10 +1228,10 @@ function RosterItemsList({
     causeList: CourtCauseList;
     items: CourtCauseListItem[];
   }>({
-    queryKey: ["/api/cause-lists", causeListId],
+    queryKey: [`/api/cause-lists/${causeListId}/items`],
     queryFn: async () => {
-      const res = await fetch(`/api/cause-lists/${causeListId}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch courtroom items");
+      const res = await fetch(`/api/cause-lists/${causeListId}/items`);
+      if (!res.ok) throw new Error("Failed to load roster items");
       return res.json();
     },
   });
@@ -1228,7 +1246,7 @@ function RosterItemsList({
 
   if (!data?.items || data.items.length === 0) {
     return (
-      <div className="text-center py-4 text-xs text-muted-foreground">
+      <div className="text-center py-4 text-xs text-slate-500 dark:text-muted-foreground font-medium">
         No case items found in this roster.
       </div>
     );
@@ -1239,25 +1257,27 @@ function RosterItemsList({
       {data.items.map((item) => (
         <div
           key={item.id}
-          className={`p-3 rounded-lg border text-sm transition-all ${
-            item.isRedList ? "border-red-500/30 bg-red-500/5" : "bg-card hover:bg-muted/30"
+          className={`p-3.5 rounded-xl border text-sm transition-all shadow-xs ${
+            item.isRedList
+              ? "border-red-300 dark:border-red-500/40 bg-red-50/90 dark:bg-red-500/10 text-slate-900 dark:text-foreground"
+              : "bg-white dark:bg-card/90 hover:bg-slate-50 dark:hover:bg-muted/40 border-slate-200 dark:border-border text-slate-900 dark:text-foreground"
           }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="font-mono text-xs">
+              <Badge variant="outline" className="font-mono text-xs font-bold bg-slate-100 dark:bg-muted text-slate-800 dark:text-foreground border-slate-300 dark:border-border">
                 Sr. #{item.serialNumber}
               </Badge>
-              <span className="font-mono font-bold text-sm text-teal-700 dark:text-teal-400">
+              <span className="font-mono font-bold text-sm text-teal-800 dark:text-teal-400">
                 {item.caseNumber}
               </span>
               {item.caseType && (
-                <Badge variant="secondary" className="text-[11px]">
+                <Badge variant="secondary" className="text-[11px] bg-slate-100 dark:bg-secondary text-slate-800 dark:text-secondary-foreground font-semibold">
                   {item.caseType}
                 </Badge>
               )}
               {item.isRedList && (
-                <Badge className="bg-red-500/10 text-red-500 border-red-500/30 text-[10px]">
+                <Badge className="bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-500/40 text-[10px] font-black">
                   RED CAUSE LIST
                 </Badge>
               )}
@@ -1267,10 +1287,10 @@ function RosterItemsList({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs gap-1"
+                className="h-7 text-xs gap-1 text-slate-700 dark:text-foreground hover:bg-slate-100 dark:hover:bg-muted font-semibold"
                 onClick={() => onAddToDiary(item)}
               >
-                <CalendarPlus className="w-3.5 h-3.5" />
+                <CalendarPlus className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400" />
                 Add to Diary
               </Button>
               <GoogleCalendarButton
@@ -1291,29 +1311,29 @@ function RosterItemsList({
                 size="sm"
                 variant="ghost"
                 showLabel={false}
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-emerald-600"
+                className="h-7 w-7 p-0 text-slate-600 dark:text-muted-foreground hover:text-emerald-600"
               />
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs gap-1"
+                className="h-7 text-xs gap-1 text-slate-700 dark:text-foreground hover:bg-slate-100 dark:hover:bg-muted"
                 onClick={() => onTrack(item.caseNumber)}
               >
-                <Bell className="w-3.5 h-3.5" />
+                <Bell className="w-3.5 h-3.5 text-slate-500 dark:text-muted-foreground" />
                 Track
               </Button>
             </div>
           </div>
 
-          <div className="mt-2 font-medium text-foreground">{item.caseTitle}</div>
+          <div className="mt-2 font-bold text-slate-900 dark:text-foreground">{item.caseTitle}</div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground mt-2 pt-2 border-t">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 dark:text-muted-foreground mt-2 pt-2 border-t border-slate-200 dark:border-border">
             <div>
-              <span className="font-semibold text-foreground">Advocates:</span>{" "}
+              <span className="font-bold text-slate-900 dark:text-foreground">Advocates:</span>{" "}
               {item.petitionerAdvocate || item.respondentAdvocate || "Not listed"}
             </div>
             <div>
-              <span className="font-semibold text-foreground">Purpose:</span>{" "}
+              <span className="font-bold text-slate-900 dark:text-foreground">Purpose:</span>{" "}
               {item.fixationPurpose || "For Hearing"}
             </div>
           </div>
