@@ -257,7 +257,7 @@ export async function runCauseListMatcher(targetDate: string): Promise<{
         query: c.caseNumber,
         courtFilter: c.court,
         caseId: c.id,
-        notifyEmail: true,
+        notifyEmail: false, // Automated emails disabled by default
         notifyDiary: true,
       });
     }
@@ -360,18 +360,22 @@ export async function runCauseListMatcher(targetDate: string): Promise<{
     }
   }
 
-  for (const [userId, matches] of Object.entries(userMatches)) {
-    try {
-      const user = await db.query.users.findFirst({
-        where: eq(schema.users.id, userId),
-      });
+  // Automated emails are disabled by default to prevent unwanted inbox messages.
+  const ENABLE_AUTOMATED_EMAILS = process.env.ENABLE_AUTOMATED_CAUSELIST_EMAILS === "true";
+  if (ENABLE_AUTOMATED_EMAILS) {
+    for (const [userId, matches] of Object.entries(userMatches)) {
+      try {
+        const user = await db.query.users.findFirst({
+          where: eq(schema.users.id, userId),
+        });
 
-      if (user && user.email) {
-        const sent = await sendCauseListAlertEmail(user.email, user.name || "Advocate", targetDate, matches.map(m => m.item));
-        if (sent) emailsSent++;
+        if (user && user.email) {
+          const sent = await sendCauseListAlertEmail(user.email, user.name || "Advocate", targetDate, matches.map(m => m.item));
+          if (sent) emailsSent++;
+        }
+      } catch (emailErr: any) {
+        console.warn(`[CauseListMatcher] Failed to send email alert to user ${userId}:`, emailErr.message);
       }
-    } catch (emailErr: any) {
-      console.warn(`[CauseListMatcher] Failed to send email alert to user ${userId}:`, emailErr.message);
     }
   }
 
