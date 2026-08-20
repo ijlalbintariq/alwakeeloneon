@@ -226,6 +226,7 @@ function getTomorrowString() {
 export default function CauseListsPage() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
 
   // State Filters
   const [selectedCourt, setSelectedCourt] = useState<string>("LHC");
@@ -244,7 +245,7 @@ export default function CauseListsPage() {
   const [trackerQuery, setTrackerQuery] = useState<string>("");
   const [trackerCourt, setTrackerCourt] = useState<string>("LHC");
 
-  // Manual Trigger Modal State
+  // Manual Trigger Modal State (Admin Only)
   const [isManualSyncOpen, setIsManualSyncOpen] = useState<boolean>(false);
   const [manualSyncCourt, setManualSyncCourt] = useState<string>("LHC");
   const [manualSyncDate, setManualSyncDate] = useState<string>(getTomorrowString());
@@ -329,7 +330,7 @@ export default function CauseListsPage() {
     enabled: !!user,
   });
 
-  // Query: Scrape Run Telemetry
+  // Query: Scrape Run Telemetry (Admin Only)
   const {
     data: runsData,
     isLoading: isRunsLoading,
@@ -341,9 +342,10 @@ export default function CauseListsPage() {
       if (!res.ok) return { runs: [] };
       return res.json();
     },
+    enabled: isAdmin,
   });
 
-  // Query: Court System Health
+  // Query: Court System Health (Admin Only)
   const { data: healthData } = useQuery<{
     status: string;
     courts: Record<string, { healthy: boolean; message: string; latencyMs: number }>;
@@ -354,6 +356,7 @@ export default function CauseListsPage() {
       if (!res.ok) return null;
       return res.json();
     },
+    enabled: isAdmin,
   });
 
   // Mutation: Create Tracker
@@ -366,7 +369,7 @@ export default function CauseListsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/cause-lists/user/trackers"] });
       toast({
         title: "Tracker Activated",
-        description: `Now monitoring "${trackerQuery}". You will be notified in Daily Diary when this appears.`,
+        description: `Now monitoring "${trackerQuery}". You will see automatic updates in your Daily Diary.`,
       });
       setIsTrackerOpen(false);
       setTrackerQuery("");
@@ -392,7 +395,7 @@ export default function CauseListsPage() {
     },
   });
 
-  // Mutation: Manual Scrape Trigger
+  // Mutation: Manual Scrape Trigger (Admin Only)
   const manualSyncMutation = useMutation({
     mutationFn: async (payload: { court: string; targetDate: string }) => {
       const res = await apiRequest("POST", "/api/admin/cause-lists/trigger", payload);
@@ -476,11 +479,11 @@ export default function CauseListsPage() {
                 <Gavel className="w-6 h-6 text-teal-700 dark:text-teal-400" />
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-foreground font-serif">Court Cause Lists</h1>
                 <Badge variant="outline" className="border-teal-600/40 text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 text-xs font-bold">
-                  National Automated Sync
+                  Automated Daily Sync
                 </Badge>
               </div>
               <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1">
-                Live daily hearing schedules, courtroom rosters, judges, and case fixations across Pakistan
+                Official daily hearing rosters, courtroom lists, and case fixations across Pakistan
               </p>
             </div>
 
@@ -501,22 +504,25 @@ export default function CauseListsPage() {
                 className="gap-1.5 bg-white dark:bg-card border-slate-300 dark:border-border text-slate-800 dark:text-foreground hover:bg-slate-100 shadow-xs"
                 onClick={() => {
                   refetchLists();
-                  refetchRuns();
+                  if (isAdmin) refetchRuns();
                 }}
               >
                 <RefreshCw className="w-4 h-4 text-slate-600 dark:text-muted-foreground" />
                 Refresh
               </Button>
 
-              <Button
-                variant="default"
-                size="sm"
-                className="gap-1.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold shadow-xs"
-                onClick={() => setIsManualSyncOpen(true)}
-              >
-                <Activity className="w-4 h-4" />
-                Admin Sync
-              </Button>
+              {/* Admin-Only Manual Trigger */}
+              {isAdmin && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="gap-1.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold shadow-xs"
+                  onClick={() => setIsManualSyncOpen(true)}
+                >
+                  <Activity className="w-4 h-4" />
+                  Admin Sync
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -546,17 +552,17 @@ export default function CauseListsPage() {
                     : "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-transparent"
                 }`}
               >
-                Live Sync
+                Auto Sync
               </Badge>
             </button>
           ))}
         </div>
 
-        {/* Navigation Tabs (Explorer vs Trackers vs Audit) */}
+        {/* Navigation Tabs (Explorer vs Trackers vs Scrape Audit for Admin) */}
         <div className="mt-6">
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <TabsList className="grid grid-cols-3 max-w-md bg-slate-200/80 dark:bg-muted p-1 border border-slate-300/80 dark:border-border rounded-xl">
+              <TabsList className={`grid ${isAdmin ? "grid-cols-3 max-w-md" : "grid-cols-2 max-w-xs"} bg-slate-200/80 dark:bg-muted p-1 border border-slate-300/80 dark:border-border rounded-xl`}>
                 <TabsTrigger value="roster" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
                   <FileText className="w-4 h-4" />
                   Court Rosters
@@ -570,10 +576,12 @@ export default function CauseListsPage() {
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="audit" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
-                  <Activity className="w-4 h-4" />
-                  Scrape Audit
-                </TabsTrigger>
+                {isAdmin && (
+                  <TabsTrigger value="audit" className="gap-2 text-xs sm:text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground">
+                    <Activity className="w-4 h-4" />
+                    Scrape Audit
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               {/* Live Search Bar */}
@@ -871,17 +879,19 @@ export default function CauseListsPage() {
                         <Calendar className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                         <h3 className="text-base font-bold text-slate-900 dark:text-foreground">No Cause Lists Uploaded For This Date Yet</h3>
                         <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1 max-w-md mx-auto">
-                          Courts publish cause lists in the evening between 6:00 PM and 10:30 PM. Click "Admin Sync" to test or re-trigger.
+                          Courts publish cause lists in the evening between 6:00 PM and 10:30 PM. Automatic background scraper updates will reflect here.
                         </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-4 gap-1.5 bg-white dark:bg-card border-slate-300 dark:border-border font-bold text-slate-800 dark:text-foreground hover:bg-slate-100 shadow-xs"
-                          onClick={() => setIsManualSyncOpen(true)}
-                        >
-                          <Activity className="w-4 h-4 text-teal-700 dark:text-teal-400" />
-                          Trigger Scraper Sync
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-4 gap-1.5 bg-white dark:bg-card border-slate-300 dark:border-border font-bold text-slate-800 dark:text-foreground hover:bg-slate-100 shadow-xs"
+                            onClick={() => setIsManualSyncOpen(true)}
+                          >
+                            <Activity className="w-4 h-4 text-teal-700 dark:text-teal-400" />
+                            Trigger Scraper Sync (Admin)
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   )}
@@ -963,100 +973,102 @@ export default function CauseListsPage() {
               )}
             </TabsContent>
 
-            {/* TAB 3: SCRAPE AUDIT & OBSERVABILITY */}
-            <TabsContent value="audit" className="mt-6 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-foreground font-serif">Scraper Run Logs & Observability</h2>
-                  <p className="text-sm text-slate-600 dark:text-muted-foreground">
-                    Live telemetry tracking automated multi-wave syncs across all superior courts in Pakistan.
-                  </p>
-                </div>
-
-                {/* Health Pills for Superior Courts */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {healthData?.courts &&
-                    Object.entries(healthData.courts).map(([courtCode, health]) => (
-                      <Badge
-                        key={courtCode}
-                        variant={health.healthy ? "default" : "destructive"}
-                        className={`gap-1 text-xs font-bold ${
-                          health.healthy
-                            ? "bg-emerald-600 text-white"
-                            : "bg-red-600 text-white"
-                        }`}
-                      >
-                        <Activity className="w-3 h-3" />
-                        {courtCode}: {health.healthy ? "Online" : "Down"} ({health.latencyMs}ms)
-                      </Badge>
-                    ))}
-                </div>
-              </div>
-
-              {isRunsLoading ? (
-                <div className="flex justify-center py-12">
-                  <RefreshCw className="w-8 h-8 animate-spin text-teal-600" />
-                </div>
-              ) : runsData?.runs && runsData.runs.length > 0 ? (
-                <div className="overflow-x-auto border border-slate-200 dark:border-border rounded-xl bg-white dark:bg-card shadow-xs">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-100 dark:bg-muted text-xs uppercase text-slate-700 dark:text-muted-foreground border-b border-slate-200 dark:border-border font-bold">
-                      <tr>
-                        <th className="p-3">Court / Bench</th>
-                        <th className="p-3">Target Date</th>
-                        <th className="p-3">Started At</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3">Docs Parsed</th>
-                        <th className="p-3">Cases Inserted</th>
-                        <th className="p-3">Errors</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-border text-slate-800 dark:text-foreground">
-                      {runsData.runs.map((run) => (
-                        <tr key={run.id} className="hover:bg-slate-50 dark:hover:bg-muted/50">
-                          <td className="p-3 font-bold text-slate-900 dark:text-foreground">{run.court} ({run.bench})</td>
-                          <td className="p-3 font-mono text-xs text-slate-700 dark:text-muted-foreground">{run.targetDate}</td>
-                          <td className="p-3 text-xs text-slate-600 dark:text-muted-foreground">
-                            {new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                          </td>
-                          <td className="p-3">
-                            <Badge
-                              variant={
-                                run.status === "success"
-                                  ? "default"
-                                  : run.status === "partial"
-                                  ? "secondary"
-                                  : run.status === "running"
-                                  ? "outline"
-                                  : "destructive"
-                              }
-                              className="text-[11px] font-bold capitalize"
-                            >
-                              {run.status}
-                            </Badge>
-                          </td>
-                          <td className="p-3 font-mono">{run.documentsParsed}/{run.documentsFound}</td>
-                          <td className="p-3 font-mono text-emerald-700 dark:text-emerald-400 font-bold">+{run.itemsInserted}</td>
-                          <td className="p-3 text-xs text-slate-500 dark:text-muted-foreground max-w-xs truncate">
-                            {run.errorMessage || "None"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <Card className="bg-white dark:bg-card border border-slate-200 dark:border-border text-center py-12 shadow-xs">
-                  <CardContent>
-                    <Activity className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                    <h3 className="text-base font-bold text-slate-900 dark:text-foreground">No Scrape Runs Recorded Yet</h3>
-                    <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1">
-                      Scrape runs will appear here as the multi-wave background scheduler runs.
+            {/* TAB 3: SCRAPE AUDIT & OBSERVABILITY (ADMIN ONLY) */}
+            {isAdmin && (
+              <TabsContent value="audit" className="mt-6 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-foreground font-serif">Scraper Run Logs & Observability</h2>
+                    <p className="text-sm text-slate-600 dark:text-muted-foreground">
+                      Live telemetry tracking automated multi-wave syncs across all superior courts in Pakistan.
                     </p>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
+                  </div>
+
+                  {/* Health Pills for Superior Courts */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {healthData?.courts &&
+                      Object.entries(healthData.courts).map(([courtCode, health]) => (
+                        <Badge
+                          key={courtCode}
+                          variant={health.healthy ? "default" : "destructive"}
+                          className={`gap-1 text-xs font-bold ${
+                            health.healthy
+                              ? "bg-emerald-600 text-white"
+                              : "bg-red-600 text-white"
+                          }`}
+                        >
+                          <Activity className="w-3 h-3" />
+                          {courtCode}: {health.healthy ? "Online" : "Down"} ({health.latencyMs}ms)
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+
+                {isRunsLoading ? (
+                  <div className="flex justify-center py-12">
+                    <RefreshCw className="w-8 h-8 animate-spin text-teal-600" />
+                  </div>
+                ) : runsData?.runs && runsData.runs.length > 0 ? (
+                  <div className="overflow-x-auto border border-slate-200 dark:border-border rounded-xl bg-white dark:bg-card shadow-xs">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-100 dark:bg-muted text-xs uppercase text-slate-700 dark:text-muted-foreground border-b border-slate-200 dark:border-border font-bold">
+                        <tr>
+                          <th className="p-3">Court / Bench</th>
+                          <th className="p-3">Target Date</th>
+                          <th className="p-3">Started At</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3">Docs Parsed</th>
+                          <th className="p-3">Cases Inserted</th>
+                          <th className="p-3">Errors</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-border text-slate-800 dark:text-foreground">
+                        {runsData.runs.map((run) => (
+                          <tr key={run.id} className="hover:bg-slate-50 dark:hover:bg-muted/50">
+                            <td className="p-3 font-bold text-slate-900 dark:text-foreground">{run.court} ({run.bench})</td>
+                            <td className="p-3 font-mono text-xs text-slate-700 dark:text-muted-foreground">{run.targetDate}</td>
+                            <td className="p-3 text-xs text-slate-600 dark:text-muted-foreground">
+                              {new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                            </td>
+                            <td className="p-3">
+                              <Badge
+                                variant={
+                                  run.status === "success"
+                                    ? "default"
+                                    : run.status === "partial"
+                                    ? "secondary"
+                                    : run.status === "running"
+                                    ? "outline"
+                                    : "destructive"
+                                }
+                                className="text-[11px] font-bold capitalize"
+                              >
+                                {run.status}
+                              </Badge>
+                            </td>
+                            <td className="p-3 font-mono">{run.documentsParsed}/{run.documentsFound}</td>
+                            <td className="p-3 font-mono text-emerald-700 dark:text-emerald-400 font-bold">+{run.itemsInserted}</td>
+                            <td className="p-3 text-xs text-slate-500 dark:text-muted-foreground max-w-xs truncate">
+                              {run.errorMessage || "None"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <Card className="bg-white dark:bg-card border border-slate-200 dark:border-border text-center py-12 shadow-xs">
+                    <CardContent>
+                      <Activity className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                      <h3 className="text-base font-bold text-slate-900 dark:text-foreground">No Scrape Runs Recorded Yet</h3>
+                      <p className="text-sm text-slate-600 dark:text-muted-foreground mt-1">
+                        Scrape runs will appear here as the multi-wave background scheduler runs.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>
@@ -1145,69 +1157,71 @@ export default function CauseListsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG 2: MANUAL SCRAPE TRIGGER */}
-      <Dialog open={isManualSyncOpen} onOpenChange={setIsManualSyncOpen}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-card border border-slate-200 dark:border-border text-slate-900 dark:text-foreground shadow-xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-foreground font-serif">
-              <Activity className="w-5 h-5 text-teal-700 dark:text-teal-400" />
-              Trigger Live Court Scraper Sync
-            </DialogTitle>
-            <DialogDescription className="text-slate-600 dark:text-muted-foreground">
-              Manually trigger real-time scraping of official court portals and parse PDF/HTML rosters into Neon PostgreSQL.
-            </DialogDescription>
-          </DialogHeader>
+      {/* DIALOG 2: MANUAL SCRAPE TRIGGER (ADMIN ONLY) */}
+      {isAdmin && (
+        <Dialog open={isManualSyncOpen} onOpenChange={setIsManualSyncOpen}>
+          <DialogContent className="sm:max-w-md bg-white dark:bg-card border border-slate-200 dark:border-border text-slate-900 dark:text-foreground shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-foreground font-serif">
+                <Activity className="w-5 h-5 text-teal-700 dark:text-teal-400" />
+                Trigger Live Court Scraper Sync
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 dark:text-muted-foreground">
+                Manually trigger real-time scraping of official court portals and parse PDF/HTML rosters into Neon PostgreSQL.
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4 py-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Target Court</Label>
-              <Select value={manualSyncCourt} onValueChange={setManualSyncCourt}>
-                <SelectTrigger className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-card border-slate-200 dark:border-border">
-                  <SelectItem value="LHC">Lahore High Court (All 4 Benches)</SelectItem>
-                  <SelectItem value="IHC">Islamabad High Court (Principal Seat)</SelectItem>
-                  <SelectItem value="SHC">Sindh High Court (4 Benches/Circuits)</SelectItem>
-                  <SelectItem value="SCP">Supreme Court of Pakistan (5 Registries)</SelectItem>
-                  <SelectItem value="LHR_DIST">Lahore District Courts (6 Complexes)</SelectItem>
-                  <SelectItem value="ISB_DIST">Islamabad District Courts (East & West)</SelectItem>
-                  <SelectItem value="RWP_DIST">Rawalpindi District Courts</SelectItem>
-                  <SelectItem value="FSD_DIST">Faisalabad District Courts</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-4 py-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Target Court</Label>
+                <Select value={manualSyncCourt} onValueChange={setManualSyncCourt}>
+                  <SelectTrigger className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-card border-slate-200 dark:border-border">
+                    <SelectItem value="LHC">Lahore High Court (All 4 Benches)</SelectItem>
+                    <SelectItem value="IHC">Islamabad High Court (Principal Seat)</SelectItem>
+                    <SelectItem value="SHC">Sindh High Court (4 Benches/Circuits)</SelectItem>
+                    <SelectItem value="SCP">Supreme Court of Pakistan (5 Registries)</SelectItem>
+                    <SelectItem value="LHR_DIST">Lahore District Courts (6 Complexes)</SelectItem>
+                    <SelectItem value="ISB_DIST">Islamabad District Courts (East & West)</SelectItem>
+                    <SelectItem value="RWP_DIST">Rawalpindi District Courts</SelectItem>
+                    <SelectItem value="FSD_DIST">Faisalabad District Courts</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Target Hearing Date</Label>
+                <Input
+                  type="date"
+                  value={manualSyncDate}
+                  onChange={(e) => setManualSyncDate(e.target.value)}
+                  className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground"
+                />
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-700 dark:text-muted-foreground">Target Hearing Date</Label>
-              <Input
-                type="date"
-                value={manualSyncDate}
-                onChange={(e) => setManualSyncDate(e.target.value)}
-                className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-900 dark:text-foreground"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-800 dark:text-foreground" onClick={() => setIsManualSyncOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              className="bg-teal-700 hover:bg-teal-800 text-white font-bold"
-              disabled={manualSyncMutation.isPending}
-              onClick={() =>
-                manualSyncMutation.mutate({
-                  court: manualSyncCourt,
-                  targetDate: manualSyncDate,
-                })
-              }
-            >
-              {manualSyncMutation.isPending ? "Scraping & Parsing..." : "Start Scraper Now"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" className="bg-white dark:bg-background border-slate-300 dark:border-border text-slate-800 dark:text-foreground" onClick={() => setIsManualSyncOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-teal-700 hover:bg-teal-800 text-white font-bold"
+                disabled={manualSyncMutation.isPending}
+                onClick={() =>
+                  manualSyncMutation.mutate({
+                    court: manualSyncCourt,
+                    targetDate: manualSyncDate,
+                  })
+                }
+              >
+                {manualSyncMutation.isPending ? "Scraping & Parsing..." : "Start Scraper Now"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
