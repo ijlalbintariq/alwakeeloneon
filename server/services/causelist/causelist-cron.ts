@@ -174,8 +174,13 @@ async function checkScheduleAndRun(): Promise<void> {
  * Initializes the automated multi-wave cron worker
  */
 export function startCauseListScheduler(): void {
+  if (process.env.ENABLE_CAUSELIST_CRON !== "true") {
+    console.log("[CauseListCron] Automated background scraping is DISABLED (zero background overhead).");
+    console.log("[CauseListCron] Cause lists can be synced on-demand via the Admin Sync button.");
+    return;
+  }
+
   console.log("[CauseListCron] Multi-wave Cause List scheduler started (18:00, 20:30, 22:30, 07:30 PKT).");
-  console.log("[CauseListCron] Scraping will only fire at scheduled wave times — no startup scrape.");
 
   // Check every 10 minutes (wave windows are 15 min wide, so 10 min checks always catch them)
   setInterval(() => {

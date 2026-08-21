@@ -108,11 +108,13 @@ export async function runScraperForDate(
       }
     }
 
-    // 9. Run automated confidence-based matching & daily diary auto-sync
-    try {
-      await runCauseListMatcher(targetDate);
-    } catch (matchErr: any) {
-      console.error("[ScraperRunner] Error during cause list matching:", matchErr.message);
+    // 9. Run automated confidence-based matching only if new items were actually ingested
+    if (stats.itemsInserted > 0 || stats.itemsUpdated > 0) {
+      try {
+        await runCauseListMatcher(targetDate);
+      } catch (matchErr: any) {
+        console.error("[ScraperRunner] Error during cause list matching:", matchErr.message);
+      }
     }
 
     // 10. Update scrape run log status

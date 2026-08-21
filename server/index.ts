@@ -347,13 +347,6 @@ app.use((req, res, next) => {
     } catch (err: any) {
       console.warn("[Startup] Could not start diary email scheduler:", err?.message);
     }
-
-    try {
-      const { startCauseListScheduler } = await import("./services/causelist/causelist-cron");
-      startCauseListScheduler();
-    } catch (err: any) {
-      console.warn("[Startup] Could not start cause list scheduler:", err?.message);
-    }
   }
 
   app.get("/health", (_req, res) => {

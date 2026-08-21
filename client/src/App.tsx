@@ -50,7 +50,6 @@ const BlogDetailPage = lazy(() => import("@/pages/blog-detail"));
 const OrganizationPage = lazy(() => import("@/pages/organization"));
 const CaseFilesPage = lazy(() => import("@/pages/case-files"));
 const DailyDiaryPage = lazy(() => import("@/pages/daily-diary"));
-const CauseListsPage = lazy(() => import("@/pages/cause-lists"));
 const InstallAppPage = lazy(() => import("@/pages/install-app"));
 const WordAddinGuidePage = lazy(() => import("@/pages/word-addin-guide"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
@@ -256,15 +255,6 @@ function Router({ onReady }: { onReady?: () => void }) {
   }
 
   if (location === "/cause-lists" || location.startsWith("/cause-lists/")) {
-    // Feature gate: only accessible to the owner while polishing
-    if (user?.email === "ijlalbintariq420@gmail.com") {
-      return (
-        <AppShell>
-          <CauseListsPage />
-        </AppShell>
-      );
-    }
-    // Redirect all other users to dashboard
     return <Redirect to="/" />;
   }
 
@@ -319,7 +309,6 @@ function Router({ onReady }: { onReady?: () => void }) {
         <Route path="/case-files/:id" component={CaseFilesPage} />
         <Route path="/case-files" component={CaseFilesPage} />
         <Route path="/daily-diary" component={DailyDiaryPage} />
-        <Route path="/cause-lists" component={CauseListsPage} />
         <Route path="/organization" component={OrganizationRoute} />
         <Route path="/admin" component={AdminPanelPage} />
         <Route path="/settings" component={UserPanelPage} />

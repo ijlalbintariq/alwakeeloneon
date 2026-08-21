@@ -24,6 +24,7 @@ export async function proxyGet(
 ): Promise<AxiosResponse> {
   const proxyUrl = process.env.CAUSELIST_PROXY_URL;
   const proxySecret = process.env.CAUSELIST_PROXY_SECRET;
+  const effectiveTimeout = opts.timeout || 10_000;
 
   if (proxyUrl && proxySecret) {
     // Route through Cloudflare Worker proxy
@@ -31,7 +32,7 @@ export async function proxyGet(
       proxyUrl,
       { url, headers: opts.headers || {} },
       {
-        timeout: opts.timeout || 60_000,
+        timeout: effectiveTimeout,
         responseType: (opts.responseType as any) || "arraybuffer",
         headers: {
           "x-proxy-token": proxySecret,
@@ -57,8 +58,11 @@ export async function proxyGet(
     return resp;
   }
 
-  // Direct fetch fallback (local dev / no proxy configured)
-  return axios.get(url, opts as any);
+  // Direct fetch fallback (local dev / no proxy configured) — capped at 10s
+  return axios.get(url, {
+    timeout: effectiveTimeout,
+    ...opts,
+  } as any);
 }
 
 /**

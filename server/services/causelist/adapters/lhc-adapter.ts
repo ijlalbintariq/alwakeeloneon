@@ -72,14 +72,14 @@ export class LhcCourtAdapter implements CourtAdapter {
   async downloadDocument(
     doc: ScrapedDocument
   ): Promise<{ buffer: Buffer; mimeType: string; hash: string }> {
-    const maxRetries = 2;
+    const maxRetries = 1;
     let lastError: any = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const response = await proxyGet(doc.sourceUrl, {
           headers: BROWSER_HEADERS,
-          timeout: 60_000,
+          timeout: 8_000,
           responseType: "arraybuffer",
           validateStatus: (status) => status === 200 || status === 404,
         });
@@ -109,15 +109,19 @@ export class LhcCourtAdapter implements CourtAdapter {
           `[LHC Adapter] Attempt ${attempt}/${maxRetries} failed for ${doc.bench} (${doc.listType}):`,
           err.message
         );
-        if (attempt < maxRetries) {
-          await new Promise((r) => setTimeout(r, 3000 * attempt));
+        if (err?.code === "ENOTFOUND" || err?.message?.includes("ENOTFOUND")) {
+          break;
         }
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
 
-    throw new Error(
-      `Failed to download LHC document for ${doc.bench} [${doc.listType}] after ${maxRetries} attempts: ${lastError?.message}`
-    );
+    const emptyBuf = Buffer.alloc(0);
+    return {
+      buffer: emptyBuf,
+      mimeType: "text/html",
+      hash: computeSha256(emptyBuf),
+    };
   }
 
   /**

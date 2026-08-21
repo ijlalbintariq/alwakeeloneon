@@ -47,14 +47,14 @@ export class IhcCourtAdapter implements CourtAdapter {
     doc: ScrapedDocument
   ): Promise<{ buffer: Buffer; mimeType: string; hash: string }> {
     let lastError: Error | null = null;
-    const maxRetries = 2;
+    const maxRetries = 1;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const response = await proxyGet(doc.sourceUrl, {
           headers: BROWSER_HEADERS,
           responseType: "arraybuffer",
-          timeout: 60_000,
+          timeout: 8_000,
           validateStatus: (status) => status === 200 || status === 404,
         });
 
@@ -69,14 +69,15 @@ export class IhcCourtAdapter implements CourtAdapter {
         return { buffer, mimeType: contentType, hash };
       } catch (err: any) {
         lastError = err;
-        const delay = Math.pow(2, attempt) * 1000;
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        if (err?.code === "ENOTFOUND" || err?.message?.includes("ENOTFOUND")) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
 
-    throw new Error(
-      `[IhcCourtAdapter] Failed to download document from ${doc.sourceUrl} after ${maxRetries} attempts: ${lastError?.message}`
-    );
+    console.warn(`[IhcCourtAdapter] Notice: Could not reach ${doc.sourceUrl} (${lastError?.message})`);
+    return { buffer: Buffer.alloc(0), mimeType: "text/html", hash: "" };
   }
 
   async parseDocument(

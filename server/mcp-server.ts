@@ -478,7 +478,7 @@ export function registerAllTools(server: McpServer) {
       id: detail.id,
       citation: detail.citation,
       title: detail.title,
-      courtName: detail.court || detail.courtSnapshot || "Pakistani Court",
+      courtName: detail.court || "Pakistani Court",
       decisionDate: detail.decisionDate instanceof Date
         ? detail.decisionDate.toISOString().split("T")[0]
         : (detail.decisionDate ?? undefined),

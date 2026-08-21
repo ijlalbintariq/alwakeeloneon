@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Scale, LayoutDashboard, Gavel, Book, FileText, Bookmark,
-  History, FileBadge, Sparkles, Database, LogOut, Briefcase, CalendarDays, ListOrdered,
+  History, FileBadge, Sparkles, Database, LogOut, Briefcase, CalendarDays,
   User as UserIcon, Shield, Settings, Building2, Sun, Moon
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
@@ -124,13 +124,6 @@ const NAVIGATION_GROUPS: NavigationGroup[] = [
         href: "/daily-diary",
       },
       {
-        id: "cause-lists",
-        label: "Daily Cause Lists",
-        description: "Court rosters and case fixations",
-        icon: ListOrdered,
-        href: "/cause-lists",
-      },
-      {
         id: "case-documents",
         label: "Case Documents",
         description: "Uploaded files and case records",
@@ -167,14 +160,9 @@ function AppSidebar() {
   const { user, logout } = useAuth();
   const tier = String(user?.subscriptionTier || "").toLowerCase();
   const canSeeOrganization = !!user && (user.isAdmin || tier === "chamber" || tier === "enterprise");
-  const canSeeCauseLists = !!user && (user.email === "ijlalbintariq420@gmail.com");
   const visibleNavigationGroups = NAVIGATION_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => {
-      if (item.id === "organization") return canSeeOrganization;
-      if (item.id === "cause-lists") return canSeeCauseLists;
-      return true;
-    }),
+    items: group.items.filter((item) => item.id !== "organization" || canSeeOrganization),
   })).filter((group) => group.items.length > 0);
 
   return (
