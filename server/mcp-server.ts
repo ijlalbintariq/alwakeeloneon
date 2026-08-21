@@ -478,11 +478,13 @@ export function registerAllTools(server: McpServer) {
       id: detail.id,
       citation: detail.citation,
       title: detail.title,
-      courtName: detail.court || "Pakistani Court",
-      decisionDate: detail.decisionDate,
-      headnotes: detail.headnotes,
-      fullText: detail.fullText,
-      pdfUrl: detail.pdfUrl,
+      courtName: detail.court || detail.courtSnapshot || "Pakistani Court",
+      decisionDate: detail.decisionDate instanceof Date
+        ? detail.decisionDate.toISOString().split("T")[0]
+        : (detail.decisionDate ?? undefined),
+      headnotes: detail.headnotes ?? undefined,
+      fullText: detail.fullText ?? undefined,
+      pdfUrl: detail.pdfUrl ?? undefined,
     };
 
     return {
