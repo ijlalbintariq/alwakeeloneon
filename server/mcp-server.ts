@@ -132,6 +132,101 @@ async function callMcpDraftingAI(
   return { content: result.content, model: result.model };
 }
 
+/**
+ * Universal Pakistani citation normalizer.
+ * Converts any citation format (journal-first, year-first, dots, brackets,
+ * court-seat codes) into canonical search variants that match the DB.
+ *
+ * Examples:
+ *   "PLD 2013 SC 793"        → ["PLD2013793", "2013PLD793"]
+ *   "P Cr. L J 2021 1124"    → ["PCRLJ20211124", "2021PCRLJ1124"]
+ *   "PLC (C.S.) 2020 1267"   → ["PLCCS20201267", "2020PLCCS1267"]
+ *   "YLR Notes 2023 52"      → ["YLRN202352", "2023YLRN52"]
+ *   "2024 SCMR 128"          → ["2024SCMR128", "SCMR2024128"]
+ */
+function normalizeCitation(raw: string): string[] {
+  let s = raw.toUpperCase().trim();
+
+  // Step 1: Normalize journal aliases BEFORE stripping punctuation
+  // Order matters: longer patterns first to avoid partial matches
+
+  // PCrLJ Note variants → PCRLJN
+  s = s.replace(/P\s*\.?\s*CR?\s*\.?\s*L\s*\.?\s*J\s*\.?\s*N(?:OTES?)?/gi, 'PCRLJN');
+  // PCrLJ variants → PCRLJ
+  s = s.replace(/P\s*\.?\s*CR?\s*\.?\s*L\s*\.?\s*J\b/gi, 'PCRLJ');
+
+  // PLC(CS) Note variants → PLCCSN
+  s = s.replace(/PLC\s*\(?\s*C\.?\s*S\.?\s*\)?\s*N(?:OTES?)?\s*/gi, 'PLCCSN ');
+  // PLC(CS) variants → PLCCS
+  s = s.replace(/PLC\s*\(?\s*C\.?\s*S\.?\s*\)?\s*/gi, 'PLCCS ');
+
+  // YLR Note → YLRN
+  s = s.replace(/Y\.?\s*L\.?\s*R\.?\s*N(?:OTES?)?/gi, 'YLRN');
+  // CLC Note → CLCN
+  s = s.replace(/C\.?\s*L\.?\s*C\.?\s*N(?:OTES?)?/gi, 'CLCN');
+  // PLC Note → PLCN
+  s = s.replace(/PLC\s*N(?:OTES?)?/gi, 'PLCN');
+
+  // Dotted journal codes → canonical
+  s = s.replace(/S\.?\s*C\.?\s*M\.?\s*R\.?/gi, 'SCMR');
+  s = s.replace(/P\.?\s*L\.?\s*D\.?/gi, 'PLD');
+  s = s.replace(/G\.?\s*B\.?\s*L\.?\s*R\.?/gi, 'GBLR');
+  s = s.replace(/P\.?\s*S\.?\s*C\.?/gi, 'PSC');
+
+  // Step 2: Strip all remaining dots, brackets, commas
+  s = s.replace(/[.,()[\]]/g, '');
+
+  // Step 3: Strip court-seat codes (multi-word first, then single-word)
+  const COURT_SEATS = [
+    'SUPREME COURT OF PAKISTAN', 'SUPREME COURT',
+    'LAHORE HIGH COURT', 'SINDH HIGH COURT', 'PESHAWAR HIGH COURT',
+    'BALOCHISTAN HIGH COURT', 'ISLAMABAD HIGH COURT',
+    'HIGH COURT',
+  ];
+  for (const seat of COURT_SEATS) {
+    s = s.replace(new RegExp(seat, 'gi'), ' ');
+  }
+  const SINGLE_SEATS = [
+    'LAHORE', 'LAH', 'KARACHI', 'KAR', 'SINDH', 'PESHAWAR', 'PESH',
+    'BALOCHISTAN', 'ISLAMABAD', 'QUETTA', 'MULTAN', 'RAWALPINDI',
+    'BAHAWALPUR', 'ABBOTTABAD', 'FAISALABAD', 'HYDERABAD', 'SUKKUR',
+  ];
+  // Only strip standalone "SC" if it's NOT part of SCMR/PSC
+  s = s.replace(/\bSC\b(?!MR)/g, ' ');
+  for (const seat of SINGLE_SEATS) {
+    s = s.replace(new RegExp(`\\b${seat}\\b`, 'gi'), ' ');
+  }
+
+  // Collapse whitespace
+  s = s.replace(/\s+/g, ' ').trim();
+
+  // Step 4: Extract year + journal + page and build search variants
+  const variants: string[] = [];
+
+  // Try stripped version (all spaces removed)
+  const fullyStripped = s.replace(/\s+/g, '');
+  variants.push(fullyStripped);
+
+  // Detect journal-first: JOURNAL YEAR PAGE (e.g. "PLD 2013 793" or "PCRLJ 2021 1124")
+  const journalFirst = s.match(/^([A-Z]+)\s+(\d{4})\s+(.+)$/);
+  if (journalFirst) {
+    const [, journal, year, rest] = journalFirst;
+    const flipped = `${year}${journal}${rest.replace(/\s+/g, '')}`;
+    if (!variants.includes(flipped)) variants.push(flipped);
+  }
+
+  // Detect year-first: YEAR JOURNAL PAGE (e.g. "2013 PLD 793")
+  const yearFirst = s.match(/^(\d{4})\s+([A-Z]+)\s+(.+)$/);
+  if (yearFirst) {
+    const [, year, journal, rest] = yearFirst;
+    const flipped = `${journal}${year}${rest.replace(/\s+/g, '')}`;
+    if (!variants.includes(flipped)) variants.push(flipped);
+  }
+
+  // Deduplicate
+  return [...new Set(variants)];
+}
+
 export function registerAllTools(server: McpServer) {
   // 1. Search Case Law
   server.registerTool("search_case_law", {
@@ -345,55 +440,17 @@ export function registerAllTools(server: McpServer) {
         }
       }
 
-      // Now lookup by citation in judgments table to get the UUID
-      // DB stores citations as "2013 PLD 793" (year-first, no court-seat code)
-      // Users/LLMs commonly type "PLD 2013 SC 793" (journal-first with court-seat)
-      let cleanTarget = targetId.toUpperCase().trim();
-
-      // Strip court-seat codes that are NOT part of stored citations
-      // e.g. "PLD 2013 SC 793" → "PLD 2013 793", "2024 SCMR 128 SC" → "2024 SCMR 128"
-      const COURT_SEAT_CODES = [
-        "SUPREME COURT", "SUPREME COURT OF PAKISTAN",
-        "LAHORE HIGH COURT", "SINDH HIGH COURT", "PESHAWAR HIGH COURT",
-        "BALOCHISTAN HIGH COURT", "ISLAMABAD HIGH COURT",
-        "SC", "LAHORE", "LAH", "KARACHI", "KAR", "SINDH",
-        "PESHAWAR", "PESH", "BALOCHISTAN", "ISLAMABAD",
-        "LHC", "SHC", "PHC", "BHC", "IHC", "AJK", "AJKHC",
-        "QUETTA", "MULTAN", "RAWALPINDI", "BAHAWALPUR",
-      ];
-      for (const seat of COURT_SEAT_CODES) {
-        cleanTarget = cleanTarget.replace(new RegExp(`\\b${seat}\\b`, 'gi'), ' ');
-      }
-      cleanTarget = cleanTarget.replace(/\s+/g, ' ').trim();
-
-      // Build search variants:
-      // 1. Original (spaces stripped): "PLD2013793"
-      // 2. Flip journal-first → year-first: "PLD 2013 793" → "2013 PLD 793" → "2013PLD793"
-      const searchVariants: string[] = [];
-      const stripped = cleanTarget.replace(/\s+/g, '');
-      searchVariants.push(stripped);
-
-      // Detect journal-first pattern: JOURNAL YEAR PAGE (e.g. "PLD 2013 793")
-      const journalFirstMatch = cleanTarget.match(/^([A-Z]+)\s+(\d{4})\s+(.+)$/);
-      if (journalFirstMatch) {
-        const [, journal, year, rest] = journalFirstMatch;
-        const flipped = `${year}${journal}${rest.replace(/\s+/g, '')}`;
-        searchVariants.push(flipped);
-      }
-
-      // Detect year-first pattern: YEAR JOURNAL PAGE (e.g. "2013 PLD 793")
-      const yearFirstMatch = cleanTarget.match(/^(\d{4})\s+([A-Z]+)\s+(.+)$/);
-      if (yearFirstMatch) {
-        const [, year, journal, rest] = yearFirstMatch;
-        const flipped = `${journal}${year}${rest.replace(/\s+/g, '')}`;
-        searchVariants.push(flipped);
-      }
+      // Universal citation normalizer — handles every known Pakistani citation format
+      const searchVariants = normalizeCitation(targetId);
 
       let resolvedRow: { id: string } | undefined;
       for (const variant of searchVariants) {
         const [row] = await db.select({ id: judgments.id })
           .from(judgments)
-          .where(like(sql`upper(replace(${judgments.citationString}, ' ', ''))`, `%${variant}%`))
+          .where(like(
+            sql`upper(replace(replace(replace(replace(replace(${judgments.citationString}, ' ', ''), '.', ''), '(', ''), ')', ''), ',', ''))`,
+            `%${variant}%`,
+          ))
           .limit(1);
         if (row) {
           resolvedRow = row;
