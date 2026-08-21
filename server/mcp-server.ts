@@ -346,31 +346,60 @@ export function registerAllTools(server: McpServer) {
       }
 
       // Now lookup by citation in judgments table to get the UUID
-      let cleanTarget = targetId.toUpperCase();
-      const COURT_REPORT_MAP: Record<string, string> = {
-        LAHORE: "LHC",
-        LAH: "LHC",
-        KARACHI: "SHC",
-        KAR: "SHC",
-        SINDH: "SHC",
-        SHC: "SHC",
-        PESHAWAR: "PHC",
-        PESH: "PHC",
-        BALOCHISTAN: "BHC",
-        ISLAMABAD: "IHC",
-        AJK: "AJKHC",
-        AJKHC: "AJKHC",
-      };
+      // DB stores citations as "2013 PLD 793" (year-first, no court-seat code)
+      // Users/LLMs commonly type "PLD 2013 SC 793" (journal-first with court-seat)
+      let cleanTarget = targetId.toUpperCase().trim();
 
-      for (const [nick, canonical] of Object.entries(COURT_REPORT_MAP)) {
-        cleanTarget = cleanTarget.replace(new RegExp(`\\b${nick}\\b`, 'g'), canonical);
+      // Strip court-seat codes that are NOT part of stored citations
+      // e.g. "PLD 2013 SC 793" → "PLD 2013 793", "2024 SCMR 128 SC" → "2024 SCMR 128"
+      const COURT_SEAT_CODES = [
+        "SUPREME COURT", "SUPREME COURT OF PAKISTAN",
+        "LAHORE HIGH COURT", "SINDH HIGH COURT", "PESHAWAR HIGH COURT",
+        "BALOCHISTAN HIGH COURT", "ISLAMABAD HIGH COURT",
+        "SC", "LAHORE", "LAH", "KARACHI", "KAR", "SINDH",
+        "PESHAWAR", "PESH", "BALOCHISTAN", "ISLAMABAD",
+        "LHC", "SHC", "PHC", "BHC", "IHC", "AJK", "AJKHC",
+        "QUETTA", "MULTAN", "RAWALPINDI", "BAHAWALPUR",
+      ];
+      for (const seat of COURT_SEAT_CODES) {
+        cleanTarget = cleanTarget.replace(new RegExp(`\\b${seat}\\b`, 'gi'), ' ');
       }
-      cleanTarget = cleanTarget.replace(/\s+/g, "");
+      cleanTarget = cleanTarget.replace(/\s+/g, ' ').trim();
 
-      const [resolvedRow] = await db.select({ id: judgments.id })
-        .from(judgments)
-        .where(like(sql`upper(replace(${judgments.citationString}, ' ', ''))`, `%${cleanTarget}%`))
-        .limit(1);
+      // Build search variants:
+      // 1. Original (spaces stripped): "PLD2013793"
+      // 2. Flip journal-first → year-first: "PLD 2013 793" → "2013 PLD 793" → "2013PLD793"
+      const searchVariants: string[] = [];
+      const stripped = cleanTarget.replace(/\s+/g, '');
+      searchVariants.push(stripped);
+
+      // Detect journal-first pattern: JOURNAL YEAR PAGE (e.g. "PLD 2013 793")
+      const journalFirstMatch = cleanTarget.match(/^([A-Z]+)\s+(\d{4})\s+(.+)$/);
+      if (journalFirstMatch) {
+        const [, journal, year, rest] = journalFirstMatch;
+        const flipped = `${year}${journal}${rest.replace(/\s+/g, '')}`;
+        searchVariants.push(flipped);
+      }
+
+      // Detect year-first pattern: YEAR JOURNAL PAGE (e.g. "2013 PLD 793")
+      const yearFirstMatch = cleanTarget.match(/^(\d{4})\s+([A-Z]+)\s+(.+)$/);
+      if (yearFirstMatch) {
+        const [, year, journal, rest] = yearFirstMatch;
+        const flipped = `${journal}${year}${rest.replace(/\s+/g, '')}`;
+        searchVariants.push(flipped);
+      }
+
+      let resolvedRow: { id: string } | undefined;
+      for (const variant of searchVariants) {
+        const [row] = await db.select({ id: judgments.id })
+          .from(judgments)
+          .where(like(sql`upper(replace(${judgments.citationString}, ' ', ''))`, `%${variant}%`))
+          .limit(1);
+        if (row) {
+          resolvedRow = row;
+          break;
+        }
+      }
         
       if (!resolvedRow) {
         throw new McpError(ErrorCode.InvalidRequest, `Judgment with ID or citation '${targetId}' not found.`);
