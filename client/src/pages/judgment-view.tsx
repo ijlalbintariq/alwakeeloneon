@@ -389,6 +389,9 @@ export default function JudgmentViewPage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0 flex-wrap justify-end">
+          {/* Google Preferred Sources Button */}
+          <div {...{ "google-add-preferred-source-btn": "" }} data-theme="dark"></div>
+          
           <Button
             onClick={() => generateJudgmentPDF(judgment, summaryData, effectiveFullText || null)}
             className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white hover:shadow-lg hover:shadow-blue-500/20 active:scale-[0.98] text-[10px] font-black uppercase tracking-wider transition-all border-none"
