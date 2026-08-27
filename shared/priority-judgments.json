@@ -1,0 +1,5930 @@
+[
+  {
+    "id": "86c6bf74-7e77-4224-a323-64310da50051",
+    "clicks": 59.0,
+    "impressions": 345.0,
+    "position": 2.75
+  },
+  {
+    "id": "f10da997-a367-42a0-ba15-7ba2f8fb7d9c",
+    "clicks": 59.0,
+    "impressions": 275.0,
+    "position": 2.97
+  },
+  {
+    "id": "c25b6cd6-1b26-48cc-af88-3ea4ab5844ca",
+    "clicks": 53.0,
+    "impressions": 1152.0,
+    "position": 4.81
+  },
+  {
+    "id": "3ccdadfd-6446-4407-a070-0e9586ab97e5",
+    "clicks": 28.0,
+    "impressions": 135.0,
+    "position": 2.96
+  },
+  {
+    "id": "2999ad41-2dfb-4342-a4a1-24b8bb7bfc8c",
+    "clicks": 22.0,
+    "impressions": 130.0,
+    "position": 2.42
+  },
+  {
+    "id": "3bc10e10-0be8-43f2-9e74-597291ffba1f",
+    "clicks": 20.0,
+    "impressions": 155.0,
+    "position": 4.3
+  },
+  {
+    "id": "96dbaca5-36c1-4951-a58a-1f0d3e6f4898",
+    "clicks": 20.0,
+    "impressions": 81.0,
+    "position": 4.43
+  },
+  {
+    "id": "79a28bef-b2fd-46a4-b39d-48f09740a77a",
+    "clicks": 19.0,
+    "impressions": 250.0,
+    "position": 4.66
+  },
+  {
+    "id": "df47da30-fe6c-4ae5-a1be-0a1c748d6439",
+    "clicks": 18.0,
+    "impressions": 82.0,
+    "position": 3.91
+  },
+  {
+    "id": "8ee7759b-550f-4cb3-b204-2f63e7b21a2f",
+    "clicks": 17.0,
+    "impressions": 83.0,
+    "position": 3.72
+  },
+  {
+    "id": "cdbe85c2-5755-4da5-b706-577d4984abc7",
+    "clicks": 15.0,
+    "impressions": 252.0,
+    "position": 4.27
+  },
+  {
+    "id": "08af5d0b-5143-4ab5-8cc5-8399ce3ef5bc",
+    "clicks": 14.0,
+    "impressions": 104.0,
+    "position": 3.34
+  },
+  {
+    "id": "ec076218-60ce-445b-8f30-55c026c2165c",
+    "clicks": 14.0,
+    "impressions": 81.0,
+    "position": 3.27
+  },
+  {
+    "id": "0e5aa93e-e567-42d2-a519-2baa4b1cb944",
+    "clicks": 11.0,
+    "impressions": 21.0,
+    "position": 3.62
+  },
+  {
+    "id": "f74b650b-ca8e-4fc3-9856-16821dc84b37",
+    "clicks": 10.0,
+    "impressions": 544.0,
+    "position": 3.66
+  },
+  {
+    "id": "d06ad889-fcd4-4389-a935-434aed29d72a",
+    "clicks": 10.0,
+    "impressions": 331.0,
+    "position": 3.7
+  },
+  {
+    "id": "01ad58b0-9644-490d-b014-4e8c91671b98",
+    "clicks": 9.0,
+    "impressions": 62.0,
+    "position": 4.42
+  },
+  {
+    "id": "266e9c8a-1317-4d82-88f3-2993e14847e9",
+    "clicks": 9.0,
+    "impressions": 41.0,
+    "position": 3.71
+  },
+  {
+    "id": "54a1a049-e198-43c6-b3cd-5007368d0dd6",
+    "clicks": 9.0,
+    "impressions": 29.0,
+    "position": 4.0
+  },
+  {
+    "id": "c9c0d65e-1869-4451-bf1e-69a6daec244f",
+    "clicks": 9.0,
+    "impressions": 21.0,
+    "position": 3.14
+  },
+  {
+    "id": "96dca794-8fa2-4e05-8c8d-12388a9ea1c7",
+    "clicks": 8.0,
+    "impressions": 155.0,
+    "position": 5.77
+  },
+  {
+    "id": "4c2c7eea-19be-48ac-a878-d5cf060ea0ad",
+    "clicks": 8.0,
+    "impressions": 96.0,
+    "position": 6.17
+  },
+  {
+    "id": "a1c98911-d703-4baf-be46-4c752e0058dd",
+    "clicks": 8.0,
+    "impressions": 53.0,
+    "position": 6.04
+  },
+  {
+    "id": "9ce87b54-8926-4585-8ec2-b0b515c66bc9",
+    "clicks": 8.0,
+    "impressions": 35.0,
+    "position": 5.06
+  },
+  {
+    "id": "d48c8382-9fba-4e1f-a832-7e20bf18de84",
+    "clicks": 8.0,
+    "impressions": 34.0,
+    "position": 5.56
+  },
+  {
+    "id": "50f2ef5a-d747-441b-b6b2-1bed7084c17a",
+    "clicks": 8.0,
+    "impressions": 30.0,
+    "position": 2.8
+  },
+  {
+    "id": "fc81592f-617b-4801-bf0e-bbb34be2f165",
+    "clicks": 8.0,
+    "impressions": 23.0,
+    "position": 2.13
+  },
+  {
+    "id": "71c035c9-6660-420d-99ec-4cd138767d75",
+    "clicks": 8.0,
+    "impressions": 19.0,
+    "position": 2.63
+  },
+  {
+    "id": "44953c1b-179c-4743-852f-6ae5cb759ee3",
+    "clicks": 7.0,
+    "impressions": 290.0,
+    "position": 7.93
+  },
+  {
+    "id": "3a1b29ec-84bf-4c79-a42f-745e60134ac4",
+    "clicks": 7.0,
+    "impressions": 109.0,
+    "position": 4.94
+  },
+  {
+    "id": "721c0e3d-acc4-409f-abb9-915f3272139e",
+    "clicks": 7.0,
+    "impressions": 72.0,
+    "position": 3.83
+  },
+  {
+    "id": "80ef3093-bff8-4cea-9421-baa084c87791",
+    "clicks": 7.0,
+    "impressions": 62.0,
+    "position": 7.15
+  },
+  {
+    "id": "e7024d8a-f128-410e-bfd7-9118f202bfe3",
+    "clicks": 7.0,
+    "impressions": 56.0,
+    "position": 2.82
+  },
+  {
+    "id": "65c0ae1a-ec53-4888-87ff-98ee38941ac5",
+    "clicks": 7.0,
+    "impressions": 55.0,
+    "position": 6.4
+  },
+  {
+    "id": "76caea88-7c6d-4490-ab10-e39ecc8ddd6c",
+    "clicks": 7.0,
+    "impressions": 54.0,
+    "position": 3.52
+  },
+  {
+    "id": "ae3edb01-21e6-4ea2-b25b-950199b23830",
+    "clicks": 7.0,
+    "impressions": 50.0,
+    "position": 4.5
+  },
+  {
+    "id": "799be194-e361-4efc-9029-e604da6ae07e",
+    "clicks": 7.0,
+    "impressions": 50.0,
+    "position": 5.46
+  },
+  {
+    "id": "880309eb-445a-44b6-bc0c-2bce94459f94",
+    "clicks": 7.0,
+    "impressions": 48.0,
+    "position": 5.35
+  },
+  {
+    "id": "ea45540a-c9df-4cfa-9985-2774c3a03220",
+    "clicks": 7.0,
+    "impressions": 34.0,
+    "position": 3.71
+  },
+  {
+    "id": "a1282d4e-3f25-400a-a8b5-53fc21485530",
+    "clicks": 7.0,
+    "impressions": 34.0,
+    "position": 5.74
+  },
+  {
+    "id": "2a308c6c-4e42-47f8-bed2-6062f6af3266",
+    "clicks": 7.0,
+    "impressions": 25.0,
+    "position": 6.48
+  },
+  {
+    "id": "68e31e9c-8711-4b26-a50a-f665fe4bd2e1",
+    "clicks": 7.0,
+    "impressions": 23.0,
+    "position": 4.43
+  },
+  {
+    "id": "2568a7b6-578b-4548-bf2c-e702338e0022",
+    "clicks": 7.0,
+    "impressions": 14.0,
+    "position": 3.14
+  },
+  {
+    "id": "82c6249b-ef80-4fb7-9d41-9063e2c9169c",
+    "clicks": 6.0,
+    "impressions": 70.0,
+    "position": 5.5
+  },
+  {
+    "id": "35797ad0-5a26-4487-895c-37ab1b2a5fdb",
+    "clicks": 6.0,
+    "impressions": 37.0,
+    "position": 3.27
+  },
+  {
+    "id": "01dd66f8-5a05-41b6-84f5-87619ef78f34",
+    "clicks": 6.0,
+    "impressions": 28.0,
+    "position": 2.93
+  },
+  {
+    "id": "82c1ed88-40b8-4911-9b81-823d37d1f4b1",
+    "clicks": 6.0,
+    "impressions": 28.0,
+    "position": 3.75
+  },
+  {
+    "id": "22a2dd5b-6268-419b-8faf-9a614c833102",
+    "clicks": 6.0,
+    "impressions": 23.0,
+    "position": 3.04
+  },
+  {
+    "id": "b73773f9-28dc-4533-9ea1-8610b429e7cf",
+    "clicks": 6.0,
+    "impressions": 23.0,
+    "position": 3.39
+  },
+  {
+    "id": "236fb97d-8ec2-4fff-99cc-6d82c8421b74",
+    "clicks": 6.0,
+    "impressions": 23.0,
+    "position": 4.87
+  },
+  {
+    "id": "3adfd459-7f8e-4ca1-bcfc-0d8411ac6a61",
+    "clicks": 6.0,
+    "impressions": 20.0,
+    "position": 3.05
+  },
+  {
+    "id": "69f756f3-c2b4-4c32-b6b2-eb5c9c61f5ff",
+    "clicks": 6.0,
+    "impressions": 19.0,
+    "position": 3.53
+  },
+  {
+    "id": "4e4b2581-0492-43a4-b0af-b6d81972a139",
+    "clicks": 6.0,
+    "impressions": 12.0,
+    "position": 3.58
+  },
+  {
+    "id": "8d02f948-dfe2-47d8-b2c3-6aca029a546a",
+    "clicks": 6.0,
+    "impressions": 11.0,
+    "position": 3.55
+  },
+  {
+    "id": "cd10c95b-5aa0-4601-a1fb-e04a53a26a8b",
+    "clicks": 6.0,
+    "impressions": 9.0,
+    "position": 3.22
+  },
+  {
+    "id": "24748582-62b1-4c1b-bb5b-8d2180b94ec7",
+    "clicks": 6.0,
+    "impressions": 6.0,
+    "position": 1.0
+  },
+  {
+    "id": "d617375e-0da9-4102-b70e-127ce1f86b31",
+    "clicks": 5.0,
+    "impressions": 158.0,
+    "position": 6.11
+  },
+  {
+    "id": "7c5c4646-4301-479f-9d7a-533abe9bd597",
+    "clicks": 5.0,
+    "impressions": 113.0,
+    "position": 6.4
+  },
+  {
+    "id": "c2fa7ded-d083-47e7-891f-f73bb1c2a8ae",
+    "clicks": 5.0,
+    "impressions": 66.0,
+    "position": 5.39
+  },
+  {
+    "id": "b9c43863-b201-4431-9ad7-210a1e65974b",
+    "clicks": 5.0,
+    "impressions": 55.0,
+    "position": 8.29
+  },
+  {
+    "id": "8e39af42-ec60-4a25-b04c-17c320e19521",
+    "clicks": 5.0,
+    "impressions": 45.0,
+    "position": 6.0
+  },
+  {
+    "id": "09ff2898-c3b4-4407-9120-e62442da4203",
+    "clicks": 5.0,
+    "impressions": 45.0,
+    "position": 6.82
+  },
+  {
+    "id": "0dfe0eaf-b75a-4e8b-a685-2d99bbfaad31",
+    "clicks": 5.0,
+    "impressions": 39.0,
+    "position": 4.54
+  },
+  {
+    "id": "0ee6b3b1-f33a-4d34-8cb9-c419fe7a2321",
+    "clicks": 5.0,
+    "impressions": 29.0,
+    "position": 9.66
+  },
+  {
+    "id": "37b53ff9-ab35-483e-99ea-c54c1c4b1817",
+    "clicks": 5.0,
+    "impressions": 28.0,
+    "position": 5.0
+  },
+  {
+    "id": "d1e41c8f-9fb2-466d-9fa8-822f4d6072e4",
+    "clicks": 5.0,
+    "impressions": 27.0,
+    "position": 4.52
+  },
+  {
+    "id": "91d779bb-9742-4b6e-b231-146eca3b1bf7",
+    "clicks": 5.0,
+    "impressions": 22.0,
+    "position": 2.68
+  },
+  {
+    "id": "a17e651f-76af-4237-b0a9-59caf131906f",
+    "clicks": 5.0,
+    "impressions": 21.0,
+    "position": 4.1
+  },
+  {
+    "id": "ff7f07b0-6f18-4655-bab0-06d5b66fa298",
+    "clicks": 5.0,
+    "impressions": 21.0,
+    "position": 4.52
+  },
+  {
+    "id": "47088998-e937-41b8-9ab2-d167b3f7bb2e",
+    "clicks": 5.0,
+    "impressions": 20.0,
+    "position": 3.2
+  },
+  {
+    "id": "5864337c-488d-4450-b6d7-9db6779b9fb6",
+    "clicks": 5.0,
+    "impressions": 19.0,
+    "position": 12.16
+  },
+  {
+    "id": "610f9aab-3936-48f0-8420-3df240708446",
+    "clicks": 5.0,
+    "impressions": 18.0,
+    "position": 2.11
+  },
+  {
+    "id": "c6ec1d9f-ba21-453d-9127-ae0336d5d319",
+    "clicks": 5.0,
+    "impressions": 18.0,
+    "position": 3.56
+  },
+  {
+    "id": "7e484eff-3175-4601-85c2-191425ea8436",
+    "clicks": 5.0,
+    "impressions": 17.0,
+    "position": 5.47
+  },
+  {
+    "id": "4ceda3bf-5ff2-4a24-89c1-7f3151d45048",
+    "clicks": 5.0,
+    "impressions": 14.0,
+    "position": 2.0
+  },
+  {
+    "id": "5d04487f-5bde-4405-844b-9336301fdd52",
+    "clicks": 5.0,
+    "impressions": 13.0,
+    "position": 4.31
+  },
+  {
+    "id": "6a45ab58-8044-49bf-b17f-cc73811a1c79",
+    "clicks": 5.0,
+    "impressions": 11.0,
+    "position": 3.0
+  },
+  {
+    "id": "f246870f-e7cd-4ab9-ae18-49ec5d02221c",
+    "clicks": 5.0,
+    "impressions": 11.0,
+    "position": 10.91
+  },
+  {
+    "id": "e2074c0e-e8be-41dc-8ceb-0c59608b8a1f",
+    "clicks": 5.0,
+    "impressions": 7.0,
+    "position": 2.43
+  },
+  {
+    "id": "6b29bebb-bb45-4872-9629-efdbe4171730",
+    "clicks": 5.0,
+    "impressions": 5.0,
+    "position": 1.2
+  },
+  {
+    "id": "4ad1c4a8-2139-47b6-8769-500a527fc8e6",
+    "clicks": 4.0,
+    "impressions": 484.0,
+    "position": 7.38
+  },
+  {
+    "id": "6073e9b8-e748-40db-a727-aba465b89cb3",
+    "clicks": 4.0,
+    "impressions": 185.0,
+    "position": 7.92
+  },
+  {
+    "id": "9525f4b3-f370-48c8-9e34-436b08fd6cd5",
+    "clicks": 4.0,
+    "impressions": 110.0,
+    "position": 5.65
+  },
+  {
+    "id": "dce1956b-2194-4291-9e75-98e646cb372d",
+    "clicks": 4.0,
+    "impressions": 109.0,
+    "position": 4.29
+  },
+  {
+    "id": "76bfeb9e-620b-4494-8bb6-ec03e9abba41",
+    "clicks": 4.0,
+    "impressions": 55.0,
+    "position": 5.76
+  },
+  {
+    "id": "a9b561ab-8b8c-4ddd-80d0-254f16eec416",
+    "clicks": 4.0,
+    "impressions": 51.0,
+    "position": 7.75
+  },
+  {
+    "id": "1482023f-87d2-4ebe-8456-80aa2c61b17e",
+    "clicks": 4.0,
+    "impressions": 39.0,
+    "position": 7.46
+  },
+  {
+    "id": "94567b82-0ec2-41cc-83cc-5d139ca5eef3",
+    "clicks": 4.0,
+    "impressions": 37.0,
+    "position": 7.32
+  },
+  {
+    "id": "fa7abf2a-d161-4d9e-ae30-c2cc67d5eb21",
+    "clicks": 4.0,
+    "impressions": 36.0,
+    "position": 5.39
+  },
+  {
+    "id": "23f14ff5-e729-4c87-93f8-281a16dd62e0",
+    "clicks": 4.0,
+    "impressions": 34.0,
+    "position": 5.53
+  },
+  {
+    "id": "93de4663-fb5c-4381-a60c-4bd9d852e775",
+    "clicks": 4.0,
+    "impressions": 33.0,
+    "position": 3.3
+  },
+  {
+    "id": "e3ba785e-f775-441a-b101-5172973e6f85",
+    "clicks": 4.0,
+    "impressions": 33.0,
+    "position": 4.82
+  },
+  {
+    "id": "3b9189f6-0eb4-4222-a4ad-7297adbcf622",
+    "clicks": 4.0,
+    "impressions": 31.0,
+    "position": 5.84
+  },
+  {
+    "id": "48457ee1-696f-442c-a095-3c5c3556018a",
+    "clicks": 4.0,
+    "impressions": 30.0,
+    "position": 3.07
+  },
+  {
+    "id": "e9a8dc26-3f64-4499-94dd-5560f0ca1b3a",
+    "clicks": 4.0,
+    "impressions": 29.0,
+    "position": 6.66
+  },
+  {
+    "id": "4ed0d981-7740-457a-b2d2-a2175bacbc01",
+    "clicks": 4.0,
+    "impressions": 28.0,
+    "position": 3.21
+  },
+  {
+    "id": "9300dd70-56f5-4be7-88fb-a9d48377a951",
+    "clicks": 4.0,
+    "impressions": 28.0,
+    "position": 4.64
+  },
+  {
+    "id": "e47acfc3-e71b-4848-8187-a1599fcdedaf",
+    "clicks": 4.0,
+    "impressions": 23.0,
+    "position": 8.04
+  },
+  {
+    "id": "4aca30f6-8f1c-4ee2-adac-2e47bbd0638e",
+    "clicks": 4.0,
+    "impressions": 22.0,
+    "position": 3.32
+  },
+  {
+    "id": "e2aa19cd-c841-4fd8-8ef3-035456ed4ca4",
+    "clicks": 4.0,
+    "impressions": 21.0,
+    "position": 3.86
+  },
+  {
+    "id": "eb35b5ec-aab2-4433-ab63-091703a454bd",
+    "clicks": 4.0,
+    "impressions": 21.0,
+    "position": 5.67
+  },
+  {
+    "id": "d5ec0e4d-74a9-489f-84be-4528bbb3869a",
+    "clicks": 4.0,
+    "impressions": 21.0,
+    "position": 6.38
+  },
+  {
+    "id": "7a7d0b61-c8a9-4bf2-8d15-5ffbf0e7d8a1",
+    "clicks": 4.0,
+    "impressions": 19.0,
+    "position": 3.74
+  },
+  {
+    "id": "42bd3da2-2623-48c9-9c23-b956aedda2f4",
+    "clicks": 4.0,
+    "impressions": 19.0,
+    "position": 3.79
+  },
+  {
+    "id": "392ec729-9cb2-4fe0-9c0a-0600ff1a7aa6",
+    "clicks": 4.0,
+    "impressions": 19.0,
+    "position": 5.42
+  },
+  {
+    "id": "a35aff97-a875-47aa-ab83-b40bc42f1a76",
+    "clicks": 4.0,
+    "impressions": 19.0,
+    "position": 7.32
+  },
+  {
+    "id": "cfe9a5a6-f783-43fe-a934-df0fd88d656c",
+    "clicks": 4.0,
+    "impressions": 18.0,
+    "position": 4.39
+  },
+  {
+    "id": "74d44fc6-40e3-45b1-ae7f-424657de5bf1",
+    "clicks": 4.0,
+    "impressions": 18.0,
+    "position": 28.22
+  },
+  {
+    "id": "1583cb22-b733-4834-a49c-c2101c0b05b8",
+    "clicks": 4.0,
+    "impressions": 17.0,
+    "position": 2.94
+  },
+  {
+    "id": "5fdf938d-b05b-4d60-acb2-9c649d6496b8",
+    "clicks": 4.0,
+    "impressions": 16.0,
+    "position": 3.69
+  },
+  {
+    "id": "57aae070-9632-486f-9784-3b6e16a67cce",
+    "clicks": 4.0,
+    "impressions": 16.0,
+    "position": 3.81
+  },
+  {
+    "id": "0d628876-4e67-44bd-a655-cb28d5e309ab",
+    "clicks": 4.0,
+    "impressions": 16.0,
+    "position": 5.56
+  },
+  {
+    "id": "4e6f02d9-1ac1-4d78-8520-99b7d2a1f572",
+    "clicks": 4.0,
+    "impressions": 14.0,
+    "position": 2.43
+  },
+  {
+    "id": "e3f31c06-d699-471f-a64e-d3a11b136854",
+    "clicks": 4.0,
+    "impressions": 14.0,
+    "position": 4.21
+  },
+  {
+    "id": "e3dfbd8e-59a3-41aa-bf1c-b11f28c2763d",
+    "clicks": 4.0,
+    "impressions": 14.0,
+    "position": 4.64
+  },
+  {
+    "id": "14941b58-2bf1-47b9-9454-840bf9493660",
+    "clicks": 4.0,
+    "impressions": 14.0,
+    "position": 10.07
+  },
+  {
+    "id": "d243d1e3-2be4-4fe5-8b27-ec44bcafee1b",
+    "clicks": 4.0,
+    "impressions": 13.0,
+    "position": 1.85
+  },
+  {
+    "id": "22f6506d-5bc1-4f85-9392-c013a49f9961",
+    "clicks": 4.0,
+    "impressions": 12.0,
+    "position": 2.33
+  },
+  {
+    "id": "fd72e687-662e-4f92-928c-0532d62126b6",
+    "clicks": 4.0,
+    "impressions": 12.0,
+    "position": 3.25
+  },
+  {
+    "id": "1b3e0db0-7b06-430e-b680-8f679c64ff99",
+    "clicks": 4.0,
+    "impressions": 12.0,
+    "position": 5.5
+  },
+  {
+    "id": "71ab4e1a-8636-4cf0-9749-c835bfbc3c9f",
+    "clicks": 4.0,
+    "impressions": 12.0,
+    "position": 9.0
+  },
+  {
+    "id": "4f0607a6-bcf2-473f-889f-7b1625cbb4ce",
+    "clicks": 4.0,
+    "impressions": 12.0,
+    "position": 10.83
+  },
+  {
+    "id": "8afaae40-7305-4fdd-a90a-8d09a2f7577f",
+    "clicks": 4.0,
+    "impressions": 11.0,
+    "position": 3.45
+  },
+  {
+    "id": "d80bbc23-a299-4d63-87a7-db7ae19921cc",
+    "clicks": 4.0,
+    "impressions": 11.0,
+    "position": 3.73
+  },
+  {
+    "id": "86b231fd-fff3-4135-bb8f-36a71b258d11",
+    "clicks": 4.0,
+    "impressions": 10.0,
+    "position": 2.7
+  },
+  {
+    "id": "319f59dd-d341-44ec-92de-bad041fdc786",
+    "clicks": 4.0,
+    "impressions": 10.0,
+    "position": 5.2
+  },
+  {
+    "id": "cd7e565a-18b2-4a2d-abbd-df9b1789807a",
+    "clicks": 4.0,
+    "impressions": 9.0,
+    "position": 2.44
+  },
+  {
+    "id": "d16b69bb-2a38-4a61-9bb1-e9183f63ea15",
+    "clicks": 4.0,
+    "impressions": 9.0,
+    "position": 2.56
+  },
+  {
+    "id": "5996046b-96bc-46dc-a6de-cd4b624d3710",
+    "clicks": 4.0,
+    "impressions": 9.0,
+    "position": 3.44
+  },
+  {
+    "id": "bd3c923d-dbae-416a-899a-00870f7f3c56",
+    "clicks": 4.0,
+    "impressions": 9.0,
+    "position": 4.22
+  },
+  {
+    "id": "41694046-728b-4929-bcb4-3c02fe90f2b9",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 1.0
+  },
+  {
+    "id": "9f86c421-7732-4ed5-8d2d-dfd01d9c7eff",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 2.62
+  },
+  {
+    "id": "70595014-f392-4d01-b90d-d6bb2d60a170",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 2.75
+  },
+  {
+    "id": "70e61090-c2e4-4ef5-81af-7c348402089c",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 2.75
+  },
+  {
+    "id": "00b1ad81-f40d-4f37-b7c4-52c8b395d23e",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 2.88
+  },
+  {
+    "id": "986b25cf-b96d-4959-a2a6-10a810a5d821",
+    "clicks": 4.0,
+    "impressions": 8.0,
+    "position": 6.38
+  },
+  {
+    "id": "9e317767-9c2c-422e-a06f-dd6dd8fd8075",
+    "clicks": 4.0,
+    "impressions": 7.0,
+    "position": 3.86
+  },
+  {
+    "id": "0ccca65e-c825-43dc-b460-08c04c6f30b2",
+    "clicks": 4.0,
+    "impressions": 6.0,
+    "position": 1.17
+  },
+  {
+    "id": "8d929a14-099e-48ab-8d70-cc3eea9b69e3",
+    "clicks": 4.0,
+    "impressions": 6.0,
+    "position": 2.33
+  },
+  {
+    "id": "658cf5f9-3dd8-4c52-b79f-6b2f771a6c37",
+    "clicks": 4.0,
+    "impressions": 6.0,
+    "position": 3.5
+  },
+  {
+    "id": "501776dc-4fac-4395-9ddc-a2717d4e695c",
+    "clicks": 4.0,
+    "impressions": 6.0,
+    "position": 4.33
+  },
+  {
+    "id": "8ba3636d-2c3d-436b-8f87-d001df234b08",
+    "clicks": 4.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "5468c833-6ecc-4eeb-a65c-cfa5f778d53d",
+    "clicks": 4.0,
+    "impressions": 5.0,
+    "position": 6.4
+  },
+  {
+    "id": "d999cf0b-42f9-48ff-b4dc-00aa62d8762b",
+    "clicks": 3.0,
+    "impressions": 699.0,
+    "position": 7.09
+  },
+  {
+    "id": "67eefd45-044d-481e-a827-6a0ebcde8d27",
+    "clicks": 3.0,
+    "impressions": 232.0,
+    "position": 2.74
+  },
+  {
+    "id": "d4be1d20-3f58-41fb-967b-5cba04a55a73",
+    "clicks": 3.0,
+    "impressions": 95.0,
+    "position": 5.07
+  },
+  {
+    "id": "d26a29d5-c3c3-4d7d-a72a-91fc07e367a7",
+    "clicks": 3.0,
+    "impressions": 95.0,
+    "position": 6.24
+  },
+  {
+    "id": "1c7918fa-d617-4a0a-997c-5ae575835f74",
+    "clicks": 3.0,
+    "impressions": 70.0,
+    "position": 6.59
+  },
+  {
+    "id": "d0641a52-9033-471c-ad62-6c4dbb75ad28",
+    "clicks": 3.0,
+    "impressions": 61.0,
+    "position": 7.43
+  },
+  {
+    "id": "9da598f6-9283-4a8b-9e0b-ac8373860604",
+    "clicks": 3.0,
+    "impressions": 53.0,
+    "position": 4.81
+  },
+  {
+    "id": "8970218f-361d-4858-b641-178dade3f0e0",
+    "clicks": 3.0,
+    "impressions": 48.0,
+    "position": 5.85
+  },
+  {
+    "id": "9fed2f68-634b-41be-844c-c0d52325d149",
+    "clicks": 3.0,
+    "impressions": 45.0,
+    "position": 4.71
+  },
+  {
+    "id": "d92b01a8-cf3c-4947-96ed-b310b3880508",
+    "clicks": 3.0,
+    "impressions": 43.0,
+    "position": 5.26
+  },
+  {
+    "id": "f5f1bebe-b92e-4a16-b4f3-3e9e4b16a6c5",
+    "clicks": 3.0,
+    "impressions": 39.0,
+    "position": 8.97
+  },
+  {
+    "id": "a0c28f4e-5075-4e3e-bb4b-e4f4a9d9cb55",
+    "clicks": 3.0,
+    "impressions": 37.0,
+    "position": 6.24
+  },
+  {
+    "id": "a8b275b3-02c2-487e-b9ca-7a41d5c4c38a",
+    "clicks": 3.0,
+    "impressions": 36.0,
+    "position": 5.28
+  },
+  {
+    "id": "1e8e770a-27a4-4fb7-a252-2c027aa08983",
+    "clicks": 3.0,
+    "impressions": 36.0,
+    "position": 6.0
+  },
+  {
+    "id": "b0788268-f715-421d-a94b-8fc316993604",
+    "clicks": 3.0,
+    "impressions": 33.0,
+    "position": 3.94
+  },
+  {
+    "id": "c0231962-e030-4342-825e-7ff202bff3e5",
+    "clicks": 3.0,
+    "impressions": 33.0,
+    "position": 11.52
+  },
+  {
+    "id": "047a2aad-4a24-49de-b9b5-98197492c8b2",
+    "clicks": 3.0,
+    "impressions": 32.0,
+    "position": 2.94
+  },
+  {
+    "id": "64fabccc-78c3-4e10-8554-820d1968b99e",
+    "clicks": 3.0,
+    "impressions": 32.0,
+    "position": 4.69
+  },
+  {
+    "id": "811874a4-7f2a-43c6-a2ab-2700cac4520a",
+    "clicks": 3.0,
+    "impressions": 30.0,
+    "position": 4.9
+  },
+  {
+    "id": "797f25b2-24c3-4d93-9aaf-52573986fd1b",
+    "clicks": 3.0,
+    "impressions": 30.0,
+    "position": 7.9
+  },
+  {
+    "id": "1f171f91-9051-42d8-92d1-26f87366924d",
+    "clicks": 3.0,
+    "impressions": 29.0,
+    "position": 6.21
+  },
+  {
+    "id": "8dda48ee-cd29-4344-a99a-879324f0922a",
+    "clicks": 3.0,
+    "impressions": 28.0,
+    "position": 4.57
+  },
+  {
+    "id": "f343c08c-da7c-4b48-b89f-c90d029be298",
+    "clicks": 3.0,
+    "impressions": 27.0,
+    "position": 2.89
+  },
+  {
+    "id": "c1af338b-cf96-4b8e-a0d4-5dccf476d1cf",
+    "clicks": 3.0,
+    "impressions": 27.0,
+    "position": 5.67
+  },
+  {
+    "id": "2bb226c0-83df-4024-8ed3-2818f98e0908",
+    "clicks": 3.0,
+    "impressions": 26.0,
+    "position": 6.31
+  },
+  {
+    "id": "b1516128-d77e-4cc0-95b0-f6965ef690df",
+    "clicks": 3.0,
+    "impressions": 25.0,
+    "position": 5.32
+  },
+  {
+    "id": "4f5d988c-c922-4455-9d37-5940f27f124f",
+    "clicks": 3.0,
+    "impressions": 25.0,
+    "position": 7.44
+  },
+  {
+    "id": "c10a6145-8ea7-4988-aa30-481d95e1fb3a",
+    "clicks": 3.0,
+    "impressions": 24.0,
+    "position": 5.83
+  },
+  {
+    "id": "bf461f7b-81d3-4d99-a4a6-8bf8c1feae8c",
+    "clicks": 3.0,
+    "impressions": 23.0,
+    "position": 5.04
+  },
+  {
+    "id": "c217e9ed-599b-440b-863f-83f2a9934d13",
+    "clicks": 3.0,
+    "impressions": 23.0,
+    "position": 5.04
+  },
+  {
+    "id": "8c5fed57-9986-4979-a127-66b19e73afd4",
+    "clicks": 3.0,
+    "impressions": 22.0,
+    "position": 4.91
+  },
+  {
+    "id": "26b8c264-ed19-4f4a-a5ca-f67033d98156",
+    "clicks": 3.0,
+    "impressions": 21.0,
+    "position": 2.86
+  },
+  {
+    "id": "e3ac0978-8696-4b21-bac8-d95ba6b3b906",
+    "clicks": 3.0,
+    "impressions": 20.0,
+    "position": 3.95
+  },
+  {
+    "id": "5721babc-9ec0-4ef5-8926-daeed08e1f5c",
+    "clicks": 3.0,
+    "impressions": 20.0,
+    "position": 4.9
+  },
+  {
+    "id": "6972465d-78d8-4bb7-93f8-1e5c828f6a72",
+    "clicks": 3.0,
+    "impressions": 20.0,
+    "position": 6.0
+  },
+  {
+    "id": "3fee30a7-b531-4d30-939d-65a911ae3910",
+    "clicks": 3.0,
+    "impressions": 19.0,
+    "position": 7.11
+  },
+  {
+    "id": "6a39593e-3f39-4964-add6-f0901455e962",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 3.12
+  },
+  {
+    "id": "f82cbcd5-6488-441e-a847-7666f9982ea8",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 3.31
+  },
+  {
+    "id": "db61a92a-0714-49f2-b22c-7a98c48b15b9",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 3.62
+  },
+  {
+    "id": "a14b6f16-520b-4069-91c9-d1d8e79d4da3",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 3.75
+  },
+  {
+    "id": "1dda96d1-6b10-48c1-8719-2000b81474e8",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 5.69
+  },
+  {
+    "id": "6b77833d-b584-45f9-9e25-7a66beb300d8",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 7.44
+  },
+  {
+    "id": "0fbe4fd8-137b-4a12-bcfd-5fa9608cd15f",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 8.31
+  },
+  {
+    "id": "17888da2-b594-4bc6-89db-5f52ca319ec6",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 9.88
+  },
+  {
+    "id": "dfaaad8b-678a-4db3-9513-818eb925fb29",
+    "clicks": 3.0,
+    "impressions": 16.0,
+    "position": 11.06
+  },
+  {
+    "id": "1f0a2198-0dd2-494b-bf93-633b2939ecb9",
+    "clicks": 3.0,
+    "impressions": 15.0,
+    "position": 3.87
+  },
+  {
+    "id": "e6f82904-9f77-40a4-bd9e-3c8c9ba059aa",
+    "clicks": 3.0,
+    "impressions": 15.0,
+    "position": 5.2
+  },
+  {
+    "id": "a69cc268-f6d1-4bc8-a9ca-d7f07652339a",
+    "clicks": 3.0,
+    "impressions": 15.0,
+    "position": 5.33
+  },
+  {
+    "id": "0dd5eef9-68bb-41bd-ba68-eb333681aebb",
+    "clicks": 3.0,
+    "impressions": 15.0,
+    "position": 5.73
+  },
+  {
+    "id": "04e2f9cc-83d7-4029-95b3-d8ff2dfb4280",
+    "clicks": 3.0,
+    "impressions": 14.0,
+    "position": 4.79
+  },
+  {
+    "id": "049992ae-1183-4a99-9f66-67af82c37353",
+    "clicks": 3.0,
+    "impressions": 14.0,
+    "position": 8.5
+  },
+  {
+    "id": "13c8e270-066e-4871-9229-4433d0bfe56e",
+    "clicks": 3.0,
+    "impressions": 14.0,
+    "position": 10.57
+  },
+  {
+    "id": "46528222-643b-40de-80e5-748598df865b",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 1.62
+  },
+  {
+    "id": "69465bcb-00c9-41f8-8ed7-40637df9c677",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 2.62
+  },
+  {
+    "id": "8fb3e882-b6e8-4cdd-9d2b-db712f335184",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 3.08
+  },
+  {
+    "id": "8b7bd1d9-c311-42d6-b056-f00e0f273a0f",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 3.46
+  },
+  {
+    "id": "4d265a24-0a3b-4414-bb16-d371c50bc9b4",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 4.62
+  },
+  {
+    "id": "f786dbf8-51e0-45b6-a193-4b4cc26e54f5",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 4.92
+  },
+  {
+    "id": "020ec17b-b5ff-4137-9226-8e9378948609",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 5.0
+  },
+  {
+    "id": "400c156c-f26c-4019-b2f5-4826365af2ec",
+    "clicks": 3.0,
+    "impressions": 13.0,
+    "position": 8.15
+  },
+  {
+    "id": "93acbaf6-1c40-4807-a1c6-51133c2c5768",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 2.25
+  },
+  {
+    "id": "da10cf37-7256-4c31-973e-ae73729269f0",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 3.58
+  },
+  {
+    "id": "211911aa-f9ca-474f-b01e-133d05d64ea4",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 3.67
+  },
+  {
+    "id": "efbc8009-c9d6-4a6e-8438-21815393dcc3",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 4.08
+  },
+  {
+    "id": "f810ae44-4d3a-447a-9693-14ace2f547b2",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 4.08
+  },
+  {
+    "id": "ce2465d5-162f-4be6-93a4-8439f5d6eeaf",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 4.17
+  },
+  {
+    "id": "e1ad9a4f-782d-48db-bfa5-74191beaefc8",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 4.5
+  },
+  {
+    "id": "d0c759fb-7822-4fb2-bb7b-c4d326777fe7",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 4.75
+  },
+  {
+    "id": "ce4556ce-cc0c-4f5a-998e-a876edd413a5",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 5.25
+  },
+  {
+    "id": "ff520b34-e5be-45ed-8fdd-00e9af8602f2",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 5.58
+  },
+  {
+    "id": "9a64b6f7-561b-43a3-9add-f8b53b747aeb",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 6.42
+  },
+  {
+    "id": "3558c3cf-bbb9-4d72-8a1c-309a3b52ba00",
+    "clicks": 3.0,
+    "impressions": 12.0,
+    "position": 7.5
+  },
+  {
+    "id": "fa9819f3-5a5f-4bea-880e-fb9601548013",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 2.09
+  },
+  {
+    "id": "68718273-243d-47da-8da6-82f75a5c3d8f",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 3.55
+  },
+  {
+    "id": "57727c58-78df-4fdd-90d8-eedd5a94d803",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 4.0
+  },
+  {
+    "id": "f95484a5-0869-4813-b854-84a064397429",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 4.0
+  },
+  {
+    "id": "55e54d93-ea98-447e-9b31-d1b3c30d7f2f",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 4.91
+  },
+  {
+    "id": "97cc33ec-f233-4609-9d1a-18d8b2415e20",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 5.55
+  },
+  {
+    "id": "6c8fda85-118d-403e-b27a-8e5035bff15c",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 6.64
+  },
+  {
+    "id": "bf48fc29-f277-45a8-8ff0-6e9e148b78ec",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 11.36
+  },
+  {
+    "id": "3899def1-fda9-46bc-86fd-145ac4b3cf9e",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 17.45
+  },
+  {
+    "id": "51fd8d6e-6a36-4589-9005-3a1f3c67dade",
+    "clicks": 3.0,
+    "impressions": 11.0,
+    "position": 17.73
+  },
+  {
+    "id": "fce5d829-b570-4c01-8062-04c418c3295d",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 1.7
+  },
+  {
+    "id": "715f4720-f84b-418e-9342-cc7dc4c8e506",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 4.3
+  },
+  {
+    "id": "5e7c0ec1-a268-4344-8545-ded2be2b2e0e",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 4.4
+  },
+  {
+    "id": "1c3860d3-aed8-4a3b-a34a-c13f1e018633",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 4.5
+  },
+  {
+    "id": "4a59ff02-c25b-4f6d-835d-02bd02f227cb",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 4.8
+  },
+  {
+    "id": "c9fb63f6-8f27-41c1-8fed-d8f93f92baca",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 6.9
+  },
+  {
+    "id": "71803684-e19c-405c-8eb0-3f68f873b00c",
+    "clicks": 3.0,
+    "impressions": 10.0,
+    "position": 10.6
+  },
+  {
+    "id": "b683f260-170c-436a-87a0-ecef23d1070b",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 2.56
+  },
+  {
+    "id": "9da7403f-a1b0-4e58-9937-d907038bb447",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 3.0
+  },
+  {
+    "id": "7cd630b8-4f0a-4da2-ae4b-cabaa4e55b99",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 3.33
+  },
+  {
+    "id": "fc16870d-f6e6-4b88-92fb-80cfad563053",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 3.78
+  },
+  {
+    "id": "bfb24bc0-7c3e-4899-a3dc-b0984da42de4",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 4.11
+  },
+  {
+    "id": "dff2f1ea-d5cf-4b35-b835-de993ba7c26d",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 4.22
+  },
+  {
+    "id": "988a9a2c-a3ff-4fa5-8ae1-e18fb6ff078c",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 4.56
+  },
+  {
+    "id": "d6c38d59-530f-4923-82b7-6d0e996ac02b",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 4.78
+  },
+  {
+    "id": "218d23aa-1cb1-47ea-b4a5-d208f79b71d1",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 5.56
+  },
+  {
+    "id": "56aa235b-e0dc-409b-8f5d-fb5ffc44e016",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 6.33
+  },
+  {
+    "id": "8f2c7f71-dbb1-4958-affc-2fb06e688605",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 6.56
+  },
+  {
+    "id": "0e36f283-7377-4340-a542-45f998b0d655",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 7.44
+  },
+  {
+    "id": "8ca32d69-faa9-4805-93df-816cc93b5478",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 7.56
+  },
+  {
+    "id": "5eb283f5-dd2e-4bb7-8629-8dc32f85d72e",
+    "clicks": 3.0,
+    "impressions": 9.0,
+    "position": 8.67
+  },
+  {
+    "id": "e9066933-58b6-4256-bfec-5a0c71dac05c",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 1.0
+  },
+  {
+    "id": "bb3b8275-9bb5-4820-bbb1-b118584fde36",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.0
+  },
+  {
+    "id": "c3668de4-9ad4-4071-bb28-221852b6985b",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.12
+  },
+  {
+    "id": "f9c13892-7ab0-4ba5-bc76-339f15fd521e",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.12
+  },
+  {
+    "id": "031e6da0-c87c-41a1-9396-3296284e0cde",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.38
+  },
+  {
+    "id": "a5444016-e52f-4fa6-90af-953850feea1f",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.38
+  },
+  {
+    "id": "5e889d98-6b1c-42ac-bc76-3a96b3455e29",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.5
+  },
+  {
+    "id": "fd0a0a7a-5fa4-49b2-bea9-7dda30f57a06",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 2.62
+  },
+  {
+    "id": "3d98d856-79eb-4a74-a8e5-bbdfa8f4c87f",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 3.0
+  },
+  {
+    "id": "737830fa-2a2f-43bd-bcbb-da8c9a822622",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 3.25
+  },
+  {
+    "id": "4e9565b2-b33d-4ff5-84c1-573cb3506d3c",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 3.5
+  },
+  {
+    "id": "0fd98201-5969-47e6-b4d2-1dfcc173f26b",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 5.12
+  },
+  {
+    "id": "168d9612-e0ae-413f-b3a8-16b05ceaf3ba",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 5.62
+  },
+  {
+    "id": "47e6d1ca-4774-4401-b0e2-18e3c0140649",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 7.0
+  },
+  {
+    "id": "8b32d442-2a20-4181-9b47-b6bd86df2603",
+    "clicks": 3.0,
+    "impressions": 8.0,
+    "position": 14.75
+  },
+  {
+    "id": "45f55791-82b3-496a-a060-cc98c50dff86",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 1.14
+  },
+  {
+    "id": "d67f64e8-d22f-45b6-bd0f-d796475b0907",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 1.57
+  },
+  {
+    "id": "d58b7a0a-cf08-4bc6-98e5-5d9f411c3627",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 1.86
+  },
+  {
+    "id": "9a96bfb9-f52c-4505-adb4-47a46a853f19",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 2.0
+  },
+  {
+    "id": "92799edb-7ae6-4446-b72e-1e39ec47868f",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 2.14
+  },
+  {
+    "id": "c4248b5c-005d-450c-8672-93ef38c0cebd",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 2.29
+  },
+  {
+    "id": "daf5bcd2-277b-4ecb-978d-ff10f78e8c6f",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 2.71
+  },
+  {
+    "id": "b206f7e0-ef24-4caa-8cba-824b5c086183",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 2.86
+  },
+  {
+    "id": "22b6aaf5-ea2f-4ee7-b495-cbc506f205f0",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 3.29
+  },
+  {
+    "id": "296bd3ac-e5a4-45de-a1a7-0a2fc086aa65",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 3.57
+  },
+  {
+    "id": "7540c2fa-94b5-4f4c-8d8b-f75b95217614",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 4.0
+  },
+  {
+    "id": "f68fca4c-1ee4-47fe-979d-942639f19131",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 4.29
+  },
+  {
+    "id": "83c0d259-40f7-4b4d-bf3b-588acb9cd07f",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 4.57
+  },
+  {
+    "id": "0047077b-bd61-48b6-acce-9fd8e87f998b",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 5.43
+  },
+  {
+    "id": "c2637bbf-5fdf-4797-af58-1db10a68ed6e",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 5.43
+  },
+  {
+    "id": "fbf17748-0eb0-4be6-a9fd-6dbef0b1e60a",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 5.43
+  },
+  {
+    "id": "65fb0eb4-28f7-4c3e-8c1c-33df1397b9a9",
+    "clicks": 3.0,
+    "impressions": 7.0,
+    "position": 15.29
+  },
+  {
+    "id": "f0d2804e-98da-4f33-abf8-78c526a549af",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 1.33
+  },
+  {
+    "id": "f8e9c274-3a76-4b92-b1f6-cef92523b89d",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 1.83
+  },
+  {
+    "id": "ffc7559e-c23e-4eb8-ab46-4935eb3f86e8",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 2.33
+  },
+  {
+    "id": "b5a9424f-5f0a-40dc-af59-7e42a992d865",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 2.5
+  },
+  {
+    "id": "493e614c-df85-4d73-bbcc-3d0f1cbf1583",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 2.83
+  },
+  {
+    "id": "1bb5f39c-61d6-4884-a453-9e612b83d409",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 3.17
+  },
+  {
+    "id": "b82f10b3-0dda-4fdd-bd2d-708d3c7f248b",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 3.33
+  },
+  {
+    "id": "450fa374-0bff-4c00-94ab-295a52b8e860",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 3.83
+  },
+  {
+    "id": "a222814a-54ea-40d1-b21b-f23dcded287c",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 3.83
+  },
+  {
+    "id": "70cd2c74-4e37-4e30-9f33-3f18d0886544",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 4.33
+  },
+  {
+    "id": "85d205e6-4681-48b9-8058-e2aa738d600b",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 4.5
+  },
+  {
+    "id": "7ac524fd-9435-4df7-89c2-f05a5c4b06d7",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 5.0
+  },
+  {
+    "id": "1b19af8a-f04f-423c-900b-06fa2a8e70b8",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 5.67
+  },
+  {
+    "id": "aa47281c-42d1-4685-abdb-e1210c547d1c",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 5.67
+  },
+  {
+    "id": "ba3cde49-51fa-4d74-9211-e40d56dafa64",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 10.17
+  },
+  {
+    "id": "52df918e-b6ec-46da-9728-2cc8df8e29ed",
+    "clicks": 3.0,
+    "impressions": 6.0,
+    "position": 10.33
+  },
+  {
+    "id": "cf3d0318-0f86-4622-bef3-301701b309c3",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 1.2
+  },
+  {
+    "id": "1289f546-fe23-41bc-90b5-2ae1384b21ad",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 1.4
+  },
+  {
+    "id": "0769cf24-1afb-4c4d-938e-80a72e20ffc3",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 1.8
+  },
+  {
+    "id": "cf63cbc2-4768-444f-b8dd-cfb2f77e8c68",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 1.8
+  },
+  {
+    "id": "37b2dc45-9084-4575-9ed2-02941b3de7fc",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 2.0
+  },
+  {
+    "id": "37b95fb7-0a6c-4519-8825-b275de8c2611",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 2.4
+  },
+  {
+    "id": "10c4d45e-3de5-44bf-a823-53a694dfd18d",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "be856d37-db0c-45eb-a19e-edcfdd31d600",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "ff6eeb76-3642-45e7-af7a-529845aa7fb3",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "250b6801-0f32-4609-a8a2-129369f7be4a",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 3.4
+  },
+  {
+    "id": "9535236b-e20c-495e-bd6f-3c8809988543",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 4.0
+  },
+  {
+    "id": "2d7b7335-47fe-483f-9550-ce5fc99d0e85",
+    "clicks": 3.0,
+    "impressions": 5.0,
+    "position": 8.0
+  },
+  {
+    "id": "226b3ff1-b955-4dd0-b88e-9cb70a7d33b0",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "6466a8b8-d26f-498f-ab4d-4d9da9b92a0c",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "a617d045-6e10-467d-8f5a-dd4af0ee5fc6",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "438f5ab7-8691-4f0e-8fed-c21519cce127",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 1.25
+  },
+  {
+    "id": "82213995-55f3-45ee-96be-406f75d409da",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 1.75
+  },
+  {
+    "id": "4be1f65e-ce78-4124-8872-3eb310329475",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "61ca0e5a-ee0f-4bcb-92ff-38e07603db29",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "d44d1650-0e08-4b40-88e6-83828fb7ec1d",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "83389359-a7b7-4637-ade7-c68b9a7cec7b",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 3.25
+  },
+  {
+    "id": "b54f314f-edce-4b79-862c-f15abe60a554",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 4.0
+  },
+  {
+    "id": "1ca5186a-11ac-4b1a-88c6-64c2a07f624d",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 4.5
+  },
+  {
+    "id": "d623e908-6251-4e98-a2d1-5ca6fe0cd6e4",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 4.75
+  },
+  {
+    "id": "320b165e-60a0-468b-a113-e6c0ec3bf249",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 5.25
+  },
+  {
+    "id": "3c69d5a5-8a88-42fe-969e-d7a5a0d265c9",
+    "clicks": 3.0,
+    "impressions": 4.0,
+    "position": 8.5
+  },
+  {
+    "id": "7f2517f4-f080-4d14-b971-fae87916e580",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 1.0
+  },
+  {
+    "id": "118ef8c2-d821-4205-bd2b-6fd4ac0bc1d6",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 1.33
+  },
+  {
+    "id": "1c14577b-7054-4365-8459-d00d763face0",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 1.33
+  },
+  {
+    "id": "455197ee-73f1-4c92-aca6-0b07054ffeed",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "6373135f-79a5-4280-ab4b-18774ca8e94e",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "cc653cd1-0141-4943-b269-3ba53a963ebc",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "042a873a-2ad8-494d-a41a-01683072c948",
+    "clicks": 3.0,
+    "impressions": 3.0,
+    "position": 2.33
+  },
+  {
+    "id": "ff8d297d-f10a-4f79-b4d2-b4c664091640",
+    "clicks": 2.0,
+    "impressions": 1483.0,
+    "position": 6.99
+  },
+  {
+    "id": "868d1b1b-5273-4fc9-aa4a-40002660e22c",
+    "clicks": 2.0,
+    "impressions": 480.0,
+    "position": 5.61
+  },
+  {
+    "id": "63796fdd-df6c-4d1e-8f6a-480310d34ed1",
+    "clicks": 2.0,
+    "impressions": 392.0,
+    "position": 5.66
+  },
+  {
+    "id": "8d1f59df-7e6f-4816-9b9e-2afd68267d55",
+    "clicks": 2.0,
+    "impressions": 189.0,
+    "position": 2.17
+  },
+  {
+    "id": "66f3b3d9-2e92-4350-96a1-ff822ff2a26e",
+    "clicks": 2.0,
+    "impressions": 146.0,
+    "position": 6.97
+  },
+  {
+    "id": "6b6d14f0-c0f5-4afb-903b-f94050d32a34",
+    "clicks": 2.0,
+    "impressions": 134.0,
+    "position": 5.6
+  },
+  {
+    "id": "4b6dff52-d36f-40f0-a9b0-7228d431f385",
+    "clicks": 2.0,
+    "impressions": 131.0,
+    "position": 5.84
+  },
+  {
+    "id": "4526c3a3-8155-4253-83e7-a8ee649ced1b",
+    "clicks": 2.0,
+    "impressions": 121.0,
+    "position": 6.83
+  },
+  {
+    "id": "a156ba82-1895-40db-81cf-a5a806c35a00",
+    "clicks": 2.0,
+    "impressions": 112.0,
+    "position": 4.34
+  },
+  {
+    "id": "13b6c016-aa9a-4514-b268-4e3072a11bcd",
+    "clicks": 2.0,
+    "impressions": 108.0,
+    "position": 4.56
+  },
+  {
+    "id": "918314c0-9c5b-4cd0-927b-b9481aa331be",
+    "clicks": 2.0,
+    "impressions": 103.0,
+    "position": 3.81
+  },
+  {
+    "id": "cd6011af-a104-43b5-891d-f8de6b678f96",
+    "clicks": 2.0,
+    "impressions": 87.0,
+    "position": 4.92
+  },
+  {
+    "id": "827dbc05-8ccc-4796-9996-32509884275a",
+    "clicks": 2.0,
+    "impressions": 83.0,
+    "position": 7.9
+  },
+  {
+    "id": "d7fda5c8-86f1-4d77-875b-ebd8dcac2649",
+    "clicks": 2.0,
+    "impressions": 70.0,
+    "position": 3.91
+  },
+  {
+    "id": "0f130f4f-7961-4fe7-8b5b-5dfcad0f9a12",
+    "clicks": 2.0,
+    "impressions": 67.0,
+    "position": 5.18
+  },
+  {
+    "id": "7581d3db-5d35-4e55-8b8c-f9d08ac536e6",
+    "clicks": 2.0,
+    "impressions": 67.0,
+    "position": 5.39
+  },
+  {
+    "id": "7122ef99-24e1-4e2c-87ab-5a8eb3fe88cb",
+    "clicks": 2.0,
+    "impressions": 66.0,
+    "position": 3.7
+  },
+  {
+    "id": "3e36a8a6-370d-4119-9d48-479c774ff7e2",
+    "clicks": 2.0,
+    "impressions": 62.0,
+    "position": 4.1
+  },
+  {
+    "id": "4242110d-ac46-44bb-a5a5-dbcc4eb6042d",
+    "clicks": 2.0,
+    "impressions": 61.0,
+    "position": 10.8
+  },
+  {
+    "id": "d1c2eeb5-4941-4935-995d-187955424e82",
+    "clicks": 2.0,
+    "impressions": 56.0,
+    "position": 7.79
+  },
+  {
+    "id": "3227e212-463d-4ad1-adaf-291649f1a095",
+    "clicks": 2.0,
+    "impressions": 54.0,
+    "position": 5.02
+  },
+  {
+    "id": "f096c615-32be-465c-8f79-2e20687663fe",
+    "clicks": 2.0,
+    "impressions": 54.0,
+    "position": 6.5
+  },
+  {
+    "id": "db4c20be-1966-4f4a-b643-e69d4eeaab72",
+    "clicks": 2.0,
+    "impressions": 52.0,
+    "position": 5.02
+  },
+  {
+    "id": "97a9098a-9ca6-4d60-b8ab-25bdb8db3f0e",
+    "clicks": 2.0,
+    "impressions": 48.0,
+    "position": 2.94
+  },
+  {
+    "id": "583ff99a-84b0-46b0-9e54-e077b65a7d6c",
+    "clicks": 2.0,
+    "impressions": 48.0,
+    "position": 7.85
+  },
+  {
+    "id": "25d9b40a-dd14-46c0-9798-d8520f32f446",
+    "clicks": 2.0,
+    "impressions": 47.0,
+    "position": 5.45
+  },
+  {
+    "id": "81c42d48-5f55-471d-8ace-e9c68afd73e1",
+    "clicks": 2.0,
+    "impressions": 47.0,
+    "position": 6.19
+  },
+  {
+    "id": "52dd6030-2e9e-4936-976b-7da91d333ec0",
+    "clicks": 2.0,
+    "impressions": 47.0,
+    "position": 6.77
+  },
+  {
+    "id": "dfaec116-1ab6-4cde-b62c-eea8f5a04d86",
+    "clicks": 2.0,
+    "impressions": 45.0,
+    "position": 5.22
+  },
+  {
+    "id": "98731674-fb9e-44a2-98d2-3d102d62dc3d",
+    "clicks": 2.0,
+    "impressions": 43.0,
+    "position": 2.95
+  },
+  {
+    "id": "3efe0963-546e-425b-a9e7-84f57d8ea591",
+    "clicks": 2.0,
+    "impressions": 43.0,
+    "position": 5.65
+  },
+  {
+    "id": "2e54c90b-32dc-4d8f-a730-c4cc3239b00a",
+    "clicks": 2.0,
+    "impressions": 43.0,
+    "position": 5.81
+  },
+  {
+    "id": "fe9d72b4-ea83-49ec-a74d-3d762f271db5",
+    "clicks": 2.0,
+    "impressions": 42.0,
+    "position": 7.12
+  },
+  {
+    "id": "8715a649-a679-4451-8b3e-882381e393ee",
+    "clicks": 2.0,
+    "impressions": 41.0,
+    "position": 8.32
+  },
+  {
+    "id": "81a636d1-bc9d-42e9-b428-33ae971b127c",
+    "clicks": 2.0,
+    "impressions": 40.0,
+    "position": 3.08
+  },
+  {
+    "id": "9d3c573e-1df9-4237-8f0f-93d077ae2ea5",
+    "clicks": 2.0,
+    "impressions": 40.0,
+    "position": 4.38
+  },
+  {
+    "id": "46b5ea46-df23-42dc-a86b-39a9388dd255",
+    "clicks": 2.0,
+    "impressions": 39.0,
+    "position": 5.67
+  },
+  {
+    "id": "73993a82-eb3c-47fd-a43f-6615996952be",
+    "clicks": 2.0,
+    "impressions": 39.0,
+    "position": 7.13
+  },
+  {
+    "id": "c34fbe94-d368-42b1-b131-93c34f30b37f",
+    "clicks": 2.0,
+    "impressions": 39.0,
+    "position": 7.18
+  },
+  {
+    "id": "728bb4cf-70b7-4d45-a203-ef20a02ebe80",
+    "clicks": 2.0,
+    "impressions": 38.0,
+    "position": 5.55
+  },
+  {
+    "id": "f62f3c20-7441-447a-aacc-3ef7ccab7288",
+    "clicks": 2.0,
+    "impressions": 38.0,
+    "position": 6.0
+  },
+  {
+    "id": "8cded521-3444-40af-87d5-e67b0c682a4f",
+    "clicks": 2.0,
+    "impressions": 37.0,
+    "position": 2.14
+  },
+  {
+    "id": "2b857633-327d-486d-86b5-18fc0b15cafd",
+    "clicks": 2.0,
+    "impressions": 37.0,
+    "position": 4.16
+  },
+  {
+    "id": "0b39007e-74e4-475c-8ef8-ea7b444adf80",
+    "clicks": 2.0,
+    "impressions": 34.0,
+    "position": 2.56
+  },
+  {
+    "id": "e6a113f8-aa07-42d2-b199-09990d22073e",
+    "clicks": 2.0,
+    "impressions": 34.0,
+    "position": 2.94
+  },
+  {
+    "id": "ab0ed9c8-1476-4f80-9617-ea8d9f5f0521",
+    "clicks": 2.0,
+    "impressions": 33.0,
+    "position": 5.21
+  },
+  {
+    "id": "2e38304a-7bd9-488b-94f3-e291ff2ecb35",
+    "clicks": 2.0,
+    "impressions": 33.0,
+    "position": 5.45
+  },
+  {
+    "id": "998e1970-270b-4047-8595-17bbb9f70d70",
+    "clicks": 2.0,
+    "impressions": 33.0,
+    "position": 6.09
+  },
+  {
+    "id": "76d54b06-e395-4d61-9270-7c27b82e79b8",
+    "clicks": 2.0,
+    "impressions": 32.0,
+    "position": 5.78
+  },
+  {
+    "id": "34b29b46-4852-475d-9986-675ab9590b68",
+    "clicks": 2.0,
+    "impressions": 32.0,
+    "position": 6.59
+  },
+  {
+    "id": "6ffe033d-7c77-4589-ac96-947899fd1a11",
+    "clicks": 2.0,
+    "impressions": 32.0,
+    "position": 7.41
+  },
+  {
+    "id": "768a8fa3-ebeb-4fea-9845-8c480e5f6adf",
+    "clicks": 2.0,
+    "impressions": 32.0,
+    "position": 8.0
+  },
+  {
+    "id": "9310e3c9-f6c0-4a7e-8035-a0097801b874",
+    "clicks": 2.0,
+    "impressions": 30.0,
+    "position": 4.07
+  },
+  {
+    "id": "860e2b49-e905-44ae-8453-918569e96728",
+    "clicks": 2.0,
+    "impressions": 30.0,
+    "position": 6.4
+  },
+  {
+    "id": "d2b807a3-a8de-40b0-a6cc-942d108deef0",
+    "clicks": 2.0,
+    "impressions": 29.0,
+    "position": 5.72
+  },
+  {
+    "id": "e7e44873-b996-45a0-8c3a-900476e3722d",
+    "clicks": 2.0,
+    "impressions": 29.0,
+    "position": 6.34
+  },
+  {
+    "id": "3222a8eb-0f73-4cb2-874f-ffa76c4602fd",
+    "clicks": 2.0,
+    "impressions": 28.0,
+    "position": 3.61
+  },
+  {
+    "id": "911e7181-65aa-4235-8c67-a5ed2c47a58c",
+    "clicks": 2.0,
+    "impressions": 28.0,
+    "position": 9.0
+  },
+  {
+    "id": "0cf4a51e-8460-4fbb-8683-4948044834c4",
+    "clicks": 2.0,
+    "impressions": 27.0,
+    "position": 3.48
+  },
+  {
+    "id": "73b8fa5e-f36c-4628-bf37-e1c77c97982e",
+    "clicks": 2.0,
+    "impressions": 27.0,
+    "position": 4.67
+  },
+  {
+    "id": "8e80444c-8aa9-4894-bef8-91bb91548024",
+    "clicks": 2.0,
+    "impressions": 27.0,
+    "position": 4.96
+  },
+  {
+    "id": "9baaa420-0536-4bc7-8d51-438d4b5352f7",
+    "clicks": 2.0,
+    "impressions": 27.0,
+    "position": 5.96
+  },
+  {
+    "id": "9b759bb6-7d88-42c2-a956-495dfebed0e4",
+    "clicks": 2.0,
+    "impressions": 26.0,
+    "position": 3.54
+  },
+  {
+    "id": "424961d3-2616-4278-b681-05b44659edbf",
+    "clicks": 2.0,
+    "impressions": 26.0,
+    "position": 5.19
+  },
+  {
+    "id": "85996d51-aef4-4a5d-aade-195d6048c4e2",
+    "clicks": 2.0,
+    "impressions": 26.0,
+    "position": 5.77
+  },
+  {
+    "id": "013acc26-570c-4e57-8015-da147d26fd75",
+    "clicks": 2.0,
+    "impressions": 25.0,
+    "position": 4.44
+  },
+  {
+    "id": "b2127a99-3536-48b8-b8a1-936674efe50f",
+    "clicks": 2.0,
+    "impressions": 25.0,
+    "position": 5.84
+  },
+  {
+    "id": "aaf0e98b-9ad1-4df1-accf-691a973c41d5",
+    "clicks": 2.0,
+    "impressions": 25.0,
+    "position": 7.08
+  },
+  {
+    "id": "cadc865c-8dd1-464c-9e0e-3a0440e366f5",
+    "clicks": 2.0,
+    "impressions": 24.0,
+    "position": 3.62
+  },
+  {
+    "id": "36d98e73-e715-4aa2-8bb4-9289390c7cc6",
+    "clicks": 2.0,
+    "impressions": 24.0,
+    "position": 5.96
+  },
+  {
+    "id": "e9a70ef4-3761-42c2-a881-211e1216b748",
+    "clicks": 2.0,
+    "impressions": 23.0,
+    "position": 5.65
+  },
+  {
+    "id": "e3d79546-8f22-475b-af3a-ef76bd29ef54",
+    "clicks": 2.0,
+    "impressions": 23.0,
+    "position": 8.09
+  },
+  {
+    "id": "cfeea4b9-1fda-4917-8b22-d6eb1d72c979",
+    "clicks": 2.0,
+    "impressions": 23.0,
+    "position": 15.0
+  },
+  {
+    "id": "1c99338e-665d-4d0b-a2a7-09484a459ba8",
+    "clicks": 2.0,
+    "impressions": 22.0,
+    "position": 2.23
+  },
+  {
+    "id": "bd6f451a-d1c1-4f40-a00d-493c325e7197",
+    "clicks": 2.0,
+    "impressions": 22.0,
+    "position": 3.14
+  },
+  {
+    "id": "3970dfe2-a7b8-470d-bdf3-3b30d1258a52",
+    "clicks": 2.0,
+    "impressions": 22.0,
+    "position": 3.41
+  },
+  {
+    "id": "ef83e805-430b-4bd9-bda3-4fb5699b75c7",
+    "clicks": 2.0,
+    "impressions": 22.0,
+    "position": 5.23
+  },
+  {
+    "id": "c080145c-d4a8-40d4-89e9-3a2850716201",
+    "clicks": 2.0,
+    "impressions": 22.0,
+    "position": 7.18
+  },
+  {
+    "id": "242cce10-8e17-4dd8-943d-9f69930f34c8",
+    "clicks": 2.0,
+    "impressions": 22.0,
+    "position": 14.68
+  },
+  {
+    "id": "2a519455-4e9d-4a1d-b1e3-8f2b4a4840f9",
+    "clicks": 2.0,
+    "impressions": 21.0,
+    "position": 5.0
+  },
+  {
+    "id": "14552ecd-6d1f-4c8f-84a7-986d2cd30f36",
+    "clicks": 2.0,
+    "impressions": 21.0,
+    "position": 5.19
+  },
+  {
+    "id": "93af51d0-ceff-4829-a09f-2f0b1d5a62c9",
+    "clicks": 2.0,
+    "impressions": 21.0,
+    "position": 6.1
+  },
+  {
+    "id": "b305c779-09ee-4d59-b4fc-24cc28adcbe6",
+    "clicks": 2.0,
+    "impressions": 21.0,
+    "position": 11.33
+  },
+  {
+    "id": "504f7b6b-7836-42a2-a288-2def45d18290",
+    "clicks": 2.0,
+    "impressions": 20.0,
+    "position": 3.65
+  },
+  {
+    "id": "b311b32c-c775-4162-a104-68afb60b4887",
+    "clicks": 2.0,
+    "impressions": 20.0,
+    "position": 3.7
+  },
+  {
+    "id": "6c533be7-1673-4c8c-802b-d4c9e4e191a5",
+    "clicks": 2.0,
+    "impressions": 20.0,
+    "position": 3.75
+  },
+  {
+    "id": "9bac2a6d-f3ed-4b9f-af90-31ed37ff5667",
+    "clicks": 2.0,
+    "impressions": 20.0,
+    "position": 4.35
+  },
+  {
+    "id": "48abad40-0720-429f-a082-3a479f967d7d",
+    "clicks": 2.0,
+    "impressions": 20.0,
+    "position": 5.2
+  },
+  {
+    "id": "02e14463-33c5-430f-b47b-b3dcc754551c",
+    "clicks": 2.0,
+    "impressions": 20.0,
+    "position": 5.9
+  },
+  {
+    "id": "800b0b37-3bf0-4a58-894b-73c392092441",
+    "clicks": 2.0,
+    "impressions": 20.0,
+    "position": 6.65
+  },
+  {
+    "id": "50b899e5-81f3-4f5a-977e-bbb28ea4f952",
+    "clicks": 2.0,
+    "impressions": 19.0,
+    "position": 3.05
+  },
+  {
+    "id": "e74293a0-0b14-439e-a6d7-13d52dbcc1f0",
+    "clicks": 2.0,
+    "impressions": 19.0,
+    "position": 3.16
+  },
+  {
+    "id": "7e9317d9-3c33-4428-a69e-6eba34c4843c",
+    "clicks": 2.0,
+    "impressions": 19.0,
+    "position": 4.37
+  },
+  {
+    "id": "0afed92f-8f2a-473b-b7b0-18e37ea40888",
+    "clicks": 2.0,
+    "impressions": 19.0,
+    "position": 5.84
+  },
+  {
+    "id": "ac6812aa-5db7-4d55-b5f7-35b710b2f1b7",
+    "clicks": 2.0,
+    "impressions": 19.0,
+    "position": 6.95
+  },
+  {
+    "id": "f1e87434-993a-40f0-b344-c21adb131034",
+    "clicks": 2.0,
+    "impressions": 19.0,
+    "position": 7.42
+  },
+  {
+    "id": "09103a7c-3b0e-4732-bff0-d65a95267093",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 2.22
+  },
+  {
+    "id": "dee08563-6e2b-4e12-be44-2969a4d66a23",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 4.0
+  },
+  {
+    "id": "1a0dee48-4f97-431c-9e9a-cef771e967e7",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 4.22
+  },
+  {
+    "id": "5ad3563f-aa73-40c6-9c47-30dce6b10ad9",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 4.56
+  },
+  {
+    "id": "2e76f3f4-a16d-4c3d-b843-0e9c1f406196",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 5.06
+  },
+  {
+    "id": "1d84e5b9-08af-4f8e-9c3a-191d47b7a2ea",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 5.22
+  },
+  {
+    "id": "619bbba8-1ad8-4c78-84d6-263b3fe95933",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 5.5
+  },
+  {
+    "id": "72523b55-a3a1-4fe9-b258-9235acce8709",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 5.94
+  },
+  {
+    "id": "f03fde95-a018-43ad-8c95-08eb07fa4583",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 6.72
+  },
+  {
+    "id": "f59c1be7-9750-49e4-add9-cab4c18838db",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 7.39
+  },
+  {
+    "id": "dea0fe67-64d2-444e-9f55-d8961d5192d7",
+    "clicks": 2.0,
+    "impressions": 18.0,
+    "position": 8.78
+  },
+  {
+    "id": "e797208b-f5b8-4010-b336-e47af44e4a2e",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 3.71
+  },
+  {
+    "id": "4478ae0d-8755-4633-ac65-b204adbb5a35",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 3.76
+  },
+  {
+    "id": "1da25f95-e5f9-49f2-9987-6b5c3dea3aaa",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 3.88
+  },
+  {
+    "id": "60e96c0e-c598-42ce-b85f-6d49a23eb197",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 4.12
+  },
+  {
+    "id": "86e77739-ad77-4e3e-b6ea-60cfc6b5d12c",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 4.24
+  },
+  {
+    "id": "ce6c6ea6-6fc2-4cb0-b785-d29c9e75354c",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 4.35
+  },
+  {
+    "id": "e9ac2eb8-36f9-4906-bc20-2d142507a25b",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 4.35
+  },
+  {
+    "id": "8f42ae31-e51b-4f17-a82f-0e17ef3e9b5b",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 4.71
+  },
+  {
+    "id": "e1fe7c44-63cc-4318-9a2d-b16fc788c837",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 5.18
+  },
+  {
+    "id": "c92c53bb-3390-4e8d-88b5-780c9afadc51",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 5.53
+  },
+  {
+    "id": "d9c68021-b970-4e67-874c-5dadb68698b8",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 6.0
+  },
+  {
+    "id": "8cd46a00-91b4-477b-a613-5bb00569342a",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 6.18
+  },
+  {
+    "id": "eb55211a-9333-444f-99c7-da9fcec294f8",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 7.0
+  },
+  {
+    "id": "9cc964b2-8d70-4aec-8640-5e9223c7edfa",
+    "clicks": 2.0,
+    "impressions": 17.0,
+    "position": 10.35
+  },
+  {
+    "id": "2db840a2-db6b-4bd5-a7aa-a960376fe105",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 3.0
+  },
+  {
+    "id": "3dad5e58-058e-4e05-8269-6fffba209d73",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 3.69
+  },
+  {
+    "id": "c1e6e5e5-418f-46fd-ba9e-30e4fad56164",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 4.19
+  },
+  {
+    "id": "64d7af0a-b592-4519-8865-c954d80a512d",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 4.31
+  },
+  {
+    "id": "4b955284-842d-4c56-b928-9cd248dfe0e3",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 5.56
+  },
+  {
+    "id": "99ed5ab4-4417-49d0-b26b-cc26a3687c60",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 5.88
+  },
+  {
+    "id": "9a2d1501-1169-4f6b-9f5e-1cd9309e5ac6",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 6.25
+  },
+  {
+    "id": "8fd00e45-90c4-48c5-84bf-10ce1b419aec",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 6.44
+  },
+  {
+    "id": "b3ed0141-2e4c-4e85-88dd-fc50f14879b2",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 9.25
+  },
+  {
+    "id": "48ccaa26-6587-4eee-b9b1-d10ad5c85675",
+    "clicks": 2.0,
+    "impressions": 16.0,
+    "position": 11.94
+  },
+  {
+    "id": "7e3187da-766d-41e6-8cbd-4e1323885632",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 2.93
+  },
+  {
+    "id": "4858c0e9-8993-48db-87dc-072bd3509872",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 3.13
+  },
+  {
+    "id": "27979672-9b35-413e-a68b-40a3a40f287c",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 3.53
+  },
+  {
+    "id": "9a8ce457-208b-4173-b5e8-808747b7594f",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 3.87
+  },
+  {
+    "id": "326f9c8e-537d-4398-afdd-19ba199e0f1a",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 4.8
+  },
+  {
+    "id": "3ce10349-7160-4417-b3a3-6eab708fbe51",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 5.6
+  },
+  {
+    "id": "50b6a56e-6939-4a79-aec8-74289f7b1ede",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 6.0
+  },
+  {
+    "id": "0e79aaf4-b71a-4a92-8c1c-d77b407d6527",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 8.93
+  },
+  {
+    "id": "ac889be8-215d-4d4b-99ce-c6ab4b0681fe",
+    "clicks": 2.0,
+    "impressions": 15.0,
+    "position": 9.13
+  },
+  {
+    "id": "1b5bf98e-96e0-4e49-984d-09e02fcd55c4",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 2.57
+  },
+  {
+    "id": "66931925-cc24-43e3-9322-8d66e8c93c7d",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 3.57
+  },
+  {
+    "id": "fbd898e1-7187-4f3e-aaa0-171fcd8ae936",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 3.71
+  },
+  {
+    "id": "1674550d-63a8-49ae-8541-8977f8eaea33",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 4.14
+  },
+  {
+    "id": "44688bd8-8dcc-4481-bb7b-cfec644497c4",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 4.14
+  },
+  {
+    "id": "bad2f3b0-3d09-48c5-bc2d-07d88fa29661",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 4.71
+  },
+  {
+    "id": "f72360a1-df75-4339-a8b7-909bba44ae19",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 4.93
+  },
+  {
+    "id": "6d67546a-5fda-416e-9fb6-23478ce3d390",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 5.93
+  },
+  {
+    "id": "4269fbae-6444-4fc7-b5f4-407c628cac41",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 6.07
+  },
+  {
+    "id": "246187fa-7546-4123-963e-688ad541c6bf",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 6.21
+  },
+  {
+    "id": "b6a9308a-9411-47d1-8839-5a3b7de90fa5",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 6.21
+  },
+  {
+    "id": "2add6415-30b8-4079-8d07-c478a5833906",
+    "clicks": 2.0,
+    "impressions": 14.0,
+    "position": 7.0
+  },
+  {
+    "id": "a6d634d1-2e91-43fe-ba66-ccf81827e73a",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 2.69
+  },
+  {
+    "id": "23358771-f944-4654-990c-bc32ed3c9159",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 2.92
+  },
+  {
+    "id": "3ac57d30-f8b5-427f-a19f-1ff2fe138b2e",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 3.0
+  },
+  {
+    "id": "74b12027-51e9-43a3-b0ee-55539f526c51",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 3.54
+  },
+  {
+    "id": "e57376ce-878f-4be9-8286-f4fa5ba54a37",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 4.15
+  },
+  {
+    "id": "148d7a31-bc32-4f39-a1d5-fd9b51345d72",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 4.54
+  },
+  {
+    "id": "2b3a647a-9fc0-4a5a-963b-50976c29a2d3",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 4.77
+  },
+  {
+    "id": "f479fb36-803b-492e-8283-5d8d3f82dd41",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 5.0
+  },
+  {
+    "id": "930f0d29-313d-4ad2-a79e-7a6e3199b6f0",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 5.46
+  },
+  {
+    "id": "6b887dc7-2c48-4d0c-92d9-df26245ea381",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 5.92
+  },
+  {
+    "id": "68a35b19-ff92-45c7-bdaf-e942aaa44e0d",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 6.54
+  },
+  {
+    "id": "fd278547-62b3-432b-9748-b4bd2e1fa89d",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 6.77
+  },
+  {
+    "id": "6e0cda48-cf72-4ed7-94e3-d5bcfdbe9b73",
+    "clicks": 2.0,
+    "impressions": 13.0,
+    "position": 14.38
+  },
+  {
+    "id": "09952039-c542-499b-83d9-6060af97d593",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 2.0
+  },
+  {
+    "id": "5c4ca28c-88c1-4ebf-86e3-ea680e0a5edc",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 2.33
+  },
+  {
+    "id": "2ee20357-ebd2-4227-8f3a-30beca526949",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 2.5
+  },
+  {
+    "id": "53c417a9-0570-4c05-acf1-b1fe99e40c55",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 3.33
+  },
+  {
+    "id": "8cda3357-d3e8-41ac-823b-9ab85b51cf99",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 3.33
+  },
+  {
+    "id": "b620fbe0-fb22-4b8f-9643-c5a7f7bd265a",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 3.42
+  },
+  {
+    "id": "99ebf5b3-4158-480c-80b0-537ca634596a",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 3.58
+  },
+  {
+    "id": "58de709e-ef5d-4daa-a755-36bc694b9fca",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 3.83
+  },
+  {
+    "id": "4a5394cf-fc9f-4848-aa67-1bab56017f03",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 3.92
+  },
+  {
+    "id": "4f642b16-d672-426c-8af9-2bf92c3eb393",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 3.92
+  },
+  {
+    "id": "ca1600f4-932b-4c8c-b1be-7f631a7e2ef8",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 4.08
+  },
+  {
+    "id": "15d553e5-f8d3-480b-b95d-ade5b9eb8d1e",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 4.17
+  },
+  {
+    "id": "dfcdd828-290b-42f1-86d9-af2add1ace8f",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 4.5
+  },
+  {
+    "id": "e0f4c515-0102-44a0-8623-ffd7bfa8ea48",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 4.92
+  },
+  {
+    "id": "3202a9cb-2e80-4442-a1c9-e438e5b5e381",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 5.0
+  },
+  {
+    "id": "17612aa7-db0e-4fc7-8fcc-b9b91d0662a3",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 5.08
+  },
+  {
+    "id": "dbd4a075-e638-48d9-8883-0aedd5a05dd3",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 5.17
+  },
+  {
+    "id": "560c969b-0e0c-4e1d-ba63-bf292414842a",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 5.25
+  },
+  {
+    "id": "2a68f594-ed81-429a-bfd0-18368f43933d",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 5.42
+  },
+  {
+    "id": "71022fa0-2d6b-42ac-90db-f65263209bf3",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 5.75
+  },
+  {
+    "id": "7d4ebe64-d1bb-482c-b616-c0cc7778eff0",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 6.25
+  },
+  {
+    "id": "2292a308-471b-4ca6-85b3-b01e4ea355cb",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 7.0
+  },
+  {
+    "id": "da8ec3e4-fc57-495f-9710-2c5bb5f83843",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 7.08
+  },
+  {
+    "id": "af083f0b-f511-46e8-bf70-c9f595412479",
+    "clicks": 2.0,
+    "impressions": 12.0,
+    "position": 7.67
+  },
+  {
+    "id": "4db7f94c-9ced-4649-8252-244ea6495dc0",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 1.36
+  },
+  {
+    "id": "00945590-498b-4f2e-b1a9-0c09ac2ddd0b",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 2.73
+  },
+  {
+    "id": "b12456d4-a5a3-4154-96f3-b7ed8c550f5e",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 3.09
+  },
+  {
+    "id": "fe24fa31-8a15-42b2-ae08-21dd177866c0",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 3.27
+  },
+  {
+    "id": "2ddcc513-dec2-488d-8df6-7c0cd688557d",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 4.0
+  },
+  {
+    "id": "f1f892cf-23d2-4c85-b365-47896ba10320",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 4.36
+  },
+  {
+    "id": "5b9bb030-a2b0-4a18-ad35-d7da9db1d609",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 4.45
+  },
+  {
+    "id": "db4d2bda-6a99-459c-98c1-e3b7f5d9ded8",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 5.0
+  },
+  {
+    "id": "31540078-9abf-4270-bf0a-6267bb4d1435",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 5.09
+  },
+  {
+    "id": "85aadf1b-8acf-4c5a-9eeb-2c080e65a8db",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 5.64
+  },
+  {
+    "id": "a1b1a5a6-28c9-46d1-8075-b6f764dced81",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 5.91
+  },
+  {
+    "id": "6b1b26d2-150b-4395-a897-9bec72510e3b",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 6.64
+  },
+  {
+    "id": "ea983fab-f592-4cb4-a831-5c816828394f",
+    "clicks": 2.0,
+    "impressions": 11.0,
+    "position": 13.91
+  },
+  {
+    "id": "dbcfab24-e074-42c3-8ae2-1aca97319a83",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 1.3
+  },
+  {
+    "id": "24ca0993-ef0e-4ebb-937d-a70abae255b0",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 1.9
+  },
+  {
+    "id": "9be08ad1-daa9-4e60-9be8-f29353a70753",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 2.4
+  },
+  {
+    "id": "24f5c282-2184-4f99-aa29-ae185a6b8a6d",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 2.9
+  },
+  {
+    "id": "6cf2632b-cbc6-485f-8313-17824c804fb8",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 3.2
+  },
+  {
+    "id": "a68043a4-97a0-42b3-a472-64296d35ced0",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 3.2
+  },
+  {
+    "id": "31ab9ea2-76ef-4913-bbe0-1faa6757552d",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 3.7
+  },
+  {
+    "id": "c5d3ddf6-f2ee-4cf1-b768-293699aa1ba1",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 3.9
+  },
+  {
+    "id": "3f24f428-d9e6-4a10-9557-9f5146261d2e",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 4.2
+  },
+  {
+    "id": "e7254d21-7d1e-45fe-93e3-1ffa538adc41",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 4.2
+  },
+  {
+    "id": "46e1d7b1-97b4-4dbf-a134-7d214183aaaf",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 4.5
+  },
+  {
+    "id": "62109da2-18a5-40d7-b64d-0a9a3c4a0899",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 4.5
+  },
+  {
+    "id": "bfd0e734-bfc9-4dc1-a1fa-520338dfe923",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 4.5
+  },
+  {
+    "id": "7fb62b14-22f6-454e-aa26-7f16cbc49103",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 4.8
+  },
+  {
+    "id": "1296ea89-825d-4e9d-9f00-d571ba7495d9",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 5.5
+  },
+  {
+    "id": "f8a1e02c-3fe0-4ad3-9eaa-da33c215ad7b",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 5.8
+  },
+  {
+    "id": "12e3a849-3a04-4330-b3fc-ceeefa292eee",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 6.5
+  },
+  {
+    "id": "e5f7af21-15a4-4cd4-8d93-8648fb958d6c",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 6.6
+  },
+  {
+    "id": "123b75f3-4424-44d1-bb1c-59ef53e391c8",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 7.3
+  },
+  {
+    "id": "9d40da26-9252-4b50-b8c7-e228d0096324",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 7.4
+  },
+  {
+    "id": "dc9a5b0e-88ad-4be3-ac0b-78f03aefc729",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 7.5
+  },
+  {
+    "id": "47d0787b-3aae-449b-b6bc-5be823e535d5",
+    "clicks": 2.0,
+    "impressions": 10.0,
+    "position": 14.2
+  },
+  {
+    "id": "84614119-4616-4349-ac5c-9441d24c0c6c",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 1.33
+  },
+  {
+    "id": "3550193e-a90c-4025-b129-d0beccfd759a",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 2.0
+  },
+  {
+    "id": "9620b22b-95c3-41df-b1d9-9b7d410eae4b",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 2.33
+  },
+  {
+    "id": "4cfb5071-922f-40a5-9e94-00a5894cf807",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 2.67
+  },
+  {
+    "id": "1c1592b3-a729-48d6-85c7-829e1dc6285f",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 2.89
+  },
+  {
+    "id": "8075fe85-e0ef-41ea-a155-cb1e34dbe43c",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 3.0
+  },
+  {
+    "id": "a2742847-8966-4576-8867-e5e65816c020",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 3.44
+  },
+  {
+    "id": "406de13e-8c04-4527-984b-b46fe292d3fe",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 3.78
+  },
+  {
+    "id": "658735b7-43c2-4359-aea5-d0e2ef0c8e07",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 4.0
+  },
+  {
+    "id": "6de0dee4-71c0-4b9d-afba-4e8f90cce243",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 4.11
+  },
+  {
+    "id": "2ccee52a-fca0-4cde-85e8-f6e327e72803",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 4.22
+  },
+  {
+    "id": "54973dc6-a646-42c8-9fae-2178aae94361",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 4.33
+  },
+  {
+    "id": "d338ecc5-93b7-4360-9ec0-24a3d03c172a",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 4.33
+  },
+  {
+    "id": "38b88dcd-0a27-4048-a939-57d6043d01f6",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 4.44
+  },
+  {
+    "id": "6917a58e-660e-48ca-94e2-1286ae6dc438",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 4.56
+  },
+  {
+    "id": "8c5c827e-afab-4b6c-9528-3bcd34ec3feb",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 4.56
+  },
+  {
+    "id": "3d744c98-20d9-45ae-8390-0d3efb7f7204",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 4.78
+  },
+  {
+    "id": "687d2be4-6173-4cbd-9ccf-e35f0eb627ed",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 4.89
+  },
+  {
+    "id": "4e47eb98-f29d-4542-ae38-905c85829694",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 5.0
+  },
+  {
+    "id": "26e2c9c4-1291-419e-b65b-20188b26a8cf",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 5.11
+  },
+  {
+    "id": "3027efd0-ea42-4711-a740-f76b488f62ab",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 5.22
+  },
+  {
+    "id": "75c8e915-f385-4720-9727-6efbf5f6a177",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 5.33
+  },
+  {
+    "id": "9fbf6baa-1089-41f3-b752-a2af46c2fea4",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 5.78
+  },
+  {
+    "id": "72321b75-c876-432a-a0a8-0bd9ce588578",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 6.11
+  },
+  {
+    "id": "b11e1c31-9595-41ef-84ce-05b91f9bfc9b",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 6.56
+  },
+  {
+    "id": "21d81cdd-ab89-4754-9ced-5ce1d304419c",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 7.67
+  },
+  {
+    "id": "11a27373-142a-4602-b068-e85bed1f24aa",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 8.0
+  },
+  {
+    "id": "2d34af82-ee89-4bd9-95b2-bd299d547d78",
+    "clicks": 2.0,
+    "impressions": 9.0,
+    "position": 8.56
+  },
+  {
+    "id": "44d3e967-44bf-4588-b33c-8b2e54c61d41",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 1.75
+  },
+  {
+    "id": "7d8b7db6-10a2-41dd-b332-7a5f11a8d519",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 1.75
+  },
+  {
+    "id": "b3404d23-c0d3-4881-a7c9-0e080557e8e2",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 2.5
+  },
+  {
+    "id": "1827b088-0931-4ba9-abd5-452739342896",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 2.88
+  },
+  {
+    "id": "2e042a92-e273-4755-a110-c03bdf8fbed0",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.12
+  },
+  {
+    "id": "6b23a232-a5e8-4aac-9835-63b3d832fec4",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.12
+  },
+  {
+    "id": "bc86d340-fb3f-4646-bfc5-1ba405626d0b",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.12
+  },
+  {
+    "id": "ebcc8e8c-4f36-4cb4-ac2d-2cfff0ecd7df",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.12
+  },
+  {
+    "id": "14aff8cf-5838-4b67-a508-a6d07732aa88",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.38
+  },
+  {
+    "id": "c179974b-d097-4fe2-a781-98dec8ef0186",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.38
+  },
+  {
+    "id": "aae1180c-aa5d-4778-94f1-7e169e1fbfd9",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.5
+  },
+  {
+    "id": "0abb6d31-4f8c-44c6-a45b-25e8f9d282bd",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.62
+  },
+  {
+    "id": "64dd0724-f4a7-48a9-b5be-5e7a309ce56a",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.88
+  },
+  {
+    "id": "98310cbf-e772-4738-98be-ca3b738e2dc1",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.88
+  },
+  {
+    "id": "b8f2e522-1598-4ff9-b2f1-b7a7b7e3f031",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.88
+  },
+  {
+    "id": "f3fbcf27-24b0-4844-8fe4-94aa8deb92d4",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 3.88
+  },
+  {
+    "id": "a8883bd5-e2bf-44fa-beff-3818699e58ea",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 4.12
+  },
+  {
+    "id": "e8e95874-ab60-44ec-9be0-48fb921033e9",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 4.12
+  },
+  {
+    "id": "fe91593e-ab32-4a44-975d-2cc500cb4d6e",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 4.25
+  },
+  {
+    "id": "9a830e4b-500f-43f8-804f-20fdc0e07d08",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 4.5
+  },
+  {
+    "id": "304de86b-6da0-4144-8150-374729808446",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 4.62
+  },
+  {
+    "id": "aa76dcd3-fc2e-44ef-8127-a93d3ff3633e",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 4.62
+  },
+  {
+    "id": "a33cc0b8-395b-4d60-a0d3-e031b1d0853b",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 5.0
+  },
+  {
+    "id": "937f5ecc-ca85-4af5-b60b-07201433f4e6",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 6.0
+  },
+  {
+    "id": "5afa5512-3599-4621-a0c0-5e49b004dd7c",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 6.12
+  },
+  {
+    "id": "12ac655c-19d0-4f3d-8ed5-51c5f2689291",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 6.25
+  },
+  {
+    "id": "351a0fa0-b186-4efd-a181-33a791384385",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 6.38
+  },
+  {
+    "id": "727ab745-5b20-46bf-a682-6314cbc0d4ab",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 7.38
+  },
+  {
+    "id": "a9a9736e-ee5a-4848-957b-4b1b8008d967",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 8.25
+  },
+  {
+    "id": "b2162afc-3c39-44ad-8b49-a174e35937c7",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 8.62
+  },
+  {
+    "id": "70880117-0dca-4a0b-9b87-074ad74d4000",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 9.75
+  },
+  {
+    "id": "7fd4ef5a-3faa-489b-b7f8-f68964e27839",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 10.25
+  },
+  {
+    "id": "95601b8a-8001-4ba7-b178-dc45938cac09",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 15.25
+  },
+  {
+    "id": "f433ee21-6e61-4ebf-bf05-4f691e22a5bc",
+    "clicks": 2.0,
+    "impressions": 8.0,
+    "position": 19.12
+  },
+  {
+    "id": "c03e584f-ae83-4895-86cf-65b2220ea433",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 1.57
+  },
+  {
+    "id": "92e69f62-3fd9-4db0-9d3c-16d84f99638a",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 2.0
+  },
+  {
+    "id": "98f072d3-b7db-4e39-95ac-e4638798ecaa",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 2.0
+  },
+  {
+    "id": "9f643734-300d-491a-9d45-45512a38e12e",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 2.43
+  },
+  {
+    "id": "d409968e-ee35-4b58-a997-ecc8a1518d96",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 2.43
+  },
+  {
+    "id": "4bafb892-3d6e-4059-8069-3f5c2497c225",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 2.57
+  },
+  {
+    "id": "07134d85-347c-4155-84ed-2c37fd25445d",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 2.86
+  },
+  {
+    "id": "145656a0-d6ba-41e3-b349-5685be45d12c",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 2.86
+  },
+  {
+    "id": "9077a7a3-9bb0-4dc6-bbae-dd1652897279",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 2.86
+  },
+  {
+    "id": "f40ba52e-28c6-4fed-94ea-94fd332282e2",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 2.86
+  },
+  {
+    "id": "434471a1-013a-4a9b-a5c5-3950eb160d8b",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.0
+  },
+  {
+    "id": "91ab7daf-8130-4034-9da7-17940aa87154",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.0
+  },
+  {
+    "id": "cba0b83e-91d1-4d6a-9740-bb68e07ef781",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.0
+  },
+  {
+    "id": "936790e1-9b94-42bb-925a-1061f4b55dc9",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.14
+  },
+  {
+    "id": "12fdb42d-2670-4e46-9b57-96d3637c0b07",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.29
+  },
+  {
+    "id": "303d94d7-3e6c-4ae7-a62c-59477420839e",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.29
+  },
+  {
+    "id": "459332e6-489f-4264-b659-32ac4b3b2638",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.29
+  },
+  {
+    "id": "628ed171-aa61-4bf9-ae22-5748a2bad82a",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.29
+  },
+  {
+    "id": "863c518e-f330-49f5-afce-41266490317c",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.29
+  },
+  {
+    "id": "8688f734-707e-491e-8652-cf9347609a95",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.43
+  },
+  {
+    "id": "f96d7898-4db7-48ec-9c75-cde007b38d77",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.43
+  },
+  {
+    "id": "4a345c5c-4ba8-43e0-8de8-9c9a94ef36a6",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.57
+  },
+  {
+    "id": "98284786-91d3-438e-b4d9-fb862709ab97",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.57
+  },
+  {
+    "id": "168d9aa8-56b4-4de3-b6d7-6304bfb04dc2",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.86
+  },
+  {
+    "id": "8e116f35-a5bd-4c4e-8b6b-798936ad1011",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.86
+  },
+  {
+    "id": "eb9beee7-88fe-4a05-afe7-de7dfc7fcf51",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 3.86
+  },
+  {
+    "id": "3c28a760-90df-411f-85b6-fe93aaad701e",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 4.0
+  },
+  {
+    "id": "65460d79-99c9-4e47-b79e-a2fd2fc0c1fc",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 4.29
+  },
+  {
+    "id": "c3c70484-8ab3-424c-b382-72ef6f1efb5b",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 4.29
+  },
+  {
+    "id": "41803f5d-635b-4c23-baa2-901fcd507b31",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 4.43
+  },
+  {
+    "id": "2e9be4eb-2a00-4f01-a84c-de12fb85bbb9",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 4.57
+  },
+  {
+    "id": "5635a64e-b41e-42b5-9f98-57d7dc68ea02",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 4.57
+  },
+  {
+    "id": "64b38e5f-3edd-49f7-8684-20b1d9e1de30",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 4.71
+  },
+  {
+    "id": "799b73c6-627d-4147-b7b4-e8a0674c88b9",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 4.71
+  },
+  {
+    "id": "97bdcad5-3150-4c4a-97d1-266c1a5336d4",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 4.71
+  },
+  {
+    "id": "34a8410e-4864-4924-bbe1-92173268c2be",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 4.86
+  },
+  {
+    "id": "c83418a6-dff8-4060-bfc5-98b8a475fa53",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 5.0
+  },
+  {
+    "id": "07b2c3ea-3053-47f8-a38f-1fdd70dc18c6",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 5.14
+  },
+  {
+    "id": "44396b79-ba29-464a-9b60-1fe7e1804135",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 5.14
+  },
+  {
+    "id": "49fb0b1c-b775-44de-b062-219f24753971",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 5.29
+  },
+  {
+    "id": "b58fc3cc-c4c9-4f56-8855-fdb90c94ebb1",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 5.29
+  },
+  {
+    "id": "00a5bd78-363e-41a4-b61c-51bfbad94dad",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 5.43
+  },
+  {
+    "id": "258ca86f-4e68-404e-b38e-8e915964936e",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 5.43
+  },
+  {
+    "id": "1e851ea0-7f40-4687-a214-3a6f95e41103",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 5.57
+  },
+  {
+    "id": "ef17d63e-1375-41e5-be36-cb5ca3e3aa93",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 5.57
+  },
+  {
+    "id": "29626c64-5ed9-4267-8fc0-c6544633cf3b",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.0
+  },
+  {
+    "id": "4f6b4106-fca1-45d3-a092-4ba631ea74c0",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.0
+  },
+  {
+    "id": "0d36a725-48ab-414a-b0ba-9b0f5da367b7",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.29
+  },
+  {
+    "id": "3ea2101b-fae6-405a-93a8-495b4f665e96",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.29
+  },
+  {
+    "id": "75aefd6a-9266-4f15-b816-ea4b9caafa1c",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.43
+  },
+  {
+    "id": "1b2a5244-80de-4fd8-8ca8-7dec08ff7e41",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.57
+  },
+  {
+    "id": "b50ff2a7-ee41-4e42-979e-101aa634405c",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.71
+  },
+  {
+    "id": "d3d16fd2-a47c-4661-a667-5e153603efb7",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.71
+  },
+  {
+    "id": "d5c280ae-b8a0-4efe-8ca5-e0c3f42a8482",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.86
+  },
+  {
+    "id": "da14a677-b1ef-4919-9a70-64b48307b1a8",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 6.86
+  },
+  {
+    "id": "33f04036-5ccd-4831-88ba-35fa5add0752",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 7.71
+  },
+  {
+    "id": "3cd7cb6a-8d00-437f-aebe-c35bf42bef9b",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 7.86
+  },
+  {
+    "id": "bfde7b9d-c56c-4263-a6cf-c2731d7d7b8e",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 8.0
+  },
+  {
+    "id": "99c6bfd3-15b0-4095-b4a1-fbf1d97b3736",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 8.57
+  },
+  {
+    "id": "a7162258-693e-4c8f-a32c-9442b3bd81a6",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 8.71
+  },
+  {
+    "id": "39f9fe51-f287-4441-9b73-ad4a302eb22d",
+    "clicks": 2.0,
+    "impressions": 7.0,
+    "position": 9.29
+  },
+  {
+    "id": "7cc792df-a75b-4310-b610-a5e4aa16b186",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 1.5
+  },
+  {
+    "id": "98cb53d5-c755-4ca5-808e-9bad5f14769c",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 1.67
+  },
+  {
+    "id": "a4e450bf-fcab-4c07-9e84-c033c75ff7f8",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 1.67
+  },
+  {
+    "id": "313f66e1-b349-4386-8a11-d016a3a1e29a",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 1.83
+  },
+  {
+    "id": "bc50dc90-6d90-4d88-af44-48d983a5cf16",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 1.83
+  },
+  {
+    "id": "e781f9b5-3b2d-4b39-a8f2-fa498a1afe38",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 1.83
+  },
+  {
+    "id": "5eeaa86b-be96-4686-ad3e-492669e3a120",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 2.0
+  },
+  {
+    "id": "38aacc2b-7885-4c25-b5c9-7e4d177985af",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 2.17
+  },
+  {
+    "id": "56eae867-b9f5-4b90-b417-84ea053ca8a4",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 2.33
+  },
+  {
+    "id": "22068df3-500f-481e-b899-6d411a06b173",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 2.5
+  },
+  {
+    "id": "b4b980a1-08db-4124-ba92-90c948f69e84",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 2.5
+  },
+  {
+    "id": "59aa4f1b-d282-4d92-b7fb-e4297f6f6fea",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 2.67
+  },
+  {
+    "id": "854ec197-326b-40df-bb96-4724c52af51e",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.0
+  },
+  {
+    "id": "51c91a9d-0ad6-4a52-9cfe-062f8ef42110",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.17
+  },
+  {
+    "id": "7c90c625-c5a8-4bc4-9e44-1ca3a54c7693",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.17
+  },
+  {
+    "id": "a65efb0c-2409-4f8b-96b9-9866cee68ead",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.17
+  },
+  {
+    "id": "45fe8737-6adf-424d-a1d7-bec94051ffef",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.33
+  },
+  {
+    "id": "9c90a012-71b1-4f68-b737-9c3faee8da48",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.33
+  },
+  {
+    "id": "15896709-7dad-42b3-9b6f-77fca33c6dc6",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.5
+  },
+  {
+    "id": "6968ba60-8030-4e15-bb53-f2a9ed9eb5b6",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.5
+  },
+  {
+    "id": "ef0a148c-91f1-40d8-8ddc-3e2c1d1aec39",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.5
+  },
+  {
+    "id": "f5609907-ed67-4719-942f-e75f7ed06521",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.5
+  },
+  {
+    "id": "5a48e204-4716-4487-9d1e-8083a999c6ca",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.67
+  },
+  {
+    "id": "72533c60-1eff-48a2-801f-40ce8eab243a",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.67
+  },
+  {
+    "id": "3e8b1bce-e702-469e-afa0-582fec4ecccf",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.83
+  },
+  {
+    "id": "5504a712-c160-4e63-8fce-908e2abead35",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.83
+  },
+  {
+    "id": "78db2600-09ac-4161-b959-b5395469f46c",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.83
+  },
+  {
+    "id": "b897fd00-6aa8-4acc-b2c7-9ad2c7a7c167",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.83
+  },
+  {
+    "id": "dfe7a352-2412-4487-b18b-602b1c040ce7",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 3.83
+  },
+  {
+    "id": "4129f75a-2aa3-42c0-9fe4-0ed1af960b62",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 4.0
+  },
+  {
+    "id": "448bf36f-3825-43df-bb31-f60294fd1c85",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 4.0
+  },
+  {
+    "id": "c9850fa4-09eb-49c4-b1ab-41d3be975ce3",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 4.17
+  },
+  {
+    "id": "8d4458b0-d5ca-4ca9-9bff-b24e7adb5a1d",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 4.33
+  },
+  {
+    "id": "c0f9f790-eb52-4619-a40d-19619f5525bc",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 4.33
+  },
+  {
+    "id": "91de8fa8-8b80-465e-bdd0-c6018a6dc7f7",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 4.5
+  },
+  {
+    "id": "a4ee41e4-6a71-40ea-ac54-3879ad05c52d",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 4.5
+  },
+  {
+    "id": "753b08a5-60c7-49b9-ac7b-a3652461e74f",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 5.0
+  },
+  {
+    "id": "038254b7-f725-4066-ad29-641c8fd4a471",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 5.17
+  },
+  {
+    "id": "6d3a839a-95ab-4ac9-a2cf-35b7a3655100",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 5.17
+  },
+  {
+    "id": "fb9e05f2-e2dd-46cf-89e5-39a5b1a22d38",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 5.17
+  },
+  {
+    "id": "73c12e72-3240-4452-9b10-c2880fa21403",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 5.33
+  },
+  {
+    "id": "7b847ebf-6dd6-4e32-9c06-f660a87f3eae",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 5.33
+  },
+  {
+    "id": "78471005-0e1a-4174-8946-a7262a77dc67",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 6.0
+  },
+  {
+    "id": "14f89323-0339-4c09-b7b7-aa8a9586864d",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 6.33
+  },
+  {
+    "id": "e1c30c26-acab-4d4c-98da-3e81287e92b9",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 6.5
+  },
+  {
+    "id": "1e9128eb-f0e8-4db2-8bad-5c68bea67dbd",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 6.67
+  },
+  {
+    "id": "8696c970-1cf9-4237-ab6b-fe19dcfe1a9d",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 6.83
+  },
+  {
+    "id": "72eae537-43bd-4f8b-af15-965b26d90ea8",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 7.0
+  },
+  {
+    "id": "4dd12a80-4467-427f-8a37-2c20049347f7",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 7.33
+  },
+  {
+    "id": "cd260e24-a22c-4aed-81e2-ce05826a0cd9",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 8.5
+  },
+  {
+    "id": "144a0971-d679-4ce6-860e-e807f22ad9b2",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 8.67
+  },
+  {
+    "id": "33458b73-72ea-4aca-9dc6-c46530cfdf3f",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 9.67
+  },
+  {
+    "id": "81d7b18c-e106-423e-a6c2-1e1a0c5cdc55",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 12.83
+  },
+  {
+    "id": "89f5400c-7722-49a2-95d7-df99b34bd044",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 15.5
+  },
+  {
+    "id": "65873550-49ba-4909-a76e-48ec554c662d",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 15.67
+  },
+  {
+    "id": "076ac156-1922-40d0-bf7c-36d38100f4bd",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 17.83
+  },
+  {
+    "id": "c7f1b5f6-e8e6-4043-86a7-65cc4bbee2e7",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 18.0
+  },
+  {
+    "id": "f785b7fc-93a2-4397-be1f-454a4c402f39",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 18.0
+  },
+  {
+    "id": "b792b2c5-378e-48bb-a679-c6ac5df9ba5c",
+    "clicks": 2.0,
+    "impressions": 6.0,
+    "position": 18.67
+  },
+  {
+    "id": "6e19e627-a781-4fd2-8c14-b462069eb36b",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.0
+  },
+  {
+    "id": "795ad20c-6ed0-45c2-81bc-f8a45474733b",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.0
+  },
+  {
+    "id": "2c17f24d-2a50-406e-99e1-2acc3fa49f2d",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.2
+  },
+  {
+    "id": "8110d703-bbb6-4c42-b909-c078d2758431",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.2
+  },
+  {
+    "id": "9578fe6f-3a4e-47b5-9f39-62a5d9d9f735",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.2
+  },
+  {
+    "id": "cacd79d1-bf68-4061-9db1-df750b19d1fd",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.2
+  },
+  {
+    "id": "d70d5508-b034-4638-9589-e6e53ea18426",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.4
+  },
+  {
+    "id": "27ffae05-6f75-49cb-82b4-65ed178390be",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.6
+  },
+  {
+    "id": "2b5eb560-e5a1-490e-8c2c-9154edb822ff",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.6
+  },
+  {
+    "id": "18ea303a-987e-4ff8-80f7-21356f8a7caf",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.8
+  },
+  {
+    "id": "2bc88150-0425-4f7a-878d-5a15208649aa",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 1.8
+  },
+  {
+    "id": "09af90bf-5cbf-4f0a-8bdc-9e14c0d7d92c",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 2.2
+  },
+  {
+    "id": "26609fb4-55c3-4c5b-b28e-bfe880364e1f",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 2.2
+  },
+  {
+    "id": "9e5bae9d-d0ae-43cb-bf47-500256409725",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 2.2
+  },
+  {
+    "id": "b5039aed-3f48-47dc-9d47-ee80f8281f46",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 2.6
+  },
+  {
+    "id": "6065693d-a5ed-485f-b016-47f200433d9a",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "7f44d87d-f838-494a-9798-2e8d2a177a62",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "a0423374-9fd6-43ba-8471-e7b9ac061d02",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "aa75271c-cc89-4b6b-ab70-31e0929941a8",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 2.8
+  },
+  {
+    "id": "1b70e1dc-cd00-4e24-9f5e-378a854aa4af",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.0
+  },
+  {
+    "id": "29168593-0bbc-46f7-85b2-fcf3b293a0b4",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.0
+  },
+  {
+    "id": "3300ae33-295c-4c1f-b5b7-d8bb5fc3fce5",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.0
+  },
+  {
+    "id": "702d84d4-9b80-4299-a5ef-e35bb7ff0614",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.0
+  },
+  {
+    "id": "773a8dfb-784d-478c-8830-7d23293b3129",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.0
+  },
+  {
+    "id": "10a623a3-699c-4f4e-801b-baced998b7f2",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.2
+  },
+  {
+    "id": "134e66c9-5639-4a6f-a5a8-81a96c187d98",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.4
+  },
+  {
+    "id": "81b00d71-d7fe-4197-8bb3-5af086bc958a",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.4
+  },
+  {
+    "id": "b2bbc924-9811-49a2-8608-bb2ebcfcecac",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.6
+  },
+  {
+    "id": "0527bc18-f42d-4377-9c51-0c3f13f2afac",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.8
+  },
+  {
+    "id": "54363fd9-4fd2-4dc4-9e48-745833622c84",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.8
+  },
+  {
+    "id": "97b1439b-89cf-4a52-8154-b9de56311867",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 3.8
+  },
+  {
+    "id": "554b4897-1de2-4a5f-8a20-7026c694a6e2",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.0
+  },
+  {
+    "id": "8160d451-8c52-4501-a606-e2af0455b5f5",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.0
+  },
+  {
+    "id": "8cde8e9f-f294-43d3-af45-4d3a74ccde92",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.0
+  },
+  {
+    "id": "518bd46c-0ad0-4515-9aa6-3c3d32e16194",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.2
+  },
+  {
+    "id": "69104e85-6fb0-443b-8183-a694b2cccc1e",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.2
+  },
+  {
+    "id": "6c0a8d11-59d2-4a4f-b5b3-aa202071f174",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.2
+  },
+  {
+    "id": "b7fb8cd5-bb3c-411b-963a-66a25a17704f",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.2
+  },
+  {
+    "id": "463e64f8-c6b8-4480-a1bc-189010b9dc21",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.4
+  },
+  {
+    "id": "8efac9c5-cf41-4867-927d-3f6b66b8da8f",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.4
+  },
+  {
+    "id": "789b8427-896e-4615-a08d-efa3de580f94",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.6
+  },
+  {
+    "id": "60bf75ae-fbb3-4ce6-b1c4-21c4b9382aff",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.8
+  },
+  {
+    "id": "7fff17ec-fd14-4cfd-842f-7399d46045be",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 4.8
+  },
+  {
+    "id": "2f43a776-90e2-449a-9f09-6fd4bc45c61a",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.0
+  },
+  {
+    "id": "363e4aea-650b-4f2c-b6eb-62061527f71d",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.2
+  },
+  {
+    "id": "45f6da43-5371-4ce1-81eb-b8b59e7a9cdd",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.2
+  },
+  {
+    "id": "649a9bf2-5f5f-40b7-954f-b50774c8fb6d",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.2
+  },
+  {
+    "id": "9e2867ec-290b-4b84-8822-be31e190fae4",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.2
+  },
+  {
+    "id": "b40b1f2d-54b7-4685-8945-d74a632b0be3",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.2
+  },
+  {
+    "id": "697a90b8-7364-4669-bf5d-8a9f6b93287d",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.6
+  },
+  {
+    "id": "b1046783-562e-4ae2-a65d-1314f1164b62",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.6
+  },
+  {
+    "id": "61f88ffe-398f-4f0e-bd2e-da8c1b65fb21",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.8
+  },
+  {
+    "id": "62d1d04b-70e2-44d9-9081-d6b4c8d8e284",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.8
+  },
+  {
+    "id": "89cd0d90-bcf8-4b74-a58d-ab39e4640509",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.8
+  },
+  {
+    "id": "ad457772-0b02-45ca-94d5-2bbd3fe5368f",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 5.8
+  },
+  {
+    "id": "77afdbdf-a0cf-408f-869e-38e52079965c",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 6.0
+  },
+  {
+    "id": "d1b17110-7f2b-4787-b7e2-9a5443370df6",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 6.0
+  },
+  {
+    "id": "8a6a75ec-c3b8-4661-886a-ee72a5f14021",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 6.4
+  },
+  {
+    "id": "0c4b4134-4917-43e1-a18b-2b61d4be8cdf",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 6.6
+  },
+  {
+    "id": "38f81cbb-eb47-4715-84c5-98ec369274ca",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 7.4
+  },
+  {
+    "id": "b5490812-d0cb-4438-b1f0-ee9b9be618f1",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 7.4
+  },
+  {
+    "id": "03a1f7a2-850d-4076-a292-42d7d6abe4ec",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 8.0
+  },
+  {
+    "id": "e7f0ab09-d9c6-4605-8868-86e9a4b5693f",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 8.0
+  },
+  {
+    "id": "719726be-9533-4fac-ba7a-6455cd24f86e",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 10.8
+  },
+  {
+    "id": "7ccd71cc-dc0e-41eb-aba2-285daa2575d4",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 12.4
+  },
+  {
+    "id": "ffdb3f79-37d9-4439-8550-7a2b4bdcf20c",
+    "clicks": 2.0,
+    "impressions": 5.0,
+    "position": 29.4
+  },
+  {
+    "id": "1003a0c0-0433-4fc5-a500-47c4906f3d7e",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "7725071b-2c86-443b-8b56-f5d0f9fb5387",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "93e3027d-7c94-4af1-8e76-d77ccd7dcb89",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "cd462c44-624a-45fe-bf82-444844e75eaf",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "eea74bdb-2103-4954-801a-972d9c164960",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.0
+  },
+  {
+    "id": "45040882-d92a-4e19-b526-cd17bee2886d",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.25
+  },
+  {
+    "id": "5c7d8588-ab1f-4337-ae90-f82fb5ffccc3",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.25
+  },
+  {
+    "id": "91df832c-51c1-40af-bddd-52fe2920b23c",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.25
+  },
+  {
+    "id": "52f46d1a-d75d-41f2-920f-1dbafd8b78c2",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.5
+  },
+  {
+    "id": "8a3adbab-3201-4f40-be46-e1f8e4fa90b9",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.5
+  },
+  {
+    "id": "cac82a3c-ba82-4a91-ba75-62942d9d29af",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.5
+  },
+  {
+    "id": "d1ee22ae-38d9-449b-afd3-f5ce0fbce72d",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.5
+  },
+  {
+    "id": "1e9db906-62ac-4b38-bde2-8dd804233bf7",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.75
+  },
+  {
+    "id": "1f61a5e5-d044-4002-a026-fd6fa6b3eefa",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.75
+  },
+  {
+    "id": "2488bde2-bc3a-4998-bdaf-73b65272c4f0",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.75
+  },
+  {
+    "id": "9f207ec7-44ac-4347-b1bc-5c636d753072",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.75
+  },
+  {
+    "id": "d10fab1b-4b40-4c55-a2c8-92d3b3c6ecd5",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 1.75
+  },
+  {
+    "id": "0155030d-0272-4c8e-af4f-a455b62c4b09",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "1d298fbb-2cf9-4a24-a666-f9993759aa98",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "2673c3e6-7b23-4844-8ac4-d22e3faacf44",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "3c202d92-5163-4bb3-82ce-4c4eea6d2341",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "8ec96768-0d17-4d29-9256-42806e0ec64a",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "a9f7adb1-4064-486c-9f6b-04913f83e44f",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "af09f336-1196-42d5-b38e-66ed57d94642",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "b27d78d0-93a2-47fe-aa45-f8770007a304",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "d9e56169-4afe-43fb-9680-dfa508bc4024",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.0
+  },
+  {
+    "id": "48e3cbd0-fcf3-4b1a-8f71-858312b004db",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.25
+  },
+  {
+    "id": "69ec4948-9c0f-457a-acc9-5d7ebbbee523",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.25
+  },
+  {
+    "id": "6e3d2565-76d6-40f9-8016-381bd0c7cab5",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.25
+  },
+  {
+    "id": "792cab52-59c3-41b6-87cc-f55a75d5944c",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.25
+  },
+  {
+    "id": "8c54f741-318a-42d3-8355-c45434e7d5b3",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.25
+  },
+  {
+    "id": "ca5aee2e-c13a-4919-9e9a-41bf71ec8274",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.25
+  },
+  {
+    "id": "6d58b89e-e89a-46ad-8fe8-df91ed16521e",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.5
+  },
+  {
+    "id": "c4c0a219-5988-4286-8b23-b23646777168",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.5
+  },
+  {
+    "id": "0fcd5ded-43df-4485-8b92-1168e8ec46f2",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.75
+  },
+  {
+    "id": "dcc8db36-26ed-4153-ac04-1e90871a8e26",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.75
+  },
+  {
+    "id": "f422d79a-48f2-4add-8996-5998b7dbb189",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 2.75
+  },
+  {
+    "id": "4fa7ad99-9f7c-4882-82a6-44a6604e0909",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.0
+  },
+  {
+    "id": "6fdb753d-52e7-4b6b-9264-593ab36de503",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.0
+  },
+  {
+    "id": "848804ec-e8a1-4b3a-9c6d-8db46d694940",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.0
+  },
+  {
+    "id": "4d972902-e831-485a-aa15-2dd60e3454aa",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.25
+  },
+  {
+    "id": "5de29e0c-7420-4586-8e8e-dd77952d03de",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.25
+  },
+  {
+    "id": "9d29b3bf-4455-4b0d-8292-f0833a004e91",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.25
+  },
+  {
+    "id": "b78695c2-c0e7-43ab-8c11-c4c29b083700",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.25
+  },
+  {
+    "id": "12bfb236-5c67-49cb-b54a-295c0fdddb2a",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.5
+  },
+  {
+    "id": "2b361251-911f-42f9-87fc-d8e104c8d1a0",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.5
+  },
+  {
+    "id": "3464d279-428a-4f83-ba4a-994635b64d23",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.5
+  },
+  {
+    "id": "4e4d2a9d-3a52-42ae-9af9-6695a6b0aacf",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.5
+  },
+  {
+    "id": "78004bc6-69cb-468d-9f6c-a6421e0f6316",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.5
+  },
+  {
+    "id": "8ce542f6-0b43-4f92-a54b-963d705da58e",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.5
+  },
+  {
+    "id": "9fca7fd6-8b5f-40f4-8708-2a2ff3ab8fe7",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.5
+  },
+  {
+    "id": "ff196abd-4825-46c9-813b-9bbbcf25df49",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.5
+  },
+  {
+    "id": "d5f1a569-4f10-4378-9bbe-d3d32fc17683",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.75
+  },
+  {
+    "id": "fa2d82c5-c4b2-495e-a28d-4cbbbd0ef495",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 3.75
+  },
+  {
+    "id": "45d948f9-5159-4d1d-a260-2805c62bbf8f",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.0
+  },
+  {
+    "id": "54398879-985f-4921-b123-cc2932a69a2c",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.0
+  },
+  {
+    "id": "b091de40-36bc-44df-b5d8-5966283febc3",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.0
+  },
+  {
+    "id": "effc7210-b534-4edc-bfdd-0a781d20400a",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.0
+  },
+  {
+    "id": "f4868c7f-3aca-4d5d-a5df-a339f98272fa",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.0
+  },
+  {
+    "id": "f7c2aede-8291-4fa4-8b85-02d0f46930ec",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.0
+  },
+  {
+    "id": "02ec9e17-2c63-46f3-b584-26b434c6fdbe",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.25
+  },
+  {
+    "id": "4f0dec4a-5d31-4285-b96c-19baabea11b8",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.25
+  },
+  {
+    "id": "7566671c-e4e8-49ab-8258-bc50dac0cbdf",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.25
+  },
+  {
+    "id": "b4aa2903-6fef-47ca-b8b3-e49e55d515cf",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.25
+  },
+  {
+    "id": "2651719e-4895-49b2-b17e-d8f685924907",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.5
+  },
+  {
+    "id": "eea11d02-cc8b-492e-a330-b90433aa90c9",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.5
+  },
+  {
+    "id": "f906060c-8075-446c-ac8f-1db70792f876",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.5
+  },
+  {
+    "id": "fb4c7660-2af5-48fc-b53d-a74d1af7a7a0",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.5
+  },
+  {
+    "id": "6e922ca3-bb6e-491c-ba19-cb05bd4959a4",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 4.75
+  },
+  {
+    "id": "0534d150-379a-4751-9de7-d293b0a3085c",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.0
+  },
+  {
+    "id": "ab2d1b48-1aa8-476f-879c-04cabf5c4535",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.0
+  },
+  {
+    "id": "bf06fd82-e6a7-422f-aa8c-da8671d7e0a1",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.0
+  },
+  {
+    "id": "eccac44b-c6e3-46ce-aa39-4eea41fae637",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.0
+  },
+  {
+    "id": "42c15d89-2541-444c-95fd-9a9f0e854067",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.25
+  },
+  {
+    "id": "077d6d99-15ef-46f6-a91d-2e37f6d67839",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.5
+  },
+  {
+    "id": "3628ee00-027e-4c47-8244-527b5a9c1646",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.5
+  },
+  {
+    "id": "4ebd0ee4-7b98-474e-8d88-5d696b66ef94",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.5
+  },
+  {
+    "id": "71a8ab5e-a606-423a-ba49-c7a6a05af620",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.5
+  },
+  {
+    "id": "6ed2201c-2499-42c0-9511-3855144f1ea6",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.75
+  },
+  {
+    "id": "91f3fbb8-6128-4e6c-9d9d-8d942dfb5af6",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 5.75
+  },
+  {
+    "id": "c5e078ba-dd2b-4cbe-8cc5-b8c7d8d6c653",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 6.0
+  },
+  {
+    "id": "285f28d7-a2c9-423d-8805-aed2618f6243",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 6.25
+  },
+  {
+    "id": "9ae01a35-3d30-4ce5-9fb4-7679466907e6",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 6.25
+  },
+  {
+    "id": "01865aa6-30dd-4c4f-ba63-dca3d26c3332",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 6.5
+  },
+  {
+    "id": "1a0641ae-88a2-4912-9600-38d210b35e46",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 7.0
+  },
+  {
+    "id": "da2811b9-6b22-4c6b-87f6-7533ef795492",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 7.25
+  },
+  {
+    "id": "3e9ba2ee-1cea-4f85-b1a0-be0cdc89f57a",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 7.75
+  },
+  {
+    "id": "27164231-20aa-46a6-90ed-8a37b3062f80",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 8.25
+  },
+  {
+    "id": "9af8dcfa-6abb-4541-a901-834aa758a7f8",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 8.75
+  },
+  {
+    "id": "ae26b211-e733-4672-89f9-86d0995966a0",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 9.25
+  },
+  {
+    "id": "88ffb0e3-f896-4c4d-aabe-b9865a90ebf1",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 10.0
+  },
+  {
+    "id": "a19255b4-ecb1-4fe1-bdd2-725a39434a32",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 11.0
+  },
+  {
+    "id": "0a159f44-be0e-45dc-ae4e-a01eba309a71",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 11.75
+  },
+  {
+    "id": "419eee31-381e-40e1-a23d-4ee27f992415",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 11.75
+  },
+  {
+    "id": "905dacc7-a0a9-49b1-a642-26b521157434",
+    "clicks": 2.0,
+    "impressions": 4.0,
+    "position": 16.0
+  },
+  {
+    "id": "2b745d4b-42fa-4fde-ac60-ab844b21a943",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.0
+  },
+  {
+    "id": "73c91961-e635-49e3-9c06-60eb16e008c0",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.0
+  },
+  {
+    "id": "7dca0755-9539-43b9-8731-3faf44833d12",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.0
+  },
+  {
+    "id": "80c1d25d-a8cf-4b12-8c01-38e290453bf0",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.0
+  },
+  {
+    "id": "a63eedfd-eab6-4cb8-8a91-3e0aa020b047",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.0
+  },
+  {
+    "id": "e9308497-4b84-4869-be48-c1848f30d078",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.0
+  },
+  {
+    "id": "f762cfcb-3575-408c-95b9-499d43c22b46",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.0
+  },
+  {
+    "id": "10dd8969-ae2f-4039-abc3-8f0fe6aa1475",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.33
+  },
+  {
+    "id": "6646b9dd-4644-4d40-a3a2-bba7320254a7",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.33
+  },
+  {
+    "id": "1bf6d186-53d4-4ca2-9e3d-d77c64c90abf",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.67
+  },
+  {
+    "id": "2299d0e3-06c3-427f-85f0-f85c4c20bbc0",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.67
+  },
+  {
+    "id": "346049e0-a173-4c1c-a904-57096fa86081",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.67
+  },
+  {
+    "id": "36f4aad6-70c2-4c7e-9cc8-63ef698faeb3",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.67
+  },
+  {
+    "id": "4050577c-bb4f-47c9-9ecd-1d02f14dce0b",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.67
+  },
+  {
+    "id": "69c211a0-23f3-4b7f-b880-2180a7d4caf5",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.67
+  },
+  {
+    "id": "731fdfc5-435c-41a2-9b2c-5168f4350a93",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.67
+  },
+  {
+    "id": "8f6872af-a108-4ffd-85eb-7461e1b65061",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 1.67
+  },
+  {
+    "id": "02637985-083c-493b-9595-70be9fa360b2",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "042ea951-abcd-450e-8d05-1f2e75409eb1",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "1f0d93db-2a6c-4571-85bb-b9805cc3130c",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "2d4fb4a6-da7c-4849-a7ce-7dd5ddb8a837",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "3fbc0a97-3bbe-48fe-84bc-cfeac6eed18f",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "5b317206-7164-426d-b058-91fe6bf51548",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "5b6e2f95-5e5d-4e66-ac00-4555ff01aeae",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "91ec0abc-8ee1-4f6d-8289-d0e732ac0382",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "a98f4cd5-974a-457b-a7a9-2214abab876e",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "bbeee7c3-5a12-4d8d-bc4d-dcb80320974e",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "efac03b5-db33-4075-b771-2a0aee2b58e2",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "f556f96b-ed2d-485d-88ab-6caa0857a788",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.0
+  },
+  {
+    "id": "0b8a9b68-9589-4180-88b4-351d5e702212",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.33
+  },
+  {
+    "id": "303dfda0-3a40-408e-909c-96ac262842e7",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.33
+  },
+  {
+    "id": "38783c5d-6c5b-4d91-95e6-cc15ea37f0bf",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.33
+  },
+  {
+    "id": "79a0b158-b329-49d2-b883-3ef99155faf9",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.33
+  },
+  {
+    "id": "b0c96947-200d-4a9d-b26d-0a1032ca9941",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.33
+  },
+  {
+    "id": "c788d446-87e6-4249-be38-74df51c15064",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.33
+  },
+  {
+    "id": "f0bf7079-5906-4896-a7d7-4d32c5df7704",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.33
+  },
+  {
+    "id": "47fdae91-6973-4ef6-a85c-30566c45f1ca",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.67
+  },
+  {
+    "id": "664f6af2-79e8-480a-80fa-904bea4b0cb6",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.67
+  },
+  {
+    "id": "86a091a3-ef84-414d-92c9-d116e810bfd3",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.67
+  },
+  {
+    "id": "88127f78-c05b-4d07-aa8b-fa03540545f3",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.67
+  },
+  {
+    "id": "d538de34-62ef-43bb-bc0d-a53fee6dea71",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 2.67
+  },
+  {
+    "id": "035242d2-aeed-416f-888f-bc5a5227b178",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.0
+  },
+  {
+    "id": "3a61521e-0d57-4692-8720-849276e7b369",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.0
+  },
+  {
+    "id": "55444730-469a-407e-b380-6dde0073ab54",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.0
+  },
+  {
+    "id": "97e223ee-63f9-4add-85b7-b96d221cee97",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.0
+  },
+  {
+    "id": "ad8db79f-8e24-4273-bda5-27ea10adc43d",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.0
+  },
+  {
+    "id": "09c699c4-4e19-4eaa-bdfd-2d1d8bf85c85",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.33
+  },
+  {
+    "id": "0ee5c0eb-85e0-49b6-ba3b-9cfd2a4d0e78",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.33
+  },
+  {
+    "id": "2391e285-acbe-4144-8d16-b057bb7bf75d",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.33
+  },
+  {
+    "id": "4fa31b39-edf4-4985-8454-dc3b5abd992e",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.33
+  },
+  {
+    "id": "720c3d36-3f67-47d7-8bd0-57b6be1e08e7",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.33
+  },
+  {
+    "id": "85e31b0f-d55a-4063-81b4-4ac12ba2f925",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.33
+  },
+  {
+    "id": "8f024c97-a481-45d8-bc7f-ceca1fb70595",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.33
+  },
+  {
+    "id": "b1a79df5-0261-413b-a4df-b10ee5c42742",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.33
+  },
+  {
+    "id": "da90139e-0837-4b49-91ff-a3a98267f71d",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.33
+  },
+  {
+    "id": "dfeb7920-3010-4a7d-a600-b01e48dcfeb9",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.33
+  },
+  {
+    "id": "3fbf2761-c878-462c-80e3-7c9ee1f127be",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.67
+  },
+  {
+    "id": "43f4d614-8453-4b08-9fc2-cbaa42ea2830",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.67
+  },
+  {
+    "id": "4c882efd-9b45-43a4-9503-d7eb491842ca",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 3.67
+  },
+  {
+    "id": "1c2bb396-c3b1-4ef2-9408-95b3e37dda42",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.0
+  },
+  {
+    "id": "59bf1351-e08d-40e3-a806-da5d14ae9745",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.0
+  },
+  {
+    "id": "76c2b31c-7207-40d4-a00e-9fdc504fbdf5",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.0
+  },
+  {
+    "id": "76dc157a-2e3a-498c-90e9-f16a543dccb0",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.0
+  },
+  {
+    "id": "4dd335ee-fb3d-4ae3-b8e8-56a48977928a",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.33
+  },
+  {
+    "id": "6363231e-e55d-4a2e-af3c-d43b99ec3afd",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.33
+  },
+  {
+    "id": "9874e036-916d-48d4-821c-0fe40771b223",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.33
+  },
+  {
+    "id": "ca6b5c56-278e-4c7e-9be3-a72d45317852",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.33
+  },
+  {
+    "id": "3f50f659-36d9-4f0b-bff4-49cd0bc7b04d",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.67
+  },
+  {
+    "id": "a24f2f71-63bc-48be-991d-887f00869408",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.67
+  },
+  {
+    "id": "ec6be05a-26a3-487d-a208-23c62b8a70a7",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.67
+  },
+  {
+    "id": "f1ba0d68-1c18-49ae-99c3-4a23e99ea4ba",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 4.67
+  },
+  {
+    "id": "161f4b7e-202c-4b05-90cd-f57d8730ca59",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 5.33
+  },
+  {
+    "id": "4b96221b-a040-4a03-9642-a65ad22078b7",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 5.33
+  },
+  {
+    "id": "1792e472-82e3-4031-8305-694c45fc41c3",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 5.67
+  },
+  {
+    "id": "1f25d844-3cec-467a-a277-524a87815a1b",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 6.0
+  },
+  {
+    "id": "e3c740c4-866a-41b6-befa-27c65d0d7f8e",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 6.0
+  },
+  {
+    "id": "798f9fa4-6b6e-4ee2-a23c-b634675a5b4a",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 6.33
+  },
+  {
+    "id": "c8a0763a-7153-48d1-ab5c-42eb4e8ae0a1",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 6.33
+  },
+  {
+    "id": "dcfcbb6a-3c99-49af-9d9e-87ae0046f43c",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 6.33
+  },
+  {
+    "id": "10d30e38-d956-4d85-843f-0ad46e4d1b3f",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 6.67
+  },
+  {
+    "id": "730b4895-4bf9-4633-9212-5b7ab85ed603",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 7.33
+  },
+  {
+    "id": "531b7011-dd87-4f80-807f-ce43a8d6f0d3",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 7.67
+  },
+  {
+    "id": "2de8308b-851b-419c-9c9b-8b3c58877c03",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 8.33
+  },
+  {
+    "id": "b9239270-b1a2-4118-a69d-846cdb08076b",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 8.33
+  },
+  {
+    "id": "c430bfd3-746f-46a0-9b3f-ff2543d31254",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 8.67
+  },
+  {
+    "id": "d106a2ac-b3e4-4265-adc4-6878ac18b16f",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 9.0
+  },
+  {
+    "id": "2128fa6d-ac07-4f54-ada4-0794cc28a879",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 9.33
+  },
+  {
+    "id": "508b2018-07b1-4727-9b36-1c19d2b0681c",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 11.0
+  },
+  {
+    "id": "4c511cdc-7b24-41c4-9b0f-2c071f233f35",
+    "clicks": 2.0,
+    "impressions": 3.0,
+    "position": 13.0
+  },
+  {
+    "id": "02bb12b0-8fe3-4fa5-8008-907fc0529384",
+    "clicks": 2.0,
+    "impressions": 2.0,
+    "position": 1.0
+  },
+  {
+    "id": "04e53ea0-e97b-4fa2-b349-6f75d55f7e49",
+    "clicks": 2.0,
+    "impressions": 2.0,
+    "position": 1.0
+  },
+  {
+    "id": "0b973bb5-3c2c-4d14-af72-ec1618f02427",
+    "clicks": 2.0,
+    "impressions": 2.0,
+    "position": 1.0
+  },
+  {
+    "id": "1597ea02-9944-47dc-9bec-bc1f3c382909",
+    "clicks": 2.0,
+    "impressions": 2.0,
+    "position": 1.0
+  },
+  {
+    "id": "200b57ca-eef9-4238-b276-344ab918fb3e",
+    "clicks": 2.0,
+    "impressions": 2.0,
+    "position": 1.0
+  }
+]

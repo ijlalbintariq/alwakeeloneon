@@ -69,7 +69,7 @@ import { scanUploadedBuffer } from "./file-scan";
 import { getSecurityEvents, recordSecurityEvent } from "./security-monitoring";
 import { classifyDocumentMetadata, type DocumentMetadata } from "./document-classifier";
 import { generateDocxBuffer } from "./services/docx-generator";
-import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, handleSitemapStatutes, clearSitemapCache } from "./sitemap";
+import { handleSitemapIndex, handleSitemapStatic, handleSitemapJudgments, handleSitemapJudgmentsPriority, handleSitemapStatutes, clearSitemapCache } from "./sitemap";
 import { generateClauseFromPrompt, suggestClauses } from "./retrieval/clause-library";
 import { extractTocFromText } from "./retrieval/toc-parser";
 import { citationExtractor } from "./services/citation-extractor";
@@ -7782,6 +7782,7 @@ export async function registerRoutes(
 
   app.get("/sitemap.xml", handleSitemapIndex);
   app.get("/sitemap-static.xml", handleSitemapStatic);
+  app.get("/sitemap-judgments-priority.xml", handleSitemapJudgmentsPriority);
   app.get("/sitemap-judgments-:n.xml", handleSitemapJudgments);
   app.get("/sitemap-statutes-:n.xml", handleSitemapStatutes);
 
@@ -7965,7 +7966,9 @@ export async function registerRoutes(
         `https://${INDEXNOW_HOST}/install`,
       ];
       const blogUrls = BLOG_ARTICLES.map((a: any) => `https://${INDEXNOW_HOST}/blog/${a.slug}`);
-      const allUrls = [...staticUrls, ...blogUrls];
+      const priorityJudgments: Array<{ id: string }> = require("../shared/priority-judgments.json");
+      const priorityJudgmentUrls = priorityJudgments.map((j) => `https://${INDEXNOW_HOST}/judgment/${j.id}`);
+      const allUrls = [...staticUrls, ...blogUrls, ...priorityJudgmentUrls];
 
       const result = await submitToIndexNow(allUrls);
       console.log(`[IndexNow] Batch submit: ${result.submitted} URLs, success=${result.success}`);

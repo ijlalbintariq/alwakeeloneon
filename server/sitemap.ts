@@ -121,6 +121,7 @@ export async function handleSitemapIndex(req: Request, res: Response): Promise<v
 
     const entries: string[] = [];
     entries.push(sitemapIndexEntry(`${origin}/sitemap-static.xml`, today));
+    entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-priority.xml`, today));
     for (let n = 1; n <= judgmentPages; n += 1) {
       entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-${n}.xml`, today));
     }
@@ -255,6 +256,30 @@ export async function handleSitemapJudgments(req: Request, res: Response): Promi
   } catch (err) {
     console.error(`[sitemap:judgments:${n}] failed`, err);
     res.status(500).type("text/plain").send("Sitemap page failed");
+  }
+}
+
+export function handleSitemapJudgmentsPriority(req: Request, res: Response): void {
+  try {
+    const origin = siteOrigin(req);
+    const today = new Date().toISOString().slice(0, 10);
+    // 988 verified performing judgments from Search Console Performance report
+    const priorityJudgments: Array<{ id: string; clicks: number; impressions: number }> = require("../shared/priority-judgments.json");
+
+    const blocks = priorityJudgments.map((row) =>
+      urlBlock(`${origin}/judgment/${row.id}`, today, "weekly", "1.0"),
+    );
+    const body =
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      blocks.join("\n") +
+      `\n</urlset>\n`;
+
+    res.setHeader("Cache-Control", "public, max-age=21600, s-maxage=21600"); // 6h
+    res.type("application/xml").send(body);
+  } catch (err) {
+    console.error("[sitemap:judgments:priority] failed", err);
+    res.status(500).type("text/plain").send("Priority judgments sitemap failed");
   }
 }
 
