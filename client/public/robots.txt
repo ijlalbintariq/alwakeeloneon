@@ -1,5 +1,16 @@
+# Allow search engines and respectful AI crawlers
 User-agent: *
 Allow: /
+
+# Block aggressive scrapers that spam database without providing search traffic
+User-agent: Bytespider
+Disallow: /
+
+User-agent: PetalBot
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
 
 Sitemap: https://www.alwakeelo.com/sitemap.xml
 

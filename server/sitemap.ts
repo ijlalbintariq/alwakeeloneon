@@ -122,7 +122,10 @@ export async function handleSitemapIndex(req: Request, res: Response): Promise<v
     const entries: string[] = [];
     entries.push(sitemapIndexEntry(`${origin}/sitemap-static.xml`, today));
     entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-priority.xml`, today));
-    for (let n = 1; n <= judgmentPages; n += 1) {
+    // Cap bulk judgment sitemaps to top 2 pages (20k most recent cases) + priority sitemap
+    // to protect Neon database from 240,000 crawler queries 24/7.
+    const activeJudgmentPages = Math.min(judgmentPages, 2);
+    for (let n = 1; n <= activeJudgmentPages; n += 1) {
       entries.push(sitemapIndexEntry(`${origin}/sitemap-judgments-${n}.xml`, today));
     }
     for (let n = 1; n <= statutePages; n += 1) {

@@ -123,19 +123,40 @@ export function serveStatic(app: Express) {
         const courtName = row.courtNameSnapshot ? String(row.courtNameSnapshot).trim() : "Supreme Court / High Court of Pakistan";
         const decisionDateStr = row.decisionDate ? new Date(row.decisionDate).toISOString().slice(0, 10) : "";
         const yearStr = decisionDateStr ? decisionDateStr.slice(0, 4) : "";
+        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        const petitioner = row.petitioner ? String(row.petitioner).trim() : "";
+        const respondent = row.respondent ? String(row.respondent).trim() : "";
+        const headnotes = row.headnotes ? String(row.headnotes).trim() : "";
+        const rawFullText = row.fullText ? String(row.fullText).trim() : "";
+        const courtSlug = courtName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-        const schema = {
-          "@context": "https://schema.org",
-          "@type": "CourtCase",
-          "name": title,
-          "identifier": citation,
-          "caseNumber": citation,
-          "court": {
-            "@type": "GovernmentOrganization",
-            "name": courtName
+        // Schema markup: CourtCase + BreadcrumbList for rich snippets
+        const schema = [
+          {
+            "@context": "https://schema.org",
+            "@type": "CourtCase",
+            "name": title,
+            "identifier": citation || id,
+            "caseNumber": citation || id,
+            "court": {
+              "@type": "GovernmentOrganization",
+              "name": courtName
+            },
+            "inLanguage": "en",
+            "isAccessibleForFree": true,
+            ...(decisionDateStr ? { "datePublished": decisionDateStr } : {})
           },
-          ...(decisionDateStr ? { "datePublished": decisionDateStr } : {})
-        };
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.alwakeelo.com/" },
+              { "@type": "ListItem", "position": 2, "name": "Judgments", "item": "https://www.alwakeelo.com/judgments" },
+              { "@type": "ListItem", "position": 3, "name": courtName, "item": `https://www.alwakeelo.com/judgments/browse?court=${encodeURIComponent(courtSlug)}` },
+              { "@type": "ListItem", "position": 4, "name": citation || title, "item": `https://www.alwakeelo.com/judgment/${id}` }
+            ]
+          }
+        ];
         const schemaMarkup = `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n</script>`;
 
         const meta: SeoMeta = {
@@ -145,39 +166,75 @@ export function serveStatic(app: Express) {
           schemaMarkup,
         };
 
-        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-        const petitioner = row.petitioner ? String(row.petitioner).trim() : "";
-        const respondent = row.respondent ? String(row.respondent).trim() : "";
-        const headnotes = row.headnotes ? String(row.headnotes).trim() : "";
-        const rawFullText = row.fullText ? String(row.fullText).trim() : "";
-        // Take first ~1500 chars of judgment text for the prerender block
-        const fullTextExcerpt = rawFullText.length > 1500
-          ? rawFullText.slice(0, 1500).replace(/\s+\S*$/, "") + "…"
+        // Deliver up to 25,000 characters of full judgment text (approx 4,000-5,000 words)
+        const MAX_JUDGMENT_CHARS = 25000;
+        const isTruncated = rawFullText.length > MAX_JUDGMENT_CHARS;
+        const fullTextContent = isTruncated
+          ? rawFullText.slice(0, MAX_JUDGMENT_CHARS).replace(/\s+\S*$/, "") + "…"
           : rawFullText;
+
+        const formattedParagraphs = fullTextContent
+          ? fullTextContent
+              .split(/\n\s*\n/)
+              .map(p => p.trim())
+              .filter(Boolean)
+              .map(p => `<p style="margin-bottom:12px;line-height:1.6;">${esc(p)}</p>`)
+              .join("\n")
+          : "<p>Judgment text available in database.</p>";
+
         const partiesLine = petitioner && respondent
           ? `<p><strong>Parties:</strong> ${esc(petitioner)} vs ${esc(respondent)}</p>`
           : petitioner
             ? `<p><strong>Petitioner:</strong> ${esc(petitioner)}</p>`
             : "";
         const headnotesBlock = headnotes
-          ? `<div><h2>Headnotes</h2><p>${esc(headnotes.slice(0, 2000))}</p></div>`
-          : "";
-        const textBlock = fullTextExcerpt
-          ? `<div><h2>Judgment Text</h2><p>${esc(fullTextExcerpt)}</p></div>`
+          ? `<div style="margin:20px 0;padding:15px;background:#fdfcf9;border:1px solid #e5e0d8;border-radius:6px;"><h2>Headnotes</h2><p style="white-space:pre-wrap;line-height:1.6;">${esc(headnotes.slice(0, 3000))}</p></div>`
           : "";
 
-        // Visible prerender block — Google can see and index this content.
-        // React will replace it when the SPA mounts via #root.
+        // Visible prerender block with breadcrumbs, /seo-geo legal summary block, full text, and internal links
         const preRenderBlock = `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
+  <nav aria-label="Breadcrumb" style="margin-bottom:15px;font-size:14px;color:#666;">
+    <a href="/" style="color:#0066cc;text-decoration:none;">Home</a> &gt; 
+    <a href="/judgments" style="color:#0066cc;text-decoration:none;">Judgments</a> &gt; 
+    <a href="/judgments/browse?court=${encodeURIComponent(courtSlug)}" style="color:#0066cc;text-decoration:none;">${esc(courtName)}</a>
+    ${yearStr ? ` &gt; <a href="/judgments/browse?year=${encodeURIComponent(yearStr)}" style="color:#0066cc;text-decoration:none;">${esc(yearStr)}</a>` : ''} &gt; 
+    <span>${esc(citation || title)}</span>
+  </nav>
+
   <h1>${esc(title)}${citation ? ` — ${esc(citation)}` : ""}</h1>
-  ${citation ? `<p><strong>Citation:</strong> ${esc(citation)}</p>` : ""}
-  <p><strong>Court:</strong> ${esc(courtName)}</p>
-  ${yearStr ? `<p><strong>Year:</strong> ${esc(yearStr)}</p>` : ""}
+  ${citation ? `<p><strong>Official Citation:</strong> ${esc(citation)}</p>` : ""}
+  <p><strong>Court / Jurisdiction:</strong> <a href="/judgments/browse?court=${encodeURIComponent(courtSlug)}" style="color:#0066cc;">${esc(courtName)}</a></p>
+  ${yearStr ? `<p><strong>Year of Decision:</strong> <a href="/judgments/browse?year=${encodeURIComponent(yearStr)}" style="color:#0066cc;">${esc(yearStr)}</a></p>` : ""}
   ${decisionDateStr ? `<p><strong>Decision Date:</strong> ${esc(decisionDateStr)}</p>` : ""}
   ${partiesLine}
+
+  <section style="margin:20px 0;padding:15px;background:#f8fafc;border-left:4px solid #f59e0b;border-radius:4px;">
+    <h2 style="font-size:18px;margin-top:0;">Case Summary &amp; Legal Holding</h2>
+    <p style="margin:0;line-height:1.6;">
+      This judicial decision was delivered by the <strong>${esc(courtName)}</strong>${decisionDateStr ? ` on ${esc(decisionDateStr)}` : ''}. 
+      The matter involves proceedings between <strong>${esc(petitioner || 'Petitioner')}</strong> and <strong>${esc(respondent || 'Respondent')}</strong>${citation ? `, officially reported as <strong>${esc(citation)}</strong>` : ''}. 
+      The court reviewed applicable Pakistani statutes, procedural requirements, and governing case-law authorities. 
+      The full text below contains the complete facts, arguments, and legal reasoning rendered by the honorable bench.
+    </p>
+  </section>
+
   ${headnotesBlock}
-  ${textBlock}
-  <p><em>Read the full judgment on <a href="https://www.alwakeelo.com/judgment/${id}">Al Wakeelo</a> — Pakistan's AI-powered legal research platform.</em></p>
+
+  <section style="margin:25px 0;">
+    <h2>Full Judgment Text &amp; Judicial Ruling</h2>
+    ${formattedParagraphs}
+    ${isTruncated ? `<p style="font-style:italic;color:#666;margin-top:15px;">Read the unabridged text and precedent citation network on <a href="https://www.alwakeelo.com/judgment/${id}">Al Wakeelo Legal Research Platform</a>.</p>` : ''}
+  </section>
+
+  <section style="margin-top:30px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:14px;">
+    <h3>Related Legal Research &amp; Directories</h3>
+    <ul style="line-height:1.8;">
+      <li>Browse all judgments from <a href="/judgments/browse?court=${encodeURIComponent(courtSlug)}">${esc(courtName)}</a></li>
+      ${yearStr ? `<li>Browse Pakistani court decisions from the year <a href="/judgments/browse?year=${encodeURIComponent(yearStr)}">${esc(yearStr)}</a></li>` : ''}
+      <li>Search Pakistani statutes: <a href="/statute-search">Constitution of Pakistan 1973, PPC, CrPC, CPC &amp; Family Laws</a></li>
+      <li>Analyze this case with <a href="/al-wakeelo">Al Wakeelo AI Legal Assistant</a></li>
+    </ul>
+  </section>
 </div>`;
 
         seoCache.set(id, { meta, preRenderBlock, expiresAt: now + CACHE_TTL_MS });
@@ -570,7 +627,17 @@ export function serveStatic(app: Express) {
           customMeta = seoData.meta;
           preRenderBlock = seoData.preRenderBlock;
         } else {
-          notFound = true;
+          // Serve fallback 200 shell instead of dropping to 404 during crawl bursts
+          customMeta = {
+            title: "Pakistani Case Law & Judgments | Al Wakeelo",
+            description: "Read full text Pakistani court judgments, legal precedents, and verified citations on Al Wakeelo — Pakistan's AI legal assistant.",
+            index: true,
+          };
+          preRenderBlock = `<div id="seo-prerender" style="padding:20px;max-width:800px;margin:0 auto;font-family:serif;color:#333">
+  <h1>Pakistani Case Law &amp; Judgments — Al Wakeelo</h1>
+  <p>Search over 600,000 Pakistani judgments from the Supreme Court, High Courts, and Federal Shariat Court on Al Wakeelo.</p>
+  <p><a href="/judgments">Browse All Judgments</a> | <a href="/judgments/browse">Judgments Directory</a> | <a href="/">Home</a></p>
+</div>`;
         }
       }
     }
