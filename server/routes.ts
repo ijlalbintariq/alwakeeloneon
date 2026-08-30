@@ -15087,7 +15087,7 @@ Current Draft Excerpt:
 ${draftContextForGeneration || "[No draft text provided]"}${styleContext ? `\n\nPersonal Style Memory:\n${styleContext}` : ""}`;
         try {
           const aiResult = await callLegalDraftingAI(sysInstruction, userInput, 1400, { timeoutProfile: "analysis", temperature: 0.3 });
-          await logUsageCost(userId, "draft", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: safePrompt });
+          await logUsageCost(userId, "contract-drafting", aiResult.model, sysInstruction + userInput, aiResult.text, { userQuery: safePrompt });
           const clauseText = normalizeDraftingText(aiResult.text);
           if (clauseText) {
             return res.json({
