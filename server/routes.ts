@@ -28,13 +28,6 @@ import {
   caseCompliance,
   type CaseLaw,
   apiKeys,
-  searchHistory,
-  organizations,
-  orgMembers,
-  documentScans,
-  scanFindings,
-  orgActivityLogs,
-  legalDrafts,
 } from "@shared/schema";
 import { and, count, desc, eq, ilike, lt, sql, like, or, inArray } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
@@ -2378,8 +2371,7 @@ async function callTurboAI(
   const messages = buildMessages(systemPrompt, contents);
   const startedAt = Date.now();
 
-  // Kimi K2.5 bypassed (moved to reasoning-only mode by user request)
-  /*
+  // Try direct Moonshot API first
   try {
     const { isMoonshotAvailable, chatWithMoonshot } = await import("./moonshot");
     if (isMoonshotAvailable()) {
@@ -2397,7 +2389,6 @@ async function callTurboAI(
   } catch (importErr) {
     console.warn(`[AI Routing][turbo] Moonshot module load failed:`, importErr);
   }
-  */
 
   // Fallback 1: Gemini via OpenRouter
   if (isOpenRouterAvailable()) {
@@ -7559,26 +7550,26 @@ async function logOutputQuality(userId: string, feature: string, model: string, 
     for (const boundary of promptBoundaries) {
       const idx = inputText.lastIndexOf(boundary);
       if (idx > 0) {
-        userInput = inputText.slice(idx).slice(0, 50000);
+        userInput = inputText.slice(idx).slice(0, 500);
         break;
       }
     }
     if (userInput === inputText) {
-      userInput = inputText.length > 50000 ? inputText.slice(-50000) : inputText;
+      userInput = inputText.length > 500 ? inputText.slice(-500) : inputText;
     }
-    const outputSnippet = (outputText || "").slice(0, 150000);
+    const outputSnippet = (outputText || "").slice(0, 3000);
     const { score, flags } = scoreOutputQuality(feature, inputText, outputText);
 
     await storage.logOutputQuality({
       userId,
       feature,
       model,
-      inputSnippet: userInput.slice(0, 50000),
+      inputSnippet: userInput.slice(0, 500),
       outputSnippet,
       outputLength: (outputText || "").length,
       qualityScore: score,
       qualityFlags: flags,
-      userQuery: extra?.userQuery?.slice(0, 50000) || "",
+      userQuery: extra?.userQuery?.slice(0, 2000) || "",
       responseTimeMs: extra?.responseTimeMs || 0,
     });
   } catch (err) {
@@ -10829,32 +10820,6 @@ RAG POLICY (STRICT):
     res.json(results);
   });
 
-  app.delete(api.searchHistory.delete.path, async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.sendStatus(401);
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.sendStatus(400);
-      await db.delete(searchHistory).where(and(eq(searchHistory.id, id), eq(searchHistory.userId, userId)));
-      res.sendStatus(204);
-    } catch (err) {
-      console.error(err);
-      res.sendStatus(500);
-    }
-  });
-
-  app.delete(api.searchHistory.clear.path, async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.sendStatus(401);
-    try {
-      await db.delete(searchHistory).where(eq(searchHistory.userId, userId));
-      res.sendStatus(204);
-    } catch (err) {
-      console.error(err);
-      res.sendStatus(500);
-    }
-  });
-
   app.post(api.searchHistory.create.path, async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -10981,29 +10946,10 @@ RAG POLICY (STRICT):
       const query = ((req.query.q as string) || "").trim();
       const limitRaw = Number(req.query.limit);
       const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, Math.floor(limitRaw))) : 25;
-      
-      const yearParam = String(req.query.year || "").trim();
-      const yearRaw = yearParam.toLowerCase().includes("all") ? NaN : Number(yearParam);
-      
+      const yearRaw = Number(req.query.year);
       const pageRaw = Number(req.query.page);
-      
-      const reportParam = String(req.query.report || req.query.journal || "").trim();
-      const reportRaw = reportParam.toLowerCase() === "all" ? "" : normalizeCitationToken(reportParam);
-      
-      const courtRawInput = String(req.query.court || "").trim();
-      const isAllCourts = courtRawInput.toLowerCase() === "all" || courtRawInput.toLowerCase() === "all courts";
-      
-      const courtCodeMap: Record<string, string> = {
-        "SC": "Supreme Court",
-        "LHC": "Lahore High Court",
-        "SHC": "Sindh High Court",
-        "IHC": "Islamabad High Court",
-        "PHC": "Peshawar High Court",
-        "BHC": "Balochistan",
-        "FSC": "Federal Shariat Court"
-      };
-      const courtRaw = isAllCourts ? "" : (courtCodeMap[courtRawInput.toUpperCase()] || courtRawInput);
-      
+      const reportRaw = normalizeCitationToken(String(req.query.report || req.query.journal || "").trim());
+      const courtRaw = String(req.query.court || "").trim();
       const sortRaw = String(req.query.sort || "").trim().toLowerCase();
       const parsedCitation = parseCaseLawCitationQuery(query);
 
@@ -11015,6 +10961,10 @@ RAG POLICY (STRICT):
         : (parsedCitation?.page ?? undefined);
       const report = reportRaw || parsedCitation?.report || undefined;
       const sort = sortRaw === "latest" ? "latest" : "relevance";
+
+      if (!query && !year && !report && !page && !courtRaw) {
+        return res.json([]);
+      }
 
       // Use lightweight direct DB search — the judgment search page only needs
       // metadata (citation, court, title, summary), NOT full text verification.
@@ -11068,7 +11018,7 @@ RAG POLICY (STRICT):
           includeSourceContentSearch: false,
         }),
         // Also search the judgments table via headnotes for broader recall
-        storage.searchJudgmentsByKeywords(query, limit, courtRaw).catch(() => []),
+        query ? storage.searchJudgmentsByKeywords(query, limit).catch(() => []) : Promise.resolve([]),
         // Semantic vector search — finds by meaning, not just keywords
         Promise.race([
           ragVectorPromise,
@@ -11110,18 +11060,6 @@ RAG POLICY (STRICT):
         seenMap.set(key, results.length);
         results.push(r);
         if (results.length >= limit) break;
-      }
-
-      // If the user explicitly searched for a year (e.g. "2026 PLD"), prioritize matching years.
-      // Since we merge results from multiple tables (case_law primary, then judgments fallback),
-      // this ensures the correct year surfaces to the top instead of being buried behind
-      // older primary results that happened to appear earlier in the array.
-      if (year) {
-        results.sort((a, b) => {
-          const aMatch = Number(a.citationYear) === year ? 1 : 0;
-          const bMatch = Number(b.citationYear) === year ? 1 : 0;
-          return bMatch - aMatch;
-        });
       }
 
       // Enrich results with judgment UUIDs so citation chips can link to /judgment/:uuid
@@ -11481,298 +11419,43 @@ RAG POLICY (STRICT):
         !journalCodeRaw
         || journalCodeRaw.toLowerCase() === "all"
         || normalizedJournalQuery === "ALL";
-        
-      res.sendStatus(404);
-    } catch (err) {
-      res.status(500).json({ message: "Failed" });
-    }
-  });
 
-  app.get("/api/judges/directory", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.sendStatus(401);
-    try {
-      const page = Math.max(1, parseInt(String(req.query.page || "1")));
-      const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || "50"))));
-      const search = String(req.query.search || "").trim();
-      const court = String(req.query.court || "").trim();
-      const sort = String(req.query.sort || "cases_desc");
-      const offset = (page - 1) * limit;
-
-      // Build dynamic conditions using Drizzle sql tagged template
-      const conditions = [
-        sql`l.judge_name != ''`,
-      ];
-      if (search) {
-        conditions.push(sql`l.judge_name ILIKE ${'%' + search + '%'}`);
+      if (!Number.isInteger(year) || year < 1947 || year > currentYear + 1) {
+        return res.status(400).json({ message: `Year must be between 1947 and ${currentYear + 1}` });
       }
-      if (court) {
-        conditions.push(sql`l.court_name ILIKE ${'%' + court + '%'}`);
+      if (!Number.isInteger(page) || page < 1) {
+        return res.status(400).json({ message: "Page must be a positive integer" });
       }
-      const whereClause = sql.join(conditions, sql` AND `);
 
-      // Sort mapping (safe: only static strings)
-      const sortMap: Record<string, ReturnType<typeof sql.raw>> = {
-        cases_desc: sql.raw("case_count DESC"),
-        cases_asc: sql.raw("case_count ASC"),
-        name_asc: sql.raw("judge_name ASC"),
-        name_desc: sql.raw("judge_name DESC"),
-        recent: sql.raw("latest_year DESC"),
-      };
-      const orderBy = sortMap[sort] || sql.raw("case_count DESC");
+      if (!isAllJournals) {
+        const journals = await storage.getLawJournals();
+        const journalsByNormalizedCode = new Map(
+          journals.map((j) => [normalizeCitationToken(j.code), j.code]),
+        );
+        const resolvedJournalCode = journalsByNormalizedCode.get(normalizedJournalQuery);
+        if (!resolvedJournalCode) {
+          return res.status(400).json({ message: `Unknown journal code: ${journalCodeRaw}` });
+        }
+        const matches = await storage.searchJudgmentsByCitation({
+          year,
+          journalCode: resolvedJournalCode,
+          page,
+          court: court || undefined,
+        });
+        return res.json(matches);
+      }
 
-      const [dataResult, countResult, courtsResult] = await Promise.all([
-        db.execute(sql`
-          SELECT
-            j.bench as judge_name,
-            count(*)::int as case_count,
-            array_agg(DISTINCT COALESCE(c.name, j.court_name_snapshot)) FILTER (WHERE COALESCE(c.name, j.court_name_snapshot) IS NOT NULL) as courts,
-            min(j.year)::int as earliest_year,
-            max(j.year)::int as latest_year
-          FROM judgments j
-          LEFT JOIN courts_ref c ON j.court_id = c.id
-          WHERE ${whereClause}
-          GROUP BY j.bench
-          ORDER BY ${orderBy}
-          LIMIT ${limit} OFFSET ${offset}
-        `),
-        db.execute(sql`
-          SELECT count(DISTINCT j.bench)::int as total
-          FROM judgments j
-          LEFT JOIN courts_ref c ON j.court_id = c.id
-          WHERE ${whereClause}
-        `),
-        db.execute(sql`
-          SELECT DISTINCT COALESCE(c.name, j.court_name_snapshot) as court_name
-          FROM judgments j
-          LEFT JOIN courts_ref c ON j.court_id = c.id
-          WHERE j.is_active = true AND j.bench IS NOT NULL
-          AND COALESCE(c.name, j.court_name_snapshot) IS NOT NULL
-          ORDER BY court_name
-        `),
-      ]);
-
-      const total = Number((countResult as any).rows?.[0]?.total || 0);
-      const courts = ((courtsResult as any).rows || []).map((r: any) => r.court_name).filter(Boolean);
-      const judges = ((dataResult as any).rows || []).map((r: any) => ({
-        name: r.judge_name,
-        caseCount: Number(r.case_count),
-        courts: (r.courts || []).filter(Boolean),
-        earliestYear: Number(r.earliest_year),
-        latestYear: Number(r.latest_year),
-      }));
-
-      res.json({
-        judges,
-        total,
+      const matches = await storage.searchJudgmentsByCitation({
+        year,
+        journalCode: undefined,
         page,
-        totalPages: Math.ceil(total / limit),
-        courts,
+        court: court || undefined,
       });
+
+      res.json(matches);
     } catch (err) {
-      console.error("Error in judges directory:", err);
-      res.status(500).json({ message: "Failed to fetch judges directory" });
-    }
-  });
-
-  app.get("/api/judges/directory/:name", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.sendStatus(401);
-    try {
-      const name = decodeURIComponent(String(req.params.name || "")).trim();
-      if (!name) return res.status(400).json({ message: "Judge name is required" });
-
-      const [statsResult, casesResult] = await Promise.all([
-        db.execute(sql`
-          SELECT
-            ${sql.raw(`'${name.replace(/'/g, "''")}'`)} as judge_name,
-            count(*)::int as case_count,
-            array_agg(DISTINCT COALESCE(${courtsRef.name}, ${judgments.courtNameSnapshot})) FILTER (WHERE COALESCE(${courtsRef.name}, ${judgments.courtNameSnapshot}) IS NOT NULL) as courts,
-            min(${judgments.year})::int as earliest_year,
-            max(${judgments.year})::int as latest_year
-          FROM ${judgments}
-          LEFT JOIN ${courtsRef} ON ${judgments.courtId} = ${courtsRef.id}
-          WHERE ${judgments.isActive} = true
-          AND ${judgments.bench} = ${name}
-        `),
-        db.execute(sql`
-          SELECT
-            ${judgments.id},
-            ${judgments.citationString} as citation,
-            ${judgments.title},
-            COALESCE(${courtsRef.name}, ${judgments.courtNameSnapshot}) as court,
-            ${judgments.year}
-          FROM ${judgments}
-          LEFT JOIN ${courtsRef} ON ${judgments.courtId} = ${courtsRef.id}
-          WHERE ${judgments.isActive} = true
-          AND ${judgments.bench} = ${name}
-          ORDER BY ${judgments.year} DESC
-          LIMIT 20
-        `),
-      ]);
-
-      const stats = (statsResult as any).rows?.[0];
-      if (!stats || Number(stats.case_count) === 0) {
-        return res.status(404).json({ message: "Judge not found" });
-      }
-
-      res.json({
-        name: stats.judge_name,
-        caseCount: Number(stats.case_count),
-        courts: (stats.courts || []).filter(Boolean),
-        earliestYear: Number(stats.earliest_year),
-        latestYear: Number(stats.latest_year),
-        recentCases: ((casesResult as any).rows || []).map((r: any) => ({
-          id: r.id,
-          citation: r.citation,
-          title: r.title,
-          court: r.court,
-          year: Number(r.year),
-        })),
-      });
-    } catch (err) {
-      console.error("Error fetching judge profile:", err);
-      res.status(500).json({ message: "Failed to fetch judge profile" });
-    }
-  });
-
-  // ── Most Cited Precedents Leaderboard ─────────────────────────────────────
-  // Returns a ranked leaderboard of the most-cited judgments based on
-  // the citation_links table (616,506+ real inter-judgment citation links).
-
-  app.get("/api/judgments/most-cited", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.sendStatus(401);
-    try {
-      const page = Math.max(1, parseInt(String(req.query.page || "1")));
-      const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || "50"))));
-      const court = String(req.query.court || "").trim();
-      const minYear = parseInt(String(req.query.minYear || "0")) || 0;
-      const maxYear = parseInt(String(req.query.maxYear || "9999")) || 9999;
-      const offset = (page - 1) * limit;
-
-      // Build dynamic WHERE conditions
-      const conditions = [sql`j.is_active = true`];
-      if (court) {
-        conditions.push(sql`(c.name ILIKE ${'%' + court + '%'} OR j.court_name_snapshot ILIKE ${'%' + court + '%'})`);
-      }
-      if (minYear > 0) {
-        conditions.push(sql`j.year >= ${minYear}`);
-      }
-      if (maxYear < 9999) {
-        conditions.push(sql`j.year <= ${maxYear}`);
-      }
-      const whereClause = sql.join(conditions, sql` AND `);
-
-      const [dataResult, countResult, statsResult, courtsResult] = await Promise.all([
-        db.execute(sql`
-          SELECT
-            j.id,
-            j.citation_string as citation,
-            j.title,
-            COALESCE(c.name, j.court_name_snapshot) as court,
-            j.year,
-            count(cl.id)::int as times_cited
-          FROM citation_links cl
-          JOIN judgments j ON j.id = cl.target_judgment_id
-          LEFT JOIN courts_ref c ON j.court_id = c.id
-          WHERE ${whereClause}
-          GROUP BY j.id, j.citation_string, j.title, c.name, j.court_name_snapshot, j.year
-          ORDER BY times_cited DESC
-          LIMIT ${limit} OFFSET ${offset}
-        `),
-        db.execute(sql`
-          SELECT count(DISTINCT cl.target_judgment_id)::int as total
-          FROM citation_links cl
-          JOIN judgments j ON j.id = cl.target_judgment_id
-          LEFT JOIN courts_ref c ON j.court_id = c.id
-          WHERE ${whereClause}
-        `),
-        db.execute(sql`
-          SELECT
-            count(*)::int as total_links,
-            count(DISTINCT target_judgment_id)::int as total_judgments_cited
-          FROM citation_links
-        `),
-        db.execute(sql`
-          SELECT DISTINCT COALESCE(c.name, j.court_name_snapshot) as court_name
-          FROM citation_links cl
-          JOIN judgments j ON j.id = cl.target_judgment_id
-          LEFT JOIN courts_ref c ON j.court_id = c.id
-          WHERE j.is_active = true
-          AND COALESCE(c.name, j.court_name_snapshot) IS NOT NULL
-          ORDER BY court_name
-        `),
-      ]);
-
-      const total = Number((countResult as any).rows?.[0]?.total || 0);
-      const globalStats = (statsResult as any).rows?.[0] || {};
-      const courts = ((courtsResult as any).rows || []).map((r: any) => r.court_name).filter(Boolean);
-
-      const results = ((dataResult as any).rows || []).map((r: any, idx: number) => ({
-        rank: offset + idx + 1,
-        id: r.id,
-        citation: r.citation,
-        title: r.title,
-        court: r.court,
-        year: Number(r.year),
-        timesCited: Number(r.times_cited),
-      }));
-
-      res.json({
-        results,
-        total,
-        page,
-        totalPages: Math.ceil(total / limit),
-        courts,
-        stats: {
-          totalLinks: Number(globalStats.total_links || 0),
-          totalJudgmentsCited: Number(globalStats.total_judgments_cited || 0),
-        },
-      });
-    } catch (err) {
-      console.error("Error in most-cited leaderboard:", err);
-      res.status(500).json({ message: "Failed to fetch most-cited leaderboard" });
-    }
-  });
-
-  // ── Cited-By Detail (for expandable rows in leaderboard) ──────────────────
-
-  app.get("/api/judgments/:id/cited-by", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.sendStatus(401);
-    try {
-      const id = String(req.params.id || "").trim();
-      if (!id) return res.status(400).json({ message: "Judgment id is required" });
-
-      const result = await db.execute(sql`
-        SELECT
-          j.id,
-          j.citation_string as citation,
-          j.title,
-          COALESCE(c.name, j.court_name_snapshot) as court,
-          j.year
-        FROM citation_links cl
-        JOIN judgments j ON j.id = cl.source_judgment_id
-        LEFT JOIN courts_ref c ON j.court_id = c.id
-        WHERE cl.target_judgment_id = ${id}
-        AND j.is_active = true
-        ORDER BY j.year DESC
-        LIMIT 10
-      `);
-
-      res.json({
-        citedBy: ((result as any).rows || []).map((r: any) => ({
-          id: r.id,
-          citation: r.citation,
-          title: r.title,
-          court: r.court,
-          year: Number(r.year),
-        })),
-      });
-    } catch (err) {
-      console.error("Error fetching cited-by:", err);
-      res.status(500).json({ message: "Failed to fetch cited-by data" });
+      console.error("Error in citation search:", err);
+      res.status(500).json({ message: "Failed to search by citation" });
     }
   });
 
@@ -11794,22 +11477,9 @@ RAG POLICY (STRICT):
       }
 
       if (isNumeric) {
-        // Numeric ID → look up in case_law table
+        // Numeric ID → look up in case_law table and return compatible response
         const caseLawEntry = await storage.getCaseLawById(Number(id));
         if (!caseLawEntry) return res.status(404).json({ message: "Case law entry not found" });
-
-        // Try to find the real judgment UUID to fetch full citations
-        let detail;
-        if (caseLawEntry.citation) {
-           const [realJudgment] = await db.select({ id: judgments.id }).from(judgments).where(eq(judgments.citationString, caseLawEntry.citation)).limit(1);
-           if (realJudgment) {
-             detail = await storage.getJudgmentDetail(realJudgment.id);
-           }
-        }
-
-        if (detail) {
-           return res.json(detail);
-        }
 
         return res.json({
           id: caseLawEntry.id,
@@ -11821,7 +11491,6 @@ RAG POLICY (STRICT):
           fullText: caseLawEntry.summary || "",
           petitioner: null,
           respondent: null,
-          citations: { made: [], received: [] }
         });
       }
 
@@ -17421,19 +17090,18 @@ The user has attached the following documents for your reference. Analyze them c
       const allowed = await checkUsageLimit(userId, "summarize", res);
       if (!allowed) return;
 
-      const { citation, title, court, summary: briefSummary, id } = req.body as {
+      const { citation, title, court, summary: briefSummary } = req.body as {
         citation: string;
         title: string;
         court?: string;
         summary?: string;
-        id?: string | number;
       };
 
-      if (!citation && !title && !id) {
-        return res.status(400).json({ message: "Citation, title, or ID is required" });
+      if (!citation && !title) {
+        return res.status(400).json({ message: "Citation or title is required" });
       }
 
-      const searchTerm = citation || title || String(id);
+      const searchTerm = citation || title;
 
       // Fast path: single DB lookup to find the matching case_law row.
       // No RAG pipeline (gatherKnowledgeContextV2 added 2-5s for no benefit here).
@@ -17451,17 +17119,13 @@ The user has attached the following documents for your reference. Analyze them c
       let fullText = "";
       let isVerified = false;
 
-      // 1. Direct lookup in the primary judgments table by ID or citation string to base analysis on full text
-      if (id || citation) {
+      // 1. Direct lookup in the primary judgments table by citation string to base analysis on full text
+      if (citation) {
         try {
-          const query = id 
-            ? eq(judgments.id, String(id)) 
-            : eq(judgments.citationString, citation?.trim() || "");
-            
           const matchedJudgment = await db
             .select({ fullText: judgments.fullText })
             .from(judgments)
-            .where(query)
+            .where(eq(judgments.citationString, citation.trim()))
             .limit(1)
             .then((rows: any[]) => rows[0]);
           
@@ -20985,7 +20649,7 @@ Your rules:
 Document Title: ${documentTitle}
 
 <DOCUMENT>
-${(documentContent || "").slice(0, 80000)}
+${(documentContent || "").slice(0, 6000)}
 </DOCUMENT>`;
 
       const chatHistory = messages.slice(-10).map(m => ({
@@ -20994,7 +20658,7 @@ ${(documentContent || "").slice(0, 80000)}
       }));
 
       const _t0 = Date.now();
-      const result = await callTurboAI(systemPrompt, chatHistory, 4096, { timeoutProfile: "analysis", temperature: 0.3 });
+      const result = await callStandardAI(systemPrompt, chatHistory, 4096, { timeoutProfile: "analysis", temperature: 0.3 });
 
       let aiResponse = result.text;
       aiResponse = enforcePakistanLawOnlyOutput(aiResponse);
@@ -21769,356 +21433,6 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     if (org.ownerId !== userId) return res.status(403).json({ message: "Only the organization owner can delete knowledge documents" });
     await storage.deleteOrgKnowledge(docId);
     res.json({ message: "Knowledge document deleted" });
-  });
-
-  // ========== CHAMBER ACTIVITY LOG ROUTES ==========
-
-  app.get("/api/org/:id/activity", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    const orgId = parseInt(String(req.params.id));
-    if (isNaN(orgId)) return res.status(400).json({ message: "Invalid organization ID" });
-
-    try {
-      const isMember = await storage.isOrgMember(orgId, userId);
-      const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
-      if (!org) return res.status(404).json({ message: "Organization not found" });
-      if (!isMember && org.ownerId !== userId) {
-        return res.status(403).json({ message: "Not a member of this organization" });
-      }
-
-      const logs = await db
-        .select()
-        .from(orgActivityLogs)
-        .where(eq(orgActivityLogs.orgId, orgId))
-        .orderBy(desc(orgActivityLogs.createdAt));
-
-      res.json(logs);
-    } catch (err) {
-      console.error("[OrgActivity] Failed to get activity logs:", err);
-      res.status(500).json({ message: "Failed to get activity logs" });
-    }
-  });
-
-  app.post("/api/org/:id/activity", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    const orgId = parseInt(String(req.params.id));
-    if (isNaN(orgId)) return res.status(400).json({ message: "Invalid organization ID" });
-
-    try {
-      const isMember = await storage.isOrgMember(orgId, userId);
-      const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
-      if (!org) return res.status(404).json({ message: "Organization not found" });
-      if (!isMember && org.ownerId !== userId) {
-        return res.status(403).json({ message: "Not a member of this organization" });
-      }
-
-      const { action, details, actorId, actorName, category } = req.body;
-      if (!action || typeof action !== "string") {
-        return res.status(400).json({ message: "Action is required" });
-      }
-
-      const [log] = await db
-        .insert(orgActivityLogs)
-        .values({
-          orgId,
-          action,
-          details: details || null,
-          actorId: actorId || userId,
-          actorName: actorName || null,
-          category: category || "general",
-          createdAt: new Date(),
-        })
-        .returning();
-
-      res.status(201).json(log);
-    } catch (err) {
-      console.error("[OrgActivity] Failed to create activity log:", err);
-      res.status(500).json({ message: "Failed to create activity log" });
-    }
-  });
-
-  // ========== DOCUMENT ANALYZER SCANS & FINDINGS ROUTES ==========
-
-  app.post("/api/document-analyzer/scans", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    try {
-      const { title, documentType, text, summary, overallRisk, findings } = req.body;
-      if (!title || typeof title !== "string" || !text || typeof text !== "string") {
-        return res.status(400).json({ message: "Title and text are required" });
-      }
-
-      const result = await db.transaction(async (tx: any) => {
-        const [scan] = await tx
-          .insert(documentScans)
-          .values({
-            userId,
-            title,
-            documentType: documentType || null,
-            text,
-            summary: summary || null,
-            overallRisk: overallRisk || null,
-            scanDate: new Date(),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning();
-
-        let insertedFindings: any[] = [];
-        if (Array.isArray(findings) && findings.length > 0) {
-          const formattedFindings = findings.map((f: any) => ({
-            scanId: scan.id,
-            pillar: f.pillar || "General",
-            category: f.category || "General",
-            severity: f.severity || "warning",
-            issue: f.issue || f.title || "",
-            statuteRef: f.statuteRef || f.statutoryBasis || null,
-            recommendation: f.recommendation || f.recommendedRedline || "",
-            rawSnippet: f.rawSnippet || f.originalSnippet || null,
-            isResolved: f.isResolved ?? f.accepted ?? false,
-            createdAt: new Date(),
-          }));
-
-          insertedFindings = await tx
-            .insert(scanFindings)
-            .values(formattedFindings)
-            .returning();
-        }
-
-        return { scan, findings: insertedFindings };
-      });
-
-      res.status(201).json(result);
-    } catch (err) {
-      console.error("[DocumentAnalyzer] Failed to save scan:", err);
-      res.status(500).json({ message: "Failed to save scan" });
-    }
-  });
-
-  app.get("/api/document-analyzer/scans", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    try {
-      const scans = await db
-        .select()
-        .from(documentScans)
-        .where(eq(documentScans.userId, userId))
-        .orderBy(desc(documentScans.createdAt));
-
-      res.json(scans);
-    } catch (err) {
-      console.error("[DocumentAnalyzer] Failed to list scans:", err);
-      res.status(500).json({ message: "Failed to list scans" });
-    }
-  });
-
-  app.get("/api/document-analyzer/scans/:id", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    const scanId = parseInt(String(req.params.id));
-    if (isNaN(scanId)) return res.status(400).json({ message: "Invalid scan ID" });
-
-    try {
-      const [scan] = await db
-        .select()
-        .from(documentScans)
-        .where(and(eq(documentScans.id, scanId), eq(documentScans.userId, userId)));
-
-      if (!scan) {
-        return res.status(404).json({ message: "Scan not found" });
-      }
-
-      const findings = await db
-        .select()
-        .from(scanFindings)
-        .where(eq(scanFindings.scanId, scanId));
-
-      res.json({ scan, findings });
-    } catch (err) {
-      console.error("[DocumentAnalyzer] Failed to get scan:", err);
-      res.status(500).json({ message: "Failed to get scan" });
-    }
-  });
-
-  app.delete("/api/document-analyzer/scans/:id", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    const scanId = parseInt(String(req.params.id));
-    if (isNaN(scanId)) return res.status(400).json({ message: "Invalid scan ID" });
-
-    try {
-      const [scan] = await db
-        .select()
-        .from(documentScans)
-        .where(and(eq(documentScans.id, scanId), eq(documentScans.userId, userId)));
-
-      if (!scan) {
-        return res.status(404).json({ message: "Scan not found" });
-      }
-
-      await db
-        .delete(documentScans)
-        .where(and(eq(documentScans.id, scanId), eq(documentScans.userId, userId)));
-
-      res.sendStatus(204);
-    } catch (err) {
-      console.error("[DocumentAnalyzer] Failed to delete scan:", err);
-      res.status(500).json({ message: "Failed to delete scan" });
-    }
-  });
-
-  // ========== LEGAL DRAFTS ROUTES ==========
-
-  app.get("/api/drafts", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    try {
-      const drafts = await db
-        .select()
-        .from(legalDrafts)
-        .where(eq(legalDrafts.userId, userId))
-        .orderBy(desc(legalDrafts.updatedAt));
-
-      res.json(drafts);
-    } catch (err) {
-      console.error("[LegalDrafts] Failed to list drafts:", err);
-      res.status(500).json({ message: "Failed to list drafts" });
-    }
-  });
-
-  app.get("/api/drafts/:id", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    const draftId = parseInt(String(req.params.id));
-    if (isNaN(draftId)) return res.status(400).json({ message: "Invalid draft ID" });
-
-    try {
-      const [draft] = await db
-        .select()
-        .from(legalDrafts)
-        .where(and(eq(legalDrafts.id, draftId), eq(legalDrafts.userId, userId)));
-
-      if (!draft) {
-        return res.status(404).json({ message: "Draft not found" });
-      }
-
-      res.json(draft);
-    } catch (err) {
-      console.error("[LegalDrafts] Failed to get draft:", err);
-      res.status(500).json({ message: "Failed to get draft" });
-    }
-  });
-
-  app.post("/api/drafts", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    try {
-      const { title, templateType, content, status, metadata } = req.body;
-      if (!title || typeof title !== "string" || content === undefined || content === null) {
-        return res.status(400).json({ message: "Title and content are required" });
-      }
-
-      const [draft] = await db
-        .insert(legalDrafts)
-        .values({
-          userId,
-          title,
-          templateType: templateType || null,
-          content: typeof content === "string" ? content : JSON.stringify(content),
-          status: status || "draft",
-          metadata: metadata || null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
-
-      res.status(201).json(draft);
-    } catch (err) {
-      console.error("[LegalDrafts] Failed to create draft:", err);
-      res.status(500).json({ message: "Failed to create draft" });
-    }
-  });
-
-  app.patch("/api/drafts/:id", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    const draftId = parseInt(String(req.params.id));
-    if (isNaN(draftId)) return res.status(400).json({ message: "Invalid draft ID" });
-
-    try {
-      const [existing] = await db
-        .select()
-        .from(legalDrafts)
-        .where(and(eq(legalDrafts.id, draftId), eq(legalDrafts.userId, userId)));
-
-      if (!existing) {
-        return res.status(404).json({ message: "Draft not found" });
-      }
-
-      const { title, templateType, content, status, metadata } = req.body;
-      const updateData: Record<string, any> = {
-        updatedAt: new Date(),
-      };
-
-      if (title !== undefined) updateData.title = title;
-      if (templateType !== undefined) updateData.templateType = templateType;
-      if (content !== undefined) {
-        updateData.content = typeof content === "string" ? content : JSON.stringify(content);
-      }
-      if (status !== undefined) updateData.status = status;
-      if (metadata !== undefined) updateData.metadata = metadata;
-
-      const [updated] = await db
-        .update(legalDrafts)
-        .set(updateData)
-        .where(and(eq(legalDrafts.id, draftId), eq(legalDrafts.userId, userId)))
-        .returning();
-
-      res.json(updated);
-    } catch (err) {
-      console.error("[LegalDrafts] Failed to update draft:", err);
-      res.status(500).json({ message: "Failed to update draft" });
-    }
-  });
-
-  app.delete("/api/drafts/:id", async (req, res) => {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    const draftId = parseInt(String(req.params.id));
-    if (isNaN(draftId)) return res.status(400).json({ message: "Invalid draft ID" });
-
-    try {
-      const [existing] = await db
-        .select()
-        .from(legalDrafts)
-        .where(and(eq(legalDrafts.id, draftId), eq(legalDrafts.userId, userId)));
-
-      if (!existing) {
-        return res.status(404).json({ message: "Draft not found" });
-      }
-
-      await db
-        .delete(legalDrafts)
-        .where(and(eq(legalDrafts.id, draftId), eq(legalDrafts.userId, userId)));
-
-      res.sendStatus(204);
-    } catch (err) {
-      console.error("[LegalDrafts] Failed to delete draft:", err);
-      res.status(500).json({ message: "Failed to delete draft" });
-    }
   });
 
   // ── Safepay Payment Gateway ──────────────────────────────────────────────
