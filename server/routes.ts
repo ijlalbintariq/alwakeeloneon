@@ -17454,9 +17454,22 @@ The user has attached the following documents for your reference. Analyze them c
       // 1. Direct lookup in the primary judgments table by ID or citation string to base analysis on full text
       if (id || citation) {
         try {
-          const query = id 
-            ? eq(judgments.id, String(id)) 
-            : eq(judgments.citationString, citation?.trim() || "");
+          let query;
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ""));
+          
+          if (isUUID) {
+            query = eq(judgments.id, String(id));
+          } else if (parsedLookupCitation?.year && parsedLookupCitation?.report && parsedLookupCitation?.page) {
+            // Reconstruct the standardized format stored in judgments (e.g. "2017 PLJ 172")
+            const stdCitation = `${parsedLookupCitation.year} ${parsedLookupCitation.report} ${parsedLookupCitation.page}`;
+            query = or(
+              eq(judgments.citationString, stdCitation),
+              eq(judgments.citationString, citation?.trim() || ""),
+              ilike(judgments.citationString, `%${parsedLookupCitation.year}%${parsedLookupCitation.report}%${parsedLookupCitation.page}%`)
+            );
+          } else {
+            query = eq(judgments.citationString, citation?.trim() || "");
+          }
             
           const matchedJudgment = await db
             .select({ fullText: judgments.fullText })
