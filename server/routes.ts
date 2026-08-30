@@ -17090,18 +17090,19 @@ The user has attached the following documents for your reference. Analyze them c
       const allowed = await checkUsageLimit(userId, "summarize", res);
       if (!allowed) return;
 
-      const { citation, title, court, summary: briefSummary } = req.body as {
+      const { citation, title, court, summary: briefSummary, id } = req.body as {
         citation: string;
         title: string;
         court?: string;
         summary?: string;
+        id?: string | number;
       };
 
-      if (!citation && !title) {
-        return res.status(400).json({ message: "Citation or title is required" });
+      if (!citation && !title && !id) {
+        return res.status(400).json({ message: "Citation, title, or ID is required" });
       }
 
-      const searchTerm = citation || title;
+      const searchTerm = citation || title || String(id);
 
       // Fast path: single DB lookup to find the matching case_law row.
       // No RAG pipeline (gatherKnowledgeContextV2 added 2-5s for no benefit here).
@@ -17119,13 +17120,30 @@ The user has attached the following documents for your reference. Analyze them c
       let fullText = "";
       let isVerified = false;
 
-      // 1. Direct lookup in the primary judgments table by citation string to base analysis on full text
-      if (citation) {
+      // 1. Direct lookup in the primary judgments table by ID or citation string to base analysis on full text
+      if (id || citation) {
         try {
+          let query;
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ""));
+          
+          if (isUUID) {
+            query = eq(judgments.id, String(id));
+          } else if (parsedLookupCitation?.year && parsedLookupCitation?.report && parsedLookupCitation?.page) {
+            // Reconstruct the standardized format stored in judgments (e.g. "2017 PLJ 172")
+            const stdCitation = `${parsedLookupCitation.year} ${parsedLookupCitation.report} ${parsedLookupCitation.page}`;
+            query = or(
+              eq(judgments.citationString, stdCitation),
+              eq(judgments.citationString, citation?.trim() || ""),
+              ilike(judgments.citationString, `%${parsedLookupCitation.year}%${parsedLookupCitation.report}%${parsedLookupCitation.page}%`)
+            );
+          } else {
+            query = eq(judgments.citationString, citation?.trim() || "");
+          }
+            
           const matchedJudgment = await db
             .select({ fullText: judgments.fullText })
             .from(judgments)
-            .where(eq(judgments.citationString, citation.trim()))
+            .where(query)
             .limit(1)
             .then((rows: any[]) => rows[0]);
           
