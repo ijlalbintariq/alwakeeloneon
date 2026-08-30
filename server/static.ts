@@ -70,6 +70,19 @@ export function serveStatic(app: Express) {
   // 24-hour cache for dynamic SEO metadata to keep Render/Neon DB load near zero
   const seoCache = new Map<string, { meta: SeoMeta; preRenderBlock: string; expiresAt: number }>();
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  const MAX_SEO_CACHE_SIZE = 500; // Limit cache to ~30MB to prevent Render out-of-memory (OOM) status 137/139
+
+  function setSeoCache(key: string, data: { meta: SeoMeta; preRenderBlock: string; expiresAt: number }) {
+    if (seoCache.size >= MAX_SEO_CACHE_SIZE) {
+      // Map iteration is in insertion order, so this drops the oldest 100 entries
+      let i = 0;
+      for (const k of seoCache.keys()) {
+        seoCache.delete(k);
+        if (++i >= 100) break;
+      }
+    }
+    seoCache.set(key, data);
+  }
 
   // Returns { meta, preRenderBlock } tuple — null when judgment not found.
   // Concurrency limiter for SEO DB lookups — prevents crawlers from exhausting the pool
@@ -237,7 +250,7 @@ export function serveStatic(app: Express) {
   </section>
 </div>`;
 
-        seoCache.set(id, { meta, preRenderBlock, expiresAt: now + CACHE_TTL_MS });
+        setSeoCache(id, { meta, preRenderBlock, expiresAt: now + CACHE_TTL_MS });
         return { meta, preRenderBlock };
       }
     } catch (err: any) {
@@ -590,7 +603,7 @@ export function serveStatic(app: Express) {
   <p><em>Read the full statute on <a href="https://www.alwakeelo.com/statute-view/${id}">Al Wakeelo</a> — Pakistan's AI-powered legal research platform.</em></p>
 </div>`;
 
-        seoCache.set(cacheKey, { meta, preRenderBlock, expiresAt: now + CACHE_TTL_MS });
+        setSeoCache(cacheKey, { meta, preRenderBlock, expiresAt: now + CACHE_TTL_MS });
         return { meta, preRenderBlock };
       }
     } catch (err: any) {
