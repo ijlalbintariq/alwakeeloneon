@@ -15,6 +15,8 @@ type AiMessage = {
 };
 
 interface JudgmentData {
+  id?: string | number;
+  judgmentId?: string | null;
   citation: string;
   court: string;
   title: string;
@@ -278,6 +280,7 @@ export default function JudgmentViewPage() {
         title: judgment.title,
         court: judgment.court,
         summary: judgment.summary,
+        id: judgment.id || judgment.judgmentId,
       });
       const data = await res.json();
       setSummaryData(data);
