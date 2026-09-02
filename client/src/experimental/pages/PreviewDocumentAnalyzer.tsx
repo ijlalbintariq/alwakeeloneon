@@ -186,6 +186,16 @@ export const PreviewDocumentAnalyzer: React.FC = () => {
   const [scanProgress, setScanProgress] = useState<number>(0);
   const [scanPhaseText, setScanPhaseText] = useState<string>("");
 
+  const { data: serverChecklists } = useQuery<any>({
+    queryKey: ["/api/document-analyzer/checklists"],
+    queryFn: async () => {
+      const res = await fetch("/api/document-analyzer/checklists", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load statutory checklists");
+      return res.json();
+    },
+    staleTime: Infinity,
+  });
+
   const activeChecklist = useMemo<StatutoryCheckItem[]>(() => {
     if (!serverChecklists) return [];
     switch (documentType) {
@@ -230,15 +240,7 @@ export const PreviewDocumentAnalyzer: React.FC = () => {
     },
   });
 
-  const { data: serverChecklists } = useQuery<any>({
-    queryKey: ["/api/document-analyzer/checklists"],
-    queryFn: async () => {
-      const res = await fetch("/api/document-analyzer/checklists", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load statutory checklists");
-      return res.json();
-    },
-    staleTime: Infinity,
-  });
+
 
   // Database-backed state updater
   const persistState = useCallback((newText: string, newFindings: PleadingFinding[]) => {
