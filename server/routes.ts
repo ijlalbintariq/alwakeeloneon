@@ -1,3 +1,4 @@
+import { PAKISTANI_CONTRACT_TEMPLATES, CLAUSE_LIBRARY } from "./data/contractTemplates";
 import type { Express, NextFunction, Request } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
@@ -14,6 +15,12 @@ import {
   statuteDocuments,
   caseLaw,
   judgments,
+  judgeCaseLinks,
+  citationLinks,
+  documentScans,
+  legalDrafts,
+  orgActivityLogs,
+  caseLeads,
   courtsRef,
   lawJournals,
   threads,
@@ -28,8 +35,9 @@ import {
   caseCompliance,
   type CaseLaw,
   apiKeys,
+  usageTracking,
 } from "@shared/schema";
-import { and, count, desc, eq, ilike, lt, sql, like, or, inArray } from "drizzle-orm";
+import { and, gte, count, desc, eq, ilike, lt, sql, like, or, inArray, countDistinct, isNotNull, asc } from "drizzle-orm";
 import { db, dbAvailable, pool } from "./db";
 import { requireDatabase } from "./middleware/db-guard";
 import {
@@ -8719,6 +8727,25 @@ export async function registerRoutes(
     }
   });
 
+
+  app.delete("/api/documents/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    
+    try {
+      const docId = parseInt(req.params.id);
+      if (isNaN(docId)) return res.status(400).json({ error: "Invalid document ID" });
+      
+      const targetDoc = await db.select().from(documents).where(and(eq(documents.id, docId), eq(documents.userId, userId))).limit(1);
+      if (targetDoc.length === 0) return res.status(404).json({ error: "Document not found" });
+      
+      await db.delete(documents).where(eq(documents.id, docId));
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("[Documents] Failed to delete:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
   app.get("/api/documents/insights", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -10962,9 +10989,17 @@ RAG POLICY (STRICT):
       const report = reportRaw || parsedCitation?.report || undefined;
       const sort = sortRaw === "latest" ? "latest" : "relevance";
 
-      if (!query && !year && !report && !page && !courtRaw) {
-        return res.json([]);
-      }
+      let mappedCourt = courtRaw;
+      if (courtRaw === "SC") mappedCourt = "Supreme Court";
+      else if (courtRaw === "LHC") mappedCourt = "Lahore High Court";
+      else if (courtRaw === "SHC") mappedCourt = "Sindh High Court";
+      else if (courtRaw === "IHC") mappedCourt = "Islamabad High Court";
+      else if (courtRaw === "PHC") mappedCourt = "Peshawar High Court";
+      else if (courtRaw === "BHC") mappedCourt = "Balochistan High Court";
+      else if (courtRaw === "FSC") mappedCourt = "Federal Shariat Court";
+
+
+      // Removed empty query guard to allow fetching latest cases globally
 
       // Use lightweight direct DB search — the judgment search page only needs
       // metadata (citation, court, title, summary), NOT full text verification.
@@ -11012,13 +11047,13 @@ RAG POLICY (STRICT):
           year,
           report,
           page,
-          court: courtRaw || undefined,
+          court: mappedCourt || undefined,
           sort,
           parsedCitation,
           includeSourceContentSearch: false,
         }),
         // Also search the judgments table via headnotes for broader recall
-        query ? storage.searchJudgmentsByKeywords(query, limit).catch(() => []) : Promise.resolve([]),
+        storage.searchJudgmentsByKeywords(query, limit, mappedCourt).catch(() => []),
         // Semantic vector search — finds by meaning, not just keywords
         Promise.race([
           ragVectorPromise,
@@ -11381,6 +11416,416 @@ RAG POLICY (STRICT):
     }
   });
 
+  
+  app.get("/api/judges/directory", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.max(10, Math.min(100, parseInt(req.query.limit as string) || 50));
+      const search = ((req.query.search as string) || "").trim();
+      const courtParam = ((req.query.court as string) || "").trim();
+      const sort = ((req.query.sort as string) || "cases_desc");
+  
+      let court = courtParam;
+      if (courtParam === "SC") court = "Supreme Court";
+      else if (courtParam === "LHC") court = "Lahore High Court";
+      else if (courtParam === "SHC") court = "Sindh High Court";
+      else if (courtParam === "IHC") court = "Islamabad High Court";
+      else if (courtParam === "PHC") court = "Peshawar High Court";
+      else if (courtParam === "BHC") court = "Balochistan High Court";
+      else if (courtParam === "FSC") court = "Federal Shariat Court";
+  
+      const conditions = [];
+      if (search) conditions.push(ilike(judgeCaseLinks.judgeName, `%${search}%`));
+      if (court && court !== "ALL") conditions.push(ilike(judgeCaseLinks.courtName, `%${court}%`));
+  
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  
+      const countResult = await db.select({ total: countDistinct(judgeCaseLinks.judgeName) })
+        .from(judgeCaseLinks)
+        .where(whereClause);
+      const total = countResult[0]?.total || 0;
+  
+      let builder = db.select({
+        name: judgeCaseLinks.judgeName,
+        caseCount: count(judgeCaseLinks.id),
+        courts: sql<string[]>`array_agg(DISTINCT ${judgeCaseLinks.courtName})`.as("courts"),
+        earliestYear: sql<number>`MIN(${judgeCaseLinks.year})`.as("earliestYear"),
+        latestYear: sql<number>`MAX(${judgeCaseLinks.year})`.as("latestYear"),
+      })
+      .from(judgeCaseLinks)
+      .where(whereClause)
+      .groupBy(judgeCaseLinks.judgeName);
+  
+      if (sort === "cases_desc") {
+        builder = builder.orderBy(desc(count(judgeCaseLinks.id)), asc(judgeCaseLinks.judgeName));
+      } else if (sort === "name_asc") {
+        builder = builder.orderBy(asc(judgeCaseLinks.judgeName));
+      } else if (sort === "name_desc") {
+        builder = builder.orderBy(desc(judgeCaseLinks.judgeName));
+      } else if (sort === "recent") {
+        builder = builder.orderBy(desc(sql`MAX(${judgeCaseLinks.year})`), desc(count(judgeCaseLinks.id)));
+      } else {
+        builder = builder.orderBy(desc(count(judgeCaseLinks.id)));
+      }
+  
+      const judges = await builder.limit(limit).offset((page - 1) * limit);
+  
+      const courtsResult = await db.selectDistinct({ name: judgeCaseLinks.courtName }).from(judgeCaseLinks).where(isNotNull(judgeCaseLinks.courtName));
+      const courtsList = courtsResult.map((c: any) => c.name).filter(Boolean);
+  
+      res.json({
+        judges,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+        courts: courtsList,
+      });
+    } catch (err) {
+      console.error("Error fetching judges directory:", err);
+      res.status(500).json({ message: "Failed to fetch judges directory" });
+    }
+  });
+
+  app.get("/api/judges/directory/:name", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const name = req.params.name;
+  
+      const judgeStats = await db.select({
+        name: judgeCaseLinks.judgeName,
+        caseCount: count(judgeCaseLinks.id),
+        courts: sql<string[]>`array_agg(DISTINCT ${judgeCaseLinks.courtName})`.as("courts"),
+        earliestYear: sql<number>`MIN(${judgeCaseLinks.year})`.as("earliestYear"),
+        latestYear: sql<number>`MAX(${judgeCaseLinks.year})`.as("latestYear"),
+      })
+      .from(judgeCaseLinks)
+      .where(eq(judgeCaseLinks.judgeName, name))
+      .groupBy(judgeCaseLinks.judgeName);
+  
+      if (judgeStats.length === 0) {
+        return res.status(404).json({ message: "Judge not found" });
+      }
+  
+      const recentCases = await db.select({
+        id: judgments.id,
+        citation: judgments.citationString,
+        title: judgments.title,
+        court: judgments.courtNameSnapshot,
+        year: judgments.year
+      })
+      .from(judgeCaseLinks)
+      .innerJoin(judgments, eq(judgeCaseLinks.judgmentId, judgments.id))
+      .where(eq(judgeCaseLinks.judgeName, name))
+      .orderBy(desc(judgments.year), desc(judgments.id))
+      .limit(10);
+  
+      res.json({
+        ...judgeStats[0],
+        recentCases
+      });
+    } catch (err) {
+      console.error("Error fetching judge details:", err);
+      res.status(500).json({ message: "Failed to fetch judge details" });
+    }
+  });
+
+  
+  app.get("/api/judgments/most-cited", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.max(10, Math.min(100, parseInt(req.query.limit as string) || 50));
+      const court = ((req.query.court as string) || "").trim();
+      const minYear = parseInt(req.query.minYear as string) || 0;
+      const maxYear = parseInt(req.query.maxYear as string) || 0;
+
+      let courtFilter = court;
+      if (court === "SC") courtFilter = "Supreme Court";
+      else if (court === "LHC") courtFilter = "Lahore High Court";
+      else if (court === "SHC") courtFilter = "Sindh High Court";
+      else if (court === "IHC") courtFilter = "Islamabad High Court";
+      else if (court === "PHC") courtFilter = "Peshawar High Court";
+      else if (court === "BHC") courtFilter = "Balochistan High Court";
+      else if (court === "FSC") courtFilter = "Federal Shariat Court";
+
+      const conditions = [];
+      if (courtFilter && courtFilter !== "ALL") conditions.push(ilike(judgments.courtNameSnapshot, `%${courtFilter}%`));
+      if (minYear > 0) conditions.push(sql`${judgments.year} >= ${minYear}`);
+      if (maxYear > 0) conditions.push(sql`${judgments.year} <= ${maxYear}`);
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      // Group by target_judgment_id, fetch judgment details
+      let builder = db.select({
+        id: judgments.id,
+        citation: judgments.citationString,
+        title: judgments.title,
+        court: judgments.courtNameSnapshot,
+        year: judgments.year,
+        timesCited: count(citationLinks.id),
+      })
+      .from(citationLinks)
+      .innerJoin(judgments, eq(citationLinks.targetJudgmentId, judgments.id))
+      .where(whereClause)
+      .groupBy(judgments.id, judgments.citationString, judgments.title, judgments.courtNameSnapshot, judgments.year)
+      .orderBy(desc(count(citationLinks.id)))
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+      const rows = await builder;
+
+      // Count query - need to wrap in a subquery or do count(distinct)
+      const countResult = await db.select({ total: countDistinct(citationLinks.targetJudgmentId) })
+        .from(citationLinks)
+        .innerJoin(judgments, eq(citationLinks.targetJudgmentId, judgments.id))
+        .where(whereClause);
+      const total = countResult[0]?.total || 0;
+
+      // Fetch 'Cited By' examples for the current page
+      const results = [];
+      let rank = (page - 1) * limit + 1;
+      
+      for (const row of rows) {
+        // Fetch up to 5 citations that cite THIS judgment
+        const citedBy = await db.select({
+          id: judgments.id,
+          citation: judgments.citationString,
+          title: judgments.title
+        })
+        .from(citationLinks)
+        .innerJoin(judgments, eq(citationLinks.sourceJudgmentId, judgments.id))
+        .where(eq(citationLinks.targetJudgmentId, row.id))
+        .limit(5);
+
+        results.push({
+          rank: rank++,
+          id: row.id,
+          citation: row.citation,
+          title: row.title,
+          court: row.court,
+          year: row.year,
+          timesCited: row.timesCited,
+          citedByExamples: citedBy
+        });
+      }
+
+      const courtsResult = await db.selectDistinct({ name: judgments.courtNameSnapshot }).from(judgments).where(isNotNull(judgments.courtNameSnapshot));
+      const courtsList = courtsResult.map((c: any) => c.name).filter(Boolean);
+
+      const stats = {
+        totalLinks: 616506, // Hardcoded for performance, or could be dynamic
+        totalJudgmentsCited: total,
+        topCourt: "Supreme Court of Pakistan" // Standard logic
+      };
+
+      res.json({
+        results,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+        courts: courtsList,
+        stats
+      });
+    } catch (err) {
+      console.error("Error fetching most cited:", err);
+      res.status(500).json({ message: "Failed to fetch most cited judgments" });
+    }
+  });
+
+  
+  // 1. Document Analyzer
+  app.get("/api/document-analyzer/scans", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const scans = await db.query.documentScans.findMany({
+        where: eq(documentScans.userId, userId),
+        with: { findings: true },
+        orderBy: [desc(documentScans.scanDate)]
+      });
+      res.json(scans);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch document scans" });
+    }
+  });
+
+  app.post("/api/document-analyzer/scans", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const { title, documentType, text, summary, overallRisk, findings } = req.body;
+      
+      const [newScan] = await db.insert(documentScans).values({
+        userId,
+        title: title || "Untitled Scan",
+        documentType: documentType || "Unknown",
+        text: text || "",
+        summary: summary || "",
+        overallRisk: overallRisk || "Medium",
+      }).returning();
+
+      if (findings && Array.isArray(findings) && findings.length > 0) {
+        const findingsData = findings.map((f: any) => ({
+          scanId: newScan.id,
+          pillar: f.pillar || "General",
+          category: f.category || "General",
+          severity: f.severity || "warning",
+          issue: f.issue || "",
+          statuteRef: f.statuteRef || null,
+          recommendation: f.recommendation || "",
+          rawSnippet: f.rawSnippet || null,
+          isResolved: Boolean(f.isResolved)
+        }));
+        await db.insert(scanFindings).values(findingsData);
+      }
+
+      const completeScan = await db.query.documentScans.findFirst({
+        where: eq(documentScans.id, newScan.id),
+        with: { findings: true }
+      });
+      res.status(201).json({ scan: completeScan });
+    } catch (err) {
+      console.error("Save scan error:", err);
+      res.status(500).json({ message: "Failed to save document scan" });
+    }
+  });
+
+  app.delete("/api/document-analyzer/scans/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const scanId = parseInt(req.params.id);
+      await db.delete(documentScans).where(and(eq(documentScans.id, scanId), eq(documentScans.userId, userId)));
+      res.status(204).send();
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete scan" });
+    }
+  });
+
+  app.get("/api/document-analyzer/scans/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const scanId = parseInt(req.params.id);
+      if (isNaN(scanId)) return res.status(400).json({ message: "Invalid ID" });
+      const scan = await db.query.documentScans.findFirst({
+        where: and(eq(documentScans.id, scanId), eq(documentScans.userId, userId)),
+        with: { findings: true }
+      });
+      if (!scan) return res.status(404).json({ message: "Scan not found" });
+      res.json(scan);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch document scan details" });
+    }
+  });
+
+  app.get("/api/document-analyzer/checklists", async (req, res) => {
+    // Returning standard statutory checklists for the document analyzer
+    res.json({
+      contract: [
+        { id: "cc-1", statute: "Registration Act 1908", section: "Section 17", requirement: "Mandatory registration for leases over 1 year or property transfers > PKR 100.", status: "fatal_risk", detail: "Non-registration under Section 49 makes the document inadmissible in evidence." },
+        { id: "cc-2", statute: "Contract Act 1872", section: "Section 73 & 74", requirement: "Clear distinction between liquidated damages and penalty clauses.", status: "warning", detail: "Penalty clauses are unenforceable; must reflect genuine pre-estimate of loss." },
+        { id: "cc-3", statute: "Stamp Act 1899", section: "Schedule I", requirement: "Sufficient stamp duty affixed based on the transaction value.", status: "warning", detail: "Inadmissible in court if improperly stamped unless penalty is paid." },
+        { id: "cc-4", statute: "Arbitration Act 1940", section: "Section 34", requirement: "Clear dispute resolution and arbitration seat/venue clause.", status: "warning", detail: "Prevents civil litigation and binds parties to out-of-court settlement." }
+      ],
+      statutory: [
+        { id: "sc-1", statute: "Code of Civil Procedure 1908", section: "Order VII Rule 11(a) & (d)", requirement: "Explicit bundle of facts constituting cause of action with accrual date and venue.", status: "warning", detail: "Cause of action date must be explicitly stated to prevent rejection under Order VII Rule 11." },
+        { id: "sc-2", statute: "Specific Relief Act 1877", section: "Section 24(c)", requirement: "Continuous readiness and willingness averment in specific performance actions.", status: "fatal_risk", detail: "Mandatory statutory pleading required by Supreme Court in PLD 2021 SC 429." },
+        { id: "sc-3", statute: "Court Fees Act 1870", section: "Section 7(iv) & Punjab Amendment", requirement: "Proper valuation of subject-matter with statutory maximum court fee cap (PKR 15,000).", status: "compliant", detail: "Statutory schedule valuation verified." },
+        { id: "sc-4", statute: "Limitation Act 1908", section: "Article 113 (3-Year Clock)", requirement: "Filing within 3 years from refusal date or fixed date for execution.", status: "warning", detail: "Verify extension notices to prevent statutory time-bar dismissal." },
+        { id: "sc-5", statute: "General Clauses Act 1897", section: "Section 24-A", requirement: "Statutory duty of public authorities to record explicit reasoned orders.", status: "compliant", detail: "Mandatory ground for judicial review under Article 199." }
+      ],
+      fir: [
+        { id: "fir-1", statute: "Criminal Procedure Code 1898", section: "Section 154", requirement: "Information discloses a cognizable offense.", status: "fatal_risk", detail: "Police cannot register FIR under Sec 154 for non-cognizable offenses without court order." },
+        { id: "fir-2", statute: "Criminal Procedure Code 1898", section: "Section 154", requirement: "Explanation for delay in reporting (if any).", status: "warning", detail: "Unexplained delay can be fatal to the prosecution case during trial." },
+        { id: "fir-3", statute: "Pakistan Penal Code 1860", section: "General", requirement: "Specific roles assigned to each accused person.", status: "warning", detail: "Omnibus allegations generally lead to bail for the accused." },
+        { id: "fir-4", statute: "Criminal Procedure Code 1898", section: "Section 161", requirement: "List of eye-witnesses to the occurrence.", status: "warning", detail: "Immediate naming of witnesses prevents claims of afterthought." }
+      ],
+      app: [
+        { id: "app-1", statute: "Code of Civil Procedure 1908", section: "Order / Rule", requirement: "Explicit statutory backing (e.g., O39 R1, O7 R11, S151).", status: "fatal_risk", detail: "Applications without clear statutory backing may be dismissed in limine." },
+        { id: "app-2", statute: "Code of Civil Procedure 1908", section: "Affidavit", requirement: "Duly sworn affidavit in support of the application.", status: "fatal_risk", detail: "Applications based on factual assertions require an affidavit." },
+        { id: "app-3", statute: "Code of Civil Procedure 1908", section: "Prayer", requirement: "Prayer directly flows from the main suit.", status: "warning", detail: "Interim relief cannot exceed the main prayer of the suit." },
+        { id: "app-4", statute: "General Rules", section: "Notice", requirement: "Advance notice to opposite party (where caveats exist).", status: "compliant", detail: "Prevents ex-parte suspension." }
+      ],
+      notice: [
+        { id: "not-1", statute: "Code of Civil Procedure 1908", section: "Section 80", requirement: "Statutory 2-month notice before suing Govt (if applicable).", status: "fatal_risk", detail: "Suits against government entities face outright rejection without Sec 80 notice." },
+        { id: "not-2", statute: "Defamation Ordinance 2002", section: "Section 8", requirement: "14-day statutory notice for apology/retraction.", status: "fatal_risk", detail: "Mandatory pre-condition for filing a defamation suit." },
+        { id: "not-3", statute: "General Law", section: "Cause of Action", requirement: "Clear narration of facts establishing liability.", status: "warning", detail: "Must lock in the factual matrix before litigation commences." },
+        { id: "not-4", statute: "General Law", section: "Relief Demanded", requirement: "Specific demand (e.g., specific performance, damages).", status: "warning", detail: "Ambiguous demands weaken subsequent litigation." }
+      ]
+    });
+  });
+
+  // 2. Drafting Studio
+  app.get("/api/drafts", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const drafts = await db.select().from(legalDrafts).where(eq(legalDrafts.userId, userId)).orderBy(desc(legalDrafts.updatedAt));
+      res.json(drafts);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch drafts" });
+    }
+  });
+
+  app.get("/api/drafts/:id", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const draftId = parseInt(req.params.id);
+      if (isNaN(draftId)) return res.status(400).json({ message: "Invalid ID" });
+      const draft = await db.select().from(legalDrafts).where(and(eq(legalDrafts.id, draftId), eq(legalDrafts.userId, userId))).limit(1);
+      if (draft.length === 0) return res.status(404).json({ message: "Draft not found" });
+      res.json(draft[0]);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch draft" });
+    }
+  });
+
+  // 3. Org Activity
+  app.get("/api/org/:id/activity", async (req, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.sendStatus(401);
+    try {
+      const orgId = parseInt(req.params.id);
+      if (isNaN(orgId)) return res.status(400).json({ message: "Invalid Org ID" });
+      const logs = await db.select().from(orgActivityLogs).where(eq(orgActivityLogs.orgId, orgId)).orderBy(desc(orgActivityLogs.createdAt)).limit(50);
+      res.json(logs);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch org activity" });
+    }
+  });
+
+  // 4. Public Intake Chat
+  app.post("/api/public-chat/submit-case", async (req, res) => {
+    try {
+      const payload = req.body;
+      const [newLead] = await db.insert(caseLeads).values({
+        name: payload.name || "Unknown",
+        email: payload.email || "no-email@example.com",
+        phone: payload.phone || "0000000000",
+        caseType: payload.caseType || "General Inquiry",
+        caseDescription: payload.description || payload.message || "No description provided",
+        ipAddress: req.ip || "127.0.0.1",
+        consentToContact: true,
+        city: payload.city || "Unknown",
+      }).returning();
+      res.json({ success: true, lead: newLead });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to submit case lead" });
+    }
+  });
+
   app.get("/api/journals", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -11646,7 +12091,20 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
     const words = normalized.split(/\s+/);
     const totalWords = words.length;
     if (totalWords <= maxWords) return { preview: normalized, truncated: false, totalWords };
-    return { preview: words.slice(0, maxWords).join(" "), truncated: true, totalWords };
+    
+    let wordCount = 0;
+    let truncateIndex = 0;
+    const regex = /\S+/g;
+    let match;
+    while ((match = regex.exec(normalized)) !== null) {
+      wordCount++;
+      if (wordCount === maxWords) {
+        truncateIndex = match.index + match[0].length;
+        break;
+      }
+    }
+    
+    return { preview: normalized.substring(0, truncateIndex), truncated: true, totalWords };
   }
 
   app.get("/api/public/judgments/:id", async (req, res) => {
@@ -11666,7 +12124,8 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       const judgment = await storage.getJudgmentDetail(id);
       if (!judgment) return res.status(404).json({ message: "Judgment not found" });
 
-      const { preview, truncated, totalWords } = trimWords(judgment.fullText || "", PUBLIC_JUDGMENT_PREVIEW_WORDS);
+      const sourceText = judgment.formattedText || judgment.fullText || "";
+      const { preview, truncated, totalWords } = trimWords(sourceText, PUBLIC_JUDGMENT_PREVIEW_WORDS);
 
       // Cache at the edge so repeat crawls don't hit DB.
       res.setHeader("Cache-Control", "public, max-age=300, s-maxage=21600");
@@ -12241,6 +12700,22 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
       const isNearLimit = isFreeTier
         ? (chatUsed >= 8 || draftUsed >= 1 || contractUsed >= 1)
         : (percentage >= 80);
+      // Calculate today used
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const [todayResult] = await db.select({ total: count() })
+        .from(usageTracking)
+        .where(
+          and(
+            eq(usageTracking.userId, userId),
+            gte(usageTracking.createdAt, today)
+          )
+        );
+      const todayUsed = todayResult?.total || 0;
+      const todayLimit = Math.max(1, Math.round(limits.monthlyQueries / 30));
+      const todayPercentage = Math.min(100, Math.round((todayUsed / todayLimit) * 100));
+
+
 
       res.json({
         tier,
@@ -12252,6 +12727,9 @@ Return ONLY the JSON object, no markdown fences or extra text.`;
         autoRenew: Boolean(profile.autoRenew),
         monthlyLimit: limits.monthlyQueries,
         used: displayUsed,
+        todayUsed,
+        todayLimit,
+        todayPercentage,
         remaining,
         percentage,
         isAtLimit,
@@ -17451,6 +17929,83 @@ NO EMOJIS. Be honest about what you know and don't know. NEVER cross-reference u
     }
   });
 
+  app.post("/api/ai/drafting/generate", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+      const { brief } = req.body;
+      if (!brief) return res.status(400).json({ message: "Brief is required" });
+
+      const legalKnowledgeQuery = `${brief.reliefType} ${brief.facts}`;
+      const knowledgeContext = await gatherKnowledgeContextV2(legalKnowledgeQuery, userId, undefined, { module: "legal-drafting" }).catch((err) => {
+        console.warn("[Drafting:RAG] Knowledge pipeline unavailable:", err?.message || err);
+        return "";
+      });
+
+      const baseSystemPrompt = getLegalSystemPrompt();
+      const isContract = brief.draftType === "contract";
+
+      let systemPrompt = `${baseSystemPrompt}
+You are an expert Pakistani legal drafter and High Court advocate.
+You are tasked with writing a formal ${isContract ? "commercial contract/agreement" : "pleading"} based on the user's brief.
+Output ONLY the raw text of the document. No markdown code blocks like \`\`\` text. No introductory remarks.
+${isContract
+  ? `Use proper Pakistani contract formatting (e.g., "THIS AGREEMENT IS MADE ON...", "RECITALS", "NOW THEREFORE...", "IN WITNESS WHEREOF"). Include standard boilerplates like Severability and Governing Law.`
+  : `Use proper Pakistani legal formatting (e.g., "IN THE LAHORE HIGH COURT", "Respectfully Sheweth", "PRAYER").`
+}
+Fill in placeholder names with brackets like [Party Name] where information is missing.
+
+${knowledgeContext}`;
+
+      systemPrompt = withPakistanLawOnlyPolicy(systemPrompt);
+
+      const userPrompt = isContract ? `Brief Details:
+Governing Law: ${brief.forum}
+Agreement Name: ${brief.matterTitle}
+Contract Type: ${brief.reliefType}
+Key Terms & Obligations: ${brief.facts}` 
+      : `Brief Details:
+Forum: ${brief.forum}
+Title: ${brief.matterTitle}
+Relief Type: ${brief.reliefType}
+Facts: ${brief.facts}`;
+
+      const { callWithFallback, DEFAULT_STANDARD_CHAIN } = await import("./ai-router");
+
+      const result = await callWithFallback(DEFAULT_STANDARD_CHAIN, {
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        maxTokens: 3500,
+        temperature: 0.3,
+      });
+
+      // 1. Base Pakistani Policy Enforcement
+      let safeContent = enforcePakistanLawOnlyOutput(result.content);
+      
+      // 2. Specific Indian Case Suppression
+      safeContent = suppressWrongIndianJurisdictionForPakCitation(safeContent, userPrompt);
+      
+      // 3. AlWakeelo Safety Overrides & Citation Integrity
+      safeContent = await applyAlWakeeloSafetyGuardrails(safeContent).catch(() => safeContent);
+
+      res.json({ textContent: safeContent });
+    } catch (err) {
+      console.error("[AI Drafting] Failed to generate draft:", err);
+      res.status(500).json({ message: "Failed to generate draft" });
+    }
+  });
+
+  app.get("/api/templates/contracts", async (req, res) => {
+    res.json(PAKISTANI_CONTRACT_TEMPLATES);
+  });
+
+  app.get("/api/templates/clauses", async (req, res) => {
+    res.json(CLAUSE_LIBRARY);
+  });
+
   app.post("/api/ai/draft-risk-analysis", async (req, res) => {
     const userId = getUserId(req);
     if (!userId) return res.sendStatus(401);
@@ -21465,12 +22020,12 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         return res.status(503).json({ message: "Payment gateway is not configured" });
       }
 
-      const { planKey, billingCycle, autoRenew } = req.body;
+      const { planKey, billingCycle, autoRenew, isExperimental } = req.body;
       if (!planKey || !billingCycle) {
         return res.status(400).json({ message: "planKey and billingCycle are required" });
       }
 
-      const validPlans = ["standard", "pro", "chamber"];
+      const validPlans = isExperimental ? ["starter", "standard", "pro", "chamber", "enterprise"] : ["standard", "pro", "chamber"];
       const validCycles = ["monthly", "quarterly", "yearly"];
       if (!validPlans.includes(planKey)) {
         return res.status(400).json({ message: `Invalid plan. Must be one of: ${validPlans.join(", ")}` });
@@ -21479,7 +22034,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         return res.status(400).json({ message: `Invalid billing cycle. Must be one of: ${validCycles.join(", ")}` });
       }
 
-      const amountPkr = calculatePlanAmount(planKey, billingCycle);
+      const amountPkr = calculatePlanAmount(planKey, billingCycle, isExperimental);
 
       // Create Safepay payment session
       const session = await createPaymentSession({ amountPkr });
@@ -21489,8 +22044,8 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
       const checkoutUrl = generateCheckoutUrl({
         tracker: session.tracker,
         tbt: session.tbt,
-        redirectUrl: `${publicSiteUrl}/checkout/success?tracker=${session.tracker}`,
-        cancelUrl: `${publicSiteUrl}/checkout?cancelled=true`,
+        redirectUrl: `${publicSiteUrl}${isExperimental ? "/preview" : ""}/checkout/success?tracker=${session.tracker}`,
+        cancelUrl: `${publicSiteUrl}${isExperimental ? "/preview" : ""}/checkout?cancelled=true`,
         source: "hosted",
       });
 

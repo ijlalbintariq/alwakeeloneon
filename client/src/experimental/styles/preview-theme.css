@@ -1,0 +1,603 @@
+/* ==========================================================================
+   AL WAKEELO — MODERN CHAMBERS LEGAL DESIGN SYSTEM
+   Inspired by Pakistan's premier legal workstations (AI Attorney & Chambers)
+   Deep Forest Green (#105B38) · Crisp White Surfaces · High Contrast Typography
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ── Modern Legal Theme Scope ── */
+.preview-theme-scope {
+  /* Surface Tokens */
+  --pw-bg: #F8FAFC;
+  --pw-surface-1: #FFFFFF;
+  --pw-surface-2: #F1F5F9;
+  --pw-surface-3: #E2E8F0;
+  --pw-border: #E2E8F0;
+  --pw-border-subtle: #F1F5F9;
+  --pw-border-accent: #105B38;
+
+  /* Text Tokens */
+  --pw-text-primary: #0F172A;
+  --pw-text-secondary: #334155;
+  --pw-text-muted: #64748B;
+
+  /* Pakistani Legal Brand Accents (Forest Green & Rich Accents) */
+  --pw-primary: #105B38;
+  --pw-primary-hover: #0D4A2E;
+  --pw-primary-light: #EBF5F0;
+  --pw-primary-border: #A3D4BC;
+
+  --pw-blue: #2563EB;
+  --pw-blue-light: #EFF6FF;
+  --pw-amber: #D97706;
+  --pw-amber-light: #FEF3C7;
+  --pw-purple: #7C3AED;
+  --pw-purple-light: #F5F3FF;
+
+  --pw-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --pw-card-shadow-hover: 0 4px 12px -2px rgba(16, 91, 56, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+
+  --preview-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --preview-font-serif: 'Playfair Display', Georgia, serif;
+  --preview-font-mono: 'JetBrains Mono', monospace;
+}
+
+/* ── Dark Mode Token Overrides ── */
+.dark .preview-theme-scope,
+.dark.preview-theme-scope,
+[data-theme="dark"] .preview-theme-scope,
+[data-theme="dark"].preview-theme-scope {
+  --pw-bg: #0B131E;
+  --pw-surface-1: #131E2E;
+  --pw-surface-2: #1B293E;
+  --pw-surface-3: #24354F;
+  --pw-border: #1E2D44;
+  --pw-border-subtle: #182436;
+  --pw-border-accent: #10B981;
+
+  --pw-text-primary: #F8FAFC;
+  --pw-text-secondary: #CBD5E1;
+  --pw-text-muted: #94A3B8;
+
+  --pw-primary: #10B981;
+  --pw-primary-hover: #059669;
+  --pw-primary-light: rgba(16, 185, 129, 0.12);
+  --pw-primary-border: rgba(16, 185, 129, 0.28);
+
+  --pw-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+  --pw-card-shadow-hover: 0 4px 14px -2px rgba(16, 185, 129, 0.15), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Base Surfaces ── */
+.preview-theme-scope {
+  background-color: var(--pw-bg);
+  color: var(--pw-text-primary);
+  font-family: var(--preview-font-sans);
+}
+
+/* ── Card Primitives ── */
+.legal-card {
+  background-color: var(--pw-surface-1);
+  border: 1px solid var(--pw-border);
+  border-radius: 14px;
+  box-shadow: var(--pw-card-shadow);
+  transition: all 200ms ease;
+}
+
+.legal-card:hover {
+  box-shadow: var(--pw-card-shadow-hover);
+  border-color: #CBD5E1;
+}
+
+/* ── Buttons ── */
+.legal-btn-primary {
+  background-color: var(--pw-primary);
+  color: #FFFFFF;
+  border: 1px solid var(--pw-primary);
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 150ms ease;
+}
+
+.legal-btn-primary:hover {
+  background-color: var(--pw-primary-hover);
+  border-color: var(--pw-primary-hover);
+}
+
+.legal-btn-secondary {
+  background-color: #FFFFFF;
+  color: var(--pw-text-primary);
+  border: 1px solid var(--pw-border);
+  border-radius: 10px;
+  font-weight: 500;
+  transition: all 150ms ease;
+}
+
+.legal-btn-secondary:hover {
+  background-color: var(--pw-surface-2);
+  border-color: #CBD5E1;
+}
+
+/* ── Badges ── */
+.legal-badge-court {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
+
+.legal-badge-citation {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-family: var(--preview-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  border: 1px solid #E2E8F0;
+}
+
+.legal-badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── Typography Helpers ── */
+.preview-theme-scope h1,
+.preview-theme-scope h2 {
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  color: var(--pw-text-primary);
+}
+
+.preview-kicker {
+  font-family: var(--preview-font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--pw-text-muted);
+}
+
+/* ── Scrollbars ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* ── Code Blocks ── */
+.preview-theme-scope pre,
+.preview-theme-scope code {
+  font-family: var(--preview-font-mono);
+}
+
+.preview-theme-scope code:not(pre code) {
+  background-color: #F1F5F9;
+  color: #0F172A;
+  border: 1px solid #E2E8F0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.preview-theme-scope pre {
+  background-color: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #0F172A !important;
+  border-radius: 8px;
+}
+
+/* ── Selection ── */
+.preview-theme-scope ::selection {
+  background-color: rgba(16, 91, 56, 0.18) !important;
+  color: #0F172A !important;
+}
+
+/* ── Expanded Legal Drafting Editor Canvas (Zero Dead Space & Court Typography) ── */
+.preview-theme-scope .legal-editor-page-shell {
+  width: 100% !important;
+  max-width: 100% !important;
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+.preview-theme-scope .legal-draft-editor {
+  width: min(100%, 1160px) !important;
+  max-width: 100% !important;
+  margin: 1.25rem auto !important;
+  box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.07), 0 4px 12px -2px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 4px !important;
+  padding: 96px 96px 96px 120px !important;
+  padding: var(--legal-margin-top, 96px) var(--legal-margin-right, 96px) var(--legal-margin-bottom, 96px) var(--legal-margin-left, 120px) !important;
+  min-height: var(--legal-document-height, var(--legal-page-height, 1344px)) !important;
+  font-family: 'Times New Roman', 'TimesNewRomanPSMT', 'Liberation Serif', serif !important;
+  font-size: 13pt !important;
+  line-height: 1.35 !important;
+  text-align: justify !important;
+  color: #0F172A !important;
+  box-sizing: border-box !important;
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    to bottom,
+    #FFFFFF 0,
+    #FFFFFF var(--legal-page-height, 1344px),
+    transparent var(--legal-page-height, 1344px),
+    transparent calc(var(--legal-page-height, 1344px) + var(--legal-page-gap, 28px))
+  ) !important;
+  background-size: 100% calc(var(--legal-page-height, 1344px) + var(--legal-page-gap, 28px)) !important;
+  background-repeat: repeat-y !important;
+  background-position: top !important;
+  transition: width 200ms ease, padding 200ms ease;
+}
+
+.preview-theme-scope [data-editor-width="full"] .legal-draft-editor {
+  width: calc(100% - 2rem) !important;
+  max-width: 100% !important;
+  padding: var(--legal-margin-top, 96px) var(--legal-margin-right, 96px) var(--legal-margin-bottom, 96px) var(--legal-margin-left, 120px) !important;
+}
+
+.preview-theme-scope [data-editor-width="wide"] .legal-draft-editor {
+  width: min(100%, 1200px) !important;
+  max-width: 100% !important;
+  padding: var(--legal-margin-top, 96px) var(--legal-margin-right, 96px) var(--legal-margin-bottom, 96px) var(--legal-margin-left, 120px) !important;
+}
+
+.preview-theme-scope [data-editor-width="court"] .legal-draft-editor {
+  width: var(--legal-page-width, 816px) !important;
+  max-width: 100% !important;
+  padding: var(--legal-margin-top, 96px) var(--legal-margin-right, 96px) var(--legal-margin-bottom, 96px) var(--legal-margin-left, 120px) !important;
+}
+
+.preview-theme-scope .legal-draft-editor h1 {
+  font-family: 'Times New Roman', 'TimesNewRomanPSMT', 'Liberation Serif', serif !important;
+  font-size: 15pt !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  text-align: center !important;
+  margin-top: 0.3rem !important;
+  margin-bottom: 0.3rem !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1.35 !important;
+  color: #0F172A !important;
+}
+
+.preview-theme-scope .legal-draft-editor h2 {
+  font-family: 'Times New Roman', 'TimesNewRomanPSMT', 'Liberation Serif', serif !important;
+  font-size: 14pt !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  margin-top: 0.8rem !important;
+  margin-bottom: 0.3rem !important;
+  letter-spacing: 0.01em !important;
+  line-height: 1.35 !important;
+  color: #0F172A !important;
+}
+
+.preview-theme-scope .legal-draft-editor h3 {
+  font-family: 'Times New Roman', 'TimesNewRomanPSMT', 'Liberation Serif', serif !important;
+  font-size: 13pt !important;
+  font-weight: 700 !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.2rem !important;
+  line-height: 1.35 !important;
+  color: #0F172A !important;
+}
+
+.preview-theme-scope .legal-draft-editor p {
+  font-family: 'Times New Roman', 'TimesNewRomanPSMT', 'Liberation Serif', serif !important;
+  font-size: 13pt !important;
+  line-height: 1.35 !important;
+  text-align: justify !important;
+  margin-bottom: 6px !important;
+  text-indent: 0;
+  color: #0F172A !important;
+}
+
+.preview-theme-scope .legal-draft-editor p.legal-indented,
+.preview-theme-scope .legal-draft-editor p[data-indent="true"],
+.preview-theme-scope .legal-draft-editor .indent-paragraph {
+  text-indent: 2rem !important;
+}
+
+.preview-theme-scope .legal-draft-editor p[style*="text-align: center"],
+.preview-theme-scope .legal-draft-editor p[style*="text-align:center"],
+.preview-theme-scope .legal-draft-editor p[style*="text-align: right"],
+.preview-theme-scope .legal-draft-editor p[style*="text-align:right"],
+.preview-theme-scope .legal-draft-editor h1,
+.preview-theme-scope .legal-draft-editor h2,
+.preview-theme-scope .legal-draft-editor h3 {
+  text-indent: 0 !important;
+}
+
+.preview-theme-scope .legal-draft-editor ol,
+.preview-theme-scope .legal-draft-editor ul {
+  padding-left: 28px !important;
+  margin-top: 4px !important;
+  margin-bottom: 6px !important;
+}
+
+.preview-theme-scope .legal-draft-editor li {
+  font-family: 'Times New Roman', 'TimesNewRomanPSMT', 'Liberation Serif', serif !important;
+  font-size: 13pt !important;
+  line-height: 1.35 !important;
+  text-align: justify !important;
+  margin-bottom: 4px !important;
+  color: #0F172A !important;
+}
+
+.preview-theme-scope .legal-draft-editor blockquote {
+  border-left: 3px solid #CBD5E1 !important;
+  padding-left: 1.25rem !important;
+  margin: 0.75rem 0 !important;
+  font-style: italic !important;
+  color: #334155 !important;
+}
+
+.preview-theme-scope .legal-draft-editor hr {
+  border: none !important;
+  border-top: 1px solid #CBD5E1 !important;
+  margin: 1.25rem 0 !important;
+}
+
+.preview-theme-scope .legal-draft-editor .legal-page-break {
+  box-sizing: border-box !important;
+  height: var(--legal-page-break-gap, 0px) !important;
+  margin: 0 !important;
+  position: relative !important;
+  user-select: none !important;
+}
+
+.preview-theme-scope .legal-draft-editor .legal-page-break-label {
+  position: absolute !important;
+  top: calc(var(--legal-page-break-gap, 0px) - var(--legal-margin-top, 96px) - var(--legal-page-gap-half, 14px)) !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  padding: 2px 8px !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 999px !important;
+  background: #F1F5F9 !important;
+  color: #64748B !important;
+  font-family: var(--preview-font-sans, ui-sans-serif, system-ui, sans-serif) !important;
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.08em !important;
+  white-space: nowrap !important;
+}
+
+.preview-theme-scope .legal-draft-editor ::selection,
+.preview-theme-scope .legal-draft-editor .ProseMirror ::selection {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+}
+
+.preview-theme-scope .legal-editor-toolbar {
+  width: 100% !important;
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+  border-radius: 12px 12px 0 0 !important;
+}
+
+/* ── Dark Paper Mode ── */
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"],
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor,
+.preview-theme-scope [data-paper-mode="dark"].legal-editor-page-shell .legal-draft-editor,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor,
+[data-paper-mode="dark"] .legal-draft-editor {
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    to bottom,
+    #1E293B 0,
+    #1E293B var(--legal-page-height, 1344px),
+    transparent var(--legal-page-height, 1344px),
+    transparent calc(var(--legal-page-height, 1344px) + var(--legal-page-gap, 28px))
+  ) !important;
+  background-size: 100% calc(var(--legal-page-height, 1344px) + var(--legal-page-gap, 28px)) !important;
+  background-repeat: repeat-y !important;
+  background-position: top !important;
+  color: #F8FAFC !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.5), 0 4px 12px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor h1,
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor h2,
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor h3,
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor h4,
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor h5,
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor h6,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] h1,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] h2,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] h3,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] h4,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] h5,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] h6,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor h1,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor h2,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor h3,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor h1,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor h2,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor h3,
+[data-paper-mode="dark"] .legal-draft-editor h1,
+[data-paper-mode="dark"] .legal-draft-editor h2,
+[data-paper-mode="dark"] .legal-draft-editor h3 {
+  color: #FFFFFF !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor p,
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor li,
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor span,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] p,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] li,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] span,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor p,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor li,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor p,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor li,
+[data-paper-mode="dark"] .legal-draft-editor p,
+[data-paper-mode="dark"] .legal-draft-editor li {
+  color: #F8FAFC !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor ::selection,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] ::selection,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor ::selection,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor ::selection,
+[data-paper-mode="dark"] .legal-draft-editor ::selection {
+  background: rgba(56, 189, 248, 0.25) !important;
+  color: #F8FAFC !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor blockquote,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] blockquote,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor blockquote,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor blockquote,
+[data-paper-mode="dark"] .legal-draft-editor blockquote {
+  border-left-color: #475569 !important;
+  color: #94A3B8 !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor hr,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] hr,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor hr,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor hr,
+[data-paper-mode="dark"] .legal-draft-editor hr {
+  border-top: 1px solid #334155 !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor .legal-page-break,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] .legal-page-break,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor .legal-page-break,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor .legal-page-break,
+[data-paper-mode="dark"] .legal-draft-editor .legal-page-break {
+  border-color: #334155 !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor .legal-page-break-label,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] .legal-page-break-label,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor .legal-page-break-label,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor .legal-page-break-label,
+[data-paper-mode="dark"] .legal-draft-editor .legal-page-break-label {
+  background: #0F172A !important;
+  color: #94A3B8 !important;
+  border: 1px solid #334155 !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor p.is-editor-empty:first-child::before,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] p.is-editor-empty:first-child::before,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-draft-editor p.is-editor-empty:first-child::before,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-draft-editor p.is-editor-empty:first-child::before,
+[data-paper-mode="dark"] .legal-draft-editor p.is-editor-empty:first-child::before {
+  color: #64748B !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .citation-chip,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] .citation-chip,
+[data-paper-mode="dark"] .citation-chip {
+  background: rgba(56, 189, 248, 0.15) !important;
+  color: #38BDF8 !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor table th,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] table th,
+[data-paper-mode="dark"] .legal-draft-editor table th {
+  background: #0F172A !important;
+  color: #F8FAFC !important;
+  border-color: #334155 !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-draft-editor table td,
+.preview-theme-scope .legal-draft-editor[data-paper-mode="dark"] table td,
+[data-paper-mode="dark"] .legal-draft-editor table td {
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+/* Dark Mode Toolbar */
+.preview-theme-scope [data-paper-mode="dark"] .legal-editor-toolbar,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-editor-toolbar,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-editor-toolbar,
+[data-paper-mode="dark"] .legal-editor-toolbar {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border-bottom: 1px solid #334155 !important;
+  color: #F8FAFC !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-editor-toolbar button,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-editor-toolbar button,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-editor-toolbar button,
+[data-paper-mode="dark"] .legal-editor-toolbar button {
+  color: #CBD5E1 !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-editor-toolbar button:hover,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-editor-toolbar button:hover,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-editor-toolbar button:hover,
+[data-paper-mode="dark"] .legal-editor-toolbar button:hover {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-editor-toolbar button[data-state="on"],
+.preview-theme-scope [data-paper-mode="dark"] .legal-editor-toolbar button.active,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-editor-toolbar button.active,
+[data-paper-mode="dark"] .legal-editor-toolbar button.active {
+  background-color: #334155 !important;
+  color: #38BDF8 !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-editor-toolbar select,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-editor-toolbar select,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-editor-toolbar select,
+[data-paper-mode="dark"] .legal-editor-toolbar select {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  border: 1px solid #334155 !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-editor-toolbar select option,
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-editor-toolbar select option,
+.preview-theme-scope .bg-\[\#0F172A\] .legal-editor-toolbar select option,
+[data-paper-mode="dark"] .legal-editor-toolbar select option {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+}
+
+.preview-theme-scope [data-paper-mode="dark"] .legal-editor-toolbar .h-4.w-\[1px\],
+.preview-theme-scope .legal-editor-page-shell[data-paper-mode="dark"] .legal-editor-toolbar .h-4.w-\[1px\],
+[data-paper-mode="dark"] .legal-editor-toolbar .h-4.w-\[1px\] {
+  background-color: #334155 !important;
+}

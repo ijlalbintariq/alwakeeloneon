@@ -1,0 +1,835 @@
+import React, { useState, useEffect, useRef } from "react";
+import { PreviewShell } from "@/experimental/components/PreviewShell";
+import { useAuth } from "@/hooks/use-auth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
+import {
+  User as UserIcon,
+  Mail,
+  Crown,
+  Loader2,
+  Save,
+  TrendingUp,
+  AlertTriangle,
+  Shield,
+  LogOut,
+  Sparkles,
+  Camera,
+  Trash2,
+  Bell,
+  Key,
+  Copy,
+  Check,
+  ExternalLink,
+  CheckCircle2,
+  Building,
+  Scale,
+  Phone,
+  Clock,
+  Layers,
+  ArrowRight,
+  ShieldCheck,
+  Zap,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { TIER_LIMITS } from "@shared/schema";
+import type { User } from "@shared/models/auth";
+import { getUpgradeActionLabel, getUpgradeCheckoutPath } from "@/lib/upgrade-path";
+import { cn } from "@/lib/utils";
+
+type UsageData = {
+  tier: string;
+  tierLabel: string;
+  tierDescription: string;
+  subscriptionCycle?: "monthly" | "quarterly" | "yearly" | string;
+  subscriptionStartAt?: string | null;
+  subscriptionEndAt?: string | null;
+  monthlyLimit: number;
+  used: number;
+  remaining: number;
+  percentage: number;
+};
+
+export const PreviewSettings: React.FC = () => {
+  const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [activeTab, setActiveTab] = useState<"profile" | "plan" | "mcp" | "notifications" | "security">("profile");
+
+  const { data: profile, isLoading: profileLoading } = useQuery<User>({ queryKey: ["/api/profile"] });
+  const { data: usage } = useQuery<UsageData>({ queryKey: ["/api/usage"] });
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+
+  const [newKeyName, setNewKeyName] = useState("");
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+
+  const { data: apiKeysList, isLoading: apiKeysLoading } = useQuery<any[]>({
+    queryKey: ["/api/settings/keys"],
+    enabled: !!profile,
+  });
+
+  const createKeyMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiRequest("POST", "/api/settings/keys", { name });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setGeneratedKey(data.token);
+      setNewKeyName("");
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/keys"] });
+      toast({ title: "API Key Generated Successfully", description: "Your new MCP token is ready for Claude/Cursor." });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to generate API Key",
+        description: err.message || "An error occurred",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteKeyMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/settings/keys/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/keys"] });
+      toast({ title: "API Key Revoked", description: "The token has been deactivated." });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to revoke key",
+        description: err.message || "An error occurred",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCopyKey = () => {
+    if (generatedKey) {
+      navigator.clipboard.writeText(generatedKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: "Copied Token to Clipboard" });
+    }
+  };
+
+  const handleCopyUrl = () => {
+    if (generatedKey) {
+      const fullUrl = `https://alwakeelo.com/api/mcp?token=${generatedKey}`;
+      navigator.clipboard.writeText(fullUrl);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+      toast({ title: "MCP URL Copied to Clipboard" });
+    }
+  };
+
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.firstName || "");
+      setLastName(profile.lastName || "");
+    }
+  }, [profile]);
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PATCH", "/api/profile", { firstName, lastName });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Chamber Profile Updated", description: "Your advocate profile details have been saved." });
+    },
+    onError: () => {
+      toast({ title: "Failed to update profile", variant: "destructive" });
+    },
+  });
+
+  const uploadAvatarMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("avatar", file);
+      const res = await fetch("/api/profile/avatar", {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Failed to upload image" }));
+        throw new Error(err.message || "Failed to upload image");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Avatar Updated", description: "New chamber profile picture has been uploaded." });
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || "Failed to upload profile picture", variant: "destructive" });
+    },
+  });
+
+  const removeAvatarMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/profile/avatar");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Avatar Removed", description: "Reverted to default monogram." });
+    },
+    onError: () => {
+      toast({ title: "Failed to remove profile picture", variant: "destructive" });
+    },
+  });
+
+  // Notification preferences
+  const { data: notifPrefs } = useQuery<any>({ queryKey: ["/api/settings/notifications"] });
+  const [dailyEnabled, setDailyEnabled] = useState(false);
+  const [weeklyEnabled, setWeeklyEnabled] = useState(false);
+  const [sendTime, setSendTime] = useState("19:00");
+
+  useEffect(() => {
+    if (notifPrefs) {
+      setDailyEnabled(notifPrefs.dailyEmailEnabled ?? false);
+      setWeeklyEnabled(notifPrefs.weeklyEmailEnabled ?? false);
+      setSendTime(notifPrefs.preferredTime || "19:00");
+    }
+  }, [notifPrefs]);
+
+  const updateNotifMutation = useMutation({
+    mutationFn: async (updates: any) => {
+      const res = await apiRequest("PATCH", "/api/settings/notifications", updates);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/notifications"] });
+      toast({ title: "Notification Preferences Saved" });
+    },
+    onError: () => toast({ title: "Failed to update notification settings", variant: "destructive" }),
+  });
+
+  const testEmailMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/settings/notifications/test");
+      return res.json();
+    },
+    onSuccess: (data: any) => toast({ title: data?.ok ? "Test Email Dispatched!" : "Failed to dispatch test email", description: "Check your inbox for the daily chambers summary test." }),
+    onError: () => toast({ title: "Failed to send test email", variant: "destructive" }),
+  });
+
+  const handleSelectAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Unsupported Format", description: "Please upload a JPG, PNG, WEBP, or GIF image.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Image Too Large", description: "Maximum file size is 2MB.", variant: "destructive" });
+      return;
+    }
+    uploadAvatarMutation.mutate(file);
+    e.currentTarget.value = "";
+  };
+
+  const effectiveTier = usage?.tier || profile?.subscriptionTier || "free";
+  const upgradeHref = getUpgradeCheckoutPath(effectiveTier);
+  const upgradeLabel = getUpgradeActionLabel(effectiveTier);
+  const cycleLabel = String(usage?.subscriptionCycle || profile?.subscriptionCycle || "monthly").toLowerCase();
+  const normalizedCycleLabel = cycleLabel === "yearly" ? "Yearly" : cycleLabel === "quarterly" ? "Quarterly" : "Monthly";
+  const renewalLabel = usage?.subscriptionEndAt
+    ? new Date(usage.subscriptionEndAt).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })
+    : "Active";
+
+  const isNearLimit = usage && usage.percentage >= 80;
+  const isAtLimit = usage && usage.percentage >= 100;
+
+  if (profileLoading) {
+    return (
+      <PreviewShell className="max-w-6xl mx-auto py-16 flex items-center justify-center">
+        <Loader2 className="animate-spin text-[#105B38] w-8 h-8" />
+      </PreviewShell>
+    );
+  }
+
+  return (
+    <PreviewShell className="max-w-6xl mx-auto space-y-6">
+      {/* ── Top Header Hero ───────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs">
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#105B38]/10 border border-[#105B38]/20 text-lg font-extrabold text-[#105B38] overflow-hidden">
+              {profile?.profileImageUrl ? (
+                <img src={profile.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span>{profile?.firstName?.[0] || profile?.email?.[0]?.toUpperCase() || "A"}</span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadAvatarMutation.isPending}
+              className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-[#105B38] text-white shadow-md hover:bg-[#0D4A2E] transition-colors"
+              title="Upload avatar"
+            >
+              {uploadAvatarMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+            </button>
+            {profile?.profileImageUrl && (
+              <button
+                type="button"
+                onClick={() => removeAvatarMutation.mutate()}
+                disabled={removeAvatarMutation.isPending}
+                className="absolute -top-1 -right-1 p-1.5 rounded-full bg-rose-600 text-white shadow-md hover:bg-rose-700 transition-colors"
+                title="Remove avatar"
+              >
+                {removeAvatarMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+              </button>
+            )}
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={handleSelectAvatar}
+            />
+          </div>
+
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-[#0F172A] tracking-tight">
+                {[profile?.firstName, profile?.lastName].filter(Boolean).join(" ") || profile?.email || "Advocate"}
+              </h1>
+              <Badge className="bg-[#105B38]/10 text-[#105B38] border-[#105B38]/20 text-[10px] font-bold uppercase tracking-wider">
+                {profile?.subscriptionTier || "Free Starter"}
+              </Badge>
+              {profile?.isAdmin && (
+                <Badge className="bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider">
+                  Admin
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-[#64748B] flex items-center gap-1.5 truncate">
+              <Mail className="w-3.5 h-3.5 text-[#94A3B8]" />
+              <span>{profile?.email}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button asChild className="hidden sm:flex h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs items-center gap-1.5">
+            <Link href={`/preview${upgradeHref}`}>
+              <Crown className="w-3.5 h-3.5" />
+              <span>{upgradeLabel}</span>
+            </Link>
+          </Button>
+
+          <Button
+            type="button"
+            onClick={() => updateProfileMutation.mutate()}
+            disabled={updateProfileMutation.isPending}
+            className="h-9 px-4 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold shadow-xs flex items-center gap-1.5"
+          >
+            {updateProfileMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            <span>Save Profile</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => logout()}
+            className="h-9 px-3.5 rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 text-xs font-bold flex items-center gap-1.5"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Navigation Tab Strip ─────────────────────────────────── */}
+      <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-2 overflow-x-auto custom-scrollbar">
+        {[
+          { id: "profile" as const, label: "Identity & Chambers", icon: UserIcon },
+          { id: "plan" as const, label: "Plan & Usage", icon: Crown },
+          { id: "mcp" as const, label: "API & MCP Integrations", icon: Key },
+          { id: "notifications" as const, label: "Email Notifications", icon: Bell },
+          { id: "security" as const, label: "Security & Sessions", icon: Shield },
+        ].map((t) => {
+          const Icon = t.icon;
+          const isActive = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTab(t.id)}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0",
+                isActive
+                  ? "bg-[#105B38] text-white shadow-xs"
+                  : "bg-white text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] border border-[#E2E8F0]"
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── TAB 1: Profile & Chambers Identity ─────────────────────── */}
+      {activeTab === "profile" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-5">
+            <div>
+              <h2 className="text-base font-bold text-[#0F172A]">Chamber Profile Credentials</h2>
+              <p className="text-xs text-[#64748B] mt-0.5">Manage your formal advocate name, enrolled email, and chambers info.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#0F172A]">First Name</label>
+                <Input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="e.g. Ijlal"
+                  className="rounded-xl border-[#E2E8F0] focus:border-[#105B38] focus:ring-[#105B38] text-xs h-10"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#0F172A]">Last Name</label>
+                <Input
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="e.g. Bin Tariq"
+                  className="rounded-xl border-[#E2E8F0] focus:border-[#105B38] focus:ring-[#105B38] text-xs h-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#0F172A]">Registered Account Email</label>
+              <div className="relative">
+                <Input
+                  value={profile?.email || ""}
+                  readOnly
+                  className="rounded-xl border-[#E2E8F0] bg-[#F8FAFC] text-xs h-10 text-[#64748B] cursor-not-allowed pl-9"
+                />
+                <Mail className="w-4 h-4 text-[#94A3B8] absolute left-3 top-3" />
+                <span className="absolute right-3 top-2.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Verified
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                type="button"
+                onClick={() => updateProfileMutation.mutate()}
+                disabled={updateProfileMutation.isPending}
+                className="h-10 px-5 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold shadow-xs flex items-center gap-2"
+              >
+                {updateProfileMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                <span>Save Changes</span>
+              </Button>
+            </div>
+          </div>
+
+          <div className="lg:col-span-1 p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-4">
+            <div className="flex items-center gap-2">
+              <Crown className="w-5 h-5 text-amber-500" />
+              <h2 className="text-sm font-bold text-[#0F172A]">Current Subscription</h2>
+            </div>
+            
+            <div className="space-y-1">
+              <Badge className="bg-[#105B38] text-white text-[10px] font-black px-2.5 py-0.5 uppercase tracking-wider">
+                {profile?.subscriptionTier?.toUpperCase() || "FREE STARTER"}
+              </Badge>
+              <p className="text-[11px] text-[#64748B] mt-1 leading-relaxed">
+                {TIER_LIMITS[effectiveTier as keyof typeof TIER_LIMITS]?.description || "10 AI chats + 1 legal draft / month"}
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-[#E2E8F0] space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-[#64748B]">Usage</span>
+                <span className="font-mono font-bold text-[#0F172A]">{usage?.used ?? 0} / {usage?.monthlyLimit === 999999 ? "∞" : (usage?.monthlyLimit ?? 10)}</span>
+              </div>
+              <Progress value={Math.min(usage?.percentage || 0, 100)} className="h-1.5 bg-[#E2E8F0] rounded-full" />
+              {isNearLimit && (
+                 <p className="text-[10px] text-amber-600 font-bold">Approaching monthly limit.</p>
+              )}
+              {isAtLimit && (
+                 <p className="text-[10px] text-red-600 font-bold">Monthly limit reached.</p>
+              )}
+            </div>
+
+            <div className="pt-2">
+              <Button asChild className="w-full h-9 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold shadow-xs">
+                <Link href={`/preview${upgradeHref}`}>{upgradeLabel}</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 2: Plan & Usage Telemetry ──────────────────────────── */}
+      {activeTab === "plan" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-[#0F172A]">Subscription & Usage Quota</h2>
+                <p className="text-xs text-[#64748B] mt-0.5">Real-time telemetry and AI token consumption.</p>
+              </div>
+              <Badge className="bg-[#105B38] text-white text-xs font-bold px-3 py-1">
+                {profile?.subscriptionTier?.toUpperCase() || "FREE STARTER"}
+              </Badge>
+            </div>
+
+            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-[#0F172A]">Monthly AI Quota</span>
+                <span className="font-mono font-bold text-[#105B38]">
+                  {usage?.used ?? 0} / {usage?.monthlyLimit === 999999 ? "Unlimited" : (usage?.monthlyLimit ?? 10)} used
+                </span>
+              </div>
+              <Progress
+                value={Math.min(usage?.percentage || 0, 100)}
+                className="h-2 bg-[#E2E8F0] rounded-full"
+              />
+              <div className="flex justify-between text-[11px] text-[#64748B]">
+                <span>{usage?.remaining ?? 10} queries remaining</span>
+                <span>Resets on {renewalLabel}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="p-3.5 rounded-xl border border-[#E2E8F0] bg-white space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#94A3B8] tracking-wider">Billing Cycle</span>
+                <p className="font-bold text-[#0F172A] text-sm">{normalizedCycleLabel}</p>
+                <p className="text-[11px] text-[#64748B]">Next invoice on {renewalLabel}</p>
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-[#E2E8F0] bg-white space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#94A3B8] tracking-wider">Available AI Models</span>
+                <p className="font-bold text-[#0F172A] text-sm">
+                  {effectiveTier === "enterprise" || effectiveTier === "chamber"
+                    ? "Standard, Turbo, Apex"
+                    : effectiveTier === "pro"
+                    ? "Standard, Turbo"
+                    : "Standard"}
+                </p>
+                <p className="text-[11px] text-[#64748B]">Includes real-time citation verification</p>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center gap-3">
+              <Button asChild className="h-10 px-5 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold shadow-xs">
+                <Link href={`/preview${upgradeHref}`}>{upgradeLabel}</Link>
+              </Button>
+              <Button asChild variant="outline" className="h-10 px-4 rounded-xl border-[#E2E8F0] text-xs font-bold text-[#0F172A] hover:bg-[#F8FAFC]">
+                <Link href="/preview/pricing">Compare Chamber Plans</Link>
+              </Button>
+            </div>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-4">
+            <div className="flex items-center gap-2">
+              <Crown className="w-5 h-5 text-amber-500" />
+              <h2 className="text-sm font-bold text-[#0F172A]">Current Subscription</h2>
+            </div>
+            <p className="text-xs text-[#64748B] leading-relaxed">
+              {TIER_LIMITS[effectiveTier as keyof typeof TIER_LIMITS]?.description || "10 AI chats + 1 legal draft / month"}
+            </p>
+            <div className="space-y-2 text-xs border-t border-[#E2E8F0] pt-4 mt-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-[#64748B]">Monthly Quota</span>
+                <span className="font-mono font-bold text-[#0F172A]">{usage?.used ?? 0} / {usage?.monthlyLimit === 999999 ? "∞" : (usage?.monthlyLimit ?? 10)}</span>
+              </div>
+              <Progress value={Math.min(usage?.percentage || 0, 100)} className="h-1.5 bg-[#105B38] rounded-full" />
+              {isNearLimit && (
+                 <p className="text-[10px] text-amber-600 font-bold">Approaching monthly limit.</p>
+              )}
+              {isAtLimit && (
+                 <p className="text-[10px] text-red-600 font-bold">Monthly limit reached.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 3: API & MCP Integrations ─────────────────────────── */}
+      {activeTab === "mcp" && (
+        <div className="p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-[#0F172A]">Model Context Protocol (MCP) & API Keys</h2>
+              <p className="text-xs text-[#64748B] mt-0.5">
+                Connect Al Wakeelo directly to AI applications like Claude Desktop, Cursor, or Gemini.
+              </p>
+            </div>
+            <Link
+              href="/settings/mcp-tutorial"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#105B38] hover:underline"
+            >
+              <span>Setup Guide</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {/* Generated Key Alert Box */}
+          {generatedKey && (
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-900 uppercase tracking-wide">
+                  Your New API Key (Copy Now — Shown Once)
+                </span>
+                <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-[10px]">
+                  Keep Secret
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <code className="flex-1 p-2 rounded-lg bg-white border border-emerald-300 font-mono text-xs text-[#0F172A] select-all truncate">
+                  {generatedKey}
+                </code>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleCopyKey}
+                  className="h-8 px-3 bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? "Copied" : "Copy"}</span>
+                </Button>
+              </div>
+
+              <div className="space-y-1 pt-1 border-t border-emerald-200">
+                <span className="text-[11px] font-bold text-emerald-900">
+                  Claude / ChatGPT MCP Connection URL:
+                </span>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 p-2 rounded-lg bg-white border border-emerald-300 font-mono text-xs text-[#0F172A] select-all truncate">
+                    {`${typeof window !== 'undefined' ? window.location.origin : 'https://alwakeelo.com'}/api/mcp?token=${generatedKey}`}
+                  </code>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyUrl}
+                    className="h-8 px-3 border-emerald-300 text-emerald-800 hover:bg-emerald-100 text-xs font-bold"
+                  >
+                    {copiedUrl ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedUrl ? "Copied URL" : "Copy URL"}</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Key Generator Form */}
+          <div className="flex gap-3">
+            <Input
+              placeholder="Integration Name (e.g. Claude Desktop Chamber Machine)"
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+              className="rounded-xl border-[#E2E8F0] focus:border-[#105B38] text-xs h-10 flex-1"
+            />
+            <Button
+              type="button"
+              onClick={() => createKeyMutation.mutate(newKeyName)}
+              disabled={createKeyMutation.isPending || !newKeyName.trim()}
+              className="h-10 px-5 rounded-xl bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold shadow-xs shrink-0 flex items-center gap-1.5"
+            >
+              {createKeyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+              <span>Generate API Key</span>
+            </Button>
+          </div>
+
+          {/* Active Keys Table */}
+          <div className="space-y-3 pt-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">Active Chamber Keys</h3>
+            {apiKeysLoading ? (
+              <div className="py-6 text-center">
+                <Loader2 className="w-5 h-5 animate-spin text-[#105B38] mx-auto" />
+              </div>
+            ) : apiKeysList && apiKeysList.length > 0 ? (
+              <div className="space-y-2">
+                {apiKeysList.map((k) => (
+                  <div
+                    key={k.id}
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] gap-4"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-xs font-bold text-[#0F172A] truncate">{k.name}</p>
+                      <p className="font-mono text-[11px] text-[#64748B]">{k.preview || "••••••••••••••••"}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 text-xs">
+                      <span className="text-[11px] text-[#94A3B8]">
+                        {k.lastUsedAt ? `Used ${new Date(k.lastUsedAt).toLocaleDateString()}` : "Never used"}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => deleteKeyMutation.mutate(k.id)}
+                        disabled={deleteKeyMutation.isPending}
+                        className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 rounded-lg"
+                        title="Revoke key"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 rounded-xl border border-dashed border-[#CBD5E1] text-center text-xs text-[#94A3B8]">
+                No API keys generated yet. Click "Generate API Key" above to create your first connection token.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 4: Diary Notifications ─────────────────────────────── */}
+      {activeTab === "notifications" && (
+        <div className="p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-6">
+          <div>
+            <h2 className="text-base font-bold text-[#0F172A]">Chamber Diary Email Reminders</h2>
+            <p className="text-xs text-[#64748B] mt-0.5">Configure automated court hearing summaries delivered to your inbox.</p>
+          </div>
+
+          <div className="space-y-4 max-w-xl">
+            {/* Daily Reminder */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-[#0F172A]">Daily Hearing Reminder</p>
+                <p className="text-[11px] text-[#64748B]">Sends tomorrow's scheduled court hearings every evening.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const v = !dailyEnabled;
+                  setDailyEnabled(v);
+                  updateNotifMutation.mutate({ dailyEmailEnabled: v });
+                }}
+                className={cn(
+                  "w-11 h-6 rounded-full transition-colors relative cursor-pointer",
+                  dailyEnabled ? "bg-[#105B38]" : "bg-[#CBD5E1]"
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-5 h-5 bg-white rounded-full transition-transform absolute top-0.5",
+                    dailyEnabled ? "left-5" : "left-0.5"
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Weekly Summary */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-[#0F172A]">Weekly Cause List Summary</p>
+                <p className="text-[11px] text-[#64748B]">Weekly Saturday recap of all upcoming chamber fixtures.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const v = !weeklyEnabled;
+                  setWeeklyEnabled(v);
+                  updateNotifMutation.mutate({ weeklyEmailEnabled: v });
+                }}
+                className={cn(
+                  "w-11 h-6 rounded-full transition-colors relative cursor-pointer",
+                  weeklyEnabled ? "bg-[#105B38]" : "bg-[#CBD5E1]"
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-5 h-5 bg-white rounded-full transition-transform absolute top-0.5",
+                    weeklyEnabled ? "left-5" : "left-0.5"
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Preferred Delivery Time */}
+            <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
+              <label className="text-xs font-bold text-[#0F172A]">Preferred Digest Delivery Time (PKT)</label>
+              <div className="flex items-center gap-3">
+                <select
+                  value={sendTime}
+                  onChange={(e) => {
+                    setSendTime(e.target.value);
+                    updateNotifMutation.mutate({ preferredTime: e.target.value });
+                  }}
+                  className="rounded-xl border-[#E2E8F0] bg-white text-xs h-10 px-3 flex-1 text-[#0F172A] outline-none focus:border-[#105B38]"
+                >
+                  <option value="18:00">6:00 PM PKT (Court Closing)</option>
+                  <option value="19:00">7:00 PM PKT (Chamber Briefing)</option>
+                  <option value="20:00">8:00 PM PKT (Evening Study)</option>
+                  <option value="21:00">9:00 PM PKT (Night Docket)</option>
+                </select>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => testEmailMutation.mutate()}
+                  disabled={testEmailMutation.isPending}
+                  className="h-10 px-4 rounded-xl border-[#105B38]/30 text-[#105B38] hover:bg-[#105B38]/10 text-xs font-bold flex items-center gap-1.5"
+                >
+                  {testEmailMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                  <span>Test Email</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 5: Security & Sessions ─────────────────────────────── */}
+      {activeTab === "security" && (
+        <div className="p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-6">
+          <div>
+            <h2 className="text-base font-bold text-[#0F172A]">Chamber Security & Active Sessions</h2>
+            <p className="text-xs text-[#64748B] mt-0.5">Manage login sessions, encryption, and account access.</p>
+          </div>
+
+          <div className="space-y-4 max-w-xl">
+            <div className="space-y-2">
+              <Button
+                type="button"
+                onClick={() => logout()}
+                className="w-full h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out of This Chamber Session</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </PreviewShell>
+  );
+};
+
+export default PreviewSettings;

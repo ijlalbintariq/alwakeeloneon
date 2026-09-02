@@ -1,0 +1,149 @@
+--- client/src/experimental/pages/PreviewDocumentAnalyzer.tsx
++++ client/src/experimental/pages/PreviewDocumentAnalyzer.tsx
+@@ -48,46 +48,6 @@
+   detail: string;
+ }
+ 
+-const CONTRACT_CHECKLIST_RULES: StatutoryCheckItem[] = [
+-  {
+-    id: "cc-1",
+-    statute: "Registration Act 1908",
+-    section: "Section 17",
+-    requirement: "Mandatory registration for leases over 1 year or property transfers > PKR 100.",
+-    status: "fatal_risk",
+-    detail: "Non-registration under Section 49 makes the document inadmissible in evidence.",
+-  },
+-  {
+-    id: "cc-2",
+-    statute: "Contract Act 1872",
+-    section: "Section 73 & 74",
+-    requirement: "Clear distinction between liquidated damages and penalty clauses.",
+-    status: "warning",
+-    detail: "Penalty clauses are unenforceable; must reflect genuine pre-estimate of loss.",
+-  },
+-  {
+-    id: "cc-3",
+-    statute: "Stamp Act 1899",
+-    section: "Schedule I",
+-    requirement: "Sufficient stamp duty affixed based on the transaction value.",
+-    status: "warning",
+-    detail: "Inadmissible in court if improperly stamped unless penalty is paid.",
+-  },
+-  {
+-    id: "cc-4",
+-    statute: "Arbitration Act 1940",
+-    section: "Section 34",
+-    requirement: "Clear dispute resolution and arbitration seat/venue clause.",
+-    status: "warning",
+-    detail: "Prevents civil litigation and binds parties to out-of-court settlement.",
+-  },
+-];
+-
+-const STATUTORY_CHECKLIST_RULES: StatutoryCheckItem[] = [
+-  {
+-    id: "sc-1",
+-    statute: "Code of Civil Procedure 1908",
+-    section: "Order VII Rule 11(a) & (d)",
+-    requirement: "Explicit bundle of facts constituting cause of action with accrual date and venue.",
+-    status: "warning",
+-    detail: "Cause of action date must be explicitly stated to prevent rejection under Order VII Rule 11.",
+-  },
+-  {
+-    id: "sc-2",
+-    statute: "Specific Relief Act 1877",
+-    section: "Section 24(c)",
+-    requirement: "Continuous readiness and willingness averment in specific performance actions.",
+-    status: "fatal_risk",
+-    detail: "Mandatory statutory pleading required by Supreme Court in PLD 2021 SC 429.",
+-  },
+-  {
+-    id: "sc-3",
+-    statute: "Court Fees Act 1870",
+-    section: "Section 7(iv) & Punjab Amendment",
+-    requirement: "Proper valuation of subject-matter with statutory maximum court fee cap (PKR 15,000).",
+-    status: "compliant",
+-    detail: "Statutory schedule valuation verified.",
+-  },
+-  {
+-    id: "sc-4",
+-    statute: "Limitation Act 1908",
+-    section: "Article 113 (3-Year Clock)",
+-    requirement: "Filing within 3 years from refusal date or fixed date for execution.",
+-    status: "warning",
+-    detail: "Verify extension notices to prevent statutory time-bar dismissal.",
+-  },
+-  {
+-    id: "sc-5",
+-    statute: "General Clauses Act 1897",
+-    section: "Section 24-A",
+-    requirement: "Statutory duty of public authorities to record explicit reasoned orders.",
+-    status: "compliant",
+-    detail: "Mandatory ground for judicial review under Article 199.",
+-  },
+-];
+-
+-
+-const FIR_CHECKLIST_RULES: StatutoryCheckItem[] = [
+-  { id: "fir-1", statute: "Criminal Procedure Code 1898", section: "Section 154", requirement: "Information discloses a cognizable offense.", status: "fatal_risk", detail: "Police cannot register FIR under Sec 154 for non-cognizable offenses without court order." },
+-  { id: "fir-2", statute: "Criminal Procedure Code 1898", section: "Section 154", requirement: "Explanation for delay in reporting (if any).", status: "warning", detail: "Unexplained delay can be fatal to the prosecution case during trial." },
+-  { id: "fir-3", statute: "Pakistan Penal Code 1860", section: "General", requirement: "Specific roles assigned to each accused person.", status: "warning", detail: "Omnibus allegations generally lead to bail for the accused." },
+-  { id: "fir-4", statute: "Criminal Procedure Code 1898", section: "Section 161", requirement: "List of eye-witnesses to the occurrence.", status: "warning", detail: "Immediate naming of witnesses prevents claims of afterthought." },
+-];
+-
+-const APP_CHECKLIST_RULES: StatutoryCheckItem[] = [
+-  { id: "app-1", statute: "Code of Civil Procedure 1908", section: "Order / Rule", requirement: "Explicit statutory backing (e.g., O39 R1, O7 R11, S151).", status: "fatal_risk", detail: "Applications without clear statutory backing may be dismissed in limine." },
+-  { id: "app-2", statute: "Code of Civil Procedure 1908", section: "Affidavit", requirement: "Duly sworn affidavit in support of the application.", status: "fatal_risk", detail: "Applications based on factual assertions require an affidavit." },
+-  { id: "app-3", statute: "Code of Civil Procedure 1908", section: "Prayer", requirement: "Prayer directly flows from the main suit.", status: "warning", detail: "Interim relief cannot exceed the main prayer of the suit." },
+-  { id: "app-4", statute: "General Rules", section: "Notice", requirement: "Advance notice to opposite party (where caveats exist).", status: "compliant", detail: "Prevents ex-parte suspension." },
+-];
+-
+-const NOTICE_CHECKLIST_RULES: StatutoryCheckItem[] = [
+-  { id: "not-1", statute: "Code of Civil Procedure 1908", section: "Section 80", requirement: "Statutory 2-month notice before suing Govt (if applicable).", status: "fatal_risk", detail: "Suits against government entities face outright rejection without Sec 80 notice." },
+-  { id: "not-2", statute: "Defamation Ordinance 2002", section: "Section 8", requirement: "14-day statutory notice for apology/retraction.", status: "fatal_risk", detail: "Mandatory pre-condition for filing a defamation suit." },
+-  { id: "not-3", statute: "General Law", section: "Cause of Action", requirement: "Clear narration of facts establishing liability.", status: "warning", detail: "Must lock in the factual matrix before litigation commences." },
+-  { id: "not-4", statute: "General Law", section: "Relief Demanded", requirement: "Specific demand (e.g., specific performance, damages).", status: "warning", detail: "Ambiguous demands weaken subsequent litigation." },
+-];
+-
+ function parseAiFindings(aiContent: string): { success: boolean; data: PleadingFinding[] } {
+   if (!aiContent || typeof aiContent !== "string") return { success: false, data: [] };
+ 
+@@ -324,6 +284,18 @@
+       }
+       return await res.json();
+     },
++  });
++
++  const { data: serverChecklists } = useQuery({
++    queryKey: ["/api/document-analyzer/checklists"],
++    queryFn: async () => {
++      const res = await fetch("/api/document-analyzer/checklists", { credentials: "include" });
++      if (!res.ok) {
++        throw new Error("Failed to load statutory checklists");
++      }
++      return await res.json();
++    },
++    staleTime: Infinity,
+   });
+ 
+   const [documentText, setDocumentText] = useState("");
+@@ -957,11 +929,12 @@
+     return { pass: 0, advisory: 0, warning: 0, risk: 0 };
+   }, [findings]);
+ 
+-  const activeChecklist = useMemo(() => {
+-    if (documentType === "Commercial Contract") return CONTRACT_CHECKLIST_RULES;
+-    if (documentType === "FIR & Criminal") return FIR_CHECKLIST_RULES;
+-    if (documentType === "Court Application (CMA)") return APP_CHECKLIST_RULES;
+-    if (documentType === "Legal Notice") return NOTICE_CHECKLIST_RULES;
+-    return STATUTORY_CHECKLIST_RULES;
+-  }, [documentType]);
++  const activeChecklist = useMemo<StatutoryCheckItem[]>(() => {
++    if (!serverChecklists) return [];
++    if (documentType === "Commercial Contract") return serverChecklists.contract || [];
++    if (documentType === "FIR & Criminal") return serverChecklists.fir || [];
++    if (documentType === "Court Application (CMA)") return serverChecklists.app || [];
++    if (documentType === "Legal Notice") return serverChecklists.notice || [];
++    return serverChecklists.statutory || [];
++  }, [documentType, serverChecklists]);
+ 
+   return (

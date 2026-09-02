@@ -1,0 +1,792 @@
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import {
+  Sparkles,
+  Bot,
+  ChevronUp,
+  ChevronDown,
+  X,
+  Send,
+  PlusCircle,
+  Copy,
+  Check,
+  Mic,
+  Square,
+  Loader2,
+  RefreshCw,
+  Scale,
+  ShieldCheck,
+  AlertTriangle,
+  FileCheck2,
+  Paperclip,
+  CheckCircle2,
+  ArrowRight,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
+import { useVoiceRecorder, formatDuration } from "@/hooks/use-voice-recorder";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+interface BottomAIDraftingDrawerProps {
+  isOpen: boolean;
+  onToggle: () => void;
+  currentDocumentText: string;
+  onInsertClause: (clauseText: string, title?: string) => void;
+  onReplaceDocument?: (content: string) => void;
+}
+
+type DrawerTab = "chat" | "compliance" | "clauses";
+
+interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  insertableClause?: string;
+  clauseTitle?: string;
+  timestamp: string;
+}
+
+export const BottomAIDraftingDrawer: React.FC<BottomAIDraftingDrawerProps> = ({
+  isOpen,
+  onToggle,
+  currentDocumentText,
+  onInsertClause,
+  onReplaceDocument,
+}) => {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<DrawerTab>("chat");
+  const [inputPrompt, setInputPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isExpandedFull, setIsExpandedFull] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Voice recorder hook
+  const voice = useVoiceRecorder();
+
+  // Chat message history
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: "msg-init",
+      role: "assistant",
+      text: "Assalam-o-Alaikum Advocate. I am your Pakistani Legal Drafting Co-pilot. Give me any command (e.g. 'Draft stay grounds under Order 39', 'Add bail grounds under s.497(2)', 'Insert solemn affirmation verification') and I will draft it in court-ready format.",
+      clauseTitle: "Drafting Assistant Ready",
+      timestamp: "Just now",
+    },
+  ]);
+
+  const quickActionChips = [
+    {
+      label: "Injunction Triple Test",
+      prompt: "Draft grounds for temporary injunction under Order 39 Rules 1 & 2 CPC satisfying the mandatory triple test.",
+    },
+    {
+      label: "CrPC 497(2) Bail Grounds",
+      prompt: "Draft post-arrest bail grounds under Section 497(2) CrPC based on further inquiry and lack of overt role.",
+    },
+    {
+      label: "Art. 199 Writ Grounds",
+      prompt: "Draft High Court writ petition grounds under Article 199 against an arbitrary executive order lacking lawful authority.",
+    },
+    {
+      label: "QSO Art. 17 Execution",
+      prompt: "Generate an Article 17 Qanun-e-Shahadat Order attestation block with marginal witnesses.",
+    },
+    {
+      label: "Affidavit Verification",
+      prompt: "Generate standard verification on solemn affirmation under Order XIX CPC for this petition.",
+    },
+    {
+      label: "Suit Valuation Clause",
+      prompt: "Generate a jurisdictional valuation and court fee paragraph under Section 7 of the Court Fees Act 1870.",
+    },
+  ];
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [messages, isGenerating, isOpen]);
+
+  const handleSend = async (textOverride?: string) => {
+    const query = (textOverride || inputPrompt).trim();
+    if (!query || isGenerating) return;
+
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      text: query,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    if (!textOverride) setInputPrompt("");
+    if (!isOpen) onToggle(); // Open drawer if collapsed
+    setIsGenerating(true);
+
+    try {
+      const payload = {
+        prompt: query,
+        draftText: currentDocumentText,
+        jurisdiction: "Pakistan",
+        module: "legal-drafting",
+        stream: false,
+      };
+
+      const res = await fetch("/api/retrieval/clauses/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error("Chamber session unauthenticated. Please sign in via the Sign In tab (/preview/auth) to enable live AI drafting.");
+        }
+        const errText = await res.text();
+        throw new Error(`${res.status}: ${errText}`);
+      }
+
+      const data = await res.json();
+      const generatedClause = data.clause || data.text || data.content || "";
+      const explanation = data.explanation || data.summary || "Here is the court-ready legal draft generated by the AI legal model:";
+
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: "assistant",
+        text: explanation,
+        insertableClause: generatedClause || undefined,
+        clauseTitle: data.title || "Court-Ready Clause",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch (err: any) {
+      console.error("AI Drafting error:", err);
+      const errMsg = err?.message || "Communication disrupted. Please try again.";
+      const aiMsg: ChatMessage = {
+        id: `ai-err-${Date.now()}`,
+        role: "assistant",
+        text: `⚠️ ${errMsg}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+      toast({
+        title: "Clause Copied",
+        description: "Draft text copied to clipboard.",
+      });
+    });
+  };
+
+  const handleVoiceTranscription = async () => {
+    if (voice.isRecording) {
+      try {
+        const text = await voice.stopAndTranscribe();
+        if (text) {
+          setInputPrompt((prev) => (prev ? `${prev} ${text}` : text));
+        }
+      } catch (err) {
+        toast({
+          title: "Voice transcription error",
+          description: err instanceof Error ? err.message : "Microphone error",
+          variant: "destructive",
+        });
+      }
+    } else {
+      await voice.startRecording();
+    }
+  };
+
+  // ─── 6-Pillar Compliance Computation ──────────────────────────────────────
+  const compliancePillars = useMemo(() => {
+    const text = currentDocumentText.toLowerCase();
+
+    return [
+      {
+        id: "p1",
+        title: "Court Forum & Hierarchy Header",
+        description: "Must state full High Court / District Court department header.",
+        passed:
+          text.includes("in the high court") ||
+          text.includes("in the court of") ||
+          text.includes("in the supreme court") ||
+          text.includes("judicial department"),
+        fixClause: "IN THE HIGH COURT OF JUDICATURE AT LAHORE\n(JUDICIAL DEPARTMENT)\n\nWrit Petition No. _________ / 2026\n",
+      },
+      {
+        id: "p2",
+        title: "Complete Parties & CNIC Block",
+        description: "Parentage, CNIC numbers, and physical addresses.",
+        passed: text.includes("cnic") || text.includes("resident of") || text.includes("petitioner"),
+        fixClause: "1. Tariq Mahmood s/o Muhammad Bashir,\n   CNIC: 35201-1234567-1,\n   R/o House 12, Gulberg III, Lahore. ... PETITIONER\n\nVERSUS\n\n1. Province of Punjab...\n",
+      },
+      {
+        id: "p3",
+        title: "Statutory Law & Section Citation",
+        description: "Explicit statutory provision governing relief.",
+        passed:
+          text.includes("article 199") ||
+          text.includes("section 497") ||
+          text.includes("section 498") ||
+          text.includes("order xxxix") ||
+          text.includes("order vii") ||
+          text.includes("act") ||
+          text.includes("ordinance"),
+        fixClause: "WRIT PETITION UNDER ARTICLE 199 OF THE CONSTITUTION OF PAKISTAN, 1973\n",
+      },
+      {
+        id: "p4",
+        title: "Judicial Recital Formula",
+        description: "'Respectfully Sheweth' or 'Whereas' recital structure.",
+        passed: text.includes("respectfully sheweth") || text.includes("sheweth"),
+        fixClause: "Respectfully Sheweth:\n\n1. That the Petitioner is a citizen of Pakistan...\n",
+      },
+      {
+        id: "p5",
+        title: "Verification on Solemn Affirmation",
+        description: "Formal verification on oath with deponent signature.",
+        passed: text.includes("verification") || text.includes("solemn affirmation") || text.includes("deponent"),
+        fixClause: "VERIFICATION:\nVerified on solemn affirmation at Lahore on this 22nd August 2026 that contents of paras 1-5 are true to my personal knowledge.\n\nDEPONENT\n",
+      },
+      {
+        id: "p6",
+        title: "Marginal Witnesses (Art. 17 QSO)",
+        description: "Two identification witnesses with CNIC numbers.",
+        passed: text.includes("witness") || text.includes("advocate high court"),
+        fixClause: "WITNESS 1: __________________ CNIC: __________________\nWITNESS 2: __________________ CNIC: __________________\n",
+      },
+    ];
+  }, [currentDocumentText]);
+
+  const passedCount = compliancePillars.filter((p) => p.passed).length;
+  const complianceScore = Math.round((passedCount / compliancePillars.length) * 100);
+
+  // ─── Common Pakistani Statutory Clauses ───────────────────────────────────
+  const statutoryClauses = [
+    {
+      title: "Interim Injunction Triple Test",
+      statute: "Order XXXIX Rules 1 & 2 CPC",
+      text: "That the Plaintiff has a prima facie case, the balance of convenience lies in their favour, and they shall suffer irreparable loss if ad-interim relief is not granted.",
+    },
+    {
+      title: "Pecuniary & Territorial Jurisdiction",
+      statute: "Section 20 CPC & Court Fees Act",
+      text: "That the cause of action accrued at Lahore, the suit property is situated within Lahore, and the valuation for court fees is fixed under Section 7(iv)(c) of Court Fees Act 1870.",
+    },
+    {
+      title: "Non-Filing of Previous Petition Certificate",
+      statute: "High Court Rules & Orders Vol. V",
+      text: "CERTIFICATE: It is certified that this is the first petition on the subject matter, and no other petition or revision has previously been filed or is pending before this Honorable Court or the Supreme Court of Pakistan.",
+    },
+    {
+      title: "Caveat Verification Statement",
+      statute: "Section 148-A CPC",
+      text: "That the Petitioner has verified that no caveat has been lodged by the Respondents under Section 148-A CPC regarding the impugned order.",
+    },
+  ];
+
+  return (
+    <div
+      className={cn(
+        "w-full bg-white border-t border-[#E2E8F0] shadow-xl transition-all duration-300 ease-out z-30 flex flex-col shrink-0 select-none",
+        isOpen
+          ? isExpandedFull
+            ? "h-[540px]"
+            : "h-[360px] sm:h-[400px]"
+          : "h-12 sm:h-14"
+      )}
+    >
+      {/* ── Top Bar / Slide Handle (Always Visible) ────────────────────────── */}
+      <div className="h-12 sm:h-14 px-3 sm:px-4 bg-white border-b border-[#E2E8F0] flex items-center justify-between gap-3 shrink-0">
+        {/* Left: AI Indicator & Tabs when Open */}
+        <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto custom-scrollbar">
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-[#F1F5F9] transition-colors text-left shrink-0"
+            title={isOpen ? "Collapse AI Drafting Panel" : "Slide Up AI Drafting Panel"}
+          >
+            <div className="p-1.5 rounded-lg bg-emerald-50 text-[#105B38] border border-emerald-200 shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div className="hidden sm:block">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-[#0F172A]">AI Drafting Co-Pilot</span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-[#105B38] border border-emerald-200">
+                  Online
+                </span>
+              </div>
+            </div>
+          </button>
+
+          {isOpen ? (
+            <div className="flex items-center gap-1 bg-[#F8FAFC] p-0.5 rounded-xl border border-[#E2E8F0] shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab("chat")}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors",
+                  activeTab === "chat"
+                    ? "bg-white text-[#0F172A] shadow-xs"
+                    : "text-[#64748B] hover:text-[#0F172A]"
+                )}
+              >
+                <Bot className="w-3.5 h-3.5" />
+                <span>Command & Chat</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("compliance")}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors",
+                  activeTab === "compliance"
+                    ? "bg-white text-[#0F172A] shadow-xs"
+                    : "text-[#64748B] hover:text-[#0F172A]"
+                )}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>6-Pillar Audit ({complianceScore}%)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("clauses")}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors",
+                  activeTab === "clauses"
+                    ? "bg-white text-[#0F172A] shadow-xs"
+                    : "text-[#64748B] hover:text-[#0F172A]"
+                )}
+              >
+                <Scale className="w-3.5 h-3.5" />
+                <span>Statutory Clauses</span>
+              </button>
+            </div>
+          ) : (
+            /* Collapsed Quick Starter Chips */
+            <div className="hidden md:flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+              {quickActionChips.slice(0, 3).map((chip, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleSend(chip.prompt)}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[#F8FAFC] hover:bg-emerald-50 hover:text-[#105B38] border border-[#E2E8F0] hover:border-emerald-200 text-[#334155] transition-colors whitespace-nowrap"
+                >
+                  + {chip.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Center / Right: Quick Prompt Field (When collapsed) or Window Controls (When Open) */}
+        {!isOpen ? (
+          <div className="flex items-center gap-2 flex-1 max-w-xl justify-end">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={inputPrompt}
+                onChange={(e) => setInputPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder="Give command to draft or amend (e.g. 'Draft stay grounds under Order 39', 'Add bail grounds')..."
+                className="w-full h-8 sm:h-9 pl-3 pr-8 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:bg-white transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => handleSend()}
+                disabled={!inputPrompt.trim() || isGenerating}
+                className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-[#105B38] hover:bg-[#0D4A2E] text-white disabled:opacity-40 transition-opacity"
+              >
+                <Send className="w-3 h-3" />
+              </button>
+            </div>
+
+            {voice.isSupported && (
+              <button
+                type="button"
+                onClick={handleVoiceTranscription}
+                className={cn(
+                  "p-2 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-colors shrink-0",
+                  voice.isRecording
+                    ? "bg-rose-50 border-rose-300 text-rose-700 animate-pulse"
+                    : "bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+                )}
+                title={voice.isRecording ? "Stop voice dictation" : "Dictate drafting command"}
+              >
+                {voice.isRecording ? (
+                  <>
+                    <Square className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
+                    <span className="text-[10px] font-mono font-bold">
+                      {formatDuration(voice.duration)}
+                    </span>
+                  </>
+                ) : (
+                  <Mic className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onToggle}
+              className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 transition-colors shrink-0"
+              title="Slide Up AI Drafting Studio"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          /* Window Controls when Open */
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsExpandedFull(!isExpandedFull)}
+              className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
+              title={isExpandedFull ? "Restore Height" : "Maximize Drawer"}
+            >
+              {isExpandedFull ? (
+                <Minimize2 className="w-4 h-4" />
+              ) : (
+                <Maximize2 className="w-4 h-4" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggle}
+              className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
+              title="Slide Down / Collapse"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Sliding Panel Expanded Content ─────────────────────────────────── */}
+      {isOpen && (
+        <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
+          {/* TAB 1: Chat & Interactive Drafting Co-pilot */}
+          {activeTab === "chat" && (
+            <div className="flex-1 flex flex-col min-h-0">
+              {/* Messages Scroll Area */}
+              <div
+                ref={chatScrollRef}
+                className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-3"
+              >
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "flex flex-col max-w-3xl",
+                      msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1 px-1 text-[11px] text-[#64748B]">
+                      {msg.role === "assistant" ? (
+                        <>
+                          <Bot className="w-3.5 h-3.5 text-[#105B38]" />
+                          <span className="font-bold text-[#105B38]">
+                            Alwakeelo AI Drafter
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-bold text-[#0F172A]">Counsel Command</span>
+                      )}
+                      <span>·</span>
+                      <span>{msg.timestamp}</span>
+                    </div>
+
+                    <div
+                      className={cn(
+                        "p-3.5 rounded-2xl text-xs leading-relaxed border shadow-xs",
+                        msg.role === "user"
+                          ? "bg-[#105B38] text-white border-[#105B38] rounded-tr-xs"
+                          : "bg-white text-[#0F172A] border-[#E2E8F0] rounded-tl-xs w-full"
+                      )}
+                    >
+                      <p className="whitespace-pre-wrap">{msg.text}</p>
+
+                      {/* Render Insertable Clause Card */}
+                      {msg.insertableClause && (
+                        <div className="mt-3 pt-3 border-t border-[#E2E8F0] space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-[#105B38] flex items-center gap-1">
+                              <Scale className="w-3 h-3" />
+                              {msg.clauseTitle || "Court-Ready Clause Preview"}
+                            </span>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(msg.id, msg.insertableClause!)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#334155] text-[10px] font-semibold transition-colors"
+                              >
+                                {copiedId === msg.id ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <span>Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onInsertClause(msg.insertableClause!, msg.clauseTitle)
+                                }
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#105B38] hover:bg-[#0D4A2E] text-white text-[10px] font-bold transition-all shadow-xs"
+                              >
+                                <PlusCircle className="w-3 h-3" />
+                                <span>Insert at Cursor</span>
+                              </button>
+
+                              {onReplaceDocument && (
+                                <button
+                                  type="button"
+                                  onClick={() => onReplaceDocument(msg.insertableClause!)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#105B38] border border-emerald-200 text-[10px] font-bold transition-colors"
+                                >
+                                  <RefreshCw className="w-3 h-3" />
+                                  <span>Replace Canvas</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] font-serif text-xs text-[#1E293B] leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">
+                            {msg.insertableClause}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {isGenerating && (
+                  <div className="flex items-center gap-2 p-3 rounded-2xl bg-white border border-[#E2E8F0] text-xs text-[#105B38] w-fit shadow-xs animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin text-[#105B38]" />
+                    <span className="font-semibold">
+                      Formulating Pakistani legal grounds & statutory citations...
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Action Suggestion Chips Bar */}
+              <div className="px-4 py-1.5 bg-white border-t border-[#E2E8F0] flex items-center gap-1.5 overflow-x-auto custom-scrollbar shrink-0">
+                <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider shrink-0 mr-1">
+                  Quick Prompts:
+                </span>
+                {quickActionChips.map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSend(chip.prompt)}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[#F8FAFC] hover:bg-emerald-50 hover:text-[#105B38] border border-[#E2E8F0] hover:border-emerald-200 text-[#334155] transition-colors whitespace-nowrap shrink-0"
+                  >
+                    + {chip.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Bottom Input Area */}
+              <div className="p-3 bg-white border-t border-[#E2E8F0] shrink-0">
+                <div className="relative flex items-end gap-2 max-w-5xl mx-auto">
+                  <div className="relative flex-1">
+                    <textarea
+                      ref={inputRef}
+                      value={inputPrompt}
+                      onChange={(e) => setInputPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSend();
+                        }
+                      }}
+                      rows={2}
+                      placeholder="Describe what to draft or amend in this court pleading (Enter to send, Shift+Enter for new line)..."
+                      className="w-full p-2.5 pr-20 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#105B38] focus:bg-white resize-none transition-colors"
+                    />
+
+                    {/* Right inner buttons */}
+                    <div className="absolute right-2 bottom-2 flex items-center gap-1">
+                      {voice.isSupported && (
+                        <button
+                          type="button"
+                          onClick={handleVoiceTranscription}
+                          className={cn(
+                            "p-1.5 rounded-lg border text-xs font-semibold transition-colors",
+                            voice.isRecording
+                              ? "bg-rose-50 border-rose-300 text-rose-700 animate-pulse"
+                              : "bg-white border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A]"
+                          )}
+                          title="Record voice note"
+                        >
+                          {voice.isRecording ? (
+                            <Square className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
+                          ) : (
+                            <Mic className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleSend()}
+                        disabled={!inputPrompt.trim() || isGenerating}
+                        className="px-3 py-1.5 rounded-lg bg-[#105B38] hover:bg-[#0D4A2E] text-white text-xs font-bold flex items-center gap-1 shadow-xs disabled:opacity-40 transition-all active:scale-95"
+                      >
+                        <Send className="w-3 h-3" />
+                        <span className="hidden sm:inline">Draft</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: 6-Pillar Procedural Compliance Audit */}
+          {activeTab === "compliance" && (
+            <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+              <div className="max-w-4xl mx-auto space-y-4">
+                {/* Summary Banner */}
+                <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] flex items-center justify-between gap-4 shadow-xs">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#0F172A]">
+                      Pakistani Court Procedural Compliance Audit
+                    </h3>
+                    <p className="text-xs text-[#64748B] mt-0.5">
+                      Order VII Rule 11 CPC & High Court Rules verification
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold font-mono text-[#105B38]">
+                      {complianceScore}%
+                    </span>
+                    <span className="text-xs text-[#64748B]">
+                      ({passedCount}/6 Pillars Passed)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pillars Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {compliancePillars.map((pillar) => (
+                    <div
+                      key={pillar.id}
+                      className={cn(
+                        "p-3.5 rounded-xl border transition-all bg-white",
+                        pillar.passed
+                          ? "border-emerald-200 shadow-xs"
+                          : "border-amber-200 bg-amber-50/20"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {pillar.passed ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                          )}
+                          <h4 className="text-xs font-bold text-[#0F172A]">{pillar.title}</h4>
+                        </div>
+
+                        {!pillar.passed && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onInsertClause(pillar.fixClause, `Fixed ${pillar.title}`)
+                            }
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#105B38] hover:bg-[#0D4A2E] text-white text-[10px] font-bold shadow-xs transition-colors"
+                          >
+                            <PlusCircle className="w-3 h-3" />
+                            <span>Fix & Insert</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-[#64748B] mt-1.5 ml-6">
+                        {pillar.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: Statutory Clauses Library */}
+          {activeTab === "clauses" && (
+            <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+              <div className="max-w-4xl mx-auto space-y-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">
+                    Pakistani Standard Statutory Clauses
+                  </h3>
+                  <span className="text-xs text-[#64748B]">Click to insert directly into canvas</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {statutoryClauses.map((clause, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#105B38] transition-all shadow-xs space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xs font-bold text-[#0F172A]">{clause.title}</h4>
+                          <span className="text-[10px] font-mono font-semibold text-[#105B38]">
+                            {clause.statute}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => onInsertClause(clause.text, clause.title)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#105B38] hover:bg-[#0D4A2E] text-white text-[10px] font-bold shadow-xs transition-colors"
+                        >
+                          <PlusCircle className="w-3 h-3" />
+                          <span>Insert</span>
+                        </button>
+                      </div>
+
+                      <p className="text-[11px] text-[#475569] font-serif leading-relaxed line-clamp-3">
+                        {clause.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};

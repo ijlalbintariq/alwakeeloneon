@@ -187,6 +187,7 @@ export type JudgmentDetail = {
   decisionDate: Date | null;
   headnotes: string | null;
   fullText: string;
+  formattedText: string | null;
   pdfUrl: string | null;
   citations: {
     made: JudgmentCitationLink[];
@@ -208,6 +209,7 @@ export type CaseLawSearchOptions = {
   sort?: "relevance" | "latest";
   parsedCitation?: CaseLawCitationParts | null;
   includeSourceContentSearch?: boolean;
+  offset?: number;
 };
 
 function normalizeCaseLawCitationReport(token: string): string {
@@ -1700,8 +1702,8 @@ export class DatabaseStorage implements IStorage {
 
       const narrowBuilder = db.select().from(caseLaw).where(narrowWhereWithCourt);
       rows = effectiveSortMode === "latest"
-        ? await narrowBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
-        : await narrowBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
+        ? await narrowBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0)
+        : await narrowBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0);
 
       // Only fall back to broad (OR) when narrow (AND) returns ZERO results.
       // Previously this triggered when rows < limit, which diluted precision —
@@ -1714,8 +1716,8 @@ export class DatabaseStorage implements IStorage {
 
         const broadBuilder = db.select().from(caseLaw).where(broadWhereWithCourt);
         rows = effectiveSortMode === "latest"
-          ? await broadBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
-          : await broadBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
+          ? await broadBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0)
+          : await broadBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0);
       }
 
       // ── Tier 2 FALLBACK: pg_trgm ILIKE if tsvector returned 0 ─────────
@@ -1734,8 +1736,8 @@ export class DatabaseStorage implements IStorage {
             : or(...ilikeClauses)!;
           const ilikeBuilder = db.select().from(caseLaw).where(ilikeWhere);
           rows = effectiveSortMode === "latest"
-            ? await ilikeBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
-            : await ilikeBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
+            ? await ilikeBuilder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0)
+            : await ilikeBuilder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0);
         }
       }
     } else {
@@ -1748,14 +1750,23 @@ export class DatabaseStorage implements IStorage {
         if (hasPage) structuredClauses.push(sql`${caseLaw.citationPage} = ${page}`);
         if (hasReport) structuredClauses.push(sql`upper(${caseLaw.citationReport}) = ${reportRaw}`);
       }
-      if (structuredClauses.length === 0) return [];
-      const structuredWhere = courtFilter
-        ? and(or(...structuredClauses)!, courtFilter)!
-        : or(...structuredClauses)!;
-      const builder = db.select().from(caseLaw).where(structuredWhere);
-      rows = effectiveSortMode === "latest"
-        ? await builder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit)
-        : await builder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit);
+      if (structuredClauses.length === 0) {
+        // If there's no query and no filters, return the latest valid case law (filtering out bad OCR future years)
+        const currentYear = new Date().getFullYear();
+        const yearFilter = lte(caseLaw.citationYear, currentYear);
+        const builder = courtFilter 
+          ? db.select().from(caseLaw).where(and(yearFilter, courtFilter)) 
+          : db.select().from(caseLaw).where(yearFilter);
+        rows = await builder.orderBy(desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0);
+      } else {
+        const structuredWhere = courtFilter
+          ? and(or(...structuredClauses)!, courtFilter)!
+          : or(...structuredClauses)!;
+        const builder = db.select().from(caseLaw).where(structuredWhere);
+        rows = effectiveSortMode === "latest"
+          ? await builder.orderBy(desc(caseLaw.citationYear), desc(relevanceScore), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0)
+          : await builder.orderBy(desc(relevanceScore), desc(caseLaw.citationYear), desc(caseLaw.id)).limit(effectiveFetchLimit).offset(options.offset || 0);
+      }
     }
 
     // ── Source content search (append additional results) ───────────────
@@ -2131,11 +2142,29 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async searchJudgmentsByKeywords(query: string, limit: number): Promise<CaseLaw[]> {
+  async searchJudgmentsByKeywords(query: string, limit: number = 10, court?: string): Promise<CaseLaw[]> {
     const safeQuery = String(query || "").trim();
-    if (!safeQuery) return [];
     const safeLimit = Math.max(1, Math.min(200, Number(limit) || 20));
-
+    
+    if (!safeQuery) {
+      const currentYear = new Date().getFullYear();
+      const builder = court 
+        ? db.select().from(judgments).where(and(lte(judgments.year, currentYear), ilike(judgments.courtNameSnapshot, `%${court}%`))) 
+        : db.select().from(judgments).where(lte(judgments.year, currentYear));
+      
+      const rows = await builder.orderBy(desc(judgments.year), desc(judgments.id)).limit(safeLimit);
+      return rows.map((row: any) => ({
+        id: row.id,
+        citation: row.citationString,
+        title: row.title,
+        summary: row.headnotes || "",
+        court: row.court || "",
+        matchScore: 100,
+        decisionDate: row.decisionDate,
+        pdfUrl: row.pdfUrl,
+      }));
+    }
+    
     const seen = new Set<string>();
     const results: CaseLaw[] = [];
 
@@ -2172,11 +2201,14 @@ export class DatabaseStorage implements IStorage {
               and(
                 eq(judgments.year, parsedCitation.year),
                 eq(judgments.journalId, journal.id),
-                eq(judgments.page, parsedCitation.page),
+                // When page is 0 (unknown — e.g. user searched "2026 SCMR" without a page number),
+                // omit the page filter so we match ALL judgments for that year+journal.
+                ...(parsedCitation.page > 0 ? [eq(judgments.page, parsedCitation.page)] : []),
                 eq(judgments.isActive, true)
               )
             )
-            .limit(1);
+            .orderBy(desc(judgments.year), judgments.page)
+            .limit(parsedCitation.page > 0 ? 1 : safeLimit);
 
           for (const row of matchingJudgments) {
             const citation = String(row.citationString || "").trim();
@@ -2458,15 +2490,29 @@ export class DatabaseStorage implements IStorage {
     // This ensures results are ranked by how well they match, not just by recency
     const allTsTerms = queryTokens.join(' | ');
 
+    // If we parsed a year from the query (e.g. "2026 SCMR"), scope tsvector results
+    // to that year. Otherwise years like "2026" get stripped by YEAR_RE and
+    // the query becomes just "scmr" — matching ALL years indiscriminately.
+    const yearFilter = parsedCitation?.year
+      ? sql`AND year = ${parsedCitation.year}`
+      : sql``;
+
+    const courtFilterExpr = court
+      ? sql`AND (c.name ILIKE ${'%' + court + '%'} OR j.court_name_snapshot ILIKE ${'%' + court + '%'})`
+      : sql``;
+
     const fetchRows = async (tsqStr: string): Promise<any[]> => {
       const res = await db.execute(sql`
         WITH candidates AS (
-          SELECT id,
-            ts_rank_cd(${tsvExpr}, to_tsquery('simple', ${allTsTerms})) as relevance
-          FROM judgments
-          WHERE is_active = true
-            AND ${tsvExpr} @@ to_tsquery('simple', ${tsqStr})
-          ORDER BY relevance DESC, year DESC
+          SELECT j.id,
+            ts_rank_cd(j.tsv_title_headnotes, to_tsquery('simple', ${allTsTerms})) as relevance
+          FROM judgments j
+          LEFT JOIN courts_ref c ON j.court_id = c.id
+          WHERE j.is_active = true
+            AND j.tsv_title_headnotes @@ to_tsquery('simple', ${tsqStr})
+            ${yearFilter}
+            ${courtFilterExpr}
+          ORDER BY relevance DESC, j.year DESC
           LIMIT ${safeLimit * 8}
         )
         SELECT
@@ -2705,6 +2751,7 @@ export class DatabaseStorage implements IStorage {
       decisionDate: judgments.decisionDate,
       headnotes: judgments.headnotes,
       fullText: judgments.fullText,
+      formattedText: judgments.formattedText,
       pdfUrl: judgments.pdfUrl,
     })
       .from(judgments)
@@ -2797,7 +2844,8 @@ export class DatabaseStorage implements IStorage {
       court: row.courtName || row.courtSnapshot || "",
       decisionDate: row.decisionDate,
       headnotes: row.headnotes,
-      fullText: row.fullText,
+      fullText: row.formattedText || row.fullText,
+      formattedText: row.formattedText,
       pdfUrl: row.pdfUrl,
       citations: { made, received },
     };
@@ -2805,8 +2853,25 @@ export class DatabaseStorage implements IStorage {
 
   async createJudgment(entry: InsertJudgment): Promise<Judgment> {
     const [created] = await db.insert(judgments).values(entry).returning();
+    
+    // Auto-populate judge_case_links flat pivot table for the Judges Directory
+    if (created.bench && created.bench.trim() !== '') {
+      await db.execute(sql`
+        INSERT INTO judge_case_links (judgment_id, judge_name, court_name, year)
+        SELECT 
+          ${created.id},
+          trim(unnest(string_to_array(replace(${created.bench}, ' and ', ','), ','))),
+          COALESCE(c.name, ${created.courtNameSnapshot}),
+          ${created.year}
+        FROM (SELECT 1) dummy
+        LEFT JOIN courts_ref c ON c.id = ${created.courtId}
+      `).catch((err: any) => {
+        console.warn(`[Sync] Failed to populate judge_case_links for ${created.id}:`, err?.message || err);
+      });
+    }
+
     clearSitemapCache();
-    triggerGoogleIndexing(created.id, "URL_UPDATED").catch((err) => {
+    triggerGoogleIndexing(created.id, "URL_UPDATED").catch((err: any) => {
       console.warn("[Google Indexing] Background notification failed:", err?.message || err);
     });
     // Auto-index into RAG vector store for semantic search (fire-and-forget)
@@ -3161,6 +3226,7 @@ export class DatabaseStorage implements IStorage {
         responseTimeMs: sql<number>`ai_output_log.response_time_ms`,
         userEmail: users.email,
         userFirstName: users.firstName,
+        userSubscriptionTier: users.subscriptionTier,
       })
         .from(aiOutputLog)
         .leftJoin(users, eq(aiOutputLog.userId, users.id))

@@ -1,0 +1,39 @@
+--- client/src/experimental/pages/PreviewJudgments.tsx
++++ client/src/experimental/pages/PreviewJudgments.tsx
+@@ -375,32 +375,21 @@
+     target: JudgmentDetailData | UnifiedJudgmentResult | SavedJudgmentRecord
+   ) => {
+     const citation = target.citation;
+-    const existingIndex = localBookmarks.findIndex((s) => s.citation === citation);
+-
+-    if (existingIndex >= 0) {
++    const existing = allSavedJudgments.find((s) => s.citation === citation);
++
++    if (existing) {
+       // Remove bookmark
+-      setLocalBookmarks((prev) => prev.filter((_, idx) => idx !== existingIndex));
++      removeBookmarkMutation.mutate(existing.id as number);
+       toast({
+         title: "Bookmark Removed",
+         description: `Removed "${citation}" from Chambers Bookmarks Vault.`,
+       });
+     } else {
+       // Add bookmark
+-      const newBookmark: SavedJudgmentRecord = {
+-        id: Date.now(),
+-        citation: target.citation,
+-        court: target.court,
+-        title: target.title,
+-        summary: (target as any).headnotes || (target as any).summary || "Bookmarked authority.",
+-        createdAt: new Date().toISOString(),
+-      };
+-      setLocalBookmarks((prev) => [newBookmark, ...prev]);
++      addBookmarkMutation.mutate(target);
+       toast({
+         title: "Precedent Saved",
+         description: `"${citation}" saved to Chambers Bookmarks Vault.`,
+       });
+-      await saveJudgmentBookmark(target);
+-      refetchSaved();
+     }
+   };
