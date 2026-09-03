@@ -153,6 +153,21 @@ class GlobalErrorBoundary extends React.Component<{ children: React.ReactNode },
     return { hasError: true, error };
   }
 
+  componentDidCatch(error: Error) {
+    const msg = error.message || "";
+    if (
+      error.name === 'ChunkLoadError' || 
+      msg.includes('Loading chunk') || 
+      msg.includes('Unable to preload CSS') ||
+      msg.includes('Failed to fetch dynamically imported module')
+    ) {
+      // Hard cache-busting reload
+      const url = new URL(window.location.href);
+      url.searchParams.set('v', Date.now().toString());
+      window.location.href = url.toString();
+    }
+  }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -172,7 +187,9 @@ class GlobalErrorBoundary extends React.Component<{ children: React.ReactNode },
             <button 
               onClick={() => {
                 localStorage.clear();
-                window.location.reload();
+                const url = new URL(window.location.href);
+                url.searchParams.set('v', Date.now().toString());
+                window.location.href = url.toString();
               }} 
               className="px-6 py-2 bg-[#105B38] text-white rounded-md hover:bg-[#105B38]/90 font-medium"
             >
