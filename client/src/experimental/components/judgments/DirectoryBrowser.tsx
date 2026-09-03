@@ -76,6 +76,8 @@ export const JOURNALS_DIRECTORY = [
   { id: 8, code: "PTD", name: "Pakistan Tax Decisions" },
   { id: 9, code: "PLC", name: "Pakistan Labour Cases" },
   { id: 10, code: "LHC", name: "Lahore High Court Neutral" },
+  { id: 11, code: "SCLR", name: "Supreme Court Law Reports" },
+  { id: 12, code: "SCP", name: "Supreme Court of Pakistan Neutral" },
 ];
 
 export const CATEGORIES_DIRECTORY = [

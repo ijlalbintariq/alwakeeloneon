@@ -68,7 +68,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type CaseLawSearchResult = UnifiedJudgmentResult;
 
-const LAW_JOURNALS = ["All", "PLD", "SCMR", "LHC", "CLC", "PCrLJ", "YLR", "MLD", "CLD", "PTD", "PLC"];
+const LAW_JOURNALS = ["All", "PLD", "SCMR", "LHC", "CLC", "PCrLJ", "YLR", "MLD", "CLD", "PTD", "PLC", "SCLR", "SCP"];
 
 const COURTS_LIST = [
   "All Courts",

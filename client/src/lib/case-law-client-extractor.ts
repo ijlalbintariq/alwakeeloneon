@@ -24,7 +24,7 @@ type ClientExtractResult = {
 const REPORT_CODES = [
   "PLD", "SCMR", "YLR", "MLD", "CLC", "PCRLJ", "PLJ", "PLC", "NLR",
   "CLD", "PTD", "PTCL", "PSC", "ALD", "KLR", "PLS", "GBLR", "TAX", "SLR",
-  "AIR",
+  "AIR", "SCLR", "SCP"
 ] as const;
 
 function buildFlexibleReportPattern(code: string): string {
