@@ -103,9 +103,9 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
   };
 
   return (
-    <div className={cn("space-y-2.5", className)}>
+    <div className={cn("space-y-3", className)}>
       {/* Top Bar: Quick Enactment Chips & Browse 5,887 Acts Button */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
           <BookOpen className="h-3.5 w-3.5 text-emerald-600" />
           <span>Major Pakistani Enactments:</span>
@@ -124,7 +124,7 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
       </div>
 
       {/* Horizontal Scrolling Quick Enactment Chips */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-200">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-thin scrollbar-thumb-slate-200">
         {MAJOR_ENACTMENT_METAS.map((meta) => {
           const isSelected =
             selectedStatute.toLowerCase() === meta.statute.toLowerCase() ||
@@ -136,17 +136,17 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
               type="button"
               onClick={() => handleSelect(meta.statute, meta.shortCode)}
               className={cn(
-                "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all",
+                "flex items-center justify-between gap-3 min-w-[130px] rounded-lg px-3 py-2 text-xs font-medium transition-all shrink-0",
                 isSelected
                   ? "bg-[#1B365D] text-white shadow-xs ring-1 ring-[#1B365D]"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/60"
               )}
               title={`${meta.statute} (${meta.count} Sections)`}
             >
-              <span className="font-bold">{meta.shortCode}</span>
+              <span className="font-bold truncate">{meta.shortCode}</span>
               <span
                 className={cn(
-                  "rounded-full px-1.5 py-0.2 text-[10px] font-semibold",
+                  "rounded-full px-1.5 py-0.2 text-[10px] font-semibold shrink-0",
                   isSelected
                     ? "bg-white/20 text-white"
                     : "bg-slate-200 text-slate-600"

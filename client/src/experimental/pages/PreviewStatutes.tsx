@@ -684,25 +684,25 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
     <PreviewShell>
       <div className="max-w-7xl mx-auto space-y-5 pb-12">
         {/* ── Header Banner ─────────────────────────────────────────────────── */}
-        <div className="p-6 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-1.5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#105B38]/10 text-[#105B38] text-[11px] font-bold tracking-wide uppercase">
-              <BookOpen className="w-3.5 h-3.5" />
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs space-y-1">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#105B38]/10 text-[#105B38] text-[9px] sm:text-[10px] font-bold tracking-wide uppercase">
+              <BookOpen className="w-3 h-3" />
               <span>Pakistani Statutory Knowledge Base & Procedural Guide</span>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-2.5 py-1 text-xs text-slate-700 font-semibold">
-              <Database className="h-3.5 w-3.5 text-emerald-600" />
+            <div className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700 font-semibold">
+              <Database className="h-3 w-3 text-emerald-600" />
               <span>83,117 Sections</span>
               <span className="text-slate-400">•</span>
               <span>{TOTAL_PAKISTANI_ACTS_COUNT.toLocaleString()} Acts</span>
             </div>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-extrabold text-[#0F172A] tracking-tight">
             Statutes, Major Codes & Procedural Guides
           </h1>
-          <p className="text-xs sm:text-sm text-[#64748B] max-w-3xl">
+          <p className="text-[11px] sm:text-xs text-[#64748B] max-w-3xl leading-relaxed">
             Authoritative repository of Pakistani primary legislation, 83k statutory sections, 21 major codes, Limitation Act schedule calculator, provincial court fees & apex-to-district court directory.
           </p>
         </div>
@@ -843,7 +843,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
             </div>
 
             {/* Two-Pane Master-Detail Workstation Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-[calc(100vh-320px)] min-h-[640px] max-h-[850px]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-[calc(100vh-230px)] min-h-[640px]">
             {/* Left Pane: Sequential Section List or Search Results */}
             <div className="lg:col-span-4 flex flex-col rounded-2xl bg-white border border-[#E2E8F0] shadow-xs overflow-hidden">
               {/* Left Pane Header */}
