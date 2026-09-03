@@ -128,42 +128,34 @@ function AppContent({ onReady }: { onReady?: () => void }) {
 
 import React, { ErrorInfo } from "react";
 
-class GlobalErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+class GlobalErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error?: Error }> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false };
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Global Error Caught:", error, errorInfo);
-    // If it's a chunk load error (React lazy), force a reload to get new JS chunks
-    if (error.name === 'ChunkLoadError' || error.message.includes('Loading chunk')) {
-      window.location.reload();
-    }
-  }
-
-
-  state: { hasError: boolean; error?: Error } = { hasError: false };
-
-  static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error) {
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error("Global Error Caught:", error, errorInfo);
     const msg = error.message || "";
+    
+    // Prevent infinite reload loops. If we already reloaded in the last 10 seconds, don't auto-reload again.
+    const lastReload = parseInt(sessionStorage.getItem("alwakeelo_last_reload") || "0", 10);
+    const now = Date.now();
+    
     if (
-      error.name === 'ChunkLoadError' || 
-      msg.includes('Loading chunk') || 
-      msg.includes('Unable to preload CSS') ||
-      msg.includes('Failed to fetch dynamically imported module')
+      (error.name === 'ChunkLoadError' || 
+       msg.includes('Loading chunk') || 
+       msg.includes('Unable to preload CSS') ||
+       msg.includes('Failed to fetch dynamically imported module')) 
+       && (now - lastReload > 10000)
     ) {
-      // Hard cache-busting reload
+      sessionStorage.setItem("alwakeelo_last_reload", now.toString());
       const url = new URL(window.location.href);
-      url.searchParams.set('v', Date.now().toString());
+      url.searchParams.set('v', now.toString());
       window.location.href = url.toString();
     }
   }
@@ -211,6 +203,7 @@ class GlobalErrorBoundary extends React.Component<{ children: React.ReactNode },
           <button 
             onClick={() => {
               localStorage.clear();
+              sessionStorage.clear();
               const url = new URL(window.location.href);
               url.searchParams.set('v', Date.now().toString());
               window.location.href = url.toString();
