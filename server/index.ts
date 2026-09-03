@@ -151,13 +151,13 @@ function buildContentSecurityPolicy(isProduction: boolean): string {
     "font-src 'self' data: https://fonts.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
     "worker-src 'self' blob:",
-    "frame-src 'self' https://accounts.google.com",
     "form-action 'self'",
   ];
 
   if (isProduction) {
-    directives.push("script-src 'self' https://accounts.google.com https://pagead2.googlesyndication.com");
-    directives.push("connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://pagead2.googlesyndication.com");
+    directives.push("script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://pagead2.googlesyndication.com https://news.google.com");
+    directives.push("connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://accounts.google.com https://oauth2.googleapis.com https://pagead2.googlesyndication.com");
+    directives.push("frame-src 'self' https://accounts.google.com https://googleads.g.doubleclick.net");
     directives.push("upgrade-insecure-requests");
   } else {
     directives.push("script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com");
