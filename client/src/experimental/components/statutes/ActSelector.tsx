@@ -115,14 +115,11 @@ export const ActSelector: React.FC<ActSelectorProps> = ({
         <button
           type="button"
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs hover:border-emerald-500 hover:bg-emerald-50/50 hover:text-emerald-800 transition-all"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#105B38] px-3 py-1.5 text-xs font-bold text-white shadow-md hover:bg-emerald-800 transition-all cursor-pointer ring-2 ring-emerald-500/20"
         >
-          <Search className="h-3 w-3 text-slate-500" />
+          <Search className="h-3.5 w-3.5 text-emerald-100" />
           <span>Browse All 5,887 Acts</span>
-          <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] font-bold text-slate-600">
-            {TOTAL_PAKISTANI_ACTS_COUNT.toLocaleString()}
-          </span>
-          <ChevronDown className="h-3 w-3 text-slate-400" />
+          <ChevronDown className="h-3.5 w-3.5 text-emerald-100" />
         </button>
       </div>
 

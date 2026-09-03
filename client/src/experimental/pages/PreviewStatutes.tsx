@@ -840,37 +840,6 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
                 onSelectAct={handleSelectAct}
               />
 
-              {/* Domain Filter Chips */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 scrollbar-thin scrollbar-thumb-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setStatuteDomain("all")}
-                  className={cn(
-                    "px-3 py-1 rounded-lg text-xs font-semibold shrink-0 transition-all border cursor-pointer",
-                    statuteDomain === "all"
-                      ? "bg-[#105B38] text-white border-[#105B38] shadow-2xs"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                  )}
-                >
-                  All Domains
-                </button>
-                {STATUTE_DOMAINS.map((dom) => (
-                  <button
-                    key={dom.id}
-                    type="button"
-                    onClick={() => setStatuteDomain(dom.id)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold shrink-0 transition-all border cursor-pointer",
-                      statuteDomain === dom.id
-                        ? "bg-[#105B38] text-white border-[#105B38] shadow-2xs"
-                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                    )}
-                  >
-                    <DomainIcon domain={dom.id} className="w-3.5 h-3.5" />
-                    <span>{dom.shortLabel}</span>
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Two-Pane Master-Detail Workstation Layout */}
