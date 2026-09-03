@@ -369,7 +369,7 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
                   {[user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Advocate"}
                 </span>
                 <span className="text-[10px] text-[#64748B] truncate">
-                  High Court Chambers
+                  {designation}
                 </span>
               </div>
             )}
