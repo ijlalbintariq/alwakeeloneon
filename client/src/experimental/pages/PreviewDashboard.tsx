@@ -55,47 +55,24 @@ export const PreviewDashboard: React.FC = () => {
   const [upgradeModalOpen, setUpgradeModalOpen] = useState<boolean>(false);
   const [addHearingOpen, setAddHearingOpen] = useState<boolean>(false);
   const [feeModalOpen, setFeeModalOpen] = useState<boolean>(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   const [activityFilter, setActivityFilter] = useState<"all" | "chat" | "draft" | "search">("all");
 
-  const { data: usage, isLoading: isLoadingUsage } = useQuery<UsageData>({
-    queryKey: ["/api/usage"],
+  const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery<any>({
+    queryKey: ["/api/dashboard-summary"],
+    staleTime: 60000 // Cache for 1 min to prevent rapid re-fetching
   });
 
-  const { data: activitySummary } = useQuery<ActivitySummary>({
-    queryKey: ["/api/activity/summary"],
-  });
-
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const { data: todayAgenda = [] } = useQuery<any[]>({
-    queryKey: ["/api/diary", todayStr],
-    queryFn: async () => {
-      const res = await fetch(`/api/diary?date=${todayStr}`, {
-        credentials: "include",
-      });
-      if (!res.ok) return [];
-      return res.json();
-    },
-  });
-
-  const { data: upcomingDeadlines = [] } = useQuery<any[]>({
-    queryKey: ["/api/case-files-compliance/upcoming"],
-  });
-
-  const { data: documents = [] } = useQuery<any[]>({
-    queryKey: ["/api/documents"],
-  });
-
-  const { data: threads = [] } = useQuery<any[]>({
-    queryKey: ["/api/threads"],
-  });
-
-  const { data: caseFiles = [] } = useQuery<any[]>({
-    queryKey: ["/api/case-files"],
-  });
-
-  const { data: searchHistory = [] } = useQuery<any[]>({
-    queryKey: ["/api/search-history"],
-  });
+  const usage = dashboardData?.usage;
+  const isLoadingUsage = isLoadingDashboard;
+  const activitySummary = dashboardData?.activitySummary;
+  const todayAgenda = dashboardData?.todayAgenda || [];
+  const upcomingDeadlines = dashboardData?.upcomingDeadlines || [];
+  const documents = dashboardData?.documents || [];
+  const threads = dashboardData?.threads || [];
+  const caseFiles = dashboardData?.caseFiles || [];
+  const searchHistory = dashboardData?.searchHistory || [];
 
   const counselName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||

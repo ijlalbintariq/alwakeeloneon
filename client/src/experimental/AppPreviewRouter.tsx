@@ -1,3 +1,5 @@
+import { useAuth } from "@/hooks/use-auth";
+
 import React, { lazy, Suspense } from "react";
 import { Switch, Route, Redirect } from "wouter";
 
