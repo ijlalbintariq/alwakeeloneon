@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import {
@@ -53,6 +53,13 @@ export const PreviewSidebar: React.FC<PreviewSidebarProps> = ({
   onOpenReference,
   className,
 }) => {
+  const [designation, setDesignation] = useState(() => typeof window !== "undefined" ? (window.localStorage.getItem("alwakeelo_user_designation") || "Legal Professional") : "Legal Professional");
+  useEffect(() => {
+    const onStorage = () => setDesignation(window.localStorage.getItem("alwakeelo_user_designation") || "Legal Professional");
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const [location] = useLocation();
   const { user } = useAuth();
   const { data: usage } = useQuery<{ tier: string; tierLabel: string; used: number; monthlyLimit: number; percentage: number; remaining: number }>({
