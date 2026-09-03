@@ -2,7 +2,7 @@ import React, { lazy, Suspense } from "react";
 import { Switch, Route, Redirect } from "wouter";
 
 // 1. Public Marketing & Informational Pages
-const PreviewLanding = lazy(() => import("./pages/PreviewLanding"));
+import PreviewLanding from "./pages/PreviewLanding";
 const PreviewPricing = lazy(() => import("./pages/PreviewPricing"));
 const PreviewCheckout = lazy(() => import("./pages/PreviewCheckout"));
 const PreviewCheckoutSuccess = lazy(() => import("./pages/PreviewCheckoutSuccess"));
@@ -53,6 +53,28 @@ const FallbackLoader = () => (
     <span className="text-[#105B38] font-semibold tracking-wider">LOADING AL WAKEELO CHAMBERS PREVIEW...</span>
   </div>
 );
+
+
+function ProtectedRoute({ path, component: Component }: { path: string, component: React.ComponentType }) {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background/50 backdrop-blur-sm">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-[#105B38]/10 flex items-center justify-center animate-pulse">
+            <div className="w-6 h-6 border-2 border-[#105B38] border-t-transparent rounded-full animate-spin" />
+          </div>
+          <p className="text-sm text-muted-foreground font-medium animate-pulse">Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user) return <Redirect to="/preview/auth" />;
+  
+  return <Route path={path} component={Component} />;
+}
 
 export const AppPreviewRouter: React.FC = () => {
   return (
@@ -124,13 +146,13 @@ export const AppPreviewRouter: React.FC = () => {
         {/* 4. Specialized Workstations & Administration                      */}
         {/* ================================================================= */}
         <Route path="/contracts" component={PreviewContractDrafting} />
-        <Route path="/preview/contracts" component={PreviewContractDrafting} />
+        <ProtectedRoute path="/preview/contracts" component={PreviewContractDrafting} />
         <Route path="/contract-drafting" component={PreviewContractDrafting} />
         <Route path="/preview/contract-drafting" component={PreviewContractDrafting} />
         <Route path="/admin" component={PreviewAdminPanel} />
         <Route path="/admin-panel" component={PreviewAdminPanel} />
         <Route path="/admin-setup" component={PreviewAdminPanel} />
-        <Route path="/preview/admin" component={PreviewAdminPanel} />
+        <ProtectedRoute path="/preview/admin" component={PreviewAdminPanel} />
         <Route path="/preview/admin-panel" component={PreviewAdminPanel} />
         <Route path="/preview/admin-setup" component={PreviewAdminPanel} />
 
@@ -138,13 +160,13 @@ export const AppPreviewRouter: React.FC = () => {
         {/* 5. 14 Core Internal Litigation Workstations                       */}
         {/* ================================================================= */}
         <Route path="/dashboard" component={PreviewDashboard} />
-        <Route path="/preview/dashboard" component={PreviewDashboard} />
+        <ProtectedRoute path="/preview/dashboard" component={PreviewDashboard} />
         <Route path="/chat" component={PreviewChat} />
         <Route path="/al-wakeelo" component={PreviewChat} />
-        <Route path="/preview/chat" component={PreviewChat} />
+        <ProtectedRoute path="/preview/chat" component={PreviewChat} />
         <Route path="/drafting" component={PreviewDrafting} />
         <Route path="/legal-drafting" component={PreviewDrafting} />
-        <Route path="/preview/drafting" component={PreviewDrafting} />
+        <ProtectedRoute path="/preview/drafting" component={PreviewDrafting} />
         <Route path="/judgments" component={PreviewJudgments} />
         <Route path="/judgment-search" component={PreviewJudgments} />
         <Route path="/judgments/:id" component={PreviewJudgments} />
@@ -186,17 +208,17 @@ export const AppPreviewRouter: React.FC = () => {
         <Route path="/preview/most-cited" component={PreviewMostCited} />
         <Route path="/diary" component={PreviewDailyDiary} />
         <Route path="/daily-diary" component={PreviewDailyDiary} />
-        <Route path="/preview/diary" component={PreviewDailyDiary} />
+        <ProtectedRoute path="/preview/diary" component={PreviewDailyDiary} />
         <Route path="/vault" component={PreviewKnowledgeVault} />
         <Route path="/knowledge-vault" component={PreviewKnowledgeVault} />
         <Route path="/preview/vault" component={PreviewKnowledgeVault} />
         <Route path="/preview/knowledge-vault" component={PreviewKnowledgeVault} />
         <Route path="/bookmarks" component={PreviewBookmarks} />
-        <Route path="/preview/bookmarks" component={PreviewBookmarks} />
+        <ProtectedRoute path="/preview/bookmarks" component={PreviewBookmarks} />
         <Route path="/history" component={PreviewHistory} />
-        <Route path="/preview/history" component={PreviewHistory} />
+        <ProtectedRoute path="/preview/history" component={PreviewHistory} />
         <Route path="/organization" component={PreviewOrganization} />
-        <Route path="/preview/organization" component={PreviewOrganization} />
+        <ProtectedRoute path="/preview/organization" component={PreviewOrganization} />
         <Route path="/analyzer" component={PreviewDocumentAnalyzer} />
         <Route path="/preview/analyzer" component={PreviewDocumentAnalyzer} />
         <Route path="/document-analyzer" component={PreviewDocumentAnalyzer} />
@@ -204,7 +226,7 @@ export const AppPreviewRouter: React.FC = () => {
         <Route path="/settings" component={PreviewSettings} />
         <Route path="/profile" component={PreviewSettings} />
         <Route path="/user-panel" component={PreviewSettings} />
-        <Route path="/preview/settings" component={PreviewSettings} />
+        <ProtectedRoute path="/preview/settings" component={PreviewSettings} />
         <Route path="/preview/profile" component={PreviewSettings} />
         <Route path="/settings/mcp-tutorial" component={McpTutorialPage} />
         <Route path="/preview/settings/mcp-tutorial" component={McpTutorialPage} />

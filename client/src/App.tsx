@@ -93,15 +93,11 @@ function Router({ onReady }: { onReady?: () => void }) {
   const readyFired = useRef(false);
 
   useEffect(() => {
-    if (!isLoading && !readyFired.current) {
+    if (!readyFired.current) {
       readyFired.current = true;
-      onReady?.();
+      onReady?.(); // Hide splash screen instantly
     }
-  }, [isLoading, onReady]);
-
-  if (isLoading) {
-    return null;
-  }
+  }, [onReady]);
 
   // AL WAKEELO V2.0 HARD CUTOVER:
   // All routes are intercepted and served by the new Experimental UI router.
