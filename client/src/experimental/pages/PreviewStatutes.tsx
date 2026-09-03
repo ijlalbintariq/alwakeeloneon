@@ -843,7 +843,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
             </div>
 
             {/* Two-Pane Master-Detail Workstation Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[640px]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-[calc(100vh-320px)] min-h-[640px] max-h-[850px]">
             {/* Left Pane: Sequential Section List or Search Results */}
             <div className="lg:col-span-4 flex flex-col rounded-2xl bg-white border border-[#E2E8F0] shadow-xs overflow-hidden">
               {/* Left Pane Header */}
@@ -883,7 +883,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
               </div>
 
               {/* Scrollable Section Items List */}
-              <div className="flex-1 overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-100 scrollbar-thin scrollbar-thumb-[#105B38] scrollbar-track-slate-100 hover:scrollbar-thumb-[#0a4227]">
                 {isSearchingGlobal ? (
                   searchResults.length === 0 ? (
                     <div className="p-8 text-center text-slate-500">
@@ -1108,7 +1108,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
               </div>
 
               {/* Detail Body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-[#105B38] scrollbar-track-slate-100 hover:scrollbar-thumb-[#0a4227]">
                 {/* 1. Structured Clean Statute Viewer & Landmark Authorities */}
                 <CleanStatuteViewer
                   statuteName={activeSection.statuteName}
