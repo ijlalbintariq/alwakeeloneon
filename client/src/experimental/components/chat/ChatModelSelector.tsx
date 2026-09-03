@@ -8,6 +8,7 @@ import {
   Check,
   ShieldAlert,
   Info,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +29,7 @@ interface ChatModelSelectorProps {
   onSelectTier: (tier: ModelTier) => void;
   canUseTurbo?: boolean;
   canUseApex?: boolean;
-  onUpgradeClick?: () => void;
+  onUpgradeClick?: (tier: ModelTier) => void;
 }
 
 export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
@@ -84,26 +85,45 @@ export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
   const currentOption = modelOptions.find((m) => m.id === selectedTier) || modelOptions[0];
   const CurrentIcon = currentOption.icon;
 
+  const isLocked = (tier: ModelTier) => {
+    if (tier === "turbo" && !canUseTurbo) return true;
+    if (tier === "apex" && !canUseApex) return true;
+    return false;
+  };
+
+  const handleSelect = (tier: ModelTier) => {
+    if (isLocked(tier)) {
+      onUpgradeClick?.(tier);
+      return;
+    }
+    onSelectTier(tier);
+  };
+
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
       {/* Pill Toggle Selector */}
       <div className="flex items-center gap-1 p-0.5 rounded-xl bg-[#F5F4F2] border border-[#E5E4E2]">
         {modelOptions.map((opt) => {
           const isSelected = selectedTier === opt.id;
+          const locked = isLocked(opt.id);
           const Icon = opt.icon;
           return (
             <button
               key={opt.id}
-              onClick={() => onSelectTier(opt.id)}
+              onClick={() => handleSelect(opt.id)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all relative",
                 isSelected
                   ? "bg-white text-[#1A1A1A] font-semibold border border-[#E5E4E2] shadow-sm"
-                  : "text-[#666666] hover:text-[#1A1A1A] hover:bg-white/50"
+                  : "text-[#666666] hover:text-[#1A1A1A] hover:bg-white/50",
+                locked && "opacity-75"
               )}
             >
               <Icon className={cn("w-3.5 h-3.5", isSelected ? "text-[#1A1A1A]" : "text-[#666666]")} />
               <span>{opt.label}</span>
+              {locked && (
+                <Lock className="w-3 h-3 text-[#105B38] ml-0.5" />
+              )}
             </button>
           );
         })}
@@ -136,19 +156,23 @@ export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
           <div className="space-y-1">
             {modelOptions.map((opt) => {
               const isSelected = selectedTier === opt.id;
+              const locked = isLocked(opt.id);
               const Icon = opt.icon;
               return (
                 <div
                   key={opt.id}
                   onClick={() => {
-                    onSelectTier(opt.id);
-                    setDropdownOpen(false);
+                    handleSelect(opt.id);
+                    if (!locked) {
+                      setDropdownOpen(false);
+                    }
                   }}
                   className={cn(
-                    "flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-all border",
+                    "flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-all border relative",
                     isSelected
                       ? "bg-[#F5F4F2] border-[#E5E4E2] text-[#1A1A1A]"
-                      : "border-transparent hover:bg-[#F5F4F2] hover:border-[#E5E4E2] text-[#2D2D2D]"
+                      : "border-transparent hover:bg-[#F5F4F2] hover:border-[#E5E4E2] text-[#2D2D2D]",
+                    locked && "opacity-80"
                   )}
                 >
                   <div
@@ -156,7 +180,7 @@ export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
                       "p-2 rounded-lg shrink-0 mt-0.5 bg-white border border-[#E5E4E2] text-[#1A1A1A]"
                     )}
                   >
-                    <Icon className="w-4 h-4" />
+                    {locked ? <Lock className="w-4 h-4 text-[#105B38]" /> : <Icon className="w-4 h-4" />}
                   </div>
 
                   <div className="flex-1 min-w-0 space-y-1">
@@ -176,7 +200,7 @@ export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
                       {opt.description}
                     </p>
 
-                    <div className="pt-0.5">
+                    <div className="pt-0.5 flex items-center justify-between">
                       <span
                         className={cn(
                           "inline-block px-1.5 py-0.5 rounded text-[9px] font-mono border",
@@ -185,6 +209,11 @@ export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
                       >
                         {opt.badge}
                       </span>
+                      {locked && (
+                        <span className="text-[10px] text-[#105B38] font-semibold flex items-center gap-1">
+                          Upgrade to unlock
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -201,3 +230,4 @@ export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
     </div>
   );
 };
+

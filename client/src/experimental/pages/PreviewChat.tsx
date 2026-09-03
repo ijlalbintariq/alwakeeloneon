@@ -77,12 +77,14 @@ const PREVIEW_ACTIVE_THREAD_KEY = "alwakeelo-preview-active-thread-id";
 export const PreviewChat: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [_, setLocation] = useLocation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputPrompt, setInputPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [modelTier, setModelTier] = useState<ModelTier>("standard");
+
   const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [ragEnabled, setRagEnabled] = useState(false);
@@ -781,6 +783,20 @@ export const PreviewChat: React.FC = () => {
                 onSelectTier={setModelTier}
                 canUseTurbo={canUseTurbo}
                 canUseApex={canUseApex}
+                onUpgradeClick={(tier) => {
+                  toast({
+                    title: "Upgrade Required",
+                    description: `The ${tier.toUpperCase()} intelligence tier is restricted. Please upgrade your subscription to access this model.`,
+                    action: (
+                      <button
+                        onClick={() => setLocation("/preview/checkout?plan=pro&cycle=monthly")}
+                        className="bg-[#105B38] text-white px-3 py-1 rounded text-xs"
+                      >
+                        Upgrade Now
+                      </button>
+                    ),
+                  });
+                }}
               />
 
               {messages.length > 1 && (
