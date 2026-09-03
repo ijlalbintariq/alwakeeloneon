@@ -44,6 +44,7 @@ import { parseReferences } from "@/components/reference-cards";
 import { cleanLegalChatResponse } from "@/experimental/lib/cleanChatResponse";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +75,7 @@ interface ChatMessage {
 const PREVIEW_ACTIVE_THREAD_KEY = "alwakeelo-preview-active-thread-id";
 
 export const PreviewChat: React.FC = () => {
+  const { toast } = useToast();
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputPrompt, setInputPrompt] = useState("");

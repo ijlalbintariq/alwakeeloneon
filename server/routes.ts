@@ -17,7 +17,7 @@ import {
   judgments,
   judgeCaseLinks,
   citationLinks,
-  documentScans,
+  documentScans, scanFindings,
   legalDrafts,
   orgActivityLogs,
   caseLeads,
