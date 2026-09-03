@@ -22008,24 +22008,133 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
     res.json({ message: "Knowledge document deleted" });
   });
 
-  // ── Safepay Payment Gateway ──────────────────────────────────────────────
+  // ── Safepay Payment Gateway & Billing APIs ──────────────────────────────
+
+  const VALID_PROMO_CODES: Record<string, { label: string; discountPct: number }> = {
+    CHAMBERS2026: { label: "Chambers 2026 Launch (20% Off)", discountPct: 20 },
+    ADVOCATE10: { label: "Advocate Special (10% Off)", discountPct: 10 },
+    BARCOUNCIL: { label: "Bar Council Members (15% Off)", discountPct: 15 },
+  };
+
+  app.get("/api/billing/plans", (_req, res) => {
+    res.json({
+      plans: [
+        {
+          id: "starter",
+          name: "Free Starter",
+          badge: "Solo Counsel",
+          monthlyPricePkr: 0,
+          seats: "1 Advocate Seat",
+          aiActions: "10 AI Actions / mo",
+          features: [
+            "10 AI Actions per month",
+            "Standard AI model access",
+            "83,117 Pakistani Statutes & 5,887 Acts",
+            "Limitation Act Schedule calculator",
+            "10 case file uploads (100 pages PDF chat)",
+          ],
+        },
+        {
+          id: "standard",
+          name: "Standard",
+          badge: "Practitioner",
+          monthlyPricePkr: 500,
+          seats: "1 Advocate Seat",
+          aiActions: "120 AI Actions / mo",
+          features: [
+            "120 AI Actions per month",
+            "Standard AI model (8,192 tokens/request)",
+            "600k+ SC & High Court case law citations",
+            "Court Fee Calculator across 5 provinces",
+            "30 case uploads (250 pages PDF chat)",
+            "Daily Court Diary & Cause List tracker",
+          ],
+        },
+        {
+          id: "pro",
+          name: "Senior Counsel Pro",
+          badge: "Most Popular",
+          monthlyPricePkr: 1000,
+          seats: "1 Advocate Seat",
+          aiActions: "350 AI Actions / mo",
+          features: [
+            "350 AI Actions per month",
+            "Standard + Turbo AI models (8,192 tokens)",
+            "Pinpoint Citation Reader & Overruled badges",
+            "Interactive Precedent Network Citation Graph",
+            "6-Pillar Procedural Compliance (O.7 R.11 CPC)",
+            "Microsoft Word Add-in Manifest (.xml)",
+            "100 case uploads (500 pages PDF chat)",
+          ],
+        },
+        {
+          id: "chamber",
+          name: "Chamber Team",
+          badge: "Chamber Practice",
+          monthlyPricePkr: 4500,
+          seats: "Up to 3 Counsel Seats",
+          aiActions: "1,200 AI Actions / mo (Pooled)",
+          features: [
+            "1,200 AI Actions/mo (pooled team quota)",
+            "Up to 3 full Advocate User Seats",
+            "Standard + Turbo + Apex AI models",
+            "180 Apex Deep Reasoning requests/mo",
+            "Shared Chamber Knowledge Vault & Bookmarks",
+            "Commercial Contract Studio (24+ templates)",
+            "300 case uploads (1,500 pages PDF chat)",
+          ],
+        },
+        {
+          id: "enterprise",
+          name: "Enterprise Chamber",
+          badge: "Institutional",
+          monthlyPricePkr: 50000,
+          seats: "Custom Seats (10+)",
+          aiActions: "30,000+ AI Actions / mo",
+          features: [
+            "30,000+ AI Actions/month with custom burst",
+            "Custom advocate seats & role matrix",
+            "Full Apex access (4,500 Apex requests/mo)",
+            "Priority GPU cluster routing (<5s latency)",
+            "Dedicated Chamber Account Manager & 99.9% SLA",
+            "Private On-Premise / Hybrid Vector DB",
+            "Custom Bar Council Single Sign-On (SAML)",
+          ],
+        },
+      ],
+      cycleDiscounts: {
+        monthly: 0,
+        quarterly: 10,
+        yearly: 20,
+      },
+    });
+  });
+
+  app.post("/api/billing/validate-promo", (req, res) => {
+    const code = String(req.body?.code || "").trim().toUpperCase();
+    if (!code || !VALID_PROMO_CODES[code]) {
+      return res.status(400).json({ valid: false, message: "Invalid or expired promo code" });
+    }
+    const promo = VALID_PROMO_CODES[code];
+    res.json({ valid: true, code, label: promo.label, discountPct: promo.discountPct });
+  });
 
   app.post("/api/safepay/create-session", async (req, res) => {
     try {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-      const { isSafepayConfigured, createPaymentSession, generateCheckoutUrl, calculatePlanAmount, getSafepayEnvironment } = await import("./safepay");
+      const { isSafepayConfigured, createPaymentSession, generateCheckoutUrl, calculatePlanAmount } = await import("./safepay");
       if (!isSafepayConfigured()) {
         return res.status(503).json({ message: "Payment gateway is not configured" });
       }
 
-      const { planKey, billingCycle, autoRenew, isExperimental } = req.body;
+      const { planKey, billingCycle, autoRenew, isExperimental, promoCode } = req.body;
       if (!planKey || !billingCycle) {
         return res.status(400).json({ message: "planKey and billingCycle are required" });
       }
 
-      const validPlans = isExperimental ? ["starter", "standard", "pro", "chamber", "enterprise"] : ["standard", "pro", "chamber"];
+      const validPlans = ["starter", "standard", "pro", "chamber", "enterprise"];
       const validCycles = ["monthly", "quarterly", "yearly"];
       if (!validPlans.includes(planKey)) {
         return res.status(400).json({ message: `Invalid plan. Must be one of: ${validPlans.join(", ")}` });
@@ -22034,13 +22143,34 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
         return res.status(400).json({ message: `Invalid billing cycle. Must be one of: ${validCycles.join(", ")}` });
       }
 
-      const amountPkr = calculatePlanAmount(planKey, billingCycle, isExperimental);
+      let amountPkr = calculatePlanAmount(planKey, billingCycle, isExperimental);
+
+      // Apply promo discount if valid
+      if (promoCode && VALID_PROMO_CODES[String(promoCode).toUpperCase()]) {
+        const promo = VALID_PROMO_CODES[String(promoCode).toUpperCase()];
+        const discountAmount = Math.round(amountPkr * (promo.discountPct / 100));
+        amountPkr = Math.max(0, amountPkr - discountAmount);
+      }
+
+      if (amountPkr === 0) {
+        // Free plan activation (e.g. starter)
+        const normalizedCycle = normalizeBillingCycle(billingCycle);
+        const cycleWindow = getSubscriptionWindow(normalizedCycle, new Date());
+        await storage.updateUserSubscription(userId, {
+          subscriptionTier: planKey,
+          subscriptionCycle: normalizedCycle,
+          subscriptionStartAt: cycleWindow.startAt,
+          subscriptionEndAt: cycleWindow.endAt,
+          autoRenew: false,
+        });
+        return res.json({ checkoutUrl: `${isExperimental ? "/preview" : ""}/dashboard?activated=free`, tracker: "free_tier", amountPkr: 0 });
+      }
 
       // Create Safepay payment session
       const session = await createPaymentSession({ amountPkr });
 
       // Generate checkout URL
-      const publicSiteUrl = process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "http://localhost:5001";
+      const publicSiteUrl = process.env.PUBLIC_SITE_URL || process.env.VITE_PUBLIC_SITE_URL || "https://www.alwakeelo.com";
       const checkoutUrl = generateCheckoutUrl({
         tracker: session.tracker,
         tbt: session.tbt,
@@ -22063,7 +22193,7 @@ Focus searches on: Pakistan Law Site (pakistanlawsite.com), Supreme Court of Pak
 
       console.log(`[Safepay] Created payment session: tracker=${session.tracker}, plan=${planKey}, cycle=${billingCycle}, amount=PKR ${amountPkr}, autoRenew=${!!autoRenew}`);
 
-      res.json({ checkoutUrl, tracker: session.tracker });
+      res.json({ checkoutUrl, tracker: session.tracker, amountPkr });
     } catch (err: any) {
       console.error("[Safepay] Failed to create payment session:", err?.message || err);
       res.status(500).json({ message: "Failed to create payment session" });

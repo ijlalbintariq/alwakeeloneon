@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
@@ -32,8 +33,14 @@ export interface PlanDetail {
   features: string[];
 }
 
-export const CHECKOUT_PLANS: Record<string, PlanDetail> = {
-  starter: {
+interface BillingPlansResponse {
+  plans: PlanDetail[];
+  cycleDiscounts: Record<BillingCycle, number>;
+}
+
+// Fallback in case network request is pending
+const FALLBACK_PLANS: PlanDetail[] = [
+  {
     id: "starter",
     name: "Free Starter",
     badge: "Solo Counsel",
@@ -48,7 +55,7 @@ export const CHECKOUT_PLANS: Record<string, PlanDetail> = {
       "10 case file uploads (100 pages PDF chat)",
     ],
   },
-  standard: {
+  {
     id: "standard",
     name: "Standard",
     badge: "Practitioner",
@@ -64,7 +71,7 @@ export const CHECKOUT_PLANS: Record<string, PlanDetail> = {
       "Daily Court Diary & Cause List tracker",
     ],
   },
-  pro: {
+  {
     id: "pro",
     name: "Senior Counsel Pro",
     badge: "Most Popular",
@@ -81,7 +88,7 @@ export const CHECKOUT_PLANS: Record<string, PlanDetail> = {
       "100 case uploads (500 pages PDF chat)",
     ],
   },
-  chamber: {
+  {
     id: "chamber",
     name: "Chamber Team",
     badge: "Chamber Practice",
@@ -98,7 +105,7 @@ export const CHECKOUT_PLANS: Record<string, PlanDetail> = {
       "300 case uploads (1,500 pages PDF chat)",
     ],
   },
-  enterprise: {
+  {
     id: "enterprise",
     name: "Enterprise Chamber",
     badge: "Institutional",
@@ -115,14 +122,7 @@ export const CHECKOUT_PLANS: Record<string, PlanDetail> = {
       "Custom Bar Council Single Sign-On (SAML)",
     ],
   },
-};
-
-const VALID_PROMOS: Record<string, { label: string; discountPct: number }> = {
-  CHAMBERS2026: { label: "Chambers 2026 Launch (20% Off)", discountPct: 20 },
-  ADVOCATE10: { label: "Advocate Special (10% Off)", discountPct: 10 },
-  BARCOUNCIL: { label: "Bar Council Members (15% Off)", discountPct: 15 },
-  FREEPREVIEW: { label: "100% Free Sandbox Pass", discountPct: 100 },
-};
+];
 
 export default function PreviewCheckout() {
   const { toast } = useToast();
@@ -132,6 +132,20 @@ export default function PreviewCheckout() {
   if (!isAuthLoading && !user) {
     return <Redirect to="/preview/auth" />;
   }
+
+  // 1. Fetch live plans directly from backend API
+  const { data: billingConfig, isLoading: isPlansLoading } = useQuery<BillingPlansResponse>({
+    queryKey: ["/api/billing/plans"],
+    queryFn: async () => {
+      const res = await fetch("/api/billing/plans");
+      if (!res.ok) throw new Error("Failed to load plans");
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const availablePlans = billingConfig?.plans || FALLBACK_PLANS;
+  const cycleDiscounts = billingConfig?.cycleDiscounts || { monthly: 0, quarterly: 10, yearly: 20 };
 
   // Read query parameters
   const queryParams = useMemo(() => {
@@ -143,9 +157,7 @@ export default function PreviewCheckout() {
   const rawCycle = queryParams.get("cycle") || "monthly";
 
   // Plan & Cycle state
-  const [selectedPlanKey, setSelectedPlanKey] = useState<string>(
-    CHECKOUT_PLANS[rawPlanKey.toLowerCase()] ? rawPlanKey.toLowerCase() : "pro"
-  );
+  const [selectedPlanKey, setSelectedPlanKey] = useState<string>(rawPlanKey.toLowerCase());
   const [selectedCycle, setSelectedCycle] = useState<BillingCycle>(
     rawCycle === "quarterly" || rawCycle === "yearly" ? rawCycle : "monthly"
   );
@@ -154,7 +166,7 @@ export default function PreviewCheckout() {
   useEffect(() => {
     const planParam = queryParams.get("plan");
     const cycleParam = queryParams.get("cycle");
-    if (planParam && CHECKOUT_PLANS[planParam.toLowerCase()]) {
+    if (planParam) {
       setSelectedPlanKey(planParam.toLowerCase());
     }
     if (cycleParam && (cycleParam === "monthly" || cycleParam === "quarterly" || cycleParam === "yearly")) {
@@ -166,6 +178,7 @@ export default function PreviewCheckout() {
   const [promoInput, setPromoInput] = useState<string>("");
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; label: string; discountPct: number } | null>(null);
   const [promoError, setPromoError] = useState<string>("");
+  const [isValidatingPromo, setIsValidatingPromo] = useState<boolean>(false);
 
   // Auto-renew toggle
   const [autoRenew, setAutoRenew] = useState<boolean>(true);
@@ -174,11 +187,11 @@ export default function PreviewCheckout() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [processingPhase, setProcessingPhase] = useState<string>("");
 
-  // Calculations
-  const currentPlan = CHECKOUT_PLANS[selectedPlanKey] || CHECKOUT_PLANS.pro;
+  // Live Calculations synchronized 1:1 with backend
+  const currentPlan = availablePlans.find((p) => p.id === selectedPlanKey) || availablePlans.find((p) => p.id === "pro") || availablePlans[0];
 
   const cycleMonths = selectedCycle === "monthly" ? 1 : selectedCycle === "quarterly" ? 3 : 12;
-  const cycleDiscountPct = selectedCycle === "monthly" ? 0 : selectedCycle === "quarterly" ? 10 : 20;
+  const cycleDiscountPct = cycleDiscounts[selectedCycle] ?? (selectedCycle === "monthly" ? 0 : selectedCycle === "quarterly" ? 10 : 20);
 
   const basePrice = currentPlan.monthlyPricePkr * cycleMonths;
   const cycleSavings = Math.round(basePrice * (cycleDiscountPct / 100));
@@ -197,22 +210,40 @@ export default function PreviewCheckout() {
     setSelectedCycle(cyc);
   };
 
-  // Handle promo application
-  const handleApplyPromo = (e: React.FormEvent) => {
+  // Handle live promo validation via real backend route
+  const handleApplyPromo = async (e: React.FormEvent) => {
     e.preventDefault();
     setPromoError("");
     const cleaned = promoInput.trim().toUpperCase();
     if (!cleaned) return;
 
-    if (VALID_PROMOS[cleaned]) {
-      setAppliedPromo({
-        code: cleaned,
-        label: VALID_PROMOS[cleaned].label,
-        discountPct: VALID_PROMOS[cleaned].discountPct,
+    setIsValidatingPromo(true);
+    try {
+      const res = await fetch("/api/billing/validate-promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code: cleaned }),
       });
-      setPromoInput("");
-    } else {
-      setPromoError(`Promo code "${cleaned}" is invalid or expired.`);
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setAppliedPromo({
+          code: data.code,
+          label: data.label,
+          discountPct: data.discountPct,
+        });
+        setPromoInput("");
+        toast({
+          title: "Promo Applied",
+          description: `${data.label} applied successfully.`,
+        });
+      } else {
+        setPromoError(data.message || `Promo code "${cleaned}" is invalid or expired.`);
+      }
+    } catch {
+      setPromoError("Unable to validate promo code. Please try again.");
+    } finally {
+      setIsValidatingPromo(false);
     }
   };
 
@@ -223,17 +254,38 @@ export default function PreviewCheckout() {
 
   // Complete Payment Action via Safepay
   const handleCompletePayment = async () => {
-    if (finalTotal === 0) {
-      toast({
-        title: "Free Subscription Activated",
-        description: "Your free plan has been activated successfully.",
-      });
-      navigate("/preview/dashboard");
-      return;
+    if (finalTotal === 0 || currentPlan.monthlyPricePkr === 0) {
+      setIsProcessing(true);
+      setProcessingPhase("Activating Free Starter subscription...");
+      try {
+        const res = await fetch("/api/safepay/create-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            planKey: selectedPlanKey,
+            billingCycle: selectedCycle,
+            autoRenew: false,
+            isExperimental: true,
+          }),
+        });
+        const data = await res.json();
+        setIsProcessing(false);
+        toast({
+          title: "Free Subscription Activated",
+          description: "Your free plan has been activated successfully.",
+        });
+        navigate(data.checkoutUrl || "/preview/dashboard");
+        return;
+      } catch (err: any) {
+        setIsProcessing(false);
+        navigate("/preview/dashboard");
+        return;
+      }
     }
 
     setIsProcessing(true);
-    setProcessingPhase("Connecting to Safepay secure payment gateway...");
+    setProcessingPhase("Connecting to Safepay payment gateway...");
 
     try {
       // Save order metadata in localStorage for post-redirect confirmation
@@ -266,13 +318,14 @@ export default function PreviewCheckout() {
           billingCycle: selectedCycle,
           autoRenew,
           isExperimental: true,
+          promoCode: appliedPromo?.code,
         }),
       });
 
       const data = await res.json();
 
       if (res.ok && data.checkoutUrl) {
-        setProcessingPhase("Redirecting to Safepay checkout...");
+        setProcessingPhase("Redirecting to Safepay secure checkout...");
         window.location.href = data.checkoutUrl;
         return;
       }
@@ -365,49 +418,56 @@ export default function PreviewCheckout() {
 
               {/* Plan Options Grid */}
               <div className="space-y-3">
-                {Object.values(CHECKOUT_PLANS).map((plan) => {
-                  const isSelected = selectedPlanKey === plan.id;
-                  const price =
-                    plan.monthlyPricePkr === 0
-                      ? "Free Forever"
-                      : `PKR ${plan.monthlyPricePkr.toLocaleString("en-US")}/mo`;
+                {isPlansLoading ? (
+                  <div className="p-8 text-center text-xs text-[#64748B]">
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#105B38]" />
+                    <span>Loading live pricing plans...</span>
+                  </div>
+                ) : (
+                  availablePlans.map((plan) => {
+                    const isSelected = selectedPlanKey === plan.id;
+                    const price =
+                      plan.monthlyPricePkr === 0
+                        ? "Free Forever"
+                        : `PKR ${plan.monthlyPricePkr.toLocaleString("en-US")}/mo`;
 
-                  return (
-                    <div
-                      key={plan.id}
-                      onClick={() => handlePlanChange(plan.id)}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                        isSelected
-                          ? "bg-[#EBF5F0]/50 border-[#105B38] ring-1 ring-[#105B38]"
-                          : "bg-white border-[#E2E8F0] hover:border-[#CBD5E1]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                            isSelected ? "border-[#105B38] bg-[#105B38]" : "border-[#94A3B8]"
-                          }`}
-                        >
-                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-[#0F172A]">{plan.name}</span>
-                            <span className="text-[10px] font-mono font-semibold px-2 py-0.2 rounded bg-slate-100 text-slate-700">
-                              {plan.badge}
+                    return (
+                      <div
+                        key={plan.id}
+                        onClick={() => handlePlanChange(plan.id)}
+                        className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                          isSelected
+                            ? "bg-[#EBF5F0]/50 border-[#105B38] ring-1 ring-[#105B38]"
+                            : "bg-white border-[#E2E8F0] hover:border-[#CBD5E1]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                              isSelected ? "border-[#105B38] bg-[#105B38]" : "border-[#94A3B8]"
+                            }`}
+                          >
+                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-[#0F172A]">{plan.name}</span>
+                              <span className="text-[10px] font-mono font-semibold px-2 py-0.2 rounded bg-slate-100 text-slate-700">
+                                {plan.badge}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-[#64748B]">
+                              {plan.seats} · {plan.aiActions}
                             </span>
                           </div>
-                          <span className="text-[11px] text-[#64748B]">
-                            {plan.seats} · {plan.aiActions}
-                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-mono font-bold text-[#0F172A]">{price}</span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs font-mono font-bold text-[#0F172A]">{price}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </div>
 
@@ -505,7 +565,7 @@ export default function PreviewCheckout() {
                 </div>
               </div>
 
-              {/* Promo Code Input */}
+              {/* Promo Code Input with Real Backend Validation */}
               <div className="py-4 border-b border-[#E2E8F0]">
                 <label className="text-xs font-bold text-[#334155] block mb-1.5 flex items-center gap-1.5">
                   <Tag className="w-3.5 h-3.5 text-[#105B38]" />
@@ -540,9 +600,10 @@ export default function PreviewCheckout() {
                     />
                     <button
                       type="submit"
-                      className="px-3 py-2 rounded-lg bg-[#0F172A] hover:bg-[#1E293B] text-white text-xs font-bold transition-all"
+                      disabled={isValidatingPromo}
+                      className="px-3 py-2 rounded-lg bg-[#0F172A] hover:bg-[#1E293B] text-white text-xs font-bold transition-all disabled:opacity-50"
                     >
-                      Apply
+                      {isValidatingPromo ? "Verifying..." : "Apply"}
                     </button>
                   </form>
                 )}
@@ -626,7 +687,11 @@ export default function PreviewCheckout() {
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4" />
-                    <span>Pay PKR {finalTotal.toLocaleString("en-US")} with Safepay</span>
+                    <span>
+                      {finalTotal === 0
+                        ? "Activate Free Starter Plan"
+                        : `Pay PKR ${finalTotal.toLocaleString("en-US")} with Safepay`}
+                    </span>
                   </>
                 )}
               </button>

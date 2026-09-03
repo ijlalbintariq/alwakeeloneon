@@ -224,15 +224,15 @@ const DISCOUNT_ELIGIBLE_PLANS = new Set(["standard", "pro", "chamber"]);
  */
 
 const EXPERIMENTAL_PLAN_MONTHLY_PRICES_PKR: Record<string, number> = {
-  starter: 990,
+  starter: 0,
   standard: 500,
-  pro: 1990,
-  chamber: 7990,
+  pro: 1000,
+  chamber: 4500,
   enterprise: 50000,
 };
 export function calculatePlanAmount(planKey: string, billingCycle: string, isExperimental = false): number {
   const monthlyPrice = isExperimental ? EXPERIMENTAL_PLAN_MONTHLY_PRICES_PKR[planKey] : PLAN_MONTHLY_PRICES_PKR[planKey];
-  if (!monthlyPrice) {
+  if (monthlyPrice === undefined) {
     throw new Error(`Unknown plan: ${planKey}`);
   }
 
