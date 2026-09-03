@@ -18,6 +18,8 @@ import {
   Loader2,
   Receipt,
   Percent,
+  Building2,
+  PhoneCall,
 } from "lucide-react";
 import "@/experimental/styles/preview-theme.css";
 
@@ -538,6 +540,29 @@ export default function PreviewCheckout() {
                 <div className="pt-2 flex items-center justify-between text-[11px] text-[#64748B]">
                   <span>Supported Cards: Visa, Mastercard, PayPak, UnionPay</span>
                   <span className="font-mono text-[#105B38] font-semibold">PKR Settlement</span>
+                </div>
+              </div>
+
+              {/* Wire Transfer Support Notice */}
+              <div className="mt-4 p-4 rounded-xl bg-amber-50/90 border border-amber-200 flex items-start gap-3">
+                <Building2 className="w-5 h-5 text-amber-800 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-950">
+                  <p className="font-bold text-amber-900 mb-1">
+                    To buy through wire transfer:
+                  </p>
+                  <p className="text-[11.5px] leading-relaxed text-amber-900/90">
+                    Kindly contact on our chamber support number via WhatsApp or call:{" "}
+                    <a
+                      href="https://wa.me/923358341897"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-[#105B38] underline hover:text-[#0D4A2E] inline-flex items-center gap-1"
+                    >
+                      <span>0335 8341897</span>
+                      <PhoneCall className="w-3 h-3 inline" />
+                    </a>{" "}
+                    (or email <a href="mailto:support@alwakeelo.com" className="font-semibold underline text-amber-900 hover:text-black">support@alwakeelo.com</a>) for manual bank details & instant activation.
+                  </p>
                 </div>
               </div>
             </div>
