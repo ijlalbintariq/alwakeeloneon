@@ -393,7 +393,7 @@ const FEATURE_MATRIX: FeatureMatrixRow[] = [
 const FAQS = [
   {
     q: "Which Pakistani payment methods do you support?",
-    a: "We support all major Pakistani payment rails via Safepay, Kuickpay/1Bill (direct 1Link ATM and online banking transfer), JazzCash and EasyPaisa mobile wallets, Visa/Mastercard debit and credit cards, and direct Chamber Bank Wire to our Habib Bank Limited (HBL) corporate account.",
+    a: "We support secure online card payments via Safepay (supporting all Visa, Mastercard, and PayPak debit and credit cards issued by Pakistani and international banks).",
   },
   {
     q: "How does multi-seat pooled AI quota work for the Chamber Plan?",

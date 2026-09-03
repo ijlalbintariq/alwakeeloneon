@@ -9,8 +9,8 @@ import Safepay from "@sfpy/node-core";
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
-const SAFEPAY_API_KEY = process.env.SAFEPAY_API_KEY || "";
-const SAFEPAY_SECRET_KEY = process.env.SAFEPAY_SECRET_KEY || "";
+const SAFEPAY_API_KEY = process.env.SAFEPAY_API_KEY || "sec_f3085efc-66e5-45c9-9d5c-ecc8fb2e9844";
+const SAFEPAY_SECRET_KEY = process.env.SAFEPAY_SECRET_KEY || "ac2eb23d5a78c279ef409c846ab0489a5ac68627c529d8320d67437ab68aacf5";
 const SAFEPAY_ENVIRONMENT = (process.env.SAFEPAY_ENVIRONMENT || "sandbox") as "sandbox" | "production" | "development";
 const SAFEPAY_WEBHOOK_SECRET = process.env.SAFEPAY_WEBHOOK_SECRET || "";
 
