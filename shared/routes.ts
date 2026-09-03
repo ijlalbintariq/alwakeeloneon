@@ -140,6 +140,14 @@ export const api = {
       path: '/api/search-history' as const,
       input: insertSearchHistorySchema.omit({ userId: true }),
     },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/search-history/:id' as const,
+    },
+    clear: {
+      method: 'DELETE' as const,
+      path: '/api/search-history' as const,
+    },
   },
   statutes: {
     search: {

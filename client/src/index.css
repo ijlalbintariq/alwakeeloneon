@@ -725,98 +725,107 @@
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* Admin panel redesign (scoped) */
+/* Admin panel Chambers Forest Green theme */
 .admin-panel-premium {
-  --admin-bg: var(--preview-bg);
-  --admin-surface: var(--preview-surface);
-  --admin-surface-2: var(--preview-surface-elevated);
-  --admin-border: var(--preview-border);
-  --admin-text: var(--preview-text-primary);
-  --admin-muted: var(--preview-text-secondary);
-  --admin-amber: var(--preview-accent-amber);
-  --admin-emerald: var(--preview-accent-emerald);
+  --admin-bg: 0 0% 100%;
+  --admin-surface: 0 0% 100%;
+  --admin-surface-2: 210 20% 98%;
+  --admin-border: 214 32% 91%;
+  --admin-text: 222 47% 11%;
+  --admin-muted: 215 16% 47%;
+  --admin-amber: 151 70% 21%;
+  --admin-emerald: 151 70% 21%;
+  color: #0F172A;
 }
 
 .admin-panel-hero {
-  border: 1px solid hsl(var(--admin-border));
-  border-radius: 1.25rem;
-  padding: 1.25rem 1.5rem;
-  background:
-    radial-gradient(circle at top right, hsl(var(--admin-emerald) / 0.16), transparent 35%),
-    radial-gradient(circle at top left, hsl(var(--admin-amber) / 0.2), transparent 45%),
-    linear-gradient(180deg, hsl(var(--admin-surface-2)), hsl(var(--admin-surface)));
-  box-shadow: 0 18px 40px -28px hsl(222 54% 5% / 0.9);
+  border: 1px solid #E2E8F0;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  background: #FFFFFF;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .admin-panel-shield-wrap {
-  width: 2rem;
-  height: 2rem;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 0.75rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid hsl(var(--admin-amber) / 0.45);
-  background: hsl(var(--admin-amber) / 0.12);
+  border: 1px solid rgba(16, 91, 56, 0.2);
+  background: rgba(16, 91, 56, 0.1);
+  color: #105B38;
 }
 
 .admin-tab-strip {
-  border: 1px solid hsl(var(--admin-border));
-  background: hsl(var(--admin-surface) / 0.8);
-  border-radius: 0.9rem;
-  padding: 0.45rem;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  border-radius: 0.875rem;
+  padding: 0.35rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .admin-panel-premium .admin-tab-button {
-  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  font-weight: 700;
   transition: all 160ms ease;
 }
 
-.admin-panel-premium .admin-tab-button:hover {
-  border-color: hsl(var(--admin-border));
-  background: hsl(var(--admin-surface-2) / 0.8);
+.admin-panel-premium .admin-tab-button.bg-primary {
+  background-color: #105B38 !important;
+  color: #FFFFFF !important;
+}
+
+.admin-panel-premium .admin-tab-button:hover:not(.bg-primary) {
+  background-color: #F8FAFC;
+  color: #0F172A;
 }
 
 .admin-panel-premium .bg-\[\#1e293b\] {
-  background: linear-gradient(180deg, hsl(var(--admin-surface-2)), hsl(var(--admin-surface))) !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
 }
 
 .admin-panel-premium .border-slate-800 {
-  border-color: hsl(var(--admin-border)) !important;
+  border-color: #E2E8F0 !important;
 }
 
 .admin-panel-premium .text-white {
-  color: hsl(var(--admin-text)) !important;
+  color: #0F172A !important;
 }
 
 .admin-panel-premium .text-slate-500,
 .admin-panel-premium .text-slate-600,
 .admin-panel-premium .text-slate-400 {
-  color: hsl(var(--admin-muted)) !important;
+  color: #64748B !important;
 }
 
 .admin-panel-premium .bg-slate-800,
 .admin-panel-premium .bg-slate-900 {
-  background: hsl(var(--admin-bg) / 0.85) !important;
+  background: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
 }
 
 .admin-panel-premium .border-slate-700 {
-  border-color: hsl(var(--admin-border)) !important;
+  border-color: #E2E8F0 !important;
 }
 
 .admin-panel-premium input,
 .admin-panel-premium textarea,
 .admin-panel-premium [role="combobox"] {
-  border-color: hsl(var(--admin-border));
-  background: hsl(var(--admin-bg) / 0.9);
-  color: hsl(var(--admin-text));
+  border-color: #E2E8F0 !important;
+  background: #FFFFFF !important;
+  color: #0F172A !important;
+  border-radius: 0.625rem !important;
 }
 
 .admin-panel-premium input:focus-visible,
 .admin-panel-premium textarea:focus-visible,
 .admin-panel-premium [role="combobox"]:focus-visible {
   outline: none;
-  border-color: hsl(var(--admin-amber));
-  box-shadow: 0 0 0 3px hsl(var(--admin-amber) / 0.16);
+  border-color: #105B38 !important;
+  box-shadow: 0 0 0 3px rgba(16, 91, 56, 0.15) !important;
 }
 
 /* macOS-inspired preview layer (safe, opt-in via ?ui_preview=macos) */

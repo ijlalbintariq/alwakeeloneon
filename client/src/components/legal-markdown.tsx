@@ -55,7 +55,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const text = extractText(children);
             const sectionId = "section-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
             return (
-              <h1 id={sectionId} data-section-heading={text} className="text-lg sm:text-xl font-bold text-foreground mt-4 mb-3 pb-2 border-b-3 border-primary/50" data-testid="text-heading-h1">
+              <h1 id={sectionId} data-section-heading={text} className="text-lg sm:text-xl font-extrabold text-[#105B38] mt-4 mb-3 pb-2 border-b-2 border-[#105B38]/20" data-testid="text-heading-h1">
                 {children}
               </h1>
             );
@@ -64,7 +64,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const text = extractText(children);
             const sectionId = "section-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
             return (
-              <h2 id={sectionId} data-section-heading={text} className="text-base sm:text-lg font-bold text-foreground mt-4 mb-2 pb-2 border-b-2 border-primary/30" data-testid="text-heading-h2">
+              <h2 id={sectionId} data-section-heading={text} className="text-base sm:text-lg font-bold text-[#105B38] mt-4 mb-2 pb-2 border-b border-[#105B38]/20" data-testid="text-heading-h2">
                 {children}
               </h2>
             );
@@ -73,7 +73,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const text = extractText(children);
             const sectionId = "section-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
             return (
-              <h3 id={sectionId} data-section-heading={text} className="text-sm font-bold text-primary mt-3 mb-2 uppercase tracking-wider" data-testid="text-heading-h3">
+              <h3 id={sectionId} data-section-heading={text} className="text-sm font-bold text-[#105B38] mt-3 mb-2 uppercase tracking-wider" data-testid="text-heading-h3">
                 {children}
               </h3>
             );
@@ -82,7 +82,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const text = extractText(children);
             const sectionId = "section-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
             return (
-              <h4 id={sectionId} data-section-heading={text} className="text-sm font-semibold text-foreground mt-3 mb-2" data-testid="text-heading-h4">
+              <h4 id={sectionId} data-section-heading={text} className="text-sm font-semibold text-[#105B38] mt-3 mb-2" data-testid="text-heading-h4">
                 {children}
               </h4>
             );
@@ -91,20 +91,20 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             const text = extractText(children);
             const processed = processTextForCitations(text);
             return (
-              <p className="text-xs sm:text-sm leading-relaxed mb-3 text-foreground font-medium">
+              <p className="text-xs sm:text-sm leading-relaxed mb-3 text-inherit font-medium">
                 {processed === text ? children : processed}
               </p>
             );
           },
           strong: ({ children }) => {
             // Disable inline citation highlighting for bold text
-            return <strong className="text-foreground font-bold">{children}</strong>;
+            return <strong className="text-inherit font-bold">{children}</strong>;
           },
           ul: ({ children }) => (
-            <ul className="list-disc list-outside space-y-1.5 mb-3 ml-6 text-xs sm:text-sm text-foreground">{children}</ul>
+            <ul className="list-disc list-outside space-y-1.5 mb-3 ml-6 text-xs sm:text-sm text-inherit">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-outside space-y-1.5 mb-3 ml-6 text-xs sm:text-sm text-foreground">{children}</ol>
+            <ol className="list-decimal list-outside space-y-1.5 mb-3 ml-6 text-xs sm:text-sm text-inherit">{children}</ol>
           ),
           li: ({ children }) => {
             const text = extractText(children);
@@ -131,7 +131,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             );
           },
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-primary bg-primary/10 pl-5 pr-4 py-3 my-4 text-foreground italic rounded-r-lg font-medium">
+            <blockquote className="border-l-4 border-primary bg-primary/10 pl-5 pr-4 py-3 my-4 text-inherit italic rounded-r-lg font-medium">
               {children}
             </blockquote>
           ),
@@ -146,7 +146,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             }
             return (
               <pre className="bg-background border border-border rounded-xl p-3 my-2 overflow-x-auto shadow-sm">
-                <code className="text-xs font-mono text-foreground leading-relaxed">{children}</code>
+                <code className="text-xs font-mono text-inherit leading-relaxed">{children}</code>
               </pre>
             );
           },
@@ -164,7 +164,7 @@ function LegalMarkdownComponent({ content, className }: { content: string; class
             </th>
           ),
           td: ({ children }) => (
-            <td className="px-3 py-2 text-foreground text-xs border-b border-primary/10 bg-card/30">{children}</td>
+            <td className="px-3 py-2 text-inherit text-xs border-b border-primary/10 bg-card/30">{children}</td>
           ),
         }}
       >

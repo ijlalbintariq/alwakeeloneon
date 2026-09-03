@@ -9,6 +9,9 @@ vite.config.ts.*
 
 # Local secrets — never commit
 .env
+.env.*
+*.env*
+client/src/experimental/*.env*
 .env.local
 
 # Agent audit scripts — may contain env context, never commit

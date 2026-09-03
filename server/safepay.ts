@@ -222,8 +222,16 @@ const DISCOUNT_ELIGIBLE_PLANS = new Set(["standard", "pro", "chamber"]);
 /**
  * Calculate the total PKR amount for a plan + billing cycle combination.
  */
-export function calculatePlanAmount(planKey: string, billingCycle: string): number {
-  const monthlyPrice = PLAN_MONTHLY_PRICES_PKR[planKey];
+
+const EXPERIMENTAL_PLAN_MONTHLY_PRICES_PKR: Record<string, number> = {
+  starter: 990,
+  standard: 500,
+  pro: 1990,
+  chamber: 7990,
+  enterprise: 50000,
+};
+export function calculatePlanAmount(planKey: string, billingCycle: string, isExperimental = false): number {
+  const monthlyPrice = isExperimental ? EXPERIMENTAL_PLAN_MONTHLY_PRICES_PKR[planKey] : PLAN_MONTHLY_PRICES_PKR[planKey];
   if (!monthlyPrice) {
     throw new Error(`Unknown plan: ${planKey}`);
   }
@@ -232,7 +240,7 @@ export function calculatePlanAmount(planKey: string, billingCycle: string): numb
   const months = cycle === "yearly" ? 12 : cycle === "quarterly" ? 3 : 1;
   const baseTotal = monthlyPrice * months;
 
-  if (!DISCOUNT_ELIGIBLE_PLANS.has(planKey) || cycle === "monthly") {
+  if ((!isExperimental && !DISCOUNT_ELIGIBLE_PLANS.has(planKey)) || cycle === "monthly") {
     return baseTotal;
   }
 

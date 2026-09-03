@@ -14,6 +14,10 @@ export function getRecommendedUpgradePlan(tierRaw: string | null | undefined): S
 }
 
 export function getUpgradeCheckoutPath(tierRaw: string | null | undefined): string {
+  const tier = String(tierRaw || "free").toLowerCase();
+  if (tier === "enterprise") {
+    return "/contact";
+  }
   return `/checkout?plan=${getRecommendedUpgradePlan(tierRaw)}&cycle=monthly`;
 }
 

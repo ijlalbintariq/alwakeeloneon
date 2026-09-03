@@ -54,6 +54,7 @@ const InstallAppPage = lazy(() => import("@/pages/install-app"));
 const WordAddinGuidePage = lazy(() => import("@/pages/word-addin-guide"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const CheckoutSuccessPage = lazy(() => import("@/pages/checkout-success"));
+const AppPreviewRouter = lazy(() => import("@/experimental/AppPreviewRouter"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -88,8 +89,7 @@ function LegacyChatRedirect() {
 }
 
 function Router({ onReady }: { onReady?: () => void }) {
-  const { user, isLoading } = useAuth();
-  const [location] = useLocation();
+  const { isLoading } = useAuth();
   const readyFired = useRef(false);
 
   useEffect(() => {
@@ -103,221 +103,9 @@ function Router({ onReady }: { onReady?: () => void }) {
     return null;
   }
 
-  if (location === "/") {
-    if (user) return <Redirect to="/dashboard" />;
-    return <LandingPage />;
-  }
-
-  if (location === "/auth") {
-    if (user) return <Redirect to="/dashboard" />;
-    return <AuthPage />;
-  }
-
-  if (location === "/sign-in" || location === "/login") {
-    if (user) return <Redirect to="/dashboard" />;
-    return <Redirect to="/auth?mode=login" />;
-  }
-
-  if (location === "/sign-up" || location === "/register" || location === "/signup") {
-    if (user) return <Redirect to="/dashboard" />;
-    return <Redirect to="/auth?mode=register" />;
-  }
-
-  if (location === "/forgot-password") {
-    if (user) return <Redirect to="/dashboard" />;
-    return <ForgotPasswordPage />;
-  }
-
-  if (location.startsWith("/reset-password")) {
-    if (user) return <Redirect to="/dashboard" />;
-    return <ResetPasswordPage />;
-  }
-
-  if (location.startsWith("/upload/session/")) {
-    return <UploadSessionPage />;
-  }
-
-  if (location.startsWith("/share/")) {
-    return <SharedConversationPage />;
-  }
-
-  if (location === "/privacy") {
-    return <PrivacyPolicyPage />;
-  }
-
-  if (location === "/terms") {
-    return <TermsOfServicePage />;
-  }
-
-  if (location === "/cancellation-return-refund-policy") {
-    return <CancellationReturnRefundPolicyPage />;
-  }
-
-  if (location === "/ownership-statement") {
-    return <OwnershipStatementPage />;
-  }
-
-  if (location === "/install") {
-    return <InstallAppPage />;
-  }
-
-  if (location === "/word-addin-guide") {
-    return <WordAddinGuidePage />;
-  }
-
-  if (location.startsWith("/checkout/success")) {
-    return <CheckoutSuccessPage />;
-  }
-
-  if (location.startsWith("/checkout")) {
-    return <CheckoutPage />;
-  }
-
-  if (location === "/about") {
-    return (
-      <PublicPageShell>
-        <AboutPage />
-      </PublicPageShell>
-    );
-  }
-
-  if (location === "/contact") {
-    return (
-      <PublicPageShell>
-        <ContactPage />
-      </PublicPageShell>
-    );
-  }
-
-  if (location === "/faq") {
-    return (
-      <PublicPageShell>
-        <FaqPage />
-      </PublicPageShell>
-    );
-  }
-
-  if (location === "/mcp") {
-    return (
-      <PublicPageShell>
-        <McpPublicLandingPage />
-      </PublicPageShell>
-    );
-  }
-
-  if (location === "/blog") {
-    return (
-      <PublicPageShell>
-        <BlogPage />
-      </PublicPageShell>
-    );
-  }
-
-  if (location.startsWith("/blog/")) {
-    return (
-      <PublicPageShell>
-        <BlogDetailPage />
-      </PublicPageShell>
-    );
-  }
-
-  // Public judgment detail — anonymous visitors and search crawlers must reach
-  // the page without redirecting to /auth. JudgmentDetailPage detects the
-  // unauthenticated case and renders a preview view via /api/public/judgments.
-  if (location.startsWith("/judgment/")) {
-    if (user) {
-      return (
-        <AppShell>
-          <JudgmentDetailPage />
-        </AppShell>
-      );
-    }
-    return (
-      <PublicPageShell>
-        <JudgmentDetailPage />
-      </PublicPageShell>
-    );
-  }
-
-  if (location === "/judgments/browse") {
-    if (user) {
-      return (
-        <AppShell>
-          <JudgmentDirectoryPage />
-        </AppShell>
-      );
-    }
-    return (
-      <PublicPageShell>
-        <JudgmentDirectoryPage />
-      </PublicPageShell>
-    );
-  }
-
-  if (location === "/cause-lists" || location.startsWith("/cause-lists/")) {
-    return <Redirect to="/" />;
-  }
-
-  if (location.startsWith("/statute-view/")) {
-    if (user) {
-      return (
-        <AppShell>
-          <StatuteViewPage />
-        </AppShell>
-      );
-    }
-    return (
-      <PublicPageShell>
-        <StatuteViewPage />
-      </PublicPageShell>
-    );
-  }
-
-  if (!user) {
-    return <Redirect to="/auth" />;
-  }
-
-  const userTier = String(user.subscriptionTier || "").toLowerCase();
-  const canAccessOrganization = !!user && (user.isAdmin || userTier === "chamber" || userTier === "enterprise");
-  const OrganizationRoute = () => (canAccessOrganization ? <OrganizationPage /> : <Redirect to="/dashboard" />);
-
-  if (location === "/admin-setup") {
-    return <AdminSetupPage />;
-  }
-
-  return (
-    <AppShell>
-      <Switch>
-        <Route path="/dashboard" component={DashboardPage} />
-        <Route path="/judgments/browse" component={JudgmentDirectoryPage} />
-        <Route path="/judgments" component={JudgmentsPage} />
-        <Route path="/judgment-search" component={LegacyJudgmentSearchRedirect} />
-        <Route path="/judgment-view" component={JudgmentViewPage} />
-        <Route path="/citation-search" component={LegacyCitationSearchRedirect} />
-        <Route path="/statutes" component={LegacyStatutesSearchRedirect} />
-        <Route path="/chat" component={LegacyChatRedirect} />
-        <Route path="/judgment/:id" component={JudgmentDetailPage} />
-        <Route path="/statute-search" component={StatuteSearchPage} />
-        <Route path="/statute-view/:id" component={StatuteViewPage} />
-        <Route path="/al-wakeelo" component={ChatPage} />
-        <Route path="/legal-drafting" component={LegalDraftingPage} />
-        <Route path="/contract-drafting" component={ContractDraftingPage} />
-        <Route path="/case-documents" component={CaseDocumentsPage} />
-        <Route path="/bookmarks" component={BookmarksPage} />
-        <Route path="/history" component={HistoryPage} />
-        <Route path="/knowledge-vault" component={KnowledgeVaultPage} />
-        <Route path="/case-files/:id" component={CaseFilesPage} />
-        <Route path="/case-files" component={CaseFilesPage} />
-        <Route path="/daily-diary" component={DailyDiaryPage} />
-        <Route path="/organization" component={OrganizationRoute} />
-        <Route path="/admin" component={AdminPanelPage} />
-        <Route path="/settings" component={UserPanelPage} />
-        <Route path="/settings/mcp-tutorial" component={McpTutorialPage} />
-        <Route path="/oauth/authorize" component={OauthConsentPage} />
-        <Route component={NotFound} />
-      </Switch>
-    </AppShell>
-  );
+  // AL WAKEELO V2.0 HARD CUTOVER:
+  // All routes are intercepted and served by the new Experimental UI router.
+  return <AppPreviewRouter />;
 }
 
 function AppContent({ onReady }: { onReady?: () => void }) {

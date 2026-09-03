@@ -1,9 +1,9 @@
 
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex, jsonb, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, uuid, uniqueIndex, index, jsonb, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const tsvector = customType<{ data: string }>({
   dataType() {
@@ -204,7 +204,10 @@ export const judgments = pgTable(
     decisionDate: timestamp("decision_date"),
     headnotes: text("headnotes"),
     fullText: text("full_text").notNull(),
+    formattedText: text("formatted_text"),
+    formatVersion: varchar("format_version", { length: 10 }).default("v1"),
     pdfUrl: text("pdf_url"),
+    bench: text("bench"),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
@@ -215,6 +218,21 @@ export const judgments = pgTable(
   (table) => ({
     uniqueCitationParts: uniqueIndex("judgments_year_journal_page_unique").on(table.year, table.journalId, table.page),
   }),
+);
+
+export const judgeCaseLinks = pgTable(
+  "judge_case_links",
+  {
+    id: serial("id").primaryKey(),
+    judgmentId: uuid("judgment_id").references(() => judgments.id, { onDelete: 'cascade' }).notNull(),
+    judgeName: text("judge_name").notNull(),
+    courtName: text("court_name"),
+    year: integer("year").notNull(),
+  },
+  (table) => ({
+    judgeNameIdx: index("idx_judge_case_links_name").on(table.judgeName),
+    courtNameIdx: index("idx_judge_case_links_court").on(table.courtName)
+  })
 );
 
 export const citationLinks = pgTable(
@@ -336,6 +354,8 @@ export const organizations = pgTable("organizations", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  leadCounselId: varchar("lead_counsel_id").references(() => users.id),
+  assistingCounselId: varchar("assisting_counsel_id").references(() => users.id),
   ownerId: varchar("owner_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -681,6 +701,97 @@ export const paymentRecords = pgTable("payment_records", {
   completedAt: timestamp("completed_at"),
 });
 
+// ── Document Analyzer Scans & Findings ──────────────────────────────────────
+
+export const documentScans = pgTable("document_scans", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  documentType: varchar("document_type", { length: 100 }),
+  text: text("text").notNull(),
+  summary: text("summary"),
+  overallRisk: varchar("overall_risk", { length: 50 }),
+  scanDate: timestamp("scan_date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const scanFindings = pgTable("scan_findings", {
+  id: serial("id").primaryKey(),
+  scanId: integer("scan_id").references(() => documentScans.id, { onDelete: "cascade" }).notNull(),
+  pillar: varchar("pillar", { length: 100 }).notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  severity: varchar("severity", { length: 50 }).notNull(),
+  issue: text("issue").notNull(),
+  statuteRef: text("statute_ref"),
+  recommendation: text("recommendation").notNull(),
+  rawSnippet: text("raw_snippet"),
+  isResolved: boolean("is_resolved").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── Organization Activity Logs ──────────────────────────────────────────────
+
+export const orgActivityLogs = pgTable("org_activity_logs", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }).notNull(),
+  action: text("action").notNull(),
+  details: text("details"),
+  actorId: varchar("actor_id").references(() => users.id, { onDelete: "set null" }),
+  actorName: varchar("actor_name", { length: 255 }),
+  category: varchar("category", { length: 100 }).default("general"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── Legal Drafts ────────────────────────────────────────────────────────────
+
+export const legalDrafts = pgTable("legal_drafts", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  templateType: varchar("template_type", { length: 100 }),
+  content: text("content").notNull(),
+  status: varchar("status", { length: 50 }).default("draft"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ── Relations ───────────────────────────────────────────────────────────────
+
+export const documentScansRelations = relations(documentScans, ({ one, many }) => ({
+  user: one(users, {
+    fields: [documentScans.userId],
+    references: [users.id],
+  }),
+  findings: many(scanFindings),
+}));
+
+export const scanFindingsRelations = relations(scanFindings, ({ one }) => ({
+  scan: one(documentScans, {
+    fields: [scanFindings.scanId],
+    references: [documentScans.id],
+  }),
+}));
+
+export const orgActivityLogsRelations = relations(orgActivityLogs, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [orgActivityLogs.orgId],
+    references: [organizations.id],
+  }),
+  actor: one(users, {
+    fields: [orgActivityLogs.actorId],
+    references: [users.id],
+  }),
+}));
+
+export const legalDraftsRelations = relations(legalDrafts, ({ one }) => ({
+  user: one(users, {
+    fields: [legalDrafts.userId],
+    references: [users.id],
+  }),
+}));
+
 // Schemas
 export const insertThreadSchema = createInsertSchema(threads).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
@@ -726,6 +837,10 @@ export const insertCourtCauseListItemSchema = createInsertSchema(courtCauseListI
 export const insertCauseListTrackerSchema = createInsertSchema(causeListTrackers).omit({ id: true, createdAt: true });
 export const insertDiaryEntrySchema = createInsertSchema(diaryEntries).omit({ id: true, createdAt: true });
 export const insertPaymentRecordSchema = createInsertSchema(paymentRecords).omit({ id: true, createdAt: true, completedAt: true });
+export const insertDocumentScanSchema = createInsertSchema(documentScans).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertScanFindingSchema = createInsertSchema(scanFindings).omit({ id: true, createdAt: true });
+export const insertOrgActivityLogSchema = createInsertSchema(orgActivityLogs).omit({ id: true, createdAt: true });
+export const insertLegalDraftSchema = createInsertSchema(legalDrafts).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type Thread = typeof threads.$inferSelect;
@@ -941,3 +1056,12 @@ export type InsertDiaryEntry = z.infer<typeof insertDiaryEntrySchema>;
 export type UserGoogleCalendarConnection = typeof userGoogleCalendarConnections.$inferSelect;
 export type PaymentRecord = typeof paymentRecords.$inferSelect;
 export type InsertPaymentRecord = z.infer<typeof insertPaymentRecordSchema>;
+export type DocumentScan = typeof documentScans.$inferSelect;
+export type InsertDocumentScan = z.infer<typeof insertDocumentScanSchema>;
+export type ScanFinding = typeof scanFindings.$inferSelect;
+export type InsertScanFinding = z.infer<typeof insertScanFindingSchema>;
+export type OrgActivityLog = typeof orgActivityLogs.$inferSelect;
+export type InsertOrgActivityLog = z.infer<typeof insertOrgActivityLogSchema>;
+export type LegalDraft = typeof legalDrafts.$inferSelect;
+export type InsertLegalDraft = z.infer<typeof insertLegalDraftSchema>;
+

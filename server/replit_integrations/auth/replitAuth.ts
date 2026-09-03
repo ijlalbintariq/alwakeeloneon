@@ -56,7 +56,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProduction && process.env.DISABLE_HTTPS_REDIRECT !== "true",
+      secure: false,
       maxAge: sessionTtl,
       sameSite: "lax",
     },
@@ -75,8 +75,15 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     try {
       user = await authStorage.getUser(userId);
     } catch (err: any) {
-      console.error("[Auth] Database error fetching user in isAuthenticated:", err?.message || err);
-      return res.status(500).json({ message: "Database connection busy. Please reload." });
+      if (process.env.NODE_ENV !== "production" && (req.session as any).user) {
+        user = (req.session as any).user;
+      } else {
+        console.error("[Auth] Database error fetching user in isAuthenticated:", err?.message || err);
+        return res.status(500).json({ message: "Database connection busy. Please reload." });
+      }
+    }
+    if (!user && process.env.NODE_ENV !== "production" && (req.session as any).user) {
+      user = (req.session as any).user;
     }
     if (!user) {
       req.session.destroy(() => {});
