@@ -26,6 +26,7 @@ const PreviewForgotPassword = lazy(() => import("./pages/PreviewForgotPassword")
 const PreviewResetPassword = lazy(() => import("./pages/PreviewResetPassword"));
 const PreviewOnboarding = lazy(() => import("./pages/PreviewOnboarding"));
 const McpTutorialPage = lazy(() => import("@/pages/mcp-tutorial"));
+const OauthConsentPage = lazy(() => import("@/pages/oauth-consent"));
 
 // 3. Specialized Workstations & Admin Panel
 const PreviewContractDrafting = lazy(() => import("./pages/PreviewContractDrafting"));
@@ -133,6 +134,10 @@ export const AppPreviewRouter: React.FC = () => {
         <Route path="/preview/reset-password" component={PreviewResetPassword} />
         <Route path="/onboarding" component={PreviewOnboarding} />
         <Route path="/preview/onboarding" component={PreviewOnboarding} />
+        <ProtectedRoute path="/oauth/consent" component={OauthConsentPage} />
+        <ProtectedRoute path="/oauth/authorize" component={OauthConsentPage} />
+        <ProtectedRoute path="/preview/oauth/consent" component={OauthConsentPage} />
+        <ProtectedRoute path="/preview/oauth/authorize" component={OauthConsentPage} />
 
         {/* ================================================================= */}
         {/* 3. Billing & Checkout Suite                                       */}
