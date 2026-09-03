@@ -843,7 +843,7 @@ That in terms of pecuniary and territorial jurisdiction, the subject matter fall
             </div>
 
             {/* Two-Pane Master-Detail Workstation Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-[calc(100vh-230px)] min-h-[640px]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-[calc(100vh-130px)] min-h-[640px]">
             {/* Left Pane: Sequential Section List or Search Results */}
             <div className="lg:col-span-4 flex flex-col rounded-2xl bg-white border border-[#E2E8F0] shadow-xs overflow-hidden">
               {/* Left Pane Header */}
