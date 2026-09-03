@@ -128,10 +128,6 @@ export default function PreviewCheckout() {
   const { toast } = useToast();
   const [location, navigate] = useLocation();
   const { user, isLoading: isAuthLoading } = useAuth();
-  
-  if (!isAuthLoading && !user) {
-    return <Redirect to="/preview/auth" />;
-  }
 
   // 1. Fetch live plans directly from backend API
   const { data: billingConfig, isLoading: isPlansLoading } = useQuery<BillingPlansResponse>({
@@ -347,6 +343,19 @@ export default function PreviewCheckout() {
       });
     }
   };
+
+  if (isAuthLoading) {
+    return (
+      <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-[#105B38]" />
+        <span className="text-xs font-mono text-[#64748B]">Verifying session...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Redirect to="/preview/auth" />;
+  }
 
   return (
     <div className="preview-theme-scope min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#105B38]/20 selection:text-[#0F172A]">
