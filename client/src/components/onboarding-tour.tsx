@@ -86,7 +86,10 @@ export function OnboardingTour() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [location, setLocation] = useLocation();
-  const [stepIndex, setStepIndex] = useState(-1); // -1 = welcome screen
+  const [stepIndex, setStepIndex] = useState(() => {
+    const saved = sessionStorage.getItem('aw_tour_step');
+    return saved !== null ? parseInt(saved, 10) : -1;
+  }); // -1 = welcome screen
   const [dismissed, setDismissed] = useState(false);
 
   // When step changes navigate to that module
@@ -135,8 +138,8 @@ export function OnboardingTour() {
   // ── Welcome Screen ─────────────────────────────────────────────────────────
   if (stepIndex === -1) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-        <div className="w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-background shadow-2xl overflow-hidden">
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex items-center justify-center pointer-events-none" style={{ pointerEvents: "none" }}>
+        <div className="w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-background shadow-2xl overflow-hidden pointer-events-auto">
           {/* Top accent bar */}
           <div className="h-1 w-full bg-gradient-to-r from-primary via-blue-400 to-emerald-400" />
 
@@ -253,7 +256,7 @@ export function OnboardingTour() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleBack}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-white/5"
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-white dark:bg-[#131E2E]/5"
                 >
                   <ChevronLeft className="w-3 h-3" /> Back
                 </button>
